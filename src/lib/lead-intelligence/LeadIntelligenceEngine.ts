@@ -329,6 +329,7 @@ export class LeadIntelligenceEngine {
       rating: prospect.rating,
       reviewsCount: prospect.reviewsCount,
       technologies: detectedTechnologies.length > 0 ? detectedTechnologies : undefined,
+      organizationId: prospect.organizationId,
     });
 
     const now = new Date().toISOString();

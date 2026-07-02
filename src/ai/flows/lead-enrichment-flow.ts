@@ -1,4 +1,4 @@
-import { ai } from '../genkit';
+import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
 
 export const prospectEnrichmentOutputSchema = z.object({
@@ -59,11 +59,33 @@ export const leadEnrichmentFlow = ai.defineFlow(
       reviewsCount: z.number().optional(),
       technologies: z.array(z.string()).optional(),
       scrapedText: z.string().optional(),
+      organizationId: z.string().optional(),
+      provider: z.string().optional(),
+      modelId: z.string().optional(),
     }),
     outputSchema: prospectEnrichmentOutputSchema,
   },
   async (input) => {
-    const { name, domain, industry, rating, reviewsCount, technologies = [], scrapedText = '' } = input;
+    const { 
+      name, 
+      domain, 
+      industry, 
+      rating, 
+      reviewsCount, 
+      technologies = [], 
+      scrapedText = '',
+      organizationId,
+      provider = 'googleai',
+      modelId = 'gemini-1.5-flash'
+    } = input;
+
+    const resolvedModel = await getModel({
+      organizationId,
+      provider,
+      modelId
+    });
+
+    const activeAi = resolvedModel.customAi || ai;
 
     const systemPrompt = `
       You are an elite Lead Intelligence and Growth Analyst for SmartSapp.
@@ -91,7 +113,8 @@ export const leadEnrichmentFlow = ai.defineFlow(
       - Produce a customized opportunity analysis report, SmartSapp product matches, annual revenue estimate, elevator pitch, and detailed objections handler.
     `;
 
-    const { output } = await ai.generate({
+    const { output } = await activeAi.generate({
+      model: resolvedModel.modelString,
       prompt: systemPrompt,
       output: { schema: prospectEnrichmentOutputSchema },
     });
