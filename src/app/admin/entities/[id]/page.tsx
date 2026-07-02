@@ -37,6 +37,7 @@ import {
     Video,
     RefreshCw,
     Zap,
+    Sparkles,
     Target,
     Info,
     Share2,
@@ -65,6 +66,7 @@ import { serializeEntityToImportRow } from '@/lib/import-export/export-service';
 import EntityBillingTab from '../components/EntityBillingTab';
 import EntityDealsTab from '../components/EntityDealsTab';
 import EntityMeetingsTab from '../components/EntityMeetingsTab';
+import EntityLeadIntelTab from '../components/EntityLeadIntelTab';
 import { MediaSelect } from '../components/media-select';
 import {
   Dialog,
@@ -423,6 +425,9 @@ export default function EntityDetailPage() {
                         <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Zap className="h-3 w-3" /> Automations
                         </TabsTrigger>
+                        <TabsTrigger value="lead-intel" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <Sparkles className="h-3 w-3" /> Lead Intel
+                        </TabsTrigger>
                     </TabsList>
 
   <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -586,6 +591,9 @@ export default function EntityDetailPage() {
                     </TabsContent>
                     <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityAutomationsTab entityId={entityId} />
+                    </TabsContent>
+                    <TabsContent value="lead-intel" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <EntityLeadIntelTab entityId={entityId} />
                     </TabsContent>
                 </Tabs>
               </Card>

@@ -53,7 +53,7 @@ import type {
 // Kowalski Animation Transition Constants
 const kowalskiTransition = {
   duration: 0.25,
-  ease: [0.23, 1, 0.32, 1] // cubic-bezier(0.23, 1, 0.32, 1)
+  ease: [0.23, 1, 0.32, 1] as [number, number, number, number]
 };
 
 export default function LeadIntelligenceClient() {

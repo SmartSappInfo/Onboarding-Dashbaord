@@ -12,6 +12,7 @@ export type RouteTitleMap = Record<string, string>;
 /** Admin (`/admin/*`) routes → human label shown in the tab title. */
 export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin': 'Dashboard',
+  '/admin/lead-intelligence': 'Lead Intelligence',
   '/admin/entities/lead-scoring': 'Lead Cleanup',
   '/admin/entities': 'Entities',
   '/admin/pipeline': 'Deals',
