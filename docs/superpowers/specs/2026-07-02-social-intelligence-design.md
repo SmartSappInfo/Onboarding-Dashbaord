@@ -368,5 +368,25 @@ We will proceed with the rollout in five modular phases:
   * Runs a Gemini sentiment check.
   * Checks if active keywords match rules. If yes, writes alert log document to `/socialListeningAlerts` and dispatches selected notifications (toasts, logs, or mock emails).
 
+---
+
+## 10. Phase 5 Specifications: Automation Builder & Media Brand Kits
+
+### A. Automation Flow Routing & Layout
+* **URL Segment**: `/admin/social/automations`
+* **Layout**: Visual linear flow node list editor inheriting Framer Motion animations.
+  * Node 1: Trigger select (inbound_message, brand_mention, negative_sentiment).
+  * Node 2: Condition check (all, contains_keywords, negative_only).
+  * Node 3 (Dynamic actions list): Tag CRM Lead, Draft AI Reply, Send Admin Notify.
+* **Saving Endpoint**: Writes automation configs directly to `/socialAutomations` collection in Firestore.
+
+### B. Media Brand Kit Routing & Layout
+* **URL Segment**: `/admin/social/brand-kits`
+* **Layout**: Dual-pane builder canvas:
+  * Left: Form inputs for logo URL, primary/secondary colors (HTML color inputs), and title text overlay.
+  * Right: Interactive SVG flyer poster banner rendering brand changes in real-time.
+  * Action: "Download Graphic" downloads the live-generated SVG poster code.
+
+
 
 

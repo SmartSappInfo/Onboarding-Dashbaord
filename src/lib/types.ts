@@ -5287,4 +5287,37 @@ export interface SocialListeningRule {
   createdAt: string;
 }
 
+export interface SocialAutomationRule {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  name: string;
+  trigger: 'inbound_message' | 'brand_mention' | 'negative_sentiment';
+  condition: 'all' | 'contains_keywords' | 'negative_only';
+  conditionKeywords: string[];
+  actions: {
+    id: string;
+    type: 'draft_ai_reply' | 'crm_tag_lead' | 'notify_admin';
+    params: {
+      tagName?: string;
+      aiTone?: string;
+      notifyInApp?: boolean;
+      notifyEmail?: boolean;
+    };
+  }[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface SocialBrandKit {
+  id: string;
+  workspaceId: string;
+  primaryColor: string;
+  secondaryColor: string;
+  fontFamily: string;
+  logoUrl?: string;
+  bannerText: string;
+  updatedAt: string;
+}
+
 
