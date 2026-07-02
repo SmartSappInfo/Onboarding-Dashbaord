@@ -203,11 +203,11 @@ export default function InboxClient() {
   };
 
   // Link inbox thread to existing CRM Contact
-  const handleLinkCRM = async (contactId: string | null) => {
+  const handleLinkCRM = async (contactId: string) => {
     if (!activeThreadId) return;
     setIsLinking(true);
     try {
-      const res = await linkInboxToCRMAction(activeThreadId, contactId);
+      const res = await linkInboxToCRMAction(activeThreadId, contactId || null);
       if (res.success) {
         toast({
           title: 'CRM Link Saved',
@@ -585,7 +585,7 @@ export default function InboxClient() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleLinkCRM(null)}
+                      onClick={() => handleLinkCRM('')}
                       disabled={isLinking}
                       className="h-6 text-[9px] font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg"
                     >
