@@ -113,16 +113,46 @@ export const leadEnrichmentFlow = ai.defineFlow(
       - Produce a customized opportunity analysis report, SmartSapp product matches, annual revenue estimate, elevator pitch, and detailed objections handler.
     `;
 
-    const { output } = await activeAi.generate({
-      model: resolvedModel.modelString,
-      prompt: systemPrompt,
-      output: { schema: prospectEnrichmentOutputSchema },
-    });
+    let retries = 0;
+    let currentModel = resolvedModel.modelString;
+    while (retries < 3) {
+      try {
+        const { output } = await activeAi.generate({
+          model: currentModel,
+          prompt: systemPrompt,
+          output: { schema: prospectEnrichmentOutputSchema },
+        });
 
-    if (!output) {
-      throw new Error('Genkit failed to generate lead intelligence insights');
+        if (!output) {
+          throw new Error('Genkit failed to generate lead intelligence insights');
+        }
+
+        return output;
+      } catch (error: unknown) {
+        retries++;
+        console.warn(`[AI] Lead enrichment attempt ${retries} failed:`, error);
+        
+        if (retries === 3) {
+          throw error;
+        }
+
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const isUnavailable = errorMsg.includes('503') || 
+                              errorMsg.includes('UNAVAILABLE') || 
+                              errorMsg.includes('overloaded') || 
+                              errorMsg.includes('high demand');
+
+        if (isUnavailable) {
+          // Switch to a lower-demand model like gemini-2.0-flash to bypass the service outage
+          currentModel = currentModel.replace('gemini-3-flash-preview', 'gemini-2.0-flash');
+          console.log(`[AI] Gemini 503/high demand detected. Falling back to model: ${currentModel}`);
+        }
+
+        // Exponential backoff: 2s, 4s
+        await new Promise(resolve => setTimeout(resolve, 2000 * retries));
+      }
     }
 
-    return output;
+    throw new Error('Genkit failed to generate lead intelligence insights due to model timeout');
   }
 );
