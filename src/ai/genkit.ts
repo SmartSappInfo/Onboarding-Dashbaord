@@ -191,7 +191,7 @@ export async function getModel(params: {
             if (isAuthError) {
               console.warn(`[AI] Custom API key generation failed with auth error: "${errorMsg}". Falling back to system default instance.`);
               const defaultModel = provider === 'googleai' 
-                ? 'googleai/gemini-1.5-flash' 
+                ? 'googleai/gemini-3-flash-preview' 
                 : 'anthropic/claude-sonnet-4-6';
               return await ai.generate({
                 ...options,

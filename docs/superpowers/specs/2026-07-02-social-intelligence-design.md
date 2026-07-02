@@ -317,3 +317,30 @@ We will proceed with the rollout in five modular phases:
 * **Heuristics**: Scans the last 30 days of engagements (likes + comments) in Firestore and buckets them by hour of day. Resolves peak engagement interval.
 * **LLM Reasoning**: Passes the peak hour and metrics context to Gemini via Genkit to generate a textual copywriter reasoning sentence.
 
+---
+
+## 8. Phase 3 Specifications: Unified Inbox & CRM Linkage
+
+### A. Inbox View Routing & Layout
+* **URL Segment**: `/admin/social/inbox`
+* **Layout**: Three-column dashboard view:
+  * Left: Status filter tabs (Unread, Pending, Resolved) and conversations thread card list. Each thread displays a sentiment badge ('positive' | 'neutral' | 'negative').
+  * Middle: Active message logs, quick suggestion bubbles, and text message composer with "Draft with AI" action.
+  * Right: CRM metadata panel showing contact profiles or searchable linkage dropdowns + contact creation shortcut fields.
+
+### B. Dynamic Inbox Simulation Actions
+* **Simulation Endpoint**: `simulateInboundMessageAction(platform: string, workspaceId: string, orgId: string)`
+  * Choice of standard parent questions.
+  * Sentiment engine: Prompt Gemini via Genkit to classify the message's sentiment tone.
+  * Automation Modes (Manual, Suggest, Autopilot):
+    * Autopilot: Generate AI reply and append to replies.
+    * Suggest: Generate 3 suggested reply strings and store them in `suggestedReplies: string[]`.
+    * Manual: Do nothing.
+  * Writes record to `/socialInbox` collection.
+
+### C. On-demand AI Reply Drafter
+* **Reply Endpoint**: `generateInboxReplyAction(threadId: string, workspaceId: string, orgId: string)`
+  * Loads the thread conversation history.
+  * Prompts Gemini with tone criteria from the default `BrandVoiceProfile` to compose a direct response draft.
+
+

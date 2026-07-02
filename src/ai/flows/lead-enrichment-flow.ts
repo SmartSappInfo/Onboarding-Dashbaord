@@ -76,7 +76,7 @@ export const leadEnrichmentFlow = ai.defineFlow(
       scrapedText = '',
       organizationId,
       provider = 'googleai',
-      modelId = 'gemini-1.5-flash'
+      modelId = 'gemini-3-flash-preview'
     } = input;
 
     const resolvedModel = await getModel({

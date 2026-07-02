@@ -2,7 +2,7 @@
 
 import { getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
-import type { BrandVoiceProfile, SocialPost } from '@/lib/types';
+import type { BrandVoiceProfile, SocialPost, SocialInboxItem, SocialInboxItemReply } from '@/lib/types';
 
 interface GenerateOptions {
   basePrompt: string;
@@ -323,6 +323,279 @@ Output ONLY the sentence. No quotes, no intro.
   } catch (error: unknown) {
     console.error('[ACTIONS:SOCIAL:RECOMMEND_TIME] Error:', error);
     const msg = error instanceof Error ? error.message : 'Failed to calculate optimal time';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Simulates an inbound message.
+ * Classifies sentiment using Gemini and executes automation behaviors.
+ */
+export async function simulateInboundMessageAction(
+  platform: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'youtube' | 'pinterest' | 'google_business',
+  workspaceId: string,
+  orgId: string
+): Promise<{ success: boolean; threadId?: string; error?: string }> {
+  try {
+    const mockInquiries = [
+      {
+        senderName: 'Sarah Jenkins',
+        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+        content: 'Hi there! We attended the school open house last night and were so impressed by the campus and teachers. Thank you for putting together such a wonderful event!',
+      },
+      {
+        senderName: 'David Chen',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+        content: 'Could you please share the current tuition rates and schedule of fees for the upcoming 2026 school year?',
+      },
+      {
+        senderName: 'Marcus Brodie',
+        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
+        content: "I am extremely frustrated that nobody has responded to my email about the uniform exchange program. It has been three days. Can someone from administration contact me?",
+      },
+      {
+        senderName: 'Elena Rostova',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+        content: 'Do you offer school bus routing or transportation options for children living in the southern sector near the heights?',
+      },
+      {
+        senderName: 'Rachel Green',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+        content: 'We absolutely love the track and field program here! The coaches have gone above and beyond to support our daughter this semester.',
+      }
+    ];
+
+    const idx = Math.floor(Math.random() * mockInquiries.length);
+    const mock = mockInquiries[idx];
+
+    // 1. Resolve Brand Voice Profile for settings
+    const profileSnap = await adminDb
+      .collection('brandVoiceProfiles')
+      .where('workspaceId', '==', workspaceId)
+      .limit(1)
+      .get();
+
+    let voiceProfile: BrandVoiceProfile | undefined = undefined;
+    if (!profileSnap.empty) {
+      voiceProfile = profileSnap.docs[0].data() as BrandVoiceProfile;
+    }
+    const mode = voiceProfile?.automationMode || 'manual';
+
+    // 2. Classify sentiment using Gemini
+    const aiResolved = await getModel({
+      provider: 'googleai',
+      modelId: 'gemini-1.5-flash',
+      organizationId: orgId,
+    });
+
+    const modelString = aiResolved.modelString;
+    const customAi = aiResolved.customAi;
+
+    let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+    if (customAi) {
+      const sentimentResponse = await customAi.generate({
+        model: modelString,
+        prompt: `Classify the sentiment of this school parent inquiry. Answer with exactly one word: "positive", "neutral", or "negative".\nInquiry: "${mock.content}"`,
+      });
+      const parsedText = (sentimentResponse.text || '').toLowerCase().trim();
+      if (parsedText.includes('positive')) sentiment = 'positive';
+      else if (parsedText.includes('negative')) sentiment = 'negative';
+    } else {
+      const text = mock.content.toLowerCase();
+      if (text.includes('impressed') || text.includes('love') || text.includes('thank')) sentiment = 'positive';
+      else if (text.includes('frustrated') || text.includes('unanswered') || text.includes('nobody')) sentiment = 'negative';
+    }
+
+    const threadId = `thread_${Math.random().toString(36).substring(2, 11)}`;
+    const replies: SocialInboxItemReply[] = [];
+    let suggestedReplies: string[] | undefined = undefined;
+
+    // 3. Process Automation Modes
+    if (mode === 'autopilot' && customAi) {
+      const systemMsg = `You are a helpful school administration AI. Answer the parent inquiry politely, matching this tone rule: ${voiceProfile?.tone || 'professional'}. Max 2 sentences.`;
+      const replyResponse = await customAi.generate({
+        model: modelString,
+        prompt: mock.content,
+        system: systemMsg,
+      });
+
+      replies.push({
+        id: `rep_${Math.random().toString(36).substring(2, 10)}`,
+        sender: 'ai',
+        senderName: 'SmartSapp AI',
+        content: (replyResponse.text || 'Thank you for your message. We will check on this and get back to you shortly.').trim(),
+        createdAt: new Date().toISOString(),
+        wasAutoSent: true,
+      });
+    } else if (mode === 'suggest' && customAi) {
+      const suggestPrompt = `Given the parent inquiry below, suggest exactly three distinct short reply template options (each under 5 words) as clickable buttons. Format your response as a simple comma-separated list without quotes.
+Inquiry: "${mock.content}"
+Example suggestions: "Request Phone Number, Ask for Grade Level, Send Tuition Form"`;
+      
+      const suggestResponse = await customAi.generate({
+        model: modelString,
+        prompt: suggestPrompt,
+      });
+      const parsedList = (suggestResponse.text || '')
+        .split(',')
+        .map(s => s.trim().replace(/^["']|["']$/g, ''))
+        .filter(s => s.length > 0);
+
+      suggestedReplies = parsedList.length >= 3 ? parsedList.slice(0, 3) : ['Request Info', 'Schedule Tour', 'Reply Later'];
+    }
+
+    const payload: SocialInboxItem = {
+      id: threadId,
+      orgId,
+      workspaceId,
+      socialAccountId: `acc_${Math.random().toString(36).substring(2, 10)}`,
+      platform,
+      itemType: 'message',
+      platformItemId: `msg_${Math.random().toString(36).substring(2, 12)}`,
+      platformSenderId: `sender_${Math.random().toString(36).substring(2, 10)}`,
+      senderName: mock.senderName,
+      senderAvatar: mock.avatar,
+      content: mock.content,
+      status: replies.length > 0 ? 'resolved' : 'unread',
+      sentiment,
+      replies,
+      suggestedReplies,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await adminDb.collection('socialInbox').doc(threadId).set(payload);
+
+    return { success: true, threadId };
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:SIMULATE_INBOX] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to simulate inbound message';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Generates an on-demand AI reply for an inbox thread.
+ */
+export async function generateInboxReplyAction(
+  threadId: string,
+  workspaceId: string,
+  orgId: string
+): Promise<{ success: boolean; text?: string; error?: string }> {
+  try {
+    const threadDoc = await adminDb.collection('socialInbox').doc(threadId).get();
+    if (!threadDoc.exists) {
+      return { success: false, error: 'Thread not found' };
+    }
+
+    const thread = threadDoc.data() as SocialInboxItem;
+
+    // Load workspace voice rules
+    const profileSnap = await adminDb
+      .collection('brandVoiceProfiles')
+      .where('workspaceId', '==', workspaceId)
+      .limit(1)
+      .get();
+
+    let voiceProfile: BrandVoiceProfile | undefined = undefined;
+    if (!profileSnap.empty) {
+      voiceProfile = profileSnap.docs[0].data() as BrandVoiceProfile;
+    }
+
+    const aiResolved = await getModel({
+      provider: 'googleai',
+      modelId: 'gemini-1.5-flash',
+      organizationId: orgId,
+    });
+
+    const modelString = aiResolved.modelString;
+    const customAi = aiResolved.customAi;
+
+    if (!customAi) {
+      return { success: true, text: 'Thank you for contacting us. We have received your inquiry and will follow up shortly.' };
+    }
+
+    const conversationContext = `
+Parent Inquiry: ${thread.content}
+Previous Thread Logs:
+${thread.replies.map(r => `${r.senderName}: ${r.content}`).join('\n')}
+`;
+
+    const systemMsg = `You are a helpful school administration AI. Answer the parent inquiry politely, matching the tone: ${voiceProfile?.tone || 'professional'}. Max 2-3 sentences. Do not use forbidden words: ${(voiceProfile?.forbiddenWords || []).join(', ')}.`;
+
+    const response = await customAi.generate({
+      model: modelString,
+      prompt: conversationContext,
+      system: systemMsg,
+    });
+
+    return { success: true, text: (response.text || '').trim() };
+
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:GENERATE_INBOX_REPLY] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to generate AI reply';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Appends a user manual reply to an inbox thread.
+ */
+export async function sendInboxManualReplyAction(
+  threadId: string,
+  messageContent: string,
+  senderName: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const threadRef = adminDb.collection('socialInbox').doc(threadId);
+    const threadDoc = await threadRef.get();
+
+    if (!threadDoc.exists) {
+      return { success: false, error: 'Thread not found' };
+    }
+
+    const thread = threadDoc.data() as SocialInboxItem;
+
+    const newReply: SocialInboxItemReply = {
+      id: `rep_${Math.random().toString(36).substring(2, 10)}`,
+      sender: 'user',
+      senderName,
+      content: messageContent,
+      createdAt: new Date().toISOString(),
+    };
+
+    await threadRef.update({
+      replies: [...thread.replies, newReply],
+      status: 'resolved',
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:SEND_INBOX_MANUAL] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to post manual reply';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Server Action: Connects/disconnects an inbox thread to/from a CRM contact profile.
+ */
+export async function linkInboxToCRMAction(
+  threadId: string,
+  crmContactId: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const threadRef = adminDb.collection('socialInbox').doc(threadId);
+    await threadRef.update({
+      crmContactId: crmContactId || null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    console.error('[ACTIONS:SOCIAL:LINK_CRM] Error:', error);
+    const msg = error instanceof Error ? error.message : 'Failed to update CRM link';
     return { success: false, error: msg };
   }
 }

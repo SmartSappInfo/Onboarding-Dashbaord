@@ -5228,6 +5228,7 @@ export interface BrandVoiceProfile {
   missionStatement: string;
   extractedStyleTokens: string[];
   samplePosts: string[];
+  automationMode?: 'manual' | 'suggest' | 'autopilot';
   createdAt: string;
   updatedAt: string;
 }
@@ -5259,6 +5260,7 @@ export interface SocialInboxItem {
   crmContactId?: string;
   sentiment: 'positive' | 'neutral' | 'negative';
   replies: SocialInboxItemReply[];
+  suggestedReplies?: string[];
   createdAt: string;
   updatedAt: string;
 }

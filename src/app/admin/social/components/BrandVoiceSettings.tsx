@@ -33,6 +33,7 @@ export default function BrandVoiceSettings() {
   const [missionStatement, setMissionStatement] = React.useState('');
   const [forbiddenWordsStr, setForbiddenWordsStr] = React.useState('');
   const [mandatoryKeywordsStr, setMandatoryKeywordsStr] = React.useState('');
+  const [automationMode, setAutomationMode] = React.useState<'manual' | 'suggest' | 'autopilot'>('manual');
 
   // 1. Fetch existing Brand Voice Profile for the active workspace
   React.useEffect(() => {
@@ -53,6 +54,7 @@ export default function BrandVoiceSettings() {
           setMissionStatement(profile.missionStatement || '');
           setForbiddenWordsStr((profile.forbiddenWords || []).join(', '));
           setMandatoryKeywordsStr((profile.mandatoryKeywords || []).join(', '));
+          setAutomationMode(profile.automationMode || 'manual');
         }
       } catch (err: unknown) {
         console.error('[BRAND_VOICE:LOAD] Error:', err);
@@ -97,6 +99,7 @@ export default function BrandVoiceSettings() {
         targetAudience,
         productDescriptions,
         missionStatement,
+        automationMode,
         extractedStyleTokens: [],
         samplePosts: [],
         createdAt: new Date().toISOString(),
@@ -194,11 +197,11 @@ export default function BrandVoiceSettings() {
 
         <CardContent className="space-y-6 pt-6 relative z-10">
           {/* Tone & Length parameters */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tone-select" className="text-xs font-bold text-muted-foreground uppercase">Writing Tone</Label>
-              <Select value={tone} onValueChange={(val: any) => setTone(val)}>
-                <SelectTrigger id="tone-select" className="rounded-xl border-border/30 h-10 bg-background/50">
+              <Select value={tone} onValueChange={(val: 'professional' | 'casual' | 'inspiring' | 'bold' | 'educational' | 'witty') => setTone(val)}>
+                <SelectTrigger id="tone-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
                   <SelectValue placeholder="Select tone" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -214,8 +217,8 @@ export default function BrandVoiceSettings() {
 
             <div className="space-y-2">
               <Label htmlFor="emoji-select" className="text-xs font-bold text-muted-foreground uppercase">Emoji Density</Label>
-              <Select value={emojiDensity} onValueChange={(val: any) => setEmojiDensity(val)}>
-                <SelectTrigger id="emoji-select" className="rounded-xl border-border/30 h-10 bg-background/50">
+              <Select value={emojiDensity} onValueChange={(val: 'none' | 'low' | 'medium' | 'high') => setEmojiDensity(val)}>
+                <SelectTrigger id="emoji-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
                   <SelectValue placeholder="Select emoji density" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -229,14 +232,28 @@ export default function BrandVoiceSettings() {
 
             <div className="space-y-2">
               <Label htmlFor="length-select" className="text-xs font-bold text-muted-foreground uppercase">Average Length</Label>
-              <Select value={averageLength} onValueChange={(val: any) => setAverageLength(val)}>
-                <SelectTrigger id="length-select" className="rounded-xl border-border/30 h-10 bg-background/50">
+              <Select value={averageLength} onValueChange={(val: 'short' | 'medium' | 'long') => setAverageLength(val)}>
+                <SelectTrigger id="length-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
                   <SelectValue placeholder="Select length" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="short">Short (&lt; 150 chars)</SelectItem>
                   <SelectItem value="medium">Medium (Standard)</SelectItem>
                   <SelectItem value="long">Long (&gt; 400 chars)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="automation-select" className="text-xs font-bold text-muted-foreground uppercase">AI Inbox Mode</Label>
+              <Select value={automationMode} onValueChange={(val: 'manual' | 'suggest' | 'autopilot') => setAutomationMode(val)}>
+                <SelectTrigger id="automation-select" className="rounded-xl border-border/30 h-10 bg-background/50 text-xs">
+                  <SelectValue placeholder="Select automation mode" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl font-medium text-xs">
+                  <SelectItem value="manual">Manual (On-Demand)</SelectItem>
+                  <SelectItem value="suggest">Suggestive (Bubbles)</SelectItem>
+                  <SelectItem value="autopilot">Autopilot (Auto-Send)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
