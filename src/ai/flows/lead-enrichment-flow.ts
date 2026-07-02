@@ -124,7 +124,53 @@ export const leadEnrichmentFlow = ai.defineFlow(
 
         if (currentModel.includes('anthropic')) {
           // Anthropic prompt-guided fallback with manual parsing
-          const jsonPrompt = `${systemPrompt}\n\nIMPORTANT: Return ONLY a valid, raw JSON object matching the requested schema. Do not output any preamble, explanation, or markdown formatting (do not wrap in \`\`\`json). Just the raw JSON string.\n\nJSON Output Schema Reference:\n${JSON.stringify(prospectEnrichmentOutputSchema)}`;
+          const schemaInstructions = `
+          The output MUST be a valid JSON object matching this TypeScript structure:
+          interface Output {
+            websiteScan: {
+              sslValid: boolean; // Whether the website has a valid SSL certificate
+              loadTimeMs: number; // Estimated website load time in milliseconds
+              metaTitle: string; // Extract or generate meta title
+              metaDescription: string; // Extract or generate meta description
+              hasFacebook: boolean;
+              hasInstagram: boolean;
+              hasLinkedIn: boolean;
+              hasTwitter: boolean;
+              brokenLinks: string[]; // List of broken links detected or estimated
+            };
+            contacts: Array<{
+              name: string; // Full name of the contact
+              email: string; // Professional email address
+              phone?: string; // Phone number if found
+              role: string; // Job title or role (e.g. Principal, IT Administrator, Owner)
+              confidence: number; // Confidence score from 0 to 100
+              verificationStatus: 'verified' | 'unverified' | 'unknown';
+            }>;
+            scoring: {
+              overallScore: number; // Overall score out of 100 representing readiness to buy
+              needScore: number; // Calculated need score out of 25
+              digitalMaturity: number; // Calculated digital maturity out of 15 (lower means more opportunity to sell software)
+              buyingIntent: number; // Calculated buying intent out of 20
+              budgetProbability: number; // Calculated budget probability out of 15
+              decisionMakerFound: number; // Calculated decision maker found score out of 10
+              engagement: number; // Engagement score out of 15
+            };
+            aiInsights: {
+              summary: string; // A paragraph summarizing the lead, online presence, and digital opportunities
+              problemsFound: string[]; // Specific issues found (e.g. load time high, missing parent portal, inactive social media)
+              opportunities: string[]; // Specific opportunities for transformation
+              suggestedProducts: string[]; // Recommended SmartSapp products to pitch (e.g. SmartSapp Pay, Parent App, Admissions, Automation)
+              estimatedRevenueOpportunity: number; // Estimated annual contract value/revenue opportunity in USD
+              recommendedPitch: string; // Personalized elevator pitch / sales hook tailored to this lead
+              objectionsAnswered: Array<{
+                objection: string; // Anticipated objection from this specific prospect
+                counter: string; // Strategic counter-argument emphasizing SmartSapp value
+              }>;
+            };
+          }
+          `;
+
+          const jsonPrompt = `${systemPrompt}\n\nIMPORTANT: Return ONLY a valid, raw JSON object matching the requested schema. Do not output any preamble, explanation, or markdown formatting (do not wrap in \`\`\`json). Just the raw JSON string.\n\nJSON Output Schema Reference:\n${schemaInstructions}`;
           
           const response = await activeAiInstance.generate({
             model: currentModel,
