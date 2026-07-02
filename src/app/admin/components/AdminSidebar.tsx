@@ -57,7 +57,8 @@ import {
     ChevronRight,
     Lock,
     Sparkles,
-    Sliders
+    Sliders,
+    Share2
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -123,6 +124,14 @@ export function AdminSidebar() {
     { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isFeatureEnabled('tags'), disabled: !can('studios', 'tags', 'view') },
     { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isFeatureEnabled('qr_studio'), disabled: !can('studios', 'qrStudio', 'view') },
     { href: wrapHref('/admin/verify-studio'), icon: ShieldCheck, label: 'Verify Studio', visible: isFeatureEnabled('verify_studio'), disabled: !can('studios', 'verifyStudio', 'view') },
+  ], [wrapHref, isFeatureEnabled, can]);
+
+  const socialNavItems = React.useMemo(() => [
+    { href: wrapHref('/admin/social'), icon: LayoutDashboard, label: 'Dashboard', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
+    { href: wrapHref('/admin/social/composer'), icon: Sparkles, label: 'Composer', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
+    { href: wrapHref('/admin/social/calendar'), icon: Calendar, label: 'Calendar', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
+    { href: wrapHref('/admin/social/inbox'), icon: MessageSquareText, label: 'Social Inbox', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
+    { href: wrapHref('/admin/social/accounts'), icon: Settings, label: 'Connected Profiles', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
   ], [wrapHref, isFeatureEnabled, can]);
 
   const systemNavItems = React.useMemo(() => [
@@ -221,6 +230,7 @@ export function AdminSidebar() {
         {renderNavGroup("Operations", coreNavItems, true)}
         {renderNavGroup("Studios", studioNavItems, true)}
         {renderNavGroup("Finance Hub", financeNavItems, false)}
+        {renderNavGroup("Social Hub", socialNavItems, false)}
         <div className="mt-auto pt-4 mb-2">
             {renderNavGroup("Management", systemNavItems, false)}
         </div>

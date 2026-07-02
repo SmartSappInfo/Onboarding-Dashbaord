@@ -3399,6 +3399,8 @@ export const APP_FEATURES = [
   { id: 'packages', label: 'Packages', category: 'Finance', icon: 'Package', defaultEnabled: true },
   { id: 'billing_periods', label: 'Billing Cycles', category: 'Finance', icon: 'Timer', defaultEnabled: true },
   { id: 'billing_setup', label: 'Billing Setup', category: 'Finance', icon: 'Settings2', defaultEnabled: true },
+  // Social Intelligence
+  { id: 'social_intelligence', label: 'Social Intelligence', category: 'Studios', icon: 'Share2', defaultEnabled: true },
 ] as const;
 
 export type AppFeatureId = typeof APP_FEATURES[number]['id'];
@@ -5151,4 +5153,127 @@ export interface BookingResponse {
   status: 'pending' | 'confirmed' | 'cancelled';
   createdAt: string;
 }
+
+// ─────────────────────────────────────────────────
+// Social Intelligence Modules Typings
+// ─────────────────────────────────────────────────
+
+export interface SocialAccount {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  platform: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'youtube' | 'pinterest' | 'google_business';
+  platformAccountId: string;
+  displayName: string;
+  username: string;
+  avatarUrl: string;
+  status: 'active' | 'expired' | 'revoked';
+  auth: {
+    accessToken: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    scopes: string[];
+  };
+  simulated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SocialPost {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  campaignId?: string;
+  status: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed';
+  contentObject: {
+    title: string;
+    baseCaption: string;
+    mediaUrls: string[];
+  };
+  platformVariations: Record<string, {
+    caption: string;
+    mediaUrls: string[];
+    hashtags: string[];
+    scheduledTime: string;
+    publishedPostId?: string;
+    error?: string;
+    utmParams: {
+      source: string;
+      medium: string;
+      campaign: string;
+      content: string;
+    };
+  }>;
+  aiOptimized: boolean;
+  approvalStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  approverId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandVoiceProfile {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  name: string;
+  isDefault: boolean;
+  description: string;
+  tone: 'professional' | 'casual' | 'inspiring' | 'bold' | 'educational' | 'witty';
+  emojiDensity: 'none' | 'low' | 'medium' | 'high';
+  averageLength: 'short' | 'medium' | 'long';
+  forbiddenWords: string[];
+  mandatoryKeywords: string[];
+  targetAudience: string;
+  productDescriptions: string;
+  missionStatement: string;
+  extractedStyleTokens: string[];
+  samplePosts: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SocialInboxItemReply {
+  id: string;
+  sender: 'user' | 'platform_user' | 'ai';
+  senderName: string;
+  content: string;
+  createdAt: string;
+  wasAutoSent?: boolean;
+}
+
+export interface SocialInboxItem {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  socialAccountId: string;
+  platform: 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'youtube' | 'pinterest' | 'google_business';
+  itemType: 'message' | 'comment' | 'mention' | 'review';
+  platformItemId: string;
+  platformSenderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  content: string;
+  rating?: number;
+  status: 'unread' | 'pending' | 'resolved' | 'snoozed';
+  assignedUserId?: string;
+  crmContactId?: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  replies: SocialInboxItemReply[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SocialListeningRule {
+  id: string;
+  orgId: string;
+  workspaceId: string;
+  name: string;
+  trackKeywords: string[];
+  trackHashtags: string[];
+  trackCompetitors: string[];
+  alertThreshold: 'any' | 'negative' | 'viral_potential';
+  active: boolean;
+  createdAt: string;
+}
+
 

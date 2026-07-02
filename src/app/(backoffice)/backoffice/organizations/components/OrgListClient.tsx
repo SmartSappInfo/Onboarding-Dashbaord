@@ -90,6 +90,7 @@ const FEATURE_DESCRIPTIONS: Record<AppFeatureId, string> = {
   packages: 'Define pricing tiers and packages.',
   billing_periods: 'Manage billing cycles and periods.',
   billing_setup: 'Configure billing and payment settings.',
+  social_intelligence: 'Manage social media channels, composer, inbox, and analytics.',
 };
 
 const STATUS_COLORS: Record<string, string> = {

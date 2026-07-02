@@ -184,6 +184,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   packages: { section: 'finance', feature: 'packages' },
   billing_periods: { section: 'finance', feature: 'cycles' },
   billing_setup: { section: 'finance', feature: 'billingSetup' },
+  social_intelligence: { section: 'studios', feature: 'socialIntelligence' },
 };
 
 /**
