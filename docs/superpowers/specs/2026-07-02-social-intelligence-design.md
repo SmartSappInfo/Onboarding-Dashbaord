@@ -284,3 +284,36 @@ We will proceed with the rollout in five modular phases:
 * **Phase 5: Automation Builder & Media Kits**
   * Canvas-resize tools, Brand kit color pickers.
   * Webhook flow-trigger automation.
+
+---
+
+## 7. Phase 2 Specifications: Smart Calendar & Publishing Engine
+
+### A. Calendar View Routing & Rendering
+* **URL Segment**: `/admin/social/calendar`
+* **Layout**: Standard backoffice dashboard layout, integrating monthly grid rendering utilizing `date-fns` for cell resolution.
+* **Color Schemes**:
+  * Default: Platform branding colors (LinkedIn = Indigo, Facebook = Blue, Instagram = Pink, X = Slate, YouTube = Red).
+  * Brand Voice Pillars (if custom pillars are configured): Custom defined HSL/hex accent mappings (e.g. green for Admissions).
+
+### B. Drag-and-Drop Event Scheduling (`@dnd-kit`)
+* **Context**: `<DndContext>` wraps the monthly day grid.
+* **Droppable zones**: Individual monthly grid cells.
+* **Draggable nodes**: Platform-specific scheduled variations inside `/socialPosts` Firestore collection.
+* **Updates**: Drag release recalculates targeted date timestamp and writes back to Firestore `/socialPosts` via Server Action `updatePostScheduleAction(postId, platform, newISOString)`.
+
+### C. Background Publishing Runner
+* **Cron Route Handler**: `/api/cron/social-publisher/route.ts`
+* **Triggering**: Cloud Scheduler (production) or local manual trigger via `GET /api/cron/social-publisher`.
+* **Execution flow**:
+  1. Fetch due scheduled posts (`status == 'scheduled'` and `scheduledTime <= now`).
+  2. Transition post status to `publishing` to avoid race conditions.
+  3. Load connected `SocialAccount` document and evaluate `simulated` field.
+  4. Instantiate correct provider client via `SocialProviderFactory.getProvider()`.
+  5. Publish variation content. On success, store published post URL and change status to `published`. On error, record error message and update status to `failed`.
+
+### D. AI Scheduling Recommendations
+* **Optimal Timing Endpoint**: `recommendBestTimeAction(platform: string, workspaceId: string)`
+* **Heuristics**: Scans the last 30 days of engagements (likes + comments) in Firestore and buckets them by hour of day. Resolves peak engagement interval.
+* **LLM Reasoning**: Passes the peak hour and metrics context to Gemini via Genkit to generate a textual copywriter reasoning sentence.
+
