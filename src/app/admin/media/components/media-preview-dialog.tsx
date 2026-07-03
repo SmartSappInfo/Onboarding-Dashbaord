@@ -12,6 +12,38 @@ import { Input } from '@/components/ui/input';
 import { cn, formatBytes } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+const getYouTubeEmbedUrl = (url: string) => {
+  try {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}`;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const getVimeoEmbedUrl = (url: string) => {
+  try {
+    const regExp = /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/;
+    const match = url.match(regExp);
+    if (match && match[1]) {
+      return `https://player.vimeo.com/video/${match[1]}`;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const getLoomEmbedUrl = (url: string) => {
+  try {
+    const match = url.match(/loom\.com\/share\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://www.loom.com/embed/${match[1]}`;
+    }
+  } catch (e) {}
+  return null;
+};
+
 interface MediaPreviewDialogProps {
   asset: MediaAsset;
   open: boolean;
@@ -20,6 +52,10 @@ interface MediaPreviewDialogProps {
 
 export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaPreviewDialogProps) {
   const { toast } = useToast();
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(asset.url);
+  const vimeoEmbedUrl = getVimeoEmbedUrl(asset.url);
+  const loomEmbedUrl = getLoomEmbedUrl(asset.url);
+  const embedUrl = youtubeEmbedUrl || vimeoEmbedUrl || loomEmbedUrl;
   const [isEditing, setIsEditing] = React.useState(false);
   const [newName, setNewName] = React.useState(asset.name);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -131,32 +167,52 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                     </div>
                 )}
                 {asset.type === 'document' && (
- <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-[2rem] shadow-xl ring-1 ring-border max-w-md w-full">
- <div className="p-6 bg-primary/5 rounded-3xl mb-6">
- <FileText className="h-12 w-12 text-primary" />
-                        </div>
- <h3 className="font-semibold tracking-tight text-lg mb-2">Document Reference</h3>
- <p className="text-sm text-muted-foreground font-medium mb-8">This file type requires an external viewer.</p>
- <Button asChild className="rounded-xl font-bold gap-2 h-11 px-8 shadow-lg">
-                            <a href={asset.url} target="_blank" rel="noopener noreferrer">
- <ExternalLink className="h-4 w-4" />
-                                Open in New Tab
-                            </a>
-                        </Button>
+                  <div className="w-full max-w-4xl flex flex-col gap-6 items-center">
+                    <div className="w-full h-[60vh] bg-card rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border relative">
+                      <iframe
+                        src={asset.url}
+                        className="w-full h-full border-none bg-background"
+                        title={asset.name}
+                      />
                     </div>
+                    <Button asChild className="rounded-xl font-bold gap-2 h-11 px-8 shadow-lg">
+                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                        Open in New Tab
+                      </a>
+                    </Button>
+                  </div>
                 )}
-                {asset.type === 'link' && (
- <div className="space-y-8 w-full max-w-2xl">
+                {asset.type === 'link' && embedUrl && (
+                  <div className="w-full max-w-4xl flex flex-col gap-6 items-center">
+                    <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border relative">
+                      <iframe
+                        src={embedUrl}
+                        className="w-full h-full border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                    <Button asChild className="rounded-xl font-bold gap-2 h-11 px-8 shadow-lg">
+                      <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                        Launch Source
+                      </a>
+                    </Button>
+                  </div>
+                )}
+                {asset.type === 'link' && !embedUrl && (
+                  <div className="space-y-8 w-full max-w-2xl">
                         {asset.previewImageUrl && (
- <div className="relative aspect-video bg-card rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border">
- <Image src={asset.previewImageUrl} alt={`Preview for ${asset.name}`} fill className="object-cover" />
-                            </div>
+                          <div className="relative aspect-video bg-card rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border">
+                            <Image src={asset.previewImageUrl} alt={`Preview for ${asset.name}`} fill className="object-cover" />
+                          </div>
                         )}
- <div className="flex flex-col items-center justify-center p-10 text-center bg-card rounded-[2rem] shadow-xl ring-1 ring-border">
- <p className="mb-6 text-[10px] font-mono font-bold text-primary break-all bg-primary/5 p-3 rounded-xl border border-primary/10 w-full">{asset.url}</p>
- <Button asChild className="rounded-xl font-bold gap-2 h-11 px-8 shadow-lg">
+                        <div className="flex flex-col items-center justify-center p-10 text-center bg-card rounded-[2rem] shadow-xl ring-1 ring-border">
+                          <p className="mb-6 text-[10px] font-mono font-bold text-primary break-all bg-primary/5 p-3 rounded-xl border border-primary/10 w-full">{asset.url}</p>
+                          <Button asChild className="rounded-xl font-bold gap-2 h-11 px-8 shadow-lg">
                                 <a href={asset.url} target="_blank" rel="noopener noreferrer">
- <ExternalLink className="h-4 w-4" />
+                                    <ExternalLink className="h-4 w-4" />
                                     Launch Source
                                 </a>
                             </Button>

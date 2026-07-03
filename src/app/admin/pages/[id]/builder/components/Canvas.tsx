@@ -133,7 +133,9 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             ref={setNodeRef}
             style={style}
             className={cn(
-                "group/section relative transition-all border border-dashed rounded-xl pt-8 pb-2 px-2 my-8",
+                isPreview 
+                    ? "group/section relative transition-all border-none rounded-none m-0 p-0"
+                    : "group/section relative transition-all border border-dashed rounded-xl pt-8 pb-2 px-2 my-8",
                 !isPreview && (
                     isGlobal
                         ? "border-purple-500 bg-purple-500/5 hover:border-purple-400"
@@ -801,7 +803,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 >
                     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-                            <div className="divide-y divide-slate-100 min-h-[400px]">
+                            <div className={cn("min-h-[400px]", !isPreview && "divide-y divide-slate-100")}>
                                 {version.structureJson.sections.length > 0 ? (
                                     version.structureJson.sections.map((section, idx) => {
                                         const sectionProps = (section.props || {}) as {

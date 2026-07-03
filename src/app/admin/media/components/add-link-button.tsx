@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 import { getLinkMetadataAction } from '@/app/actions/link-metadata-actions';
 import { Link as LinkIcon, Loader2, Layout, PlusCircle } from 'lucide-react';
@@ -30,11 +30,20 @@ import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { MediaCategory } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'A name is required for the link.' }),
   url: z.string().url({ message: 'Please enter a valid URL.' }),
   workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace.'),
+  category: z.string().min(1, 'Select a category.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -42,6 +51,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function AddLinkButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [categories, setCategories] = useState<MediaCategory[]>([]);
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -53,8 +63,40 @@ export default function AddLinkButton() {
       name: '',
       url: '',
       workspaceIds: [],
+      category: 'General',
     },
   });
+
+  // Subscribe to category updates
+  useEffect(() => {
+    if (!firestore || !activeWorkspaceId) return;
+    
+    const categoriesQuery = query(
+      collection(firestore, 'media_categories'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('name', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
+      const cats = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as MediaCategory[];
+      
+      // Fallback/Default categories if empty
+      if (cats.length === 0) {
+        setCategories([
+          { id: 'general', name: 'General', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: 'marketing', name: 'Marketing', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: 'messaging', name: 'Messaging', workspaceId: activeWorkspaceId, createdAt: '' },
+        ]);
+      } else {
+        setCategories(cats);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firestore, activeWorkspaceId]);
 
   // Sync active workspace to form
   useEffect(() => {
@@ -94,10 +136,11 @@ export default function AddLinkButton() {
           type: 'link' as const,
           uploadedBy: user.uid,
           workspaceIds: data.workspaceIds,
+          category: data.category,
           createdAt: new Date().toISOString(),
-          linkTitle: metadata?.title,
-          linkDescription: metadata?.description,
-          previewImageUrl: metadata?.imageUrl,
+          linkTitle: metadata?.title ?? null,
+          linkDescription: metadata?.description ?? null,
+          previewImageUrl: metadata?.imageUrl ?? null,
         };
 
         const mediaCollection = collection(firestore, 'media');
@@ -124,11 +167,12 @@ export default function AddLinkButton() {
             setIsProcessing(false);
           });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : 'Could not get metadata from the URL.';
         toast({
           variant: 'destructive',
           title: 'Error Fetching Metadata',
-          description: error.message || 'Could not get metadata from the URL.',
+          description: errMsg,
         });
         setIsProcessing(false);
     }
@@ -182,10 +226,34 @@ export default function AddLinkButton() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Reference Label</FormLabel>
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Reference Label</FormLabel>
                         <FormControl>
- <Input placeholder="e.g., Marketing Brochure" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                          <Input placeholder="e.g., Marketing Brochure" {...field} disabled={isProcessing} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner text-left font-bold focus:ring-1 focus:ring-primary/20">
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-card border-border">
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.name}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

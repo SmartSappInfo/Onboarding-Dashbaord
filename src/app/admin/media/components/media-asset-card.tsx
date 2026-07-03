@@ -46,6 +46,38 @@ import {
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
+const getYouTubeThumbnail = (url: string) => {
+  try {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    if (match && match[2].length === 11) {
+      return `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const getVimeoThumbnail = (url: string) => {
+  try {
+    const regExp = /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)/;
+    const match = url.match(regExp);
+    if (match && match[1]) {
+      return `https://vumbnail.com/${match[1]}.jpg`;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const getLoomThumbnail = (url: string) => {
+  try {
+    const match = url.match(/loom\.com\/share\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://cdn.loom.com/sessions/thumbnails/${match[1]}-with-play.gif`;
+    }
+  } catch (e) {}
+  return null;
+};
+
 interface MediaAssetCardProps {
   asset: MediaAsset;
   onCardClick?: (asset: MediaAsset) => void;
@@ -60,6 +92,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   const [localWorkspaceIds, setLocalWorkspaceIds] = useState<string[]>(asset.workspaceIds || []);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
@@ -75,6 +108,8 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(asset.url);
     toast({ title: 'Copied to clipboard!', description: asset.url });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleUpdateVisibility = async () => {
@@ -143,8 +178,18 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
     }
   };
 
-  const hasPreviewImage = asset.type === 'image' || (asset.type === 'link' && asset.previewImageUrl);
-  const previewSrc = asset.type === 'image' ? asset.url : asset.previewImageUrl;
+  const thirdPartyThumbnail = getYouTubeThumbnail(asset.url) || getVimeoThumbnail(asset.url) || getLoomThumbnail(asset.url);
+  const previewSrc = asset.type === 'image' ? asset.url : (asset.previewImageUrl || thirdPartyThumbnail || null);
+  const hasPreviewImage = asset.type === 'image' || (asset.type === 'link' && !!previewSrc);
+
+  const isVideoAsset = asset.type === 'video' || 
+    asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.mp4') ||
+    asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.webm') ||
+    asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.ogg') ||
+    asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.mov');
+
+  const isPdfAsset = (asset.type === 'document' && (asset.mimeType === 'application/pdf' || asset.name.toLowerCase().endsWith('.pdf') || asset.url.toLowerCase().includes('.pdf'))) ||
+    asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.pdf');
 
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
@@ -157,13 +202,45 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             onClick={handleMainClick}
           >
             {hasPreviewImage && previewSrc ? (
-              <Image
-                src={previewSrc}
-                alt={asset.name}
-                fill
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
- className="object-cover transition-transform duration-1000 group-hover:scale-110"
+              previewSrc.startsWith('https://firebasestorage.googleapis.com') || previewSrc.startsWith('/') ? (
+                <Image
+                  src={previewSrc}
+                  alt={asset.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                  className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                />
+              ) : (
+                <img
+                  src={previewSrc}
+                  alt={asset.name}
+                  className="object-cover w-full h-full transition-transform duration-1000 group-hover:scale-110 absolute inset-0"
+                />
+              )
+            ) : isVideoAsset ? (
+              <video
+                src={`${asset.url}#t=0.1`}
+                preload="metadata"
+                className="object-cover w-full h-full transition-transform duration-1000 group-hover:scale-110"
+                muted
+                playsInline
               />
+            ) : isPdfAsset ? (
+              <div className="w-full h-full pointer-events-none select-none overflow-hidden bg-white">
+                <iframe
+                  src={`${asset.url}#toolbar=0&navpanes=0&scrollbar=0`}
+                  className="w-full h-full border-none scale-105 origin-top-left"
+                  scrolling="no"
+                />
+              </div>
+            ) : asset.type === 'link' ? (
+              <div className="w-full h-full absolute inset-0 pointer-events-none select-none overflow-hidden bg-white">
+                <iframe
+                  src={asset.url}
+                  className="w-[400%] h-[400%] absolute top-0 left-0 border-none scale-[0.25] origin-top-left"
+                  scrolling="no"
+                />
+              </div>
             ) : (
                 <AssetIcon />
             )}
@@ -188,10 +265,19 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             </div>
           </div>
 
- <div className="absolute top-2 right-2">
+  <div className="absolute top-2 right-2 flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCopyUrl}
+              className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500"
+              title="Copy URL"
+            >
+              {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+            </Button>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
- <Button variant="ghost" size="icon" className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500">
+  <Button variant="ghost" size="icon" className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500">
                   <MoreVertical size={18} />
                 </Button>
               </DropdownMenuTrigger>

@@ -5,18 +5,25 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { File as FileIcon, Upload, Loader2, Info, Layout } from 'lucide-react';
-import type { MediaAsset } from '@/lib/types';
+import type { MediaAsset, MediaCategory } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
 import { processImage, getImageDimensions } from '@/lib/image-processing';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { UploadDropzone } from './upload-dropzone';
 import { WorkspaceDestinationSelector } from './workspace-destination-selector';
@@ -58,12 +65,45 @@ export default function MediaUploader({
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<string[]>([]);
+  const [categories, setCategories] = useState<MediaCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('General');
   
   const storage = getStorage();
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const { activeWorkspaceId, allowedWorkspaces, isSuperAdmin } = useWorkspace();
+
+  // Subscribe to category updates
+  useEffect(() => {
+    if (!firestore || !activeWorkspaceId) return;
+    
+    const categoriesQuery = query(
+      collection(firestore, 'media_categories'),
+      where('workspaceId', '==', activeWorkspaceId),
+      orderBy('name', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
+      const cats = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as MediaCategory[];
+      
+      // Fallback/Default categories if empty
+      if (cats.length === 0) {
+        setCategories([
+          { id: 'general', name: 'General', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: 'marketing', name: 'Marketing', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: 'messaging', name: 'Messaging', workspaceId: activeWorkspaceId, createdAt: '' },
+        ]);
+      } else {
+        setCategories(cats);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firestore, activeWorkspaceId]);
 
   // Initialize selected workspace
   useEffect(() => {
@@ -264,7 +304,24 @@ export default function MediaUploader({
               try {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                 
-                const newAssetData: any = {
+                interface NewAssetPayload {
+                  name: string;
+                  originalName: string;
+                  url: string;
+                  fullPath: string;
+                  type: 'image' | 'video' | 'audio' | 'document';
+                  mimeType: string;
+                  size: number;
+                  uploadedBy: string;
+                  workspaceIds: string[];
+                  category: string;
+                  createdAt: string;
+                  width?: number;
+                  height?: number;
+                  format?: string;
+                }
+
+                const newAssetData: NewAssetPayload = {
                   name: finalFilename,
                   originalName: fileState.file.name,
                   url: downloadURL,
@@ -274,6 +331,7 @@ export default function MediaUploader({
                   size: blobToUpload.size,
                   uploadedBy: user.uid,
                   workspaceIds: selectedWorkspaces,
+                  category: selectedCategory,
                   createdAt: new Date().toISOString()
                 };
 
@@ -339,12 +397,30 @@ export default function MediaUploader({
   }, [activeFileId]);
 
   const renderWorkspaceSelector = () => (
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Category:</span>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-40 h-10 rounded-xl bg-background border border-border font-bold text-xs shadow-sm hover:bg-muted/10 transition-colors">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-border">
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.name} className="font-semibold text-xs">
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <WorkspaceDestinationSelector 
           options={workspaceOptions}
           selectedWorkspaces={selectedWorkspaces}
           onChange={setSelectedWorkspaces}
           isSuperAdmin={isSuperAdmin}
       />
+    </div>
   );
 
   return (

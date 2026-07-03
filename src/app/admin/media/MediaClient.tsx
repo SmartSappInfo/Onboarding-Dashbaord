@@ -140,31 +140,29 @@ export default function MediaClient() {
           ) : (
             <div className="space-y-6">
               {/* Gallery Filters */}
-              <div className="border border-border shadow-sm rounded-2xl overflow-hidden bg-transparent ring-1 ring-border p-4">
-                <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4 text-left">
-                  <div className="relative flex-grow w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                    <Input 
-                      placeholder="Filter your assets..." 
-                      className="pl-11 h-12 rounded-xl border border-border shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20" 
-                      value={searchTerm} 
-                      onChange={e => setSearchTerm(e.target.value)} 
-                    />
-                  </div>
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
-                    <TabsList className="bg-background h-12 p-1 rounded-2xl border border-border shadow-sm w-full">
-                      {TABS.map(tab => (
-                        <TabsTrigger 
-                          key={tab.id} 
-                          value={tab.id} 
-                          className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all active:scale-97"
-                        >
-                          {tab.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </CardContent>
+              <div className="flex flex-col md:flex-row items-center gap-4 text-left">
+                <div className="relative flex-grow w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                  <Input 
+                    placeholder="Filter your assets..." 
+                    className="pl-11 h-12 rounded-xl border border-border shadow-sm font-bold text-sm focus:ring-1 focus:ring-primary/20" 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                  />
+                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
+                  <TabsList className="bg-background h-12 p-1 rounded-2xl border border-border shadow-sm w-full">
+                    {TABS.map(tab => (
+                      <TabsTrigger 
+                        key={tab.id} 
+                        value={tab.id} 
+                        className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all active:scale-97"
+                      >
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
               </div>
 
               {/* Assets Grid */}
