@@ -1177,29 +1177,113 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         const colSec = version.structureJson.sections.find(s => s.id === colSecId);
                                         const colBlocks = colSec ? colSec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === colIdx) : [];
                                         return (
-                                            <div className="opacity-75 bg-slate-900/90 border-2 border-dashed border-emerald-500 rounded-xl p-4 shadow-2xl pointer-events-none max-w-xs text-left">
-                                                <div className="text-[8px] font-black uppercase text-emerald-400 mb-2">Column {colIdx + 1}</div>
-                                                <div className="flex flex-col gap-2">
-                                                    {colBlocks.map(block => (
-                                                        <div key={block.id} className="p-2 bg-slate-800/80 border border-slate-700 rounded-lg text-[10px] text-slate-300 font-bold uppercase truncate">
-                                                            {block.type}
-                                                        </div>
-                                                    ))}
-                                                    {colBlocks.length === 0 && (
-                                                        <div className="text-[9px] text-slate-500 italic">Empty Column</div>
-                                                    )}
-                                                </div>
+                                            <div className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-sm w-full bg-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-4">
+                                                {colBlocks.map(block => (
+                                                    <div key={block.id} className="p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl">
+                                                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
+                                                    </div>
+                                                ))}
+                                                {colBlocks.length === 0 && (
+                                                    <div className="py-6 text-center text-xs text-slate-500 italic">Empty Column</div>
+                                                )}
                                             </div>
                                         );
                                     })()
                                 ) : (
                                     (() => {
                                         const activeSection = version.structureJson.sections.find(s => s.id === activeDragId);
+                                        if (!activeSection) return null;
+                                        const sectionProps = (activeSection.props || {}) as Record<string, unknown>;
+                                        const bgType = (sectionProps.backgroundType as string) || 'none';
+                                        const overlayCol = (sectionProps.overlayColor as string) || '#000000';
+                                        const overlayOp = sectionProps.overlayOpacity !== undefined ? (sectionProps.overlayOpacity as number) : 0;
+                                        const padTop = (sectionProps.paddingTop as string) || '2.5rem';
+                                        const padBottom = (sectionProps.paddingBottom as string) || '2.5rem';
+                                        const padLeft = (sectionProps.paddingLeft as string) || '1.5rem';
+                                        const padRight = (sectionProps.paddingRight as string) || '1.5rem';
+                                        const minHeight = (sectionProps.minHeight as string) || 'auto';
+
+                                        const sectionStyle: React.CSSProperties = {
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            paddingTop: padTop,
+                                            paddingBottom: padBottom,
+                                            paddingLeft: padLeft,
+                                            paddingRight: padRight,
+                                            minHeight: minHeight,
+                                            backgroundColor: bgType === 'color' ? (sectionProps.backgroundColor as string) : undefined,
+                                            backgroundImage: bgType === 'gradient'
+                                                ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${(sectionProps.gradientFrom as string) || '#3B5FFF'}, ${(sectionProps.gradientTo as string) || '#7C3AED'})`
+                                                : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
+                                            backgroundAttachment: (sectionProps.backgroundAttachment as string) || 'scroll',
+                                            backgroundSize: (sectionProps.backgroundSize as string) || 'cover',
+                                            backgroundPosition: (sectionProps.backgroundPosition as string) || 'center',
+                                            backgroundRepeat: (sectionProps.backgroundRepeat as string) || 'no-repeat',
+                                        };
+
+                                        const layout = (sectionProps.layout as string) || '1-col';
+                                        const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
+                                        const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
+                                            return activeSection.blocks.filter(b => {
+                                                const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
+                                                if (colIdx === colsCount - 1) {
+                                                    return colVal >= colIdx;
+                                                }
+                                                return colVal === colIdx;
+                                            });
+                                        });
+                                        const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
+                                        const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
+
+                                        let gridStyle: React.CSSProperties = {};
+                                        if (layout === '2-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
+                                        } else if (layout === '3-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
+                                        } else if (layout === '4-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
+                                        } else if (layout === 'grid') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+                                        }
+
                                         return (
-                                            <div className="opacity-75 bg-slate-900 border-2 border-dashed border-emerald-500 rounded-xl p-6 shadow-2xl pointer-events-none max-w-md text-left text-white">
-                                                <div className="text-[10px] font-black uppercase text-emerald-400 tracking-wider mb-1">Dragging Section</div>
-                                                <div className="text-xs font-bold text-slate-200 uppercase tracking-widest">{activeSection?.id || 'Section'}</div>
-                                                <div className="text-[9px] text-slate-400 mt-1">({activeSection?.blocks.length || 0} blocks)</div>
+                                            <div 
+                                                style={sectionStyle} 
+                                                className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-4xl w-[1280px] bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden relative"
+                                            >
+                                                {overlayOp > 0 && (
+                                                    <div
+                                                        className="absolute inset-0 pointer-events-none z-10"
+                                                        style={{
+                                                            backgroundColor: overlayCol,
+                                                            opacity: overlayOp,
+                                                        }}
+                                                    />
+                                                )}
+                                                <div className="max-w-4xl mx-auto relative z-20">
+                                                                                    {typeof sectionProps.heading === 'string' && sectionProps.heading && (
+                                                        <h2
+                                                            className="text-2xl font-bold tracking-tight mb-8 text-slate-900 dark:text-slate-100"
+                                                            style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
+                                                        >
+                                                            {sectionProps.heading}
+                                                        </h2>
+                                                    )}
+                                                    <div
+                                                        className={cn("w-full grid relative z-20", colGapClass, alignClass)}
+                                                        style={layout !== '1-col' ? gridStyle : undefined}
+                                                    >
+                                                        {columnsBlocks.map((colBlocks, colIdx) => (
+                                                            <div key={colIdx} className="flex-1 flex flex-col gap-4">
+                                                                {colBlocks.map(block => (
+                                                                    <div key={block.id} className="p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl">
+                                                                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
                                     })()
