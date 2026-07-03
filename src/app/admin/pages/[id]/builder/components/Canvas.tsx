@@ -400,7 +400,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [isPanning, setIsPanning] = useState(false);
     const [panToolActive, setPanToolActive] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-    const [guides, setGuides] = useState<{ id: string; type: 'h' | 'v'; position: number }[]>([]);
 
     // Ghana Profile Simulation States
     const [simulatedProfile, setSimulatedProfile] = useState<'none' | 'parent' | 'student'>('none');
@@ -521,26 +520,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         });
     };
 
-    // Ruler Guideline actions
-    const handleRulerDoubleClick = (type: 'h' | 'v') => {
-        const localPos = type === 'v' 
-            ? Math.round((mousePos.x - 20 - panOffset.x) / zoom)
-            : Math.round((mousePos.y - 20 - panOffset.y) / zoom);
-        
-        setGuides(prev => [
-            ...prev,
-            { id: `${type}-${Date.now()}`, type, position: localPos }
-        ]);
-        toast({
-            title: "Guideline Dropped",
-            description: `Guide placed at ${localPos}px. Click guide to remove.`,
-        });
-    };
-
-    const handleRemoveGuide = (id: string) => {
-        setGuides(prev => prev.filter(g => g.id !== id));
-    };
-
     // Click on canvas container to drop collaborative comments
     const handleCanvasClick = (e: React.MouseEvent) => {
         if (!commentsMode) return;
@@ -557,112 +536,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         setNewCommentText('');
     };
 
-    // Render horizontal top ruler (Figma-style ticks)
-    const renderTopRuler = () => {
-        if (!workspaceRef.current) return null;
-        const rect = workspaceRef.current.getBoundingClientRect();
-        const width = rect.width;
-        
-        const step = 50;
-        const ticks = [];
-        
-        const startOffset = panOffset.x % (step * zoom);
-        const startX = startOffset < 0 ? startOffset + (step * zoom) : startOffset;
-        
-        for (let x = startX; x < width; x += step * zoom) {
-            const canvasX = Math.round((x - panOffset.x) / zoom);
-            const isMajor = canvasX % 100 === 0;
-            
-            ticks.push(
-                <g key={`top-${x}`}>
-                    <line
-                        x1={x}
-                        y1={isMajor ? 8 : 13}
-                        x2={x}
-                        y2={20}
-                        stroke="#334155"
-                        strokeWidth="1"
-                    />
-                    {isMajor && (
-                        <text
-                            x={x + 2}
-                            y={7}
-                            fill="#475569"
-                            fontSize="8"
-                            fontFamily="monospace"
-                            fontWeight="bold"
-                        >
-                            {canvasX}
-                        </text>
-                    )}
-                </g>
-            );
-        }
-        
-        return (
-            <svg 
-                onDoubleClick={() => handleRulerDoubleClick('v')}
-                className="absolute top-0 left-5 right-0 h-5 bg-slate-950/90 border-b border-slate-800 z-30 select-none cursor-crosshair"
-            >
-                {ticks}
-                <line x1={mousePos.x} y1={0} x2={mousePos.x} y2={20} stroke="#10b981" strokeWidth="1" strokeDasharray="2,2" />
-            </svg>
-        );
-    };
 
-    // Render vertical left ruler (Figma-style ticks)
-    const renderLeftRuler = () => {
-        if (!workspaceRef.current) return null;
-        const rect = workspaceRef.current.getBoundingClientRect();
-        const height = rect.height;
-        
-        const step = 50;
-        const ticks = [];
-        
-        const startOffset = panOffset.y % (step * zoom);
-        const startY = startOffset < 0 ? startOffset + (step * zoom) : startOffset;
-        
-        for (let y = startY; y < height; y += step * zoom) {
-            const canvasY = Math.round((y - panOffset.y) / zoom);
-            const isMajor = canvasY % 100 === 0;
-            
-            ticks.push(
-                <g key={`left-${y}`}>
-                    <line
-                        x1={isMajor ? 8 : 13}
-                        y1={y}
-                        x2={20}
-                        y2={y}
-                        stroke="#334155"
-                        strokeWidth="1"
-                    />
-                    {isMajor && (
-                        <text
-                            x={2}
-                            y={y + 8}
-                            fill="#475569"
-                            fontSize="8"
-                            fontFamily="monospace"
-                            fontWeight="bold"
-                            transform={`rotate(-90 8 ${y + 4})`}
-                        >
-                            {canvasY}
-                        </text>
-                    )}
-                </g>
-            );
-        }
-        
-        return (
-            <svg 
-                onDoubleClick={() => handleRulerDoubleClick('h')}
-                className="absolute top-5 left-0 w-5 bottom-0 bg-slate-950/90 border-r border-slate-800 z-30 select-none cursor-crosshair"
-            >
-                {ticks}
-                <line x1={0} y1={mousePos.y} x2={20} y2={mousePos.y} stroke="#10b981" strokeWidth="1" strokeDasharray="2,2" />
-            </svg>
-        );
-    };
 
     // Simulated data context variables replacement mapping
     const simulatedData: Record<string, Record<string, string>> = {
@@ -880,47 +754,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 }} 
             />
 
-            {/* Rulers (fixed layout boundaries) */}
-            {!isPreview && renderTopRuler()}
-            {!isPreview && renderLeftRuler()}
 
-            {/* SVG corner intersection gap box */}
-            {!isPreview && (
-                <div className="absolute top-0 left-0 w-5 h-5 bg-slate-950 border-r border-b border-slate-800 z-40" />
-            )}
-
-            {/* Custom SVG guidelines overlays */}
-            {!isPreview && guides.map(guide => {
-                if (guide.type === 'v') {
-                    const screenX = guide.position * zoom + panOffset.x + 20;
-                    return (
-                        <div
-                            key={guide.id}
-                            onClick={() => handleRemoveGuide(guide.id)}
-                            className="absolute top-5 bottom-0 w-0.5 border-l border-emerald-500 hover:border-red-400 cursor-pointer z-20 group"
-                            style={{ left: `${screenX}px` }}
-                        >
-                            <span className="hidden group-hover:block absolute top-6 left-1 bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[8px] px-1.5 py-0.5 rounded shadow-lg z-30">
-                                X: {guide.position}px
-                            </span>
-                        </div>
-                    );
-                } else {
-                    const screenY = guide.position * zoom + panOffset.y + 20;
-                    return (
-                        <div
-                            key={guide.id}
-                            onClick={() => handleRemoveGuide(guide.id)}
-                            className="absolute left-5 right-0 h-0.5 border-t border-emerald-500 hover:border-red-400 cursor-pointer z-20 group"
-                            style={{ top: `${screenY}px` }}
-                        >
-                            <span className="hidden group-hover:block absolute left-6 top-1 bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[8px] px-1.5 py-0.5 rounded shadow-lg z-30">
-                                Y: {guide.position}px
-                            </span>
-                        </div>
-                    );
-                }
-            })}
 
             {/* Center Canvas Transform Scale Frame Viewport */}
             <div
