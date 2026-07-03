@@ -882,15 +882,20 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
                                         const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
 
+                                        const isResponsiveStacked = !isPreview && (viewport === 'mobile' || viewport === 'tablet');
+                                        let gridColsClass = 'grid-cols-1';
                                         let gridStyle: React.CSSProperties = {};
-                                        if (layout === '2-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
-                                        } else if (layout === '3-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
-                                        } else if (layout === '4-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
-                                        } else if (layout === 'grid') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+
+                                        if (!isResponsiveStacked) {
+                                            if (layout === '2-col') {
+                                                gridColsClass = 'grid-cols-1 lg:grid-cols-2';
+                                            } else if (layout === '3-col') {
+                                                gridColsClass = 'grid-cols-1 lg:grid-cols-3';
+                                            } else if (layout === '4-col') {
+                                                gridColsClass = 'grid-cols-1 lg:grid-cols-4';
+                                            } else if (layout === 'grid') {
+                                                gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+                                            }
                                         }
 
                                         return (
@@ -949,8 +954,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                             )}
 
                                                             <div
-                                                                className={cn("w-full grid relative z-20", colGapClass, alignClass)}
-                                                                style={layout !== '1-col' ? gridStyle : undefined}
+                                                                className={cn("w-full grid relative z-20", gridColsClass, colGapClass, alignClass)}
+                                                                style={layout === 'grid' && !isResponsiveStacked ? gridStyle : undefined}
                                                             >
                                                                 {columnsBlocks.map((colBlocks, colIdx) => (
                                                                     <ColumnCell

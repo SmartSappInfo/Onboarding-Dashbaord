@@ -124,7 +124,6 @@ export function PageRenderer({
         const sectionProps = (section.props || {}) as {
           heading?: string;
           visibilityDevice?: string;
-          columnsProps?: Record<string, unknown>;
           visibilityBehavior?: string;
           visibilityTag?: string;
           paddingTop?: string;
@@ -209,13 +208,15 @@ export function PageRenderer({
         const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
         const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
 
+        let gridColsClass = 'grid-cols-1';
         let gridStyle: React.CSSProperties = {};
+
         if (layout === '2-col') {
-          gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
+          gridColsClass = 'grid-cols-1 lg:grid-cols-2';
         } else if (layout === '3-col') {
-          gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
+          gridColsClass = 'grid-cols-1 lg:grid-cols-3';
         } else if (layout === '4-col') {
-          gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
+          gridColsClass = 'grid-cols-1 lg:grid-cols-4';
         } else if (layout === 'grid') {
           gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
         }
@@ -267,29 +268,16 @@ export function PageRenderer({
               ) : null}
 
               <div
-                className={cn("w-full grid", colGapClass, alignClass)}
-                style={layout !== '1-col' ? gridStyle : undefined}
+                className={cn("w-full grid", gridColsClass, colGapClass, alignClass)}
+                style={layout === 'grid' ? gridStyle : undefined}
               >
-                {columnsBlocks.map((colBlocks, colIdx) => {
-                  const columnsProps = (sectionProps.columnsProps as Record<string, Record<string, unknown>> | undefined) || {};
-                  const colProp = columnsProps[colIdx.toString()] || {};
-                  const colStyle: React.CSSProperties = {
-                    backgroundColor: (colProp.backgroundColor as string) || undefined,
-                    paddingTop: (colProp.paddingTop as string) || undefined,
-                    paddingBottom: (colProp.paddingBottom as string) || undefined,
-                    paddingLeft: (colProp.paddingLeft as string) || undefined,
-                    paddingRight: (colProp.paddingRight as string) || undefined,
-                    borderRadius: (colProp.borderRadius as string) || undefined,
-                    alignSelf: sectionProps.verticalAlign === 'center' ? 'center' : sectionProps.verticalAlign === 'bottom' ? 'end' : 'stretch',
-                  };
-                  return (
-                    <div key={colIdx} style={colStyle} className="flex-1 flex flex-col gap-4">
-                      {colBlocks.map((block) => (
-                        <AnimatedBlock key={block.id} block={block} ctx={ctx} />
-                      ))}
-                    </div>
-                  );
-                })}
+                {columnsBlocks.map((colBlocks, colIdx) => (
+                  <div key={colIdx} className="flex-1 flex flex-col gap-4">
+                    {colBlocks.map((block) => (
+                      <AnimatedBlock key={block.id} block={block} ctx={ctx} />
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           </section>

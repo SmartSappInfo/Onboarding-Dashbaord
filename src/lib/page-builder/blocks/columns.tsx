@@ -36,14 +36,23 @@ registerBlock({
     const children = ctx.renderChildren?.() ?? [];
     if (children.length === 0 && ctx.mode === 'edit') {
       return (
-        <div className="grid gap-3 p-4 rounded-xl border-2 border-dashed border-slate-200" style={{ gridTemplateColumns: TEMPLATE[props.variant] }}>
+        <div 
+          className="grid grid-custom-columns lg:grid-custom-columns gap-3 p-4 rounded-xl border-2 border-dashed border-slate-200" 
+          style={{ '--grid-template': TEMPLATE[props.variant] } as React.CSSProperties}
+        >
           <div className="text-center text-xs text-slate-400 py-8">Empty column</div>
           <div className="text-center text-xs text-slate-400 py-8">Empty column</div>
         </div>
       );
     }
     return (
-      <div className="grid" style={{ gridTemplateColumns: TEMPLATE[props.variant], gap: props.gap }}>
+      <div 
+        className="grid grid-custom-columns lg:grid-custom-columns" 
+        style={{ 
+          '--grid-template': TEMPLATE[props.variant], 
+          gap: props.gap 
+        } as React.CSSProperties}
+      >
         {children.map((node, i) => (
           <div key={i} className="min-w-0">{node}</div>
         ))}
