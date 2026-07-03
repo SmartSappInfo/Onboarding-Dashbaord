@@ -7,9 +7,10 @@
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
 }
 
+
 /* Header & Panels Backgrounds */
 .designer-theme-light.designer-shell header,
-.designer-theme-light .bg-slate-900/90,
+.designer-theme-light .bg-slate-900\/90,
 .designer-theme-light .bg-slate-900 {
     background-color: rgba(255, 255, 255, 0.95) !important;
     background: rgba(255, 255, 255, 0.95) !important;
@@ -88,12 +89,11 @@
 
 /* Header & Panels Backgrounds */
 .designer-theme-blue.designer-shell header,
-.designer-theme-blue .bg-slate-900/90,
+.designer-theme-blue .bg-slate-900\/90,
 .designer-theme-blue .bg-slate-900 {
     background-color: rgba(11, 26, 75, 0.92) !important;
     background: rgba(11, 26, 75, 0.92) !important;
 }
-
 .designer-theme-blue .bg-slate-950,
 .designer-theme-blue .bg-slate-950\/20,
 .designer-theme-blue .bg-slate-950\/40,
