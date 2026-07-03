@@ -687,8 +687,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         const activeId = active.id as string;
         const overId = over.id as string;
 
-        if (activeId.startsWith('section-') || !activeId.includes('-')) {
-            if (overId.startsWith('section-') || !overId.includes('-')) {
+        // 1. Handle Section Reordering
+        if (activeId.startsWith('sec_')) {
+            if (overId.startsWith('sec_')) {
                 const oldIdx = version.structureJson.sections.findIndex(s => s.id === activeId);
                 const newIdx = version.structureJson.sections.findIndex(s => s.id === overId);
                 if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
@@ -698,19 +699,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             return;
         }
 
+        // 2. Handle Block Drag and Drop
         let targetSectionId = '';
         let targetColIdx = 0;
         let targetBlockIndex = 0;
 
         if (overId.startsWith('col-')) {
+            // Dropped on an empty column area
             const parts = overId.split('-');
             targetSectionId = parts.slice(1, -1).join('-');
             targetColIdx = parseInt(parts[parts.length - 1], 10);
+            
             const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
             if (!targetSection) return;
             const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
             targetBlockIndex = colBlocks.length;
         } else {
+            // Dropped over another block (SortableBlock)
             let found = false;
             for (const sec of version.structureJson.sections) {
                 const bIdx = sec.blocks.findIndex(b => b.id === overId);
@@ -725,7 +730,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     break;
                 }
             }
-            if (!found) return;
+            if (!found) return; // Dropped outside a column/block (e.g. over empty space of a section)
         }
 
         onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
