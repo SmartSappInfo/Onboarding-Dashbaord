@@ -1025,6 +1025,8 @@ export default function EditFormPage() {
                       <PropertiesSidebar
                         selectedInstance={fields.find(f => f.id === selectedFieldId) || null}
                         appField={fields.find(f => f.id === selectedFieldId) ? getAppField(fields.find(f => f.id === selectedFieldId)!.appFieldId) : undefined}
+                        allFields={fields}
+                        getAppField={getAppField}
                         onUpdate={updateFieldInstance}
                         onRemove={(id) => {
                           removeField(id);

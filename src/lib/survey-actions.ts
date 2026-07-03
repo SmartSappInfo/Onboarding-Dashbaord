@@ -9,6 +9,7 @@ import { triggerInternalNotification, triggerExternalNotification } from './noti
 import { triggerAutomationProtocols } from './automation-processor';
 import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
+import { resolveContact } from './contact-adapter';
 
 import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, SurveyResultRule, EntityContact } from './types';
 import { validateContactIdentifier } from './contact-policy';
@@ -1276,8 +1277,41 @@ async function triggerPostSubmissionAutomations(
           is_assigned_alert: true 
         },
         channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
-      }).catch(console.error);
+      });
     }
+  }
+
+  // 5.5 Survey Completion Team Alert (Default dynamic blueprint)
+  try {
+    const outcome = outcomeId ? surveyData.resultRules?.find(r => r.id === outcomeId) : undefined;
+    let contactName = 'Client';
+    if (entityId) {
+      const contact = await resolveContact(entityId, workspaceId);
+      if (contact && contact.name) {
+        contactName = contact.name;
+      }
+    }
+    const respondentName = (notificationVars.respondent_name || contactName) as string;
+
+    await triggerInternalNotification({
+      triggerKey: 'survey_completion_team',
+      entityId: entityId || '',
+      notifyManager: true,
+      specificUserIds: surveyData.adminAlertSpecificUserIds || [],
+      variables: {
+        ...notificationVars,
+        respondent_name: respondentName,
+        completion_date: new Date().toLocaleDateString(),
+        score: responseData.score || 0,
+        result_message: outcome?.label || 'No specific result outcome reached.',
+        surveyId: surveyData.id,
+        organizationId: organizationId,
+        category: 'surveys'
+      },
+      channel: 'both'
+    });
+  } catch (err: unknown) {
+    console.error(">>> [NOTIFY] Failed to trigger internal survey_completion_team alert:", err);
   }
 
   // 6. Automations (SURVEY_SUBMITTED trigger)

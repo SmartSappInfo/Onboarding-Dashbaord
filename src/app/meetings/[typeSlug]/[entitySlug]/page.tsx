@@ -48,12 +48,13 @@ const getMeetingBySlug = cache(async function getMeetingBySlug(slug: string): Pr
 });
 
 export async function generateMetadata({ params }: { params: Promise<{ typeSlug: string; entitySlug: string }> }): Promise<Metadata> {
-  const { entitySlug } = await params;
+  const { typeSlug, entitySlug } = await params;
   const meeting = await getMeetingBySlug(entitySlug);
 
   if (!meeting) {
     return resolveSeoMetadata({
       fallback: { title: 'Meeting Session', description: 'Register for an upcoming meeting session.' },
+      path: `/meetings/${typeSlug}/${entitySlug}`,
     });
   }
 
@@ -71,6 +72,7 @@ export async function generateMetadata({ params }: { params: Promise<{ typeSlug:
     },
     // Per-meeting logo override doubles as the entity_logo source.
     org: { logoUrl: meeting.logoUrl },
+    path: `/meetings/${typeSlug}/${entitySlug}`,
   });
 }
 

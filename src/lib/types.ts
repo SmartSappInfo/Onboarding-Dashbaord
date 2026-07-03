@@ -3796,6 +3796,14 @@ export interface Form {
   version?: number;
 }
 
+export interface FormFieldLogicRule {
+  id: string;
+  action: 'show' | 'hide';
+  condition: 'equals' | 'not_equals' | 'contains' | 'empty' | 'not_empty';
+  targetFieldId: string;
+  value?: string;
+}
+
 export interface FormFieldInstance {
   id: string; // Unique ID within the form
   appFieldId: string; // Reference to the AppField
@@ -3807,6 +3815,7 @@ export interface FormFieldInstance {
   defaultValueOverride?: any;
   order: number;
   width?: 'full' | 'half'; // Form layout option
+  logicRules?: FormFieldLogicRule[];
 }
 
 export interface FormThemeConfig {

@@ -497,9 +497,47 @@ export default function BuilderCanvas({
     }
   };
 
+  const isFieldVisible = (instance: FormFieldInstance, values: Record<string, string | boolean | string[]>) => {
+    const rules = instance.logicRules || [];
+    if (rules.length === 0) return true;
+
+    return rules.every(rule => {
+      const targetVal = values[rule.targetFieldId];
+      const hasValue = targetVal !== undefined && targetVal !== null && targetVal !== '';
+
+      const stringVal = hasValue ? String(targetVal).toLowerCase().trim() : '';
+      const ruleVal = rule.value ? rule.value.toLowerCase().trim() : '';
+
+      let match = false;
+      switch (rule.condition) {
+        case 'equals':
+          match = stringVal === ruleVal;
+          break;
+        case 'not_equals':
+          match = stringVal !== ruleVal;
+          break;
+        case 'contains':
+          match = stringVal.includes(ruleVal);
+          break;
+        case 'empty':
+          match = !hasValue || targetVal === false || (Array.isArray(targetVal) && targetVal.length === 0);
+          break;
+        case 'not_empty':
+          match = hasValue && targetVal !== false && (!Array.isArray(targetVal) || targetVal.length > 0);
+          break;
+      }
+
+      return rule.action === 'show' ? match : !match;
+    });
+  };
+
   const handleSandboxSubmit = () => {
     const errors: Record<string, string> = {};
     fields.forEach((instance) => {
+      if (!isFieldVisible(instance, sandboxValues)) {
+        return;
+      }
+
       const appField = getAppField(instance.appFieldId);
       const val = sandboxValues[instance.id];
 
@@ -572,6 +610,7 @@ export default function BuilderCanvas({
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 flex-1 p-1">
             {fields
               .sort((a, b) => a.order - b.order)
+              .filter((instance) => isFieldVisible(instance, sandboxValues))
               .map((instance) => {
                 const appField = getAppField(instance.appFieldId);
                 const isHalf = instance.width === 'half';
