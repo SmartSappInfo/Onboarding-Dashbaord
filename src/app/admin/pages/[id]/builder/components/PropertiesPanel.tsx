@@ -1,15 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { AutoBlockEditor } from '@/components/page-builder/AutoBlockEditor';
 import type { PageBlock, BuilderResources, ResolvedTheme } from '@/lib/types';
-import { Settings, Type, Layout, Activity, ShieldAlert } from 'lucide-react';
+import { Settings, Type, Layout, Activity, ShieldAlert, Sparkles, Sliders } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface PropertiesPanelProps {
   readonly block: PageBlock;
@@ -29,16 +32,29 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
   workspaceId,
   onUpdate,
 }: PropertiesPanelProps) {
+  const { toast } = useToast();
   const props = block.props;
+
+  // State override controls: default, hover, focus, disabled
+  const [activeState, setActiveState] = useState<'default' | 'hover' | 'focus' | 'disabled'>('default');
+
+  // Data binding form states
+  const [bindField, setBindField] = useState('title');
+  const [bindVar, setBindVar] = useState('{{student.name}}');
+
+  const getPrefixedKey = (key: string) => {
+    if (activeState === 'default') return key;
+    return `${activeState}_${key}`;
+  };
 
   // Spacing values helpers
   const handleSpacingChange = (key: string, value: string) => {
-    onUpdate({ [key]: value });
+    onUpdate({ [getPrefixedKey(key)]: value });
   };
 
   // Typography values helpers
   const handleTypographyChange = (key: string, value: unknown) => {
-    onUpdate({ [key]: value });
+    onUpdate({ [getPrefixedKey(key)]: value });
   };
 
   // Animation helpers
@@ -48,11 +64,49 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
     onUpdate({ animation: updatedAnim });
   };
 
-  // Check if typography is relevant (i.e. has title/subtitle/quote/content/heading fields)
+  // Perform data binding injection
+  const handleApplyBinding = () => {
+    onUpdate({ [bindField]: bindVar });
+    toast({
+      title: "Data Binding Applied",
+      description: `Bound attribute "${bindField}" to variable token "${bindVar}".`,
+    });
+  };
+
   const hasText = ['hero', 'text', 'cta', 'testimonial', 'stats', 'faq', 'video_hero', 'testimonial_grid', 'choice_cards', 'app_download', 'step_section', 'countdown'].includes(block.type);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 select-none text-slate-200">
+      {/* State Override Selector Controls */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+            Style State Target
+          </Label>
+          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-950 border border-slate-850 px-1 rounded select-none">
+            {activeState} override
+          </span>
+        </div>
+        <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-950 rounded-lg">
+          {(['default', 'hover', 'focus', 'disabled'] as const).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setActiveState(st)}
+              className={cn(
+                "py-1 text-[9px] font-black uppercase tracking-wider rounded transition-all",
+                activeState === st 
+                  ? "bg-emerald-500/10 text-emerald-400" 
+                  : "text-slate-500 hover:text-slate-300"
+              )}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Tabs defaultValue="properties" className="w-full">
         <TabsList className="grid grid-cols-5 bg-slate-900 border border-slate-800 rounded-lg p-1">
           <TabsTrigger value="properties" className={TAB_TRIGGER_CLASS} title="Properties">
@@ -87,7 +141,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
           <div className="flex flex-col gap-1.5">
             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Font Family</Label>
             <Select
-              value={(props.fontFamily as string) || 'heading'}
+              value={(props[getPrefixedKey('fontFamily')] as string) || 'heading'}
               onValueChange={(v) => handleTypographyChange('fontFamily', v)}
             >
               <SelectTrigger className={INPUT_CLASS}>
@@ -98,77 +152,78 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <SelectItem value="body">Theme Body Font</SelectItem>
                 <SelectItem value="sans">System Sans-Serif</SelectItem>
                 <SelectItem value="serif">System Serif</SelectItem>
-                <SelectItem value="mono">System Monospace</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Font Size Override</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Align</Label>
             <Select
-              value={(props.fontSizeOverride as string) || 'default'}
-              onValueChange={(v) => handleTypographyChange('fontSizeOverride', v)}
+              value={(props[getPrefixedKey('textAlign')] as string) || 'left'}
+              onValueChange={(v) => handleTypographyChange('textAlign', v)}
             >
               <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder="Default block size" />
+                <SelectValue placeholder="Left align" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                <SelectItem value="default">Default size</SelectItem>
-                <SelectItem value="text-xs">XS (12px)</SelectItem>
-                <SelectItem value="text-sm">SM (14px)</SelectItem>
-                <SelectItem value="text-base">Base (16px)</SelectItem>
-                <SelectItem value="text-lg">LG (18px)</SelectItem>
-                <SelectItem value="text-xl">XL (20px)</SelectItem>
-                <SelectItem value="text-2xl">2XL (24px)</SelectItem>
-                <SelectItem value="text-3xl">3XL (30px)</SelectItem>
-                <SelectItem value="text-4xl">4XL (36px)</SelectItem>
-                <SelectItem value="text-5xl">5XL (48px)</SelectItem>
+                <SelectItem value="left">Left</SelectItem>
+                <SelectItem value="center">Center</SelectItem>
+                <SelectItem value="right">Right</SelectItem>
+                <SelectItem value="justify">Justify</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Font Weight</Label>
-            <Select
-              value={(props.fontWeight as string) || 'font-normal'}
-              onValueChange={(v) => handleTypographyChange('fontWeight', v)}
-            >
-              <SelectTrigger className={INPUT_CLASS}>
-                <SelectValue placeholder="Normal weight" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                <SelectItem value="font-light">Light (300)</SelectItem>
-                <SelectItem value="font-normal">Regular (400)</SelectItem>
-                <SelectItem value="font-medium">Medium (500)</SelectItem>
-                <SelectItem value="font-semibold">Semibold (600)</SelectItem>
-                <SelectItem value="font-bold">Bold (700)</SelectItem>
-                <SelectItem value="font-black">Black (900)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Size (CSS)</Label>
+            <Input
+              className={INPUT_CLASS}
+              placeholder="e.g. 1.25rem, 16px"
+              value={(props[getPrefixedKey('textSize')] as string) || ''}
+              onChange={(e) => handleTypographyChange('textSize', e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Color</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                type="color"
+                className="w-10 h-10 p-0 border border-slate-700 rounded-lg bg-slate-900 cursor-pointer shrink-0"
+                value={(props[getPrefixedKey('textColor')] as string) || '#0f172a'}
+                onChange={(e) => handleTypographyChange('textColor', e.target.value)}
+              />
+              <Input
+                className={INPUT_CLASS}
+                placeholder="#000000"
+                value={(props[getPrefixedKey('textColor')] as string) || ''}
+                onChange={(e) => handleTypographyChange('textColor', e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between pt-2">
             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Gradient</Label>
             <Switch
-              checked={!!props.gradientText}
+              checked={!!props[getPrefixedKey('gradientText')]}
               onCheckedChange={(c) => handleTypographyChange('gradientText', c)}
             />
           </div>
 
-          {props.gradientText ? (
+          {props[getPrefixedKey('gradientText')] ? (
             <div className="grid grid-cols-2 gap-2 pt-1 animate-in fade-in duration-200">
               <div className="flex flex-col gap-1">
                 <Label className="text-[9px] font-black text-slate-500">From Color</Label>
                 <div className="flex gap-1.5 items-center">
                   <Input
                     type="color"
-                    className="w-10 h-10 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
-                    value={(props.gradientFrom as string) || '#3B5FFF'}
+                    className="w-8 h-8 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
+                    value={(props[getPrefixedKey('gradientFrom')] as string) || '#3B5FFF'}
                     onChange={(e) => handleTypographyChange('gradientFrom', e.target.value)}
                   />
                   <Input
-                    className="h-10 text-[10px] bg-slate-800 border-slate-700 text-slate-300 font-bold"
-                    value={(props.gradientFrom as string) || '#3B5FFF'}
+                    className="h-8 text-[10px] bg-slate-800 border-slate-700 text-slate-350 font-bold"
+                    value={(props[getPrefixedKey('gradientFrom')] as string) || '#3B5FFF'}
                     onChange={(e) => handleTypographyChange('gradientFrom', e.target.value)}
                   />
                 </div>
@@ -178,13 +233,13 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <div className="flex gap-1.5 items-center">
                   <Input
                     type="color"
-                    className="w-10 h-10 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
-                    value={(props.gradientTo as string) || '#7C3AED'}
+                    className="w-8 h-8 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
+                    value={(props[getPrefixedKey('gradientTo')] as string) || '#7C3AED'}
                     onChange={(e) => handleTypographyChange('gradientTo', e.target.value)}
                   />
                   <Input
-                    className="h-10 text-[10px] bg-slate-800 border-slate-700 text-slate-300 font-bold"
-                    value={(props.gradientTo as string) || '#7C3AED'}
+                    className="h-8 text-[10px] bg-slate-800 border-slate-700 text-slate-355 font-bold"
+                    value={(props[getPrefixedKey('gradientTo')] as string) || '#7C3AED'}
                     onChange={(e) => handleTypographyChange('gradientTo', e.target.value)}
                   />
                 </div>
@@ -195,73 +250,92 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
 
         {/* ─── SPACING TAB ─── */}
         <TabsContent value="spacing" className="space-y-4 pt-4 text-left">
-          <div className="border border-slate-800 rounded-2xl p-4 bg-slate-950/50 flex flex-col gap-4">
-            <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Block Padding</h5>
+          <div className="flex flex-col gap-2">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visual Box Model (CSS)</Label>
             
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Top Padding</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 1.5rem"
-                  value={(props.paddingTop as string) || ''}
-                  onChange={(e) => handleSpacingChange('paddingTop', e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Bottom Padding</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 1.5rem"
-                  value={(props.paddingBottom as string) || ''}
-                  onChange={(e) => handleSpacingChange('paddingBottom', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Left Padding</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 1rem"
-                  value={(props.paddingLeft as string) || ''}
-                  onChange={(e) => handleSpacingChange('paddingLeft', e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Right Padding</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 1rem"
-                  value={(props.paddingRight as string) || ''}
-                  onChange={(e) => handleSpacingChange('paddingRight', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-slate-800 rounded-2xl p-4 bg-slate-950/50 flex flex-col gap-4">
-            <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Block Margin</h5>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Top Margin</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 0.5rem"
-                  value={(props.marginTop as string) || ''}
+            {/* Figma / Webflow style nested visual Box Model spacing editor */}
+            <div className="relative w-full aspect-[16/10] border border-slate-800/80 rounded-2xl bg-slate-950 p-4 font-mono text-[9px] select-none text-slate-400">
+              
+              {/* Outer Margin Box wrapper */}
+              <div className="absolute inset-2 border border-slate-800/80 border-dashed rounded-xl bg-slate-900/10 flex items-center justify-center">
+                <span className="absolute top-1 left-2 text-[8px] text-slate-500 font-bold uppercase select-none">Margin</span>
+                
+                {/* Margin top input */}
+                <input 
+                  type="text" 
+                  placeholder="0px"
+                  className="absolute top-1 w-12 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  value={(props[getPrefixedKey('marginTop')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginTop', e.target.value)}
                 />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-black text-slate-500">Bottom Margin</Label>
-                <Input
-                  className={INPUT_CLASS}
-                  placeholder="e.g. 0.5rem"
-                  value={(props.marginBottom as string) || ''}
+                {/* Margin bottom input */}
+                <input 
+                  type="text" 
+                  placeholder="0px"
+                  className="absolute bottom-1 w-12 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  value={(props[getPrefixedKey('marginBottom')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginBottom', e.target.value)}
                 />
+                {/* Margin left input */}
+                <input 
+                  type="text" 
+                  placeholder="0px"
+                  className="absolute left-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  value={(props[getPrefixedKey('marginLeft')] as string) || ''}
+                  onChange={(e) => handleSpacingChange('marginLeft', e.target.value)}
+                />
+                {/* Margin right input */}
+                <input 
+                  type="text" 
+                  placeholder="0px"
+                  className="absolute right-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  value={(props[getPrefixedKey('marginRight')] as string) || ''}
+                  onChange={(e) => handleSpacingChange('marginRight', e.target.value)}
+                />
+
+                {/* Inner Padding Box */}
+                <div className="absolute inset-x-12 inset-y-6 border border-slate-800/80 rounded-lg bg-slate-900/30 flex items-center justify-center">
+                  <span className="absolute top-1 left-2 text-[8px] text-slate-500 font-bold uppercase select-none">Padding</span>
+                  
+                  {/* Padding top input */}
+                  <input 
+                    type="text" 
+                    placeholder="0px"
+                    className="absolute top-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    value={(props[getPrefixedKey('paddingTop')] as string) || ''}
+                    onChange={(e) => handleSpacingChange('paddingTop', e.target.value)}
+                  />
+                  {/* Padding bottom input */}
+                  <input 
+                    type="text" 
+                    placeholder="0px"
+                    className="absolute bottom-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    value={(props[getPrefixedKey('paddingBottom')] as string) || ''}
+                    onChange={(e) => handleSpacingChange('paddingBottom', e.target.value)}
+                  />
+                  {/* Padding left input */}
+                  <input 
+                    type="text" 
+                    placeholder="0px"
+                    className="absolute left-1 w-8 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    value={(props[getPrefixedKey('paddingLeft')] as string) || ''}
+                    onChange={(e) => handleSpacingChange('paddingLeft', e.target.value)}
+                  />
+                  {/* Padding right input */}
+                  <input 
+                    type="text" 
+                    placeholder="0px"
+                    className="absolute right-1 w-8 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    value={(props[getPrefixedKey('paddingRight')] as string) || ''}
+                    onChange={(e) => handleSpacingChange('paddingRight', e.target.value)}
+                  />
+
+                  {/* Absolute Center Content Label */}
+                  <div className="absolute inset-x-8 inset-y-4 bg-emerald-500/10 border border-emerald-500/20 rounded flex items-center justify-center text-emerald-400 font-bold uppercase text-[7px] tracking-wider select-none pointer-events-none">
+                    BLOCK
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -352,6 +426,65 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
 
         {/* ─── ADVANCED TAB ─── */}
         <TabsContent value="advanced" className="space-y-4 pt-4 text-left">
+          
+          {/* Dynamic Data-Binding Selector Wizard */}
+          <div className="border border-slate-800 rounded-2xl p-4 bg-slate-950/50 flex flex-col gap-3">
+            <div className="flex items-center gap-1.5 pb-2 border-b border-slate-800">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-300">Data-Binding Wizard</h5>
+            </div>
+            
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Map and bind layout content inputs directly to dynamic student, parent or invoice attributes.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex flex-col gap-1">
+                <Label className="text-[9px] font-bold text-slate-400 uppercase">Target Field</Label>
+                <Select
+                  value={bindField}
+                  onValueChange={setBindField}
+                >
+                  <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
+                    <SelectValue placeholder="Select target..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <SelectItem value="title">Title / Heading</SelectItem>
+                    <SelectItem value="subtitle">Subtitle / Subheading</SelectItem>
+                    <SelectItem value="content">Main Content Text</SelectItem>
+                    <SelectItem value="href">Link Destination (href)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Label className="text-[9px] font-bold text-slate-400 uppercase">Bind Variable</Label>
+                <Select
+                  value={bindVar}
+                  onValueChange={setBindVar}
+                >
+                  <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
+                    <SelectValue placeholder="Select variable..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <SelectItem value="{{student.name}}">Student Name (Ama Serwaa)</SelectItem>
+                    <SelectItem value="{{student.id}}">Student ID (STU-2026-092)</SelectItem>
+                    <SelectItem value="{{parent.name}}">Parent Name (Kwame Mensah)</SelectItem>
+                    <SelectItem value="{{invoice.amount}}">Invoice Amount (GH₵ 1,200)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleApplyBinding}
+                className="w-full h-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg transition-all"
+              >
+                Establish Variable Link
+              </Button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Custom CSS Class Name</Label>
             <Input
