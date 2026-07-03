@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -82,7 +82,7 @@ export default function SocialAccountsPage() {
   const confirm = useConfirm();
 
   // 1. Fetch connected social accounts for the active workspace
-  const socialQuery = React.useMemo(() => {
+  const socialQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialAccounts'),
