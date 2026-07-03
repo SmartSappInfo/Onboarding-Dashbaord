@@ -384,45 +384,47 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </div>
                     )}
                 </div>
-
                 {/* Viewport Toggle */}
-                <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+                <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
                     <Button
-                        variant="ghost" size="sm"
+                        variant="ghost" size="icon"
                         onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'desktop' })}
-                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                            builder.viewport === 'desktop' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
+                            builder.viewport === 'desktop' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                         )}
+                        title="Desktop View"
                     >
-                        <MonitorPlay className="w-3.5 h-3.5" /> Desktop
+                        <MonitorPlay className="w-4 h-4" />
                     </Button>
                     <Button
-                        variant="ghost" size="sm"
+                        variant="ghost" size="icon"
                         onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'tablet' })}
-                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                            builder.viewport === 'tablet' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
+                            builder.viewport === 'tablet' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                         )}
+                        title="Tablet View"
                     >
-                        <Tablet className="w-3.5 h-3.5" /> Tablet
+                        <Tablet className="w-4 h-4" />
                     </Button>
                     <Button
-                        variant="ghost" size="sm"
+                        variant="ghost" size="icon"
                         onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'mobile' })}
-                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                            builder.viewport === 'mobile' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
+                            builder.viewport === 'mobile' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                         )}
+                        title="Mobile View"
                     >
-                        <Smartphone className="w-3.5 h-3.5" /> Mobile
+                        <Smartphone className="w-4 h-4" />
                     </Button>
                 </div>
 
                 {/* Edit / Preview Switcher */}
-                <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 ml-2">
+                <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 ml-2">
                     <Button
                         variant="ghost" size="sm"
                         onClick={() => builder.setCanvasMode('edit')}
-                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                            builder.canvasMode === 'edit' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
+                            builder.canvasMode === 'edit' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                         )}
                     >
                         <Edit3 className="w-3.5 h-3.5" /> Edit
@@ -430,8 +432,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <Button
                         variant="ghost" size="sm"
                         onClick={() => builder.setCanvasMode('preview')}
-                        className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                            builder.canvasMode === 'preview' ? "bg-slate-700 shadow-sm text-emerald-400" : "text-slate-500 hover:text-slate-300"
+                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
+                            builder.canvasMode === 'preview' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                         )}
                     >
                         <Eye className="w-3.5 h-3.5" /> Preview
@@ -440,12 +442,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
                 {/* Components / Columns Switcher (only in Edit mode) */}
                 {builder.canvasMode === 'edit' && (
-                    <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 ml-2">
+                    <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 ml-2">
                         <Button
                             variant="ghost" size="sm"
                             onClick={() => builder.setEditMode('components')}
-                            className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                                builder.editMode === 'components' ? "bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-500/90" : "text-slate-400 hover:text-slate-200"
+                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
+                                builder.editMode === 'components' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                             )}
                         >
                             Components
@@ -453,8 +455,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         <Button
                             variant="ghost" size="sm"
                             onClick={() => builder.setEditMode('columns')}
-                            className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
-                                builder.editMode === 'columns' ? "bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-500/90" : "text-slate-400 hover:text-slate-200"
+                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
+                                builder.editMode === 'columns' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                             )}
                         >
                             Columns
@@ -464,13 +466,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                    {/* Undo/Redo */}
-                    <div className="flex items-center gap-0.5 mr-2 border-r border-slate-700/50 pr-3">
+                    <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 mr-2">
                         <Button
                             variant="ghost" size="icon"
                             disabled={!builder.canUndo}
                             onClick={builder.undo}
-                            className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg"
+                            className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg transition-all"
                             title="Undo (⌘Z)"
                         >
                             <Undo2 className="w-3.5 h-3.5" />
@@ -479,30 +480,23 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             variant="ghost" size="icon"
                             disabled={!builder.canRedo}
                             onClick={builder.redo}
-                            className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg"
+                            className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg transition-all"
                             title="Redo (⌘⇧Z)"
                         >
                             <Redo2 className="w-3.5 h-3.5" />
                         </Button>
                     </div>
 
-
                     {/* Visual Performance Meter Scorecard */}
-                    <div className="flex items-center gap-2 border-r border-slate-700/50 pr-3 mr-2 select-none">
-                        <div className="flex flex-col items-end leading-none">
-                            <span className="text-[7px] text-slate-500 font-black uppercase tracking-wider">Health</span>
-                            <span className="text-[9px] text-slate-350 font-bold leading-none mt-0.5">Page Meter</span>
+                    <div className="flex items-center gap-1 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 select-none mr-2" title="Page Health Metrics: Performance, Accessibility, SEO">
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="Performance: 92/100">
+                            ⚡92
                         </div>
-                        <div className="flex items-center gap-1">
-                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="Performance: 92/100">
-                                ⚡92
-                            </div>
-                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="Accessibility: 98/100">
-                                ♿98
-                            </div>
-                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="SEO: 95/100">
-                                🔍95
-                            </div>
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="Accessibility: 98/100">
+                            ♿98
+                        </div>
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="SEO: 95/100">
+                            🔍95
                         </div>
                     </div>
 
