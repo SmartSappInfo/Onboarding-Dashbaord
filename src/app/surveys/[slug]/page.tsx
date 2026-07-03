@@ -67,6 +67,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // mode uses the survey's own logoUrl, so it is passed as the org logo.
   const seo = survey.seo ?? mapLegacySurveySeo(survey);
 
+  // Fetch full organization branding context using survey metadata
+  let orgId = survey.organizationId;
+  if (!orgId && survey.workspaceIds?.length) {
+    const wsSnap = await adminDb.collection('workspaces').doc(survey.workspaceIds[0]).get();
+    if (wsSnap.exists) {
+      orgId = wsSnap.data()?.organizationId;
+    }
+  }
+  const org = orgId ? await getOrgBranding(orgId) : null;
+
   return resolveSeoMetadata({
     seo,
     fallback: {
@@ -74,8 +84,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       description: survey.description,
       assetImageUrl: survey.bannerImageUrl,
     },
-    org: { logoUrl: survey.logoUrl },
+    org: org || { logoUrl: survey.logoUrl },
     parentImages: normalizeParentImages((await parent).openGraph?.images),
+    path: `/surveys/${slug}`,
   });
 }
 
