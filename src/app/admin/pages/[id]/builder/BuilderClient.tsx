@@ -45,6 +45,8 @@ import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
 import { useBuilderResources } from './hooks/useBuilderResources';
 import BlockPalette from './components/BlockPalette';
+import LayersPanel from './components/LayersPanel';
+import VariablesPanel from './components/VariablesPanel';
 import { SectionSettings } from '@/components/page-builder/SectionSettings';
 import { useAutosave } from '@/components/page-builder/useAutosave';
 import Canvas from './components/Canvas';
@@ -54,6 +56,7 @@ import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
+import { Layers, Database } from 'lucide-react';
 
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -331,6 +334,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     // ─── Tab Definitions ─────────────────────────────────────────────
     const tabs: { id: BuilderTab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
         { id: 'add', icon: PlusSquare, label: 'Add' },
+        { id: 'layers', icon: Layers, label: 'Layers' },
+        { id: 'variables', icon: Database, label: 'Variables' },
         { id: 'edit', icon: Settings2, label: 'Edit' },
         { id: 'triggers', icon: MousePointerClick, label: 'Triggers' },
         { id: 'theme', icon: Palette, label: 'Theme' },
@@ -541,6 +546,27 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 onRequestBlock={(type) => builder.dispatch({ type: 'OPEN_VARIANT_PICKER', payload: type })}
                                 onAddSection={() => builder.addSection()}
                             />
+                        )}
+
+                        {builder.activeTab === 'layers' && (
+                            <LayersPanel
+                                version={version}
+                                selectedBlockId={builder.selectedBlockId}
+                                selectedSectionId={builder.selectedSectionId}
+                                onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
+                                onSelectSection={(id) => builder.dispatch({ type: 'SELECT_SECTION', payload: id })}
+                                onRemoveBlock={builder.removeBlock}
+                                onRemoveSection={builder.removeSection}
+                                onDuplicateBlock={builder.duplicateBlock}
+                                onUpdateBlockProps={builder.updateBlockProps}
+                                onUpdateSectionProps={builder.updateSectionProps}
+                                onMoveBlock={builder.moveBlock}
+                                onMoveSection={builder.moveSection}
+                            />
+                        )}
+
+                        {builder.activeTab === 'variables' && (
+                            <VariablesPanel />
                         )}
 
                         {builder.activeTab === 'edit' && (
