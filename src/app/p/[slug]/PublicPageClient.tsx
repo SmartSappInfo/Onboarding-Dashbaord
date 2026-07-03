@@ -405,7 +405,7 @@ export default function PublicPageClient({
 
             <main className="flex-1 w-full relative">
                 {USE_PAGE_BUILDER_V2 ? (
-                    <div className="w-full pt-32 pb-24 font-body">
+                    <div className="w-full font-body">
                         <PageRenderer
                             page={page}
                             version={{ ...version, structureJson: migrateLegacyStructure(parseStructure(version.structureJson)) }}
@@ -556,15 +556,10 @@ export default function PublicPageClient({
                                                     )}
 
                                                     {block.type === 'image' && block.props.src && (
-                                                        <div className="rounded-2xl overflow-hidden shadow-sm transition-all duration-300 border border-slate-100 bg-white">
+                                                        <div className={cn("rounded-2xl overflow-hidden shadow-sm transition-all duration-300", block.props.caption ? "border border-slate-200/40 dark:border-zinc-800/40 bg-white" : "border border-transparent bg-transparent")}>
                                                             <img src={block.props.src} alt={block.props.alt || ''} className="w-full h-auto" loading="lazy" />
                                                             {block.props.caption && (
-                                                                <p 
-                                                                    className="text-xs text-center py-3 px-4 italic font-semibold border-t border-slate-100"
-                                                                    style={{ color: (block.props.captionColor as string) || '#0f172a' }}
-                                                                >
-                                                                    {interpolate(block.props.caption)}
-                                                                </p>
+                                                                <p className="text-xs text-slate-500 text-center py-3 italic bg-slate-50/50">{interpolate(block.props.caption)}</p>
                                                             )}
                                                         </div>
                                                     )}
