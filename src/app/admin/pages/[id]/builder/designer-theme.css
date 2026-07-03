@@ -1,0 +1,169 @@
+/* experience designer theme stylesheet */
+
+/* ==========================================================================
+   Light Mode Theme Scoped Overrides
+   ========================================================================== */
+.designer-theme-light {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+}
+
+/* Header & Panels Backgrounds */
+.designer-theme-light.designer-shell header,
+.designer-theme-light .bg-slate-900/90,
+.designer-theme-light .bg-slate-900 {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.designer-theme-light .bg-slate-950,
+.designer-theme-light .bg-slate-950\/20,
+.designer-theme-light .bg-slate-950\/40,
+.designer-theme-light .bg-slate-950\/80 {
+    background-color: #f1f5f9 !important;
+    background: #f1f5f9 !important;
+}
+
+.designer-theme-light .bg-slate-900\/20,
+.designer-theme-light .bg-slate-900\/30 {
+    background-color: #f8fafc !important;
+    background: #f8fafc !important;
+}
+
+/* Borders */
+.designer-theme-light .border-slate-700\/50,
+.designer-theme-light .border-slate-800,
+.designer-theme-light .border-slate-850,
+.designer-theme-light .border-slate-800\/80,
+.designer-theme-light .border-slate-800\/40,
+.designer-theme-light .border-slate-850\/80,
+.designer-theme-light .border-slate-800\/50 {
+    border-color: #e2e8f0 !important;
+}
+
+/* Typography & Colors */
+.designer-theme-light .text-slate-100,
+.designer-theme-light .text-slate-200,
+.designer-theme-light .text-slate-350,
+.designer-theme-light .text-slate-300,
+.designer-theme-light .text-slate-400,
+.designer-theme-light .text-slate-500,
+.designer-theme-light .text-slate-50 {
+    color: #0f172a !important;
+}
+
+.designer-theme-light .text-slate-450,
+.designer-theme-light .text-slate-600,
+.designer-theme-light .text-slate-500 {
+    color: #475569 !important;
+}
+
+/* Buttons & Hovers */
+.designer-theme-light .hover\:bg-slate-800:hover,
+.designer-theme-light .hover\:bg-slate-900\/50:hover,
+.designer-theme-light .hover\:bg-slate-800\/20:hover {
+    background-color: #e2e8f0 !important;
+}
+
+.designer-theme-light .hover\:text-slate-200:hover,
+.designer-theme-light .hover\:text-slate-355:hover {
+    color: #0f172a !important;
+}
+
+/* Inputs & Form Controls */
+.designer-theme-light input,
+.designer-theme-light textarea,
+.designer-theme-light select,
+.designer-theme-light button[role="combobox"] {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* ==========================================================================
+   System Blue Theme Scoped Overrides
+   ========================================================================== */
+.designer-theme-blue {
+    background: linear-gradient(135deg, #020617 0%, #0c1a4b 50%, #020617 100%) !important;
+}
+
+/* Header & Panels Backgrounds */
+.designer-theme-blue.designer-shell header,
+.designer-theme-blue .bg-slate-900/90,
+.designer-theme-blue .bg-slate-900 {
+    background-color: rgba(11, 26, 75, 0.92) !important;
+    background: rgba(11, 26, 75, 0.92) !important;
+}
+
+.designer-theme-blue .bg-slate-950,
+.designer-theme-blue .bg-slate-950\/20,
+.designer-theme-blue .bg-slate-950\/40,
+.designer-theme-blue .bg-slate-950\/80 {
+    background-color: #03071e !important;
+    background: #03071e !important;
+}
+
+.designer-theme-blue .bg-slate-900\/20,
+.designer-theme-blue .bg-slate-900\/30 {
+    background-color: #050d2c !important;
+    background: #050d2c !important;
+}
+
+/* Borders */
+.designer-theme-blue .border-slate-700\/50,
+.designer-theme-blue .border-slate-800,
+.designer-theme-blue .border-slate-850,
+.designer-theme-blue .border-slate-800\/80,
+.designer-theme-blue .border-slate-800\/40,
+.designer-theme-blue .border-slate-850\/80,
+.designer-theme-blue .border-slate-800\/50 {
+    border-color: #1e3a8a !important;
+}
+
+/* Typography & Colors */
+.designer-theme-blue .text-slate-100,
+.designer-theme-blue .text-slate-200,
+.designer-theme-blue .text-slate-350,
+.designer-theme-blue .text-slate-300 {
+    color: #eff6ff !important;
+}
+
+.designer-theme-blue .text-slate-400,
+.designer-theme-blue .text-slate-500 {
+    color: #93c5fd !important;
+}
+
+/* Buttons & Hovers */
+.designer-theme-blue .hover\:bg-slate-800:hover,
+.designer-theme-blue .hover\:bg-slate-900\/50:hover,
+.designer-theme-blue .hover\:bg-slate-800\/20:hover {
+    background-color: #1e3a8a !important;
+}
+
+.designer-theme-blue .hover\:text-slate-200:hover,
+.designer-theme-blue .hover\:text-slate-355:hover {
+    color: #3b82f6 !important;
+}
+
+/* Accent overrides to macOS System Blue color scheme */
+.designer-theme-blue .text-emerald-400 {
+    color: #3b82f6 !important;
+}
+.designer-theme-blue .bg-emerald-500\/10 {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+}
+.designer-theme-blue .border-emerald-500\/20 {
+    border-color: rgba(59, 130, 246, 0.25) !important;
+}
+.designer-theme-blue .bg-emerald-500 {
+    background-color: #3b82f6 !important;
+}
+
+/* ==========================================================================
+   Viewport Exclusions (Canvas frames must not change background)
+   ========================================================================== */
+.designer-theme-light .canvas-viewport-frame,
+.designer-theme-blue .canvas-viewport-frame {
+    background: initial !important;
+    color: initial !important;
+    background-color: #ffffff !important;
+}

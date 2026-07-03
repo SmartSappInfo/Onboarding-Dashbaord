@@ -31,6 +31,8 @@ import {
     Undo2,
     Redo2,
     Code,
+    Sun,
+    Moon,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
@@ -58,7 +60,7 @@ import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
 import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
-
+import './designer-theme.css';
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const firestore = useFirestore();
@@ -106,7 +108,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-    // ─── Data Loading ────────────────────────────────────────────────
+    type DesignerTheme = 'dark' | 'light' | 'blue';
+    const [designerTheme, setDesignerThemeState] = useState<DesignerTheme>(() => {
+        if (typeof window !== 'undefined') {
+            return (localStorage.getItem('smart_designer_theme') as DesignerTheme) || 'dark';
+        }
+        return 'dark';
+    });
+
+    const setDesignerTheme = useCallback((theme: DesignerTheme) => {
+        setDesignerThemeState(theme);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('smart_designer_theme', theme);
+        }
+    }, []);
+
     useEffect(() => {
         if (!firestore) return;
 
@@ -348,10 +364,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     ];
     // ─── Render ──────────────────────────────────────────────────────
     return (
-        <div className="flex flex-col h-screen text-slate-900 border-t print:hidden overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
+        <div className={cn(
+            "flex flex-col h-screen text-slate-900 border-t print:hidden overflow-hidden designer-shell",
+            designerTheme === 'light' ? 'designer-theme-light' : designerTheme === 'blue' ? 'designer-theme-blue' : 'designer-theme-dark'
+        )}>
 
             {/* ═══════════════ TOOLBAR ═══════════════ */}
-            <header className="h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50" style={{ background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)' }}>
+            <header className="h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                         <Link href="/admin/pages"><ArrowLeft className="h-4 w-4" /></Link>
@@ -468,6 +487,51 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
+                    {/* Designer Theme Switcher */}
+                    <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 mr-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDesignerTheme('light')}
+                            className={cn(
+                                "h-6 w-6 p-0 rounded-lg transition-all",
+                                designerTheme === 'light'
+                                    ? "bg-slate-700 shadow-sm text-emerald-400"
+                                    : "text-slate-500 hover:text-slate-300"
+                            )}
+                            title="Light Mode Theme"
+                        >
+                            <Sun className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDesignerTheme('dark')}
+                            className={cn(
+                                "h-6 w-6 p-0 rounded-lg transition-all",
+                                designerTheme === 'dark'
+                                    ? "bg-slate-700 shadow-sm text-emerald-400"
+                                    : "text-slate-500 hover:text-slate-300"
+                            )}
+                            title="Dark Mode Theme"
+                        >
+                            <Moon className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDesignerTheme('blue')}
+                            className={cn(
+                                "h-6 w-6 p-0 rounded-lg transition-all",
+                                designerTheme === 'blue'
+                                    ? "bg-slate-700 shadow-sm text-blue-400"
+                                    : "text-slate-500 hover:text-slate-300"
+                            )}
+                            title="System Blue Theme"
+                        >
+                            <Palette className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
                     {/* Visual Performance Meter Scorecard */}
                     <div className="flex items-center gap-2 border-r border-slate-700/50 pr-3 mr-2 select-none">
                         <div className="flex flex-col items-end leading-none">
