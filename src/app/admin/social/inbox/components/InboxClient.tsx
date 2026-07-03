@@ -95,7 +95,7 @@ export default function InboxClient() {
   const contactsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
-      collection(db, 'workspaceEntities'),
+      collection(db, 'workspace_entities'),
       where('workspaceId', '==', activeWorkspaceId),
       where('entityType', '==', 'person')
     );
@@ -264,7 +264,7 @@ export default function InboxClient() {
       };
 
       // Create contact profile
-      await setDoc(doc(db, 'workspaceEntities', contactId), newEntity);
+      await setDoc(doc(db, 'workspace_entities', contactId), newEntity);
 
       // Link to thread
       const linkRes = await linkInboxToCRMAction(activeThreadId, contactId);

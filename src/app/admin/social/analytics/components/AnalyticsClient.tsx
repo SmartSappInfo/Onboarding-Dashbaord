@@ -71,7 +71,7 @@ export default function AnalyticsClient() {
   const contactsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
-      collection(db, 'workspaceEntities'),
+      collection(db, 'workspace_entities'),
       where('workspaceId', '==', activeWorkspaceId),
       where('entityType', '==', 'person')
     );

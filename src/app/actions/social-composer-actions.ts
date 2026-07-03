@@ -668,7 +668,7 @@ export async function simulateSocialConversionsAction(
         updatedAt: new Date().toISOString(),
       };
 
-      await adminDb.collection('workspaceEntities').doc(contactId).set(newLead);
+      await adminDb.collection('workspace_entities').doc(contactId).set(newLead);
 
       if (parent.revenue > 0) {
         const invoiceId = `inv_${Math.random().toString(36).substring(2, 11)}`;
