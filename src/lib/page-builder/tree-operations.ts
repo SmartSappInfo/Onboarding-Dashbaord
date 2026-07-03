@@ -361,173 +361,31 @@ export function moveBlockToColumn(
   };
 }
 
-function layoutToColsCount(layout: string | undefined): number {
-  if (layout === '2-col') return 2;
-  if (layout === '3-col') return 3;
-  if (layout === '4-col') return 4;
-  return 1;
-}
-
-function colsCountToLayout(count: number): '1-col' | '2-col' | '3-col' | '4-col' {
-  if (count <= 1) return '1-col';
-  if (count === 2) return '2-col';
-  if (count === 3) return '3-col';
-  return '4-col';
-}
-
-export function moveColumn(
+/** Swap two columns in a section (swaps the column index property of all blocks within those columns). */
+export function swapColumns(
   structure: CampaignPageStructure,
-  fromSectionId: string,
-  fromColIdx: number,
-  toSectionId: string,
-  toColIdx: number,
+  sectionId: string,
+  fromColumnIndex: number,
+  toColumnIndex: number,
 ): CampaignPageStructure {
-  // Case 1: Re-ordering columns within the same section
-  if (fromSectionId === toSectionId) {
-    return {
-      ...structure,
-      sections: structure.sections.map((section) => {
-        if (section.id !== fromSectionId) return section;
-
-        const columnsProps = (section.props.columnsProps as Record<string, Record<string, unknown>>) || {};
-        const newColumnsProps: Record<string, Record<string, unknown>> = {};
-
-        const newBlocks = section.blocks.map((block) => {
-          const col = (block.props.column as number) ?? 0;
-          let newCol = col;
-          if (col === fromColIdx) {
-            newCol = toColIdx;
-          } else if (fromColIdx < toColIdx) {
-            if (col > fromColIdx && col <= toColIdx) {
-              newCol = col - 1;
-            }
-          } else {
-            if (col >= toColIdx && col < fromColIdx) {
-              newCol = col + 1;
-            }
-          }
-          return {
-            ...block,
-            props: { ...block.props, column: newCol },
-          };
-        });
-
-        Object.entries(columnsProps).forEach(([key, val]) => {
-          const col = parseInt(key, 10);
-          let newCol = col;
-          if (col === fromColIdx) {
-            newCol = toColIdx;
-          } else if (fromColIdx < toColIdx) {
-            if (col > fromColIdx && col <= toColIdx) {
-              newCol = col - 1;
-            }
-          } else {
-            if (col >= toColIdx && col < fromColIdx) {
-              newCol = col + 1;
-            }
-          }
-          newColumnsProps[newCol.toString()] = val;
-        });
-
-        return {
-          ...section,
-          blocks: newBlocks,
-          props: {
-            ...section.props,
-            columnsProps: newColumnsProps,
-          },
-        };
-      }),
-    };
-  }
-
-  // Case 2: Moving a column from one section to another section
-  const fromSection = structure.sections.find((s) => s.id === fromSectionId);
-  const toSection = structure.sections.find((s) => s.id === toSectionId);
-  if (!fromSection || !toSection) return structure;
-
-  const fromCols = layoutToColsCount(fromSection.props.layout as string | undefined);
-  const toCols = layoutToColsCount(toSection.props.layout as string | undefined);
-
-  // Extract blocks belonging to fromColIdx in fromSection
-  const transplantedBlocks = fromSection.blocks
-    .filter((b) => ((b.props.column as number) ?? 0) === fromColIdx)
-    .map((b) => ({ ...b, props: { ...b.props, column: toColIdx } }));
-
-  const fromColsProps = (fromSection.props.columnsProps as Record<string, Record<string, unknown>>) || {};
-  const toColsProps = (toSection.props.columnsProps as Record<string, Record<string, unknown>>) || {};
-  const transplantedColProp = fromColsProps[fromColIdx.toString()] || {};
-
   return {
     ...structure,
     sections: structure.sections.map((section) => {
-      if (section.id === fromSectionId) {
-        const remainingBlocks = section.blocks
-          .filter((b) => ((b.props.column as number) ?? 0) !== fromColIdx)
-          .map((b) => {
-            const col = (b.props.column as number) ?? 0;
-            if (col > fromColIdx) {
-              return { ...b, props: { ...b.props, column: col - 1 } };
-            }
-            return b;
-          });
+      if (section.id !== sectionId) return section;
 
-        const newColsProps: Record<string, Record<string, unknown>> = {};
-        Object.entries(fromColsProps).forEach(([key, val]) => {
-          const col = parseInt(key, 10);
-          if (col === fromColIdx) return;
-          if (col > fromColIdx) {
-            newColsProps[(col - 1).toString()] = val;
-          } else {
-            newColsProps[col.toString()] = val;
+      return {
+        ...section,
+        blocks: section.blocks.map((block) => {
+          const col = block.props.column ?? 0;
+          if (col === fromColumnIndex) {
+            return { ...block, props: { ...block.props, column: toColumnIndex } };
           }
-        });
-
-        const nextCols = Math.max(1, fromCols - 1);
-        return {
-          ...section,
-          blocks: remainingBlocks,
-          props: {
-            ...section.props,
-            layout: colsCountToLayout(nextCols),
-            columnsProps: newColsProps,
-          },
-        };
-      }
-
-      if (section.id === toSectionId) {
-        const shiftedBlocks = section.blocks.map((b) => {
-          const col = (b.props.column as number) ?? 0;
-          if (col >= toColIdx) {
-            return { ...b, props: { ...b.props, column: col + 1 } };
+          if (col === toColumnIndex) {
+            return { ...block, props: { ...block.props, column: fromColumnIndex } };
           }
-          return b;
-        });
-
-        const newColsProps: Record<string, Record<string, unknown>> = {};
-        Object.entries(toColsProps).forEach(([key, val]) => {
-          const col = parseInt(key, 10);
-          if (col >= toColIdx) {
-            newColsProps[(col + 1).toString()] = val;
-          } else {
-            newColsProps[col.toString()] = val;
-          }
-        });
-        newColsProps[toColIdx.toString()] = transplantedColProp;
-
-        const nextCols = Math.min(4, toCols + 1);
-        return {
-          ...section,
-          blocks: [...shiftedBlocks, ...transplantedBlocks],
-          props: {
-            ...section.props,
-            layout: colsCountToLayout(nextCols),
-            columnsProps: newColsProps,
-          },
-        };
-      }
-
-      return section;
+          return block;
+        }),
+      };
     }),
   };
 }

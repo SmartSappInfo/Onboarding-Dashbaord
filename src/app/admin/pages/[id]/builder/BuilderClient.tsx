@@ -454,7 +454,19 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                         <Button
                             variant="ghost" size="sm"
-                            onClick={() => builder.setEditMode('columns')}
+                            onClick={() => {
+                                builder.setEditMode('columns');
+                                if (builder.selectedBlockId) {
+                                    const found = builder.findBlock(builder.selectedBlockId);
+                                    if (found && found.section && found.section.id) {
+                                        builder.dispatch({ type: 'SELECT_SECTION', payload: found.section.id });
+                                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                                    }
+                                } else if (builder.selectedSectionId) {
+                                    builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                                }
+                            }}
                             className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
                                 builder.editMode === 'columns' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
                             )}
@@ -763,6 +775,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onReorderSections={builder.reorderSections}
                     onReorderBlocks={builder.reorderBlocks}
                     onMoveBlockToColumn={builder.moveBlockToColumn}
+                    onSwapColumns={builder.swapColumns}
                     canvasMode={builder.canvasMode}
                     editMode={builder.editMode}
                     onSetEditMode={builder.setEditMode}

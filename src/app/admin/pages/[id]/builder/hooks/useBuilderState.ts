@@ -27,16 +27,13 @@ function pushHistory(history: HistoryState, next: CampaignPageStructure): Histor
         present: next,
         future: [],
     };
-}
-
-// ─── Builder State ───────────────────────────────────────────────────────
+}// ─── Builder State ───────────────────────────────────────────────────────
 interface BuilderState {
     page: CampaignPage | null;
     version: CampaignPageVersion | null;
     history: HistoryState | null;
     selectedBlockId: string | null;
     selectedSectionId: string | null;
-    selectedColumnKey: string | null;
     viewport: 'desktop' | 'tablet' | 'mobile';
     activeTab: BuilderTab;
     saving: boolean;
@@ -61,7 +58,6 @@ type BuilderAction =
     | { type: 'SET_TAB'; payload: BuilderTab }
     | { type: 'SELECT_BLOCK'; payload: string | null }
     | { type: 'SELECT_SECTION'; payload: string | null }
-    | { type: 'SELECT_COLUMN'; payload: string | null }
     | { type: 'UPDATE_STRUCTURE'; payload: CampaignPageStructure }
     | { type: 'UPDATE_PAGE_SETTINGS'; payload: Partial<CampaignPage['settings']> }
     | { type: 'UPDATE_PAGE_SEO'; payload: Partial<CampaignPage['seo']> }
@@ -98,11 +94,9 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
         case 'SET_TAB':
             return { ...state, activeTab: action.payload };
         case 'SELECT_BLOCK':
-            return { ...state, selectedBlockId: action.payload, selectedSectionId: null, selectedColumnKey: null };
+            return { ...state, selectedBlockId: action.payload };
         case 'SELECT_SECTION':
-            return { ...state, selectedSectionId: action.payload, selectedBlockId: null, selectedColumnKey: null };
-        case 'SELECT_COLUMN':
-            return { ...state, selectedColumnKey: action.payload, selectedBlockId: null, selectedSectionId: null };
+            return { ...state, selectedSectionId: action.payload };
 
         case 'UPDATE_STRUCTURE': {
             if (!state.version || !state.history) return state;
@@ -195,7 +189,6 @@ const initialState: BuilderState = {
     history: null,
     selectedBlockId: null,
     selectedSectionId: null,
-    selectedColumnKey: null,
     viewport: 'desktop',
     activeTab: 'add',
     saving: false,
@@ -336,6 +329,11 @@ export function useBuilderState() {
         updateStructure(s => tree.duplicateBlock(s, blockId));
     }, [updateStructure]);
 
+    // ─── Column Operations ───────────────────────────────────────────
+    const swapColumns = useCallback((sectionId: string, fromColumnIndex: number, toColumnIndex: number) => {
+        updateStructure(s => tree.swapColumns(s, sectionId, fromColumnIndex, toColumnIndex));
+    }, [updateStructure]);
+
     // ─── Trigger Operations ──────────────────────────────────────────
     const addTrigger = useCallback(() => {
         if (!state.page) return;
@@ -392,38 +390,6 @@ export function useBuilderState() {
         dispatch({ type: 'UPDATE_PAGE_SETTINGS', payload: { triggers } });
     }, [state.page]);
 
-    const selectColumn = useCallback((key: string | null) => {
-        dispatch({ type: 'SELECT_COLUMN', payload: key });
-    }, []);
-
-    const updateColumnProps = useCallback((sectionId: string, colIdx: number, newProps: Record<string, unknown>) => {
-        updateStructure(s => {
-            return {
-                ...s,
-                sections: s.sections.map(section => {
-                    if (section.id !== sectionId) return section;
-                    const colsProps = (section.props.columnsProps as Record<string, unknown>) || {};
-                    const colProps = (colsProps[colIdx.toString()] as Record<string, unknown>) || {};
-                    const updatedColsProps = {
-                        ...colsProps,
-                        [colIdx.toString()]: { ...colProps, ...newProps }
-                    };
-                    return {
-                        ...section,
-                        props: {
-                            ...section.props,
-                            columnsProps: updatedColsProps
-                        }
-                    };
-                })
-            };
-        });
-    }, [updateStructure]);
-
-    const moveColumn = useCallback((fromSectionId: string, fromColIdx: number, toSectionId: string, toColIdx: number) => {
-        updateStructure(s => tree.moveColumn(s, fromSectionId, fromColIdx, toSectionId, toColIdx));
-    }, [updateStructure]);
-
     // ─── Derived State ───────────────────────────────────────────────
     const canUndo = (state.history?.past.length ?? 0) > 0;
     const canRedo = (state.history?.future.length ?? 0) > 0;
@@ -459,11 +425,7 @@ export function useBuilderState() {
         moveBlockToColumn,
         findBlock,
         duplicateBlock,
-
-        // Columns
-        selectColumn,
-        updateColumnProps,
-        moveColumn,
+        swapColumns,
 
         // Triggers
         addTrigger,

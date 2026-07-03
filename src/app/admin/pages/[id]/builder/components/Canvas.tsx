@@ -16,6 +16,7 @@ import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
+    horizontalListSortingStrategy,
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -26,6 +27,8 @@ import {
     Trash2,
     ArrowUp,
     ArrowDown,
+    ArrowLeft,
+    ArrowRight,
     FolderHeart,
     PlusSquare,
     Plus,
@@ -78,6 +81,7 @@ interface CanvasProps {
     onReorderSections: (from: number, to: number) => void;
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
     onMoveBlockToColumn: (blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => void;
+    onSwapColumns?: (sectionId: string, fromColumnIndex: number, toColumnIndex: number) => void;
     canvasMode: 'edit' | 'preview';
     editMode: 'columns' | 'components';
     onSetEditMode: (mode: 'columns' | 'components') => void;
@@ -302,6 +306,9 @@ function ColumnCell({
     editCtx,
     editMode,
     canvasMode,
+    totalColumns,
+    onSwapColumns,
+    onEditSection,
 }: {
     sectionId: string;
     colIdx: number;
@@ -315,24 +322,92 @@ function ColumnCell({
     editCtx: (blockId: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
+    totalColumns: number;
+    onSwapColumns?: (sectionId: string, fromIdx: number, toIdx: number) => void;
+    onEditSection?: (sectionId: string) => void;
 }) {
-    const { setNodeRef, isOver } = useDroppable({
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+        isOver
+    } = useSortable({
         id: `col-${sectionId}-${colIdx}`,
-        data: { sectionId, columnIndex: colIdx }
+        data: {
+            type: 'column',
+            sectionId,
+            columnIndex: colIdx,
+        },
+        disabled: canvasMode === 'preview' || editMode !== 'columns',
     });
 
     const blockIds = blocks.map(b => b.id);
     const isPreview = canvasMode === 'preview';
 
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+    };
+
     return (
         <div
             ref={setNodeRef}
+            style={style}
+            onClick={(e) => {
+                if (!isPreview && editMode === 'columns') {
+                    e.stopPropagation();
+                    onEditSection?.(sectionId);
+                }
+            }}
             className={cn(
                 "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
-                !isPreview && (editMode === 'components' ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" : "border border-transparent"),
+                !isPreview && (
+                    editMode === 'columns'
+                        ? "bg-slate-50/50 dark:bg-zinc-900/30 border-2 border-dashed border-emerald-500/40 hover:border-emerald-500/70"
+                        : "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30"
+                ),
                 isOver && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
             )}
         >
+            {!isPreview && editMode === 'columns' && (
+                <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[8px] font-black uppercase text-slate-400 tracking-wider mb-2 select-none z-10 shrink-0">
+                    <div className="flex items-center gap-1.5 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+                        <GripVertical className="w-3 h-3 text-slate-500" />
+                        <span>Column {colIdx + 1}</span>
+                    </div>
+                    <div className="flex items-center gap-1 pointer-events-auto">
+                        {colIdx > 0 && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSwapColumns?.(sectionId, colIdx, colIdx - 1);
+                                }}
+                                className="p-0.5 hover:text-white transition-colors cursor-pointer"
+                            >
+                                <ArrowLeft className="w-3 h-3" />
+                            </button>
+                        )}
+                        {colIdx < totalColumns - 1 && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSwapColumns?.(sectionId, colIdx, colIdx + 1);
+                                }}
+                                className="p-0.5 hover:text-white transition-colors cursor-pointer"
+                            >
+                                <ArrowRight className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {!isPreview && editMode === 'components' && (
                 <div className="absolute top-2 left-2 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1 py-0.5 rounded select-none">
                     Col {colIdx + 1}
@@ -397,6 +472,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
     onReorderSections,
     onMoveBlockToColumn,
+    onSwapColumns,
     canvasMode,
     editMode,
     onSetEditMode: _onSetEditMode,
@@ -705,6 +781,24 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             return;
         }
 
+        // 1.5 Handle Column Reordering
+        if (activeId.startsWith('col-')) {
+            if (overId.startsWith('col-')) {
+                const activeParts = activeId.split('-');
+                const activeSectionId = activeParts.slice(1, -1).join('-');
+                const activeColIdx = parseInt(activeParts[activeParts.length - 1], 10);
+
+                const overParts = overId.split('-');
+                const overSectionId = overParts.slice(1, -1).join('-');
+                const overColIdx = parseInt(overParts[overParts.length - 1], 10);
+
+                if (activeSectionId === overSectionId && activeColIdx !== overColIdx) {
+                    onSwapColumns?.(activeSectionId, activeColIdx, overColIdx);
+                }
+            }
+            return;
+        }
+
         // 2. Handle Block Drag and Drop
         let targetSectionId = '';
         let targetColIdx = 0;
@@ -985,23 +1079,31 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 className={cn("w-full grid relative z-20", gridColsClass, colGapClass, alignClass)}
                                                                 style={layout === 'grid' && !isResponsiveStacked ? gridStyle : undefined}
                                                             >
-                                                                {columnsBlocks.map((colBlocks, colIdx) => (
-                                                                    <ColumnCell
-                                                                        key={colIdx}
-                                                                        sectionId={section.id}
-                                                                        colIdx={colIdx}
-                                                                        blocks={colBlocks}
-                                                                        selectedBlockId={selectedBlockId}
-                                                                        onSelectBlock={onSelectBlock}
-                                                                        onSetTab={onSetTab}
-                                                                        onRemoveBlock={onRemoveBlock}
-                                                                        onMoveBlock={onMoveBlock}
-                                                                        onDuplicateBlock={onDuplicateBlock}
-                                                                        editCtx={editCtx}
-                                                                        editMode={editMode}
-                                                                        canvasMode={canvasMode}
-                                                                    />
-                                                                ))}
+                                                                <SortableContext
+                                                                    items={Array.from({ length: colsCount }, (_, cI) => `col-${section.id}-${cI}`)}
+                                                                    strategy={horizontalListSortingStrategy}
+                                                                >
+                                                                    {columnsBlocks.map((colBlocks, colIdx) => (
+                                                                        <ColumnCell
+                                                                            key={colIdx}
+                                                                            sectionId={section.id}
+                                                                            colIdx={colIdx}
+                                                                            blocks={colBlocks}
+                                                                            selectedBlockId={selectedBlockId}
+                                                                            onSelectBlock={onSelectBlock}
+                                                                            onSetTab={onSetTab}
+                                                                            onRemoveBlock={onRemoveBlock}
+                                                                            onMoveBlock={onMoveBlock}
+                                                                            onDuplicateBlock={onDuplicateBlock}
+                                                                            editCtx={editCtx}
+                                                                            editMode={editMode}
+                                                                            canvasMode={canvasMode}
+                                                                            totalColumns={colsCount}
+                                                                            onSwapColumns={onSwapColumns}
+                                                                            onEditSection={onEditSection}
+                                                                        />
+                                                                    ))}
+                                                                </SortableContext>
                                                             </div>
                                                         </div>
                                                     </div>
