@@ -104,6 +104,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         [builder.page?.settings.themeOverrides],
     );
 
+    const selectedColumnSection = React.useMemo(() => {
+        if (!builder.selectedColumnKey || !builder.version) return null;
+        const parts = builder.selectedColumnKey.split('-');
+        const sId = parts.slice(1, -1).join('-');
+        const colIdx = parseInt(parts[parts.length - 1], 10);
+        const section = builder.version.structureJson.sections.find(s => s.id === sId);
+        return section ? { section, colIdx } : null;
+    }, [builder.selectedColumnKey, builder.version]);
+
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
     const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
@@ -361,14 +370,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         ? version.structureJson.sections.find(s => s.id === builder.selectedSectionId) ?? null
         : null;
 
-    const selectedColumnSection = React.useMemo(() => {
-        if (!builder.selectedColumnKey || !version) return null;
-        const parts = builder.selectedColumnKey.split('-');
-        const sId = parts.slice(1, -1).join('-');
-        const colIdx = parseInt(parts[parts.length - 1], 10);
-        const section = version.structureJson.sections.find(s => s.id === sId);
-        return section ? { section, colIdx } : null;
-    }, [builder.selectedColumnKey, version]);
     // ─── Tab Definitions ─────────────────────────────────────────────
     const tabs: { id: BuilderTab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
         { id: 'add', icon: PlusSquare, label: 'Add' },
