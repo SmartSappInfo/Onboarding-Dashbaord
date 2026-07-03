@@ -405,7 +405,7 @@ export default function PublicPageClient({
 
             <main className="flex-1 w-full relative">
                 {USE_PAGE_BUILDER_V2 ? (
-                    <div className="container max-w-4xl mx-auto px-6 pt-32 pb-24 font-body">
+                    <div className="w-full pt-32 pb-24 font-body">
                         <PageRenderer
                             page={page}
                             version={{ ...version, structureJson: migrateLegacyStructure(parseStructure(version.structureJson)) }}
