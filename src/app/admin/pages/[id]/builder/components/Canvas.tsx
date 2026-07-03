@@ -308,6 +308,7 @@ function ColumnCell({
     sectionProps,
     selectedColumnKey,
     onSelectColumn,
+    activeDragId,
 }: {
     sectionId: string;
     colIdx: number;
@@ -324,6 +325,7 @@ function ColumnCell({
     sectionProps: Record<string, unknown>;
     selectedColumnKey?: string | null;
     onSelectColumn?: (key: string | null) => void;
+    activeDragId?: string | null;
 }) {
     const columnKey = `col-${sectionId}-${colIdx}`;
     const isColumnMode = editMode === 'columns';
@@ -452,11 +454,24 @@ function ColumnCell({
                 })}
             </SortableContext>
 
-            {blocks.length === 0 && !isPreview && (
-                <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
-                    <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
-                    <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
+            {isOver && activeDragId && !blockIds.includes(activeDragId) && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') && blocks.length > 0 && (
+                <div className="w-full py-2 bg-emerald-500/10 border border-dashed border-emerald-400 rounded-lg text-center text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider animate-pulse transition-all">
+                    Drop here...
                 </div>
+            )}
+
+            {blocks.length === 0 && !isPreview && (
+                isOver && activeDragId && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded-xl text-emerald-600 dark:text-emerald-400 select-none animate-pulse transition-all duration-300">
+                        <PlusSquare className="w-5 h-5 mb-1 text-emerald-500" />
+                        <p className="text-[10px] font-black uppercase tracking-wider">Drop here...</p>
+                    </div>
+                ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
+                        <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
+                        <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
+                    </div>
+                )
             )}
         </div>
     );
@@ -497,6 +512,16 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+    const activeBlock = React.useMemo(() => {
+        if (!activeDragId) return null;
+        if (activeDragId.startsWith('col-') || activeDragId.startsWith('section-') || !activeDragId.includes('-')) return null;
+        for (const sec of version.structureJson.sections) {
+            const b = sec.blocks.find(bk => bk.id === activeDragId);
+            if (b) return b;
+        }
+        return null;
+    }, [activeDragId, version.structureJson.sections]);
     const [panToolActive, setPanToolActive] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -1106,6 +1131,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                             sectionProps={sectionProps}
                                                                             selectedColumnKey={selectedColumnKey}
                                                                             onSelectColumn={onSelectColumn}
+                                                                            activeDragId={activeDragId}
                                                                         />
                                                                     ))}
                                                                 </SortableContext>
@@ -1138,16 +1164,51 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
                         <DragOverlay adjustScale={true}>
                             {activeDragId ? (
-                                <div className="opacity-80 bg-slate-900/90 border border-slate-700 rounded-xl shadow-2xl p-4 text-xs font-bold text-slate-100 flex items-center justify-center gap-2 select-none scale-95 border-dashed pointer-events-none">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                                    {activeDragId.startsWith('col-') ? (
-                                        <span>Moving Column {parseInt(activeDragId.split('-').pop() || '0', 10) + 1}</span>
-                                    ) : activeDragId.startsWith('section-') || !activeDragId.includes('-') ? (
-                                        <span>Moving Section</span>
-                                    ) : (
-                                        <span>Moving Component ({activeDragId.split('-')[0].toUpperCase()})</span>
-                                    )}
-                                </div>
+                                activeBlock ? (
+                                    <div className="opacity-75 bg-white dark:bg-slate-900 border border-emerald-500/50 shadow-2xl rounded-xl p-4 pointer-events-none scale-95 origin-center transition-transform max-w-sm overflow-hidden select-none">
+                                        <div className="text-[8px] font-black uppercase text-emerald-500 tracking-widest mb-2 flex items-center gap-1.5">
+                                            <PlusSquare className="w-3.5 h-3.5" />
+                                            Dragging component ({activeBlock.type})
+                                        </div>
+                                        <div className="pointer-events-none">
+                                            <BlockRenderer block={activeBlock} ctx={editCtx(activeBlock.id)} />
+                                        </div>
+                                    </div>
+                                ) : activeDragId.startsWith('col-') ? (
+                                    (() => {
+                                        const activeParts = activeDragId.split('-');
+                                        const colSecId = activeParts.slice(1, -1).join('-');
+                                        const colIdx = parseInt(activeParts[activeParts.length - 1], 10);
+                                        const colSec = version.structureJson.sections.find(s => s.id === colSecId);
+                                        const colBlocks = colSec ? colSec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === colIdx) : [];
+                                        return (
+                                            <div className="opacity-75 bg-slate-900/90 border-2 border-dashed border-emerald-500 rounded-xl p-4 shadow-2xl pointer-events-none max-w-xs text-left">
+                                                <div className="text-[8px] font-black uppercase text-emerald-400 mb-2">Column {colIdx + 1}</div>
+                                                <div className="flex flex-col gap-2">
+                                                    {colBlocks.map(block => (
+                                                        <div key={block.id} className="p-2 bg-slate-800/80 border border-slate-700 rounded-lg text-[10px] text-slate-300 font-bold uppercase truncate">
+                                                            {block.type}
+                                                        </div>
+                                                    ))}
+                                                    {colBlocks.length === 0 && (
+                                                        <div className="text-[9px] text-slate-500 italic">Empty Column</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                ) : (
+                                    (() => {
+                                        const activeSection = version.structureJson.sections.find(s => s.id === activeDragId);
+                                        return (
+                                            <div className="opacity-75 bg-slate-900 border-2 border-dashed border-emerald-500 rounded-xl p-6 shadow-2xl pointer-events-none max-w-md text-left text-white">
+                                                <div className="text-[10px] font-black uppercase text-emerald-400 tracking-wider mb-1">Dragging Section</div>
+                                                <div className="text-xs font-bold text-slate-200 uppercase tracking-widest">{activeSection?.id || 'Section'}</div>
+                                                <div className="text-[9px] text-slate-400 mt-1">({activeSection?.blocks.length || 0} blocks)</div>
+                                            </div>
+                                        );
+                                    })()
+                                )
                             ) : null}
                         </DragOverlay>
                     </DndContext>
