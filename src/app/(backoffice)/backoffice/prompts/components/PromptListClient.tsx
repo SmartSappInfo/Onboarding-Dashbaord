@@ -8,10 +8,12 @@ import {
   Pencil,
   Bot,
   Terminal,
-  Bookmark
+  Bookmark,
+  RefreshCw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { seedPromptsAction } from '@/app/actions/seed-prompts-action';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -101,6 +103,35 @@ export default function PromptListClient() {
   const [editingPrompt, setEditingPrompt] = React.useState<GlobalPrompt | null>(null);
   const [form, setForm] = React.useState<PromptFormState>(defaultForm);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isSeeding, setIsSeeding] = React.useState(false);
+
+  const handleSeedDefaults = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedPromptsAction();
+      if (result.success) {
+        toast({
+          title: 'Default Prompts Seeded! 🎉',
+          description: `Successfully seeded ${result.seededCount} prompts across global library and tenant overrides.`,
+        });
+        loadPrompts();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to seed default prompts.',
+          description: result.error,
+        });
+      }
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error during seeding.',
+        description: e.message,
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   React.useEffect(() => {
     loadPrompts();
@@ -202,11 +233,24 @@ export default function PromptListClient() {
             Configure system-wide AI prompt templates for all subscribed organizations.
           </p>
         </div>
-        {can('templates', 'create') && (
-          <Button onClick={handleOpenCreate} className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4">
-            <Plus className="h-4 w-4 mr-2" /> New Prompt
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {can('templates', 'create') && (
+            <Button
+              onClick={handleSeedDefaults}
+              disabled={isSeeding}
+              variant="outline"
+              className="border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-xl h-10 px-4"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isSeeding ? 'animate-spin' : ''}`} />
+              Seed Defaults
+            </Button>
+          )}
+          {can('templates', 'create') && (
+            <Button onClick={handleOpenCreate} className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4">
+              <Plus className="h-4 w-4 mr-2" /> New Prompt
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

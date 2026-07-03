@@ -14,10 +14,13 @@ vi.mock('../firebase-admin', () => {
   const docCollection = vi.fn(() => ({ where }));
   const doc = vi.fn(() => ({ get: docGet, collection: docCollection }));
   const collection = vi.fn(() => ({ where, doc }));
+  const commit = vi.fn();
+  const set = vi.fn();
+  const batch = vi.fn(() => ({ set, commit }));
 
   return {
-    adminDb: { collection },
-    __mocks: { get, limit, where, doc, docGet, collection, docCollection },
+    adminDb: { collection, batch },
+    __mocks: { get, limit, where, doc, docGet, collection, docCollection, batch, set, commit },
   };
 });
 
@@ -29,6 +32,9 @@ interface FirestoreMock {
   doc: ReturnType<typeof vi.fn>;
   docGet: ReturnType<typeof vi.fn>;
   collection: ReturnType<typeof vi.fn>;
+  batch: ReturnType<typeof vi.fn>;
+  set: ReturnType<typeof vi.fn>;
+  commit: ReturnType<typeof vi.fn>;
 }
 const getMocks = (): FirestoreMock => (firebaseAdmin as unknown as { __mocks: FirestoreMock }).__mocks;
 
@@ -165,4 +171,25 @@ describe('saveTenantOverride validations', () => {
     expect(result.error).toContain('Invalid template placeholders');
   });
 });
+
+import { seedDefaultPrompts } from '../seed-prompts';
+
+describe('seedDefaultPrompts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('successfully seeds baseline global prompts and multi-tenant industry overrides', async () => {
+    const mocks = getMocks();
+    mocks.commit.mockResolvedValueOnce(undefined);
+
+    const result = await seedDefaultPrompts();
+    expect(result.success).toBe(true);
+    expect(result.seededCount).toBe(10); // 3 global prompts + 7 overrides
+    expect(mocks.batch).toHaveBeenCalled();
+    expect(mocks.set).toHaveBeenCalledTimes(10);
+    expect(mocks.commit).toHaveBeenCalled();
+  });
+});
+
 
