@@ -230,7 +230,7 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.35 : 1,
     };
 
     const isPreview = canvasMode === 'preview';
@@ -250,7 +250,7 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                     : "p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl relative hover:border-slate-500/60 hover:bg-slate-750/5 transition-all group/block",
                 !isPreview && "cursor-pointer",
                 selected && !isPreview && "ring-2 ring-blue-500/80 border-solid border-blue-500/50 bg-blue-500/5",
-                isDragging && "z-50 shadow-2xl bg-slate-800/80"
+                isDragging && "blur-[1px] pointer-events-none select-none"
             )}
         >
             {/* Selected Block Info Tag */}
@@ -455,16 +455,17 @@ function ColumnCell({
             </SortableContext>
 
             {isOver && activeDragId && !blockIds.includes(activeDragId) && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') && blocks.length > 0 && (
-                <div className="w-full py-2 bg-emerald-500/10 border border-dashed border-emerald-400 rounded-lg text-center text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider animate-pulse transition-all">
-                    Drop here...
+                <div className="w-full py-3 bg-emerald-500/10 border border-dashed border-emerald-500 rounded-lg text-center text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.1)] animate-pulse transition-all">
+                    Drop here to place component
                 </div>
             )}
 
             {blocks.length === 0 && !isPreview && (
                 isOver && activeDragId && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded-xl text-emerald-600 dark:text-emerald-400 select-none animate-pulse transition-all duration-300">
-                        <PlusSquare className="w-5 h-5 mb-1 text-emerald-500" />
-                        <p className="text-[10px] font-black uppercase tracking-wider">Drop here...</p>
+                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded-xl text-emerald-600 dark:text-emerald-400 select-none shadow-[0_0_20px_rgba(16,185,129,0.15)] scale-[1.01] animate-pulse transition-all duration-200">
+                        <PlusSquare className="w-6 h-6 mb-2 text-emerald-500" />
+                        <p className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Drop Here</p>
+                        <p className="text-[10px] text-emerald-500/80 mt-1">Release to place component</p>
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
@@ -1165,14 +1166,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                         <DragOverlay adjustScale={true}>
                             {activeDragId ? (
                                 activeBlock ? (
-                                    <div className="opacity-75 bg-white dark:bg-slate-900 border border-emerald-500/50 shadow-2xl rounded-xl p-4 pointer-events-none scale-95 origin-center transition-transform max-w-sm overflow-hidden select-none">
-                                        <div className="text-[8px] font-black uppercase text-emerald-500 tracking-widest mb-2 flex items-center gap-1.5">
-                                            <PlusSquare className="w-3.5 h-3.5" />
-                                            Dragging component ({activeBlock.type})
-                                        </div>
-                                        <div className="pointer-events-none">
-                                            <BlockRenderer block={activeBlock} ctx={editCtx(activeBlock.id)} />
-                                        </div>
+                                    <div className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-xl overflow-hidden">
+                                        <BlockRenderer block={activeBlock} ctx={editCtx(activeBlock.id)} />
                                     </div>
                                 ) : activeDragId.startsWith('col-') ? (
                                     (() => {
