@@ -12,13 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, X, Settings2, Upload, Loader2 } from 'lucide-react';
+import { PlusCircle, X, Settings2, Upload, Loader2, FolderHeart } from 'lucide-react';
 import { getBlock } from '@/lib/page-builder/registry';
 import type { BlockField } from '@/lib/page-builder/fields';
 import { genId } from '@/lib/page-builder/tree-operations';
 import { uploadPageImage } from '@/lib/page-builder/upload';
 import type { BuilderResources, PageBlock } from '@/lib/types';
 import TipTapEditor from '@/app/admin/pages/[id]/builder/components/TipTapEditor';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
@@ -40,6 +41,7 @@ function ImageField({ label, value, workspaceId, onChange }: {
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const handleFile = async (file: File) => {
     if (!workspaceId) return;
@@ -62,19 +64,68 @@ function ImageField({ label, value, workspaceId, onChange }: {
           </div>
         ) : null}
       </div>
+      <div className="flex gap-2 flex-wrap">
+        {workspaceId ? (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
+            />
+            <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
+              {uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+              {uploading ? 'Uploading…' : 'Upload image'}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
+              <FolderHeart className="w-3 h-3 mr-1" />
+              Select from Gallery
+            </Button>
+            <MediaSelectorDialog
+              open={libraryOpen}
+              onOpenChange={setLibraryOpen}
+              onSelectAsset={(asset) => {
+                onChange(asset.url);
+                setLibraryOpen(false);
+              }}
+              filterType="image"
+              workspaceId={workspaceId}
+            />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function UrlField({ label, value, placeholder, workspaceId, onChange }: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  workspaceId?: string;
+  onChange: (value: string) => void;
+}) {
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <Input aria-label={label} value={value} placeholder={placeholder || "https://..."} onChange={(e) => onChange(e.target.value)} className={INPUT_CLASS} />
       {workspaceId ? (
         <>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
-          />
-          <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
-            {uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
-            {uploading ? 'Uploading…' : 'Upload image'}
+          <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
+            <FolderHeart className="w-3 h-3 mr-1" />
+            Select from Gallery
           </Button>
+          <MediaSelectorDialog
+            open={libraryOpen}
+            onOpenChange={setLibraryOpen}
+            onSelectAsset={(asset) => {
+              onChange(asset.url);
+              setLibraryOpen(false);
+            }}
+            workspaceId={workspaceId}
+          />
         </>
       ) : null}
     </div>
@@ -92,9 +143,12 @@ interface FieldControlProps {
 export function FieldControl({ field, value, resources, workspaceId, onChange }: FieldControlProps) {
   switch (field.kind) {
     case 'text':
-    case 'url':
       return (
         <Input aria-label={field.label} value={asString(value)} placeholder={field.placeholder} onChange={(e) => onChange(e.target.value)} className={INPUT_CLASS} />
+      );
+    case 'url':
+      return (
+        <UrlField label={field.label} value={asString(value)} placeholder={field.placeholder} workspaceId={workspaceId} onChange={(v) => onChange(v)} />
       );
     case 'textarea':
       return (
