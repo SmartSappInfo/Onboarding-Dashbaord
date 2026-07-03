@@ -465,19 +465,30 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         };
     }, []);
 
-    // Scroll Wheel Zoom and Pan
-    const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const delta = -e.deltaY * 0.005;
-            setZoom(prev => Math.min(Math.max(0.3, prev + delta), 2.0));
-        } else {
-            setPanOffset(prev => ({
-                x: prev.x - e.deltaX * 0.8,
-                y: prev.y - e.deltaY * 0.8,
-            }));
-        }
-    };
+    // Scroll Wheel Zoom and Pan (Native listener to allow e.preventDefault() on passive Chrome listeners)
+    useEffect(() => {
+        const workspace = workspaceRef.current;
+        if (!workspace) return;
+
+        const handleNativeWheel = (e: WheelEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                const delta = -e.deltaY * 0.005;
+                setZoom(prev => Math.min(Math.max(0.3, prev + delta), 2.0));
+            } else {
+                e.preventDefault();
+                setPanOffset(prev => ({
+                    x: prev.x - e.deltaX * 0.8,
+                    y: prev.y - e.deltaY * 0.8,
+                }));
+            }
+        };
+
+        workspace.addEventListener('wheel', handleNativeWheel, { passive: false });
+        return () => {
+            workspace.removeEventListener('wheel', handleNativeWheel);
+        };
+    }, []);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         const isMiddleClick = e.button === 1;
@@ -732,7 +743,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     return (
         <main 
             ref={workspaceRef}
-            onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}

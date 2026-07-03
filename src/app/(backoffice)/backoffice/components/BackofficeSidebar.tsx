@@ -56,6 +56,7 @@ const platformNavItems: NavItem[] = [
 const controlNavItems: NavItem[] = [
   { href: '/backoffice/features', icon: ToggleRight, label: 'Features & Rollouts', module: 'features' },
   { href: '/backoffice/templates', icon: FileStack, label: 'Templates', module: 'templates' },
+  { href: '/backoffice/prompts', icon: Sparkles, label: 'Global Prompts', module: 'templates' },
   { href: '/backoffice/messaging/blueprints', icon: MessageSquare, label: 'System Blueprints', module: 'templates' },
   { href: '/backoffice/messaging/styles', icon: Palette, label: 'Global Styles', module: 'templates' },
   { href: '/backoffice/integrations', icon: MessageSquare, label: 'WhatsApp Registry', module: 'templates' },

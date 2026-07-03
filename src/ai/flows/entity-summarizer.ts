@@ -1,6 +1,7 @@
-import { ai } from '../genkit';
+import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
 import { EntityNote } from '@/lib/types';
+import { resolveAndCompilePrompt } from '@/lib/pms-resolver';
 
 export const entitySummarySchema = z.object({
   executiveSummary: z.string().describe('A 2-sentence high-level overview of the entity status'),
@@ -14,13 +15,20 @@ export const summarizeEntityNotesFlow = ai.defineFlow(
   {
     name: 'summarizeEntityNotesFlow',
     inputSchema: z.object({
-      notes: z.array(z.any()),
+      notes: z.array(z.object({
+        createdAt: z.string(),
+        createdByName: z.string().optional(),
+        noteType: z.string().optional(),
+        content: z.string()
+      })),
       entityName: z.string().optional(),
+      workspaceId: z.string().optional(),
+      organizationId: z.string().optional(),
     }),
     outputSchema: entitySummarySchema,
   },
   async (input) => {
-    const { notes, entityName } = input;
+    const { notes, entityName, workspaceId = '', organizationId = '' } = input;
     
     if (notes.length === 0) {
       return {
@@ -33,18 +41,38 @@ export const summarizeEntityNotesFlow = ai.defineFlow(
     }
 
     const notesContext = notes
-      .map((n: EntityNote) => `[${n.createdAt}] ${n.createdByName} (${n.noteType}): ${n.content}`)
+      .map((n: { createdAt: string; createdByName?: string; noteType?: string; content: string }) => 
+        `[${n.createdAt}] ${n.createdByName || 'Unknown'} (${n.noteType || 'general'}): ${n.content}`
+      )
       .join('\n');
 
-    const { output } = await ai.generate({
-      prompt: `
-        You are an expert CRM analyst. Summarize the following interaction history for an entity named "${entityName || 'the client'}".
-        
-        Notes History:
-        ${notesContext}
-        
-        Provide a concise, professional executive briefing.
-      `,
+    // Dynamically resolve prompt via PMS
+    const resolved = await resolveAndCompilePrompt(
+      'summarizeEntityNotesFlow',
+      organizationId,
+      workspaceId,
+      {
+        entityName: entityName || 'the client',
+        notesContext
+      }
+    );
+
+    const fullModelString = resolved.aiModels?.[0] || 'googleai/gemini-2.0-flash';
+    const [provider, ...rest] = fullModelString.split('/');
+    const modelId = rest.join('/');
+
+    const { modelString, customAi } = await getModel({
+      organizationId,
+      provider,
+      modelId
+    });
+
+    const activeAi = customAi || ai;
+
+    const { output } = await activeAi.generate({
+      model: modelString,
+      system: resolved.systemInstructions,
+      prompt: resolved.userPrompt,
       output: { schema: entitySummarySchema }
     });
 

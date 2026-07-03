@@ -35,15 +35,23 @@ export async function logNoteActivity(
 /**
  * Generates an AI summary for an entity based on its notes history.
  */
-export async function getEntityAiSummary(notes: EntityNote[], entityName?: string) {
+export async function getEntityAiSummary(
+    notes: EntityNote[], 
+    entityName?: string,
+    workspaceId?: string,
+    organizationId?: string
+) {
     try {
         const result = await summarizeEntityNotesFlow({ 
             notes: notes.slice(0, 50), // Limit to recent 50 notes for context window efficiency
-            entityName 
+            entityName,
+            workspaceId,
+            organizationId
         });
         return { success: true, summary: result };
-    } catch (error: any) {
-        console.error('AI Summary Error:', error);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('AI Summary Error:', msg);
+        return { success: false, error: msg };
     }
 }

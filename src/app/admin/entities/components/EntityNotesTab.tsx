@@ -16,7 +16,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
 import { logNoteActivity, getEntityAiSummary } from '@/lib/note-actions';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info, Settings2 } from 'lucide-react';
+import PromptSettingsSheet from '@/app/admin/components/PromptSettingsSheet';
 
 interface EntityNotesTabProps {
     entityId: string;
@@ -51,6 +52,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     const [aiSummary, setAiSummary] = React.useState<any>(null);
+    const [promptSettingsOpen, setPromptSettingsOpen] = React.useState(false);
 
     const noteTypes = [
         { id: 'general', label: 'General', icon: MessageSquare, color: 'text-muted-foreground bg-muted/50' },
@@ -190,7 +192,12 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
         if (!notes || notes.length === 0) return;
         setIsGeneratingSummary(true);
         try {
-            const result = await getEntityAiSummary(notes);
+            const result = await getEntityAiSummary(
+                notes,
+                undefined, // entityName will fallback inside flow
+                activeWorkspaceId,
+                activeOrganizationId
+            );
             if (result.success) {
                 setAiSummary(result.summary);
                 toast({ title: 'AI Brief generated' });
@@ -351,16 +358,28 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                 <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-black opacity-50">Experimental • Gemini 2.0 Flash</p>
                             </div>
                         </div>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="rounded-xl h-8 bg-background/50 border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/10 gap-2 font-bold transition-all"
-                            onClick={handleGenerateAiBrief}
-                            disabled={isGeneratingSummary}
-                        >
-                            {isGeneratingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                            {aiSummary ? 'Refresh Brief' : 'Generate Brief'}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="rounded-xl h-8 bg-background/50 border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/10 gap-2 font-bold transition-all"
+                                onClick={handleGenerateAiBrief}
+                                disabled={isGeneratingSummary}
+                            >
+                                {isGeneratingSummary ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                {aiSummary ? 'Refresh Brief' : 'Generate Brief'}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-indigo-500 hover:bg-indigo-500/10 rounded-xl"
+                                onClick={() => setPromptSettingsOpen(true)}
+                                title="Configure Prompt Overrides"
+                            >
+                                <Settings2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+
                     </div>
 
                     {!aiSummary && !isGeneratingSummary && (
@@ -615,6 +634,16 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                     </div>
                 )}
             </div>
+
+            {activeOrganizationId && (
+                <PromptSettingsSheet
+                    open={promptSettingsOpen}
+                    onOpenChange={setPromptSettingsOpen}
+                    flowName="summarizeEntityNotesFlow"
+                    organizationId={activeOrganizationId}
+                    workspaceId={activeWorkspaceId || ''}
+                />
+            )}
         </div>
     );
 }
