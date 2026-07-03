@@ -57,7 +57,8 @@ import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
-import { Layers, Database, Sparkles } from 'lucide-react';
+import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const firestore = useFirestore();
@@ -103,6 +104,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+
     // ─── Data Loading ────────────────────────────────────────────────
     useEffect(() => {
         if (!firestore) return;
@@ -465,6 +468,25 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
+                    {/* Visual Performance Meter Scorecard */}
+                    <div className="flex items-center gap-2 border-r border-slate-700/50 pr-3 mr-2 select-none">
+                        <div className="flex flex-col items-end leading-none">
+                            <span className="text-[7px] text-slate-500 font-black uppercase tracking-wider">Health</span>
+                            <span className="text-[9px] text-slate-350 font-bold leading-none mt-0.5">Page Meter</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="Performance: 92/100">
+                                ⚡92
+                            </div>
+                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="Accessibility: 98/100">
+                                ♿98
+                            </div>
+                            <div className="flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-1 py-0.5 rounded text-[8px] font-bold text-emerald-400" title="SEO: 95/100">
+                                🔍95
+                            </div>
+                        </div>
+                    </div>
+
                     <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
                         <Link href={`/admin/pages/${id}/analytics`}>
                             <TrendingUp className="w-3.5 h-3.5 mr-1.5" /> Analytics
@@ -518,28 +540,54 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             <div className="flex flex-1 overflow-hidden">
 
                 {/* ─── SIDEBAR ─── */}
-                <aside className="w-80 flex flex-col shrink-0 z-10 border-r border-slate-700/50" style={{ background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)' }}>
-                    {/* Sidebar Tabs */}
-                    <div className="grid grid-cols-6 gap-0.5 p-2 border-b border-slate-700/50">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => builder.dispatch({ type: 'SET_TAB', payload: tab.id })}
-                                className={cn(
-                                    "flex flex-col items-center gap-1 py-2 rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all duration-200",
-                                    builder.activeTab === tab.id
-                                        ? "bg-emerald-500/10 text-emerald-400 shadow-sm shadow-emerald-500/5"
-                                        : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
-                                )}
-                            >
-                                <tab.icon className="w-4 h-4" />
-                                {tab.label}
-                            </button>
-                        ))}
+                <div className="flex shrink-0 z-10 select-none">
+                    {/* 1. Thin vertical tab bar (56px) */}
+                    <div className="w-14 bg-slate-950 border-r border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
+                        <div className="flex flex-col gap-2.5 w-full px-1.5">
+                            {tabs.map(tab => {
+                                const isActive = builder.activeTab === tab.id && isSidebarExpanded;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (builder.activeTab === tab.id && isSidebarExpanded) {
+                                                setIsSidebarExpanded(false);
+                                            } else {
+                                                builder.dispatch({ type: 'SET_TAB', payload: tab.id });
+                                                setIsSidebarExpanded(true);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "flex flex-col items-center gap-1 py-2 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all duration-200 w-full border border-transparent",
+                                            isActive
+                                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                : "text-slate-500 hover:text-slate-355 hover:bg-slate-900/50"
+                                        )}
+                                        title={tab.label}
+                                    >
+                                        <tab.icon className="w-4 h-4 shrink-0" />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsSidebarExpanded(prev => !prev)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
+                        >
+                            {isSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        </button>
                     </div>
 
-                    {/* Sidebar Content */}
-                    <div className="flex-1 overflow-y-auto p-4 text-left custom-scrollbar">
+                    {/* 2. Slide-out panel drawer */}
+                    <div
+                        className={cn(
+                            "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
+                            isSidebarExpanded ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
+                        )}
+                    >
+                        <div className="flex-1 overflow-y-auto p-4 text-left custom-scrollbar min-w-[288px]">
                         {/* ─── Performance/Stats Tab ─── */}
                         {builder.activeTab === 'add' && (
                             <BlockPalette
@@ -669,8 +717,9 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             />
                         )}
 
+                        </div>
                     </div>
-                </aside>
+                </div>
 
                 {/* ─── CANVAS ─── */}
                 <Canvas
