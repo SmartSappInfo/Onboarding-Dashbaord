@@ -36,7 +36,8 @@
     "migrate:schools": "tsx scripts/migrate-schools-to-entities.ts",
     "migrate:cleanup-logs": "tsx scripts/cleanup-migration-logs.ts",
     "fix:org-admin-perms": "tsx scripts/fix-org-admin-permissions.ts",
-    "backfill:note-index": "tsx scripts/backfill-note-index.ts"
+    "backfill:note-index": "tsx scripts/backfill-note-index.ts",
+    "migrate:media-categories": "tsx scripts/migrate-media-categories.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
