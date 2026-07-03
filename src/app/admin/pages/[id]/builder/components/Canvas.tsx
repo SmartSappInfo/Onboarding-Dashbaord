@@ -1218,15 +1218,15 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 </Button>
 
                 <Button
-                    onClick={() => setCommentsMode(prev => {
-                        const next = !prev;
+                    onClick={() => {
+                        const next = !commentsMode;
+                        setCommentsMode(next);
                         setNewCommentPos(null);
                         toast({
                             title: next ? "Comment Mode Activated 💬" : "Pointer Select Restored 🖱️",
                             description: next ? "Click anywhere on the canvas to place review annotation comment pins." : "Normal click select actions restored.",
                         });
-                        return next;
-                    })}
+                    }}
                     className={cn(
                         "h-8 w-8 p-0 rounded-lg transition-colors border-0",
                         commentsMode 
@@ -1238,7 +1238,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 >
                     <MessageSquare className="h-4 w-4" />
                 </Button>
-
                 <div className="h-4 w-[1px] bg-slate-800" />
 
                 <Button
