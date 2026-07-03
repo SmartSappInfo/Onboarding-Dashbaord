@@ -1733,6 +1733,13 @@ export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
   },
 ];
 
+export interface MediaCategory {
+  id: string;
+  name: string;
+  workspaceId: string;
+  createdAt: string;
+}
+
 export interface MediaAsset {
   id: string;
   name: string;
@@ -1749,6 +1756,7 @@ export interface MediaAsset {
   linkTitle?: string;
   linkDescription?: string;
   previewImageUrl?: string;
+  category?: string;
 }
 
 export interface SurveyEntityDefaults {
