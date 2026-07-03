@@ -27,16 +27,14 @@ interface CategoryConfig {
     icon: React.ComponentType<{ className?: string }>;
     description: string;
 }
-
 const CATEGORIES: CategoryConfig[] = [
     { id: 'basic', label: 'Basic Components', icon: Box, description: 'Fundamental design elements' },
+    { id: 'marketing', label: 'Marketing Sections', icon: Megaphone, description: 'Conversion & campaign layouts' },
     { id: 'forms', label: 'Form Elements', icon: FileText, description: 'Inputs, verification and fields' },
     { id: 'smartsapp', label: 'SmartSapp Components', icon: GraduationCap, description: 'African school & billing modules' },
-    { id: 'marketing', label: 'Marketing Sections', icon: Megaphone, description: 'Conversion & campaign layouts' },
     { id: 'ai', label: 'AI Intelligence', icon: Sparkles, description: 'Smart assistant prompt panels' },
     { id: 'advanced', label: 'Advanced Layouts', icon: Layers, description: 'Complex widgets & layouts' },
 ];
-
 interface LibraryItem {
     type: string;
     label: string;
