@@ -263,6 +263,9 @@ export function useBuilderState() {
         updateStructure(s => tree.addSection(s, template));
     }, [updateStructure]);
 
+    const insertSection = useCallback((index: number, template?: { structure: PageSection }) => {
+        updateStructure(s => tree.insertSection(s, index, template));
+    }, [updateStructure]);
     const removeSection = useCallback((sectionId: string) => {
         updateStructure(s => tree.removeSection(s, sectionId));
     }, [updateStructure]);
@@ -401,6 +404,7 @@ export function useBuilderState() {
 
         // Sections
         addSection,
+        insertSection,
         removeSection,
         moveSection,
         updateSectionProps,

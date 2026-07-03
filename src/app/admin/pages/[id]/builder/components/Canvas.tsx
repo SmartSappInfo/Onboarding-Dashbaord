@@ -28,6 +28,7 @@ import {
     ArrowDown,
     FolderHeart,
     PlusSquare,
+    Plus,
     Copy,
     SlidersHorizontal,
     ZoomIn,
@@ -68,8 +69,10 @@ interface CanvasProps {
     onDuplicateBlock: (blockId: string) => void;
     onRemoveSection: (sectionId: string) => void;
     onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
+    onInsertSection?: (index: number) => void;
     onEditSection: (sectionId: string) => void;
     onSaveSectionAsTemplate: (section: PageSection) => void;
+
     onReorderSections: (from: number, to: number) => void;
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
     onMoveBlockToColumn: (blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => void;
@@ -181,7 +184,27 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     );
 }
 
-// ─── Sortable Block Wrapper ──────────────────────────────────────────────
+interface SectionInserterLineProps {
+    onClick: () => void;
+}
+
+function SectionInserterLine({ onClick }: SectionInserterLineProps) {
+    return (
+        <div className="group/inserter h-4 -my-2 relative flex items-center justify-center z-35 select-none cursor-pointer">
+            <div className="absolute inset-x-0 h-[1.5px] bg-slate-200/0 group-hover/inserter:bg-emerald-500/30 transition-colors" />
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
+                className="scale-0 group-hover/inserter:scale-100 flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg transition-all active:scale-[0.96] z-40 border-0 cursor-pointer"
+            >
+                <Plus className="w-2.5 h-2.5" /> Add Section
+            </button>
+        </div>
+    );
+}
 function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode }: {
     block: PageBlock;
     bIdx: number;
@@ -361,8 +384,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onDuplicateBlock,
     onRemoveSection,
     onMoveSection,
+    onInsertSection,
     onEditSection,
     onSaveSectionAsTemplate,
+
     onReorderSections,
     onMoveBlockToColumn,
     canvasMode,
@@ -1017,77 +1042,92 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         }
 
                                         return (
-                                            <SortableSection
-                                                key={section.id}
-                                                section={section}
-                                                idx={idx}
-                                                total={version.structureJson.sections.length}
-                                                onRemove={() => onRemoveSection(section.id)}
-                                                onMove={(dir) => onMoveSection(section.id, dir)}
-                                                onSave={() => onSaveSectionAsTemplate(section)}
-                                                onEdit={() => onEditSection(section.id)}
-                                                editMode={editMode}
-                                                canvasMode={canvasMode}
-                                            >
-                                                {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
-                                                    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                                                        <video
-                                                            src={sectionProps.backgroundVideoUrl}
-                                                            autoPlay
-                                                            loop
-                                                            muted
-                                                            playsInline
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-
-                                                {overlayOp > 0 && (
-                                                    <div
-                                                        className="absolute inset-0 pointer-events-none z-10"
-                                                        style={{
-                                                            backgroundColor: overlayCol,
-                                                            opacity: overlayOp,
+                                            <React.Fragment key={section.id}>
+                                                {idx === 0 && (
+                                                    <SectionInserterLine
+                                                        onClick={() => {
+                                                            onInsertSection?.(0);
+                                                            onSetTab('add');
                                                         }}
                                                     />
                                                 )}
+                                                <SortableSection
+                                                    section={section}
+                                                    idx={idx}
+                                                    total={version.structureJson.sections.length}
+                                                    onRemove={() => onRemoveSection(section.id)}
+                                                    onMove={(dir) => onMoveSection(section.id, dir)}
+                                                    onSave={() => onSaveSectionAsTemplate(section)}
+                                                    onEdit={() => onEditSection(section.id)}
+                                                    editMode={editMode}
+                                                    canvasMode={canvasMode}
+                                                >
+                                                    {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
+                                                        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                                                            <video
+                                                                src={sectionProps.backgroundVideoUrl}
+                                                                autoPlay
+                                                                loop
+                                                                muted
+                                                                playsInline
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    )}
 
-                                                <div style={sectionStyle} className="w-full">
-                                                    <div className="max-w-4xl mx-auto relative z-20">
-                                                        {sectionProps.heading && (
-                                                            <h2
-                                                                className="text-2xl font-bold tracking-tight mb-8 text-slate-900"
-                                                                style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
-                                                            >
-                                                                {sectionProps.heading}
-                                                            </h2>
-                                                        )}
-
+                                                    {overlayOp > 0 && (
                                                         <div
-                                                            className={cn("w-full grid relative z-20", colGapClass, alignClass)}
-                                                            style={layout !== '1-col' ? gridStyle : undefined}
-                                                        >
-                                                            {columnsBlocks.map((colBlocks, colIdx) => (
-                                                                <ColumnCell
-                                                                    key={colIdx}
-                                                                    sectionId={section.id}
-                                                                    colIdx={colIdx}
-                                                                    blocks={colBlocks}
-                                                                    selectedBlockId={selectedBlockId}
-                                                                    onSelectBlock={onSelectBlock}
-                                                                    onSetTab={onSetTab}
-                                                                    onRemoveBlock={onRemoveBlock}
-                                                                    onMoveBlock={onMoveBlock}
-                                                                    onDuplicateBlock={onDuplicateBlock}
-                                                                    editCtx={editCtx}
-                                                                    editMode={editMode}
-                                                                    canvasMode={canvasMode}
-                                                                />
-                                                            ))}
+                                                            className="absolute inset-0 pointer-events-none z-10"
+                                                            style={{
+                                                                backgroundColor: overlayCol,
+                                                                opacity: overlayOp,
+                                                            }}
+                                                        />
+                                                    )}
+
+                                                    <div style={sectionStyle} className="w-full">
+                                                        <div className="max-w-4xl mx-auto relative z-20">
+                                                            {sectionProps.heading && (
+                                                                <h2
+                                                                    className="text-2xl font-bold tracking-tight mb-8 text-slate-900"
+                                                                    style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
+                                                                >
+                                                                    {sectionProps.heading}
+                                                                </h2>
+                                                            )}
+
+                                                            <div
+                                                                className={cn("w-full grid relative z-20", colGapClass, alignClass)}
+                                                                style={layout !== '1-col' ? gridStyle : undefined}
+                                                            >
+                                                                {columnsBlocks.map((colBlocks, colIdx) => (
+                                                                    <ColumnCell
+                                                                        key={colIdx}
+                                                                        sectionId={section.id}
+                                                                        colIdx={colIdx}
+                                                                        blocks={colBlocks}
+                                                                        selectedBlockId={selectedBlockId}
+                                                                        onSelectBlock={onSelectBlock}
+                                                                        onSetTab={onSetTab}
+                                                                        onRemoveBlock={onRemoveBlock}
+                                                                        onMoveBlock={onMoveBlock}
+                                                                        onDuplicateBlock={onDuplicateBlock}
+                                                                        editCtx={editCtx}
+                                                                        editMode={editMode}
+                                                                        canvasMode={canvasMode}
+                                                                    />
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </SortableSection>
+                                                </SortableSection>
+                                                <SectionInserterLine
+                                                    onClick={() => {
+                                                        onInsertSection?.(idx + 1);
+                                                        onSetTab('add');
+                                                    }}
+                                                />
+                                            </React.Fragment>
                                         );
                                     })
                                 ) : (

@@ -738,6 +738,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onDuplicateBlock={builder.duplicateBlock}
                     onRemoveSection={builder.removeSection}
                     onMoveSection={builder.moveSection}
+                    onInsertSection={builder.insertSection}
                     onEditSection={(id) => {
                         builder.dispatch({ type: 'SELECT_SECTION', payload: id });
                         builder.dispatch({ type: 'SELECT_BLOCK', payload: null });

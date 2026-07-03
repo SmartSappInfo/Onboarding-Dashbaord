@@ -85,6 +85,15 @@ export function addSection(
   return { ...structure, sections: [...structure.sections, createSection(template)] };
 }
 
+export function insertSection(
+  structure: CampaignPageStructure,
+  index: number,
+  template?: { structure: PageSection },
+): CampaignPageStructure {
+  const sections = [...structure.sections];
+  sections.splice(index, 0, createSection(template));
+  return { ...structure, sections };
+}
 export function removeSection(
   structure: CampaignPageStructure,
   sectionId: string,
