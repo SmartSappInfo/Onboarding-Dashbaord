@@ -45,7 +45,7 @@ interface BuilderState {
     editMode: 'columns' | 'components';
 }
 
-export type BuilderTab = 'add' | 'layers' | 'variables' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'history';
+export type BuilderTab = 'add' | 'layers' | 'variables' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'history' | 'ai';
 
 type BuilderAction =
     | { type: 'SET_PAGE'; payload: CampaignPage }

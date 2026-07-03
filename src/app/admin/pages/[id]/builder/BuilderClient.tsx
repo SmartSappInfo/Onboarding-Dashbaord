@@ -56,8 +56,8 @@ import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { Layers, Database } from 'lucide-react';
-
+import { AiCopilotPanel } from './components/AiCopilotPanel';
+import { Layers, Database, Sparkles } from 'lucide-react';
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const firestore = useFirestore();
@@ -341,6 +341,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         { id: 'theme', icon: Palette, label: 'Theme' },
         { id: 'settings', icon: Settings2, label: 'Settings' },
         { id: 'history', icon: History, label: 'History' },
+        { id: 'ai', icon: Sparkles, label: 'AI Copilot' },
     ];
     // ─── Render ──────────────────────────────────────────────────────
     return (
@@ -647,6 +648,27 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 }}
                             />
                         )}
+
+                        {builder.activeTab === 'ai' && (
+                            <AiCopilotPanel
+                                version={version}
+                                onAppendSection={(sectionProps, blocks) => {
+                                    builder.addSection({
+                                        structure: {
+                                            id: `sec-${Date.now()}`,
+                                            type: 'section',
+                                            props: sectionProps,
+                                            blocks: blocks,
+                                        }
+                                    });
+                                }}
+                                onUpdateBlockProps={(blockId, props) => {
+                                    builder.updateBlockProps(blockId, props);
+                                }}
+                                selectedBlockId={builder.selectedBlockId}
+                            />
+                        )}
+
                     </div>
                 </aside>
 

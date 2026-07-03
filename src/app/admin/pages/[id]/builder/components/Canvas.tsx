@@ -36,8 +36,8 @@ import {
     MousePointer,
     RotateCcw,
     User,
-    CheckCircle,
-    AlertTriangle
+    AlertTriangle,
+    MessageSquare
 } from 'lucide-react';
 import {
     Select,
@@ -367,6 +367,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     // Ghana Profile Simulation States
     const [simulatedProfile, setSimulatedProfile] = useState<'none' | 'parent' | 'student'>('none');
 
+    // Collaborative Comments Mode States
+    const [commentsMode, setCommentsMode] = useState(false);
+    const [comments, setComments] = useState<{ id: string; x: number; y: number; text: string }[]>([]);
+    const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+    const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
+    const [newCommentText, setNewCommentText] = useState('');
+
     const panStartRef = useRef({ x: 0, y: 0 });
     const workspaceRef = useRef<HTMLDivElement>(null);
     const [isMounted, setIsMounted] = useState(false);
@@ -477,6 +484,22 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
     const handleRemoveGuide = (id: string) => {
         setGuides(prev => prev.filter(g => g.id !== id));
+    };
+
+    // Click on canvas container to drop collaborative comments
+    const handleCanvasClick = (e: React.MouseEvent) => {
+        if (!commentsMode) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('input') || target.closest('textarea') || target.closest('select')) {
+            return;
+        }
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = Math.round((e.clientX - rect.left - panOffset.x) / zoom);
+        const clickY = Math.round((e.clientY - rect.top - panOffset.y) / zoom);
+
+        setNewCommentPos({ x: clickX, y: clickY });
+        setNewCommentText('');
     };
 
     // Render horizontal top ruler (Figma-style ticks)
@@ -784,10 +807,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onClick={handleCanvasClick}
             className="flex-1 overflow-hidden relative select-none"
             style={{ 
                 background: 'linear-gradient(135deg, #020617 0%, #0f172a 100%)',
-                cursor: isPanning ? 'grabbing' : panToolActive ? 'grab' : 'default' 
+                cursor: isPanning ? 'grabbing' : panToolActive ? 'grab' : commentsMode ? 'cell' : 'default' 
             }}
         >
             {/* SVG Canvas Grid Pattern (Background panned/zoomed dynamically) */}
@@ -1050,6 +1074,91 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             </div>
                         </SortableContext>
                     </DndContext>
+
+                    {/* Absolute Pinned Collaborative Comments Overlay */}
+                    {comments.map((c) => (
+                        <div
+                            key={c.id}
+                            className="absolute z-40 transform -translate-x-1/2 -translate-y-1/2 group/pin"
+                            style={{ left: `${c.x}px`, top: `${c.y}px` }}
+                        >
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveCommentId(activeCommentId === c.id ? null : c.id);
+                                }}
+                                className="w-6 h-6 rounded-full bg-violet-600 border border-violet-500 text-white flex items-center justify-center font-bold text-xs shadow-lg animate-pulse"
+                            >
+                                💬
+                            </button>
+                            
+                            {activeCommentId === c.id && (
+                                <div className="absolute top-7 left-0 bg-slate-900 border border-slate-800 p-2.5 rounded-lg shadow-2xl text-[10px] w-48 text-slate-200 z-50">
+                                    <p className="font-semibold text-slate-400">Team Comment</p>
+                                    <p className="mt-1 leading-normal font-medium text-slate-150">{c.text}</p>
+                                    <div className="flex justify-end gap-1.5 mt-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setComments(prev => prev.filter(p => p.id !== c.id));
+                                                setActiveCommentId(null);
+                                            }}
+                                            className="text-red-400 hover:text-red-300 font-bold uppercase text-[8px]"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+
+                    {/* Dropping temporary pin form popover */}
+                    {newCommentPos && (
+                        <div
+                            className="absolute z-50 transform -translate-x-1/2 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-2xl w-56 text-[10px] text-slate-200"
+                            style={{ left: `${newCommentPos.x}px`, top: `${newCommentPos.y + 12}px` }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <p className="font-bold text-slate-400 mb-1">Add Collaborative Comment</p>
+                            <textarea
+                                placeholder="Type your review comment..."
+                                className="w-full h-12 bg-slate-950 border border-slate-850 text-slate-200 rounded p-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none"
+                                value={newCommentText}
+                                onChange={(e) => setNewCommentText(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-1.5 mt-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[9px]"
+                                    onClick={() => setNewCommentPos(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="h-6 px-2.5 bg-violet-600 hover:bg-violet-500 text-white text-[9px] font-bold"
+                                    onClick={() => {
+                                        if (!newCommentText.trim()) return;
+                                        setComments(prev => [
+                                            ...prev,
+                                            { id: `c-${Date.now()}`, x: newCommentPos.x, y: newCommentPos.y, text: newCommentText }
+                                        ]);
+                                        setNewCommentPos(null);
+                                        toast({
+                                            title: "Comment Added",
+                                            description: "Positioned annotation pinned to page coordinates.",
+                                        });
+                                    }}
+                                >
+                                    Post Pin
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -1106,6 +1215,28 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     title={panToolActive ? "Select Tool (V)" : "Hand Pan Tool (Space)"}
                 >
                     {panToolActive ? <Hand className="h-4 w-4" /> : <MousePointer className="h-4 w-4" />}
+                </Button>
+
+                <Button
+                    onClick={() => setCommentsMode(prev => {
+                        const next = !prev;
+                        setNewCommentPos(null);
+                        toast({
+                            title: next ? "Comment Mode Activated 💬" : "Pointer Select Restored 🖱️",
+                            description: next ? "Click anywhere on the canvas to place review annotation comment pins." : "Normal click select actions restored.",
+                        });
+                        return next;
+                    })}
+                    className={cn(
+                        "h-8 w-8 p-0 rounded-lg transition-colors border-0",
+                        commentsMode 
+                            ? "bg-violet-600 text-white hover:bg-violet-500" 
+                            : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    )}
+                    variant="ghost"
+                    title="Collaboration Pin Comments (C)"
+                >
+                    <MessageSquare className="h-4 w-4" />
                 </Button>
 
                 <div className="h-4 w-[1px] bg-slate-800" />
