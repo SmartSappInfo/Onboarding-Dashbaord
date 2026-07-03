@@ -10,12 +10,14 @@ import {
     useSensors,
     type DragEndEvent,
     useDroppable,
-    type CollisionDetection
+    type CollisionDetection,
+    DragOverlay,
 } from '@dnd-kit/core';
 import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
+    rectSortingStrategy,
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -60,7 +62,10 @@ interface CanvasProps {
     resources: BuilderResources;
     selectedBlockId: string | null;
     selectedSectionId?: string | null;
+    selectedColumnKey?: string | null;
     onSelectBlock: (id: string | null) => void;
+    onSelectColumn?: (key: string | null) => void;
+    onMoveColumn?: (fromSectionId: string, fromColIdx: number, toSectionId: string, toColIdx: number) => void;
 
     onSetTab: (tab: string) => void;
     onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
@@ -207,7 +212,7 @@ function SectionInserterLine({ onClick }: SectionInserterLineProps) {
         </div>
     );
 }
-function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode }: {
+function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode, editMode }: {
     block: PageBlock;
     bIdx: number;
     total: number;
@@ -218,6 +223,7 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     onDuplicate: () => void;
     children: React.ReactNode;
     canvasMode: 'edit' | 'preview';
+    editMode: 'columns' | 'components';
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id, disabled: canvasMode === 'preview' });
 
@@ -255,26 +261,27 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
             )}
 
             {/* Block Controls */}
-            {!isPreview && (
-                <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
+            {!isPreview && canvasMode === 'edit' && editMode === 'components' && (
+                <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-30 scale-90 origin-right">
                     <div
                         {...attributes}
                         {...listeners}
-                        className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                        className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all duration-200"
+                        title="Drag block"
                     >
-                        <GripVertical className="w-2.5 h-2.5 text-slate-400" />
+                        <GripVertical className="w-2.5 h-2.5 text-current" />
                     </div>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                        <ArrowUp className="w-2.5 h-2.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 disabled:opacity-30 transition-all duration-200" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
+                        <ArrowUp className="w-2.5 h-2.5 text-current" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-emerald-600 border border-slate-100 disabled:opacity-30" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                        <ArrowDown className="w-2.5 h-2.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 disabled:opacity-30 transition-all duration-200" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
+                        <ArrowDown className="w-2.5 h-2.5 text-current" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-blue-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
-                        <Copy className="w-2.5 h-2.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 transition-all duration-200" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
+                        <Copy className="w-2.5 h-2.5 text-current" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white hover:text-red-600 border border-slate-100" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                        <Trash2 className="w-2.5 h-2.5" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 transition-all duration-200" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+                        <Trash2 className="w-2.5 h-2.5 text-current" />
                     </Button>
                 </div>
             )}
@@ -298,6 +305,9 @@ function ColumnCell({
     editCtx,
     editMode,
     canvasMode,
+    sectionProps,
+    selectedColumnKey,
+    onSelectColumn,
 }: {
     sectionId: string;
     colIdx: number;
@@ -311,27 +321,108 @@ function ColumnCell({
     editCtx: (blockId: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
+    sectionProps: Record<string, unknown>;
+    selectedColumnKey?: string | null;
+    onSelectColumn?: (key: string | null) => void;
 }) {
-    const { setNodeRef, isOver } = useDroppable({
+    const columnKey = `col-${sectionId}-${colIdx}`;
+    const isColumnMode = editMode === 'columns';
+    const isSelected = selectedColumnKey === columnKey;
+
+    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
         id: `col-${sectionId}-${colIdx}`,
-        data: { sectionId, columnIndex: colIdx }
+        data: { sectionId, columnIndex: colIdx },
+        disabled: isColumnMode
     });
+
+    const {
+        attributes,
+        listeners,
+        setNodeRef: setSortableRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({
+        id: columnKey,
+        disabled: canvasMode === 'preview' || !isColumnMode
+    });
+
+    const setCombinedRef = (element: HTMLDivElement | null) => {
+        setDroppableRef(element);
+        setSortableRef(element);
+    };
 
     const blockIds = blocks.map(b => b.id);
     const isPreview = canvasMode === 'preview';
 
+    const columnsProps = (sectionProps.columnsProps as Record<string, Record<string, unknown>> | undefined) || {};
+    const colProp = columnsProps[colIdx.toString()] || {};
+
+    const dndStyle = transform ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    } : undefined;
+
+    const colStyle: React.CSSProperties = {
+        ...dndStyle,
+        backgroundColor: (colProp.backgroundColor as string) || undefined,
+        paddingTop: (colProp.paddingTop as string) || undefined,
+        paddingBottom: (colProp.paddingBottom as string) || undefined,
+        paddingLeft: (colProp.paddingLeft as string) || undefined,
+        paddingRight: (colProp.paddingRight as string) || undefined,
+        borderRadius: (colProp.borderRadius as string) || undefined,
+        alignSelf: sectionProps.verticalAlign === 'center' ? 'center' : sectionProps.verticalAlign === 'bottom' ? 'end' : 'stretch',
+        opacity: isDragging ? 0.4 : 1,
+    };
+
     return (
         <div
-            ref={setNodeRef}
+            ref={setCombinedRef}
+            style={colStyle}
+            onClick={(e) => {
+                if (isColumnMode && !isPreview) {
+                    e.stopPropagation();
+                    onSelectColumn?.(columnKey);
+                    onSetTab('edit');
+                }
+            }}
             className={cn(
-                "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
-                !isPreview && (editMode === 'components' ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" : "border border-transparent"),
-                isOver && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
+                "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative border",
+                !isPreview && (isColumnMode ? (
+                    isSelected 
+                        ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/5 cursor-pointer" 
+                        : "border-slate-350/20 dark:border-slate-700/20 hover:border-emerald-500/30 cursor-pointer"
+                ) : (
+                    editMode === 'components' 
+                        ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" 
+                        : "border-transparent bg-transparent"
+                )),
+                isOver && !isColumnMode && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
             )}
         >
-            {!isPreview && editMode === 'components' && (
-                <div className="absolute top-2 left-2 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1 py-0.5 rounded select-none">
+            {!isPreview && (editMode === 'components' || isColumnMode) && (
+                <div className={cn(
+                    "absolute top-2 left-2 text-[8px] font-black uppercase px-1 py-0.5 rounded select-none z-10",
+                    isColumnMode ? (
+                        isSelected 
+                            ? "bg-emerald-600 text-white font-bold" 
+                            : "bg-slate-800 text-slate-300"
+                    ) : "bg-slate-100 text-slate-400"
+                )}>
                     Col {colIdx + 1}
+                </div>
+            )}
+
+            {!isPreview && isColumnMode && (
+                <div className="absolute top-2 right-2 flex items-center gap-1 z-30">
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors duration-200"
+                        title="Drag column"
+                    >
+                        <GripVertical className="w-2.5 h-2.5 text-current" />
+                    </div>
                 </div>
             )}
 
@@ -353,6 +444,7 @@ function ColumnCell({
                             onMove={(dir) => onMoveBlock(block.id, dir)}
                             onDuplicate={() => onDuplicateBlock(block.id)}
                             canvasMode={canvasMode}
+                            editMode={editMode}
                         >
                             <BlockRenderer block={block} ctx={ctx} />
                         </SortableBlock>
@@ -378,7 +470,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     resources,
     selectedBlockId,
     selectedSectionId,
+    selectedColumnKey,
     onSelectBlock,
+    onSelectColumn,
+    onMoveColumn,
 
     onSetTab,
     onUpdateBlockProps,
@@ -401,6 +496,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [zoom, setZoom] = useState(1.0);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [panToolActive, setPanToolActive] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -657,13 +753,29 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     });
 
     const customCollisionDetection: CollisionDetection = (args) => {
-        const centerCollisions = closestCenter(args);
+        const activeId = args.active.id as string;
+
+        // Filter droppable targets depending on what is being dragged
+        let filteredContainers = args.droppableContainers;
+        if (activeId.startsWith('col-')) {
+            filteredContainers = args.droppableContainers.filter(c => (c.id as string).startsWith('col-'));
+        } else if (activeId.startsWith('section-') || !activeId.includes('-')) {
+            filteredContainers = args.droppableContainers.filter(c => (c.id as string).startsWith('section-') || !(c.id as string).includes('-'));
+        } else {
+            // Dragging a block: block can land on columns ('col-') or on other blocks (which are sortable and don't contain section prefixes)
+            filteredContainers = args.droppableContainers.filter(c => {
+                const idStr = c.id as string;
+                return idStr.startsWith('col-') || (!idStr.startsWith('section-') && idStr.includes('-'));
+            });
+        }
+
+        const centerCollisions = closestCenter({ ...args, droppableContainers: filteredContainers });
         if (centerCollisions.length > 0) return centerCollisions;
 
         const { pointerCoordinates } = args;
         if (!pointerCoordinates) return [];
 
-        const droppables = args.droppableContainers.filter(container => {
+        const droppables = filteredContainers.filter(container => {
             const rect = container.rect.current;
             if (!rect) return false;
             return (
@@ -687,6 +799,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         const activeId = active.id as string;
         const overId = over.id as string;
 
+        // 1. Column Drag & Drop Handling
+        if (activeId.startsWith('col-')) {
+            if (overId.startsWith('col-')) {
+                const activeParts = activeId.split('-');
+                const fromSectionId = activeParts.slice(1, -1).join('-');
+                const fromColIdx = parseInt(activeParts[activeParts.length - 1], 10);
+
+                const overParts = overId.split('-');
+                const toSectionId = overParts.slice(1, -1).join('-');
+                const toColIdx = parseInt(overParts[overParts.length - 1], 10);
+
+                onMoveColumn?.(fromSectionId, fromColIdx, toSectionId, toColIdx);
+            }
+            return;
+        }
+
+        // 2. Section Drag & Drop Handling
         if (activeId.startsWith('section-') || !activeId.includes('-')) {
             if (overId.startsWith('section-') || !overId.includes('-')) {
                 const oldIdx = version.structureJson.sections.findIndex(s => s.id === activeId);
@@ -698,6 +827,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             return;
         }
 
+        // 3. Block Drag & Drop Handling
         let targetSectionId = '';
         let targetColIdx = 0;
         let targetBlockIndex = 0;
@@ -801,7 +931,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                         }
                     }}
                 >
-                    <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={customCollisionDetection}
+                        onDragStart={(e) => setActiveDragId(e.active.id as string)}
+                        onDragCancel={() => setActiveDragId(null)}
+                        onDragEnd={(e) => { handleDragEnd(e); setActiveDragId(null); }}
+                        modifiers={[zoomModifier]}
+                    >
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
                             <div className={cn("min-h-[400px]", !isPreview && "divide-y divide-slate-100")}>
                                 {version.structureJson.sections.length > 0 ? (
@@ -947,23 +1084,31 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 className={cn("w-full grid relative z-20", colGapClass, alignClass)}
                                                                 style={layout !== '1-col' ? gridStyle : undefined}
                                                             >
-                                                                {columnsBlocks.map((colBlocks, colIdx) => (
-                                                                    <ColumnCell
-                                                                        key={colIdx}
-                                                                        sectionId={section.id}
-                                                                        colIdx={colIdx}
-                                                                        blocks={colBlocks}
-                                                                        selectedBlockId={selectedBlockId}
-                                                                        onSelectBlock={onSelectBlock}
-                                                                        onSetTab={onSetTab}
-                                                                        onRemoveBlock={onRemoveBlock}
-                                                                        onMoveBlock={onMoveBlock}
-                                                                        onDuplicateBlock={onDuplicateBlock}
-                                                                        editCtx={editCtx}
-                                                                        editMode={editMode}
-                                                                        canvasMode={canvasMode}
-                                                                    />
-                                                                ))}
+                                                                <SortableContext
+                                                                    items={Array.from({ length: colsCount }, (_, colIdx) => `col-${section.id}-${colIdx}`)}
+                                                                    strategy={rectSortingStrategy}
+                                                                >
+                                                                    {columnsBlocks.map((colBlocks, colIdx) => (
+                                                                        <ColumnCell
+                                                                            key={colIdx}
+                                                                            sectionId={section.id}
+                                                                            colIdx={colIdx}
+                                                                            blocks={colBlocks}
+                                                                            selectedBlockId={selectedBlockId}
+                                                                            onSelectBlock={onSelectBlock}
+                                                                            onSetTab={onSetTab}
+                                                                            onRemoveBlock={onRemoveBlock}
+                                                                            onMoveBlock={onMoveBlock}
+                                                                            onDuplicateBlock={onDuplicateBlock}
+                                                                            editCtx={editCtx}
+                                                                            editMode={editMode}
+                                                                            canvasMode={canvasMode}
+                                                                            sectionProps={sectionProps}
+                                                                            selectedColumnKey={selectedColumnKey}
+                                                                            onSelectColumn={onSelectColumn}
+                                                                        />
+                                                                    ))}
+                                                                </SortableContext>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -990,6 +1135,21 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                 )}
                             </div>
                         </SortableContext>
+
+                        <DragOverlay adjustScale={true}>
+                            {activeDragId ? (
+                                <div className="opacity-80 bg-slate-900/90 border border-slate-700 rounded-xl shadow-2xl p-4 text-xs font-bold text-slate-100 flex items-center justify-center gap-2 select-none scale-95 border-dashed pointer-events-none">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                                    {activeDragId.startsWith('col-') ? (
+                                        <span>Moving Column {parseInt(activeDragId.split('-').pop() || '0', 10) + 1}</span>
+                                    ) : activeDragId.startsWith('section-') || !activeDragId.includes('-') ? (
+                                        <span>Moving Section</span>
+                                    ) : (
+                                        <span>Moving Component ({activeDragId.split('-')[0].toUpperCase()})</span>
+                                    )}
+                                </div>
+                            ) : null}
+                        </DragOverlay>
                     </DndContext>
 
                     {/* Absolute Pinned Collaborative Comments Overlay */}

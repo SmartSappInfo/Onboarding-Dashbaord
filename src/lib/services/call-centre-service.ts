@@ -299,7 +299,24 @@ export class CallCentreService {
         if (writeCount > 0) writeChunks.push(writeBatch.commit());
         await Promise.all(writeChunks);
 
+        const currentSelected = campaign.audienceDefinition?.selectedContacts || [];
+        const newSelections = contactOverrides.map(o => ({
+          entityId: o.entityId,
+          contactId: o.contactId || 'primary',
+          name: o.contactName || '',
+          email: o.email || '',
+          phone: o.phone || '',
+        }));
+
+        const mergedSelected = [...currentSelected];
+        for (const ns of newSelections) {
+          if (!mergedSelected.some(s => s.entityId === ns.entityId && s.contactId === ns.contactId)) {
+            mergedSelected.push(ns);
+          }
+        }
+
         const updateFields: Record<string, any> = {
+          'audienceDefinition.selectedContacts': mergedSelected,
           'progress.total': FieldValue.increment(queueItems.length),
           'progress.pending': FieldValue.increment(queueItems.length),
           updatedAt: timestamp,
@@ -447,8 +464,25 @@ export class CallCentreService {
       }
       await Promise.all(writeChunks);
 
+      const currentSelected = campaign.audienceDefinition?.selectedContacts || [];
+      const newSelections = queueItems.map(item => ({
+        entityId: item.entityId,
+        contactId: (item.contactId || 'primary') as string,
+        name: (item.contactName || '') as string,
+        email: (item.entityEmail || '') as string,
+        phone: (item.entityPhone || '') as string,
+      }));
+
+      const mergedSelected = [...currentSelected];
+      for (const ns of newSelections) {
+        if (!mergedSelected.some(s => s.entityId === ns.entityId && s.contactId === ns.contactId)) {
+          mergedSelected.push(ns);
+        }
+      }
+
       // Increment campaign stats and reset status back to running if it was completed
       const updateFields: Record<string, any> = {
+        'audienceDefinition.selectedContacts': mergedSelected,
         'progress.total': FieldValue.increment(queueItems.length),
         'progress.pending': FieldValue.increment(queueItems.length),
         updatedAt: timestamp,

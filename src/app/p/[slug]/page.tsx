@@ -63,6 +63,7 @@ export async function generateMetadata(
         },
         org,
         parentImages: normalizeParentImages((await parent).openGraph?.images),
+        path: `/p/${slug}`,
     });
 
     return {

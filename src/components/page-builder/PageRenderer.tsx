@@ -124,6 +124,7 @@ export function PageRenderer({
         const sectionProps = (section.props || {}) as {
           heading?: string;
           visibilityDevice?: string;
+          columnsProps?: Record<string, unknown>;
           visibilityBehavior?: string;
           visibilityTag?: string;
           paddingTop?: string;
@@ -269,13 +270,26 @@ export function PageRenderer({
                 className={cn("w-full grid", colGapClass, alignClass)}
                 style={layout !== '1-col' ? gridStyle : undefined}
               >
-                {columnsBlocks.map((colBlocks, colIdx) => (
-                  <div key={colIdx} className="flex-1 flex flex-col gap-4">
-                    {colBlocks.map((block) => (
-                      <AnimatedBlock key={block.id} block={block} ctx={ctx} />
-                    ))}
-                  </div>
-                ))}
+                {columnsBlocks.map((colBlocks, colIdx) => {
+                  const columnsProps = (sectionProps.columnsProps as Record<string, Record<string, unknown>> | undefined) || {};
+                  const colProp = columnsProps[colIdx.toString()] || {};
+                  const colStyle: React.CSSProperties = {
+                    backgroundColor: (colProp.backgroundColor as string) || undefined,
+                    paddingTop: (colProp.paddingTop as string) || undefined,
+                    paddingBottom: (colProp.paddingBottom as string) || undefined,
+                    paddingLeft: (colProp.paddingLeft as string) || undefined,
+                    paddingRight: (colProp.paddingRight as string) || undefined,
+                    borderRadius: (colProp.borderRadius as string) || undefined,
+                    alignSelf: sectionProps.verticalAlign === 'center' ? 'center' : sectionProps.verticalAlign === 'bottom' ? 'end' : 'stretch',
+                  };
+                  return (
+                    <div key={colIdx} style={colStyle} className="flex-1 flex flex-col gap-4">
+                      {colBlocks.map((block) => (
+                        <AnimatedBlock key={block.id} block={block} ctx={ctx} />
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

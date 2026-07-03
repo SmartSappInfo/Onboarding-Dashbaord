@@ -60,6 +60,7 @@ import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
+import { ColumnSettings } from './components/ColumnSettings';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
 import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import './designer-theme.css';
@@ -319,6 +320,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             if (sIdx !== -1) {
                 return `Section ${sIdx + 1} Settings`;
             }
+        } else if (builder.selectedColumnKey) {
+            const parts = builder.selectedColumnKey.split('-');
+            const sId = parts.slice(1, -1).join('-');
+            const cIdx = parseInt(parts[parts.length - 1], 10);
+            const sections = version.structureJson.sections;
+            const sIdx = sections.findIndex(s => s.id === sId);
+            if (sIdx !== -1) {
+                return `Section ${sIdx + 1} ➔ Column ${cIdx + 1} Settings`;
+            }
         }
         return null;
     };
@@ -350,6 +360,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const selectedSection = builder.selectedSectionId
         ? version.structureJson.sections.find(s => s.id === builder.selectedSectionId) ?? null
         : null;
+
+    const selectedColumnSection = React.useMemo(() => {
+        if (!builder.selectedColumnKey || !version) return null;
+        const parts = builder.selectedColumnKey.split('-');
+        const sId = parts.slice(1, -1).join('-');
+        const colIdx = parseInt(parts[parts.length - 1], 10);
+        const section = version.structureJson.sections.find(s => s.id === sId);
+        return section ? { section, colIdx } : null;
+    }, [builder.selectedColumnKey, version]);
     // ─── Tab Definitions ─────────────────────────────────────────────
     const tabs: { id: BuilderTab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
         { id: 'add', icon: PlusSquare, label: 'Add' },
@@ -651,9 +670,16 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                         section={selectedSection}
                                         onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
                                     />
+                                ) : selectedColumnSection ? (
+                                    <ColumnSettings
+                                        sectionId={selectedColumnSection.section.id}
+                                        colIdx={selectedColumnSection.colIdx}
+                                        columnsProps={(selectedColumnSection.section.props.columnsProps as Record<string, unknown>) || {}}
+                                        onUpdate={(patch) => builder.updateColumnProps(selectedColumnSection.section.id, selectedColumnSection.colIdx, patch)}
+                                    />
                                 ) : (
                                     <div className="text-center py-8 text-xs text-slate-500 font-semibold leading-relaxed">
-                                        Select a section or block on the canvas to configure properties.
+                                        Select a section, column, or block on the canvas to configure properties.
                                     </div>
                                 )}
                             </div>
@@ -742,7 +768,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
                     selectedSectionId={builder.selectedSectionId}
+                    selectedColumnKey={builder.selectedColumnKey}
                     onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
+                    onSelectColumn={builder.selectColumn}
+                    onMoveColumn={builder.moveColumn}
 
                     onSetTab={(tab) => builder.dispatch({ type: 'SET_TAB', payload: tab as BuilderTab })}
                     onUpdateBlockProps={builder.updateBlockProps}

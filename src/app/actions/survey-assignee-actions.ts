@@ -51,7 +51,8 @@ export async function sendSurveyLinkToAssignee(
   userId: string,
   surveyTitle: string,
   surveyLink: string,
-  channel: 'email' | 'sms'
+  channel: 'email' | 'sms',
+  surveyId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Fetch user details
@@ -110,6 +111,27 @@ export async function sendSurveyLinkToAssignee(
       variables,
       workspaceIds: userData?.workspaceIds || ['onboarding'],
     });
+
+    if (result.success) {
+      try {
+        const { triggerInternalNotification } = await import('@/lib/notification-engine');
+        await triggerInternalNotification({
+          triggerKey: 'survey_invitation_team',
+          notifyManager: true,
+          variables: {
+            survey_title: surveyTitle,
+            respondent_name: userName,
+            contact_name: userName,
+            contact_email: userData?.email || '',
+            surveyId: surveyId || '',
+            workspaceId: userData?.workspaceIds?.[0] || 'onboarding'
+          },
+          channel: 'both'
+        });
+      } catch (err: unknown) {
+        console.error('Failed to trigger survey_invitation_team alert:', err);
+      }
+    }
 
     return result;
   } catch (error: any) {

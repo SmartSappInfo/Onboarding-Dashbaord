@@ -6,6 +6,7 @@ const schema = z.object({
   src: z.string().default(''),
   alt: z.string().default(''),
   caption: z.string().default(''),
+  captionColor: z.string().default('#475569'),
 });
 type ImageProps = z.infer<typeof schema>;
 
@@ -18,6 +19,7 @@ registerBlock({
     { kind: 'image', key: 'src', label: 'Image URL' },
     { kind: 'text', key: 'alt', label: 'Alt Text' },
     { kind: 'text', key: 'caption', label: 'Caption' },
+    { kind: 'color', key: 'captionColor', label: 'Caption Text Color' },
   ],
   defaults: schema.parse({}),
   schema,
@@ -35,10 +37,13 @@ registerBlock({
 
     if (props.caption) {
       return (
-        <figure className="rounded-2xl border border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-900/80 shadow-sm overflow-hidden transition-all duration-300">
+        <figure className="rounded-2xl border border-slate-200/40 dark:border-zinc-800/40 bg-white shadow-sm overflow-hidden transition-all duration-300">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={props.src} alt={props.alt} className="w-full h-auto object-cover" loading="lazy" />
-          <figcaption className="px-5 py-4 border-t border-slate-100 dark:border-zinc-800/50 bg-white/50 dark:bg-zinc-900/50 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center tracking-wide leading-relaxed">
+          <figcaption 
+            className="px-5 py-4 border-t border-slate-100 bg-white text-xs font-semibold text-center tracking-wide leading-relaxed"
+            style={{ color: props.captionColor }}
+          >
             {ctx.interpolate(props.caption)}
           </figcaption>
         </figure>

@@ -233,7 +233,8 @@ export default function SurveysClient() {
       userId,
       selectedSurvey.internalName || selectedSurvey.title,
       assignee.link,
-      channel
+      channel,
+      selectedSurvey.id
     );
 
     if (!result.success) {

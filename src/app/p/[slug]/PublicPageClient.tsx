@@ -556,10 +556,15 @@ export default function PublicPageClient({
                                                     )}
 
                                                     {block.type === 'image' && block.props.src && (
-                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm">
+                                                        <div className="rounded-2xl overflow-hidden shadow-sm transition-all duration-300 border border-slate-100 bg-white">
                                                             <img src={block.props.src} alt={block.props.alt || ''} className="w-full h-auto" loading="lazy" />
                                                             {block.props.caption && (
-                                                                <p className="text-xs text-slate-500 text-center py-3 italic bg-slate-50/50">{interpolate(block.props.caption)}</p>
+                                                                <p 
+                                                                    className="text-xs text-center py-3 px-4 italic font-semibold border-t border-slate-100"
+                                                                    style={{ color: (block.props.captionColor as string) || '#0f172a' }}
+                                                                >
+                                                                    {interpolate(block.props.caption)}
+                                                                </p>
                                                             )}
                                                         </div>
                                                     )}

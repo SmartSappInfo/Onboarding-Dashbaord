@@ -111,6 +111,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
             description: 'Institutional document signing powered by SmartSapp.',
         },
         org,
+        path: `/forms/${pdfId}`,
     });
 }
 

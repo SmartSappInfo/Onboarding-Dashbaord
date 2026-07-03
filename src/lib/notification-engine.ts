@@ -7,6 +7,7 @@ import { resolveContact } from './contact-adapter';
 import type { School, UserProfile } from './types';
 
 interface InternalNotificationOptions {
+  triggerKey?: string;
   entityId?: string;
   specificUserIds?: string[];
   notifyManager?: boolean;
@@ -37,9 +38,94 @@ interface ExternalNotificationOptions {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
-  const { entityId, specificUserIds, notifyManager, emailTemplateId, smsTemplateId, whatsappTemplateId, inAppTemplateId, pushTemplateId, variables, channel = 'both' } = options;
+  const { entityId, specificUserIds, notifyManager, variables, channel = 'both', triggerKey } = options;
+  let emailTemplateId = options.emailTemplateId;
+  let smsTemplateId = options.smsTemplateId;
+  let whatsappTemplateId = options.whatsappTemplateId;
+  let inAppTemplateId = options.inAppTemplateId;
+  let pushTemplateId = options.pushTemplateId;
 
   console.log(`>>> [NOTIFY] Triggering Internal Notification Hub...`);
+
+  if (triggerKey) {
+    try {
+      let orgId: string | null = (variables.organizationId as string | undefined) || null;
+      if (!orgId && variables.workspaceId) {
+        const wsSnap = await adminDb.collection('workspaces').doc(variables.workspaceId as string).get();
+        if (wsSnap.exists) {
+          orgId = (wsSnap.data()?.organizationId as string | undefined) || null;
+        }
+      }
+      if (!orgId && entityId) {
+        const contact = await resolveContact(entityId, (variables.workspaceId as string | undefined) || 'onboarding');
+        if (contact && contact.schoolData?.organizationId) {
+          orgId = contact.schoolData.organizationId;
+        }
+      }
+      if (!orgId) {
+        const wsSnap = await adminDb.collection('workspaces').limit(1).get();
+        if (!wsSnap.empty) {
+          orgId = (wsSnap.docs[0].data().organizationId as string | undefined) || null;
+        }
+      }
+      const finalOrgId = orgId || 'default_org';
+
+      const { resolveActiveTemplate } = await import('./template-resolver');
+
+      if (!emailTemplateId && (channel === 'email' || channel === 'both' || channel === 'all')) {
+        try {
+          const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'email');
+          if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
+            emailTemplateId = tpl.id;
+          }
+        } catch (e: unknown) {
+          console.warn(`[NOTIFY] Could not resolve email template for trigger ${triggerKey}:`, e);
+        }
+      }
+      if (!smsTemplateId && (channel === 'sms' || channel === 'both' || channel === 'all')) {
+        try {
+          const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'sms');
+          if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
+            smsTemplateId = tpl.id;
+          }
+        } catch (e: unknown) {
+          console.warn(`[NOTIFY] Could not resolve sms template for trigger ${triggerKey}:`, e);
+        }
+      }
+      if (!whatsappTemplateId && (channel === 'whatsapp' || channel === 'all')) {
+        try {
+          const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'whatsapp');
+          if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
+            whatsappTemplateId = tpl.id;
+          }
+        } catch (e: unknown) {
+          console.warn(`[NOTIFY] Could not resolve whatsapp template for trigger ${triggerKey}:`, e);
+        }
+      }
+      if (!inAppTemplateId) {
+        try {
+          const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'in_app');
+          if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
+            inAppTemplateId = tpl.id;
+          }
+        } catch (e: unknown) {
+          // ignore
+        }
+      }
+      if (!pushTemplateId) {
+        try {
+          const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'push');
+          if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
+            pushTemplateId = tpl.id;
+          }
+        } catch (e: unknown) {
+          // ignore
+        }
+      }
+    } catch (err: unknown) {
+      console.error(`[NOTIFY] Error resolving template IDs for trigger ${triggerKey}:`, err);
+    }
+  }
 
   try {
     const recipients = new Set<string>(); // Set of user IDs
@@ -88,7 +174,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
     const dispatchPromises = [];
 
     for (const contact of resolvedContacts) {
-      const personalVars = { ...variables, admin_name: contact.name };
+      const personalVars = { ...variables, admin_name: contact.name, user_name: contact.name };
       const prefs = contact.preferences || { email: true, sms: true, inApp: true, push: true };
 
       // Check category-specific opt-outs if defined

@@ -28,7 +28,7 @@ import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { Switch } from '@/components/ui/switch';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
-import type { ScriptNode, Entity, EntityContact, UserProfile, CallOutcomeAutomation } from '@/lib/types';
+import type { ScriptNode, Entity, EntityContact, UserProfile, CallOutcomeAutomation, CallCampaign, CallQueueItem } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
@@ -212,7 +212,15 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     });
   }, [firestore, queueItems]);
 
-  const campaign = React.useMemo(() => campaigns.find(c => c.id === campaignId), [campaigns, campaignId]);
+  const campaignRef = useMemoFirebase(() => {
+    if (!firestore || !campaignId) return null;
+    return doc(firestore, 'call_campaigns', campaignId);
+  }, [firestore, campaignId]);
+
+  const { data: campaign } = useDoc<CallCampaign>(campaignRef);
+
+  const workspaceId = campaign?.workspaceId || activeWorkspaceId;
+  const organizationId = campaign?.organizationId || activeOrganizationId;
   
   // Add a local override state for auto triggering so the toggle is instant
   const [localAutoTrigger, setLocalAutoTrigger] = React.useState<boolean | null>(null);
@@ -227,7 +235,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     try {
       const res = await updateCallCampaignAction(
         campaignId,
-        { triggerActionsAutomatically: checked, workspaceId: activeWorkspaceId },
+        { triggerActionsAutomatically: checked, workspaceId: workspaceId },
         user?.uid || ''
       );
       if (!res.success) {
@@ -247,7 +255,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       });
       setLocalAutoTrigger(prev => prev === checked ? !checked : prev);
     }
-  }, [campaignId, activeWorkspaceId, user?.uid, toast]);
+  }, [campaignId, workspaceId, user?.uid, toast]);
 
   useSetBreadcrumb(campaign?.name ? `${campaign.name} Workspace` : 'Workspace');
 
@@ -288,9 +296,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const [selectedContactId, setSelectedContactId] = React.useState<string | null>(null);
 
   const wrapHref = (href: string) => {
-    if (!activeWorkspaceId) return href;
+    if (!workspaceId) return href;
     const separator = href.includes('?') ? '&' : '?';
-    return `${href}${separator}track=${activeWorkspaceId}`;
+    return `${href}${separator}track=${workspaceId}`;
   };
 
   // ─── Filter Queue Groups ───────────────────────────────────────────────────
@@ -346,10 +354,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // ─── Lock Management ───────────────────────────────────────────────────────
 
   React.useEffect(() => {
-    if (!currentItemId || !activeWorkspaceId || !user) return;
+    if (!currentItemId || !workspaceId || !user) return;
 
     const lockItem = async () => {
-      const lockRes = await lockQueueItemAction(currentItemId, activeWorkspaceId, user.uid);
+      const lockRes = await lockQueueItemAction(currentItemId, workspaceId, user.uid);
       if (!lockRes.success) {
         toast({ variant: 'destructive', title: 'Concurrent User Alert', description: lockRes.error });
       } else {
@@ -363,16 +371,16 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
     const handleUnload = () => {
       // best effort unlock on tab close
-      releaseQueueItemAction(currentItemId, activeWorkspaceId, user.uid);
+      releaseQueueItemAction(currentItemId, workspaceId, user.uid);
     };
     window.addEventListener('beforeunload', handleUnload);
 
     // Release lock on unmount or item change
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
-      releaseQueueItemAction(currentItemId, activeWorkspaceId, user.uid);
+      releaseQueueItemAction(currentItemId, workspaceId, user.uid);
     };
-  }, [currentItemId, activeWorkspaceId, user]);
+  }, [currentItemId, workspaceId, user]);
 
   // ─── Call Timer Effect ─────────────────────────────────────────────────────
 
@@ -420,19 +428,19 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // Refs to track current state for immediate flush on change/unmount
   const notesRef = React.useRef(notes);
   const currentItemIdRef = React.useRef(currentItem?.id);
-  const activeWorkspaceIdRef = React.useRef(activeWorkspaceId);
+  const workspaceIdRef = React.useRef(workspaceId);
   const userRef = React.useRef(user);
   const isSubmittingOutcomeRef = React.useRef(false);
 
   React.useEffect(() => { notesRef.current = notes; }, [notes]);
   React.useEffect(() => { currentItemIdRef.current = currentItem?.id; }, [currentItem?.id]);
-  React.useEffect(() => { activeWorkspaceIdRef.current = activeWorkspaceId; }, [activeWorkspaceId]);
+  React.useEffect(() => { workspaceIdRef.current = workspaceId; }, [workspaceId]);
   React.useEffect(() => { userRef.current = user; }, [user]);
 
   const flushNotes = React.useCallback(async (itemId: string, noteVal: string) => {
-    if (!itemId || !activeWorkspaceIdRef.current || !userRef.current) return;
+    if (!itemId || !workspaceIdRef.current || !userRef.current) return;
     try {
-      await updateNotesDraftAction(itemId, noteVal, activeWorkspaceIdRef.current, userRef.current.uid);
+      await updateNotesDraftAction(itemId, noteVal, workspaceIdRef.current, userRef.current.uid);
     } catch (err) {
       console.error('[WORKSPACE_CLIENT] Failed to flush notes draft:', err);
     }
@@ -450,7 +458,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   // Debounced auto-save notes draft to database
   React.useEffect(() => {
-    if (!currentItem || !activeWorkspaceId || !user) return;
+    if (!currentItem || !workspaceId || !user) return;
     
     // Prevent feedback loop: don't save if notes state already matches the db value
     if (notes === (currentItem.notesDraft || '')) return;
@@ -460,11 +468,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     localStorage.setItem(backupKey, notes);
 
     const timeout = setTimeout(async () => {
-      await updateNotesDraftAction(currentItem.id, notes, activeWorkspaceId, user.uid);
+      await updateNotesDraftAction(currentItem.id, notes, workspaceId, user.uid);
     }, 2000); // 2 second debounce
 
     return () => clearTimeout(timeout);
-  }, [notes, currentItem?.id, currentItem?.notesDraft, activeWorkspaceId, user]);
+  }, [notes, currentItem?.id, currentItem?.notesDraft, workspaceId, user]);
 
   // ─── Query Entity Contact History ──────────────────────────────────────────
 
@@ -889,7 +897,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleOutcomeSubmit = async (outcome: string, customAutomations?: CallOutcomeAutomation[]) => {
-    if (!currentItem || !activeWorkspaceId || !user) return;
+    if (!currentItem || !workspaceId || !user) return;
 
     // Intercept callback outcomes to trigger the date picker instead of raw completion
     const lower = outcome.toLowerCase();
@@ -915,7 +923,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         notes,
         duration: seconds,
         agentName: user.displayName || 'Agent',
-        workspaceId: activeWorkspaceId,
+        workspaceId: workspaceId,
         userId: user.uid,
         customAutomations,
       });
@@ -964,8 +972,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         actionType: node.data?.actionType || 'SEND_SMS',
         actionConfig: JSON.parse(JSON.stringify(node.data?.actionConfig || {})),
         entityId: currentItem.entityId,
-        workspaceId: activeWorkspaceId,
-        organizationId: currentItem.organizationId || activeOrganizationId,
+        workspaceId: workspaceId,
+        organizationId: currentItem.organizationId || organizationId,
         contactId: selectedContactId || undefined,
       },
       user?.uid || ''
@@ -978,7 +986,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
     toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
     return { ok: false, error: result.error };
-  }, [currentItem?.entityId, currentItem?.organizationId, activeWorkspaceId, activeOrganizationId, user?.uid, triggeredNodeIds, selectedContactId, toast]);
+  }, [currentItem?.entityId, currentItem?.organizationId, workspaceId, organizationId, user?.uid, triggeredNodeIds, selectedContactId, toast]);
 
   // Trigger an outcome node — reuses the outcome submit path (completes the call + campaign automations).
   // Plain function (not memoized) so it always closes over the latest handleOutcomeSubmit/notes/seconds.
@@ -1645,7 +1653,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
   }, [
     currentItem,
-    activeWorkspaceId,
+    workspaceId,
     user,
     entityData,
     selectedContactId,
@@ -1793,34 +1801,34 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   ]);
 
   const handleSkip = async () => {
-    if (!currentItem || !activeWorkspaceId || !user) return;
+    if (!currentItem || !workspaceId || !user) return;
     setIsActionsLoading(true);
     try {
-      await skipQueueItemAction(currentItem.id, activeWorkspaceId, user.uid);
+      await skipQueueItemAction(currentItem.id, workspaceId, user.uid);
       localStorage.removeItem(`workspace:call-draft-${currentItem.id}`);
       
       const next = processedPendingQueue.find(item => item.id !== currentItem.id);
       setCurrentItemId(next ? next.id : null);
       toast({ title: 'Contact Skipped' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'An error occurred.' });
     } finally {
       setIsActionsLoading(false);
     }
   };
 
   const handleDefer = async () => {
-    if (!currentItem || !activeWorkspaceId || !user) return;
+    if (!currentItem || !workspaceId || !user) return;
     setIsActionsLoading(true);
     try {
-      await deferQueueItemAction(currentItem.id, activeWorkspaceId, user.uid);
+      await deferQueueItemAction(currentItem.id, workspaceId, user.uid);
       localStorage.removeItem(`workspace:call-draft-${currentItem.id}`);
 
       const next = processedPendingQueue.find(item => item.id !== currentItem.id);
       setCurrentItemId(next ? next.id : null);
       toast({ title: 'Contact Deferred', description: 'Contact moved to deferred queue list.' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'An error occurred.' });
     } finally {
       setIsActionsLoading(false);
     }
@@ -1828,10 +1836,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const handleScheduleCallback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentItem || !activeWorkspaceId || !user || !callbackDate) return;
+    if (!currentItem || !workspaceId || !user || !callbackDate) return;
     setIsActionsLoading(true);
     try {
-      await scheduleCallbackAction(currentItem.id, callbackDate, activeWorkspaceId, user.uid);
+      await scheduleCallbackAction(currentItem.id, callbackDate, workspaceId, user.uid);
       localStorage.removeItem(`workspace:call-draft-${currentItem.id}`);
       setShowCallbackPicker(false);
       setCallbackDate('');
@@ -1839,8 +1847,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       const next = processedPendingQueue.find(item => item.id !== currentItem.id);
       setCurrentItemId(next ? next.id : null);
       toast({ title: 'Callback Scheduled', description: `Scheduled callback for ${new Date(callbackDate).toLocaleString()}` });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : 'An error occurred.' });
     } finally {
       setIsActionsLoading(false);
     }

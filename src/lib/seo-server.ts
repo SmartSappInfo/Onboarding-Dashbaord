@@ -16,6 +16,8 @@ export async function getCustomPageMetadata(
     const docId = pageKey.replace(/^\/|\/$/g, '').replace(/\//g, '__') || 'homepage';
     const docSnap = await adminDb.collection('custom_pages_seo').doc(docId).get();
 
+    const normalizedPath = pageKey.startsWith('/') ? pageKey : `/${pageKey}`;
+
     if (docSnap.exists) {
       const data = docSnap.data();
       const seo: SeoConfig = {
@@ -31,6 +33,7 @@ export async function getCustomPageMetadata(
         seo,
         fallback,
         title: { mode: 'absolute' },
+        path: normalizedPath,
       });
     }
   } catch (err) {
@@ -38,9 +41,11 @@ export async function getCustomPageMetadata(
   }
 
   // Fallback to static values if no custom SEO is saved
+  const normalizedPath = pageKey.startsWith('/') ? pageKey : `/${pageKey}`;
   return resolveSeoMetadata({
     seo: null,
     fallback,
     title: { mode: 'absolute' },
+    path: normalizedPath,
   });
 }
