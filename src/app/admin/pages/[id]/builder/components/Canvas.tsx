@@ -9,6 +9,7 @@ import {
     useSensor,
     useSensors,
     type DragEndEvent,
+    type DragOverEvent,
     useDroppable,
     type CollisionDetection,
     DragOverlay,
@@ -49,7 +50,8 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, CampaignPageStructure } from '@/lib/types';
+import { moveBlockToColumn } from '@/lib/page-builder/tree-operations';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks'; // register all blocks
@@ -513,6 +515,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
+    const [dragStructure, setDragStructure] = useState<CampaignPageStructure | null>(null);
 
     const activeBlock = React.useMemo(() => {
         if (!activeDragId) return null;
@@ -818,9 +821,101 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         }));
     };
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragOver = (event: DragOverEvent): void => {
         const { active, over } = event;
         if (!over) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        // Only reflow layout for block dragging
+        if (activeId.startsWith('section-') || activeId.startsWith('col-') || !activeId.includes('-')) return;
+
+        const currentStruct = dragStructure || version.structureJson;
+        let targetSectionId = '';
+        let targetColIdx = 0;
+        let targetBlockIndex = 0;
+
+        if (overId.startsWith('col-')) {
+            const parts = overId.split('-');
+            targetSectionId = parts.slice(1, -1).join('-');
+            targetColIdx = parseInt(parts[parts.length - 1], 10);
+            const targetSection = currentStruct.sections.find(s => s.id === targetSectionId);
+            if (!targetSection) return;
+            const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
+            targetBlockIndex = colBlocks.length;
+        } else if (overId.startsWith('section-') || !overId.includes('-')) {
+            targetSectionId = overId;
+            targetColIdx = 0;
+            targetBlockIndex = 0;
+        } else {
+            let found = false;
+            for (const sec of currentStruct.sections) {
+                const bIdx = sec.blocks.findIndex(b => b.id === overId);
+                if (bIdx !== -1) {
+                    targetSectionId = sec.id;
+                    const overBlock = sec.blocks[bIdx];
+                    targetColIdx = ((overBlock.props || {}) as { column?: number }).column ?? 0;
+
+                    const colBlocks = sec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
+                    targetBlockIndex = colBlocks.findIndex(b => b.id === overId);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return;
+        }
+
+        // Check if location has changed
+        let sourceSectionId = '';
+        let sourceColIdx = 0;
+        for (const sec of currentStruct.sections) {
+            const bIdx = sec.blocks.findIndex(b => b.id === activeId);
+            if (bIdx !== -1) {
+                sourceSectionId = sec.id;
+                sourceColIdx = ((sec.blocks[bIdx].props || {}) as { column?: number }).column ?? 0;
+                break;
+            }
+        }
+
+        if (sourceSectionId === targetSectionId && sourceColIdx === targetColIdx) {
+            const colBlocks = currentStruct.sections.find(s => s.id === sourceSectionId)?.blocks.filter(b => ((b.props || {}) as { column?: number }).column === sourceColIdx) || [];
+            const activeColIdx = colBlocks.findIndex(b => b.id === activeId);
+            if (activeColIdx !== -1 && activeColIdx !== targetBlockIndex) {
+                const sec = currentStruct.sections.find(s => s.id === sourceSectionId);
+                if (sec) {
+                    const actualActiveIdx = sec.blocks.findIndex(b => b.id === activeId);
+                    const targetBlockId = colBlocks[targetBlockIndex]?.id;
+                    const actualTargetIdx = targetBlockId ? sec.blocks.findIndex(b => b.id === targetBlockId) : sec.blocks.length;
+
+                    if (actualActiveIdx !== -1 && actualTargetIdx !== -1) {
+                        React.startTransition(() => {
+                            const newSections = currentStruct.sections.map(s => {
+                                if (s.id !== sourceSectionId) return s;
+                                const newBlocks = [...s.blocks];
+                                const [removed] = newBlocks.splice(actualActiveIdx, 1);
+                                newBlocks.splice(actualTargetIdx, 0, removed);
+                                return { ...s, blocks: newBlocks };
+                            });
+                            setDragStructure({ ...currentStruct, sections: newSections });
+                        });
+                    }
+                }
+            }
+        } else {
+            React.startTransition(() => {
+                const updated = moveBlockToColumn(currentStruct, activeId, targetSectionId, targetColIdx, targetBlockIndex);
+                setDragStructure(updated);
+            });
+        }
+    };
+
+    const handleDragEnd = (event: DragEndEvent): void => {
+        const { active, over } = event;
+        if (!over) {
+            setDragStructure(null);
+            return;
+        }
 
         const activeId = active.id as string;
         const overId = over.id as string;
@@ -838,6 +933,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
                 onMoveColumn?.(fromSectionId, fromColIdx, toSectionId, toColIdx);
             }
+            setDragStructure(null);
             return;
         }
 
@@ -850,41 +946,62 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     onReorderSections(oldIdx, newIdx);
                 }
             }
+            setDragStructure(null);
             return;
         }
 
         // 3. Block Drag & Drop Handling
-        let targetSectionId = '';
-        let targetColIdx = 0;
-        let targetBlockIndex = 0;
-
-        if (overId.startsWith('col-')) {
-            const parts = overId.split('-');
-            targetSectionId = parts.slice(1, -1).join('-');
-            targetColIdx = parseInt(parts[parts.length - 1], 10);
-            const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
-            if (!targetSection) return;
-            const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-            targetBlockIndex = colBlocks.length;
-        } else {
-            let found = false;
-            for (const sec of version.structureJson.sections) {
-                const bIdx = sec.blocks.findIndex(b => b.id === overId);
+        if (dragStructure) {
+            let targetSectionId = '';
+            let targetColIdx = 0;
+            let targetBlockIndex = 0;
+            for (const sec of dragStructure.sections) {
+                const bIdx = sec.blocks.findIndex(b => b.id === activeId);
                 if (bIdx !== -1) {
                     targetSectionId = sec.id;
-                    const overBlock = sec.blocks[bIdx];
-                    targetColIdx = ((overBlock.props || {}) as { column?: number }).column ?? 0;
-
+                    targetColIdx = ((sec.blocks[bIdx].props || {}) as { column?: number }).column ?? 0;
                     const colBlocks = sec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-                    targetBlockIndex = colBlocks.findIndex(b => b.id === overId);
-                    found = true;
+                    targetBlockIndex = colBlocks.findIndex(b => b.id === activeId);
                     break;
                 }
             }
-            if (!found) return;
-        }
+            if (targetSectionId) {
+                onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
+            }
+        } else {
+            let targetSectionId = '';
+            let targetColIdx = 0;
+            let targetBlockIndex = 0;
 
-        onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
+            if (overId.startsWith('col-')) {
+                const parts = overId.split('-');
+                targetSectionId = parts.slice(1, -1).join('-');
+                targetColIdx = parseInt(parts[parts.length - 1], 10);
+                const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
+                if (!targetSection) return;
+                const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
+                targetBlockIndex = colBlocks.length;
+            } else {
+                let found = false;
+                for (const sec of version.structureJson.sections) {
+                    const bIdx = sec.blocks.findIndex(b => b.id === overId);
+                    if (bIdx !== -1) {
+                        targetSectionId = sec.id;
+                        const overBlock = sec.blocks[bIdx];
+                        targetColIdx = ((overBlock.props || {}) as { column?: number }).column ?? 0;
+
+                        const colBlocks = sec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
+                        targetBlockIndex = colBlocks.findIndex(b => b.id === overId);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return;
+            }
+
+            onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
+        }
+        setDragStructure(null);
     };
 
     // Custom pointer position dnd-kit modifier to divide coordinate transform offsets by the zoom factor
@@ -896,7 +1013,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         };
     };
 
-    const sectionIds = version.structureJson.sections.map(s => s.id);
+    const activeStructure = dragStructure || version.structureJson;
+    const sectionIds = activeStructure.sections.map(s => s.id);
     const isPreview = canvasMode === 'preview';
 
     return (
@@ -960,15 +1078,22 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <DndContext
                         sensors={sensors}
                         collisionDetection={customCollisionDetection}
-                        onDragStart={(e) => setActiveDragId(e.active.id as string)}
-                        onDragCancel={() => setActiveDragId(null)}
+                        onDragStart={(e) => {
+                            setActiveDragId(e.active.id as string);
+                            setDragStructure(JSON.parse(JSON.stringify(version.structureJson)));
+                        }}
+                        onDragOver={handleDragOver}
+                        onDragCancel={() => {
+                            setActiveDragId(null);
+                            setDragStructure(null);
+                        }}
                         onDragEnd={(e) => { handleDragEnd(e); setActiveDragId(null); }}
                         modifiers={[zoomModifier]}
                     >
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
                             <div className={cn("min-h-[400px]", !isPreview && "divide-y divide-slate-100")}>
-                                {version.structureJson.sections.length > 0 ? (
-                                    version.structureJson.sections.map((section, idx) => {
+                                {activeStructure.sections.length > 0 ? (
+                                    activeStructure.sections.map((section, idx) => {
                                         const sectionProps = (section.props || {}) as {
                                             heading?: string;
                                             visibilityDevice?: string;
@@ -1064,7 +1189,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 <SortableSection
                                                     section={section}
                                                     idx={idx}
-                                                    total={version.structureJson.sections.length}
+                                                    total={activeStructure.sections.length}
                                                     onRemove={() => onRemoveSection(section.id)}
                                                     onMove={(dir) => onMoveSection(section.id, dir)}
                                                     onSave={() => onSaveSectionAsTemplate(section)}
