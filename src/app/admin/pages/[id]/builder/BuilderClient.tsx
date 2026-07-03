@@ -728,7 +728,9 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     theme={editorTheme}
                     resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
+                    selectedSectionId={builder.selectedSectionId}
                     onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
+
                     onSetTab={(tab) => builder.dispatch({ type: 'SET_TAB', payload: tab as BuilderTab })}
                     onUpdateBlockProps={builder.updateBlockProps}
                     onRemoveBlock={builder.removeBlock}

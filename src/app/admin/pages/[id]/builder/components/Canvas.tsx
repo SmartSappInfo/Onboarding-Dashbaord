@@ -58,7 +58,9 @@ interface CanvasProps {
     theme: ResolvedTheme;
     resources: BuilderResources;
     selectedBlockId: string | null;
+    selectedSectionId?: string | null;
     onSelectBlock: (id: string | null) => void;
+
     onSetTab: (tab: string) => void;
     onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
     onRemoveBlock: (blockId: string) => void;
@@ -121,47 +123,56 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
 
     const isPreview = canvasMode === 'preview';
 
+    const isGlobal = section.props.category === 'global';
+
     return (
         <div
             ref={setNodeRef}
             style={style}
             className={cn(
-                "group relative transition-all border-2 border-transparent border-dashed rounded-xl",
-                !isPreview && (editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-800/50"),
+                "group/section relative transition-all border border-dashed rounded-xl pt-8 pb-2 px-2 my-8",
+                !isPreview && (
+                    isGlobal
+                        ? "border-purple-500 bg-purple-500/5 hover:border-purple-400"
+                        : editMode === 'columns'
+                        ? "border-emerald-500/30 hover:border-emerald-500/60"
+                        : "border-slate-800/20 hover:border-slate-800/50"
+                ),
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
-            {/* Section Controls - Top Left */}
+            {/* Professional Section Header Bar */}
             {!isPreview && (
-                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:bg-slate-800 flex items-center justify-center cursor-grab active:cursor-grabbing"
-                    >
-                        <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+                <div className="absolute top-0 inset-x-0 h-7 bg-slate-900 border-b border-slate-800 rounded-t-xl flex items-center justify-between px-3 text-[9px] font-black uppercase text-slate-400 tracking-wider z-25 opacity-90 transition-opacity select-none group-hover/section:opacity-100">
+                    <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 font-extrabold">Section</span>
+                        <span className="text-slate-700">·</span>
+                        <span className="text-slate-350">{(section.props.name as string) || (section.props.category as string) || 'Layout'}</span>
+                        {isGlobal && (
+                            <span className="ml-1 bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[7px] font-black px-1 rounded">GLOBAL</span>
+                        )}
+                        <span className="text-slate-700">·</span>
+                        <span className="text-slate-500">{(section.props.layout as string) || 'Grid'}</span>
                     </div>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                        <ArrowUp className="w-3 h-3 text-slate-400" />
-                    </Button>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                        <ArrowDown className="w-3 h-3 text-slate-400" />
-                    </Button>
-                </div>
-            )}
-
-            {/* Section Controls - Top Right */}
-            {!isPreview && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400" onClick={(e) => { e.stopPropagation(); onSave(); }}>
-                        <FolderHeart className="w-3 h-3 text-slate-400" />
-                    </Button>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                        <SlidersHorizontal className="w-3 h-3 text-slate-400" />
-                    </Button>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                        <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-400" />
-                    </Button>
+                    
+                    <div className="flex items-center gap-1.5">
+                        <div {...attributes} {...listeners} className="h-4.5 px-1 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-[8px] rounded flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-400 font-bold" title="Drag to reorder section">
+                            DRAG
+                        </div>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onMove('up'); }} disabled={idx === 0} className="hover:text-emerald-400 disabled:opacity-20 text-[8px] font-bold">UP</button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onMove('down'); }} disabled={idx === total - 1} className="hover:text-emerald-400 disabled:opacity-20 text-[8px] font-bold">DOWN</button>
+                        <span className="text-slate-800">|</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className="hover:text-violet-400 text-[8px] font-bold flex items-center gap-0.5">
+                            <FolderHeart className="w-2.5 h-2.5" /> SAVE
+                        </button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="hover:text-blue-400 text-[8px] font-bold flex items-center gap-0.5">
+                            <SlidersHorizontal className="w-2.5 h-2.5" /> CONFIG
+                        </button>
+                        <span className="text-slate-800">|</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(); }} className="hover:text-red-400 text-[8px] font-bold flex items-center gap-0.5">
+                            <Trash2 className="w-2.5 h-2.5" /> DELETE
+                        </button>
+                    </div>
                 </div>
             )}
 
