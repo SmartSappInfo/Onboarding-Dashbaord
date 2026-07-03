@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -30,6 +30,11 @@ import {
     PlusSquare,
     Copy,
     SlidersHorizontal,
+    ZoomIn,
+    ZoomOut,
+    Hand,
+    MousePointer,
+    RotateCcw
 } from 'lucide-react';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
@@ -60,6 +65,29 @@ interface CanvasProps {
     editMode: 'columns' | 'components';
     onSetEditMode: (mode: 'columns' | 'components') => void;
 }
+
+// Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
+class ZoomPointerSensor extends PointerSensor {
+    static activators = [
+        {
+            eventName: 'onPointerDown' as const,
+            handler: ({ nativeEvent: event }: { nativeEvent: PointerEvent }) => {
+                const target = event.target as HTMLElement | null;
+                if (
+                    target?.closest('button') || 
+                    target?.closest('input') || 
+                    target?.closest('textarea') || 
+                    target?.closest('[contenteditable="true"]') ||
+                    event.button !== 0 // Only left click triggers drag
+                ) {
+                    return false;
+                }
+                return true;
+            },
+        },
+    ];
+}
+
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
 function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode }: {
     section: PageSection;
@@ -89,7 +117,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             style={style}
             className={cn(
                 "group relative transition-all border-2 border-transparent border-dashed rounded-xl",
-                !isPreview && (editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-200/50"),
+                !isPreview && (editMode === 'columns' ? "hover:border-emerald-500/30" : "hover:border-slate-800/50"),
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
@@ -99,42 +127,29 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                     <div
                         {...attributes}
                         {...listeners}
-                        className="h-7 w-7 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all"
+                        className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:bg-slate-800 flex items-center justify-center cursor-grab active:cursor-grabbing"
                     >
                         <GripVertical className="w-3.5 h-3.5 text-slate-400" />
                     </div>
-                    <div className="bg-slate-900 text-emerald-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-700 shadow-sm">
-                        Section {idx + 1}
-                    </div>
-                    <Button
-                        variant="secondary" size="icon"
-                        className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                        title="Section settings"
-                    >
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                    </Button>
-                    <Button
-                        variant="secondary" size="icon"
-                        className="h-7 w-7 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
-                        onClick={(e) => { e.stopPropagation(); onSave(); }}
-                        title="Save section as template"
-                    >
-                        <FolderHeart className="w-3.5 h-3.5 text-slate-400" />
-                    </Button>
-                </div>
-            )}
-
-            {/* Section Controls - Top Right */}
-            {!isPreview && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-20">
                     <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
                         <ArrowUp className="w-3 h-3 text-slate-400" />
                     </Button>
                     <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400 disabled:opacity-30" disabled={idx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
                         <ArrowDown className="w-3 h-3 text-slate-400" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400 transition-all" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+                </div>
+            )}
+
+            {/* Section Controls - Top Right */}
+            {!isPreview && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 z-20">
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400" onClick={(e) => { e.stopPropagation(); onSave(); }}>
+                        <FolderHeart className="w-3 h-3 text-slate-400" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-emerald-400" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                        <SlidersHorizontal className="w-3 h-3 text-slate-400" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-6 w-6 rounded-lg shadow-sm border border-slate-700 bg-slate-900 hover:text-red-400" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
                         <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-400" />
                     </Button>
                 </div>
@@ -184,13 +199,20 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                 isDragging && "z-50 shadow-2xl"
             )}
         >
+            {/* Selected Block Info Tag */}
+            {selected && !isPreview && (
+                <div className="absolute -top-2.5 left-2 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded shadow-sm z-30 select-none pointer-events-none">
+                    {block.props.customLabel as string || block.type}
+                </div>
+            )}
+
             {/* Block Controls */}
             {!isPreview && (
                 <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
                     <div
                         {...attributes}
                         {...listeners}
-                        className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-emerald-55 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                        className="h-5 w-5 rounded-full shadow-md bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing"
                     >
                         <GripVertical className="w-2.5 h-2.5 text-slate-400" />
                     </div>
@@ -235,69 +257,74 @@ function ColumnCell({
     selectedBlockId: string | null;
     onSelectBlock: (id: string | null) => void;
     onSetTab: (tab: string) => void;
-    onRemoveBlock: (id: string) => void;
-    onMoveBlock: (id: string, dir: 'up' | 'down') => void;
-    onDuplicateBlock: (id: string) => void;
-    editCtx: (id: string) => BlockRenderContext;
+    onRemoveBlock: (blockId: string) => void;
+    onMoveBlock: (blockId: string, direction: 'up' | 'down') => void;
+    onDuplicateBlock: (blockId: string) => void;
+    editCtx: (blockId: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
 }) {
-    const colId = `${sectionId}-col-${colIdx}`;
     const { setNodeRef, isOver } = useDroppable({
-        id: colId,
-        disabled: canvasMode === 'preview',
+        id: `col-${sectionId}-${colIdx}`,
+        data: { sectionId, columnIndex: colIdx }
     });
 
+    const blockIds = blocks.map(b => b.id);
     const isPreview = canvasMode === 'preview';
 
     return (
         <div
             ref={setNodeRef}
             className={cn(
-                "flex-1 transition-all flex flex-col gap-4 relative border border-dashed border-transparent",
-                !isPreview ? "min-h-[120px] p-4" : "p-0",
-                editMode === 'columns' && !isPreview && "border-slate-300/40 bg-slate-50/30",
-                isOver && "bg-emerald-500/5 border-emerald-500/20 scale-[0.99] shadow-inner"
+                "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
+                !isPreview && (editMode === 'components' ? "bg-slate-50/50 border border-slate-100 hover:border-emerald-500/25" : "border border-transparent"),
+                isOver && "bg-emerald-500/5 border-emerald-500/30 scale-[0.99] border-dashed ring-2 ring-emerald-500/10"
             )}
         >
-            {editMode === 'columns' && !isPreview && (
-                <div className="absolute top-1.5 left-3 text-[8px] font-bold text-slate-400/50 uppercase tracking-widest pointer-events-none select-none">
-                    Column {colIdx + 1}
+            {/* Column visual indicator tag */}
+            {!isPreview && editMode === 'components' && (
+                <div className="absolute top-2 left-2 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1 py-0.5 rounded select-none">
+                    Col {colIdx + 1}
                 </div>
             )}
 
-            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                {blocks.map((block, bIdx) => (
-                    <SortableBlock
-                        key={block.id}
-                        block={block}
-                        bIdx={bIdx}
-                        total={blocks.length}
-                        selected={selectedBlockId === block.id}
-                        onSelect={() => { onSelectBlock(block.id); onSetTab('edit'); }}
-                        onRemove={() => onRemoveBlock(block.id)}
-                        onMove={(dir) => onMoveBlock(block.id, dir)}
-                        onDuplicate={() => onDuplicateBlock(block.id)}
-                        canvasMode={canvasMode}
-                    >
-                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
-                    </SortableBlock>
-                ))}
+            <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, bIdx) => {
+                    const ctx = editCtx(block.id);
+                    return (
+                        <SortableBlock
+                            key={block.id}
+                            block={block}
+                            bIdx={bIdx}
+                            total={blocks.length}
+                            selected={selectedBlockId === block.id}
+                            onSelect={() => {
+                                onSelectBlock(block.id);
+                                onSetTab('edit');
+                            }}
+                            onRemove={() => onRemoveBlock(block.id)}
+                            onMove={(dir) => onMoveBlock(block.id, dir)}
+                            onDuplicate={() => onDuplicateBlock(block.id)}
+                            canvasMode={canvasMode}
+                        >
+                            <BlockRenderer block={block} ctx={ctx} />
+                        </SortableBlock>
+                    );
+                })}
             </SortableContext>
 
             {blocks.length === 0 && !isPreview && (
-                <div className="flex-1 flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                    <PlusSquare className="w-5 h-5 text-slate-300 mb-1" />
-                    <p className="text-[9px] font-bold text-slate-400">Empty Column {colIdx + 1}</p>
-                    <p className="text-[8px] text-slate-300">Drag components here</p>
+                <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
+                    <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
+                    <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
                 </div>
             )}
         </div>
     );
 }
 
-// ─── Main Canvas ─────────────────────────────────────────────────────────
-const Canvas = React.memo(function Canvas({
+// ─── Main Canvas Component ───────────────────────────────────────────────
+const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     version,
     viewport,
     theme,
@@ -318,82 +345,296 @@ const Canvas = React.memo(function Canvas({
     canvasMode,
     editMode,
     onSetEditMode: _onSetEditMode,
-}: CanvasProps) {
+}, ref) => {
+    // Canvas Viewport Panning & Zooming Engine States
+    const [zoom, setZoom] = useState(1.0);
+    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [panToolActive, setPanToolActive] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [guides, setGuides] = useState<{ id: string; type: 'h' | 'v'; position: number }[]>([]);
+
+    const panStartRef = useRef({ x: 0, y: 0 });
+    const workspaceRef = useRef<HTMLDivElement>(null);
+    const [isMounted, setIsMounted] = useState(false);
+    const { toast } = useToast();
+
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(ZoomPointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    const [isMounted, setIsMounted] = React.useState(false);
-    const { toast } = useToast();
-    React.useEffect(() => {
+    useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    // Per-block edit context: inline edits route back to the block's props.
-    const editCtx = (blockId: string): BlockRenderContext => ({
-        mode: canvasMode === 'preview' ? 'view' : 'edit',
-        theme,
-        interpolate: (t) => t,
-        resources,
-        onPropChange: (patch) => onUpdateBlockProps(blockId, patch),
-    });
+    // Spacebar listener to toggle Hand/Pan mode
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' && document.activeElement === document.body) {
+                e.preventDefault();
+                setPanToolActive(true);
+            }
+        };
 
-    const customCollisionDetection: CollisionDetection = (args) => {
-        const activeId = args.active.id.toString();
-        if (activeId.startsWith('sec_')) {
-            const sectionDroppables = args.droppableContainers.filter(
-                (c) => c.id.toString().startsWith('sec_')
-            );
-            return closestCenter({
-                ...args,
-                droppableContainers: sectionDroppables,
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.code === 'Space') {
+                setPanToolActive(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
+
+    // Scroll Wheel Zoom and Pan
+    const handleWheel = (e: React.WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = -e.deltaY * 0.005;
+            setZoom(prev => Math.min(Math.max(0.3, prev + delta), 2.0));
+        } else {
+            setPanOffset(prev => ({
+                x: prev.x - e.deltaX * 0.8,
+                y: prev.y - e.deltaY * 0.8,
+            }));
+        }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        const isMiddleClick = e.button === 1;
+        if (panToolActive || isMiddleClick) {
+            e.preventDefault();
+            setIsPanning(true);
+            panStartRef.current = {
+                x: e.clientX - panOffset.x,
+                y: e.clientY - panOffset.y,
+            };
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (workspaceRef.current) {
+            const rect = workspaceRef.current.getBoundingClientRect();
+            setMousePos({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
             });
         }
 
-        const blockDroppables = args.droppableContainers.filter(
-            (c) => !c.id.toString().startsWith('sec_')
-        );
-        return closestCenter({
-            ...args,
-            droppableContainers: blockDroppables,
+        if (!isPanning) return;
+        setPanOffset({
+            x: e.clientX - panStartRef.current.x,
+            y: e.clientY - panStartRef.current.y,
         });
+    };
+
+    const handleMouseUp = () => {
+        setIsPanning(false);
+    };
+
+    const resetZoomAndPan = () => {
+        setZoom(1.0);
+        setPanOffset({ x: 0, y: 0 });
+        toast({
+            title: "Canvas Reset",
+            description: "Zoom set to 100% and pan alignment centered.",
+        });
+    };
+
+    // Ruler Guideline actions
+    const handleRulerDoubleClick = (type: 'h' | 'v') => {
+        const localPos = type === 'v' 
+            ? Math.round((mousePos.x - 20 - panOffset.x) / zoom)
+            : Math.round((mousePos.y - 20 - panOffset.y) / zoom);
+        
+        setGuides(prev => [
+            ...prev,
+            { id: `${type}-${Date.now()}`, type, position: localPos }
+        ]);
+        toast({
+            title: "Guideline Dropped",
+            description: `Guide placed at ${localPos}px. Click guide to remove.`,
+        });
+    };
+
+    const handleRemoveGuide = (id: string) => {
+        setGuides(prev => prev.filter(g => g.id !== id));
+    };
+
+    // Render horizontal top ruler (Figma-style ticks)
+    const renderTopRuler = () => {
+        if (!workspaceRef.current) return null;
+        const rect = workspaceRef.current.getBoundingClientRect();
+        const width = rect.width;
+        
+        const step = 50;
+        const ticks = [];
+        
+        const startOffset = panOffset.x % (step * zoom);
+        const startX = startOffset < 0 ? startOffset + (step * zoom) : startOffset;
+        
+        for (let x = startX; x < width; x += step * zoom) {
+            const canvasX = Math.round((x - panOffset.x) / zoom);
+            const isMajor = canvasX % 100 === 0;
+            
+            ticks.push(
+                <g key={`top-${x}`}>
+                    <line
+                        x1={x}
+                        y1={isMajor ? 8 : 13}
+                        x2={x}
+                        y2={20}
+                        stroke="#334155"
+                        strokeWidth="1"
+                    />
+                    {isMajor && (
+                        <text
+                            x={x + 2}
+                            y={7}
+                            fill="#475569"
+                            fontSize="8"
+                            fontFamily="monospace"
+                            fontWeight="bold"
+                        >
+                            {canvasX}
+                        </text>
+                    )}
+                </g>
+            );
+        }
+        
+        return (
+            <svg 
+                onDoubleClick={() => handleRulerDoubleClick('v')}
+                className="absolute top-0 left-5 right-0 h-5 bg-slate-950/90 border-b border-slate-800 z-30 select-none cursor-crosshair"
+            >
+                {ticks}
+                <line x1={mousePos.x} y1={0} x2={mousePos.x} y2={20} stroke="#10b981" strokeWidth="1" strokeDasharray="2,2" />
+            </svg>
+        );
+    };
+
+    // Render vertical left ruler (Figma-style ticks)
+    const renderLeftRuler = () => {
+        if (!workspaceRef.current) return null;
+        const rect = workspaceRef.current.getBoundingClientRect();
+        const height = rect.height;
+        
+        const step = 50;
+        const ticks = [];
+        
+        const startOffset = panOffset.y % (step * zoom);
+        const startY = startOffset < 0 ? startOffset + (step * zoom) : startOffset;
+        
+        for (let y = startY; y < height; y += step * zoom) {
+            const canvasY = Math.round((y - panOffset.y) / zoom);
+            const isMajor = canvasY % 100 === 0;
+            
+            ticks.push(
+                <g key={`left-${y}`}>
+                    <line
+                        x1={isMajor ? 8 : 13}
+                        y1={y}
+                        x2={20}
+                        y2={y}
+                        stroke="#334155"
+                        strokeWidth="1"
+                    />
+                    {isMajor && (
+                        <text
+                            x={2}
+                            y={y + 8}
+                            fill="#475569"
+                            fontSize="8"
+                            fontFamily="monospace"
+                            fontWeight="bold"
+                            transform={`rotate(-90 8 ${y + 4})`}
+                        >
+                            {canvasY}
+                        </text>
+                    )}
+                </g>
+            );
+        }
+        
+        return (
+            <svg 
+                onDoubleClick={() => handleRulerDoubleClick('h')}
+                className="absolute top-5 left-0 w-5 bottom-0 bg-slate-950/90 border-r border-slate-800 z-30 select-none cursor-crosshair"
+            >
+                {ticks}
+                <line x1={0} y1={mousePos.y} x2={20} y2={mousePos.y} stroke="#10b981" strokeWidth="1" strokeDasharray="2,2" />
+            </svg>
+        );
+    };
+
+    const editCtx = (blockId: string): BlockRenderContext => ({
+        mode: canvasMode === 'preview' ? 'view' : 'edit',
+        theme,
+        interpolate: (text: string) => text,
+        resources,
+        onPropChange: (patch: Record<string, unknown>) => onUpdateBlockProps(blockId, patch)
+    });
+
+    const customCollisionDetection: CollisionDetection = (args) => {
+        const centerCollisions = closestCenter(args);
+        if (centerCollisions.length > 0) return centerCollisions;
+
+        const { pointerCoordinates } = args;
+        if (!pointerCoordinates) return [];
+
+        const droppables = args.droppableContainers.filter(container => {
+            const rect = container.rect.current;
+            if (!rect) return false;
+            return (
+                pointerCoordinates.x >= rect.left &&
+                pointerCoordinates.x <= rect.right &&
+                pointerCoordinates.y >= rect.top &&
+                pointerCoordinates.y <= rect.bottom
+            );
+        });
+
+        return droppables.map(container => ({
+            id: container.id,
+            data: { droppableContainer: container }
+        }));
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
 
-        const activeId = active.id.toString();
-        const overId = over.id.toString();
+        const activeId = active.id as string;
+        const overId = over.id as string;
 
-        // 1. Dragging a Section
-        if (activeId.startsWith('sec_')) {
-            if (activeId === overId) return;
-            const sections = version.structureJson.sections;
-            const fromIndex = sections.findIndex(s => s.id === activeId);
-            const toIndex = sections.findIndex(s => s.id === overId);
-            if (fromIndex !== -1 && toIndex !== -1) {
-                onReorderSections(fromIndex, toIndex);
+        if (activeId.startsWith('section-') || !activeId.includes('-')) {
+            if (overId.startsWith('section-') || !overId.includes('-')) {
+                const oldIdx = version.structureJson.sections.findIndex(s => s.id === activeId);
+                const newIdx = version.structureJson.sections.findIndex(s => s.id === overId);
+                if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+                    onReorderSections(oldIdx, newIdx);
+                }
             }
             return;
         }
 
-        // 2. Dragging a Block (Nestable / Cross-column movement)
         let targetSectionId = '';
         let targetColIdx = 0;
         let targetBlockIndex = 0;
 
-        if (overId.includes('-col-')) {
-            const parts = overId.split('-col-');
-            targetSectionId = parts[0];
-            targetColIdx = parseInt(parts[1], 10);
-
+        if (overId.startsWith('col-')) {
+            const parts = overId.split('-');
+            targetSectionId = parts.slice(1, -1).join('-');
+            targetColIdx = parseInt(parts[parts.length - 1], 10);
             const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
-            if (targetSection) {
-                const targetColBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-                targetBlockIndex = targetColBlocks.length;
-            }
+            if (!targetSection) return;
+            const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
+            targetBlockIndex = colBlocks.length;
         } else {
             let found = false;
             for (const sec of version.structureJson.sections) {
@@ -415,217 +656,353 @@ const Canvas = React.memo(function Canvas({
         onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
     };
 
+    // Custom pointer position dnd-kit modifier to divide coordinate transform offsets by the zoom factor
+    const zoomModifier = ({ transform }: { transform: { x: number; y: number; scaleX: number; scaleY: number } }) => {
+        return {
+            ...transform,
+            x: transform.x / zoom,
+            y: transform.y / zoom,
+        };
+    };
+
     const sectionIds = version.structureJson.sections.map(s => s.id);
+    const isPreview = canvasMode === 'preview';
 
     return (
-        <main className="flex-1 overflow-y-auto p-8 flex flex-col items-center justify-start custom-scrollbar gap-6" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)' }}>
-            {/* Grid Pattern Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <main 
+            ref={workspaceRef}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            className="flex-1 overflow-hidden relative select-none"
+            style={{ 
+                background: 'linear-gradient(135deg, #020617 0%, #0f172a 100%)',
+                cursor: isPanning ? 'grabbing' : panToolActive ? 'grab' : 'default' 
+            }}
+        >
+            {/* SVG Canvas Grid Pattern (Background panned/zoomed dynamically) */}
+            <div 
+                className="absolute inset-0 pointer-events-none opacity-[0.04]" 
+                style={{ 
+                    backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)', 
+                    backgroundSize: '24px 24px',
+                    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoom})`,
+                    transformOrigin: 'top left'
+                }} 
+            />
 
+            {/* Rulers (fixed layout boundaries) */}
+            {!isPreview && renderTopRuler()}
+            {!isPreview && renderLeftRuler()}
+
+            {/* SVG corner intersection gap box */}
+            {!isPreview && (
+                <div className="absolute top-0 left-0 w-5 h-5 bg-slate-950 border-r border-b border-slate-800 z-40" />
+            )}
+
+            {/* Custom SVG guidelines overlays */}
+            {!isPreview && guides.map(guide => {
+                if (guide.type === 'v') {
+                    const screenX = guide.position * zoom + panOffset.x + 20;
+                    return (
+                        <div
+                            key={guide.id}
+                            onClick={() => handleRemoveGuide(guide.id)}
+                            className="absolute top-5 bottom-0 w-0.5 border-l border-emerald-500 hover:border-red-400 cursor-pointer z-20 group"
+                            style={{ left: `${screenX}px` }}
+                        >
+                            <span className="hidden group-hover:block absolute top-6 left-1 bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[8px] px-1.5 py-0.5 rounded shadow-lg z-30">
+                                X: {guide.position}px
+                            </span>
+                        </div>
+                    );
+                } else {
+                    const screenY = guide.position * zoom + panOffset.y + 20;
+                    return (
+                        <div
+                            key={guide.id}
+                            onClick={() => handleRemoveGuide(guide.id)}
+                            className="absolute left-5 right-0 h-0.5 border-t border-emerald-500 hover:border-red-400 cursor-pointer z-20 group"
+                            style={{ top: `${screenY}px` }}
+                        >
+                            <span className="hidden group-hover:block absolute left-6 top-1 bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[8px] px-1.5 py-0.5 rounded shadow-lg z-30">
+                                Y: {guide.position}px
+                            </span>
+                        </div>
+                    );
+                }
+            })}
+
+            {/* Center Canvas Transform Scale Frame Viewport */}
             <div
-                className={cn(
-                    "bg-white shadow-2xl shadow-black/20 transition-all duration-500 origin-top overflow-y-auto custom-scrollbar relative",
-                    viewport === 'desktop'
-                        ? "w-full max-w-[1400px] h-[calc(100vh-11rem)] min-h-[700px] rounded-2xl ring-1 ring-white/10"
-                        : viewport === 'tablet'
-                        ? "w-[768px] h-[850px] max-h-[calc(100vh-12rem)] rounded-[1.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
-                        : "w-[390px] h-[850px] max-h-[calc(100vh-12rem)] rounded-[2.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
-                )}
-                onClickCapture={(e) => {
-                    if (canvasMode === 'preview') {
-                        const target = e.target as HTMLElement;
-                        if (target.closest('a') || target.closest('button')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toast({
-                                title: "Interaction Disabled",
-                                description: "Link navigation and button actions are disabled in preview mode.",
-                            });
-                        }
-                    }
+                className="w-full h-full flex items-center justify-center transform-gpu"
+                style={{
+                    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoom})`,
+                    transformOrigin: 'center center',
+                    pointerEvents: isPanning ? 'none' : 'auto'
                 }}
             >
-                <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd}>
-                    <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-                        <div className="divide-y divide-slate-100">
-                            {version.structureJson.sections.length > 0 ? (
-                                version.structureJson.sections.map((section, idx) => {
-                                    const sectionProps = (section.props || {}) as {
-                                        heading?: string;
-                                        visibilityDevice?: string;
-                                        visibilityBehavior?: string;
-                                        visibilityTag?: string;
-                                        paddingTop?: string;
-                                        paddingBottom?: string;
-                                        paddingLeft?: string;
-                                        paddingRight?: string;
-                                        minHeight?: string;
-                                        backgroundType?: string;
-                                        backgroundColor?: string;
-                                        gradientAngle?: number;
-                                        gradientFrom?: string;
-                                        gradientTo?: string;
-                                        backgroundImageUrl?: string;
-                                        backgroundVideoUrl?: string;
-                                        backgroundAttachment?: string;
-                                        backgroundSize?: string;
-                                        backgroundPosition?: string;
-                                        backgroundRepeat?: string;
-                                        layout?: string;
-                                        columnGap?: string;
-                                        verticalAlign?: string;
-                                        overlayColor?: string;
-                                        overlayOpacity?: number;
-                                    };
-                                    const bgType = sectionProps.backgroundType || 'none';
-                                    const overlayCol = sectionProps.overlayColor || '#000000';
-                                    const overlayOp = sectionProps.overlayOpacity !== undefined ? sectionProps.overlayOpacity : 0;
+                <div
+                    className={cn(
+                        "bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none text-slate-800",
+                        viewport === 'desktop'
+                            ? "w-[1280px] min-h-[800px] rounded-2xl ring-1 ring-slate-800/10"
+                            : viewport === 'tablet'
+                            ? "w-[768px] min-h-[1024px] rounded-[1.5rem] border-[8px] border-slate-900 ring-1 ring-slate-850"
+                            : "w-[390px] min-h-[844px] rounded-[2.5rem] border-[8px] border-slate-900 ring-1 ring-slate-850"
+                    )}
+                    onClickCapture={(e) => {
+                        if (canvasMode === 'preview') {
+                            const target = e.target as HTMLElement;
+                            if (target.closest('a') || target.closest('button')) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toast({
+                                    title: "Preview Restriction",
+                                    description: "Navigation links and dynamic button submissions are disabled in preview editing mode.",
+                                });
+                            }
+                        }
+                    }}
+                >
+                    <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
+                        <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+                            <div className="divide-y divide-slate-100 min-h-[400px]">
+                                {version.structureJson.sections.length > 0 ? (
+                                    version.structureJson.sections.map((section, idx) => {
+                                        const sectionProps = (section.props || {}) as {
+                                            heading?: string;
+                                            visibilityDevice?: string;
+                                            visibilityBehavior?: string;
+                                            visibilityTag?: string;
+                                            paddingTop?: string;
+                                            paddingBottom?: string;
+                                            paddingLeft?: string;
+                                            paddingRight?: string;
+                                            minHeight?: string;
+                                            backgroundType?: string;
+                                            backgroundColor?: string;
+                                            gradientAngle?: number;
+                                            gradientFrom?: string;
+                                            gradientTo?: string;
+                                            backgroundImageUrl?: string;
+                                            backgroundVideoUrl?: string;
+                                            backgroundAttachment?: string;
+                                            backgroundSize?: string;
+                                            backgroundPosition?: string;
+                                            backgroundRepeat?: string;
+                                            layout?: string;
+                                            columnGap?: string;
+                                            verticalAlign?: string;
+                                            overlayColor?: string;
+                                            overlayOpacity?: number;
+                                        };
+                                        const bgType = sectionProps.backgroundType || 'none';
+                                        const overlayCol = sectionProps.overlayColor || '#000000';
+                                        const overlayOp = sectionProps.overlayOpacity !== undefined ? sectionProps.overlayOpacity : 0;
 
-                                    const padTop = sectionProps.paddingTop || '2.5rem';
-                                    const padBottom = sectionProps.paddingBottom || '2.5rem';
-                                    const padLeft = sectionProps.paddingLeft || '1.5rem';
-                                    const padRight = sectionProps.paddingRight || '1.5rem';
-                                    const minHeight = sectionProps.minHeight || 'auto';
+                                        const padTop = sectionProps.paddingTop || '2.5rem';
+                                        const padBottom = sectionProps.paddingBottom || '2.5rem';
+                                        const padLeft = sectionProps.paddingLeft || '1.5rem';
+                                        const padRight = sectionProps.paddingRight || '1.5rem';
+                                        const minHeight = sectionProps.minHeight || 'auto';
 
-                                    const sectionStyle: React.CSSProperties = {
-                                        position: 'relative',
-                                        overflow: 'hidden',
-                                        paddingTop: padTop,
-                                        paddingBottom: padBottom,
-                                        paddingLeft: padLeft,
-                                        paddingRight: padRight,
-                                        minHeight: minHeight,
-                                        backgroundColor: bgType === 'color' ? sectionProps.backgroundColor : undefined,
-                                        backgroundImage: bgType === 'gradient'
-                                            ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${sectionProps.gradientFrom || '#3B5FFF'}, ${sectionProps.gradientTo || '#7C3AED'})`
-                                            : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
-                                        backgroundAttachment: sectionProps.backgroundAttachment || 'scroll',
-                                        backgroundSize: sectionProps.backgroundSize || 'cover',
-                                        backgroundPosition: sectionProps.backgroundPosition || 'center',
-                                        backgroundRepeat: sectionProps.backgroundRepeat || 'no-repeat',
-                                    };
+                                        const sectionStyle: React.CSSProperties = {
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            paddingTop: padTop,
+                                            paddingBottom: padBottom,
+                                            paddingLeft: padLeft,
+                                            paddingRight: padRight,
+                                            minHeight: minHeight,
+                                            backgroundColor: bgType === 'color' ? sectionProps.backgroundColor : undefined,
+                                            backgroundImage: bgType === 'gradient'
+                                                ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${sectionProps.gradientFrom || '#3B5FFF'}, ${sectionProps.gradientTo || '#7C3AED'})`
+                                                : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
+                                            backgroundAttachment: sectionProps.backgroundAttachment || 'scroll',
+                                            backgroundSize: sectionProps.backgroundSize || 'cover',
+                                            backgroundPosition: sectionProps.backgroundPosition || 'center',
+                                            backgroundRepeat: sectionProps.backgroundRepeat || 'no-repeat',
+                                        };
 
-                                    const layout = sectionProps.layout || '1-col';
-                                    const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
+                                        const layout = sectionProps.layout || '1-col';
+                                        const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
 
-                                    // Distribute blocks dynamically across columns
-                                    const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
-                                        return section.blocks.filter(b => {
-                                            const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
-                                            if (colIdx === colsCount - 1) {
-                                                return colVal >= colIdx;
-                                            }
-                                            return colVal === colIdx;
+                                        const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
+                                            return section.blocks.filter(b => {
+                                                const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
+                                                if (colIdx === colsCount - 1) {
+                                                    return colVal >= colIdx;
+                                                }
+                                                return colVal === colIdx;
+                                            });
                                         });
-                                    });
 
-                                    const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
-                                    const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
+                                        const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
+                                        const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
 
-                                    let gridStyle: React.CSSProperties = {};
-                                    if (layout === '2-col') {
-                                        gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
-                                    } else if (layout === '3-col') {
-                                        gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
-                                    } else if (layout === '4-col') {
-                                        gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
-                                    } else if (layout === 'grid') {
-                                         gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
-                                     }
+                                        let gridStyle: React.CSSProperties = {};
+                                        if (layout === '2-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
+                                        } else if (layout === '3-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
+                                        } else if (layout === '4-col') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
+                                        } else if (layout === 'grid') {
+                                            gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
+                                        }
 
-                                     return (
-                                         <SortableSection
-                                             key={section.id}
-                                             section={section}
-                                             idx={idx}
-                                             total={version.structureJson.sections.length}
-                                             onRemove={() => onRemoveSection(section.id)}
-                                             onMove={(dir) => onMoveSection(section.id, dir)}
-                                             onSave={() => onSaveSectionAsTemplate(section)}
-                                             onEdit={() => onEditSection(section.id)}
-                                             editMode={editMode}
-                                             canvasMode={canvasMode}
-                                         >
-                                             {/* HTML5 Loop Video Background */}
-                                            {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
-                                                <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                                                    <video
-                                                        src={sectionProps.backgroundVideoUrl}
-                                                        autoPlay
-                                                        loop
-                                                        muted
-                                                        playsInline
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                            )}
+                                        return (
+                                            <SortableSection
+                                                key={section.id}
+                                                section={section}
+                                                idx={idx}
+                                                total={version.structureJson.sections.length}
+                                                onRemove={() => onRemoveSection(section.id)}
+                                                onMove={(dir) => onMoveSection(section.id, dir)}
+                                                onSave={() => onSaveSectionAsTemplate(section)}
+                                                onEdit={() => onEditSection(section.id)}
+                                                editMode={editMode}
+                                                canvasMode={canvasMode}
+                                            >
+                                                {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
+                                                    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                                                        <video
+                                                            src={sectionProps.backgroundVideoUrl}
+                                                            autoPlay
+                                                            loop
+                                                            muted
+                                                            playsInline
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                )}
 
-                                            {/* Color Overlay */}
-                                            {overlayOp > 0 && (
-                                                <div
-                                                    className="absolute inset-0 pointer-events-none z-10"
-                                                    style={{
-                                                        backgroundColor: overlayCol,
-                                                        opacity: overlayOp,
-                                                    }}
-                                                />
-                                            )}
-
-                                            <div style={sectionStyle} className="w-full">
-                                                <div className="max-w-4xl mx-auto relative z-20">
-                                                    {sectionProps.heading && (
-                                                        <h2
-                                                            className="text-2xl font-bold tracking-tight mb-8"
-                                                            style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
-                                                        >
-                                                            {sectionProps.heading}
-                                                        </h2>
-                                                    )}
-
+                                                {overlayOp > 0 && (
                                                     <div
-                                                        className={cn("w-full grid relative z-20", colGapClass, alignClass)}
-                                                        style={layout !== '1-col' ? gridStyle : undefined}
-                                                    >
-                                                        {columnsBlocks.map((colBlocks, colIdx) => (
-                                                            <ColumnCell
-                                                                key={colIdx}
-                                                                sectionId={section.id}
-                                                                colIdx={colIdx}
-                                                                blocks={colBlocks}
-                                                                selectedBlockId={selectedBlockId}
-                                                                onSelectBlock={onSelectBlock}
-                                                                onSetTab={onSetTab}
-                                                                onRemoveBlock={onRemoveBlock}
-                                                                onMoveBlock={onMoveBlock}
-                                                                onDuplicateBlock={onDuplicateBlock}
-                                                                editCtx={editCtx}
-                                                                editMode={editMode}
-                                                                canvasMode={canvasMode}
-                                                            />
-                                                        ))}
+                                                        className="absolute inset-0 pointer-events-none z-10"
+                                                        style={{
+                                                            backgroundColor: overlayCol,
+                                                            opacity: overlayOp,
+                                                        }}
+                                                    />
+                                                )}
+
+                                                <div style={sectionStyle} className="w-full">
+                                                    <div className="max-w-4xl mx-auto relative z-20">
+                                                        {sectionProps.heading && (
+                                                            <h2
+                                                                className="text-2xl font-bold tracking-tight mb-8 text-slate-900"
+                                                                style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
+                                                            >
+                                                                {sectionProps.heading}
+                                                            </h2>
+                                                        )}
+
+                                                        <div
+                                                            className={cn("w-full grid relative z-20", colGapClass, alignClass)}
+                                                            style={layout !== '1-col' ? gridStyle : undefined}
+                                                        >
+                                                            {columnsBlocks.map((colBlocks, colIdx) => (
+                                                                <ColumnCell
+                                                                    key={colIdx}
+                                                                    sectionId={section.id}
+                                                                    colIdx={colIdx}
+                                                                    blocks={colBlocks}
+                                                                    selectedBlockId={selectedBlockId}
+                                                                    onSelectBlock={onSelectBlock}
+                                                                    onSetTab={onSetTab}
+                                                                    onRemoveBlock={onRemoveBlock}
+                                                                    onMoveBlock={onMoveBlock}
+                                                                    onDuplicateBlock={onDuplicateBlock}
+                                                                    editCtx={editCtx}
+                                                                    editMode={editMode}
+                                                                    canvasMode={canvasMode}
+                                                                />
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </SortableSection>
-                                    );
-                                })
-                            ) : (
-                                <div className="p-24 text-center space-y-4">
-                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center border border-slate-200 border-dashed">
-                                        <PlusSquare className="w-6 h-6 text-slate-300" />
+                                            </SortableSection>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="p-24 text-center space-y-4">
+                                        <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto flex items-center justify-center border border-slate-200 border-dashed">
+                                            <PlusSquare className="w-6 h-6 text-slate-300" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-slate-700">Start building your page</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Add sections from the sidebar or start with an empty layout.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold">Start building your page</h3>
-                                        <p className="text-xs text-slate-500 mt-1">Add sections from the sidebar or start with an empty layout.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </SortableContext>
-                </DndContext>
+                                )}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                </div>
+            </div>
+
+            {/* Figma-style Workspace Floating Navigation Toolbar (Bottom-Right) */}
+            <div className="absolute bottom-6 right-6 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
+                <Button
+                    onClick={() => setPanToolActive(prev => !prev)}
+                    className={cn(
+                        "h-8 w-8 p-0 rounded-lg transition-colors border-0",
+                        panToolActive 
+                            ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                            : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    )}
+                    variant="ghost"
+                    title={panToolActive ? "Select Tool (V)" : "Hand Pan Tool (Space)"}
+                >
+                    {panToolActive ? <Hand className="h-4 w-4" /> : <MousePointer className="h-4 w-4" />}
+                </Button>
+
+                <div className="h-4 w-[1px] bg-slate-800" />
+
+                <Button
+                    onClick={() => setZoom(prev => Math.max(0.3, prev - 0.1))}
+                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 bg-transparent border-0"
+                    variant="ghost"
+                    title="Zoom Out"
+                >
+                    <ZoomOut className="h-4 w-4" />
+                </Button>
+
+                <button
+                    onDoubleClick={resetZoomAndPan}
+                    className="px-2 text-[10px] font-bold text-slate-400 hover:text-slate-200 transition-colors font-mono select-none"
+                    title="Double click to reset canvas"
+                >
+                    {Math.round(zoom * 100)}%
+                </button>
+
+                <Button
+                    onClick={() => setZoom(prev => Math.min(2.0, prev + 0.1))}
+                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 bg-transparent border-0"
+                    variant="ghost"
+                    title="Zoom In"
+                >
+                    <ZoomIn className="h-4 w-4" />
+                </Button>
+
+                <div className="h-4 w-[1px] bg-slate-800" />
+
+                <Button
+                    onClick={resetZoomAndPan}
+                    className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 bg-transparent border-0"
+                    variant="ghost"
+                    title="Reset Zoom & Pan"
+                >
+                    <RotateCcw className="h-4 w-4" />
+                </Button>
             </div>
         </main>
     );
 });
+
+Canvas.displayName = 'Canvas';
 
 export default Canvas;
