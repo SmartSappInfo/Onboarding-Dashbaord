@@ -83,29 +83,30 @@
 /* ==========================================================================
    System Blue Theme Scoped Overrides
    ========================================================================== */
+
 .designer-theme-blue {
-    background: linear-gradient(135deg, #020617 0%, #0c1a4b 50%, #020617 100%) !important;
+    background: linear-gradient(135deg, #090e1a 0%, #151824 50%, #090e1a 100%) !important;
 }
 
 /* Header & Panels Backgrounds */
 .designer-theme-blue.designer-shell header,
 .designer-theme-blue .bg-slate-900\/90,
 .designer-theme-blue .bg-slate-900 {
-    background-color: rgba(11, 26, 75, 0.92) !important;
-    background: rgba(11, 26, 75, 0.92) !important;
+    background-color: rgba(21, 24, 36, 0.92) !important;
+    background: rgba(21, 24, 36, 0.92) !important;
 }
 .designer-theme-blue .bg-slate-950,
 .designer-theme-blue .bg-slate-950\/20,
 .designer-theme-blue .bg-slate-950\/40,
 .designer-theme-blue .bg-slate-950\/80 {
-    background-color: #03071e !important;
-    background: #03071e !important;
+    background-color: #090e1a !important;
+    background: #090e1a !important;
 }
 
 .designer-theme-blue .bg-slate-900\/20,
 .designer-theme-blue .bg-slate-900\/30 {
-    background-color: #050d2c !important;
-    background: #050d2c !important;
+    background-color: #0f1322 !important;
+    background: #0f1322 !important;
 }
 
 /* Borders */
@@ -116,7 +117,7 @@
 .designer-theme-blue .border-slate-800\/40,
 .designer-theme-blue .border-slate-850\/80,
 .designer-theme-blue .border-slate-800\/50 {
-    border-color: #1e3a8a !important;
+    border-color: #1c2234 !important;
 }
 
 /* Typography & Colors */
@@ -129,14 +130,14 @@
 
 .designer-theme-blue .text-slate-400,
 .designer-theme-blue .text-slate-500 {
-    color: #93c5fd !important;
+    color: #94a3b8 !important;
 }
 
 /* Buttons & Hovers */
 .designer-theme-blue .hover\:bg-slate-800:hover,
 .designer-theme-blue .hover\:bg-slate-900\/50:hover,
 .designer-theme-blue .hover\:bg-slate-800\/20:hover {
-    background-color: #1e3a8a !important;
+    background-color: #1c2234 !important;
 }
 
 .designer-theme-blue .hover\:text-slate-200:hover,
