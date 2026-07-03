@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -184,7 +184,7 @@ export default function AutomationBuilderClient() {
   const [isSaving, setIsSaving] = React.useState(false);
 
   // 1. Fetch Automations rules
-  const rulesQuery = React.useMemo(() => {
+  const rulesQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialAutomations'),

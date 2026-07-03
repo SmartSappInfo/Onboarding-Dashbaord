@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,7 +56,7 @@ export default function AnalyticsClient() {
   const [isSeeding, setIsSeeding] = React.useState(false);
 
   // 1. Load Social Posts
-  const postsQuery = React.useMemo(() => {
+  const postsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialPosts'),
@@ -68,7 +68,7 @@ export default function AnalyticsClient() {
   const posts = postsRaw || [];
 
   // 2. Load CRM Contacts
-  const contactsQuery = React.useMemo(() => {
+  const contactsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'workspaceEntities'),
@@ -81,7 +81,7 @@ export default function AnalyticsClient() {
   const contacts = contactsRaw || [];
 
   // 3. Load Invoices
-  const invoicesQuery = React.useMemo(() => {
+  const invoicesQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'invoices'),

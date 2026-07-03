@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,7 +88,7 @@ export default function ListeningClient() {
   const [competitorInput, setCompetitorInput] = React.useState('');
 
   // 1. Fetch active Social Listening alerts
-  const alertsQuery = React.useMemo(() => {
+  const alertsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialListeningAlerts'),

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,7 +79,7 @@ export default function InboxClient() {
   const chatScrollRef = React.useRef<HTMLDivElement | null>(null);
 
   // 1. Load Social Inbox items
-  const inboxQuery = React.useMemo(() => {
+  const inboxQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialInbox'),
@@ -92,7 +92,7 @@ export default function InboxClient() {
   const threads = inboxRaw || [];
 
   // 2. Load CRM Person Contacts
-  const contactsQuery = React.useMemo(() => {
+  const contactsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'workspaceEntities'),

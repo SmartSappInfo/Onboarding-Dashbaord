@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export default function SocialDashboardClient() {
   const router = useRouter();
 
   // 1. Fetch Social Posts
-  const postsQuery = React.useMemo(() => {
+  const postsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialPosts'),
@@ -53,7 +53,7 @@ export default function SocialDashboardClient() {
   const scheduledCount = posts.filter(p => p.status === 'scheduled').length;
 
   // 2. Fetch Inbox Items
-  const inboxQuery = React.useMemo(() => {
+  const inboxQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialInbox'),
@@ -66,7 +66,7 @@ export default function SocialDashboardClient() {
   const pendingInboxCount = inboxItems.filter(i => i.status === 'unread' || i.status === 'pending').length;
 
   // 3. Fetch Alerts Feed
-  const alertsQuery = React.useMemo(() => {
+  const alertsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialListeningAlerts'),
