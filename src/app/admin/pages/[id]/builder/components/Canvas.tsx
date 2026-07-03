@@ -9,16 +9,13 @@ import {
     useSensor,
     useSensors,
     type DragEndEvent,
-    type DragOverEvent,
     useDroppable,
-    type CollisionDetection,
-    DragOverlay,
+    type CollisionDetection
 } from '@dnd-kit/core';
 import {
     SortableContext,
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
-    rectSortingStrategy,
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -50,8 +47,7 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, CampaignPageStructure } from '@/lib/types';
-import { moveBlockToColumn } from '@/lib/page-builder/tree-operations';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks'; // register all blocks
@@ -64,10 +60,7 @@ interface CanvasProps {
     resources: BuilderResources;
     selectedBlockId: string | null;
     selectedSectionId?: string | null;
-    selectedColumnKey?: string | null;
     onSelectBlock: (id: string | null) => void;
-    onSelectColumn?: (key: string | null) => void;
-    onMoveColumn?: (fromSectionId: string, fromColIdx: number, toSectionId: string, toColIdx: number) => void;
 
     onSetTab: (tab: string) => void;
     onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
@@ -214,7 +207,7 @@ function SectionInserterLine({ onClick }: SectionInserterLineProps) {
         </div>
     );
 }
-function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode, editMode }: {
+function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMove, onDuplicate, children, canvasMode }: {
     block: PageBlock;
     bIdx: number;
     total: number;
@@ -225,14 +218,13 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     onDuplicate: () => void;
     children: React.ReactNode;
     canvasMode: 'edit' | 'preview';
-    editMode: 'columns' | 'components';
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id, disabled: canvasMode === 'preview' });
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.35 : 1,
+        opacity: isDragging ? 0.5 : 1,
     };
 
     const isPreview = canvasMode === 'preview';
@@ -252,7 +244,7 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                     : "p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl relative hover:border-slate-500/60 hover:bg-slate-750/5 transition-all group/block",
                 !isPreview && "cursor-pointer",
                 selected && !isPreview && "ring-2 ring-blue-500/80 border-solid border-blue-500/50 bg-blue-500/5",
-                isDragging && "blur-[1px] pointer-events-none select-none"
+                isDragging && "z-50 shadow-2xl bg-slate-800/80"
             )}
         >
             {/* Selected Block Info Tag */}
@@ -263,27 +255,26 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
             )}
 
             {/* Block Controls */}
-            {!isPreview && canvasMode === 'edit' && editMode === 'components' && (
-                <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-30 scale-90 origin-right">
+            {!isPreview && (
+                <div className="absolute -top-3 -right-2 opacity-0 group-hover/block:opacity-100 transition-opacity flex items-center gap-1 z-20 scale-90 origin-right">
                     <div
                         {...attributes}
                         {...listeners}
-                        className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all duration-200"
-                        title="Drag block"
+                        className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors"
                     >
-                        <GripVertical className="w-2.5 h-2.5 text-current" />
+                        <GripVertical className="w-2.5 h-2.5 text-slate-800 dark:text-slate-200" />
                     </div>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 disabled:opacity-30 transition-all duration-200" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                        <ArrowUp className="w-2.5 h-2.5 text-current" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
+                        <ArrowUp className="w-2.5 h-2.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 disabled:opacity-30 transition-all duration-200" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                        <ArrowDown className="w-2.5 h-2.5 text-current" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
+                        <ArrowDown className="w-2.5 h-2.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 transition-all duration-200" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
-                        <Copy className="w-2.5 h-2.5 text-current" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
+                        <Copy className="w-2.5 h-2.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 transition-all duration-200" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                        <Trash2 className="w-2.5 h-2.5 text-current" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+                        <Trash2 className="w-2.5 h-2.5" />
                     </Button>
                 </div>
             )}
@@ -307,10 +298,6 @@ function ColumnCell({
     editCtx,
     editMode,
     canvasMode,
-    sectionProps,
-    selectedColumnKey,
-    onSelectColumn,
-    activeDragId,
 }: {
     sectionId: string;
     colIdx: number;
@@ -324,109 +311,27 @@ function ColumnCell({
     editCtx: (blockId: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
-    sectionProps: Record<string, unknown>;
-    selectedColumnKey?: string | null;
-    onSelectColumn?: (key: string | null) => void;
-    activeDragId?: string | null;
 }) {
-    const columnKey = `col-${sectionId}-${colIdx}`;
-    const isColumnMode = editMode === 'columns';
-    const isSelected = selectedColumnKey === columnKey;
-
-    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    const { setNodeRef, isOver } = useDroppable({
         id: `col-${sectionId}-${colIdx}`,
-        data: { sectionId, columnIndex: colIdx },
-        disabled: isColumnMode
+        data: { sectionId, columnIndex: colIdx }
     });
-
-    const {
-        attributes,
-        listeners,
-        setNodeRef: setSortableRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({
-        id: columnKey,
-        disabled: canvasMode === 'preview' || !isColumnMode
-    });
-
-    const setCombinedRef = (element: HTMLDivElement | null) => {
-        setDroppableRef(element);
-        setSortableRef(element);
-    };
 
     const blockIds = blocks.map(b => b.id);
     const isPreview = canvasMode === 'preview';
 
-    const columnsProps = (sectionProps.columnsProps as Record<string, Record<string, unknown>> | undefined) || {};
-    const colProp = columnsProps[colIdx.toString()] || {};
-
-    const dndStyle = transform ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    } : undefined;
-
-    const colStyle: React.CSSProperties = {
-        ...dndStyle,
-        backgroundColor: (colProp.backgroundColor as string) || undefined,
-        paddingTop: (colProp.paddingTop as string) || undefined,
-        paddingBottom: (colProp.paddingBottom as string) || undefined,
-        paddingLeft: (colProp.paddingLeft as string) || undefined,
-        paddingRight: (colProp.paddingRight as string) || undefined,
-        borderRadius: (colProp.borderRadius as string) || undefined,
-        alignSelf: sectionProps.verticalAlign === 'center' ? 'center' : sectionProps.verticalAlign === 'bottom' ? 'end' : 'stretch',
-        opacity: isDragging ? 0.4 : 1,
-    };
-
     return (
         <div
-            ref={setCombinedRef}
-            style={colStyle}
-            onClick={(e) => {
-                if (isColumnMode && !isPreview) {
-                    e.stopPropagation();
-                    onSelectColumn?.(columnKey);
-                    onSetTab('edit');
-                }
-            }}
+            ref={setNodeRef}
             className={cn(
-                "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative border",
-                !isPreview && (isColumnMode ? (
-                    isSelected 
-                        ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/5 cursor-pointer" 
-                        : "border-slate-350/20 dark:border-slate-700/20 hover:border-emerald-500/30 cursor-pointer"
-                ) : (
-                    editMode === 'components' 
-                        ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" 
-                        : "border-transparent bg-transparent"
-                )),
-                isOver && !isColumnMode && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
+                "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
+                !isPreview && (editMode === 'components' ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" : "border border-transparent"),
+                isOver && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
             )}
         >
-            {!isPreview && (editMode === 'components' || isColumnMode) && (
-                <div className={cn(
-                    "absolute top-2 left-2 text-[8px] font-black uppercase px-1 py-0.5 rounded select-none z-10",
-                    isColumnMode ? (
-                        isSelected 
-                            ? "bg-emerald-600 text-white font-bold" 
-                            : "bg-slate-800 text-slate-300"
-                    ) : "bg-slate-100 text-slate-400"
-                )}>
+            {!isPreview && editMode === 'components' && (
+                <div className="absolute top-2 left-2 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1 py-0.5 rounded select-none">
                     Col {colIdx + 1}
-                </div>
-            )}
-
-            {!isPreview && isColumnMode && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 z-30">
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className="h-5 w-5 rounded-full shadow-md bg-white text-slate-950 hover:bg-slate-950 hover:text-white border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors duration-200"
-                        title="Drag column"
-                    >
-                        <GripVertical className="w-2.5 h-2.5 text-current" />
-                    </div>
                 </div>
             )}
 
@@ -448,7 +353,6 @@ function ColumnCell({
                             onMove={(dir) => onMoveBlock(block.id, dir)}
                             onDuplicate={() => onDuplicateBlock(block.id)}
                             canvasMode={canvasMode}
-                            editMode={editMode}
                         >
                             <BlockRenderer block={block} ctx={ctx} />
                         </SortableBlock>
@@ -456,25 +360,11 @@ function ColumnCell({
                 })}
             </SortableContext>
 
-            {isOver && activeDragId && !blockIds.includes(activeDragId) && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') && blocks.length > 0 && (
-                <div className="w-full py-3 bg-emerald-500/10 border border-dashed border-emerald-500 rounded-lg text-center text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.1)] animate-pulse transition-all">
-                    Drop here to place component
-                </div>
-            )}
-
             {blocks.length === 0 && !isPreview && (
-                isOver && activeDragId && !activeDragId.startsWith('col-') && !activeDragId.startsWith('section-') ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-emerald-500/10 border-2 border-dashed border-emerald-500 rounded-xl text-emerald-600 dark:text-emerald-400 select-none shadow-[0_0_20px_rgba(16,185,129,0.15)] scale-[1.01] animate-pulse transition-all duration-200">
-                        <PlusSquare className="w-6 h-6 mb-2 text-emerald-500" />
-                        <p className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Drop Here</p>
-                        <p className="text-[10px] text-emerald-500/80 mt-1">Release to place component</p>
-                    </div>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
-                        <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
-                        <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
-                    </div>
-                )
+                <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
+                    <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
+                    <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
+                </div>
             )}
         </div>
     );
@@ -488,10 +378,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     resources,
     selectedBlockId,
     selectedSectionId,
-    selectedColumnKey,
     onSelectBlock,
-    onSelectColumn,
-    onMoveColumn,
 
     onSetTab,
     onUpdateBlockProps,
@@ -514,19 +401,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [zoom, setZoom] = useState(1.0);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
-    const [activeDragId, setActiveDragId] = useState<string | null>(null);
-    const [dragStructure, setDragStructure] = useState<CampaignPageStructure | null>(null);
-    const lastDragTargetRef = useRef<{ sectionId: string; colIdx: number; index: number } | null>(null);
-
-    const activeBlock = React.useMemo(() => {
-        if (!activeDragId) return null;
-        if (activeDragId.startsWith('col-') || activeDragId.startsWith('section-') || !activeDragId.includes('-')) return null;
-        for (const sec of version.structureJson.sections) {
-            const b = sec.blocks.find(bk => bk.id === activeDragId);
-            if (b) return b;
-        }
-        return null;
-    }, [activeDragId, version.structureJson.sections]);
     const [panToolActive, setPanToolActive] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -783,29 +657,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     });
 
     const customCollisionDetection: CollisionDetection = (args) => {
-        const activeId = args.active.id as string;
-
-        // Filter droppable targets depending on what is being dragged
-        let filteredContainers = args.droppableContainers;
-        if (activeId.startsWith('col-')) {
-            filteredContainers = args.droppableContainers.filter(c => (c.id as string).startsWith('col-'));
-        } else if (activeId.startsWith('section-') || !activeId.includes('-')) {
-            filteredContainers = args.droppableContainers.filter(c => (c.id as string).startsWith('section-') || !(c.id as string).includes('-'));
-        } else {
-            // Dragging a block: block can land on columns ('col-') or on other blocks (which are sortable and don't contain section prefixes)
-            filteredContainers = args.droppableContainers.filter(c => {
-                const idStr = c.id as string;
-                return idStr.startsWith('col-') || (!idStr.startsWith('section-') && idStr.includes('-'));
-            });
-        }
-
-        const centerCollisions = closestCenter({ ...args, droppableContainers: filteredContainers });
+        const centerCollisions = closestCenter(args);
         if (centerCollisions.length > 0) return centerCollisions;
 
         const { pointerCoordinates } = args;
         if (!pointerCoordinates) return [];
 
-        const droppables = filteredContainers.filter(container => {
+        const droppables = args.droppableContainers.filter(container => {
             const rect = container.rect.current;
             if (!rect) return false;
             return (
@@ -822,17 +680,24 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         }));
     };
 
-    const handleDragOver = (event: DragOverEvent): void => {
+    const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
 
         const activeId = active.id as string;
         const overId = over.id as string;
 
-        // Only reflow layout for block dragging
-        if (activeId.startsWith('section-') || activeId.startsWith('col-') || !activeId.includes('-')) return;
+        if (activeId.startsWith('section-') || !activeId.includes('-')) {
+            if (overId.startsWith('section-') || !overId.includes('-')) {
+                const oldIdx = version.structureJson.sections.findIndex(s => s.id === activeId);
+                const newIdx = version.structureJson.sections.findIndex(s => s.id === overId);
+                if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+                    onReorderSections(oldIdx, newIdx);
+                }
+            }
+            return;
+        }
 
-        const currentStruct = dragStructure || version.structureJson;
         let targetSectionId = '';
         let targetColIdx = 0;
         let targetBlockIndex = 0;
@@ -841,17 +706,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             const parts = overId.split('-');
             targetSectionId = parts.slice(1, -1).join('-');
             targetColIdx = parseInt(parts[parts.length - 1], 10);
-            const targetSection = currentStruct.sections.find(s => s.id === targetSectionId);
+            const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
             if (!targetSection) return;
             const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
             targetBlockIndex = colBlocks.length;
-        } else if (overId.startsWith('section-') || !overId.includes('-')) {
-            targetSectionId = overId;
-            targetColIdx = 0;
-            targetBlockIndex = 0;
         } else {
             let found = false;
-            for (const sec of currentStruct.sections) {
+            for (const sec of version.structureJson.sections) {
                 const bIdx = sec.blocks.findIndex(b => b.id === overId);
                 if (bIdx !== -1) {
                     targetSectionId = sec.id;
@@ -867,147 +728,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             if (!found) return;
         }
 
-        lastDragTargetRef.current = { sectionId: targetSectionId, colIdx: targetColIdx, index: targetBlockIndex };
-
-        // Check if location has changed
-        let sourceSectionId = '';
-        let sourceColIdx = 0;
-        for (const sec of currentStruct.sections) {
-            const bIdx = sec.blocks.findIndex(b => b.id === activeId);
-            if (bIdx !== -1) {
-                sourceSectionId = sec.id;
-                sourceColIdx = ((sec.blocks[bIdx].props || {}) as { column?: number }).column ?? 0;
-                break;
-            }
-        }
-
-        if (sourceSectionId === targetSectionId && sourceColIdx === targetColIdx) {
-            const colBlocks = currentStruct.sections.find(s => s.id === sourceSectionId)?.blocks.filter(b => ((b.props || {}) as { column?: number }).column === sourceColIdx) || [];
-            const activeColIdx = colBlocks.findIndex(b => b.id === activeId);
-            if (activeColIdx !== -1 && activeColIdx !== targetBlockIndex) {
-                const sec = currentStruct.sections.find(s => s.id === sourceSectionId);
-                if (sec) {
-                    const actualActiveIdx = sec.blocks.findIndex(b => b.id === activeId);
-                    const targetBlockId = colBlocks[targetBlockIndex]?.id;
-                    const actualTargetIdx = targetBlockId ? sec.blocks.findIndex(b => b.id === targetBlockId) : sec.blocks.length;
-
-                    if (actualActiveIdx !== -1 && actualTargetIdx !== -1) {
-                        React.startTransition(() => {
-                            const newSections = currentStruct.sections.map(s => {
-                                if (s.id !== sourceSectionId) return s;
-                                const newBlocks = [...s.blocks];
-                                const [removed] = newBlocks.splice(actualActiveIdx, 1);
-                                newBlocks.splice(actualTargetIdx, 0, removed);
-                                return { ...s, blocks: newBlocks };
-                            });
-                            setDragStructure({ ...currentStruct, sections: newSections });
-                        });
-                    }
-                }
-            }
-        } else {
-            React.startTransition(() => {
-                const updated = moveBlockToColumn(currentStruct, activeId, targetSectionId, targetColIdx, targetBlockIndex);
-                setDragStructure(updated);
-            });
-        }
-    };
-
-    const handleDragEnd = (event: DragEndEvent): void => {
-        const { active, over } = event;
-        if (!over) {
-            setDragStructure(null);
-            return;
-        }
-
-        const activeId = active.id as string;
-        const overId = over.id as string;
-
-        // 1. Column Drag & Drop Handling
-        if (activeId.startsWith('col-')) {
-            if (overId.startsWith('col-')) {
-                const activeParts = activeId.split('-');
-                const fromSectionId = activeParts.slice(1, -1).join('-');
-                const fromColIdx = parseInt(activeParts[activeParts.length - 1], 10);
-
-                const overParts = overId.split('-');
-                const toSectionId = overParts.slice(1, -1).join('-');
-                const toColIdx = parseInt(overParts[overParts.length - 1], 10);
-
-                onMoveColumn?.(fromSectionId, fromColIdx, toSectionId, toColIdx);
-            }
-            setDragStructure(null);
-            return;
-        }
-
-        // 2. Section Drag & Drop Handling
-        if (activeId.startsWith('section-') || !activeId.includes('-')) {
-            if (overId.startsWith('section-') || !overId.includes('-')) {
-                const oldIdx = version.structureJson.sections.findIndex(s => s.id === activeId);
-                const newIdx = version.structureJson.sections.findIndex(s => s.id === overId);
-                if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
-                    onReorderSections(oldIdx, newIdx);
-                }
-            }
-            setDragStructure(null);
-            return;
-        }
-
-        // 3. Block Drag & Drop Handling
-        if (lastDragTargetRef.current) {
-            const { sectionId, colIdx, index } = lastDragTargetRef.current;
-            onMoveBlockToColumn(activeId, sectionId, colIdx, index);
-        } else if (dragStructure) {
-            let targetSectionId = '';
-            let targetColIdx = 0;
-            let targetBlockIndex = 0;
-            for (const sec of dragStructure.sections) {
-                const bIdx = sec.blocks.findIndex(b => b.id === activeId);
-                if (bIdx !== -1) {
-                    targetSectionId = sec.id;
-                    targetColIdx = ((sec.blocks[bIdx].props || {}) as { column?: number }).column ?? 0;
-                    const colBlocks = sec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-                    targetBlockIndex = colBlocks.findIndex(b => b.id === activeId);
-                    break;
-                }
-            }
-            if (targetSectionId) {
-                onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
-            }
-        } else {
-            let targetSectionId = '';
-            let targetColIdx = 0;
-            let targetBlockIndex = 0;
-
-            if (overId.startsWith('col-')) {
-                const parts = overId.split('-');
-                targetSectionId = parts.slice(1, -1).join('-');
-                targetColIdx = parseInt(parts[parts.length - 1], 10);
-                const targetSection = version.structureJson.sections.find(s => s.id === targetSectionId);
-                if (!targetSection) return;
-                const colBlocks = targetSection.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-                targetBlockIndex = colBlocks.length;
-            } else {
-                let found = false;
-                for (const sec of version.structureJson.sections) {
-                    const bIdx = sec.blocks.findIndex(b => b.id === overId);
-                    if (bIdx !== -1) {
-                        targetSectionId = sec.id;
-                        const overBlock = sec.blocks[bIdx];
-                        targetColIdx = ((overBlock.props || {}) as { column?: number }).column ?? 0;
-
-                        const colBlocks = sec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === targetColIdx);
-                        targetBlockIndex = colBlocks.findIndex(b => b.id === overId);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) return;
-            }
-
-            onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
-        }
-        setDragStructure(null);
+        onMoveBlockToColumn(activeId, targetSectionId, targetColIdx, targetBlockIndex);
     };
 
     // Custom pointer position dnd-kit modifier to divide coordinate transform offsets by the zoom factor
@@ -1019,8 +740,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         };
     };
 
-    const activeStructure = dragStructure || version.structureJson;
-    const sectionIds = activeStructure.sections.map(s => s.id);
+    const sectionIds = version.structureJson.sections.map(s => s.id);
     const isPreview = canvasMode === 'preview';
 
     return (
@@ -1081,26 +801,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                         }
                     }}
                 >
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={customCollisionDetection}
-                        onDragStart={(e) => {
-                            setActiveDragId(e.active.id as string);
-                            setDragStructure(JSON.parse(JSON.stringify(version.structureJson)));
-                        }}
-                        onDragOver={handleDragOver}
-                        onDragCancel={() => {
-                            setActiveDragId(null);
-                            setDragStructure(null);
-                            lastDragTargetRef.current = null;
-                        }}
-                        onDragEnd={(e) => { handleDragEnd(e); setActiveDragId(null); }}
-                        modifiers={[zoomModifier]}
-                    >
+                    <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
                             <div className={cn("min-h-[400px]", !isPreview && "divide-y divide-slate-100")}>
-                                {activeStructure.sections.length > 0 ? (
-                                    activeStructure.sections.map((section, idx) => {
+                                {version.structureJson.sections.length > 0 ? (
+                                    version.structureJson.sections.map((section, idx) => {
                                         const sectionProps = (section.props || {}) as {
                                             heading?: string;
                                             visibilityDevice?: string;
@@ -1196,7 +901,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 <SortableSection
                                                     section={section}
                                                     idx={idx}
-                                                    total={activeStructure.sections.length}
+                                                    total={version.structureJson.sections.length}
                                                     onRemove={() => onRemoveSection(section.id)}
                                                     onMove={(dir) => onMoveSection(section.id, dir)}
                                                     onSave={() => onSaveSectionAsTemplate(section)}
@@ -1242,32 +947,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 className={cn("w-full grid relative z-20", colGapClass, alignClass)}
                                                                 style={layout !== '1-col' ? gridStyle : undefined}
                                                             >
-                                                                <SortableContext
-                                                                    items={Array.from({ length: colsCount }, (_, colIdx) => `col-${section.id}-${colIdx}`)}
-                                                                    strategy={rectSortingStrategy}
-                                                                >
-                                                                    {columnsBlocks.map((colBlocks, colIdx) => (
-                                                                        <ColumnCell
-                                                                            key={colIdx}
-                                                                            sectionId={section.id}
-                                                                            colIdx={colIdx}
-                                                                            blocks={colBlocks}
-                                                                            selectedBlockId={selectedBlockId}
-                                                                            onSelectBlock={onSelectBlock}
-                                                                            onSetTab={onSetTab}
-                                                                            onRemoveBlock={onRemoveBlock}
-                                                                            onMoveBlock={onMoveBlock}
-                                                                            onDuplicateBlock={onDuplicateBlock}
-                                                                            editCtx={editCtx}
-                                                                            editMode={editMode}
-                                                                            canvasMode={canvasMode}
-                                                                            sectionProps={sectionProps}
-                                                                            selectedColumnKey={selectedColumnKey}
-                                                                            onSelectColumn={onSelectColumn}
-                                                                            activeDragId={activeDragId}
-                                                                        />
-                                                                    ))}
-                                                                </SortableContext>
+                                                                {columnsBlocks.map((colBlocks, colIdx) => (
+                                                                    <ColumnCell
+                                                                        key={colIdx}
+                                                                        sectionId={section.id}
+                                                                        colIdx={colIdx}
+                                                                        blocks={colBlocks}
+                                                                        selectedBlockId={selectedBlockId}
+                                                                        onSelectBlock={onSelectBlock}
+                                                                        onSetTab={onSetTab}
+                                                                        onRemoveBlock={onRemoveBlock}
+                                                                        onMoveBlock={onMoveBlock}
+                                                                        onDuplicateBlock={onDuplicateBlock}
+                                                                        editCtx={editCtx}
+                                                                        editMode={editMode}
+                                                                        canvasMode={canvasMode}
+                                                                    />
+                                                                ))}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1294,134 +990,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                 )}
                             </div>
                         </SortableContext>
-
-                        <DragOverlay adjustScale={true}>
-                            {activeDragId ? (
-                                activeBlock ? (
-                                    <div className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-xl overflow-hidden">
-                                        <BlockRenderer block={activeBlock} ctx={editCtx(activeBlock.id)} />
-                                    </div>
-                                ) : activeDragId.startsWith('col-') ? (
-                                    (() => {
-                                        const activeParts = activeDragId.split('-');
-                                        const colSecId = activeParts.slice(1, -1).join('-');
-                                        const colIdx = parseInt(activeParts[activeParts.length - 1], 10);
-                                        const colSec = version.structureJson.sections.find(s => s.id === colSecId);
-                                        const colBlocks = colSec ? colSec.blocks.filter(b => ((b.props || {}) as { column?: number }).column === colIdx) : [];
-                                        return (
-                                            <div className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-sm w-full bg-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col gap-4">
-                                                {colBlocks.map(block => (
-                                                    <div key={block.id} className="p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl">
-                                                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
-                                                    </div>
-                                                ))}
-                                                {colBlocks.length === 0 && (
-                                                    <div className="py-6 text-center text-xs text-slate-500 italic">Empty Column</div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()
-                                ) : (
-                                    (() => {
-                                        const activeSection = version.structureJson.sections.find(s => s.id === activeDragId);
-                                        if (!activeSection) return null;
-                                        const sectionProps = (activeSection.props || {}) as Record<string, unknown>;
-                                        const bgType = (sectionProps.backgroundType as string) || 'none';
-                                        const overlayCol = (sectionProps.overlayColor as string) || '#000000';
-                                        const overlayOp = sectionProps.overlayOpacity !== undefined ? (sectionProps.overlayOpacity as number) : 0;
-                                        const padTop = (sectionProps.paddingTop as string) || '2.5rem';
-                                        const padBottom = (sectionProps.paddingBottom as string) || '2.5rem';
-                                        const padLeft = (sectionProps.paddingLeft as string) || '1.5rem';
-                                        const padRight = (sectionProps.paddingRight as string) || '1.5rem';
-                                        const minHeight = (sectionProps.minHeight as string) || 'auto';
-
-                                        const sectionStyle: React.CSSProperties = {
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            paddingTop: padTop,
-                                            paddingBottom: padBottom,
-                                            paddingLeft: padLeft,
-                                            paddingRight: padRight,
-                                            minHeight: minHeight,
-                                            backgroundColor: bgType === 'color' ? (sectionProps.backgroundColor as string) : undefined,
-                                            backgroundImage: bgType === 'gradient'
-                                                ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${(sectionProps.gradientFrom as string) || '#3B5FFF'}, ${(sectionProps.gradientTo as string) || '#7C3AED'})`
-                                                : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
-                                            backgroundAttachment: (sectionProps.backgroundAttachment as string) || 'scroll',
-                                            backgroundSize: (sectionProps.backgroundSize as string) || 'cover',
-                                            backgroundPosition: (sectionProps.backgroundPosition as string) || 'center',
-                                            backgroundRepeat: (sectionProps.backgroundRepeat as string) || 'no-repeat',
-                                        };
-
-                                        const layout = (sectionProps.layout as string) || '1-col';
-                                        const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
-                                        const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
-                                            return activeSection.blocks.filter(b => {
-                                                const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
-                                                if (colIdx === colsCount - 1) {
-                                                    return colVal >= colIdx;
-                                                }
-                                                return colVal === colIdx;
-                                            });
-                                        });
-                                        const colGapClass = sectionProps.columnGap === 'small' ? 'gap-4' : sectionProps.columnGap === 'large' ? 'gap-12' : 'gap-8';
-                                        const alignClass = sectionProps.verticalAlign === 'center' ? 'items-center' : sectionProps.verticalAlign === 'bottom' ? 'items-end' : 'items-start';
-
-                                        let gridStyle: React.CSSProperties = {};
-                                        if (layout === '2-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' };
-                                        } else if (layout === '3-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' };
-                                        } else if (layout === '4-col') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' };
-                                        } else if (layout === 'grid') {
-                                            gridStyle = { gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' };
-                                        }
-
-                                        return (
-                                            <div 
-                                                style={sectionStyle} 
-                                                className="opacity-[0.98] shadow-[0_18px_45px_rgba(0,0,0,0.25)] scale-[1.01] pointer-events-none select-none max-w-4xl w-[1280px] bg-slate-900 border border-slate-700/50 rounded-xl overflow-hidden relative"
-                                            >
-                                                {overlayOp > 0 && (
-                                                    <div
-                                                        className="absolute inset-0 pointer-events-none z-10"
-                                                        style={{
-                                                            backgroundColor: overlayCol,
-                                                            opacity: overlayOp,
-                                                        }}
-                                                    />
-                                                )}
-                                                <div className="max-w-4xl mx-auto relative z-20">
-                                                                                    {typeof sectionProps.heading === 'string' && sectionProps.heading && (
-                                                        <h2
-                                                            className="text-2xl font-bold tracking-tight mb-8 text-slate-900 dark:text-slate-100"
-                                                            style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
-                                                        >
-                                                            {sectionProps.heading}
-                                                        </h2>
-                                                    )}
-                                                    <div
-                                                        className={cn("w-full grid relative z-20", colGapClass, alignClass)}
-                                                        style={layout !== '1-col' ? gridStyle : undefined}
-                                                    >
-                                                        {columnsBlocks.map((colBlocks, colIdx) => (
-                                                            <div key={colIdx} className="flex-1 flex flex-col gap-4">
-                                                                {colBlocks.map(block => (
-                                                                    <div key={block.id} className="p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl">
-                                                                        <BlockRenderer block={block} ctx={editCtx(block.id)} />
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()
-                                )
-                            ) : null}
-                        </DragOverlay>
                     </DndContext>
 
                     {/* Absolute Pinned Collaborative Comments Overlay */}
