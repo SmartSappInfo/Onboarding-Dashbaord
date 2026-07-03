@@ -1565,5 +1565,41 @@ service cloud.firestore {
         hasWorkspaceAccess(resource.data.workspaceId)
       );
     }
+
+    // --- Social Intelligence Suite (Phases 1-5) ---
+    match /socialAccounts/{accountId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialPosts/{postId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialInbox/{inboxId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialListeningRules/{ruleId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialListeningAlerts/{alertId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialAutomations/{automationId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /socialBrandKits/{kitId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
   }
 }
