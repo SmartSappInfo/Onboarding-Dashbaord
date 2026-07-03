@@ -237,15 +237,17 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                 onSelect(); 
             }}
             className={cn(
-                "p-4 bg-white ring-1 ring-slate-200 rounded-xl relative hover:ring-2 hover:ring-emerald-500/40 shadow-sm transition-all group/block",
+                isPreview 
+                    ? "p-0 bg-transparent ring-0 border-none shadow-none relative transition-all group/block" 
+                    : "p-4 bg-transparent border border-dashed border-slate-350/40 dark:border-slate-700/40 rounded-xl relative hover:border-slate-500/60 hover:bg-slate-750/5 transition-all group/block",
                 !isPreview && "cursor-pointer",
-                selected && !isPreview && "ring-2 ring-emerald-500 bg-emerald-50/50",
-                isDragging && "z-50 shadow-2xl"
+                selected && !isPreview && "ring-2 ring-blue-500/80 border-solid border-blue-500/50 bg-blue-500/5",
+                isDragging && "z-50 shadow-2xl bg-slate-800/80"
             )}
         >
             {/* Selected Block Info Tag */}
             {selected && !isPreview && (
-                <div className="absolute -top-2.5 left-2 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded shadow-sm z-30 select-none pointer-events-none">
+                <div className="absolute -top-2.5 left-2 bg-blue-600 text-white text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded shadow-sm z-30 select-none pointer-events-none">
                     {block.props.customLabel as string || block.type}
                 </div>
             )}
@@ -321,11 +323,10 @@ function ColumnCell({
             ref={setNodeRef}
             className={cn(
                 "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
-                !isPreview && (editMode === 'components' ? "bg-slate-50/50 border border-slate-100 hover:border-emerald-500/25" : "border border-transparent"),
-                isOver && "bg-emerald-500/5 border-emerald-500/30 scale-[0.99] border-dashed ring-2 ring-emerald-500/10"
+                !isPreview && (editMode === 'components' ? "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30" : "border border-transparent"),
+                isOver && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
             )}
         >
-            {/* Column visual indicator tag */}
             {!isPreview && editMode === 'components' && (
                 <div className="absolute top-2 left-2 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1 py-0.5 rounded select-none">
                     Col {colIdx + 1}
