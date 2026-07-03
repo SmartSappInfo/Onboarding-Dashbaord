@@ -139,13 +139,13 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             className={cn(
                 isPreview 
                     ? "group/section relative transition-all border-none rounded-none m-0 p-0"
-                    : "group/section relative transition-all border border-dashed rounded-xl pt-8 pb-2 px-2 my-8",
+                    : "group/section relative transition-all border-b border-dashed border-slate-200 dark:border-zinc-800/80 rounded-none pt-8 pb-2 px-0 m-0",
                 !isPreview && (
                     isGlobal
-                        ? "border-purple-500 bg-purple-500/5 hover:border-purple-400"
+                        ? "bg-purple-500/5 hover:bg-purple-500/10"
                         : editMode === 'columns'
-                        ? "border-emerald-500/30 hover:border-emerald-500/60"
-                        : "border-slate-800/20 hover:border-slate-800/50"
+                        ? "hover:bg-emerald-500/5"
+                        : "hover:bg-slate-750/5"
                 ),
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
@@ -814,48 +814,27 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 >
                     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-                            <div className={cn("min-h-[400px] flex flex-col", !isPreview && "divide-y divide-slate-100")}>
+                            <div className={cn("min-h-[400px] flex flex-col relative", !isPreview && "divide-y divide-slate-100")}>
                                 {showHeader && (
-                                    <div className={cn(
-                                        "select-none pointer-events-none transition-all shrink-0",
-                                        isPreview 
-                                            ? "absolute top-0 inset-x-0 py-4 px-6 z-40"
-                                            : "w-full border border-dashed border-slate-200 dark:border-zinc-800/80 rounded-xl my-4 py-3 px-6 bg-slate-50/50 dark:bg-zinc-900/30 flex items-center justify-between"
-                                    )}>
-                                        {isPreview ? (
-                                            <div className="max-w-4xl mx-auto w-full flex items-center justify-between rounded-full bg-white/75 dark:bg-zinc-900/75 backdrop-blur-md border border-slate-200/50 dark:border-zinc-800/80 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20">
-                                                <div className="flex items-center gap-4">
-                                                    <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>
-                                                    <Button 
-                                                        variant="default"
-                                                        className="h-10 px-6 rounded-full font-bold text-xs shadow-md shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white"
-                                                        disabled
-                                                    >
-                                                        Request Receipt
-                                                    </Button>
-                                                </div>
+                                    <div className="absolute top-0 inset-x-0 py-4 px-6 z-40 select-none pointer-events-none transition-all shrink-0">
+                                        <div className="max-w-4xl mx-auto w-full flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-slate-200/50 dark:border-zinc-800/80 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20">
+                                            <div className="flex items-center gap-4">
+                                                <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
+                                                {!isPreview && (
+                                                    <span className="text-[8px] font-black uppercase text-slate-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">Header</span>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <>
-                                                <div className="flex items-center gap-2">
-                                                    <SmartSappLogo className="h-6 w-auto text-slate-700 dark:text-slate-300" />
-                                                    <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 tracking-wider uppercase">Page Header Enabled</span>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <span className="hidden md:block text-[10px] font-medium text-slate-400">Done Paying?</span>
-                                                    <Button 
-                                                        variant="secondary"
-                                                        className="h-7 px-4 rounded-full font-bold text-[10px] border border-slate-250 dark:border-zinc-800"
-                                                        disabled
-                                                    >
-                                                        Request Receipt
-                                                    </Button>
-                                                </div>
-                                            </>
-                                        )}
+                                            <div className="flex items-center gap-4">
+                                                <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>
+                                                <Button 
+                                                    variant="default"
+                                                    className="h-10 px-6 rounded-full font-bold text-xs shadow-md shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white"
+                                                    disabled
+                                                >
+                                                    Request Receipt
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 {version.structureJson.sections.length > 0 ? (
@@ -1048,12 +1027,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                     </div>
                                 )}
                                 {showFooter && (
-                                    <div className={cn(
-                                        "w-full select-none pointer-events-none mt-auto shrink-0",
-                                        !isPreview && "border border-dashed border-slate-200 dark:border-zinc-800/80 rounded-xl my-4 p-2 bg-slate-50/50 dark:bg-zinc-900/30 flex flex-col items-center gap-2"
-                                    )}>
+                                    <div className="w-full select-none pointer-events-none mt-auto shrink-0 relative">
                                         {!isPreview && (
-                                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-2">Page Footer Enabled</div>
+                                            <div className="absolute top-2 left-2 z-40 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm">
+                                                Footer
+                                            </div>
                                         )}
                                         <Footer className="w-full relative z-30 pointer-events-none" />
                                     </div>
