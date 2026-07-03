@@ -516,6 +516,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [isPanning, setIsPanning] = useState(false);
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [dragStructure, setDragStructure] = useState<CampaignPageStructure | null>(null);
+    const lastDragTargetRef = useRef<{ sectionId: string; colIdx: number; index: number } | null>(null);
 
     const activeBlock = React.useMemo(() => {
         if (!activeDragId) return null;
@@ -866,6 +867,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             if (!found) return;
         }
 
+        lastDragTargetRef.current = { sectionId: targetSectionId, colIdx: targetColIdx, index: targetBlockIndex };
+
         // Check if location has changed
         let sourceSectionId = '';
         let sourceColIdx = 0;
@@ -951,7 +954,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         }
 
         // 3. Block Drag & Drop Handling
-        if (dragStructure) {
+        if (lastDragTargetRef.current) {
+            const { sectionId, colIdx, index } = lastDragTargetRef.current;
+            onMoveBlockToColumn(activeId, sectionId, colIdx, index);
+        } else if (dragStructure) {
             let targetSectionId = '';
             let targetColIdx = 0;
             let targetBlockIndex = 0;
@@ -1086,6 +1092,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                         onDragCancel={() => {
                             setActiveDragId(null);
                             setDragStructure(null);
+                            lastDragTargetRef.current = null;
                         }}
                         onDragEnd={(e) => { handleDragEnd(e); setActiveDragId(null); }}
                         modifiers={[zoomModifier]}
