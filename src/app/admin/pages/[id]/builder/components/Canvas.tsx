@@ -351,7 +351,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     theme,
     resources,
     selectedBlockId,
+    selectedSectionId,
     onSelectBlock,
+
     onSetTab,
     onUpdateBlockProps,
     onRemoveBlock,
@@ -385,6 +387,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');
 
+    const breadcrumbPath = React.useMemo(() => {
+        if (!selectedBlockId) return null;
+        for (const sec of version.structureJson.sections) {
+            for (const b of sec.blocks) {
+                if (b.id === selectedBlockId) {
+                    const colVal = (b.props?.column as number) ?? 0;
+                    return [
+                        { label: 'Page', type: 'page' },
+                        { label: (sec.props.name as string) || (sec.props.category as string) || 'Section', type: 'section', id: sec.id },
+                        { label: `Column ${colVal + 1}`, type: 'column' },
+                        { label: (b.props.customLabel as string) || b.type, type: 'block', id: b.id }
+                    ];
+                }
+            }
+        }
+        return null;
+    }, [selectedBlockId, version.structureJson.sections]);
     const panStartRef = useRef({ x: 0, y: 0 });
     const workspaceRef = useRef<HTMLDivElement>(null);
     const [isMounted, setIsMounted] = useState(false);
@@ -1288,6 +1307,69 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <RotateCcw className="h-4 w-4" />
                 </Button>
             </div>
+
+            {/* Floating minimap navigation stack */}
+            {!isPreview && version.structureJson.sections.length > 0 && (
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col gap-2.5 z-45 bg-slate-950/80 border border-slate-850/80 backdrop-blur px-2.5 py-4 rounded-full shadow-2xl select-none">
+                    <span className="text-[6px] text-slate-500 font-black text-center mb-1 uppercase tracking-wider">Map</span>
+                    {version.structureJson.sections.map((sec, sIdx) => {
+                        const label = (sec.props.name as string) || (sec.props.category as string) || `Section ${sIdx + 1}`;
+                        return (
+                            <button
+                                key={sec.id}
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    document.getElementById(sec.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }}
+                                className={cn(
+                                    "w-3.5 h-3.5 rounded-full flex items-center justify-center border transition-all active:scale-95 group/map relative",
+                                    selectedSectionId === sec.id
+                                        ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
+                                        : "border-slate-800 bg-slate-900 hover:border-slate-700 text-slate-400"
+                                )}
+                                title={label}
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                {/* Floating Tooltip */}
+                                <span className="absolute right-9 scale-0 group-hover/map:scale-100 bg-slate-900 border border-slate-800 text-slate-350 px-2 py-0.5 rounded text-[8px] font-black tracking-wider uppercase whitespace-nowrap shadow-xl transition-all origin-right z-50">
+                                    {label}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Persistent Nesting Breadcrumbs Bar */}
+            {!isPreview && breadcrumbPath && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-900/90 border border-slate-800 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 z-45 text-[9px] font-black uppercase text-slate-400 tracking-wider transition-all select-none">
+                    {breadcrumbPath.map((item, idx) => (
+                        <React.Fragment key={idx}>
+                            {idx > 0 && <span className="text-slate-700">/</span>}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (item.type === 'block' && item.id) {
+                                        onSelectBlock(item.id);
+                                        onSetTab('edit');
+                                    } else if (item.type === 'section' && item.id) {
+                                        onSelectBlock(null);
+                                        onEditSection(item.id);
+                                    }
+                                }}
+                                className={cn(
+                                    "hover:text-slate-200 transition-colors font-bold",
+                                    item.type === 'block' ? "text-blue-400 hover:text-blue-300" : item.type === 'section' ? "text-purple-400 hover:text-purple-300" : ""
+                                )}
+                                disabled={item.type === 'page' || item.type === 'column'}
+                            >
+                                {item.label}
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </div>
+            )}
         </main>
     );
 });
