@@ -255,15 +255,20 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             )}
           </div>
           
- <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
- <p className="text-sm font-semibold truncate leading-tight tracking-tight">{asset.name}</p>
- <div className="flex items-center gap-2 mt-1.5 opacity-60">
- <span className="text-[9px] font-bold tabular-nums">
-                    {asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}
-                    {format(new Date(asset.createdAt), 'MMM d')}
-                </span>
-            </div>
-          </div>
+  <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
+  <p className="text-sm font-semibold truncate leading-tight tracking-tight">{asset.name}</p>
+  <div className="flex items-center justify-between mt-1.5">
+    <span className="text-[9px] font-bold tabular-nums opacity-60">
+      {asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}
+      {format(new Date(asset.createdAt), 'MMM d')}
+    </span>
+    {asset.category && (
+      <span className="text-[8px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 border border-white/5 backdrop-blur-sm text-white/90">
+        {asset.category}
+      </span>
+    )}
+  </div>
+</div>
 
   <div className="absolute top-2 right-2 flex items-center gap-1.5">
             <Button
