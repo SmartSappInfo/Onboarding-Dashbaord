@@ -64,7 +64,7 @@ ${profile.forbiddenWords && profile.forbiddenWords.length > 0 ? `- Words to stri
     // 2. Fetch Gemini model with Key fallback
     const resolved = await getModel({
       provider: 'googleai',
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-3-flash-preview',
       organizationId: orgId,
     });
 
@@ -285,7 +285,7 @@ export async function recommendBestTimeAction(
     // 2. Query Gemini via Genkit
     const resolved = await getModel({
       provider: 'googleai',
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-3-flash-preview',
       organizationId: orgId,
     });
 
@@ -386,7 +386,7 @@ export async function simulateInboundMessageAction(
     // 2. Classify sentiment using Gemini
     const aiResolved = await getModel({
       provider: 'googleai',
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-3-flash-preview',
       organizationId: orgId,
     });
 
@@ -509,7 +509,7 @@ export async function generateInboxReplyAction(
 
     const aiResolved = await getModel({
       provider: 'googleai',
-      modelId: 'gemini-1.5-flash',
+      modelId: 'gemini-3-flash-preview',
       organizationId: orgId,
     });
 
