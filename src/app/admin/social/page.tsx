@@ -1,9 +1,4 @@
-import dynamic from 'next/dynamic';
-
-const SocialDashboardClient = dynamic(
-  () => import('./components/SocialDashboardClient'),
-  { ssr: false }
-);
+import SocialDashboardClient from './components/SocialDashboardClient';
 
 /**
  * SocialDashboardPage
