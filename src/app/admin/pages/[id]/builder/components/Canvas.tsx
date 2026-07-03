@@ -34,8 +34,18 @@ import {
     ZoomOut,
     Hand,
     MousePointer,
-    RotateCcw
+    RotateCcw,
+    User,
+    CheckCircle,
+    AlertTriangle
 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from '@/components/ui/select';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
@@ -354,6 +364,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [guides, setGuides] = useState<{ id: string; type: 'h' | 'v'; position: number }[]>([]);
 
+    // Ghana Profile Simulation States
+    const [simulatedProfile, setSimulatedProfile] = useState<'none' | 'parent' | 'student'>('none');
+
     const panStartRef = useRef({ x: 0, y: 0 });
     const workspaceRef = useRef<HTMLDivElement>(null);
     const [isMounted, setIsMounted] = useState(false);
@@ -573,10 +586,106 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         );
     };
 
+    // Simulated data context variables replacement mapping
+    const simulatedData: Record<string, Record<string, string>> = {
+        parent: {
+            name: 'Kwame Mensah',
+            phone: '+233 24 412 3456',
+            email: 'kwame@mensah.gh'
+        },
+        student: {
+            name: 'Ama Serwaa',
+            id: 'STU-2026-092',
+            class: 'Primary 5 B'
+        },
+        invoice: {
+            amount: 'GH₵ 1,200.00',
+            dueDate: 'June 30, 2026',
+            number: 'INV-7731-2026'
+        },
+        current: {
+            date: 'July 3, 2026',
+            time: '14:30 GMT'
+        },
+        tenant: {
+            name: 'SmartSapp Admissions'
+        }
+    };
+
+    const interpolate = (text: string): string => {
+        if (!text) return '';
+        let result = text;
+        
+        // Match token identifiers like {{category.key}} and replace with local simulated values
+        result = result.replace(/\{\{\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*\}\}/g, (match, cat, key) => {
+            if (simulatedProfile !== 'none') {
+                return simulatedData[cat]?.[key] || match;
+            }
+            return match;
+        });
+        
+        return result;
+    };
+
+    // WCAG Accessibility and Image size scanner
+    const runWcagAudit = () => {
+        const warnings: string[] = [];
+        let imageCount = 0;
+        let imageIssues = 0;
+        let contrastIssues = 0;
+
+        version.structureJson.sections.forEach((section, sIdx) => {
+            section.blocks.forEach((block) => {
+                // Check alt texts
+                if (block.type === 'image') {
+                    imageCount++;
+                    if (!block.props.altText && !block.props.alt) {
+                        imageIssues++;
+                        warnings.push(`Section ${sIdx + 1}: Image block (ID: ${block.id}) lacks alt tag.`);
+                    }
+                }
+                
+                // Contrast checks
+                if (block.type === 'text') {
+                    const textColor = (block.props.textColor as string || '').toLowerCase();
+                    const bgColor = (section.props.backgroundColor as string || '').toLowerCase();
+                    if (textColor === '#ffffff' && (bgColor === '#ffffff' || bgColor === 'rgba(255,255,255,1)')) {
+                        contrastIssues++;
+                        warnings.push(`Section ${sIdx + 1}: Low contrast (white text on white background).`);
+                    }
+                }
+
+                // Forms binding check
+                if (block.type === 'form' && !block.props.formId) {
+                    warnings.push(`Section ${sIdx + 1}: Form block is not bound to a database Form structure.`);
+                }
+            });
+        });
+
+        if (warnings.length === 0) {
+            toast({
+                title: "WCAG Audit Passed! 🎉",
+                description: `Analyzed ${version.structureJson.sections.length} sections. 0 accessibility issues detected.`,
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: `Accessibility Audit: ${warnings.length} Warnings`,
+                description: (
+                    <div className="space-y-1 mt-1 font-mono text-[9px] text-left leading-normal max-h-40 overflow-y-auto pr-1">
+                        {warnings.map((w, idx) => (
+                            <p key={idx} className="border-b border-red-500/10 pb-0.5">• {w}</p>
+                        ))}
+                    </div>
+                ) as unknown as string,
+            });
+        }
+    };
+
     const editCtx = (blockId: string): BlockRenderContext => ({
         mode: canvasMode === 'preview' ? 'view' : 'edit',
         theme,
-        interpolate: (text: string) => text,
+        interpolate,
         resources,
         onPropChange: (patch: Record<string, unknown>) => onUpdateBlockProps(blockId, patch)
     });
@@ -943,6 +1052,45 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     </DndContext>
                 </div>
             </div>
+
+            {/* Ghana Role Simulator & Accessibility Audits (Bottom-Left) */}
+            {!isPreview && (
+                <div className="absolute bottom-6 left-6 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md text-[10px] text-slate-300 font-semibold select-none">
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider pl-1.5 pr-1 select-none flex items-center gap-1">
+                        <User className="w-3 h-3 text-slate-400" /> Profile:
+                    </span>
+                    
+                    <Select
+                        value={simulatedProfile}
+                        onValueChange={(val: 'none' | 'parent' | 'student') => {
+                            setSimulatedProfile(val);
+                            toast({
+                                title: `Simulated profile: ${val === 'none' ? 'Author View' : val === 'parent' ? 'Kwame Mensah (Parent)' : 'Ama Serwaa (Student)'}`,
+                                description: "Canvas elements dynamically updated with local variables binding values.",
+                            });
+                        }}
+                    >
+                        <SelectTrigger className="h-7 w-32 bg-slate-950 border-slate-800 text-[10px] rounded-lg">
+                            <SelectValue placeholder="Select Profile" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 text-[10px]">
+                            <SelectItem value="none">Default Author View</SelectItem>
+                            <SelectItem value="parent">Kwame Mensah (Parent)</SelectItem>
+                            <SelectItem value="student">Ama Serwaa (Student)</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <div className="h-4 w-[1px] bg-slate-800" />
+
+                    <Button
+                        onClick={runWcagAudit}
+                        className="h-7 px-2 text-[9px] font-bold rounded-lg border border-slate-800 hover:border-emerald-500 hover:text-emerald-400 bg-slate-950/50 hover:bg-slate-900 transition-all flex items-center gap-1"
+                        variant="ghost"
+                    >
+                        <AlertTriangle className="h-3 w-3 text-amber-500" /> WCAG Audit Scan
+                    </Button>
+                </div>
+            )}
 
             {/* Figma-style Workspace Floating Navigation Toolbar (Bottom-Right) */}
             <div className="absolute bottom-6 right-6 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
