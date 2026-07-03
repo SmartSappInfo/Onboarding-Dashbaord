@@ -42,6 +42,8 @@ import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources }
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import Link from 'next/link';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import { useTheme } from 'next-themes';
+import { useSidebar } from '@/components/ui/sidebar';
 
 // ─── Extracted Components ────────────────────────────────────────────────
 import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
@@ -107,22 +109,20 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+    const { resolvedTheme } = useTheme();
+    const sidebar = useSidebar();
 
-    type DesignerTheme = 'dark' | 'light' | 'blue';
-    const [designerTheme, setDesignerThemeState] = useState<DesignerTheme>(() => {
-        if (typeof window !== 'undefined') {
-            return (localStorage.getItem('smart_designer_theme') as DesignerTheme) || 'dark';
-        }
-        return 'dark';
-    });
-
-    const setDesignerTheme = useCallback((theme: DesignerTheme) => {
-        setDesignerThemeState(theme);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('smart_designer_theme', theme);
-        }
+    // Collapse dashboard sidebar on mount, restore on unmount
+    useEffect(() => {
+        const wasOpen = sidebar.open;
+        sidebar.setOpen(false);
+        return () => {
+            sidebar.setOpen(wasOpen);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const activeDesignerTheme = resolvedTheme === 'light' ? 'light' : 'blue';
     useEffect(() => {
         if (!firestore) return;
 
@@ -366,9 +366,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     return (
         <div className={cn(
             "flex flex-col h-screen text-slate-900 border-t print:hidden overflow-hidden designer-shell",
-            designerTheme === 'light' ? 'designer-theme-light' : designerTheme === 'blue' ? 'designer-theme-blue' : 'designer-theme-dark'
+            activeDesignerTheme === 'light' ? 'designer-theme-light' : 'designer-theme-blue'
         )}>
-
             {/* ═══════════════ TOOLBAR ═══════════════ */}
             <header className="h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md">
                 <div className="flex items-center gap-3">
@@ -487,51 +486,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
-                    {/* Designer Theme Switcher */}
-                    <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 mr-2">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDesignerTheme('light')}
-                            className={cn(
-                                "h-6 w-6 p-0 rounded-lg transition-all",
-                                designerTheme === 'light'
-                                    ? "bg-slate-700 shadow-sm text-emerald-400"
-                                    : "text-slate-500 hover:text-slate-300"
-                            )}
-                            title="Light Mode Theme"
-                        >
-                            <Sun className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDesignerTheme('dark')}
-                            className={cn(
-                                "h-6 w-6 p-0 rounded-lg transition-all",
-                                designerTheme === 'dark'
-                                    ? "bg-slate-700 shadow-sm text-emerald-400"
-                                    : "text-slate-500 hover:text-slate-300"
-                            )}
-                            title="Dark Mode Theme"
-                        >
-                            <Moon className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDesignerTheme('blue')}
-                            className={cn(
-                                "h-6 w-6 p-0 rounded-lg transition-all",
-                                designerTheme === 'blue'
-                                    ? "bg-slate-700 shadow-sm text-blue-400"
-                                    : "text-slate-500 hover:text-slate-300"
-                            )}
-                            title="System Blue Theme"
-                        >
-                            <Palette className="w-3.5 h-3.5" />
-                        </Button>
-                    </div>
+
                     {/* Visual Performance Meter Scorecard */}
                     <div className="flex items-center gap-2 border-r border-slate-700/50 pr-3 mr-2 select-none">
                         <div className="flex flex-col items-end leading-none">
