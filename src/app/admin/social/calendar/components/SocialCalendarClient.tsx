@@ -30,7 +30,7 @@ import {
   Loader2 
 } from 'lucide-react';
 import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -166,7 +166,7 @@ export default function SocialCalendarClient() {
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
 
   // 1. Fetch Social Posts from Firestore
-  const postsQuery = React.useMemo(() => {
+  const postsQuery = useMemoFirebase(() => {
     if (!db || !activeWorkspaceId) return null;
     return query(
       collection(db, 'socialPosts'),
