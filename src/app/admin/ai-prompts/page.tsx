@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PromptsLibraryPage() {
   return (
-    <div className="flex flex-col gap-6 w-full text-left">
+    <div className="flex flex-col gap-6 w-full text-left p-6 md:p-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">AI Prompt Library</h1>
         <p className="text-muted-foreground mt-2">

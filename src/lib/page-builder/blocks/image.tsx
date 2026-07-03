@@ -33,20 +33,22 @@ registerBlock({
       );
     }
 
-    return (
-      <figure className="rounded-xl overflow-hidden">
-        {/*
-          Author images are arbitrary remote URLs with unknown intrinsic
-          dimensions, so `next/image` (which needs width/height or a configured
-          loader) is not applicable here — documented exception in the spec.
-        */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={props.src} alt={props.alt} className="w-full h-auto" loading="lazy" />
-        {props.caption ? (
-          <figcaption className="text-xs text-center py-2 italic" style={{ color: ctx.theme.colors.text, opacity: 0.6 }}>
+    if (props.caption) {
+      return (
+        <figure className="rounded-2xl border border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-900/80 shadow-sm overflow-hidden transition-all duration-300">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={props.src} alt={props.alt} className="w-full h-auto object-cover" loading="lazy" />
+          <figcaption className="px-5 py-4 border-t border-slate-100 dark:border-zinc-800/50 bg-white/50 dark:bg-zinc-900/50 text-xs font-semibold text-slate-500 dark:text-slate-400 text-center tracking-wide leading-relaxed">
             {ctx.interpolate(props.caption)}
           </figcaption>
-        ) : null}
+        </figure>
+      );
+    }
+
+    return (
+      <figure className="rounded-2xl overflow-hidden border border-transparent">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={props.src} alt={props.alt} className="w-full h-auto object-cover" loading="lazy" />
       </figure>
     );
   },
