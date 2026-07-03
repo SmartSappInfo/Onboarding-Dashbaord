@@ -411,6 +411,30 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     </Button>
                 </div>
 
+                {/* Components / Columns Switcher (only in Edit mode) */}
+                {builder.canvasMode === 'edit' && (
+                    <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50 ml-2">
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={() => builder.setEditMode('components')}
+                            className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
+                                builder.editMode === 'components' ? "bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-500/90" : "text-slate-400 hover:text-slate-200"
+                            )}
+                        >
+                            Components
+                        </Button>
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={() => builder.setEditMode('columns')}
+                            className={cn("h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 transition-all",
+                                builder.editMode === 'columns' ? "bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-500/90" : "text-slate-400 hover:text-slate-200"
+                            )}
+                        >
+                            Columns
+                        </Button>
+                    </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                     {/* Undo/Redo */}
@@ -625,6 +649,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onReorderBlocks={builder.reorderBlocks}
                     onMoveBlockToColumn={builder.moveBlockToColumn}
                     canvasMode={builder.canvasMode}
+                    editMode={builder.editMode}
+                    onSetEditMode={builder.setEditMode}
                 />
             </div>
             <BlockVariantPicker

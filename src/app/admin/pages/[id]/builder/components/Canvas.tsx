@@ -57,8 +57,9 @@ interface CanvasProps {
     onReorderBlocks: (sectionId: string, from: number, to: number) => void;
     onMoveBlockToColumn: (blockId: string, targetSectionId: string, targetColumnIndex: number, targetIndex: number) => void;
     canvasMode: 'edit' | 'preview';
+    editMode: 'columns' | 'components';
+    onSetEditMode: (mode: 'columns' | 'components') => void;
 }
-
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
 function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode }: {
     section: PageSection;
@@ -315,16 +316,16 @@ const Canvas = React.memo(function Canvas({
     onReorderSections,
     onMoveBlockToColumn,
     canvasMode,
+    editMode,
+    onSetEditMode: _onSetEditMode,
 }: CanvasProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    const [editMode, setEditMode] = React.useState<'columns' | 'components'>('components');
     const [isMounted, setIsMounted] = React.useState(false);
     const { toast } = useToast();
-
     React.useEffect(() => {
         setIsMounted(true);
     }, []);
@@ -421,41 +422,14 @@ const Canvas = React.memo(function Canvas({
             {/* Grid Pattern Overlay */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-            {/* Mode Switcher */}
-            <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-xl shadow-lg relative z-10 w-fit">
-                <button
-                    type="button"
-                    onClick={() => setEditMode('components')}
-                    className={cn(
-                        "text-[9px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-[0.97]",
-                        editMode === 'components'
-                            ? "bg-emerald-500 text-slate-950 font-black shadow-sm"
-                            : "text-slate-400 hover:text-slate-200"
-                    )}
-                >
-                    Edit Components
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setEditMode('columns')}
-                    className={cn(
-                        "text-[9px] font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition-all active:scale-[0.97]",
-                        editMode === 'columns'
-                            ? "bg-emerald-500 text-slate-950 font-black shadow-sm"
-                            : "text-slate-400 hover:text-slate-200"
-                    )}
-                >
-                    Edit Columns
-                </button>
-            </div>
             <div
                 className={cn(
-                    "bg-white shadow-2xl shadow-black/20 transition-all duration-500 origin-top overflow-hidden min-h-[800px] relative",
+                    "bg-white shadow-2xl shadow-black/20 transition-all duration-500 origin-top overflow-y-auto custom-scrollbar relative",
                     viewport === 'desktop'
-                        ? "w-full max-w-5xl rounded-2xl ring-1 ring-white/10"
+                        ? "w-full max-w-[1400px] h-[calc(100vh-11rem)] min-h-[700px] rounded-2xl ring-1 ring-white/10"
                         : viewport === 'tablet'
-                        ? "w-[768px] rounded-[1.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
-                        : "w-[390px] rounded-[2.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
+                        ? "w-[768px] h-[850px] max-h-[calc(100vh-12rem)] rounded-[1.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
+                        : "w-[390px] h-[850px] max-h-[calc(100vh-12rem)] rounded-[2.5rem] border-[8px] border-slate-800 ring-1 ring-slate-700"
                 )}
                 onClickCapture={(e) => {
                     if (canvasMode === 'preview') {

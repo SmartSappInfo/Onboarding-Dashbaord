@@ -42,6 +42,7 @@ interface BuilderState {
     isRestoring: boolean;
     variantPickerType: PageBlockType | null;
     canvasMode: 'edit' | 'preview';
+    editMode: 'columns' | 'components';
 }
 
 export type BuilderTab = 'add' | 'edit' | 'settings' | 'triggers' | 'theme' | 'library' | 'history';
@@ -65,7 +66,8 @@ type BuilderAction =
     | { type: 'RESTORE_VERSION'; payload: CampaignPageVersion }
     | { type: 'OPEN_VARIANT_PICKER'; payload: PageBlockType }
     | { type: 'CLOSE_VARIANT_PICKER' }
-    | { type: 'SET_CANVAS_MODE'; payload: 'edit' | 'preview' };
+    | { type: 'SET_CANVAS_MODE'; payload: 'edit' | 'preview' }
+    | { type: 'SET_EDIT_MODE'; payload: 'columns' | 'components' };
 
 function builderReducer(state: BuilderState, action: BuilderAction): BuilderState {
     switch (action.type) {
@@ -173,6 +175,9 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
         case 'SET_CANVAS_MODE':
             return { ...state, canvasMode: action.payload };
 
+        case 'SET_EDIT_MODE':
+            return { ...state, editMode: action.payload };
+
         default:
             return state;
     }
@@ -192,6 +197,7 @@ const initialState: BuilderState = {
     isRestoring: false,
     variantPickerType: null,
     canvasMode: 'edit',
+    editMode: 'components',
 };
 
 // ─── Hook ────────────────────────────────────────────────────────────────
@@ -421,6 +427,9 @@ export function useBuilderState() {
 
         // Canvas Mode
         setCanvasMode: (mode: 'edit' | 'preview') => dispatch({ type: 'SET_CANVAS_MODE', payload: mode }),
+
+        // Edit Mode
+        setEditMode: (mode: 'columns' | 'components') => dispatch({ type: 'SET_EDIT_MODE', payload: mode }),
 
         // Undo/Redo
         undo: () => dispatch({ type: 'UNDO' }),
