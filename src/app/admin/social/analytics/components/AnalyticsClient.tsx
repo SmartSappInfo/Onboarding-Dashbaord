@@ -312,7 +312,7 @@ export default function AnalyticsClient() {
           <CardHeader className="pb-6 border-b border-border/10 bg-muted/5">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Weekly Engagement Timeline</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 h-80">
+          <CardContent className="pt-6 h-80 max-h-[350px]">
             <ResponsiveContainer width="100%" height="100%" debounce={100}>
               <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -342,7 +342,7 @@ export default function AnalyticsClient() {
           <CardHeader className="pb-6 border-b border-border/10 bg-muted/5">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pipeline Funnel</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 h-80">
+          <CardContent className="pt-6 h-80 max-h-[350px]">
             <ResponsiveContainer width="100%" height="100%" debounce={100}>
               <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.1)" />

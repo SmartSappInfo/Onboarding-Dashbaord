@@ -103,6 +103,7 @@ Rewrite the caption for ${platform}. Return ONLY the final caption copy. Do not 
         model: modelString,
         prompt: promptText,
         system: systemInstructions,
+        config: { maxOutputTokens: 600 },
       });
       responseText = response.text || '';
     } else {
@@ -309,6 +310,7 @@ Output ONLY the sentence. No quotes, no intro.
         model: modelString,
         prompt: promptText,
         system: systemInstructions,
+        config: { maxOutputTokens: 200 },
       });
       reason = response.text || '';
     } else {
@@ -396,6 +398,7 @@ export async function simulateInboundMessageAction(
       const sentimentResponse = await customAi.generate({
         model: modelString,
         prompt: `Classify the sentiment of this school parent inquiry. Answer with exactly one word: "positive", "neutral", or "negative".\nInquiry: "${mock.content}"`,
+        config: { maxOutputTokens: 10 },
       });
       const parsedText = (sentimentResponse.text || '').toLowerCase().trim();
       if (parsedText.includes('positive')) sentiment = 'positive';
@@ -417,6 +420,7 @@ export async function simulateInboundMessageAction(
         model: modelString,
         prompt: mock.content,
         system: systemMsg,
+        config: { maxOutputTokens: 200 },
       });
 
       replies.push({
@@ -435,6 +439,7 @@ Example suggestions: "Request Phone Number, Ask for Grade Level, Send Tuition Fo
       const suggestResponse = await customAi.generate({
         model: modelString,
         prompt: suggestPrompt,
+        config: { maxOutputTokens: 100 },
       });
       const parsedList = (suggestResponse.text || '')
         .split(',')
@@ -527,6 +532,7 @@ ${thread.replies.map(r => `${r.senderName}: ${r.content}`).join('\n')}
       model: modelString,
       prompt: conversationContext,
       system: systemMsg,
+      config: { maxOutputTokens: 300 },
     });
 
     return { success: true, text: (response.text || '').trim() };

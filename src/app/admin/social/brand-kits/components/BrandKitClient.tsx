@@ -220,6 +220,9 @@ export default function BrandKitClient() {
                     onChange={(e) => setLogoUrl(e.target.value)}
                     className="h-10 rounded-xl border-border/30 bg-background text-xs"
                   />
+                  <p className="text-[9px] text-amber-500 font-semibold leading-relaxed mt-1">
+                    ⚠️ Note: External logo image URLs must support CORS headers (cross-origin sharing) to render correctly in SVG-to-vector image downloads.
+                  </p>
                 </div>
 
                 {/* Slogan */}
