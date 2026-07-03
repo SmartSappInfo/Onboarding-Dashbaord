@@ -134,6 +134,65 @@ describe('resolveSeoMetadata — robots', () => {
   });
 });
 
+describe('resolveSeoMetadata — standard fields & canonicals', () => {
+  it('defines metadataBase', () => {
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org });
+    expect(meta.metadataBase?.toString()).toBe('https://go.smartsapp.com/');
+  });
+
+  it('emits canonical URL when path is provided', () => {
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org, path: '/hello-world' });
+    expect(meta.alternates?.canonical).toBe('https://go.smartsapp.com/hello-world');
+  });
+
+  it('normalizes homepage path correctly for canonical URL', () => {
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org, path: '/' });
+    expect(meta.alternates?.canonical).toBe('https://go.smartsapp.com');
+  });
+
+  it('enriches Open Graph and Twitter metadata', () => {
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org });
+    expect(meta.openGraph?.siteName).toBe('Acme Org');
+    expect(meta.openGraph?.locale).toBe('en_US');
+    expect(meta.twitter?.site).toBe('@smartsapp');
+  });
+});
+
+describe('resolveSeoMetadata — organization specific details', () => {
+  it('uses organization name as siteName if provided', () => {
+    const customOrg = {
+      logoUrl: 'https://cdn.example.com/logo.png',
+      brandPrimaryColor: '#000',
+      brandSecondaryColor: '#111',
+      brandFontFamily: 'Inter',
+      name: 'Greenwood International',
+    };
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org: customOrg });
+    expect(meta.openGraph?.siteName).toBe('Greenwood International');
+  });
+
+  it('extracts and binds organization Twitter handle if available', () => {
+    const customOrg = {
+      logoUrl: 'https://cdn.example.com/logo.png',
+      brandPrimaryColor: '#000',
+      brandSecondaryColor: '#111',
+      brandFontFamily: 'Inter',
+      name: 'Greenwood International',
+      socialLinks: {
+        twitter: 'https://twitter.com/greenwood_school',
+      },
+    };
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org: customOrg });
+    expect(meta.twitter?.site).toBe('@greenwood_school');
+  });
+
+  it('falls back to defaults if org name or Twitter link is missing', () => {
+    const meta = resolveSeoMetadata({ fallback: baseFallback, org: null });
+    expect(meta.openGraph?.siteName).toBe('SmartSapp');
+    expect(meta.twitter?.site).toBe('@smartsapp');
+  });
+});
+
 describe('resolveSeoMetadata — resilience', () => {
   it('does not throw on a null seo + missing org', () => {
     expect(() =>

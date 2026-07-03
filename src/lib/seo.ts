@@ -45,11 +45,13 @@ export interface ResolveSeoInput {
    * Only `logoUrl` is read, so callers may pass a full {@link OrgBranding} or a
    * minimal `{ logoUrl }` (e.g. a per-content logo override).
    */
-  org?: Pick<OrgBranding, 'logoUrl'> | { logoUrl?: string | null } | null;
+  org?: Pick<OrgBranding, 'logoUrl' | 'name' | 'socialLinks'> | { logoUrl?: string | null; name?: string | null; socialLinks?: OrgBranding['socialLinks'] | null } | null;
   /** Title branding strategy. Defaults to `{ mode: 'brand' }`. */
   title?: TitleStrategy;
   /** Inherited OG images from a parent segment, used as a last resort. */
   parentImages?: OgImage[];
+  /** NEW: Relative path of the page to generate canonical URLs. */
+  path?: string;
 }
 
 /** Trim → drop empties; returns `undefined` rather than an empty string. */
@@ -121,13 +123,19 @@ function resolveKeywords(keywords?: string): string[] | undefined {
   return parts.length ? parts : undefined;
 }
 
+function extractTwitterHandle(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  const match = url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]{1,30})/i);
+  return match ? `@${match[1]}` : undefined;
+}
+
 /**
  * Maps a {@link SeoConfig} (with fallbacks + branding) into a Next.js
  * {@link Metadata} object. Pure and total — safe to call inside a `try/catch`
  * but designed never to throw on malformed input.
  */
 export function resolveSeoMetadata(input: ResolveSeoInput): Metadata {
-  const { seo, fallback } = input;
+  const { seo, fallback, org } = input;
   const titleStrategy: TitleStrategy = input.title ?? { mode: 'brand' };
 
   // When the content fallback is forced, ignore stored title/description overrides.
@@ -147,22 +155,30 @@ export function resolveSeoMetadata(input: ResolveSeoInput): Metadata {
       ? { absolute: `${displayTitle}${titleStrategy.suffix ?? ''}` }
       : displayTitle;
 
+  const siteUrl = 'https://go.smartsapp.com';
+  const canonicalUrl = input.path ? `${siteUrl}${input.path === '/' ? '' : input.path}` : undefined;
+
   return {
+    metadataBase: new URL(siteUrl),
     title: titleField,
     description,
     keywords,
     robots: seo?.noIndex ? { index: false, follow: false } : undefined,
+    alternates: canonicalUrl ? { canonical: canonicalUrl } : undefined,
     openGraph: {
       title: displayTitle,
       description,
       images,
       type: 'website',
+      siteName: org?.name || 'SmartSapp',
+      locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
       title: displayTitle,
       description,
       images: imageUrls,
+      site: extractTwitterHandle(org?.socialLinks?.twitter) || '@smartsapp',
     },
   };
 }
