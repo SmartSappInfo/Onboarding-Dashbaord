@@ -5,7 +5,11 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
+import { sealSecret, isEnvelope, type EncryptedEnvelope } from './secret-vault';
 import { GlobalAiKeysSchema, type GlobalAiKeys, GlobalAiConfigSchema, type GlobalAiConfig } from '../validation/ai-config-schema';
+
+/** A stored secret field: sealed envelope, or empty string when unset. */
+type StoredSecret = EncryptedEnvelope | '';
 
 // Security: every action verifies the caller's ID token and enforces
 // RBAC via `authorizeBackoffice` (server-auth-actions). Actor is
@@ -66,20 +70,35 @@ export async function saveGlobalAiKeys(
       before = createAuditSnapshot(snap.data() as Record<string, unknown>);
     }
 
-    const dataToSave: Record<string, any> = {
+    interface AiKeysDoc {
+      updatedAt: string;
+      updatedBy: string;
+      createdAt?: string;
+      geminiApiKey: StoredSecret;
+      claudeApiKey: StoredSecret;
+      openRouterApiKey: StoredSecret;
+    }
+
+    const dataToSave: AiKeysDoc = {
       updatedAt: new Date().toISOString(),
       updatedBy: actor.userId,
+      geminiApiKey: '',
+      claudeApiKey: '',
+      openRouterApiKey: '',
     };
 
-    const processKeyField = (val?: string, existingVal?: string) => {
+    // Sentinel ('••••••••') keeps the existing (already-sealed) value; a real
+    // value is sealed with the vault; empty clears the key.
+    const processKeyField = (val: string | undefined, existingVal: unknown): StoredSecret => {
       if (val === '••••••••') {
-        return existingVal || '';
+        return isEnvelope(existingVal) ? existingVal
+          : (typeof existingVal === 'string' && existingVal.length > 0 ? sealSecret(existingVal) : '');
       }
-      return val || '';
+      return val ? sealSecret(val) : '';
     };
 
     const existingData = snap.exists ? snap.data() : {};
-    
+
     dataToSave.geminiApiKey = processKeyField(parsed.geminiApiKey, existingData?.geminiApiKey);
     dataToSave.claudeApiKey = processKeyField(parsed.claudeApiKey, existingData?.claudeApiKey);
     dataToSave.openRouterApiKey = processKeyField(parsed.openRouterApiKey, existingData?.openRouterApiKey);
@@ -93,13 +112,15 @@ export async function saveGlobalAiKeys(
     const afterSnap = await docRef.get();
     const after = createAuditSnapshot(afterSnap.data() as Record<string, unknown>);
 
-    const maskData = (snapData: Record<string, any> | null) => {
+    // Never write plaintext (or ciphertext) secrets into the audit trail.
+    const maskData = (snapData: Record<string, unknown> | null): Record<string, unknown> | null => {
       if (!snapData) return null;
+      const mask = (v: unknown) => (v ? '••••••••' : undefined);
       return {
         ...snapData,
-        geminiApiKey: snapData.geminiApiKey ? '••••••••' : undefined,
-        claudeApiKey: snapData.claudeApiKey ? '••••••••' : undefined,
-        openRouterApiKey: snapData.openRouterApiKey ? '••••••••' : undefined,
+        geminiApiKey: mask(snapData.geminiApiKey),
+        claudeApiKey: mask(snapData.claudeApiKey),
+        openRouterApiKey: mask(snapData.openRouterApiKey),
       };
     };
 

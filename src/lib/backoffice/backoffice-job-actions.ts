@@ -9,6 +9,7 @@ import { getErrorMessage } from './backoffice-errors';
 import { processRbacMigration } from './rbac-migration-logic';
 import { processMessagingTemplatesFer } from './messaging-templates-fer-logic';
 import { processMeetingsFer } from './meetings-fer-logic';
+import { processEncryptPlatformSecrets } from './encrypt-secrets-logic';
 import type { AuditActor, PlatformJob, PlatformJobType } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
@@ -330,6 +331,9 @@ async function executeJob(
 
       case 'migrate_meetings_fer':
         return await processMeetingsFer(jobId, actor);
+
+      case 'encrypt_platform_secrets':
+        return await processEncryptPlatformSecrets(jobId, actor);
 
       // NOTE: the former generic job types (reseed_templates, reindex_search,
       // repair_contacts, backfill_analytics, migrate_data, rebuild_variables,

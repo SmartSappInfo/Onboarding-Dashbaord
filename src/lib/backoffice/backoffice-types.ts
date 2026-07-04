@@ -244,6 +244,7 @@ export type PlatformJobType =
   | 'migrate_legacy_saas_fields'
   | 'migrate_messaging_templates_fer'
   | 'migrate_meetings_fer'
+  | 'encrypt_platform_secrets'
   | 'custom';
 
 /**

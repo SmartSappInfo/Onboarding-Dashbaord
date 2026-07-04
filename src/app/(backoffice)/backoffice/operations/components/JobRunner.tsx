@@ -70,6 +70,7 @@ const JOB_TYPES: { id: PlatformJobType; name: string }[] = [
    { id: 'migrate_meetings_fer', name: 'Meetings Infrastructure — FER' },
    { id: 'migrate_hierarchical_rbac', name: 'Hierarchical RBAC Migration' },
    { id: 'migrate_legacy_saas_fields', name: 'SaaS Field Re-parenting' },
+   { id: 'encrypt_platform_secrets', name: 'Encrypt Platform Secrets (AI keys)' },
 ];
 
 // ─────────────────────────────────────────────────

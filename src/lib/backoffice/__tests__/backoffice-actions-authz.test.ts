@@ -37,6 +37,13 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: makeAdminDbMock(),
 }));
 
+// Encryption vault is stubbed so authz tests don't depend on a real key.
+vi.mock('../secret-vault', () => ({
+  sealSecret: (s: string) => ({ cipher: s, iv: 'i', tag: 't', keyId: 'k' }),
+  isEnvelope: () => false,
+  isVaultConfigured: () => true,
+}));
+
 import { toggleFeatureKillSwitch, listAllFeatures } from '../backoffice-feature-actions';
 import { saveGlobalAiKeys } from '../backoffice-ai-actions';
 

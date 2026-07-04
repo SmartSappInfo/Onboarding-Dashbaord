@@ -3,6 +3,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 import { anthropic } from '@genkit-ai/anthropic';
 import { openAICompatible } from '@genkit-ai/compat-oai';
 import { adminDb } from '@/lib/firebase-admin';
+import { openSecret } from '@/lib/backoffice/secret-vault';
 
 // System default instance using environment variables
 export const ai = genkit({
@@ -74,10 +75,12 @@ async function getGlobalBackofficeKeys(): Promise<Keys> {
     const snap = await docRef.get();
     if (snap.exists) {
       const data = snap.data();
+      // Keys are sealed at rest (envelopes); openSecret also tolerates legacy
+      // plaintext values that predate the encryption migration.
       const keys: Keys = {
-        geminiApiKey: data?.geminiApiKey || undefined,
-        claudeApiKey: data?.claudeApiKey || undefined,
-        openRouterApiKey: data?.openRouterApiKey || undefined,
+        geminiApiKey: openSecret(data?.geminiApiKey),
+        claudeApiKey: openSecret(data?.claudeApiKey),
+        openRouterApiKey: openSecret(data?.openRouterApiKey),
       };
       globalKeysCache = {
         keys,
