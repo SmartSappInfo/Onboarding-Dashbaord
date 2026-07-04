@@ -661,6 +661,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 ) : selectedSection ? (
                                     <SectionSettings
                                         section={selectedSection}
+                                        workspaceId={activeWorkspaceId ?? undefined}
                                         onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
                                     />
                                 ) : (

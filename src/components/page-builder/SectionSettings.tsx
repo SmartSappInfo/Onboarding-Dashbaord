@@ -1,20 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
-import { SlidersHorizontal, Layout, Image as ImageIcon, ShieldAlert, Eye } from 'lucide-react';
+import { SlidersHorizontal, Layout, Image as ImageIcon, ShieldAlert, Eye, FolderHeart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PageSection } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
 interface SectionSettingsProps {
   section: PageSection;
   onUpdate: (patch: Record<string, unknown>) => void;
+  workspaceId?: string;
 }
 
-export function SectionSettings({ section, onUpdate }: SectionSettingsProps) {
+export function SectionSettings({ section, onUpdate, workspaceId }: SectionSettingsProps) {
   const props = (section.props || {}) as {
     backgroundType?: string;
     backgroundColor?: string;
@@ -84,6 +87,9 @@ export function SectionSettings({ section, onUpdate }: SectionSettingsProps) {
       default: return 'auto';
     }
   };
+
+  const [imageLibraryOpen, setImageLibraryOpen] = useState(false);
+  const [videoLibraryOpen, setVideoLibraryOpen] = useState(false);
 
   const layout = props.layout || '1-col';
   const backgroundType = props.backgroundType || 'none';
@@ -204,13 +210,39 @@ export function SectionSettings({ section, onUpdate }: SectionSettingsProps) {
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Image Address (URL)</Label>
-                <Input
-                  type="url"
-                  value={props.backgroundImageUrl || ''}
-                  onChange={(e) => onUpdate({ backgroundImageUrl: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  className="bg-slate-900 border border-slate-700 text-slate-200 text-xs h-10"
-                />
+                <div className="space-y-2">
+                  <Input
+                    type="url"
+                    value={props.backgroundImageUrl || ''}
+                    onChange={(e) => onUpdate({ backgroundImageUrl: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                    className="bg-slate-900 border border-slate-700 text-slate-200 text-xs h-10"
+                  />
+                  {workspaceId && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setImageLibraryOpen(true)}
+                        className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400"
+                      >
+                        <FolderHeart className="w-3 h-3 mr-1" />
+                        Select from Gallery
+                      </Button>
+                      <MediaSelectorDialog
+                        open={imageLibraryOpen}
+                        onOpenChange={setImageLibraryOpen}
+                        onSelectAsset={(asset) => {
+                          onUpdate({ backgroundImageUrl: asset.url });
+                          setImageLibraryOpen(false);
+                        }}
+                        filterType="image"
+                        workspaceId={workspaceId}
+                      />
+                    </>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
@@ -246,13 +278,39 @@ export function SectionSettings({ section, onUpdate }: SectionSettingsProps) {
           {backgroundType === 'video' && (
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold text-slate-500 uppercase">Video URL (.mp4 or .webm link)</Label>
-              <Input
-                type="url"
-                value={props.backgroundVideoUrl || ''}
-                onChange={(e) => onUpdate({ backgroundVideoUrl: e.target.value })}
-                placeholder="https://example.com/video.mp4"
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs h-10"
-              />
+              <div className="space-y-2">
+                <Input
+                  type="url"
+                  value={props.backgroundVideoUrl || ''}
+                  onChange={(e) => onUpdate({ backgroundVideoUrl: e.target.value })}
+                  placeholder="https://example.com/video.mp4"
+                  className="bg-slate-900 border border-slate-700 text-slate-200 text-xs h-10"
+                />
+                {workspaceId && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setVideoLibraryOpen(true)}
+                      className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400"
+                    >
+                      <FolderHeart className="w-3 h-3 mr-1" />
+                      Select from Gallery
+                    </Button>
+                    <MediaSelectorDialog
+                      open={videoLibraryOpen}
+                      onOpenChange={setVideoLibraryOpen}
+                      onSelectAsset={(asset) => {
+                        onUpdate({ backgroundVideoUrl: asset.url });
+                        setVideoLibraryOpen(false);
+                      }}
+                      filterType="video"
+                      workspaceId={workspaceId}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           )}
 
