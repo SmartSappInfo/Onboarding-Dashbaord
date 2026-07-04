@@ -112,7 +112,7 @@ class ZoomPointerSensor extends PointerSensor {
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode, selected }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -123,6 +123,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     onEdit: () => void;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
+    selected?: boolean;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id, disabled: canvasMode === 'preview' });
 
@@ -143,7 +144,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             className={cn(
                 isPreview 
                     ? "group/section relative transition-all border-none rounded-none m-0 p-0"
-                    : "group/section relative transition-all border-b border-dashed border-slate-200 dark:border-zinc-800/80 rounded-none pt-8 pb-2 px-0 m-0",
+                    : "group/section relative transition-all border-b border-dashed border-slate-200 dark:border-zinc-800/80 rounded-none p-0 m-0",
                 !isPreview && (
                     isGlobal
                         ? "bg-purple-500/5 hover:bg-purple-500/10"
@@ -154,38 +155,89 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
-            {/* Professional Section Header Bar */}
+            {/* Professional Section Left Toolbar Panel */}
             {!isPreview && (
-                <div className="absolute top-0 inset-x-0 h-7 bg-slate-900 border-b border-slate-800 rounded-t-xl flex items-center justify-between px-3 text-[9px] font-black uppercase text-slate-400 tracking-wider z-25 opacity-90 transition-opacity select-none group-hover/section:opacity-100">
-                    <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 font-extrabold">Section</span>
-                        <span className="text-slate-700">·</span>
-                        <span className="text-slate-350">{(section.props.name as string) || (section.props.category as string) || 'Layout'}</span>
-                        {isGlobal && (
-                            <span className="ml-1 bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[7px] font-black px-1 rounded">GLOBAL</span>
+                <div
+                    className={cn(
+                        "absolute -left-14 top-4 w-10 bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center py-2.5 gap-2 z-40 shadow-xl transition-all duration-300",
+                        selected
+                            ? "opacity-100 scale-100 pointer-events-auto ring-2 ring-emerald-500/20"
+                            : "opacity-0 scale-95 pointer-events-none group-hover/section:opacity-100 group-hover/section:scale-100 group-hover/section:pointer-events-auto"
+                    )}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                    }}
+                >
+                    {/* Drag Handle */}
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="w-7 h-7 bg-slate-950 border border-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors duration-200"
+                        title="Drag to move section up or down"
+                    >
+                        <GripVertical className="w-4 h-4" />
+                    </div>
+
+                    <div className="w-6 h-[1px] bg-slate-800" />
+
+                    {/* Up button */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onMove('up'); }}
+                        disabled={idx === 0}
+                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                        title="Move Section Up"
+                    >
+                        <ArrowUp className="w-4 h-4" />
+                    </button>
+
+                    {/* Down button */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onMove('down'); }}
+                        disabled={idx === total - 1}
+                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                        title="Move Section Down"
+                    >
+                        <ArrowDown className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-6 h-[1px] bg-slate-800" />
+
+                    {/* Edit Config button */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        className={cn(
+                            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer",
+                            selected
+                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                                : "text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50"
                         )}
-                        <span className="text-slate-700">·</span>
-                        <span className="text-slate-500">{(section.props.layout as string) || 'Grid'}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-1.5">
-                        <div {...attributes} {...listeners} className="h-4.5 px-1 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-[8px] rounded flex items-center justify-center cursor-grab active:cursor-grabbing text-slate-400 font-bold" title="Drag to reorder section">
-                            DRAG
-                        </div>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onMove('up'); }} disabled={idx === 0} className="hover:text-emerald-400 disabled:opacity-20 text-[8px] font-bold">UP</button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onMove('down'); }} disabled={idx === total - 1} className="hover:text-emerald-400 disabled:opacity-20 text-[8px] font-bold">DOWN</button>
-                        <span className="text-slate-800">|</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onSave(); }} className="hover:text-violet-400 text-[8px] font-bold flex items-center gap-0.5">
-                            <FolderHeart className="w-2.5 h-2.5" /> SAVE
-                        </button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="hover:text-blue-400 text-[8px] font-bold flex items-center gap-0.5">
-                            <SlidersHorizontal className="w-2.5 h-2.5" /> CONFIG
-                        </button>
-                        <span className="text-slate-800">|</span>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(); }} className="hover:text-red-400 text-[8px] font-bold flex items-center gap-0.5">
-                            <Trash2 className="w-2.5 h-2.5" /> DELETE
-                        </button>
-                    </div>
+                        title="Section Settings"
+                    >
+                        <SlidersHorizontal className="w-4 h-4" />
+                    </button>
+
+                    {/* Save Template button */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onSave(); }}
+                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-violet-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                        title="Save as Template"
+                    >
+                        <FolderHeart className="w-4 h-4" />
+                    </button>
+
+                    {/* Delete button */}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                        title="Delete Section"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
             )}
 
@@ -1044,6 +1096,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     onEdit={() => onEditSection(section.id)}
                                                     editMode={editMode}
                                                     canvasMode={canvasMode}
+                                                    selected={selectedSectionId === section.id}
                                                 >
                                                     {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
                                                         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
