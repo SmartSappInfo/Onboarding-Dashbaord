@@ -78,6 +78,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false }: VideoEmb
             src={thumbUrl} 
             alt="Video thumbnail"
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             priority
             className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-80"
             onError={() => {

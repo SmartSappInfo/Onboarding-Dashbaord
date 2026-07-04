@@ -136,7 +136,7 @@ export default function SurveyDisplay({
                             {displayLogoUrl !== 'none' && (
                                 displayLogoUrl ? (
                                     <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                        <Image src={displayLogoUrl} alt="Logo" fill className="object-contain" />
+                                        <Image src={displayLogoUrl} alt="Logo" fill sizes="(max-width: 640px) 160px, 192px" className="object-contain" />
                                     </div>
                                 ) : (
                                     <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />

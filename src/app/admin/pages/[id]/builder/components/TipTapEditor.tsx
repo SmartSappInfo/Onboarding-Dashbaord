@@ -60,19 +60,28 @@ function ToolbarDivider() {
 }
 
 export default function TipTapEditor({ content, onChange, placeholder = 'Start writing...' }: TipTapEditorProps) {
-    const extensions = React.useMemo(() => [
-        StarterKit.configure({
-            heading: { levels: [1, 2, 3] },
-        }),
-        Link.configure({
-            openOnClick: false,
-            HTMLAttributes: { class: 'text-emerald-400 underline cursor-pointer' },
-        }),
-        Placeholder.configure({ placeholder }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Underline,
-        Highlight.configure({ multicolor: false }),
-    ], [placeholder]);
+    const extensions = React.useMemo(() => {
+        const list = [
+            StarterKit.configure({
+                heading: { levels: [1, 2, 3] },
+            }),
+            Link.configure({
+                openOnClick: false,
+                HTMLAttributes: { class: 'text-emerald-400 underline cursor-pointer' },
+            }),
+            Placeholder.configure({ placeholder }),
+            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            Underline,
+            Highlight.configure({ multicolor: false }),
+        ];
+
+        const seen = new Set();
+        return list.filter((ext) => {
+            if (!ext || seen.has(ext.name)) return false;
+            seen.add(ext.name);
+            return true;
+        });
+    }, [placeholder]);
 
     const editor = useEditor({
         immediatelyRender: false,

@@ -171,7 +171,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         case 'divider': return <hr className="my-12 border-t-2 border-muted-foreground/10" />;
         case 'image': return block.url ? (
             <div className={cn("relative aspect-video my-10 rounded-2xl overflow-hidden shadow-xl border-4 border-white/50", textAlign === 'center' && 'mx-auto max-w-2xl')}>
-                <Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="cover" />
+                <Image src={block.url} alt={block.title || 'Survey Image'} fill className="object-cover" sizes="(max-width: 768px) 100vw, 640px" />
             </div>
         ) : null;
         case 'video': return block.url ? <div className={cn("my-10 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/50", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;

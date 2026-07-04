@@ -297,7 +297,7 @@ export default async function SurveyResultPage({
                     <div className="flex flex-col items-center gap-4">
                         {data.logoUrl ? (
                             <div className="relative h-8 w-32 grayscale opacity-50">
-                                <Image src={data.logoUrl} alt="Logo" fill className="object-contain" />
+                                <Image src={data.logoUrl} alt="Logo" fill sizes="128px" className="object-contain" />
                             </div>
                         ) : (
                             <Building2 className="h-8 w-8 text-muted-foreground/30" />

@@ -100,7 +100,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         case 'description': 
             return <div className={cn("text-muted-foreground my-4", alignmentClass)} dangerouslySetInnerHTML={{ __html: block.text || '' }} />;
         case 'divider': return <hr className="my-8 border-t-2" />;
-        case 'image': return block.url ? <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' && 'mx-auto max-w-2xl')}><Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" /></div> : null;
+        case 'image': return block.url ? <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' && 'mx-auto max-w-2xl')}><Image src={block.url} alt={block.title || 'Survey Image'} fill className="object-contain" sizes="(max-width: 768px) 100vw, 640px" /></div> : null;
         case 'video': return block.url ? <div className={cn("my-6", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
         case 'audio': return block.url ? <audio controls src={block.url} className="w-full my-6" /> : null;
         case 'document': return block.url ? <div className={alignmentClass}><Button asChild variant="outline" className="my-6"><a href={block.url} target="_blank" rel="noopener noreferrer">Download Document</a></Button></div> : null;

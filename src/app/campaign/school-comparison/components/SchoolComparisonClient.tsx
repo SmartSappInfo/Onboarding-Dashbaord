@@ -130,7 +130,7 @@ function SelectionCard({ title, href, option, image, icon: Icon, delay, color, l
     >
       <Card className="overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card/80 backdrop-blur-xl h-full flex flex-col ring-1 ring-white/10 group-hover:ring-primary/30 transition-all duration-500">
         <div className="relative h-64 md:h-96 overflow-hidden shrink-0">
-          {image && <Image src={image} alt={title} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />}
+          {image && <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover transition-transform duration-700 group-hover:scale-110" />}
           <div className={cn("absolute inset-0 bg-gradient-to-t opacity-60 group-hover:opacity-80 transition-opacity", color)} />
           <div className="absolute top-4 left-4 md:top-6 md:left-6">
             <Badge variant="outline" className="bg-white/20 backdrop-blur-md text-white border-white/20 text-[8px] font-black tracking-widest uppercase py-1 px-3">

@@ -100,7 +100,7 @@ export default function TrainingMeetingHero({ entity, meeting, tokenResult, next
             >
               {meeting.bannerType === 'image' && meeting.bannerImageUrl && (
                 <div className="relative w-full aspect-[21/6] md:aspect-[32/8] max-h-[240px]">
-                  <Image src={meeting.bannerImageUrl} alt="Meeting Banner" fill className="object-cover" priority />
+                  <Image src={meeting.bannerImageUrl} alt="Meeting Banner" fill sizes="100vw" className="object-cover" priority />
                 </div>
               )}
               {meeting.bannerType === 'embed' && meeting.bannerEmbedCode && (

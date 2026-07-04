@@ -153,7 +153,7 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
  <div className="p-8 flex flex-col items-center justify-center min-h-full">
                 {asset.type === 'image' && (
  <div className="relative w-full max-w-3xl aspect-video rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border bg-card">
- <Image src={asset.url} alt={asset.name} fill className="object-contain" />
+ <Image src={asset.url} alt={asset.name} fill sizes="(max-width: 1200px) 100vw, 768px" className="object-contain" />
                     </div>
                 )}
                 {asset.type === 'video' && (
@@ -205,7 +205,7 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                   <div className="space-y-8 w-full max-w-2xl">
                         {asset.previewImageUrl && (
                           <div className="relative aspect-video bg-card rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border">
-                            <Image src={asset.previewImageUrl} alt={`Preview for ${asset.name}`} fill className="object-cover" />
+                            <Image src={asset.previewImageUrl} alt={`Preview for ${asset.name}`} fill sizes="(max-width: 1200px) 100vw, 768px" className="object-cover" />
                           </div>
                         )}
                         <div className="flex flex-col items-center justify-center p-10 text-center bg-card rounded-[2rem] shadow-xl ring-1 ring-border">

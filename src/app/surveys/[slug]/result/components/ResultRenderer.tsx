@@ -147,7 +147,7 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
         case 'image':
             return block.url ? (
                 <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border border-border/50 bg-card", containerClasses)}>
-                    <Image src={block.url} alt="Result content" fill className="object-cover" />
+                    <Image src={block.url} alt="Result content" fill sizes="(max-width: 768px) 100vw, 640px" className="object-cover" />
                 </div>
             ) : null;
         case 'video':
@@ -219,7 +219,7 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
         <div className="flex justify-center">
             {logoUrl ? (
                 <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                    <Image src={logoUrl} alt="Logo" fill className="object-contain" />
+                    <Image src={logoUrl} alt="Logo" fill sizes="(max-width: 640px) 160px, 192px" className="object-contain" />
                 </div>
             ) : (
                 <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />

@@ -81,7 +81,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                                             </ul>
                                         )
                                     )}
- {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-card bg-card"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
+ {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-card bg-card"><Image src={block.url} alt="preview" fill sizes="(max-width: 768px) 100vw, 640px" className="object-cover" /></div>}
                                     {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div>}
                                     {block.type === 'audio' && block.url && <div className="w-full p-6 bg-card border rounded-2xl shadow-sm"><audio controls src={block.url} className="w-full" /></div>}
  {block.type === 'button' && <Button size="lg" variant={block.style?.variant as any} className="h-14 px-8 text-lg font-semibold rounded-xl shadow-lg">{block.title} <ArrowRight className="ml-2 h-5 w-5"/></Button>}

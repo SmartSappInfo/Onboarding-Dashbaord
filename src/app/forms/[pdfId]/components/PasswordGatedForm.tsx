@@ -60,7 +60,7 @@ export default function PasswordGatedForm({ pdfForm, entity, orgBranding }: Pass
               <div className="flex justify-center mb-4">
                 {logoUrl ? (
                     <div className="relative h-12 w-48">
-                        <Image src={logoUrl} alt="Logo" fill className="object-contain" unoptimized={logoUrl.startsWith('http')} />
+                        <Image src={logoUrl} alt="Logo" fill sizes="192px" className="object-contain" unoptimized={logoUrl.startsWith('http')} />
                     </div>
                 ) : (
                     <SmartSappIcon className="h-12 w-12 text-primary" />

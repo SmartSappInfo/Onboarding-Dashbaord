@@ -43,7 +43,7 @@ export default function AlreadySignedGate({ entityName, logoUrl, pdfName, onView
                     <div className="flex items-center gap-5 p-5 rounded-2xl bg-slate-50 border border-border/50 shadow-inner">
                         <div className="relative h-12 w-12 rounded-xl overflow-hidden bg-white border border-border/50 shrink-0">
                             {logoUrl ? (
-                                <Image src={logoUrl} alt="Logo" fill className="object-contain p-2" />
+                                <Image src={logoUrl} alt="Logo" fill sizes="48px" className="object-contain p-2" />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary font-black text-xs">SS</div>
                             )}
