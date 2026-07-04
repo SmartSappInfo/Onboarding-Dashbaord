@@ -460,17 +460,17 @@ git commit -m "chore(firestore): add platform_audit_logs indexes and platform_* 
 
 ## Phase 7 — Legacy Cleanup & Final Review
 
-- [ ] **Step 7.1** — Grep whether `src/app/admin/backoffice/messaging/*` is reachable (nav links, route usage). If dead → remove; if live → migrate its actions and note.
+- [x] **Step 7.1** — Grep whether `src/app/admin/backoffice/messaging/*` is reachable (nav links, route usage). If dead → remove; if live → migrate its actions and note.
 ```bash
 grep -rn "admin/backoffice/messaging" src --include="*.tsx" --include="*.ts"
 ```
-- [ ] **Step 7.2** — Final grep gates: no `catch (error: any)` in touched files; no `: any`/`any[]` introduced; every action authorized.
+- [x] **Step 7.2** — Final grep gates: no `catch (error: any)` in touched files; no `: any`/`any[]` introduced; every action authorized.
 ```bash
 grep -rn ": any\|any\[\]" src/lib/backoffice src/hooks/use-backoffice-token.ts   # expect: none
 ```
-- [ ] **Step 7.3** — `pnpm verify` (lint + typecheck + full test run) green.
-- [ ] **Step 7.4** — Update `docs/feature_backoffice_superadmin.md` "Phase 1 — security" status; note token+RBAC enforcement complete.
-- [ ] **Step 7.5 — Commit.**
+- [x] **Step 7.3** — `pnpm verify` (lint + typecheck + full test run) green.
+- [x] **Step 7.4** — Update `docs/feature_backoffice_superadmin.md` "Phase 1 — security" status; note token+RBAC enforcement complete.
+- [x] **Step 7.5 — Commit.**
 ```bash
 git commit -m "chore(backoffice): legacy cleanup, docs update, final authz verification"
 ```
