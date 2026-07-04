@@ -139,7 +139,7 @@ export function SeoSettingsCard({
         </div>
 
         {/* Title + Keywords */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="space-y-2">
             <Label className="text-sm font-semibold flex items-center gap-1.5">
               SEO Meta Title
@@ -221,7 +221,7 @@ export function SeoSettingsCard({
           <RadioGroup
             value={mode}
             onValueChange={(next) => patch({ ogImageMode: next as OgImageMode })}
-            className="grid grid-cols-1 md:grid-cols-3 gap-3"
+            className="grid grid-cols-1 gap-3"
           >
             {IMAGE_MODES.map(({ mode: m, label, hint }) => (
               <div
