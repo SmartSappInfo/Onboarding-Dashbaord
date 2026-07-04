@@ -38,7 +38,7 @@ import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
 import PublishTemplateModal from './components/PublishTemplateModal';
-import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources } from '@/lib/types';
+import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import Link from 'next/link';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
@@ -290,6 +290,38 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const handleUpdateSeo = useCallback((updates: Partial<CampaignPage['seo']>) => {
         builder.dispatch({ type: 'UPDATE_PAGE_SEO', payload: updates });
     }, [builder.dispatch]);
+
+    const handleUpdateHeader = useCallback((updates: Partial<PageHeaderSettings>) => {
+        builder.updateStructure((s) => ({
+            ...s,
+            header: {
+                ...(s.header || {
+                    preset: 'native',
+                    overlap: false,
+                    sticky: false,
+                    floating: false,
+                    showSearch: false,
+                    showCta: false,
+                    showPhone: false,
+                    navItems: [],
+                }),
+                ...updates,
+            },
+        }));
+    }, [builder.updateStructure]);
+
+    const handleUpdateFooter = useCallback((updates: Partial<PageFooterSettings>) => {
+        builder.updateStructure((s) => ({
+            ...s,
+            footer: {
+                ...(s.footer || {
+                    preset: 'org',
+                    overrideOrg: false,
+                }),
+                ...updates,
+            },
+        }));
+    }, [builder.updateStructure]);
 
     // ─── Keyboard shortcut for save ──────────────────────────────────
     useEffect(() => {
@@ -703,6 +735,9 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 page={page}
                                 onUpdateSettings={handleUpdateSettings}
                                 onUpdateSeo={handleUpdateSeo}
+                                structure={version.structureJson}
+                                onUpdateHeader={handleUpdateHeader}
+                                onUpdateFooter={handleUpdateFooter}
                             />
                         )}
 
