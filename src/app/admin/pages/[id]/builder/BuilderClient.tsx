@@ -178,19 +178,24 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     }, [firestore, id]);
 
     // ─── Persistence Actions ─────────────────────────────────────────
+    const sanitizeForFirestore = useCallback(<T,>(data: T): T => {
+        if (data === undefined || data === null) return null as unknown as T;
+        return JSON.parse(JSON.stringify(data)) as T;
+    }, []);
+
     const saveDraft = useCallback(async (opts?: { silent?: boolean }) => {
         if (!firestore || !builder.version) return;
         builder.dispatch({ type: 'SET_SAVING', payload: true });
         try {
             await updateDoc(doc(firestore, 'campaign_page_versions', builder.version.id), {
-                structureJson: builder.version.structureJson,
+                structureJson: sanitizeForFirestore(builder.version.structureJson),
                 updatedAt: new Date().toISOString()
             });
             // Also persist page settings
             if (builder.page) {
                 await updateDoc(doc(firestore, 'campaign_pages', builder.page.id), {
-                    settings: builder.page.settings,
-                    seo: builder.page.seo,
+                    settings: sanitizeForFirestore(builder.page.settings),
+                    seo: sanitizeForFirestore(builder.page.seo),
                     themeId: builder.page.themeId,
                     updatedAt: new Date().toISOString()
                 });
@@ -201,7 +206,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         } finally {
             builder.dispatch({ type: 'SET_SAVING', payload: false });
         }
-    }, [firestore, builder.version, builder.page, toast, builder.dispatch]);
+    }, [firestore, builder.version, builder.page, toast, builder.dispatch, sanitizeForFirestore]);
 
     const handleSaveAsDraft = useCallback(() => { void saveDraft(); }, [saveDraft]);
 
@@ -225,7 +230,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 pageId: id,
                 organizationId: builder.page.organizationId,
                 versionNumber: newVersionNum,
-                structureJson: builder.version.structureJson,
+                structureJson: sanitizeForFirestore(builder.version.structureJson),
                 createdBy: user.uid,
                 createdAt: timestamp,
                 isPublishedVersion: true
@@ -235,8 +240,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             await updateDoc(doc(firestore, 'campaign_pages', id), {
                 status: 'published',
                 publishedVersionId: newVersionId,
-                settings: builder.page.settings,
-                seo: builder.page.seo,
+                settings: sanitizeForFirestore(builder.page.settings),
+                seo: sanitizeForFirestore(builder.page.seo),
                 themeId: builder.page.themeId,
                 updatedAt: timestamp
             });

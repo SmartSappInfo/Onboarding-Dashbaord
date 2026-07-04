@@ -1227,7 +1227,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 ) : headerSettings.preset === 'cta-only' ? (
                                                     <div className="flex justify-end w-full">
                                                         {headerSettings.showCta && (
-                                                            <Button className="h-9 px-5 rounded-full font-bold text-xs bg-blue-650 text-white" disabled>
+                                                            <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white" disabled>
                                                                 {headerSettings.ctaText || 'Get Started'}
                                                             </Button>
                                                         )}
@@ -1255,7 +1255,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Phone className="h-3 w-3" /> {headerSettings.phoneNumber}</span>
                                                             )}
                                                             {headerSettings.showCta && (
-                                                                <Button className="h-9 px-5 rounded-full font-bold text-xs bg-blue-650 text-white" disabled>
+                                                                <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white" disabled>
                                                                     {headerSettings.ctaText || 'Get Started'}
                                                                 </Button>
                                                             )}
