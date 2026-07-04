@@ -34,6 +34,7 @@ interface BuilderState {
     history: HistoryState | null;
     selectedBlockId: string | null;
     selectedSectionId: string | null;
+    selectedColumnIndex: number | null;
     viewport: 'desktop' | 'tablet' | 'mobile';
     activeTab: BuilderTab;
     saving: boolean;
@@ -57,7 +58,7 @@ type BuilderAction =
     | { type: 'SET_VIEWPORT'; payload: 'desktop' | 'tablet' | 'mobile' }
     | { type: 'SET_TAB'; payload: BuilderTab }
     | { type: 'SELECT_BLOCK'; payload: string | null }
-    | { type: 'SELECT_SECTION'; payload: string | null }
+    | { type: 'SELECT_SECTION'; payload: string | null; columnIndex?: number | null }
     | { type: 'UPDATE_STRUCTURE'; payload: CampaignPageStructure }
     | { type: 'UPDATE_PAGE_SETTINGS'; payload: Partial<CampaignPage['settings']> }
     | { type: 'UPDATE_PAGE_SEO'; payload: Partial<CampaignPage['seo']> }
@@ -97,13 +98,15 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
             return {
                 ...state,
                 selectedBlockId: action.payload,
-                selectedSectionId: action.payload ? null : state.selectedSectionId
+                selectedSectionId: action.payload ? null : state.selectedSectionId,
+                selectedColumnIndex: action.payload ? null : state.selectedColumnIndex
             };
         case 'SELECT_SECTION':
             return {
                 ...state,
                 selectedSectionId: action.payload,
-                selectedBlockId: action.payload ? null : state.selectedBlockId
+                selectedBlockId: action.payload ? null : state.selectedBlockId,
+                selectedColumnIndex: action.payload ? (action.columnIndex ?? 0) : null
             };
 
         case 'UPDATE_STRUCTURE': {
@@ -197,6 +200,7 @@ const initialState: BuilderState = {
     history: null,
     selectedBlockId: null,
     selectedSectionId: null,
+    selectedColumnIndex: null,
     viewport: 'desktop',
     activeTab: 'add',
     saving: false,
@@ -341,9 +345,10 @@ export function useBuilderState() {
             if (state.selectedSectionId) {
                 const targetSecIdx = sections.findIndex(s => s.id === state.selectedSectionId);
                 if (targetSecIdx !== -1) {
+                    const activeCol = state.selectedColumnIndex ?? 0;
                     block.props = {
                         ...(block.props || {}),
-                        column: 0
+                        column: activeCol
                     };
 
                     sections[targetSecIdx] = {
@@ -360,9 +365,10 @@ export function useBuilderState() {
                 ? Math.min(Math.max(sectionIndex, 0), sections.length - 1)
                 : 0;
 
+            const fallbackCol = state.selectedColumnIndex ?? 0;
             block.props = {
                 ...(block.props || {}),
-                column: 0
+                column: fallbackCol
             };
 
             sections[fallbackSecIdx] = {
@@ -376,7 +382,7 @@ export function useBuilderState() {
         dispatch({ type: 'SELECT_BLOCK', payload: block.id });
         dispatch({ type: 'SET_TAB', payload: 'edit' });
         dispatch({ type: 'CLOSE_VARIANT_PICKER' });
-    }, [updateStructure, state.selectedBlockId, state.selectedSectionId]);
+    }, [updateStructure, state.selectedBlockId, state.selectedSectionId, state.selectedColumnIndex]);
 
     const removeBlock = useCallback((blockId: string) => {
         updateStructure(s => tree.removeBlock(s, blockId));

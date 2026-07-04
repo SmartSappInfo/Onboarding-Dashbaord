@@ -790,6 +790,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
                     selectedSectionId={builder.selectedSectionId}
+                    selectedColumnIndex={builder.selectedColumnIndex}
                     onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
                     showHeader={page?.settings?.showHeader}
                     showFooter={page?.settings?.showFooter}
@@ -802,8 +803,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onRemoveSection={builder.removeSection}
                     onMoveSection={builder.moveSection}
                     onInsertSection={builder.insertSection}
-                    onEditSection={(id) => {
-                        builder.dispatch({ type: 'SELECT_SECTION', payload: id });
+                    onEditSection={(id, colIdx) => {
+                        builder.dispatch({ type: 'SELECT_SECTION', payload: id, columnIndex: colIdx });
                         builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
                         builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
                     }}

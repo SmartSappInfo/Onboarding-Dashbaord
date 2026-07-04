@@ -74,6 +74,7 @@ interface CanvasProps {
     resources: BuilderResources;
     selectedBlockId: string | null;
     selectedSectionId?: string | null;
+    selectedColumnIndex?: number | null;
     onSelectBlock: (id: string | null) => void;
 
     onSetTab: (tab: string) => void;
@@ -84,7 +85,7 @@ interface CanvasProps {
     onRemoveSection: (sectionId: string) => void;
     onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
     onInsertSection?: (index: number) => void;
-    onEditSection: (sectionId: string) => void;
+    onEditSection: (sectionId: string, columnIndex?: number | null) => void;
     onSaveSectionAsTemplate: (section: PageSection) => void;
 
     onReorderSections: (from: number, to: number) => void;
@@ -376,6 +377,8 @@ function ColumnCell({
     colIdx,
     blocks,
     selectedBlockId,
+    selectedSectionId,
+    selectedColumnIndex,
     onSelectBlock,
     onSetTab,
     onRemoveBlock,
@@ -392,6 +395,8 @@ function ColumnCell({
     colIdx: number;
     blocks: PageBlock[];
     selectedBlockId: string | null;
+    selectedSectionId?: string | null;
+    selectedColumnIndex?: number | null;
     onSelectBlock: (id: string | null) => void;
     onSetTab: (tab: string) => void;
     onRemoveBlock: (blockId: string) => void;
@@ -402,7 +407,7 @@ function ColumnCell({
     canvasMode: 'edit' | 'preview';
     totalColumns: number;
     onSwapColumns?: (sectionId: string, fromIdx: number, toIdx: number) => void;
-    onEditSection?: (sectionId: string) => void;
+    onEditSection?: (sectionId: string, columnIndex?: number | null) => void;
 }) {
     const {
         attributes,
@@ -436,17 +441,21 @@ function ColumnCell({
             ref={setNodeRef}
             style={style}
             onClick={(e) => {
-                if (!isPreview && editMode === 'columns') {
+                if (!isPreview) {
                     e.stopPropagation();
-                    onEditSection?.(sectionId);
+                    onEditSection?.(sectionId, colIdx);
                 }
             }}
             className={cn(
                 "flex-1 min-h-[120px] p-4 rounded-xl flex flex-col gap-4 transition-all duration-300 relative",
                 !isPreview && (
                     editMode === 'columns'
-                        ? "bg-slate-50/50 dark:bg-zinc-900/30 border-2 border-dashed border-emerald-500/40 hover:border-emerald-500/70"
-                        : "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30"
+                        ? selectedSectionId === sectionId && selectedColumnIndex === colIdx
+                            ? "bg-emerald-50/10 dark:bg-emerald-950/15 border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                            : "bg-slate-50/50 dark:bg-zinc-900/30 border-2 border-dashed border-emerald-500/40 hover:border-emerald-500/70"
+                        : selectedSectionId === sectionId && selectedColumnIndex === colIdx
+                            ? "bg-blue-500/5 dark:bg-blue-950/10 border-2 border-dashed border-blue-500/60"
+                            : "bg-transparent border border-dashed border-slate-350/20 dark:border-slate-700/20 hover:border-blue-500/30"
                 ),
                 isOver && "bg-blue-500/5 border-blue-500/30 scale-[0.99] border-dashed ring-2 ring-blue-500/10"
             )}
@@ -535,6 +544,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     resources,
     selectedBlockId,
     selectedSectionId,
+    selectedColumnIndex,
     onSelectBlock,
 
     onSetTab,
@@ -1305,6 +1315,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                             colIdx={colIdx}
                                                                             blocks={colBlocks}
                                                                             selectedBlockId={selectedBlockId}
+                                                                            selectedSectionId={selectedSectionId}
+                                                                            selectedColumnIndex={selectedColumnIndex}
                                                                             onSelectBlock={onSelectBlock}
                                                                             onSetTab={onSetTab}
                                                                             onRemoveBlock={onRemoveBlock}
