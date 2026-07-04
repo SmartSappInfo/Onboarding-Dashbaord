@@ -94,9 +94,17 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
         case 'SET_TAB':
             return { ...state, activeTab: action.payload };
         case 'SELECT_BLOCK':
-            return { ...state, selectedBlockId: action.payload };
+            return {
+                ...state,
+                selectedBlockId: action.payload,
+                selectedSectionId: action.payload ? null : state.selectedSectionId
+            };
         case 'SELECT_SECTION':
-            return { ...state, selectedSectionId: action.payload };
+            return {
+                ...state,
+                selectedSectionId: action.payload,
+                selectedBlockId: action.payload ? null : state.selectedBlockId
+            };
 
         case 'UPDATE_STRUCTURE': {
             if (!state.version || !state.history) return state;

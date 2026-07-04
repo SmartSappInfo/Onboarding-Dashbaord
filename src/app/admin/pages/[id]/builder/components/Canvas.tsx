@@ -141,6 +141,12 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
         <div
             ref={setNodeRef}
             style={style}
+            onClick={(e) => {
+                if (!isPreview) {
+                    e.stopPropagation();
+                    onEdit();
+                }
+            }}
             className={cn(
                 isPreview 
                     ? "group/section relative transition-all border-none rounded-none m-0 p-0"
@@ -159,85 +165,93 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             {!isPreview && (
                 <div
                     className={cn(
-                        "absolute -left-14 top-4 w-10 bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center py-2.5 gap-2 z-40 shadow-xl transition-all duration-300",
+                        "absolute -left-16 top-4 w-16 pl-2 pr-4 py-2 z-40 transition-all duration-300",
                         selected
-                            ? "opacity-100 scale-100 pointer-events-auto ring-2 ring-emerald-500/20"
+                            ? "opacity-100 scale-100 pointer-events-auto"
                             : "opacity-0 scale-95 pointer-events-none group-hover/section:opacity-100 group-hover/section:scale-100 group-hover/section:pointer-events-auto"
                     )}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                    }}
                 >
-                    {/* Drag Handle */}
                     <div
-                        {...attributes}
-                        {...listeners}
-                        className="w-7 h-7 bg-slate-950 border border-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors duration-200"
-                        title="Drag to move section up or down"
-                    >
-                        <GripVertical className="w-4 h-4" />
-                    </div>
-
-                    <div className="w-6 h-[1px] bg-slate-800" />
-
-                    {/* Up button */}
-                    <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onMove('up'); }}
-                        disabled={idx === 0}
-                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
-                        title="Move Section Up"
-                    >
-                        <ArrowUp className="w-4 h-4" />
-                    </button>
-
-                    {/* Down button */}
-                    <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onMove('down'); }}
-                        disabled={idx === total - 1}
-                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
-                        title="Move Section Down"
-                    >
-                        <ArrowDown className="w-4 h-4" />
-                    </button>
-
-                    <div className="w-6 h-[1px] bg-slate-800" />
-
-                    {/* Edit Config button */}
-                    <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
                         className={cn(
-                            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer",
-                            selected
-                                ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
-                                : "text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50"
+                            "w-10 bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center py-2.5 gap-2 shadow-xl",
+                            selected && "ring-2 ring-emerald-500/20"
                         )}
-                        title="Section Settings"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(); // Make sure clicking the toolbar activates the section!
+                        }}
                     >
-                        <SlidersHorizontal className="w-4 h-4" />
-                    </button>
+                        {/* Drag Handle */}
+                        <div
+                            {...attributes}
+                            {...listeners}
+                            className="w-7 h-7 bg-slate-950 border border-slate-800 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-slate-400 hover:text-emerald-400 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors duration-200"
+                            title="Drag to move section up or down"
+                        >
+                            <GripVertical className="w-4 h-4" />
+                        </div>
 
-                    {/* Save Template button */}
-                    <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onSave(); }}
-                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-violet-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
-                        title="Save as Template"
-                    >
-                        <FolderHeart className="w-4 h-4" />
-                    </button>
+                        <div className="w-6 h-[1px] bg-slate-800" />
 
-                    {/* Delete button */}
-                    <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
-                        title="Delete Section"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </button>
+                        {/* Up button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onMove('up'); }}
+                            disabled={idx === 0}
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                            title="Move Section Up"
+                        >
+                            <ArrowUp className="w-4 h-4" />
+                        </button>
+
+                        {/* Down button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onMove('down'); }}
+                            disabled={idx === total - 1}
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                            title="Move Section Down"
+                        >
+                            <ArrowDown className="w-4 h-4" />
+                        </button>
+
+                        <div className="w-6 h-[1px] bg-slate-800" />
+
+                        {/* Edit Config button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className={cn(
+                                "w-7 h-7 flex items-center justify-center rounded-lg transition-colors duration-200 cursor-pointer",
+                                selected
+                                    ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
+                                    : "text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50"
+                            )}
+                            title="Section Settings"
+                        >
+                            <SlidersHorizontal className="w-4 h-4" />
+                        </button>
+
+                        {/* Save Template button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onSave(); }}
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-violet-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="Save as Template"
+                        >
+                            <FolderHeart className="w-4 h-4" />
+                        </button>
+
+                        {/* Delete button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="Delete Section"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             )}
 
