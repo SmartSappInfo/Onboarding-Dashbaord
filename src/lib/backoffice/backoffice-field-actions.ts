@@ -320,7 +320,7 @@ export async function savePlatformIndustryFieldGroup(
     }
 
     const now = new Date().toISOString();
-    const payload = {
+    const payload: IndustryGroupDef & { industry: IndustryVertical; updatedAt: string; updatedBy: string; createdAt?: string } = {
       ...groupDef,
       slug: groupSlug, // Lock slug to passed value
       industry,
@@ -329,7 +329,7 @@ export async function savePlatformIndustryFieldGroup(
     };
 
     if (!snap.exists) {
-      (payload as any).createdAt = now;
+      payload.createdAt = now;
     }
 
     await ref.set(payload, { merge: true });
@@ -349,7 +349,7 @@ export async function savePlatformIndustryFieldGroup(
     );
 
     // Propagate changes to all workspaces in this industry
-    const propRes = await propagateIndustryGroupChanges(industry, groupSlug, false, payload as IndustryGroupDef);
+    const propRes = await propagateIndustryGroupChanges(industry, groupSlug, false, payload);
     if (!propRes.success) {
       console.warn(`[BACKOFFICE_FIELDS] Propagation failed during save: ${propRes.error}`);
     }
