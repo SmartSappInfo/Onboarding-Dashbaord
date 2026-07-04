@@ -355,8 +355,17 @@ export default function PublicPageClient({
         return result;
     };
 
+    const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
+
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#09090b] transition-colors duration-500 relative overflow-x-hidden font-body">
+        <div 
+            className={cn("min-h-screen flex flex-col transition-colors duration-500 relative overflow-x-hidden font-body", pageThemeMode === 'dark' ? "dark" : "light")}
+            style={{
+                backgroundColor: resolvedTheme.colors.background,
+                color: resolvedTheme.colors.text,
+                fontFamily: resolvedTheme.typography.bodyFont + ', sans-serif'
+            }}
+        >
             <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
             
             {/* Client-side tracking */}
