@@ -11,6 +11,17 @@ import type { PageSection } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
+const PREDEFINED_GRADIENTS = [
+  { name: 'Midnight', from: '#020617', to: '#1e293b', angle: 135 },
+  { name: 'Sunset Glow', from: '#f97316', to: '#ec4899', angle: 135 },
+  { name: 'Ocean Breeze', from: '#06b6d4', to: '#3b82f6', angle: 135 },
+  { name: 'Emerald Wave', from: '#10b981', to: '#059669', angle: 135 },
+  { name: 'Royal Purple', from: '#7c3aed', to: '#db2777', angle: 135 },
+  { name: 'Cyberpunk', from: '#ff007f', to: '#7f00ff', angle: 135 },
+  { name: 'Nordic Frost', from: '#e2e8f0', to: '#94a3b8', angle: 135 },
+  { name: 'Luxury Gold', from: '#b45309', to: '#78350f', angle: 135 },
+];
+
 interface SectionSettingsProps {
   section: PageSection;
   onUpdate: (patch: Record<string, unknown>) => void;
@@ -30,6 +41,10 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
     gradientFrom?: string;
     gradientTo?: string;
     gradientAngle?: number;
+    overlayType?: string;
+    overlayGradientFrom?: string;
+    overlayGradientTo?: string;
+    overlayGradientAngle?: number;
     overlayColor?: string;
     overlayOpacity?: number;
     paddingTop?: string;
@@ -179,11 +194,105 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
                 <SelectItem value="none">Transparent / Clean</SelectItem>
                 <SelectItem value="color">Solid Color</SelectItem>
+                <SelectItem value="gradient">Gradient Background</SelectItem>
                 <SelectItem value="image">Background Image</SelectItem>
                 <SelectItem value="video">Autoplay Video</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {backgroundType === 'gradient' && (
+            <div className="space-y-4">
+              {/* Predefined Gradients */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase">Predefined Gradients</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {PREDEFINED_GRADIENTS.map((grad) => (
+                    <button
+                      key={grad.name}
+                      type="button"
+                      onClick={() => onUpdate({
+                        gradientFrom: grad.from,
+                        gradientTo: grad.to,
+                        gradientAngle: grad.angle
+                      })}
+                      className="group flex flex-col items-center justify-center p-1 bg-slate-900 border border-slate-800 rounded-lg hover:border-emerald-500 transition-colors cursor-pointer"
+                      title={grad.name}
+                    >
+                      <div
+                        className="w-full h-8 rounded-md"
+                        style={{
+                          background: `linear-gradient(${grad.angle}deg, ${grad.from}, ${grad.to})`
+                        }}
+                      />
+                      <span className="text-[8px] text-slate-400 mt-1 truncate w-full text-center group-hover:text-white">
+                        {grad.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom controls */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-slate-600 uppercase">From Color</Label>
+                    <div className="flex gap-1.5 items-center">
+                      <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative shrink-0">
+                        <Input
+                          type="color"
+                          value={props.gradientFrom || '#3B5FFF'}
+                          onChange={(e) => onUpdate({ gradientFrom: e.target.value })}
+                          className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
+                        />
+                      </div>
+                      <Input
+                        type="text"
+                        value={props.gradientFrom || '#3B5FFF'}
+                        onChange={(e) => onUpdate({ gradientFrom: e.target.value })}
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-[10px] h-8 px-1.5 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-slate-600 uppercase">To Color</Label>
+                    <div className="flex gap-1.5 items-center">
+                      <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative shrink-0">
+                        <Input
+                          type="color"
+                          value={props.gradientTo || '#7C3AED'}
+                          onChange={(e) => onUpdate({ gradientTo: e.target.value })}
+                          className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
+                        />
+                      </div>
+                      <Input
+                        type="text"
+                        value={props.gradientTo || '#7C3AED'}
+                        onChange={(e) => onUpdate({ gradientTo: e.target.value })}
+                        className="bg-slate-900 border border-slate-700 text-slate-200 text-[10px] h-8 px-1.5 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] text-slate-500">
+                    <span>Gradient Angle</span>
+                    <span>{props.gradientAngle !== undefined ? props.gradientAngle : 135}°</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={360}
+                    step={5}
+                    value={[props.gradientAngle !== undefined ? props.gradientAngle : 135]}
+                    onValueChange={(val) => onUpdate({ gradientAngle: val[0] })}
+                    className="py-2"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {backgroundType === 'color' && (
             <div className="space-y-1.5">
@@ -316,18 +425,92 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
 
           {(backgroundType === 'image' || backgroundType === 'video') && (
             <div className="space-y-3 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
-              <div className="flex justify-between items-center">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Add Color Overlay</Label>
-                <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative">
-                  <Input
-                    type="color"
-                    value={props.overlayColor || '#000000'}
-                    onChange={(e) => onUpdate({ overlayColor: e.target.value })}
-                    className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
-                  />
-                </div>
-              </div>
               <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Overlay Type</Label>
+                <Select value={props.overlayType || 'color'} onValueChange={(val) => onUpdate({ overlayType: val })}>
+                  <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 text-[11px] h-8">
+                    <SelectValue placeholder="Overlay Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+                    <SelectItem value="color">Solid Color</SelectItem>
+                    <SelectItem value="gradient">Gradient Overlay</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {props.overlayType === 'gradient' ? (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-bold text-slate-600 uppercase">From Overlay</Label>
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative shrink-0">
+                          <Input
+                            type="color"
+                            value={props.overlayGradientFrom || '#000000'}
+                            onChange={(e) => onUpdate({ overlayGradientFrom: e.target.value })}
+                            className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          value={props.overlayGradientFrom || '#000000'}
+                          onChange={(e) => onUpdate({ overlayGradientFrom: e.target.value })}
+                          className="bg-slate-900 border border-slate-700 text-slate-200 text-[10px] h-8 px-1.5 font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-bold text-slate-600 uppercase">To Overlay</Label>
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative shrink-0">
+                          <Input
+                            type="color"
+                            value={props.overlayGradientTo || '#000000'}
+                            onChange={(e) => onUpdate({ overlayGradientTo: e.target.value })}
+                            className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
+                          />
+                        </div>
+                        <Input
+                          type="text"
+                          value={props.overlayGradientTo || '#000000'}
+                          onChange={(e) => onUpdate({ overlayGradientTo: e.target.value })}
+                          className="bg-slate-900 border border-slate-700 text-slate-200 text-[10px] h-8 px-1.5 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>Overlay Angle</span>
+                      <span>{props.overlayGradientAngle !== undefined ? props.overlayGradientAngle : 135}°</span>
+                    </div>
+                    <Slider
+                      min={0}
+                      max={360}
+                      step={5}
+                      value={[props.overlayGradientAngle !== undefined ? props.overlayGradientAngle : 135]}
+                      onValueChange={(val) => onUpdate({ overlayGradientAngle: val[0] })}
+                      className="py-2"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center pt-1">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Add Color Overlay</Label>
+                  <div className="w-8 h-8 rounded border border-slate-700 overflow-hidden relative">
+                    <Input
+                      type="color"
+                      value={props.overlayColor || '#000000'}
+                      onChange={(e) => onUpdate({ overlayColor: e.target.value })}
+                      className="absolute inset-0 w-full h-full p-0 border-0 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5 pt-1">
                 <div className="flex justify-between text-[10px] text-slate-500">
                   <span>Overlay Opacity</span>
                   <span>{props.overlayOpacity !== undefined ? Math.round(props.overlayOpacity * 100) : 0}%</span>

@@ -957,6 +957,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                             layout?: string;
                                             columnGap?: string;
                                             verticalAlign?: string;
+                                            overlayType?: string;
+                                            overlayGradientFrom?: string;
+                                            overlayGradientTo?: string;
+                                            overlayGradientAngle?: number;
                                             overlayColor?: string;
                                             overlayOpacity?: number;
                                         };
@@ -1058,7 +1062,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <div
                                                             className="absolute inset-0 pointer-events-none z-10"
                                                             style={{
-                                                                backgroundColor: overlayCol,
+                                                                backgroundColor: sectionProps.overlayType === 'gradient' ? undefined : overlayCol,
+                                                                backgroundImage: sectionProps.overlayType === 'gradient'
+                                                                    ? `linear-gradient(${sectionProps.overlayGradientAngle ?? 135}deg, ${sectionProps.overlayGradientFrom || '#000000'}, ${sectionProps.overlayGradientTo || '#000000'})`
+                                                                    : undefined,
                                                                 opacity: overlayOp,
                                                             }}
                                                         />
