@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '../firebase-admin';
+import { authorizeBackoffice } from './backoffice-auth';
 import type { AuditActor, PlatformAuditLog } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
@@ -65,11 +66,16 @@ export async function logBackofficeAction(
 /**
  * Fetches audit logs with filtering and pagination.
  *
+ * Security: verifies the caller's ID token and enforces audit:view
+ * (server-auth-actions) before returning cross-tenant audit data.
+ *
+ * @param idToken - Caller's Firebase ID token
  * @param filters - Query filters
  * @param limit - Maximum records to return
  * @param startAfter - Cursor for pagination (timestamp)
  */
 export async function queryAuditLogs(
+  idToken: string,
   filters: {
     actorId?: string;
     action?: string;
@@ -84,6 +90,8 @@ export async function queryAuditLogs(
   startAfter?: string
 ): Promise<{ logs: PlatformAuditLog[]; hasMore: boolean }> {
   try {
+    await authorizeBackoffice(idToken, 'audit', 'view');
+
     let query: FirebaseFirestore.Query = adminDb
       .collection('platform_audit_logs')
       .orderBy('timestamp', 'desc');

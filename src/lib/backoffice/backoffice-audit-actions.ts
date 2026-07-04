@@ -1,15 +1,20 @@
 'use server';
 
 import { adminDb } from '../firebase-admin';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
 import type { PlatformAuditLog } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Audit Actions
-// Fetching historical audit trails for governance visibility. 
+// Fetching historical audit trails for governance visibility.
 // Writing is handled strictly by `logBackofficeAction` in audit-logger.ts.
+//
+// Security: verifies the caller's ID token and enforces audit:view
+// (server-auth-actions) before returning any cross-tenant audit data.
 // ─────────────────────────────────────────────────
 
-export async function fetchAuditLogs(options?: {
+export async function fetchAuditLogs(idToken: string, options?: {
   limit?: number;
   actorId?: string;
   resourceType?: string;
@@ -20,6 +25,8 @@ export async function fetchAuditLogs(options?: {
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'audit', 'view');
+
     let query: FirebaseFirestore.Query = adminDb.collection('platform_audit_logs');
 
     if (options?.actorId) {
@@ -50,8 +57,8 @@ export async function fetchAuditLogs(options?: {
     }
 
     return { success: true, data: logs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_AUDIT] fetchAuditLogs failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -21,13 +21,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { fetchAuditLogs } from '@/lib/backoffice/backoffice-audit-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import AuditDiffViewer from './AuditDiffViewer';
 import type { PlatformAuditLog } from '@/lib/backoffice/backoffice-types';
 
 export default function AuditLogViewerClient() {
+  const getToken = useBackofficeToken();
   const [logs, setLogs] = React.useState<PlatformAuditLog[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  
+
   // Filters
   const [searchFilter, setSearchFilter] = React.useState('');
   const [resourceFilter, setResourceFilter] = React.useState('all');
@@ -37,12 +39,18 @@ export default function AuditLogViewerClient() {
 
   const loadLogs = React.useCallback(async () => {
     setIsLoading(true);
-    const res = await fetchAuditLogs({ limit: 150 });
-    if (res.success && res.data) {
-      setLogs(res.data);
+    try {
+      const idToken = await getToken();
+      const res = await fetchAuditLogs(idToken, { limit: 150 });
+      if (res.success && res.data) {
+        setLogs(res.data);
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [getToken]);
 
   React.useEffect(() => {
     loadLogs();
