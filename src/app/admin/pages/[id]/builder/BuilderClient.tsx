@@ -653,6 +653,11 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 onAddBlock={builder.addBlock}
                                 onRequestBlock={(type) => builder.dispatch({ type: 'OPEN_VARIANT_PICKER', payload: type })}
                                 onAddSection={() => builder.addSection()}
+                                savedSections={resources.savedSections}
+                                onAddSectionFromTemplate={(template) => {
+                                    builder.addSection(template);
+                                    toast({ title: 'Section Added', description: 'Template added to page.' });
+                                }}
                             />
                         )}
 

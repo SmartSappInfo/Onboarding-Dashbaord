@@ -68,7 +68,16 @@ export function createBlock(
 /** Build a fresh section, optionally cloning a saved template's structure. */
 export function createSection(template?: { structure: PageSection }): PageSection {
   if (template) {
-    return { ...template.structure, id: genId('sec') };
+    const sectionId = genId('sec');
+    const blocks = template.structure.blocks.map((b) => ({
+      ...b,
+      id: genId(b.type),
+    }));
+    return {
+      ...template.structure,
+      id: sectionId,
+      blocks,
+    };
   }
   return {
     id: genId('sec'),
