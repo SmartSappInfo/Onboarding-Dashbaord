@@ -3,19 +3,26 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor, PlatformProviderSetting, PlatformProviderType } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
+import type { PlatformProviderSetting, PlatformProviderType } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Provider Server Actions
 // Operations for managing global provider configs (Email, SMS, Webhooks).
+//
+// Security: every action verifies the caller's ID token and enforces RBAC
+// via `authorizeBackoffice` (server-auth-actions). Actor derived server-side.
 // ─────────────────────────────────────────────────
 
-export async function listProviderSettings(): Promise<{
+export async function listProviderSettings(idToken: string): Promise<{
   success: boolean;
   data?: PlatformProviderSetting[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'settings', 'view');
+
     const snap = await adminDb.collection('platform_provider_settings').get();
     const providers = snap.docs.map((doc) => ({
       id: doc.id,
@@ -23,17 +30,19 @@ export async function listProviderSettings(): Promise<{
     } as PlatformProviderSetting));
 
     return { success: true, data: providers };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_PROVIDER] listProviderSettings failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveProviderSetting(
   payload: Partial<PlatformProviderSetting> & { provider: string; type: PlatformProviderType },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'settings', 'edit');
+
     const collection = adminDb.collection('platform_provider_settings');
     let docRef: FirebaseFirestore.DocumentReference;
     let before = null;
@@ -71,7 +80,7 @@ export async function saveProviderSetting(
     }
     
     // Do not save ID inside the doc
-    const { id, ...sanitized } = dataToSave as any;
+    const { id: _id, ...sanitized } = dataToSave;
 
     await docRef.set(sanitized, { merge: true });
 
@@ -85,8 +94,8 @@ export async function saveProviderSetting(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_PROVIDER] saveProviderSetting failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

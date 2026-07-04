@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { shareOrgSetupInviteAction } from '@/lib/backoffice/backoffice-org-actions';
-import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 
 interface ShareOrgInviteProps {
   organizationId: string;
@@ -25,7 +26,7 @@ interface ShareOrgInviteProps {
  */
 export default function ShareOrgInvite({ organizationId, defaultEmail, defaultPhone, onShared }: ShareOrgInviteProps) {
   const { toast } = useToast();
-  const { profile } = useBackoffice();
+  const getToken = useBackofficeToken();
   const [email, setEmail] = React.useState(defaultEmail ?? '');
   const [phone, setPhone] = React.useState(defaultPhone ?? '');
   const [isSending, setIsSending] = React.useState(false);
@@ -39,17 +40,14 @@ export default function ShareOrgInvite({ organizationId, defaultEmail, defaultPh
       toast({ variant: 'destructive', title: 'Add a recipient', description: 'Enter an email and/or phone number to share.' });
       return;
     }
-    if (!profile) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'Action requires a logged-in super admin.' });
-      return;
-    }
 
     const channel = hasEmail && hasPhone ? 'both' : hasEmail ? 'email' : 'sms';
     setIsSending(true);
     try {
+      const idToken = await getToken();
       const res = await shareOrgSetupInviteAction(
         { organizationId, email: hasEmail ? email.trim() : undefined, phone: hasPhone ? phone.trim() : undefined, channel },
-        { userId: profile.id, name: profile.name, email: profile.email, role: 'super_admin' }
+        idToken
       );
       if (res.success) {
         const parts: string[] = [];
@@ -60,8 +58,8 @@ export default function ShareOrgInvite({ organizationId, defaultEmail, defaultPh
       } else {
         toast({ variant: 'destructive', title: 'Could not send', description: res.error || 'Please try again.' });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to share invitation.' });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsSending(false);
     }

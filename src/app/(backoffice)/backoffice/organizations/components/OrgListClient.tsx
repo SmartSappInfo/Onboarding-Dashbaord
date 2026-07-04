@@ -49,12 +49,14 @@ import {
   createOrganizationFromBackofficeAction 
 } from '@/lib/backoffice/backoffice-org-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import ShareOrgInvite from './ShareOrgInvite';
 import { APP_FEATURES, type AppFeatureId, type Organization } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 
 // ─────────────────────────────────────────────────
 // Organization List Client
@@ -101,8 +103,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function OrgListClient() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const { toast } = useToast();
+  const getToken = useBackofficeToken();
   const [orgs, setOrgs] = React.useState<OrgWithStats[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -126,11 +129,19 @@ export default function OrgListClient() {
 
   async function loadOrgs() {
     setIsLoading(true);
-    const result = await listAllOrganizations();
-    if (result.success && result.data) {
-      setOrgs(result.data);
+    try {
+      const idToken = await getToken();
+      const result = await listAllOrganizations(idToken);
+      if (result.success && result.data) {
+        setOrgs(result.data);
+      } else if (result.error) {
+        toast({ variant: 'destructive', title: 'Failed to load organizations', description: result.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }
 
   function loadFeatures() {
@@ -168,30 +179,34 @@ export default function OrgListClient() {
   }, [orgs, search, statusFilter]);
 
   async function handleSuspend(orgId: string) {
-    if (!profile) return;
     const reason = prompt('Enter suspension reason:');
     if (!reason) return;
 
-    const result = await suspendOrganization(orgId, reason, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-
-    if (result.success) loadOrgs();
+    try {
+      const idToken = await getToken();
+      const result = await suspendOrganization(orgId, reason, idToken);
+      if (result.success) {
+        loadOrgs();
+      } else {
+        toast({ variant: 'destructive', title: 'Suspension failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   async function handleRestore(orgId: string) {
-    if (!profile) return;
-    const result = await restoreOrganization(orgId, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-
-    if (result.success) loadOrgs();
+    try {
+      const idToken = await getToken();
+      const result = await restoreOrganization(orgId, idToken);
+      if (result.success) {
+        loadOrgs();
+      } else {
+        toast({ variant: 'destructive', title: 'Restore failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   async function handleCreateOrg(e: React.FormEvent) {
@@ -200,23 +215,15 @@ export default function OrgListClient() {
       toast({ variant: 'destructive', title: 'Validation Error', description: 'Organization name is required.' });
       return;
     }
-    if (!profile) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'Action requires logged-in super admin actor.' });
-      return;
-    }
 
     setIsCreating(true);
     try {
+      const idToken = await getToken();
       const result = await createOrganizationFromBackofficeAction({
         name: newOrgName,
         email: newOrgEmail,
         enabledFeatures: selectedFeatures
-      }, {
-        userId: profile.id,
-        name: profile.name,
-        email: profile.email,
-        role: 'super_admin'
-      });
+      }, idToken);
 
       if (result.success && result.data) {
         const inviteLink = `${window.location.origin}/profile-setup?code=${result.data.joinToken}`;
@@ -230,8 +237,8 @@ export default function OrgListClient() {
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to create organization.' });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'System Error', description: err.message || 'Server error occurred.' });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'System Error', description: getErrorMessage(err) });
     } finally {
       setIsCreating(false);
     }

@@ -3,9 +3,16 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
 
-import type { AuditActor } from './backoffice-types';
 import type { Organization } from '../types';
+
+// Security: every action verifies the caller's ID token and enforces RBAC via
+// `authorizeBackoffice` (server-auth-actions). The audit actor is derived
+// server-side — never from client-supplied payloads.
+// Q1 (locked): suspend/restore + clearOrganizationActivityLogs are
+// super-admin-only (organizations:execute).
 
 // ─────────────────────────────────────────────────
 // Backoffice Organization Server Actions
@@ -19,7 +26,7 @@ const JOIN_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /**
  * Lists all organizations with computed stats.
  */
-export async function listAllOrganizations(): Promise<{
+export async function listAllOrganizations(idToken: string): Promise<{
   success: boolean;
   data?: (Organization & {
     workspaceCount: number;
@@ -29,6 +36,8 @@ export async function listAllOrganizations(): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'organizations', 'view');
+
     const [orgsSnap, workspacesSnap, usersSnap] = await Promise.all([
       adminDb.collection('organizations').orderBy('name', 'asc').get(),
       adminDb.collection('workspaces').get(),
@@ -62,16 +71,16 @@ export async function listAllOrganizations(): Promise<{
     });
 
     return { success: true, data: orgs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] listAllOrganizations failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 /**
  * Gets detailed information about a single organization.
  */
-export async function getOrganizationDetail(orgId: string): Promise<{
+export async function getOrganizationDetail(orgId: string, idToken: string): Promise<{
   success: boolean;
   data?: Organization & {
     workspaceCount: number;
@@ -82,6 +91,8 @@ export async function getOrganizationDetail(orgId: string): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'organizations', 'view');
+
     const [orgSnap, workspacesSnap, usersSnap, entitiesSnap] = await Promise.all([
       adminDb.collection('organizations').doc(orgId).get(),
       adminDb.collection('workspaces').where('organizationId', '==', orgId).get(),
@@ -107,9 +118,9 @@ export async function getOrganizationDetail(orgId: string): Promise<{
         entityCount: entitiesSnap.size,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] getOrganizationDetail failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -120,9 +131,11 @@ export async function getOrganizationDetail(orgId: string): Promise<{
 export async function suspendOrganization(
   orgId: string,
   reason: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'execute');
+
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
@@ -150,9 +163,9 @@ export async function suspendOrganization(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] suspendOrganization failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -161,9 +174,11 @@ export async function suspendOrganization(
  */
 export async function restoreOrganization(
   orgId: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'execute');
+
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
@@ -190,9 +205,9 @@ export async function restoreOrganization(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] restoreOrganization failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -203,9 +218,11 @@ export async function restoreOrganization(
 export async function updateOrganizationFromBackoffice(
   orgId: string,
   updates: Partial<Organization>,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'edit');
+
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
@@ -230,9 +247,9 @@ export async function updateOrganizationFromBackoffice(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] updateOrganizationFromBackoffice failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -240,7 +257,7 @@ export async function updateOrganizationFromBackoffice(
  * Gets diagnostic information for an organization.
  * Used for health checks and support troubleshooting.
  */
-export async function getOrganizationDiagnostics(orgId: string): Promise<{
+export async function getOrganizationDiagnostics(orgId: string, idToken: string): Promise<{
   success: boolean;
   data?: {
     orgId: string;
@@ -255,6 +272,8 @@ export async function getOrganizationDiagnostics(orgId: string): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'organizations', 'view');
+
     const [orgSnap, workspacesSnap, usersSnap, entitiesSnap, rolesSnap] = await Promise.all([
       adminDb.collection('organizations').doc(orgId).get(),
       adminDb.collection('workspaces').where('organizationId', '==', orgId).get(),
@@ -287,9 +306,9 @@ export async function getOrganizationDiagnostics(orgId: string): Promise<{
         createdAt: orgData.createdAt,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] getOrganizationDiagnostics failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -303,9 +322,11 @@ export async function createOrganizationFromBackofficeAction(
     email?: string;
     enabledFeatures: Record<string, boolean>;
   },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string; data?: { organizationId: string; joinToken: string; slug: string } }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'create');
+
     if (!data.name || !data.name.trim()) {
       return { success: false, error: 'Organization name is required' };
     }
@@ -376,9 +397,9 @@ export async function createOrganizationFromBackofficeAction(
         slug
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] createOrganizationFromBackofficeAction failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -416,9 +437,11 @@ function buildInviteEmailHtml(orgName: string, link: string, token: string): str
  */
 export async function shareOrgSetupInviteAction(
   params: { organizationId: string; email?: string; phone?: string; channel: 'email' | 'sms' | 'both' },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string; sentTo?: { email?: boolean; sms?: boolean }; joinToken?: string; link?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'create');
+
     const { organizationId, email, phone, channel } = params;
     const wantEmail = channel === 'email' || channel === 'both';
     const wantSms = channel === 'sms' || channel === 'both';
@@ -433,7 +456,7 @@ export async function shareOrgSetupInviteAction(
     const orgRef = adminDb.collection('organizations').doc(organizationId);
     const snap = await orgRef.get();
     if (!snap.exists) return { success: false, error: 'Organization not found.' };
-    const org = snap.data() as any;
+    const org = snap.data() as Organization;
 
     if (org.isConfigured === true) {
       return { success: false, error: 'This organization is already configured; setup can no longer be shared.' };
@@ -492,16 +515,16 @@ export async function shareOrgSetupInviteAction(
     await logBackofficeAction(actor, 'organization.invite_shared', 'organization', organizationId, {
       scope: 'organization',
       scopeId: organizationId,
-    } as any);
+    });
 
     const anySent = (wantEmail && sentTo.email) || (wantSms && sentTo.sms);
     if (!anySent) {
       return { success: false, error: 'Failed to send the invitation. Please try again.', sentTo, joinToken: token, link };
     }
     return { success: true, sentTo, joinToken: token, link };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] shareOrgSetupInviteAction failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -511,9 +534,11 @@ export async function shareOrgSetupInviteAction(
 export async function toggleOrganizationActivityLogging(
   orgId: string,
   enabled: boolean,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'edit');
+
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
@@ -544,9 +569,8 @@ export async function toggleOrganizationActivityLogging(
 
     return { success: true };
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[BACKOFFICE_ORG] toggleOrganizationActivityLogging failed:', error);
-    return { success: false, error: errMsg };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -555,9 +579,11 @@ export async function toggleOrganizationActivityLogging(
  */
 export async function clearOrganizationActivityLogs(
   orgId: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; count?: number; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'organizations', 'execute');
+
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
@@ -602,8 +628,7 @@ export async function clearOrganizationActivityLogs(
 
     return { success: true, count: totalDeleted };
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[BACKOFFICE_ORG] clearOrganizationActivityLogs failed:', error);
-    return { success: false, error: errMsg };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

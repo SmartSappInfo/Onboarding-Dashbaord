@@ -22,7 +22,8 @@ import ShareOrgInvite from '../components/ShareOrgInvite';
 import type { Organization } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import {
   toggleOrganizationActivityLogging,
   clearOrganizationActivityLogs,
@@ -68,24 +69,33 @@ function StatPill({
   );
 }
 
+type OrgDiagnostics = NonNullable<Awaited<ReturnType<typeof getOrganizationDiagnostics>>['data']>;
+
 export default function OrgDetailClient({ orgId }: { orgId: string }) {
+  const getToken = useBackofficeToken();
   const [org, setOrg] = React.useState<OrgDetail | null>(null);
-  const [diagnostics, setDiagnostics] = React.useState<any>(null);
+  const [diagnostics, setDiagnostics] = React.useState<OrgDiagnostics | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function load() {
-      const [orgResult, diagResult] = await Promise.all([
-        getOrganizationDetail(orgId),
-        getOrganizationDiagnostics(orgId),
-      ]);
+      try {
+        const idToken = await getToken();
+        const [orgResult, diagResult] = await Promise.all([
+          getOrganizationDetail(orgId, idToken),
+          getOrganizationDiagnostics(orgId, idToken),
+        ]);
 
-      if (orgResult.success && orgResult.data) setOrg(orgResult.data);
-      if (diagResult.success && diagResult.data) setDiagnostics(diagResult.data);
-      setIsLoading(false);
+        if (orgResult.success && orgResult.data) setOrg(orgResult.data);
+        if (diagResult.success && diagResult.data) setDiagnostics(diagResult.data);
+      } catch {
+        // Auth not ready yet — the AuthorizationGate handles redirects.
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
-  }, [orgId]);
+  }, [orgId, getToken]);
 
   if (isLoading) {
     return (
@@ -270,9 +280,9 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
             <h3 className="text-sm font-semibold text-foreground mb-4">
               Workspaces ({org.workspaceCount})
             </h3>
-            {diagnostics?.workspaces?.length > 0 ? (
+            {(diagnostics?.workspaces?.length ?? 0) > 0 ? (
               <div className="space-y-2">
-                {diagnostics.workspaces.map((ws: any) => (
+                {diagnostics?.workspaces.map((ws) => (
                   <div
                     key={ws.id}
                     className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border/30"
@@ -394,7 +404,8 @@ export default function OrgDetailClient({ orgId }: { orgId: string }) {
         {/* Activity Control Tab */}
         <TabsContent value="activity-control" className="space-y-4">
           <ActivityControlPane org={org} onReload={async () => {
-            const orgResult = await getOrganizationDetail(orgId);
+            const idToken = await getToken();
+            const orgResult = await getOrganizationDetail(orgId, idToken);
             if (orgResult.success && orgResult.data) setOrg(orgResult.data);
           }} />
         </TabsContent>
@@ -410,7 +421,7 @@ function ActivityControlPane({
   org: OrgDetail;
   onReload: () => Promise<void>;
 }) {
-  const { profile } = useBackoffice();
+  const getToken = useBackofficeToken();
   const { toast } = useToast();
   const [isToggling, setIsToggling] = React.useState(false);
   const [isClearing, setIsClearing] = React.useState(false);
@@ -420,15 +431,10 @@ function ActivityControlPane({
   const isLoggingEnabled = org.activityLoggingEnabled !== false && org.activityLoggingDisabled !== true;
 
   async function handleToggle(checked: boolean) {
-    if (!profile) return;
     setIsToggling(true);
     try {
-      const result = await toggleOrganizationActivityLogging(org.id, checked, {
-        userId: profile.id || '',
-        name: profile.name || '',
-        email: profile.email || '',
-        role: 'super_admin',
-      });
+      const idToken = await getToken();
+      const result = await toggleOrganizationActivityLogging(org.id, checked, idToken);
       if (result.success) {
         toast({
           title: checked ? 'Logging Enabled' : 'Logging Disabled',
@@ -443,11 +449,10 @@ function ActivityControlPane({
         });
       }
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
       toast({
         variant: 'destructive',
         title: 'Error updating setting',
-        description: errMsg,
+        description: getErrorMessage(err),
       });
     } finally {
       setIsToggling(false);
@@ -463,15 +468,10 @@ function ActivityControlPane({
       });
       return;
     }
-    if (!profile) return;
     setIsClearing(true);
     try {
-      const result = await clearOrganizationActivityLogs(org.id, {
-        userId: profile.id || '',
-        name: profile.name || '',
-        email: profile.email || '',
-        role: 'super_admin',
-      });
+      const idToken = await getToken();
+      const result = await clearOrganizationActivityLogs(org.id, idToken);
       if (result.success) {
         toast({
           title: 'Logs Cleared',
@@ -488,7 +488,7 @@ function ActivityControlPane({
         });
       }
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = getErrorMessage(err);
       toast({
         variant: 'destructive',
         title: 'Error clearing logs',

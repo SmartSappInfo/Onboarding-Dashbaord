@@ -8,29 +8,41 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { listProviderSettings, saveProviderSetting } from '@/lib/backoffice/backoffice-provider-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import type { PlatformProviderSetting, PlatformProviderType } from '@/lib/backoffice/backoffice-types';
 
 export default function ProviderSettingsEditor() {
-  const { profile, can } = useBackoffice();
+  const { can } = useBackoffice();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [providers, setProviders] = React.useState<PlatformProviderSetting[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  
+
   // Local state for adding a new model name per provider ID
   const [newModelInputs, setNewModelInputs] = React.useState<Record<string, string>>({});
 
+  const load = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const res = await listProviderSettings(idToken);
+      if (res.success && res.data) {
+        setProviders(res.data);
+      } else if (res.error) {
+        toast({ variant: 'destructive', title: 'Failed to load providers', description: res.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
   React.useEffect(() => {
     load();
-  }, []);
-
-  async function load() {
-    setIsLoading(true);
-    const res = await listProviderSettings();
-    if (res.success && res.data) {
-      setProviders(res.data);
-    }
-    setIsLoading(false);
-  }
+  }, [load]);
 
   const handleUpdateConfig = (id: string, key: string, value: string) => {
     setProviders(prev => prev.map(p => {
@@ -76,21 +88,21 @@ export default function ProviderSettingsEditor() {
   };
 
   const saveConfig = async (provider: PlatformProviderSetting) => {
-    if (!profile) return;
     setIsSaving(true);
-    const res = await saveProviderSetting(provider, {
-       userId: profile.id,
-       name: profile.name,
-       email: profile.email,
-       role: 'super_admin'
-    });
-    if (res.success) {
-       alert(`${provider.provider} settings saved via audit log.`);
-       load();
-    } else {
-       alert(`Failed to save: ${res.error}`);
+    try {
+      const idToken = await getToken();
+      const res = await saveProviderSetting(provider, idToken);
+      if (res.success) {
+         toast({ title: 'Provider saved', description: `${provider.provider} settings updated.` });
+         load();
+      } else {
+         toast({ variant: 'destructive', title: 'Failed to save provider', description: res.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   // Organize by type
