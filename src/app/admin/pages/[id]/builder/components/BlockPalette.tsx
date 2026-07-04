@@ -64,7 +64,7 @@ export default function BlockPalette({ onAddBlock, onRequestBlock, onAddSection 
         const items: LibraryItem[] = [];
 
         // 1. Basic Items
-        registeredBlocks.filter(b => ['text', 'divider', 'spacer', 'image', 'video'].includes(b.type)).forEach(b => {
+        registeredBlocks.filter(b => ['title', 'text', 'divider', 'spacer', 'image', 'video'].includes(b.type)).forEach(b => {
             items.push({ type: b.type, label: b.label, icon: b.icon, category: 'basic', hasVariants: !!(b.variants && b.variants.length > 0) });
         });
         // Basic Placeholders
