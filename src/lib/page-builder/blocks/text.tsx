@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 const schema = z.object({
   content: z.string().default('<p>Start writing your content here…</p>'),
-  preset: z.enum(['paragraph', 'lead', 'disclaimer', 'quote']).default('paragraph'),
+  preset: z.enum(['paragraph', 'lead', 'disclaimer', 'quote', 'two-columns', 'checklist']).default('paragraph'),
   textColorMode: z.enum(['dark', 'light']).default('dark'),
   fontSize: z.string().optional().default('default'),
   textColor: z.string().optional().default(''),
@@ -56,6 +56,31 @@ const QuoteThumbnail = (
   </svg>
 );
 
+const TwoColumnsThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <rect x="15" y="20" width="25" height="30" rx="2" className="text-slate-800 fill-slate-800" />
+    <rect x="18" y="25" width="19" height="3" rx="0.5" className="text-blue-500 fill-blue-500" />
+    <rect x="18" y="32" width="12" height="2" rx="0.5" className="text-slate-500 fill-slate-500" />
+    <rect x="48" y="20" width="37" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+    <rect x="48" y="27" width="37" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+    <rect x="48" y="34" width="37" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+    <rect x="48" y="41" width="22" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+  </svg>
+);
+
+const ChecklistThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <circle cx="20" cy="25" r="3" className="text-emerald-500 fill-emerald-500" />
+    <rect x="30" y="23" width="55" height="3.5" rx="1" className="text-slate-200 fill-slate-200" />
+    <circle cx="20" cy="37" r="3" className="text-emerald-500 fill-emerald-500" />
+    <rect x="30" y="35" width="55" height="3.5" rx="1" className="text-slate-200 fill-slate-200" />
+    <circle cx="20" cy="49" r="3" className="text-emerald-500 fill-emerald-500" />
+    <rect x="30" y="47" width="40" height="3.5" rx="1" className="text-slate-200 fill-slate-200" />
+  </svg>
+);
+
 registerBlock({
   type: 'text',
   label: 'Rich Text',
@@ -72,6 +97,8 @@ registerBlock({
         { value: 'lead', label: 'Feature Lead Intro' },
         { value: 'disclaimer', label: 'Small Legal / Disclaimer' },
         { value: 'quote', label: 'Premium Blockquote' },
+        { value: 'two-columns', label: 'Two-Column Details' },
+        { value: 'checklist', label: 'Interactive Checklist' },
       ],
     },
     {
@@ -113,10 +140,12 @@ registerBlock({
   defaults: schema.parse({}),
   schema,
   variants: [
-    { id: 'text-paragraph', label: 'Standard Paragraph', thumbnail: ParagraphThumbnail, defaults: { preset: 'paragraph', content: '<p>Start writing your content here. Build rich layouts, customize alignments, and link resources seamlessly.</p>' } },
-    { id: 'text-lead', label: 'Feature Lead Intro', thumbnail: LeadThumbnail, defaults: { preset: 'lead', content: '<p>Experience onboarding automated to perfection. Register class rosters and compliance documents instantly.</p>' } },
-    { id: 'text-disclaimer', label: 'Small Disclaimer', thumbnail: DisclaimerThumbnail, defaults: { preset: 'disclaimer', textAlign: 'center', content: '<p>© 2026 SmartSapp Inc. All rights reserved. Submissions are subject to nominal roster verification protocols.</p>' } },
-    { id: 'text-quote', label: 'Blockquote Style', thumbnail: QuoteThumbnail, defaults: { preset: 'quote', content: '<p>“This system automated our compliance workflows, cutting class roster approvals from weeks to minutes.”</p>' } },
+    { id: 'text-paragraph', label: 'Standard Article', description: 'Headline, sub-lead paragraph and list details.', thumbnail: ParagraphThumbnail, defaults: { preset: 'paragraph', content: '<h3><b>Our Mission & Vision</b></h3><p>We are dedicated to building robust digital systems that automate roster management, onboarding tracking, and class roster integrations. Empowering educational institutions is at the core of our platform.</p>' } },
+    { id: 'text-lead', label: 'Feature Lead Intro', description: 'Bold intro text layout for high impact conversions.', thumbnail: LeadThumbnail, defaults: { preset: 'lead', content: '<p><b>Roster Onboarding, Automated to Perfection.</b> Experience the future of student intelligence. Register compliance logs, classroom cohorts, and verification tags instantly with zero manual delay.</p>' } },
+    { id: 'text-two-columns', label: 'Two-Column Layout', description: 'Comparison grid layout split into columns.', thumbnail: TwoColumnsThumbnail, defaults: { preset: 'two-columns', content: '<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;"><div><h4 style="margin: 0; color: #3B5FFF;"><b>Platform Perks</b></h4></div><div><p style="margin: 0;">Our platform reduces roster processing lag by 94%, ensuring that compliance officers, teachers, and administrators stay in sync without exchanging spreadsheets or manual verification emails.</p></div></div>' } },
+    { id: 'text-quote', label: 'Blockquote Style', description: 'Indented quotation layout with testimonial author details.', thumbnail: QuoteThumbnail, defaults: { preset: 'quote', content: '<p><i>“This onboarding system streamlined our operations, allowing us to manage over 10,000 active students and rosters while maintaining perfect security and compliance.”</i></p><p style="margin-top: 8px; font-size: 11px; color: #64748b;">— <b>Dr. Sarah Jenkins</b>, Academic Compliance Director</p>' } },
+    { id: 'text-checklist', label: 'Interactive Checklist', description: 'Interactive checkmark bullets list layout.', thumbnail: ChecklistThumbnail, defaults: { preset: 'checklist', content: '<h4><b>Getting Started Checklist</b></h4><p>Complete these initial steps to fully integrate your campus rosters:</p><p>✅ <b>1. Sync Workspace Database:</b> Hook up your tenant parameters.</p><p>✅ <b>2. Invite Administrators:</b> Set up backoffice roles and permissions.</p><p>✅ <b>3. Publish Campaign Pages:</b> Generate public URLs for registrations.</p>' } },
+    { id: 'text-disclaimer', label: 'Small Disclaimer', description: 'Dense, small legal context layout.', thumbnail: DisclaimerThumbnail, defaults: { preset: 'disclaimer', textAlign: 'center', content: '<p>© 2026 SmartSapp. All rights reserved. Roster submissions are subject to validation checks under local administrative rules. Terms of Service apply.</p>' } },
   ],
   render: (props: TextProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';

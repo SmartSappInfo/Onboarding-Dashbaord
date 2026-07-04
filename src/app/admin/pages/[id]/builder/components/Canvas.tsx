@@ -696,13 +696,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             });
         };
 
-        // Defer execution using both requestAnimationFrame and setTimeout to guarantee DOM paint
+        // Defer execution to guarantee DOM paint has finished
         const rafId = requestAnimationFrame(() => {
             updatePosition();
-            const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
-            if (activeEl && document.activeElement !== activeEl) {
-                activeEl.focus();
-            }
         });
 
         const timeoutId = setTimeout(updatePosition, 50);
@@ -710,18 +706,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         window.addEventListener('resize', updatePosition);
         document.addEventListener('selectionchange', updatePosition);
         
-        const observer = new MutationObserver(updatePosition);
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
-        if (activeEl) {
-            observer.observe(activeEl, { characterData: true, childList: true, subtree: true });
-        }
-
         return () => {
             cancelAnimationFrame(rafId);
             clearTimeout(timeoutId);
             window.removeEventListener('resize', updatePosition);
             document.removeEventListener('selectionchange', updatePosition);
-            observer.disconnect();
         };
     }, [selectedBlockId, activeBlockType, zoom, panOffset]);
 
