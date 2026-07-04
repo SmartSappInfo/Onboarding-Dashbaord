@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Heading } from 'lucide-react';
 import { registerBlock } from '../registry';
+import { cn } from '@/lib/utils';
 
 const schema = z.object({
   preset: z.enum([
@@ -12,12 +13,23 @@ const schema = z.object({
     'elegant-serif', 
     'badge-capsule'
   ]).default('section-heading'),
+  textColorMode: z.enum(['dark', 'light']).default('dark'),
   title: z.string().default('Industry-leading Title Preset'),
   tagline: z.string().optional().default('Tagline'),
   subheading: z.string().optional().default('Provide context or supporting description for this section.'),
   alignment: z.enum(['left', 'center', 'right']).default('center'),
   useGradient: z.boolean().default(false),
   gradientColor: z.string().default('#2563eb'),
+  
+  // Custom Color overrides (Optional)
+  customTitleColor: z.string().optional().default(''),
+  customTaglineColor: z.string().optional().default(''),
+  customSubheadingColor: z.string().optional().default(''),
+  
+  // Custom Size overrides (Optional)
+  customTitleSize: z.string().optional().default(''),
+  customTaglineSize: z.string().optional().default(''),
+  customSubheadingSize: z.string().optional().default(''),
 }).catchall(z.unknown());
 
 type TitleProps = z.infer<typeof schema>;
@@ -91,6 +103,15 @@ registerBlock({
         { value: 'badge-capsule', label: 'Micro-Capsule Badge' },
       ],
     },
+    {
+      kind: 'select',
+      key: 'textColorMode',
+      label: 'Text Color Theme',
+      options: [
+        { value: 'dark', label: 'Dark Text (For Light Backgrounds)' },
+        { value: 'light', label: 'Light Text (For Dark/Hero Backgrounds)' },
+      ],
+    },
     { kind: 'text', key: 'title', label: 'Headline Text' },
     { kind: 'text', key: 'tagline', label: 'Top Tagline (Optional)' },
     { kind: 'textarea', key: 'subheading', label: 'Subheading/Description (Optional)' },
@@ -106,6 +127,55 @@ registerBlock({
     },
     { kind: 'boolean', key: 'useGradient', label: 'Enable Headline Gradient' },
     { kind: 'color', key: 'gradientColor', label: 'Gradient Accent Color' },
+    
+    // Custom Color Overrides
+    { kind: 'color', key: 'customTitleColor', label: 'Custom Headline Color' },
+    { kind: 'color', key: 'customTaglineColor', label: 'Custom Tagline Color' },
+    { kind: 'color', key: 'customSubheadingColor', label: 'Custom Subheading Color' },
+    
+    // Custom Size Overrides
+    {
+      kind: 'select',
+      key: 'customTitleSize',
+      label: 'Custom Headline Size',
+      options: [
+        { value: '', label: 'Default Preset Size' },
+        { value: 'text-lg', label: 'Small (lg)' },
+        { value: 'text-xl', label: 'Medium (xl)' },
+        { value: 'text-2xl', label: 'Large (2xl)' },
+        { value: 'text-3xl', label: 'Extra Large (3xl)' },
+        { value: 'text-4xl', label: 'Super (4xl)' },
+        { value: 'text-5xl', label: 'Mega (5xl)' },
+        { value: 'text-6xl', label: 'Ultra (6xl)' },
+        { value: 'text-7xl', label: 'Giant (7xl)' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'customTaglineSize',
+      label: 'Custom Tagline Size',
+      options: [
+        { value: '', label: 'Default Preset Size' },
+        { value: 'text-[9px]', label: 'Micro (9px)' },
+        { value: 'text-[10px]', label: 'Mini (10px)' },
+        { value: 'text-xs', label: 'Small (xs)' },
+        { value: 'text-sm', label: 'Medium (sm)' },
+        { value: 'text-base', label: 'Large (base)' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'customSubheadingSize',
+      label: 'Custom Subheading Size',
+      options: [
+        { value: '', label: 'Default Preset Size' },
+        { value: 'text-[11px]', label: 'Micro (11px)' },
+        { value: 'text-xs', label: 'Mini (xs)' },
+        { value: 'text-sm', label: 'Small (sm)' },
+        { value: 'text-base', label: 'Medium (base)' },
+        { value: 'text-lg', label: 'Large (lg)' },
+      ],
+    },
   ],
   defaults: schema.parse({}),
   schema,
@@ -121,37 +191,86 @@ registerBlock({
     const alignClass = props.alignment === 'left' ? 'text-left' : props.alignment === 'right' ? 'text-right' : 'text-center';
     
     const preset = props.preset;
+    const isLight = props.textColorMode === 'light';
     
-    let titleClass = 'font-bold text-slate-900 dark:text-white';
-    let taglineClass = 'text-xs uppercase tracking-widest font-semibold mb-2';
-    let subClass = 'text-slate-500 dark:text-slate-400 mt-2 max-w-3xl';
+    let titleClass = isLight ? 'text-white' : 'text-slate-900 dark:text-white';
+    let taglineClass = isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
+    let subClass = isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400';
     
     if (preset === 'hero-title') {
-      titleClass = 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight';
-      taglineClass = 'text-sm uppercase tracking-widest font-extrabold text-[#3B5FFF] dark:text-blue-400 mb-3';
-      subClass = 'text-lg md:text-xl text-slate-500 dark:text-slate-400 mt-4 max-w-2xl';
+      titleClass = cn(
+        isLight ? 'text-white' : 'text-slate-900 dark:text-white',
+        props.customTitleSize || 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight'
+      );
+      taglineClass = cn(
+        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        props.customTaglineSize || 'text-sm uppercase tracking-widest font-extrabold mb-3'
+      );
+      subClass = cn(
+        isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
+        props.customSubheadingSize || 'text-lg md:text-xl mt-4 max-w-2xl'
+      );
     } else if (preset === 'section-heading') {
-      titleClass = 'text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white';
-      taglineClass = 'text-xs uppercase tracking-widest font-bold text-[#3B5FFF] dark:text-blue-400 mb-2';
-      subClass = 'text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-2 max-w-2xl';
+      titleClass = cn(
+        isLight ? 'text-white' : 'text-slate-900 dark:text-white',
+        props.customTitleSize || 'text-3xl sm:text-4xl font-bold tracking-tight'
+      );
+      taglineClass = cn(
+        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        props.customTaglineSize || 'text-xs uppercase tracking-widest font-bold mb-2'
+      );
+      subClass = cn(
+        isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
+        props.customSubheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl'
+      );
     } else if (preset === 'subtitle') {
-      titleClass = 'text-xl sm:text-2xl font-semibold tracking-normal text-slate-800 dark:text-slate-100';
+      titleClass = cn(
+        isLight ? 'text-slate-100' : 'text-slate-800 dark:text-slate-100',
+        props.customTitleSize || 'text-xl sm:text-2xl font-semibold tracking-normal'
+      );
       taglineClass = 'hidden';
-      subClass = 'text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 max-w-xl';
+      subClass = cn(
+        isLight ? 'text-slate-350 dark:text-slate-400' : 'text-slate-500 dark:text-slate-400',
+        props.customSubheadingSize || 'text-xs sm:text-sm mt-1.5 max-w-xl'
+      );
     } else if (preset === 'accent-tagline') {
-      titleClass = 'text-sm sm:text-base font-black uppercase tracking-widest text-[#3B5FFF] dark:text-blue-400';
+      titleClass = cn(
+        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        props.customTitleSize || 'text-sm sm:text-base font-black uppercase tracking-widest'
+      );
       taglineClass = 'hidden';
       subClass = 'hidden';
     } else if (preset === 'left-accent-border') {
-      titleClass = 'text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white border-l-4 border-[#3B5FFF] pl-4';
-      taglineClass = 'text-xs uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 mb-2 pl-5';
-      subClass = 'text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-2 max-w-2xl pl-5';
+      titleClass = cn(
+        isLight ? 'text-white font-bold tracking-tight border-l-4 border-blue-400 pl-4' : 'text-slate-900 dark:text-white font-bold tracking-tight border-l-4 border-[#3B5FFF] pl-4',
+        props.customTitleSize || 'text-2xl sm:text-3xl'
+      );
+      taglineClass = cn(
+        isLight ? 'text-slate-350' : 'text-slate-400 dark:text-slate-500',
+        props.customTaglineSize || 'text-xs uppercase tracking-widest font-bold mb-2 pl-5'
+      );
+      subClass = cn(
+        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
+        props.customSubheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl pl-5'
+      );
     } else if (preset === 'elegant-serif') {
-      titleClass = 'text-3xl sm:text-5xl font-serif italic font-normal tracking-tight text-slate-900 dark:text-white leading-tight';
-      taglineClass = 'text-xs uppercase tracking-widest font-semibold text-slate-455 dark:text-slate-500 mb-1.5';
-      subClass = 'text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-xl font-sans';
+      titleClass = cn(
+        isLight ? 'text-white' : 'text-slate-900 dark:text-white',
+        props.customTitleSize || 'text-3xl sm:text-5xl font-serif italic font-normal tracking-tight leading-tight'
+      );
+      taglineClass = cn(
+        isLight ? 'text-slate-350' : 'text-slate-450 dark:text-slate-550',
+        props.customTaglineSize || 'text-xs uppercase tracking-widest font-semibold mb-1.5'
+      );
+      subClass = cn(
+        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
+        props.customSubheadingSize || 'text-xs sm:text-sm mt-2 max-w-xl font-sans'
+      );
     } else if (preset === 'badge-capsule') {
-      titleClass = 'text-[10px] sm:text-xs font-black tracking-widest uppercase text-emerald-600 dark:text-emerald-400';
+      titleClass = cn(
+        isLight ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400',
+        props.customTitleSize || 'text-[10px] sm:text-xs font-black tracking-widest uppercase'
+      );
       taglineClass = 'hidden';
       subClass = 'hidden';
     }
@@ -162,8 +281,8 @@ registerBlock({
       subClass += ' ml-auto';
     }
 
-    const defaultTitleColor = props.useGradient ? 'transparent' : 'inherit';
-    const gradientStyles = props.useGradient
+    // Custom overrides styles
+    const gradientStyles = props.useGradient && !props.customTitleColor
       ? {
           backgroundImage: `linear-gradient(to right, currentColor, ${props.gradientColor})`,
           WebkitBackgroundClip: 'text',
@@ -171,6 +290,19 @@ registerBlock({
           backgroundClip: 'text',
         }
       : {};
+
+    const titleStyles: React.CSSProperties = {
+      ...gradientStyles,
+      ...(props.customTitleColor ? { color: props.customTitleColor, WebkitTextFillColor: props.customTitleColor } : {}),
+    };
+
+    const taglineStyles: React.CSSProperties = {
+      ...(props.customTaglineColor ? { color: props.customTaglineColor } : {}),
+    };
+
+    const subheadingStyles: React.CSSProperties = {
+      ...(props.customSubheadingColor ? { color: props.customSubheadingColor } : {}),
+    };
 
     const handleTitleBlur = (e: React.FocusEvent<HTMLHeadingElement>) => {
       ctx.onPropChange?.({ title: e.currentTarget.innerText });
@@ -185,10 +317,17 @@ registerBlock({
     };
 
     if (preset === 'badge-capsule') {
+      const capsuleBgClass = isLight 
+        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+        : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400";
       return (
         <div className={`py-2 w-full ${alignClass} select-none`}>
           <span 
-            className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold tracking-wider uppercase cursor-text"
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text",
+              capsuleBgClass
+            )}
+            style={titleStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
             onBlur={isEdit ? handleTitleBlur : undefined}
@@ -205,6 +344,7 @@ registerBlock({
         {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
           <p
             className={taglineClass}
+            style={taglineStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
             onBlur={isEdit ? handleTaglineBlur : undefined}
@@ -216,7 +356,7 @@ registerBlock({
         {/* Main Headline */}
         <h2
           className={`${titleClass} transition-all duration-300`}
-          style={gradientStyles}
+          style={titleStyles}
           contentEditable={isEdit}
           suppressContentEditableWarning
           onBlur={isEdit ? handleTitleBlur : undefined}
@@ -228,6 +368,7 @@ registerBlock({
         {props.subheading && preset !== 'accent-tagline' && (
           <p
             className={subClass}
+            style={subheadingStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
             onBlur={isEdit ? handleSubheadingBlur : undefined}
