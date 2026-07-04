@@ -815,6 +815,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     canvasMode={builder.canvasMode}
                     editMode={builder.editMode}
                     onSetEditMode={builder.setEditMode}
+                    onClickHeader={() => {
+                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                    }}
+                    onClickFooter={() => {
+                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                    }}
                 />
             </div>
             <BlockVariantPicker

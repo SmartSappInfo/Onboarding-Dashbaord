@@ -41,7 +41,16 @@ import {
     RotateCcw,
     User,
     AlertTriangle,
-    MessageSquare
+    MessageSquare,
+    Phone,
+    Search,
+    Facebook,
+    Twitter,
+    Linkedin,
+    Instagram,
+    Youtube,
+    MapPin,
+    Mail
 } from 'lucide-react';
 import {
     Select,
@@ -87,6 +96,8 @@ interface CanvasProps {
     onSetEditMode: (mode: 'columns' | 'components') => void;
     showHeader?: boolean;
     showFooter?: boolean;
+    onClickHeader?: () => void;
+    onClickFooter?: () => void;
 }
 
 // Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
@@ -545,6 +556,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onSetEditMode: _onSetEditMode,
     showHeader,
     showFooter,
+    onClickHeader,
+    onClickFooter,
 }, ref) => {
     // Canvas Viewport Panning & Zooming Engine States
     const [zoom, setZoom] = useState(1.0);
@@ -975,28 +988,84 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
                             <div className="min-h-[400px] flex flex-col relative">
-                                {showHeader && (
-                                    <div className="absolute top-0 inset-x-0 py-4 px-6 z-40 select-none pointer-events-none transition-all shrink-0">
-                                        <div className="max-w-4xl mx-auto w-full flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-slate-200/50 dark:border-zinc-800/80 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20">
-                                            <div className="flex items-center gap-4">
-                                                <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
-                                                {!isPreview && (
-                                                    <span className="text-[8px] font-black uppercase text-slate-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">Header</span>
+                                {showHeader && (() => {
+                                    const headerSettings = version.structureJson.header || {
+                                        preset: 'native',
+                                        overlap: false,
+                                        sticky: false,
+                                        floating: false,
+                                        showSearch: false,
+                                        showCta: false,
+                                        showPhone: false,
+                                        navItems: []
+                                    };
+                                    const isEditMode = canvasMode === 'edit';
+                                    return (
+                                        <div 
+                                            onClick={onClickHeader}
+                                            className={cn(
+                                                "z-40 transition-all shrink-0 select-none",
+                                                headerSettings.overlap ? "absolute top-0 inset-x-0" : "relative w-full",
+                                                isEditMode ? "p-1 cursor-pointer pointer-events-auto border border-dashed border-blue-500/40 hover:border-blue-500 rounded-lg m-1" : "py-4 px-6 pointer-events-none"
+                                            )}
+                                        >
+                                            {isEditMode && (
+                                                <div className="absolute top-2 left-3 z-50 text-[8px] font-black uppercase text-blue-500 bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.5 rounded border border-blue-200/35 shadow-sm">
+                                                    Header (Click to Customize)
+                                                </div>
+                                            )}
+                                            <div className={cn(
+                                                "w-full flex items-center justify-between transition-all",
+                                                headerSettings.floating 
+                                                    ? "max-w-4xl mx-auto rounded-full border border-slate-200/50 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md py-1.5 px-6 shadow-lg shadow-black/5"
+                                                    : "rounded-none border-b border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-950 py-3 px-8 shadow-sm"
+                                            )}>
+                                                {headerSettings.preset === 'minimal' ? (
+                                                    <div className="flex items-center justify-center w-full">
+                                                        <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
+                                                    </div>
+                                                ) : headerSettings.preset === 'cta-only' ? (
+                                                    <div className="flex justify-end w-full">
+                                                        {headerSettings.showCta && (
+                                                            <Button className="h-9 px-5 rounded-full font-bold text-xs bg-blue-650 text-white" disabled>
+                                                                {headerSettings.ctaText || 'Get Started'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <div className="flex items-center gap-6">
+                                                            <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
+                                                            {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
+                                                                <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-650 dark:text-slate-300">
+                                                                    {headerSettings.navItems.map((item) => (
+                                                                        <span key={item.id} className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">{item.label}</span>
+                                                                    ))}
+                                                                </nav>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
+                                                                <div className="relative max-w-xs hidden sm:block">
+                                                                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-450" />
+                                                                    <input type="text" placeholder="Search..." disabled className="h-8 w-32 pl-8 pr-2 text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg" />
+                                                                </div>
+                                                            )}
+                                                            {headerSettings.showPhone && headerSettings.phoneNumber && (
+                                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Phone className="h-3 w-3" /> {headerSettings.phoneNumber}</span>
+                                                            )}
+                                                            {headerSettings.showCta && (
+                                                                <Button className="h-9 px-5 rounded-full font-bold text-xs bg-blue-650 text-white" disabled>
+                                                                    {headerSettings.ctaText || 'Get Started'}
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>
-                                                <Button 
-                                                    variant="default"
-                                                    className="h-10 px-6 rounded-full font-bold text-xs shadow-md shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white"
-                                                    disabled
-                                                >
-                                                    Request Receipt
-                                                </Button>
-                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                                 {version.structureJson.sections.length > 0 ? (
                                     version.structureJson.sections.map((section, idx) => {
                                         const sectionProps = (section.props || {}) as {
@@ -1202,16 +1271,129 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         </div>
                                     </div>
                                 )}
-                                {showFooter && (
-                                    <div className="w-full select-none pointer-events-none mt-auto shrink-0 relative">
-                                        {!isPreview && (
-                                            <div className="absolute top-2 left-2 z-40 text-[8px] font-black uppercase text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm">
-                                                Footer
+                                {showFooter && (() => {
+                                    const footerSettings = version.structureJson.footer || {
+                                        preset: 'org',
+                                        overrideOrg: false
+                                    };
+                                    const isEditMode = canvasMode === 'edit';
+
+                                    // Render native org footer directly if org preset
+                                    if (footerSettings.preset === 'org') {
+                                        return (
+                                            <div 
+                                                onClick={onClickFooter}
+                                                className={cn(
+                                                    "w-full mt-auto shrink-0 relative transition-all",
+                                                    isEditMode ? "p-1 cursor-pointer pointer-events-auto border border-dashed border-violet-500/40 hover:border-violet-500 rounded-lg m-1" : "pointer-events-none"
+                                                )}
+                                            >
+                                                {isEditMode && (
+                                                    <div className="absolute top-2 left-3 z-50 text-[8px] font-black uppercase text-violet-500 bg-violet-50 dark:bg-violet-950/80 px-1.5 py-0.5 rounded border border-violet-200/35 shadow-sm">
+                                                        Footer (Click to Customize)
+                                                    </div>
+                                                )}
+                                                <Footer className="w-full relative z-30 pointer-events-none" />
                                             </div>
-                                        )}
-                                        <Footer className="w-full relative z-30 pointer-events-none" />
-                                    </div>
-                                )}
+                                        );
+                                    }
+
+                                    // Otherwise, render custom visual mockups of our footer presets
+                                    const address = footerSettings.overrideOrg ? footerSettings.address : '123 Business Rd, Suite 100';
+                                    const email = footerSettings.overrideOrg ? footerSettings.email : 'contact@company.com';
+                                    const phone = footerSettings.overrideOrg ? footerSettings.phone : '+1 (555) 019-2834';
+                                    const copyright = footerSettings.overrideOrg ? footerSettings.copyrightText : 'Copyright © 2026 Company. All rights reserved.';
+                                    const socials = footerSettings.overrideOrg ? (footerSettings.socialLinks || {}) : {};
+
+                                    const hasSocials = !!(socials.facebook || socials.twitter || socials.linkedin || socials.instagram || socials.youtube);
+
+                                    return (
+                                        <div 
+                                            onClick={onClickFooter}
+                                            className={cn(
+                                                "w-full mt-auto shrink-0 relative transition-all bg-[#0A1427] text-white border-t border-border/10",
+                                                isEditMode ? "p-1 cursor-pointer pointer-events-auto border border-dashed border-violet-500/40 hover:border-violet-500 rounded-lg m-1" : ""
+                                            )}
+                                        >
+                                            {isEditMode && (
+                                                <div className="absolute top-2 left-3 z-50 text-[8px] font-black uppercase text-violet-500 bg-violet-50 dark:bg-violet-950/80 px-1.5 py-0.5 rounded border border-violet-200/35 shadow-sm">
+                                                    Footer (Click to Customize)
+                                                </div>
+                                            )}
+                                            
+                                            {footerSettings.preset === 'simple' && (
+                                                <div className="max-w-4xl mx-auto px-6 py-8 text-center space-y-4">
+                                                    <SmartSappLogo className="h-6 mx-auto opacity-70" />
+                                                    <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                </div>
+                                            )}
+
+                                            {footerSettings.preset === 'minimal' && (
+                                                <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <SmartSappLogo className="h-6 opacity-70" />
+                                                        <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                    </div>
+                                                    {hasSocials && (
+                                                        <div className="flex items-center gap-4 text-slate-400">
+                                                            {socials.facebook && <Facebook className="h-4 w-4" />}
+                                                            {socials.twitter && <Twitter className="h-4 w-4" />}
+                                                            {socials.linkedin && <Linkedin className="h-4 w-4" />}
+                                                            {socials.instagram && <Instagram className="h-4 w-4" />}
+                                                            {socials.youtube && <Youtube className="h-4 w-4" />}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {footerSettings.preset === 'social-heavy' && (
+                                                <div className="max-w-4xl mx-auto px-6 py-10 text-center space-y-6">
+                                                    <SmartSappLogo className="h-7 mx-auto" />
+                                                    {hasSocials ? (
+                                                        <div className="flex justify-center gap-6 text-slate-400">
+                                                            {socials.facebook && <Facebook className="h-5 w-5" />}
+                                                            {socials.twitter && <Twitter className="h-5 w-5" />}
+                                                            {socials.linkedin && <Linkedin className="h-5 w-5" />}
+                                                            {socials.instagram && <Instagram className="h-5 w-5" />}
+                                                            {socials.youtube && <Youtube className="h-5 w-5" />}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[10px] text-slate-500 italic">No social links configured</p>
+                                                    )}
+                                                    <p className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30">{copyright}</p>
+                                                </div>
+                                            )}
+
+                                            {footerSettings.preset === 'multi-column' && (
+                                                <div className="max-w-4xl mx-auto px-6 py-12">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+                                                        <div className="space-y-3">
+                                                            <SmartSappLogo className="h-7 mx-auto md:mx-0" />
+                                                            <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-350">Quick Links</h5>
+                                                            <div className="flex flex-col gap-1.5 text-[10px] text-slate-400">
+                                                                <span>Home</span>
+                                                                <span>Privacy Policy</span>
+                                                                <span>Terms of Service</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-3 text-slate-400">
+                                                            <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-350">Contact</h5>
+                                                            <div className="flex flex-col gap-1.5 text-[10px] items-center md:items-start">
+                                                                {address && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {address}</span>}
+                                                                {email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {email}</span>}
+                                                                {phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {phone}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </SortableContext>
                     </DndContext>
