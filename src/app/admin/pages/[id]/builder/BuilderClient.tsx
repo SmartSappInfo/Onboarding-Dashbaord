@@ -53,6 +53,7 @@ import Link from 'next/link';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { useTheme } from 'next-themes';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 // ─── Extracted Components ────────────────────────────────────────────────
 import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
@@ -204,9 +205,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const { user } = useUser();
     const { activeWorkspaceId, activeOrganizationId: organizationId } = useTenant();
 
-    // ─── State Management ────────────────────────────────────────────
     const builder = useBuilderState();
     const resources = useBuilderResources();
+
+    useSetBreadcrumb(builder.page?.name || 'Studio', `/admin/pages/${id}`);
 
     // Typed resources + resolved theme for the registry-driven renderer.
     // Declared before any early return to keep hook order stable.
@@ -604,66 +606,69 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     )}
                 </div>
 
-                {/* Edit / Preview Switcher */}
-                <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 ml-2">
-                    <Button
-                        variant="ghost" size="sm"
-                        onClick={() => builder.setCanvasMode('edit')}
-                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
-                            builder.canvasMode === 'edit' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                        )}
-                    >
-                        <Edit3 className="w-3.5 h-3.5" /> Edit
-                    </Button>
-                    <Button
-                        variant="ghost" size="sm"
-                        onClick={() => builder.setCanvasMode('preview')}
-                        className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
-                            builder.canvasMode === 'preview' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                        )}
-                    >
-                        <Eye className="w-3.5 h-3.5" /> Preview
-                    </Button>
-                </div>
-
-                {/* Components / Columns Switcher (only in Edit mode) */}
-                {builder.canvasMode === 'edit' && (
-                    <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 ml-2">
-                        <Button
-                            variant="ghost" size="sm"
-                            onClick={() => builder.setEditMode('components')}
-                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
-                                builder.editMode === 'components' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                            )}
-                        >
-                            Components
-                        </Button>
-                        <Button
-                            variant="ghost" size="sm"
-                            onClick={() => {
-                                builder.setEditMode('columns');
-                                if (builder.selectedBlockId) {
-                                    const found = builder.findBlock(builder.selectedBlockId);
-                                    if (found && found.section && found.section.id) {
-                                        builder.dispatch({ type: 'SELECT_SECTION', payload: found.section.id });
-                                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
-                                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
-                                    }
-                                } else if (builder.selectedSectionId) {
-                                    builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
-                                }
-                            }}
-                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
-                                builder.editMode === 'columns' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                            )}
-                        >
-                            Columns
-                        </Button>
-                    </div>
-                )}
-
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                    {/* Edit / Preview Switcher */}
+                    <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={() => builder.setCanvasMode('edit')}
+                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
+                                builder.canvasMode === 'edit' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
+                            )}
+                        >
+                            <Edit3 className="w-3.5 h-3.5" /> Edit
+                        </Button>
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={() => builder.setCanvasMode('preview')}
+                            className={cn("h-7 px-3 rounded-lg text-xs font-semibold gap-1.5 transition-all text-slate-500 hover:text-slate-300",
+                                builder.canvasMode === 'preview' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
+                            )}
+                        >
+                            <Eye className="w-3.5 h-3.5" /> Preview
+                        </Button>
+                    </div>
+
+                    {/* Components / Columns Switcher (only in Edit mode) */}
+                    {builder.canvasMode === 'edit' && (
+                        <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
+                            <Button
+                                variant="ghost" size="sm"
+                                onClick={() => builder.setEditMode('components')}
+                                className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
+                                    builder.editMode === 'components' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
+                                )}
+                            >
+                                Components
+                            </Button>
+                            <Button
+                                variant="ghost" size="sm"
+                                onClick={() => {
+                                    builder.setEditMode('columns');
+                                    if (builder.selectedBlockId) {
+                                        const found = builder.findBlock(builder.selectedBlockId);
+                                        if (found && found.section && found.section.id) {
+                                            builder.dispatch({ type: 'SELECT_SECTION', payload: found.section.id });
+                                            builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                                            builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                                        }
+                                    } else if (builder.selectedSectionId) {
+                                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                                    }
+                                }}
+                                className={cn("h-7 px-3 rounded-lg text-xs font-semibold transition-all text-slate-500 hover:text-slate-300",
+                                    builder.editMode === 'columns' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
+                                )}
+                            >
+                                Columns
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* Vertical Separator */}
+                    <div className="h-5 w-[1px] bg-slate-700/50 mx-1" />
+
                     <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 mr-2">
                         <Button
                             variant="ghost" size="icon"

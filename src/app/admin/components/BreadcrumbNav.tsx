@@ -48,7 +48,9 @@ const segmentMap: Record<string, string> = {
   reports: 'Intelligence',
   invoices: 'Invoices',
   packages: 'Pricing Tiers',
-  periods: 'Billing Cycles'
+  periods: 'Billing Cycles',
+  pages: 'Landing Pages',
+  builder: 'Edit'
 };
 
 export function BreadcrumbNav() {
