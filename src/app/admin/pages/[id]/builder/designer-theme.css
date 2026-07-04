@@ -290,3 +290,37 @@
     color: initial !important;
     background-color: #ffffff !important;
 }
+
+/* ==========================================================================
+   Global Portaled Select, Popover & Dropdown overrides in Light Mode
+   ========================================================================== */
+.light [role="listbox"],
+.light [role="menu"],
+.light [data-radix-popper-content-wrapper] > div {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light [role="option"],
+.light [role="menuitem"] {
+    color: #334155 !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.light [role="option"][data-state="selected"],
+.light [role="option"][data-selected="true"] {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.light [role="option"]:hover,
+.light [role="option"][data-highlighted],
+.light [role="menuitem"]:hover,
+.light [role="menuitem"][data-highlighted] {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    cursor: pointer !important;
+}
