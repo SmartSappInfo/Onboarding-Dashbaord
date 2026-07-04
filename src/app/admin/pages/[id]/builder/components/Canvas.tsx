@@ -43,6 +43,9 @@ import {
     AlertTriangle,
     MessageSquare,
     Phone,
+    MonitorPlay,
+    Tablet,
+    Smartphone,
     Search,
     Facebook,
     Twitter,
@@ -71,7 +74,7 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
-import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources } from '@/lib/types';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks'; // register all blocks
@@ -112,6 +115,9 @@ interface CanvasProps {
     showFooter?: boolean;
     onClickHeader?: () => void;
     onClickFooter?: () => void;
+    onUpdateHeader?: (updates: Partial<PageHeaderSettings>) => void;
+    onUpdateFooter?: (updates: Partial<PageFooterSettings>) => void;
+    onSetViewport?: (viewport: 'desktop' | 'tablet' | 'mobile') => void;
 }
 
 // Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
@@ -591,6 +597,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     showFooter,
     onClickHeader,
     onClickFooter,
+    onUpdateHeader,
+    onUpdateFooter,
+    onSetViewport,
 }, ref) => {
     // Canvas Viewport Panning & Zooming Engine States
     const [zoom, setZoom] = useState(1.0);
@@ -1227,8 +1236,25 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 ) : headerSettings.preset === 'cta-only' ? (
                                                     <div className="flex justify-end w-full">
                                                         {headerSettings.showCta && (
-                                                            <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white" disabled>
-                                                                {headerSettings.ctaText || 'Get Started'}
+                                                            <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
+                                                                {isEditMode ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={headerSettings.ctaText || 'Get Started'}
+                                                                        onChange={(e) => onUpdateHeader?.({ ctaText: e.target.value })}
+                                                                        className="text-white font-bold text-xs text-center focus:ring-0 p-0"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        style={{ 
+                                                                            width: `${Math.max(5, (headerSettings.ctaText || 'Get Started').length) * 7.5}px`,
+                                                                            background: 'transparent',
+                                                                            border: 'none',
+                                                                            outline: 'none',
+                                                                            boxShadow: 'none'
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    headerSettings.ctaText || 'Get Started'
+                                                                )}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -1239,7 +1265,34 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                             {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
                                                                 <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-650 dark:text-slate-300">
                                                                     {headerSettings.navItems.map((item) => (
-                                                                        <span key={item.id} className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer">{item.label}</span>
+                                                                        <span 
+                                                                            key={item.id} 
+                                                                            className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer pointer-events-auto"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {isEditMode ? (
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={item.label}
+                                                                                    onChange={(e) => {
+                                                                                        const updatedNavItems = headerSettings.navItems.map(navItem => 
+                                                                                            navItem.id === item.id ? { ...navItem, label: e.target.value } : navItem
+                                                                                        );
+                                                                                        onUpdateHeader?.({ navItems: updatedNavItems });
+                                                                                    }}
+                                                                                    className="text-slate-650 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center focus:ring-0 p-0"
+                                                                                    style={{ 
+                                                                                        width: `${Math.max(4, item.label.length) * 7.5}px`,
+                                                                                        background: 'transparent',
+                                                                                        border: 'none',
+                                                                                        outline: 'none',
+                                                                                        boxShadow: 'none'
+                                                                                    }}
+                                                                                />
+                                                                            ) : (
+                                                                                item.label
+                                                                            )}
+                                                                        </span>
                                                                     ))}
                                                                 </nav>
                                                             )}
@@ -1252,11 +1305,47 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 </div>
                                                             )}
                                                             {headerSettings.showPhone && headerSettings.phoneNumber && (
-                                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Phone className="h-3 w-3" /> {headerSettings.phoneNumber}</span>
+                                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                    <Phone className="h-3 w-3" />
+                                                                    {isEditMode ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={headerSettings.phoneNumber}
+                                                                            onChange={(e) => onUpdateHeader?.({ phoneNumber: e.target.value })}
+                                                                            className="text-slate-500 dark:text-slate-400 font-bold text-xs focus:ring-0 p-0"
+                                                                            style={{ 
+                                                                                width: `${Math.max(8, headerSettings.phoneNumber.length) * 7.5}px`,
+                                                                                background: 'transparent',
+                                                                                border: 'none',
+                                                                                outline: 'none',
+                                                                                boxShadow: 'none'
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        headerSettings.phoneNumber
+                                                                    )}
+                                                                </span>
                                                             )}
                                                             {headerSettings.showCta && (
-                                                                <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white" disabled>
-                                                                    {headerSettings.ctaText || 'Get Started'}
+                                                                <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
+                                                                    {isEditMode ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={headerSettings.ctaText || 'Get Started'}
+                                                                            onChange={(e) => onUpdateHeader?.({ ctaText: e.target.value })}
+                                                                            className="text-white font-bold text-xs text-center focus:ring-0 p-0"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            style={{ 
+                                                                                width: `${Math.max(5, (headerSettings.ctaText || 'Get Started').length) * 7.5}px`,
+                                                                                background: 'transparent',
+                                                                                border: 'none',
+                                                                                outline: 'none',
+                                                                                boxShadow: 'none'
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        headerSettings.ctaText || 'Get Started'
+                                                                    )}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -1507,10 +1596,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                     }
 
                                     // Otherwise, render custom visual mockups of our footer presets
-                                    const address = footerSettings.overrideOrg ? footerSettings.address : '123 Business Rd, Suite 100';
-                                    const email = footerSettings.overrideOrg ? footerSettings.email : 'contact@company.com';
-                                    const phone = footerSettings.overrideOrg ? footerSettings.phone : '+1 (555) 019-2834';
-                                    const copyright = footerSettings.overrideOrg ? footerSettings.copyrightText : 'Copyright © 2026 Company. All rights reserved.';
+                                    const address = (footerSettings.overrideOrg ? footerSettings.address : '123 Business Rd, Suite 100') || '';
+                                    const email = (footerSettings.overrideOrg ? footerSettings.email : 'contact@company.com') || '';
+                                    const phone = (footerSettings.overrideOrg ? footerSettings.phone : '+1 (555) 019-2834') || '';
+                                    const copyright = (footerSettings.overrideOrg ? footerSettings.copyrightText : 'Copyright © 2026 Company. All rights reserved.') || 'Copyright © 2026 Company. All rights reserved.';
                                     const socials = footerSettings.overrideOrg ? (footerSettings.socialLinks || {}) : {};
 
                                     const hasSocials = !!(socials.facebook || socials.twitter || socials.linkedin || socials.instagram || socials.youtube);
@@ -1532,7 +1621,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                             {footerSettings.preset === 'simple' && (
                                                 <div className="max-w-4xl mx-auto px-6 py-8 text-center space-y-4">
                                                     <SmartSappLogo className="h-6 mx-auto opacity-70" />
-                                                    <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                    <p className="text-[10px] text-slate-400 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                        {isEditMode ? (
+                                                            <input
+                                                                type="text"
+                                                                value={copyright}
+                                                                onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
+                                                                className="bg-transparent text-slate-400 text-center font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                style={{ width: `${Math.max(20, copyright.length) * 5.5}px` }}
+                                                            />
+                                                        ) : (
+                                                            copyright
+                                                        )}
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -1540,7 +1641,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                                                     <div className="flex items-center gap-3">
                                                         <SmartSappLogo className="h-6 opacity-70" />
-                                                        <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                        <p className="text-[10px] text-slate-400 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                            {isEditMode ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={copyright}
+                                                                    onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
+                                                                    className="text-slate-400 text-center font-normal text-[10px] focus:ring-0 p-0"
+                                                                    style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                                                                />
+                                                            ) : (
+                                                                copyright
+                                                            )}
+                                                        </p>
                                                     </div>
                                                     {hasSocials && (
                                                         <div className="flex items-center gap-4 text-slate-400">
@@ -1568,7 +1681,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     ) : (
                                                         <p className="text-[10px] text-slate-500 italic">No social links configured</p>
                                                     )}
-                                                    <p className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30">{copyright}</p>
+                                                    <p className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                        {isEditMode ? (
+                                                            <input
+                                                                type="text"
+                                                                value={copyright}
+                                                                onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
+                                                                className="text-slate-500 text-center font-normal text-[10px] focus:ring-0 p-0"
+                                                                style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                                                            />
+                                                        ) : (
+                                                            copyright
+                                                        )}
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -1577,7 +1702,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
                                                         <div className="space-y-3">
                                                             <SmartSappLogo className="h-7 mx-auto md:mx-0" />
-                                                            <p className="text-[10px] text-slate-400">{copyright}</p>
+                                                            <p className="text-[10px] text-slate-400 flex justify-center md:justify-start items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                {isEditMode ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={copyright}
+                                                                        onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
+                                                                        className="text-slate-400 text-center md:text-left font-normal text-[10px] focus:ring-0 p-0"
+                                                                        style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                                                                    />
+                                                                ) : (
+                                                                    copyright
+                                                                )}
+                                                            </p>
                                                         </div>
                                                         <div className="space-y-3">
                                                             <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-350">Quick Links</h5>
@@ -1590,9 +1727,54 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <div className="space-y-3 text-slate-400">
                                                             <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-350">Contact</h5>
                                                             <div className="flex flex-col gap-1.5 text-[10px] items-center md:items-start">
-                                                                {address && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {address}</span>}
-                                                                {email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {email}</span>}
-                                                                {phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {phone}</span>}
+                                                                {address && (
+                                                                    <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                        <MapPin className="h-3 w-3" />
+                                                                        {isEditMode ? (
+                                                                            <input
+                                                                                type="text"
+                                                                                value={address}
+                                                                                onChange={(e) => onUpdateFooter?.({ address: e.target.value, overrideOrg: true })}
+                                                                                className="text-slate-400 font-normal text-[10px] focus:ring-0 p-0"
+                                                                                style={{ width: `${Math.max(15, address.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
+                                                                            />
+                                                                        ) : (
+                                                                            address
+                                                                        )}
+                                                                    </span>
+                                                                )}
+                                                                {email && (
+                                                                    <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                        <Mail className="h-3 w-3" />
+                                                                        {isEditMode ? (
+                                                                            <input
+                                                                                type="text"
+                                                                                value={email}
+                                                                                onChange={(e) => onUpdateFooter?.({ email: e.target.value, overrideOrg: true })}
+                                                                                className="bg-transparent text-slate-400 font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                                style={{ width: `${Math.max(12, email.length) * 5.5}px` }}
+                                                                            />
+                                                                        ) : (
+                                                                            email
+                                                                        )}
+                                                                    </span>
+                                                                )}
+                                                                {phone && (
+                                                                    <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                        <Phone className="h-3 w-3" />
+                                                                        {isEditMode ? (
+                                                                            <input
+                                                                                type="text"
+                                                                                value={phone}
+                                                                                onChange={(e) => onUpdateFooter?.({ phone: e.target.value, overrideOrg: true })}
+                                                                                className="bg-transparent text-slate-400 font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                                style={{ width: `${Math.max(10, phone.length) * 5.5}px` }}
+                                                                            />
+                                                                        ) : (
+                                                                            phone
+                                                                        )}
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1694,7 +1876,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             </div>
 
             {/* Ghana Role Simulator & Accessibility Audits (Bottom-Left) */}
-            {!isPreview && (
+            {isPreview && (
                 <div className="absolute bottom-6 left-6 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md text-[10px] text-slate-300 font-semibold select-none">
                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider pl-1.5 pr-1 select-none flex items-center gap-1">
                         <User className="w-3 h-3 text-slate-400" /> Profile:
@@ -1729,11 +1911,65 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     >
                         <AlertTriangle className="h-3 w-3 text-amber-500" /> WCAG Audit Scan
                     </Button>
+
+                    <div className="h-4 w-[1px] bg-slate-800" />
+
+                    {/* Page Health Metrics Scorecard */}
+                    <div className="flex items-center gap-1 bg-slate-950/40 p-0.5 rounded-lg border border-slate-850/50" title="Page Health Metrics: Performance, Accessibility, SEO">
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-400" title="Performance: 92/100">
+                            ⚡92
+                        </div>
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-400" title="Accessibility: 98/100">
+                            ♿98
+                        </div>
+                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-400" title="SEO: 95/100">
+                            🔍95
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Figma-style Workspace Floating Navigation Toolbar (Bottom-Right) */}
-            <div className="absolute bottom-6 right-6 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
+            <div className="absolute bottom-6 right-6 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
+                {/* Viewport Toggle */}
+                <div className="flex items-center gap-0.5 bg-slate-950/40 p-0.5 rounded-lg border border-slate-850/50 mr-1">
+                    <Button
+                        variant="ghost"
+                        onClick={() => onSetViewport?.('desktop')}
+                        className={cn(
+                            "h-7 w-7 p-0 rounded-md transition-all border-0",
+                            viewport === 'desktop' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
+                        )}
+                        title="Desktop View"
+                    >
+                        <MonitorPlay className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => onSetViewport?.('tablet')}
+                        className={cn(
+                            "h-7 w-7 p-0 rounded-md transition-all border-0",
+                            viewport === 'tablet' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
+                        )}
+                        title="Tablet View"
+                    >
+                        <Tablet className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        onClick={() => onSetViewport?.('mobile')}
+                        className={cn(
+                            "h-7 w-7 p-0 rounded-md transition-all border-0",
+                            viewport === 'mobile' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
+                        )}
+                        title="Mobile View"
+                    >
+                        <Smartphone className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
+                
+                <div className="h-4 w-[1px] bg-slate-850" />
+
                 <Button
                     onClick={() => setPanToolActive(prev => !prev)}
                     className={cn(

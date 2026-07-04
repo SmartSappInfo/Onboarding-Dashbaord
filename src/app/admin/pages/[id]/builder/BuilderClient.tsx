@@ -33,11 +33,20 @@ import {
     Code,
     Sun,
     Moon,
+    ChevronDown,
+    QrCode,
+    Pencil,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
 import PublishTemplateModal from './components/PublishTemplateModal';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { CampaignPage, CampaignPageVersion, PageSection, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import Link from 'next/link';
@@ -63,6 +72,130 @@ import { PropertiesPanel } from './components/PropertiesPanel';
 import { AiCopilotPanel } from './components/AiCopilotPanel';
 import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import './designer-theme.css';
+
+// ─── Inline Editable Metadata Components ─────────────────────────────────
+function PageNameEditor({ name, onSave }: { name: string; onSave: (val: string) => Promise<void> }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [value, setValue] = useState(name);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setValue(name);
+    }, [name]);
+
+    const handleSave = async () => {
+        if (!value.trim() || value === name) {
+            setIsEditing(false);
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await onSave(value.trim());
+            setIsEditing(false);
+        } catch {
+            // error handled by parent toast
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <input
+                type="text"
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSave();
+                    if (e.key === 'Escape') {
+                        setValue(name);
+                        setIsEditing(false);
+                    }
+                }}
+                disabled={isSaving}
+                className="h-6 bg-slate-800 text-slate-100 border border-slate-700 rounded px-1.5 text-xs font-semibold focus:outline-none focus:border-blue-500 w-36"
+            />
+        );
+    }
+
+    return (
+        <div 
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-1.5 group cursor-pointer"
+        >
+            <span className="text-sm font-semibold tracking-tight text-slate-100 group-hover:text-blue-400 transition-colors">
+                {name}
+            </span>
+            <Pencil className="h-3 w-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+    );
+}
+
+function PageSlugEditor({ slug, onSave }: { slug: string; onSave: (val: string) => Promise<void> }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [value, setValue] = useState(slug);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setValue(slug);
+    }, [slug]);
+
+    const handleSave = async () => {
+        let sanitized = value.trim().toLowerCase().replace(/^\/+/g, '').replace(/\/+$/g, '').replace(/\s+/g, '-');
+        if (!sanitized || sanitized === slug) {
+            setIsEditing(false);
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await onSave(sanitized);
+            setIsEditing(false);
+        } catch {
+            // error handled by parent toast
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <div className="flex items-center text-[10px] text-slate-500 font-medium h-4">
+                <span>/</span>
+                <input
+                    type="text"
+                    autoFocus
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    onBlur={handleSave}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSave();
+                        if (e.key === 'Escape') {
+                            setValue(slug);
+                            setIsEditing(false);
+                        }
+                    }}
+                    disabled={isSaving}
+                    className="h-4 bg-slate-800 text-slate-350 border border-slate-700 rounded px-1 text-[10px] font-mono focus:outline-none focus:border-blue-500 ml-0.5 w-32"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div 
+            onClick={() => setIsEditing(true)}
+            className="flex items-center gap-1 group cursor-pointer h-4"
+        >
+            <span className="text-[10px] text-slate-500 font-medium group-hover:text-blue-400 transition-colors">
+                /{slug}
+            </span>
+            <Pencil className="h-2.5 w-2.5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+    );
+}
+
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const firestore = useFirestore();
@@ -176,6 +309,36 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [firestore, id]);
+
+    const handleUpdatePageName = useCallback(async (newName: string) => {
+        if (!firestore || !builder.page) return;
+        try {
+            await updateDoc(doc(firestore, 'campaign_pages', id), {
+                name: newName,
+                updatedAt: new Date().toISOString()
+            });
+            builder.dispatch({ type: 'SET_PAGE', payload: { ...builder.page, name: newName } });
+            toast({ title: 'Page renamed', description: `Name changed to "${newName}"` });
+        } catch (err: unknown) {
+            toast({ title: 'Error renaming page', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            throw err;
+        }
+    }, [firestore, builder.page, id, builder.dispatch, toast]);
+
+    const handleUpdatePageSlug = useCallback(async (newSlug: string) => {
+        if (!firestore || !builder.page) return;
+        try {
+            await updateDoc(doc(firestore, 'campaign_pages', id), {
+                slug: newSlug,
+                updatedAt: new Date().toISOString()
+            });
+            builder.dispatch({ type: 'SET_PAGE', payload: { ...builder.page, slug: newSlug } });
+            toast({ title: 'Slug updated', description: `Slug changed to "/${newSlug}"` });
+        } catch (err: unknown) {
+            toast({ title: 'Error updating slug', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+            throw err;
+        }
+    }, [firestore, builder.page, id, builder.dispatch, toast]);
 
     // ─── Persistence Actions ─────────────────────────────────────────
     const sanitizeForFirestore = useCallback(<T,>(data: T): T => {
@@ -424,48 +587,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <Button asChild variant="ghost" className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                         <Link href="/admin/pages"><ArrowLeft className="h-4 w-4" /></Link>
                     </Button>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-semibold tracking-tight text-slate-100">{page.name}</span>
-                        <span className="text-[10px] text-slate-500 font-medium">/{page.slug}</span>
+                    <div className="flex flex-col justify-center min-h-[36px]">
+                        <PageNameEditor
+                            name={page.name}
+                            onSave={handleUpdatePageName}
+                        />
+                        <PageSlugEditor
+                            slug={page.slug}
+                            onSave={handleUpdatePageSlug}
+                        />
                     </div>
                     {page.status === 'published' && (
                         <div className="ml-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold uppercase tracking-wider border border-emerald-500/20">
                             Live
                         </div>
                     )}
-                </div>
-                {/* Viewport Toggle */}
-                <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
-                    <Button
-                        variant="ghost" size="icon"
-                        onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'desktop' })}
-                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
-                            builder.viewport === 'desktop' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                        )}
-                        title="Desktop View"
-                    >
-                        <MonitorPlay className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost" size="icon"
-                        onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'tablet' })}
-                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
-                            builder.viewport === 'tablet' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                        )}
-                        title="Tablet View"
-                    >
-                        <Tablet className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        variant="ghost" size="icon"
-                        onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'mobile' })}
-                        className={cn("h-7 w-7 rounded-lg transition-all text-slate-500 hover:text-slate-300",
-                            builder.viewport === 'mobile' && "bg-slate-700 shadow-sm text-blue-400 hover:text-blue-400"
-                        )}
-                        title="Mobile View"
-                    >
-                        <Smartphone className="w-4 h-4" />
-                    </Button>
                 </div>
 
                 {/* Edit / Preview Switcher */}
@@ -551,48 +687,17 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
-                    {/* Visual Performance Meter Scorecard */}
-                    <div className="flex items-center gap-1 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 select-none mr-2" title="Page Health Metrics: Performance, Accessibility, SEO">
-                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="Performance: 92/100">
-                            ⚡92
-                        </div>
-                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="Accessibility: 98/100">
-                            ♿98
-                        </div>
-                        <div className="flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-bold text-emerald-400" title="SEO: 95/100">
-                            🔍95
-                        </div>
+
+
+                    <div className="hidden" id="qr-trigger-wrapper">
+                        <CreateQRButton
+                            resourceType="landing_page"
+                            resourceId={id}
+                            resourceName={page.name}
+                            destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}` : `/p/${page.slug}`}
+                            variant="icon"
+                        />
                     </div>
-
-                    <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
-                        <Link href={`/admin/pages/${id}/analytics`}>
-                            <TrendingUp className="w-3.5 h-3.5 mr-1.5" /> Analytics
-                        </Link>
-                    </Button>
-
-                    {page.status === 'published' && (
-                        <>
-                            <Button asChild variant="ghost" className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800">
-                                <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
-                                    <Globe className="w-3.5 h-3.5 mr-1.5" /> View Live
-                                </a>
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                onClick={() => setIsShareOpen(true)}
-                                className="h-8 font-semibold text-xs text-slate-400 hover:text-slate-200 border border-slate-700 hover:bg-slate-800"
-                            >
-                                <Code className="w-3.5 h-3.5 mr-1.5" /> Share & Embed
-                            </Button>
-                        </>
-                    )}
-                    <CreateQRButton
-                        resourceType="landing_page"
-                        resourceId={id}
-                        resourceName={page.name}
-                        destinationUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/${page.slug}` : `/p/${page.slug}`}
-                        variant="icon"
-                    />
                     <Button
                         variant="outline"
                         disabled={builder.saving}
@@ -602,14 +707,63 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         {builder.saving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
                         Save
                     </Button>
-                    <Button
-                        onClick={handlePublish}
-                        disabled={builder.publishing}
-                        className="h-8 font-bold text-xs min-w-[90px] bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    >
-                        {builder.publishing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                        Publish
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                disabled={builder.publishing}
+                                className="h-8 font-bold text-xs bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 gap-1.5 px-3 rounded-lg border-0"
+                            >
+                                {builder.publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                <span>Publish</span>
+                                <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-slate-900 border border-slate-800 text-slate-100 min-w-[160px] p-1.5 rounded-xl shadow-2xl z-50">
+                            <DropdownMenuItem
+                                onClick={handlePublish}
+                                className="flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-slate-800 focus:bg-slate-800 rounded-lg cursor-pointer text-emerald-400 focus:text-emerald-400 border-0"
+                            >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Publish Page</span>
+                            </DropdownMenuItem>
+                            
+                            <DropdownMenuItem asChild className="flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-slate-800 focus:bg-slate-800 rounded-lg cursor-pointer border-0">
+                                <Link href={`/admin/pages/${id}/analytics`}>
+                                    <TrendingUp className="w-3.5 h-3.5" />
+                                    <span>Analytics</span>
+                                </Link>
+                            </DropdownMenuItem>
+
+                            {page.status === 'published' && (
+                                <>
+                                    <DropdownMenuItem asChild className="flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-slate-800 focus:bg-slate-800 rounded-lg cursor-pointer border-0">
+                                        <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
+                                            <Globe className="w-3.5 h-3.5" />
+                                            <span>View Live</span>
+                                        </a>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => setIsShareOpen(true)}
+                                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-slate-800 focus:bg-slate-800 rounded-lg cursor-pointer border-0"
+                                    >
+                                        <Code className="w-3.5 h-3.5" />
+                                        <span>Share & Embed</span>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    const btn = document.querySelector('#qr-trigger-wrapper button') as HTMLButtonElement | null;
+                                    btn?.click();
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-slate-800 focus:bg-slate-800 rounded-lg cursor-pointer border-0"
+                            >
+                                <QrCode className="w-3.5 h-3.5" />
+                                <span>Create QR Code</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </header>
 
@@ -837,12 +991,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     canvasMode={builder.canvasMode}
                     editMode={builder.editMode}
                     onSetEditMode={builder.setEditMode}
+                    onSetViewport={(v) => builder.dispatch({ type: 'SET_VIEWPORT', payload: v })}
                     onClickHeader={() => {
                         builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
                     }}
                     onClickFooter={() => {
                         builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
                     }}
+                    onUpdateHeader={handleUpdateHeader}
+                    onUpdateFooter={handleUpdateFooter}
                 />
             </div>
             <BlockVariantPicker
