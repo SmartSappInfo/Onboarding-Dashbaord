@@ -224,9 +224,10 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                             onClick={(e) => { e.stopPropagation(); onMove('up'); }}
                             disabled={idx === 0}
                             className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                            aria-label="Move Section Up"
                             title="Move Section Up"
                         >
-                            <ArrowUp className="w-4 h-4" />
+                            <ArrowUp className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Down button */}
@@ -235,9 +236,10 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                             onClick={(e) => { e.stopPropagation(); onMove('down'); }}
                             disabled={idx === total - 1}
                             className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg disabled:opacity-20 disabled:pointer-events-none transition-colors duration-200 cursor-pointer"
+                            aria-label="Move Section Down"
                             title="Move Section Down"
                         >
-                            <ArrowDown className="w-4 h-4" />
+                            <ArrowDown className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         <div className="w-6 h-[1px] bg-slate-800" />
@@ -252,9 +254,10 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                                     ? "text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"
                                     : "text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50"
                             )}
+                            aria-label="Section Settings"
                             title="Section Settings"
                         >
-                            <SlidersHorizontal className="w-4 h-4" />
+                            <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Save Template button */}
@@ -262,9 +265,10 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onSave(); }}
                             className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-violet-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            aria-label="Save Section as Template"
                             title="Save as Template"
                         >
-                            <FolderHeart className="w-4 h-4" />
+                            <FolderHeart className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Delete button */}
@@ -272,9 +276,10 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onRemove(); }}
                             className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            aria-label="Delete Section"
                             title="Delete Section"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                         </button>
                     </div>
                 </div>
@@ -360,20 +365,24 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                         {...attributes}
                         {...listeners}
                         className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors"
+                        aria-label="Drag block to reorder"
+                        title="Drag block to reorder"
+                        role="button"
+                        tabIndex={0}
                     >
-                        <GripVertical className="w-2.5 h-2.5 text-slate-800 dark:text-slate-200" />
+                        <GripVertical className="w-2.5 h-2.5 text-slate-800 dark:text-slate-200" aria-hidden="true" />
                     </div>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }}>
-                        <ArrowUp className="w-2.5 h-2.5" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }} aria-label="Move block up" title="Move block up">
+                        <ArrowUp className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }}>
-                        <ArrowDown className="w-2.5 h-2.5" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }} aria-label="Move block down" title="Move block down">
+                        <ArrowDown className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicate block">
-                        <Copy className="w-2.5 h-2.5" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} aria-label="Duplicate block" title="Duplicate block">
+                        <Copy className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onRemove(); }}>
-                        <Trash2 className="w-2.5 h-2.5" />
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onRemove(); }} aria-label="Delete block" title="Delete block">
+                        <Trash2 className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
                 </div>
             )}
@@ -632,6 +641,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const panStartRef = useRef({ x: 0, y: 0 });
     const workspaceRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
+    const savedSelectionRangeRef = useRef<Range | null>(null);
+
+    React.useLayoutEffect(() => {
+        if (savedSelectionRangeRef.current) {
+            const sel = window.getSelection();
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(savedSelectionRangeRef.current);
+            }
+            savedSelectionRangeRef.current = null;
+        }
+    });
+
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -1069,7 +1091,20 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     };
 
     const executeCommand = (command: string, value: string = '') => {
+        const sel = window.getSelection();
+        let range: Range | null = null;
+        if (sel && sel.rangeCount > 0) {
+            range = sel.getRangeAt(0);
+        }
+
         document.execCommand(command, false, value);
+
+        if (sel && sel.rangeCount > 0) {
+            savedSelectionRangeRef.current = sel.getRangeAt(0);
+        } else {
+            savedSelectionRangeRef.current = range;
+        }
+
         const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
         if (activeEl) {
             onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });

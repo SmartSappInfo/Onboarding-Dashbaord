@@ -16,7 +16,7 @@ registerBlock({
   category: 'content',
   icon: Film,
   fields: [
-    { kind: 'url', key: 'url', label: 'Video URL', placeholder: 'https://youtube.com/watch?v=...' },
+    { kind: 'url', key: 'url', label: 'Video URL', placeholder: 'https://youtube.com/watch?v=…' },
     { kind: 'select', key: 'provider', label: 'Provider', options: [
       { value: 'youtube', label: 'YouTube' },
       { value: 'vimeo', label: 'Vimeo' },

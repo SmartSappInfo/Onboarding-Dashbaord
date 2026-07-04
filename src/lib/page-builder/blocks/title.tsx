@@ -189,6 +189,7 @@ registerBlock({
   render: (props: TitleProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';
     const alignClass = props.alignment === 'left' ? 'text-left' : props.alignment === 'right' ? 'text-right' : 'text-center';
+    const focusRingClass = isEdit ? "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 outline-none rounded p-0.5 transition-all" : "";
     
     const preset = props.preset;
     const isLight = props.textColorMode === 'light';
@@ -329,7 +330,8 @@ registerBlock({
           <span 
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text",
-              capsuleBgClass
+              capsuleBgClass,
+              focusRingClass
             )}
             style={titleStyles}
             contentEditable={isEdit}
@@ -347,7 +349,7 @@ registerBlock({
         {/* Top Tagline */}
         {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
           <p
-            className={taglineClass}
+            className={cn(taglineClass, focusRingClass)}
             style={taglineStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
@@ -359,7 +361,7 @@ registerBlock({
 
         {/* Main Headline */}
         <h2
-          className={`${titleClass} transition-all duration-300`}
+          className={cn(titleClass, "transition-all duration-300", focusRingClass)}
           style={titleStyles}
           contentEditable={isEdit}
           suppressContentEditableWarning
@@ -371,7 +373,7 @@ registerBlock({
         {/* Supporting Subheading */}
         {props.subheading && preset !== 'accent-tagline' && (
           <p
-            className={subClass}
+            className={cn(subClass, focusRingClass)}
             style={subheadingStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning

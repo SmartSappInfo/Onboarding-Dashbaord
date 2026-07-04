@@ -69,13 +69,13 @@ registerBlock({
         )}
         
         <blockquote className="text-sm italic leading-relaxed font-semibold text-slate-300">
-          "{ctx.interpolate(props.quote) || 'Add a testimonial quote...'}"
+          "{ctx.interpolate(props.quote) || 'Add a testimonial quote…'}"
         </blockquote>
         
         <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-850/50">
           {props.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={props.avatarUrl} alt={props.author} className="w-9 h-9 rounded-full object-cover border border-slate-800 shadow-sm" />
+            <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-800 shadow-sm" />
           ) : (
             <div className="w-9 h-9 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">
               {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}

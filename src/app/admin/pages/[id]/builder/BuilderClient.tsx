@@ -516,18 +516,20 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             disabled={!builder.canUndo}
                             onClick={builder.undo}
                             className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg transition-all"
+                            aria-label="Undo last change"
                             title="Undo (⌘Z)"
                         >
-                            <Undo2 className="w-3.5 h-3.5" />
+                            <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
                         <Button
                             variant="ghost" size="icon"
                             disabled={!builder.canRedo}
                             onClick={builder.redo}
                             className="h-7 w-7 text-slate-400 hover:text-slate-200 disabled:opacity-20 rounded-lg transition-all"
+                            aria-label="Redo last undone change"
                             title="Redo (⌘⇧Z)"
                         >
-                            <Redo2 className="w-3.5 h-3.5" />
+                            <Redo2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
                     </div>
 
