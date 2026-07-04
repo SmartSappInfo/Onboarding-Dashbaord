@@ -198,8 +198,8 @@ registerBlock({
     const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
     
     let titleClass = isLight ? 'text-white' : 'text-slate-900 dark:text-white';
-    let taglineClass = isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
-    let subClass = isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400';
+    let taglineClass = isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
+    let subClass = isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400';
     
     if (preset === 'hero-title') {
       titleClass = cn(
@@ -207,11 +207,11 @@ registerBlock({
         titleSize || 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight'
       );
       taglineClass = cn(
-        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
         taglineSize || 'text-sm uppercase tracking-widest font-extrabold mb-3'
       );
       subClass = cn(
-        isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-lg md:text-xl mt-4 max-w-2xl'
       );
     } else if (preset === 'section-heading') {
@@ -220,11 +220,11 @@ registerBlock({
         titleSize || 'text-3xl sm:text-4xl font-bold tracking-tight'
       );
       taglineClass = cn(
-        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
         taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2'
       );
       subClass = cn(
-        isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl'
       );
     } else if (preset === 'subtitle') {
@@ -234,12 +234,12 @@ registerBlock({
       );
       taglineClass = 'hidden';
       subClass = cn(
-        isLight ? 'text-slate-355' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-xs sm:text-sm mt-1.5 max-w-xl'
       );
     } else if (preset === 'accent-tagline') {
       titleClass = cn(
-        isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
         titleSize || 'text-sm sm:text-base font-black uppercase tracking-widest'
       );
       taglineClass = 'hidden';
@@ -250,11 +250,11 @@ registerBlock({
         titleSize || 'text-2xl sm:text-3xl'
       );
       taglineClass = cn(
-        isLight ? 'text-slate-350' : 'text-slate-400 dark:text-slate-500',
+        isLight ? 'text-slate-300' : 'text-slate-400 dark:text-slate-500',
         taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2 pl-5'
       );
       subClass = cn(
-        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl pl-5'
       );
     } else if (preset === 'elegant-serif') {
@@ -263,11 +263,11 @@ registerBlock({
         titleSize || 'text-3xl sm:text-5xl font-serif italic font-normal tracking-tight leading-tight'
       );
       taglineClass = cn(
-        isLight ? 'text-slate-350' : 'text-slate-450 dark:text-slate-550',
+        isLight ? 'text-slate-300' : 'text-slate-450 dark:text-slate-550',
         taglineSize || 'text-xs uppercase tracking-widest font-semibold mb-1.5'
       );
       subClass = cn(
-        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-xs sm:text-sm mt-2 max-w-xl font-sans'
       );
     } else if (preset === 'badge-capsule') {
