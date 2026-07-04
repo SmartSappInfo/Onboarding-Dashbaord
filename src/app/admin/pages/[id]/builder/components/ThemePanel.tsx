@@ -61,6 +61,37 @@ const ThemePanel = React.memo(function ThemePanel({ page, themes, onApplyTheme, 
                 )}
             </section>
 
+            {/* Page Theme Mode */}
+            <section className="space-y-3 pt-4 border-t border-slate-700/50">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase">Page Theme Mode</Label>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onUpdateOverride('themeMode', 'light')}
+                        className={cn(
+                            "flex-1 py-2 px-3 rounded-xl border text-[11px] font-bold transition-all text-center",
+                            (page.settings.themeOverrides?.themeMode || 'light') === 'light'
+                                ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
+                                : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-300"
+                        )}
+                    >
+                        Light Mode
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onUpdateOverride('themeMode', 'dark')}
+                        className={cn(
+                            "flex-1 py-2 px-3 rounded-xl border text-[11px] font-bold transition-all text-center",
+                            page.settings.themeOverrides?.themeMode === 'dark'
+                                ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
+                                : "bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-300"
+                        )}
+                    >
+                        Dark Mode
+                    </button>
+                </div>
+            </section>
+
             {/* Color Overrides */}
             <section className="space-y-4 pt-4 border-t border-slate-700/50">
                 <div className="flex items-center gap-2 mb-2">
