@@ -324,3 +324,48 @@
     color: #0f172a !important;
     cursor: pointer !important;
 }
+
+/* ==========================================================================
+   Right Settings Panel Light Mode overrides
+   ========================================================================== */
+.designer-theme-light .bg-slate-800,
+.designer-theme-light .bg-slate-900,
+.designer-theme-light .bg-slate-900\/50,
+.designer-theme-light .bg-slate-950 {
+    background-color: #f1f5f9 !important;
+    background: #f1f5f9 !important;
+}
+
+.designer-theme-light .border-slate-700,
+.designer-theme-light .border-slate-800 {
+    border-color: #cbd5e1 !important;
+}
+
+.designer-theme-light .text-slate-200,
+.designer-theme-light .text-slate-300,
+.designer-theme-light .text-slate-450,
+.designer-theme-light .text-slate-500 {
+    color: #334155 !important;
+}
+
+.designer-theme-light .text-slate-400 {
+    color: #64748b !important;
+}
+
+/* Override default white inputs resting on gray card containers in light mode */
+.designer-theme-light input,
+.designer-theme-light textarea,
+.designer-theme-light select,
+.designer-theme-light button[role="combobox"],
+.designer-theme-light button[aria-haspopup="listbox"],
+.designer-theme-light [role="tablist"] button[data-state="active"] {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* Hover/Focus states inside the sidebar inputs */
+.designer-theme-light .bg-slate-800:focus,
+.designer-theme-light .bg-slate-800:focus-within {
+    background-color: #ffffff !important;
+}
