@@ -1103,9 +1103,21 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
     const executeCommand = (command: string, value: string = '') => {
         const sel = window.getSelection();
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
         let range: Range | null = null;
         if (sel && sel.rangeCount > 0) {
             range = sel.getRangeAt(0);
+        }
+
+        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl?.contains(range.commonAncestorContainer);
+
+        if (activeEl && isSelectionCollapsed) {
+            const selectAllRange = document.createRange();
+            selectAllRange.selectNodeContents(activeEl);
+            if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(selectAllRange);
+            }
         }
 
         document.execCommand(command, false, value);
@@ -1116,7 +1128,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             savedSelectionRangeRef.current = range;
         }
 
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
         if (activeEl) {
             onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
         }

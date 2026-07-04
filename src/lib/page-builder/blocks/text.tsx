@@ -204,13 +204,13 @@ registerBlock({
       : "";
 
     return (
-      <div className="w-full select-none py-2">
+      <div className={cn("w-full py-2", isEdit ? "select-text" : "select-none")}>
         <style dangerouslySetInnerHTML={{ __html: cssStyles }} />
         <div className={quoteContainerClass}>
           <div
             id={`text-block-${blockId}`}
             className={cn(
-              "prose prose-slate max-w-none p-1 rounded transition-all",
+              "prose prose-slate max-w-none p-1 rounded transition-all select-text cursor-text",
               isEdit
                 ? "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 outline-none"
                 : "focus:outline-none"
