@@ -7,6 +7,10 @@
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
 }
 
+.designer-theme-light .canvas-workspace-bg {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+}
+
 
 /* Header & Panels Backgrounds */
 .designer-theme-light.designer-shell header,
@@ -86,6 +90,10 @@
 
 .designer-theme-blue {
     background: linear-gradient(135deg, #090e1a 0%, #151824 50%, #090e1a 100%) !important;
+}
+
+.designer-theme-blue .canvas-workspace-bg {
+    background: linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
 }
 
 /* Header & Panels Backgrounds */

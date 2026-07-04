@@ -150,7 +150,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
             className={cn(
                 isPreview 
                     ? "group/section relative transition-all border-none rounded-none m-0 p-0"
-                    : "group/section relative transition-all border-b border-dashed border-slate-200 dark:border-zinc-800/80 rounded-none p-0 m-0",
+                    : "group/section relative transition-all border border-dashed border-transparent hover:border-slate-350 dark:hover:border-slate-700 rounded-none p-0 m-0",
                 !isPreview && (
                     isGlobal
                         ? "bg-purple-500/5 hover:bg-purple-500/10"
@@ -158,6 +158,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                         ? "hover:bg-emerald-500/5"
                         : "hover:bg-slate-750/5"
                 ),
+                !isPreview && selected && "border-solid border-emerald-500/50 ring-2 ring-emerald-500/10",
                 isDragging && "z-50 shadow-2xl ring-2 ring-emerald-500/30"
             )}
         >
@@ -266,15 +267,15 @@ interface SectionInserterLineProps {
 
 function SectionInserterLine({ onClick }: SectionInserterLineProps) {
     return (
-        <div className="group/inserter h-4 -my-2 relative flex items-center justify-center z-35 select-none cursor-pointer">
-            <div className="absolute inset-x-0 h-[1.5px] bg-slate-200/0 group-hover/inserter:bg-emerald-500/30 transition-colors" />
+        <div className="group/inserter h-0 relative w-full flex items-center justify-center z-35 select-none pointer-events-none">
+            <div className="absolute inset-x-0 h-3 -top-1.5 bg-transparent group-hover/inserter:bg-emerald-500 pointer-events-auto cursor-pointer transition-colors" />
             <button
                 type="button"
                 onClick={(e) => {
                     e.stopPropagation();
                     onClick();
                 }}
-                className="scale-0 group-hover/inserter:scale-100 flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg transition-all active:scale-[0.96] z-40 border-0 cursor-pointer"
+                className="absolute scale-0 group-hover/inserter:scale-100 flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg transition-all active:scale-[0.96] z-40 border-0 cursor-pointer pointer-events-auto"
             >
                 <Plus className="w-2.5 h-2.5" /> Add Section
             </button>
@@ -921,9 +922,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onClick={handleCanvasClick}
-            className="flex-1 overflow-hidden relative select-none"
+            className="flex-1 overflow-hidden relative select-none bg-slate-950 canvas-workspace-bg"
             style={{ 
-                background: 'linear-gradient(135deg, #020617 0%, #0f172a 100%)',
                 cursor: isPanning ? 'grabbing' : panToolActive ? 'grab' : commentsMode ? 'cell' : 'default' 
             }}
         >
@@ -974,7 +974,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 >
                     <DndContext sensors={sensors} collisionDetection={customCollisionDetection} onDragEnd={handleDragEnd} modifiers={[zoomModifier]}>
                         <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-                            <div className={cn("min-h-[400px] flex flex-col relative", !isPreview && "divide-y divide-slate-100")}>
+                            <div className="min-h-[400px] flex flex-col relative">
                                 {showHeader && (
                                     <div className="absolute top-0 inset-x-0 py-4 px-6 z-40 select-none pointer-events-none transition-all shrink-0">
                                         <div className="max-w-4xl mx-auto w-full flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-slate-200/50 dark:border-zinc-800/80 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20">
