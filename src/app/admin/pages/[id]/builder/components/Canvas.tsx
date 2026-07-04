@@ -1035,7 +1035,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 <div
                     ref={canvasRef}
                     className={cn(
-                        "bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none text-slate-800",
+                        "canvas-viewport-frame bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none text-slate-800",
                         viewport === 'desktop'
                             ? "w-[1280px] min-h-[800px] rounded-2xl ring-1 ring-slate-800/10"
                             : viewport === 'tablet'

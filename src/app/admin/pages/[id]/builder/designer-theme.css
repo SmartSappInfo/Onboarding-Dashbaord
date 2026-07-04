@@ -45,20 +45,20 @@
     border-color: #e2e8f0 !important;
 }
 
-/* Typography & Colors */
-.designer-theme-light .text-slate-100,
-.designer-theme-light .text-slate-200,
-.designer-theme-light .text-slate-350,
-.designer-theme-light .text-slate-300,
-.designer-theme-light .text-slate-400,
-.designer-theme-light .text-slate-500,
-.designer-theme-light .text-slate-50 {
+/* Typography & Colors (Exempting Canvas Viewport Content) */
+.designer-theme-light .text-slate-100:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-200:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-350:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-300:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-400:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-500:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-50:not(.canvas-viewport-frame *) {
     color: #0f172a !important;
 }
 
-.designer-theme-light .text-slate-450,
-.designer-theme-light .text-slate-600,
-.designer-theme-light .text-slate-500 {
+.designer-theme-light .text-slate-450:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-600:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-500:not(.canvas-viewport-frame *) {
     color: #475569 !important;
 }
 
@@ -242,16 +242,16 @@
     border-color: #1c2234 !important;
 }
 
-/* Typography & Colors */
-.designer-theme-blue .text-slate-100,
-.designer-theme-blue .text-slate-200,
-.designer-theme-blue .text-slate-350,
-.designer-theme-blue .text-slate-300 {
+/* Typography & Colors (Exempting Canvas Viewport Content) */
+.designer-theme-blue .text-slate-100:not(.canvas-viewport-frame *),
+.designer-theme-blue .text-slate-200:not(.canvas-viewport-frame *),
+.designer-theme-blue .text-slate-350:not(.canvas-viewport-frame *),
+.designer-theme-blue .text-slate-300:not(.canvas-viewport-frame *) {
     color: #eff6ff !important;
 }
 
-.designer-theme-blue .text-slate-400,
-.designer-theme-blue .text-slate-500 {
+.designer-theme-blue .text-slate-400:not(.canvas-viewport-frame *),
+.designer-theme-blue .text-slate-500:not(.canvas-viewport-frame *) {
     color: #94a3b8 !important;
 }
 
