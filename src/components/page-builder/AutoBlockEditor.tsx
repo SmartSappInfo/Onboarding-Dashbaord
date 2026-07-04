@@ -343,14 +343,25 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
         <p className="text-[10px] text-slate-500 italic">This block has no editable properties.</p>
       ) : (
         <div className="space-y-4">
-          {def.fields.map((field) => (
-            <div key={field.key} className="space-y-2">
-              {field.kind !== 'list' ? (
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">{field.label}</Label>
-              ) : null}
-              <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />
-            </div>
-          ))}
+          {def.fields.map((field) => {
+            // Conditional field visibility for CTA Block actions
+            if (block.type === 'cta') {
+              if (field.key === 'url' && props.actionType !== 'url') return null;
+              if (field.key === 'formId' && props.actionType !== 'form') return null;
+              if (field.key === 'surveyId' && props.actionType !== 'survey') return null;
+              if (field.key === 'meetingId' && props.actionType !== 'meeting') return null;
+              if (field.key === 'qrId' && props.actionType !== 'qr') return null;
+            }
+
+            return (
+              <div key={field.key} className="space-y-2">
+                {field.kind !== 'list' ? (
+                  <Label className="text-[10px] font-bold text-slate-500 uppercase">{field.label}</Label>
+                ) : null}
+                <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
