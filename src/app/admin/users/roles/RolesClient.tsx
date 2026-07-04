@@ -55,12 +55,14 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useTenant } from '@/context/TenantContext';
 import { PermissionEditor } from './PermissionEditor';
 
 export default function RolesClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const getToken = useBackofficeToken();
   const { activeOrganizationId } = useTenant();
   
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null);
@@ -76,19 +78,26 @@ export default function RolesClient() {
   const [newRoleData, setNewRoleData] = React.useState({ name: '', description: '', color: '#3B82F6', clonedSchema: null as PermissionsSchema | null });
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>('blank');
 
-  // Load Platform Templates
+  // Load Platform Templates (role-architecture blueprints).
+  // Requires backoffice templates:view — non-backoffice admins simply get the
+  // blank starting point, which is always available.
   React.useEffect(() => {
     async function loadTemplates() {
       setIsLoadingTemplates(true);
-      const res = await listAllTemplates();
-      if (res.success && res.data) {
-        // Only show role architecture blueprints
-        setPlatformTemplates(res.data.filter(t => t.type === 'role_architecture'));
+      try {
+        const idToken = await getToken();
+        const res = await listAllTemplates(idToken);
+        if (res.success && res.data) {
+          setPlatformTemplates(res.data.filter(t => t.type === 'role_architecture'));
+        }
+      } catch {
+        // No token / no backoffice access — blueprints stay empty, blank remains.
+      } finally {
+        setIsLoadingTemplates(false);
       }
-      setIsLoadingTemplates(false);
     }
     loadTemplates();
-  }, []);
+  }, [getToken]);
 
   // 1. DATA SUBSCRIPTION
   const rolesQuery = useMemoFirebase(() => {

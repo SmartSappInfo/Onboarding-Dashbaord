@@ -5,10 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { listFieldPacks } from '@/lib/backoffice/backoffice-field-actions';
 import type { PlatformFieldPack } from '@/lib/backoffice/backoffice-types';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import FieldPackDialog from './FieldPackDialog';
 
 export default function FieldPackEditor({ initialData }: { initialData?: PlatformFieldPack[] }) {
   const { can } = useBackoffice();
+  const getToken = useBackofficeToken();
   const [packs, setPacks] = React.useState<PlatformFieldPack[]>(initialData || []);
   const [isLoading, setIsLoading] = React.useState(!initialData);
   const [selectedPack, setSelectedPack] = React.useState<PlatformFieldPack | null>(null);
@@ -16,12 +18,18 @@ export default function FieldPackEditor({ initialData }: { initialData?: Platfor
 
   const load = React.useCallback(async () => {
     setIsLoading(true);
-    const res = await listFieldPacks();
-    if (res.success && res.data) {
-      setPacks(res.data);
+    try {
+      const idToken = await getToken();
+      const res = await listFieldPacks(idToken);
+      if (res.success && res.data) {
+        setPacks(res.data);
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [getToken]);
 
   React.useEffect(() => {
     if (initialData) return;

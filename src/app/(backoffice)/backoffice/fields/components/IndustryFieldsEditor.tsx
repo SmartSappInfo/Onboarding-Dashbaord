@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
 import { listPlatformIndustryFieldGroups, savePlatformIndustryFieldGroup, deletePlatformIndustryFieldGroup } from '@/lib/backoffice/backoffice-field-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { IndustryVertical, EntityType } from '@/lib/types';
 import type { IndustryGroupDef, IndustryFieldDef } from '@/lib/industry-field-registry';
@@ -38,7 +40,8 @@ const FIELD_TYPES = [
 ];
 
 export default function IndustryFieldsEditor() {
-  const { profile, can } = useBackoffice();
+  const { can } = useBackoffice();
+  const getToken = useBackofficeToken();
   const [selectedIndustry, setSelectedIndustry] = React.useState<IndustryVertical>('SaaS');
   const [groups, setGroups] = React.useState<IndustryGroupDef[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -68,7 +71,8 @@ export default function IndustryFieldsEditor() {
   const loadGroups = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await listPlatformIndustryFieldGroups(selectedIndustry);
+      const idToken = await getToken();
+      const res = await listPlatformIndustryFieldGroups(selectedIndustry, idToken);
       if (res.success && res.data) {
         setGroups(res.data);
       }
@@ -77,7 +81,7 @@ export default function IndustryFieldsEditor() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedIndustry]);
+  }, [selectedIndustry, getToken]);
 
   React.useEffect(() => {
     loadGroups();
@@ -175,18 +179,12 @@ export default function IndustryFieldsEditor() {
   };
 
   const executeConfirmedAction = async () => {
-    if (!profile?.id) return;
     setIsConfirmOpen(false);
     setIsSaving(true);
 
-    const actor = {
-      userId: profile.id,
-      name: profile.name || 'System Admin',
-      email: profile.email || '',
-      role: 'super_admin' as const,
-    };
-
     try {
+      const idToken = await getToken();
+
       if (confirmAction === 'save') {
         const payload: IndustryGroupDef = {
           name: groupName,
@@ -197,7 +195,7 @@ export default function IndustryFieldsEditor() {
           fields: groupFields,
         };
 
-        const res = await savePlatformIndustryFieldGroup(selectedIndustry, groupSlug, payload, actor);
+        const res = await savePlatformIndustryFieldGroup(selectedIndustry, groupSlug, payload, idToken);
         if (res.success) {
           setIsEditorOpen(false);
           await loadGroups();
@@ -205,7 +203,7 @@ export default function IndustryFieldsEditor() {
           alert('Error: ' + res.error);
         }
       } else if (confirmAction === 'delete' && editingGroup) {
-        const res = await deletePlatformIndustryFieldGroup(selectedIndustry, editingGroup.slug, actor);
+        const res = await deletePlatformIndustryFieldGroup(selectedIndustry, editingGroup.slug, idToken);
         if (res.success) {
           setIsEditorOpen(false);
           await loadGroups();
@@ -213,9 +211,9 @@ export default function IndustryFieldsEditor() {
           alert('Error: ' + res.error);
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      alert('Unexpected error: ' + e.message);
+      alert('Unexpected error: ' + getErrorMessage(e));
     } finally {
       setIsSaving(false);
       setConfirmAction(null);

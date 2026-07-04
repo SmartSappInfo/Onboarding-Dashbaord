@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getTemplateDetail, publishTemplate, deprecateTemplate } from '@/lib/backoffice/backoffice-template-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
 
@@ -35,55 +37,71 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function TemplateDetailClient({ templateId }: { templateId: string }) {
-  const { profile, can } = useBackoffice();
+  const { can } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [template, setTemplate] = React.useState<PlatformTemplate | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isActionLoading, setIsActionLoading] = React.useState(false);
 
   const loadTemplate = React.useCallback(async () => {
     setIsLoading(true);
-    const result = await getTemplateDetail(templateId);
-    if (result.success && result.data) {
-      setTemplate(result.data);
+    try {
+      const idToken = await getToken();
+      const result = await getTemplateDetail(templateId, idToken);
+      if (result.success && result.data) {
+        setTemplate(result.data);
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [templateId]);
+  }, [templateId, getToken]);
 
   React.useEffect(() => {
     loadTemplate();
   }, [loadTemplate]);
 
   const handlePublish = async () => {
-    if (!profile || !template) return;
+    if (!template) return;
     if (!(await confirm({ title: 'Publish template?', description: 'This version becomes available to all allowed organizations immediately.', confirmText: 'Publish' }))) return;
-    
+
     setIsActionLoading(true);
-    const result = await publishTemplate(template.id, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-    
-    if (result.success) loadTemplate();
-    setIsActionLoading(false);
+    try {
+      const idToken = await getToken();
+      const result = await publishTemplate(template.id, idToken);
+      if (result.success) {
+        loadTemplate();
+      } else {
+        toast({ variant: 'destructive', title: 'Publish failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handleDeprecate = async () => {
-    if (!profile || !template) return;
+    if (!template) return;
     if (!(await confirm({ title: 'Deprecate template?', description: 'It will be hidden from the selection screen for any orgs not currently using it.', confirmText: 'Deprecate', variant: 'destructive' }))) return;
-    
+
     setIsActionLoading(true);
-    const result = await deprecateTemplate(template.id, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-    
-    if (result.success) loadTemplate();
-    setIsActionLoading(false);
+    try {
+      const idToken = await getToken();
+      const result = await deprecateTemplate(template.id, idToken);
+      if (result.success) {
+        loadTemplate();
+      } else {
+        toast({ variant: 'destructive', title: 'Deprecate failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   if (isLoading) {

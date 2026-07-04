@@ -18,6 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getWorkspaceDiagnostics } from '@/lib/backoffice/backoffice-workspace-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+
+type WorkspaceDiagnostics = NonNullable<Awaited<ReturnType<typeof getWorkspaceDiagnostics>>['data']>;
 
 // ─────────────────────────────────────────────────
 // Workspace Detail Client
@@ -56,19 +59,26 @@ function StatPill({
 }
 
 export default function WorkspaceDetailClient({ workspaceId }: { workspaceId: string }) {
-  const [diag, setDiag] = React.useState<any>(null);
+  const getToken = useBackofficeToken();
+  const [diag, setDiag] = React.useState<WorkspaceDiagnostics | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function load() {
-      const result = await getWorkspaceDiagnostics(workspaceId);
-      if (result.success && result.data) {
-        setDiag(result.data);
+      try {
+        const idToken = await getToken();
+        const result = await getWorkspaceDiagnostics(workspaceId, idToken);
+        if (result.success && result.data) {
+          setDiag(result.data);
+        }
+      } catch {
+        // Auth not ready yet — the AuthorizationGate handles redirects.
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     load();
-  }, [workspaceId]);
+  }, [workspaceId, getToken]);
 
   if (isLoading) {
     return (

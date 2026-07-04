@@ -45,6 +45,8 @@ import {
   restoreWorkspaceFromBackoffice
 } from '@/lib/backoffice/backoffice-workspace-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
@@ -58,25 +60,35 @@ const SCOPE_COLORS: Record<string, string> = {
 };
 
 export default function WorkspaceListClient() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [workspaces, setWorkspaces] = React.useState<BackofficeWorkspace[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('all');
 
+  const loadWorkspaces = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const result = await listAllWorkspaces(idToken);
+      if (result.success && result.data) {
+        setWorkspaces(result.data);
+      } else if (result.error) {
+        toast({ variant: 'destructive', title: 'Failed to load workspaces', description: result.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
   React.useEffect(() => {
     loadWorkspaces();
-  }, []);
-
-  async function loadWorkspaces() {
-    setIsLoading(true);
-    const result = await listAllWorkspaces();
-    if (result.success && result.data) {
-      setWorkspaces(result.data);
-    }
-    setIsLoading(false);
-  }
+  }, [loadWorkspaces]);
 
   // Filter workspaces
   const filteredWorkspaces = React.useMemo(() => {
@@ -94,29 +106,33 @@ export default function WorkspaceListClient() {
   }, [workspaces, search, statusFilter]);
 
   async function handleArchive(workspaceId: string) {
-    if (!profile) return;
     if (!(await confirm({ title: 'Archive workspace?', description: 'This workspace will be archived.', confirmText: 'Archive', variant: 'destructive' }))) return;
-    
-    const result = await archiveWorkspaceFromBackoffice(workspaceId, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
 
-    if (result.success) loadWorkspaces();
+    try {
+      const idToken = await getToken();
+      const result = await archiveWorkspaceFromBackoffice(workspaceId, idToken);
+      if (result.success) {
+        loadWorkspaces();
+      } else {
+        toast({ variant: 'destructive', title: 'Archive failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   async function handleRestore(workspaceId: string) {
-    if (!profile) return;
-    const result = await restoreWorkspaceFromBackoffice(workspaceId, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-
-    if (result.success) loadWorkspaces();
+    try {
+      const idToken = await getToken();
+      const result = await restoreWorkspaceFromBackoffice(workspaceId, idToken);
+      if (result.success) {
+        loadWorkspaces();
+      } else {
+        toast({ variant: 'destructive', title: 'Restore failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   return (

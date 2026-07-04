@@ -3,22 +3,30 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor, PlatformFieldPack, PlatformFieldDefinition } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
+import type { PlatformFieldPack, PlatformFieldDefinition } from './backoffice-types';
 import type { ContactTypeEntry, EntityType, IndustryVertical } from '../types';
 import { INDUSTRY_FIELD_REGISTRY, IndustryGroupDef } from '../industry-field-registry';
 import { propagateIndustryGroupChanges } from './industry-propagation';
+
+// Security: every action verifies the caller's ID token and enforces RBAC
+// via `authorizeBackoffice` (server-auth-actions). Actor derived server-side.
+// Authorization runs BEFORE any industry propagation fan-out.
 
 // ─────────────────────────────────────────────────
 // Backoffice Fields & Variables Actions
 // Manage system defaults for fields and contact types
 // ─────────────────────────────────────────────────
 
-export async function listFieldPacks(): Promise<{
+export async function listFieldPacks(idToken: string): Promise<{
   success: boolean;
   data?: PlatformFieldPack[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'fields', 'view');
+
     const snap = await adminDb.collection('platform_field_defaults').orderBy('name', 'asc').get();
     const packs = snap.docs.map((doc) => ({
       id: doc.id,
@@ -26,13 +34,18 @@ export async function listFieldPacks(): Promise<{
     } as PlatformFieldPack));
 
     return { success: true, data: packs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] listFieldPacks failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
-export async function getContactTypeDefaults(entityType: EntityType): Promise<{
+/**
+ * Internal (token-less) read of system contact-type defaults.
+ * For server-to-server callers that are ALREADY trusted (e.g. workspace
+ * provisioning in fields-actions.ts). Never expose to clients directly.
+ */
+export async function getContactTypeDefaultsInternal(entityType: EntityType): Promise<{
   success: boolean;
   data?: { types: ContactTypeEntry[] };
   error?: string;
@@ -45,18 +58,35 @@ export async function getContactTypeDefaults(entityType: EntityType): Promise<{
     }
 
     return { success: true, data: doc.data() as { types: ContactTypeEntry[] } };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error('[BACKOFFICE_FIELDS] getContactTypeDefaultsInternal failed:', error);
+    return { success: false, error: getErrorMessage(error) };
+  }
+}
+
+/** Public (token + fields:view) read of system contact-type defaults. */
+export async function getContactTypeDefaults(entityType: EntityType, idToken: string): Promise<{
+  success: boolean;
+  data?: { types: ContactTypeEntry[] };
+  error?: string;
+}> {
+  try {
+    await authorizeBackoffice(idToken, 'fields', 'view');
+    return await getContactTypeDefaultsInternal(entityType);
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] getContactTypeDefaults failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveContactTypeDefaults(
   entityType: EntityType,
   types: ContactTypeEntry[],
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'fields', 'edit');
+
     const docRef = adminDb.collection('platform_contact_type_defaults').doc(`system_${entityType}`);
     const snap = await docRef.get();
     
@@ -79,17 +109,19 @@ export async function saveContactTypeDefaults(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] saveContactTypeDefaults failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveFieldPack(
   pack: Partial<PlatformFieldPack> & { name: string },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'fields', 'edit');
+
     const collection = adminDb.collection('platform_field_defaults');
     let docRef: FirebaseFirestore.DocumentReference;
     let before = null;
@@ -115,7 +147,7 @@ export async function saveFieldPack(
     }
 
     // Exclude id from being saved in the doc itself
-    const { id, ...dataToSave } = payload as any;
+    const { id: _id, ...dataToSave } = payload;
 
     await docRef.set(dataToSave, { merge: true });
 
@@ -128,18 +160,20 @@ export async function saveFieldPack(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] saveFieldPack failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
-export async function listNativeFields(): Promise<{
+export async function listNativeFields(idToken: string): Promise<{
   success: boolean;
   data?: PlatformFieldDefinition[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'fields', 'view');
+
     const snap = await adminDb.collection('platform_native_fields').orderBy('key', 'asc').get();
     const fields = snap.docs.map((doc) => ({
       ...doc.data(),
@@ -147,18 +181,20 @@ export async function listNativeFields(): Promise<{
     } as PlatformFieldDefinition));
 
     return { success: true, data: fields };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] listNativeFields failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveNativeField(
   fieldKey: string,
   fieldDef: Partial<PlatformFieldDefinition>,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'fields', 'edit');
+
     const docRef = adminDb.collection('platform_native_fields').doc(fieldKey);
     const snap = await docRef.get();
     
@@ -182,9 +218,9 @@ export async function saveNativeField(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] saveNativeField failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -192,7 +228,12 @@ export async function saveNativeField(
 // Platform Industry-Specific Fields Actions
 // ─────────────────────────────────────────────────
 
-export async function listPlatformIndustryFieldGroups(industry: IndustryVertical): Promise<{
+/**
+ * Internal (token-less) read of an industry's field groups, with lazy
+ * self-seeding of registry defaults. For already-trusted server callers
+ * (e.g. workspace provisioning in fields-actions.ts). Not for direct client use.
+ */
+export async function listPlatformIndustryFieldGroupsInternal(industry: IndustryVertical): Promise<{
   success: boolean;
   data?: IndustryGroupDef[];
   error?: string;
@@ -238,9 +279,24 @@ export async function listPlatformIndustryFieldGroups(industry: IndustryVertical
     // Sort groups by 'order' asc
     groups.sort((a, b) => a.order - b.order);
     return { success: true, data: groups };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error('[BACKOFFICE_FIELDS] listPlatformIndustryFieldGroupsInternal failed:', error);
+    return { success: false, error: getErrorMessage(error) };
+  }
+}
+
+/** Public (token + fields:view) read of an industry's field groups. */
+export async function listPlatformIndustryFieldGroups(industry: IndustryVertical, idToken: string): Promise<{
+  success: boolean;
+  data?: IndustryGroupDef[];
+  error?: string;
+}> {
+  try {
+    await authorizeBackoffice(idToken, 'fields', 'view');
+    return await listPlatformIndustryFieldGroupsInternal(industry);
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] listPlatformIndustryFieldGroups failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -248,9 +304,12 @@ export async function savePlatformIndustryFieldGroup(
   industry: IndustryVertical,
   groupSlug: string,
   groupDef: Omit<IndustryGroupDef, 'slug'> & { slug?: string },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Authorize BEFORE the write + workspace-wide propagation fan-out.
+    const actor = await authorizeBackoffice(idToken, 'fields', 'edit');
+
     const docId = `${industry}_${groupSlug}`;
     const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
     const snap = await ref.get();
@@ -296,18 +355,21 @@ export async function savePlatformIndustryFieldGroup(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] savePlatformIndustryFieldGroup failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function deletePlatformIndustryFieldGroup(
   industry: IndustryVertical,
   groupSlug: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Authorize BEFORE the delete + workspace-wide propagation fan-out.
+    const actor = await authorizeBackoffice(idToken, 'fields', 'delete');
+
     const docId = `${industry}_${groupSlug}`;
     const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
     const snap = await ref.get();
@@ -338,8 +400,8 @@ export async function deletePlatformIndustryFieldGroup(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FIELDS] deletePlatformIndustryFieldGroup failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

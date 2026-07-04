@@ -39,6 +39,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { listAllTemplates, publishTemplate, deprecateTemplate } from '@/lib/backoffice/backoffice-template-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
 
@@ -57,26 +59,36 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function TemplateListClient() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [templates, setTemplates] = React.useState<PlatformTemplate[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
 
+  const loadTemplates = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const result = await listAllTemplates(idToken);
+      if (result.success && result.data) {
+        setTemplates(result.data);
+      } else if (result.error) {
+        toast({ variant: 'destructive', title: 'Failed to load templates', description: result.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
   React.useEffect(() => {
     loadTemplates();
-  }, []);
-
-  async function loadTemplates() {
-    setIsLoading(true);
-    const result = await listAllTemplates();
-    if (result.success && result.data) {
-      setTemplates(result.data);
-    }
-    setIsLoading(false);
-  }
+  }, [loadTemplates]);
 
   // Filter templates
   const filteredTemplates = React.useMemo(() => {
@@ -98,31 +110,35 @@ export default function TemplateListClient() {
   }, [templates]);
 
   async function handlePublish(tpl: PlatformTemplate) {
-    if (!profile) return;
     if (!(await confirm({ title: 'Publish template?', description: 'It will become available to all active organizations.', confirmText: 'Publish' }))) return;
-    
-    const result = await publishTemplate(tpl.id, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
 
-    if (result.success) loadTemplates();
+    try {
+      const idToken = await getToken();
+      const result = await publishTemplate(tpl.id, idToken);
+      if (result.success) {
+        loadTemplates();
+      } else {
+        toast({ variant: 'destructive', title: 'Publish failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   async function handleDeprecate(tpl: PlatformTemplate) {
-    if (!profile) return;
     if (!(await confirm({ title: 'Deprecate template?', description: 'Orgs missing it cannot select it anymore, but existing users keep it.', confirmText: 'Deprecate', variant: 'destructive' }))) return;
-    
-    const result = await deprecateTemplate(tpl.id, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
 
-    if (result.success) loadTemplates();
+    try {
+      const idToken = await getToken();
+      const result = await deprecateTemplate(tpl.id, idToken);
+      if (result.success) {
+        loadTemplates();
+      } else {
+        toast({ variant: 'destructive', title: 'Deprecate failed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   return (

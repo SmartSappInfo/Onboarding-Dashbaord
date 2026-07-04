@@ -15,7 +15,7 @@ import { X, Plus, Info } from 'lucide-react';
 import { PlatformFieldPack } from '@/lib/backoffice/backoffice-types';
 import { IndustryVertical, EntityType } from '@/lib/types';
 import { saveFieldPack } from '@/lib/backoffice/backoffice-field-actions';
-import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 
 interface FieldPackDialogProps {
@@ -29,7 +29,7 @@ const INDUSTRIES: IndustryVertical[] = ['SaaS', 'SchoolEnrollment', 'Law', 'Mark
 const ENTITY_TYPES: EntityType[] = ['institution', 'person'];
 
 export default function FieldPackDialog({ pack, open, onOpenChange, onSuccess }: FieldPackDialogProps) {
-  const { profile } = useBackoffice();
+  const getToken = useBackofficeToken();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [formData, setFormData] = React.useState<Partial<PlatformFieldPack>>({
@@ -66,30 +66,20 @@ export default function FieldPackDialog({ pack, open, onOpenChange, onSuccess }:
       toast({ variant: 'destructive', title: 'Error', description: 'Name is required' });
       return;
     }
-    if (!profile?.id) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Authentication required' });
-      return;
-    }
 
     setLoading(true);
     try {
-      const actor: any = {
-        userId: profile.id,
-        name: profile.name || 'Unknown Admin',
-        email: profile.email || '',
-        role: profile.backofficeRoles?.[0] || 'super_admin'
-      };
-
-      const res = await saveFieldPack(formData as PlatformFieldPack, actor);
+      const idToken = await getToken();
+      const res = await saveFieldPack(formData as PlatformFieldPack, idToken);
       if (res.success) {
         toast({ title: 'Success', description: `Field pack ${pack ? 'updated' : 'created'} successfully.` });
         onSuccess();
         onOpenChange(false);
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: res.error || 'Failed to save field pack' });
+        toast({ variant: 'destructive', title: 'Error', description: res.error || 'You may not have permission for this action.' });
       }
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
     } finally {
       setLoading(false);
     }

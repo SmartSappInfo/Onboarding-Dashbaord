@@ -4,7 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { AppField, FieldGroup, IndustryVertical, Workspace, UserProfile } from './types';
 import { INDUSTRY_FIELD_REGISTRY, PLATFORM_FIELD_GROUPS, resolveGroupIcon } from './industry-field-registry';
 import { STATIC_VARIABLES } from './template-variable-registry-data';
-import { listPlatformIndustryFieldGroups } from './backoffice/backoffice-field-actions';
+import { listPlatformIndustryFieldGroupsInternal } from './backoffice/backoffice-field-actions';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 
@@ -347,7 +347,7 @@ export async function seedNativeFieldsAction(workspaceId: string, organizationId
     // Default to SchoolEnrollment if no industry is set to maintain backwards compatibility
     const industry: IndustryVertical = workspace.industry || 'SchoolEnrollment';
     
-    const industryConfigRes = await listPlatformIndustryFieldGroups(industry);
+    const industryConfigRes = await listPlatformIndustryFieldGroupsInternal(industry);
     if (!industryConfigRes.success || !industryConfigRes.data) {
       throw new Error(`Failed to load industry field configuration: ${industryConfigRes.error || 'Unknown error'}`);
     }
@@ -614,7 +614,7 @@ export async function listIndustryPredefinedGroupsAction(industry: IndustryVerti
   error?: string;
 }> {
   try {
-    return await listPlatformIndustryFieldGroups(industry);
+    return await listPlatformIndustryFieldGroupsInternal(industry);
   } catch (error: any) {
     console.error('>>> [FIELDS] listIndustryPredefinedGroupsAction failed:', error.message);
     return { success: false, error: error.message };

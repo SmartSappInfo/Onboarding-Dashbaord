@@ -15,28 +15,40 @@ import {
 } from '@/components/ui/select';
 import { listAllAssets, deleteAssetRecord } from '@/lib/backoffice/backoffice-asset-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import type { PlatformAsset, PlatformAssetCategory } from '@/lib/backoffice/backoffice-types';
 
 export default function AssetLibraryClient() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [assets, setAssets] = React.useState<PlatformAsset[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState('all');
 
+  const load = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const res = await listAllAssets(idToken);
+      if (res.success && res.data) {
+        setAssets(res.data);
+      } else if (res.error) {
+        toast({ variant: 'destructive', title: 'Failed to load assets', description: res.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
   React.useEffect(() => {
     load();
-  }, []);
-
-  async function load() {
-    setIsLoading(true);
-    const res = await listAllAssets();
-    if (res.success && res.data) {
-      setAssets(res.data);
-    }
-    setIsLoading(false);
-  }
+  }, [load]);
 
   const filteredAssets = React.useMemo(() => {
     return assets.filter(a => {
@@ -51,18 +63,19 @@ export default function AssetLibraryClient() {
   }, [assets]);
 
   const handleDelete = async (asset: PlatformAsset) => {
-     if (!profile) return;
      if (!(await confirm({ title: 'Delete asset?', description: `"${asset.name}" will be permanently deleted. This cannot be undone.`, confirmText: 'Delete', variant: 'destructive' }))) return;
-     
-     const res = await deleteAssetRecord(asset.id, {
-       userId: profile.id,
-       name: profile.name,
-       email: profile.email,
-       role: 'super_admin'
-     });
-     
-     if (res.success) load();
-     else alert('Failed to delete asset. ' + res.error);
+
+     try {
+       const idToken = await getToken();
+       const res = await deleteAssetRecord(asset.id, idToken);
+       if (res.success) {
+         load();
+       } else {
+         toast({ variant: 'destructive', title: 'Failed to delete asset', description: res.error ?? 'You may not have permission for this action.' });
+       }
+     } catch {
+       toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+     }
   };
 
   const formatSize = (bytes: number) => {

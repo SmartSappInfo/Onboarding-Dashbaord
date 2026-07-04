@@ -12,9 +12,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { listNativeFields } from '@/lib/backoffice/backoffice-field-actions';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import type { PlatformFieldDefinition } from '@/lib/backoffice/backoffice-types';
 
 export default function NativeFieldRegistry({ initialData }: { initialData?: PlatformFieldDefinition[] }) {
+  const getToken = useBackofficeToken();
   const [fields, setFields] = React.useState<PlatformFieldDefinition[]>(initialData || []);
   const [isLoading, setIsLoading] = React.useState(!initialData);
   const [search, setSearch] = React.useState('');
@@ -23,14 +25,20 @@ export default function NativeFieldRegistry({ initialData }: { initialData?: Pla
     if (initialData) return; // Skip if provided via SSR
     async function load() {
       setIsLoading(true);
-      const res = await listNativeFields();
-      if (res.success && res.data) {
-        setFields(res.data);
+      try {
+        const idToken = await getToken();
+        const res = await listNativeFields(idToken);
+        if (res.success && res.data) {
+          setFields(res.data);
+        }
+      } catch {
+        // Auth not ready yet — the AuthorizationGate handles redirects.
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     load();
-  }, [initialData]);
+  }, [initialData, getToken]);
 
   const filtered = React.useMemo(() => {
     return fields.filter(f => 

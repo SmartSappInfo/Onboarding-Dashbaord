@@ -3,19 +3,26 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor, PlatformAsset, PlatformAssetCategory } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
+import type { PlatformAsset, PlatformAssetCategory } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Asset Server Actions
 // Operations for managing global assets (logos, icons, defaults).
+//
+// Security: every action verifies the caller's ID token and enforces RBAC
+// via `authorizeBackoffice` (server-auth-actions). Actor derived server-side.
 // ─────────────────────────────────────────────────
 
-export async function listAllAssets(): Promise<{
+export async function listAllAssets(idToken: string): Promise<{
   success: boolean;
   data?: PlatformAsset[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'assets', 'view');
+
     const snap = await adminDb.collection('platform_assets').orderBy('createdAt', 'desc').get();
     const assets = snap.docs.map((doc) => ({
       id: doc.id,
@@ -23,20 +30,22 @@ export async function listAllAssets(): Promise<{
     } as PlatformAsset));
 
     return { success: true, data: assets };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ASSETS] listAllAssets failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveAssetRecord(
   payload: Partial<PlatformAsset> & { name: string; url: string; category: PlatformAssetCategory },
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'assets', 'edit');
+
     const collection = adminDb.collection('platform_assets');
     let docRef: FirebaseFirestore.DocumentReference;
-    let before = null;
+    let before: Record<string, unknown> | null = null;
 
     if (payload.id) {
        docRef = collection.doc(payload.id);
@@ -48,19 +57,19 @@ export async function saveAssetRecord(
        docRef = collection.doc();
     }
 
-    const dataToSave = {
+    const dataToSave: Partial<PlatformAsset> = {
       ...payload,
       updatedAt: new Date().toISOString(),
     };
-    
+
     if (!before) {
        dataToSave.createdAt = new Date().toISOString();
        dataToSave.uploadedBy = actor.userId;
        dataToSave.usageCount = 0;
     }
-    
+
     // Do not save ID inside the doc
-    const { id, ...sanitized } = dataToSave as any;
+    const { id: _id, ...sanitized } = dataToSave;
 
     await docRef.set(sanitized, { merge: true });
 
@@ -73,20 +82,22 @@ export async function saveAssetRecord(
     });
 
     return { success: true, data: docRef.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ASSETS] saveAssetRecord failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function deleteAssetRecord(
   assetId: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'assets', 'delete');
+
     const docRef = adminDb.collection('platform_assets').doc(assetId);
     const snap = await docRef.get();
-    
+
     if (!snap.exists) {
       return { success: false, error: 'Asset not found' };
     }
@@ -101,8 +112,8 @@ export async function deleteAssetRecord(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_ASSETS] deleteAssetRecord failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

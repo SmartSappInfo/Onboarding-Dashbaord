@@ -3,8 +3,12 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
 import type { Workspace, Organization } from '../types';
+
+// Security: every action verifies the caller's ID token and enforces RBAC
+// via `authorizeBackoffice` (server-auth-actions). Actor derived server-side.
 
 // ─────────────────────────────────────────────────
 // Backoffice Workspace Server Actions
@@ -21,12 +25,14 @@ export interface BackofficeWorkspace extends Workspace {
 /**
  * Lists all workspaces across all organizations.
  */
-export async function listAllWorkspaces(): Promise<{
+export async function listAllWorkspaces(idToken: string): Promise<{
   success: boolean;
   data?: BackofficeWorkspace[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'workspaces', 'view');
+
     const [workspacesSnap, orgsSnap, usersSnap] = await Promise.all([
       adminDb.collection('workspaces').orderBy('name', 'asc').get(),
       adminDb.collection('organizations').get(),
@@ -56,16 +62,16 @@ export async function listAllWorkspaces(): Promise<{
     });
 
     return { success: true, data: workspaces };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_WORKSPACE] listAllWorkspaces failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 /**
  * Gets detailed diagnostic information for a specific workspace.
  */
-export async function getWorkspaceDiagnostics(workspaceId: string): Promise<{
+export async function getWorkspaceDiagnostics(workspaceId: string, idToken: string): Promise<{
   success: boolean;
   data?: {
     workspaceId: string;
@@ -84,6 +90,8 @@ export async function getWorkspaceDiagnostics(workspaceId: string): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'workspaces', 'view');
+
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (!wsSnap.exists) {
       return { success: false, error: 'Workspace not found' };
@@ -117,9 +125,9 @@ export async function getWorkspaceDiagnostics(workspaceId: string): Promise<{
         createdAt: wsData.createdAt,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_WORKSPACE] getWorkspaceDiagnostics failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -128,9 +136,11 @@ export async function getWorkspaceDiagnostics(workspaceId: string): Promise<{
  */
 export async function archiveWorkspaceFromBackoffice(
   workspaceId: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'workspaces', 'edit');
+
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (!wsSnap.exists) {
       return { success: false, error: 'Workspace not found' };
@@ -154,9 +164,9 @@ export async function archiveWorkspaceFromBackoffice(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_WORKSPACE] archiveWorkspaceFromBackoffice failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -165,9 +175,11 @@ export async function archiveWorkspaceFromBackoffice(
  */
 export async function restoreWorkspaceFromBackoffice(
   workspaceId: string,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'workspaces', 'edit');
+
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (!wsSnap.exists) {
       return { success: false, error: 'Workspace not found' };
@@ -191,8 +203,8 @@ export async function restoreWorkspaceFromBackoffice(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_WORKSPACE] restoreWorkspaceFromBackoffice failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -7,10 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getContactTypeDefaults, saveContactTypeDefaults } from '@/lib/backoffice/backoffice-field-actions';
 import { getSystemContactTypes } from '@/lib/contact-type-defaults';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import type { ContactTypeEntry, EntityType } from '@/lib/types';
 
 export default function ContactTypeDefaults({ initialData }: { initialData?: ContactTypeEntry[] }) {
-  const { profile, can } = useBackoffice();
+  const { can } = useBackoffice();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [activeEntity, setActiveEntity] = React.useState<EntityType>('institution');
   const [types, setTypes] = React.useState<ContactTypeEntry[]>(initialData || []);
   const [isLoading, setIsLoading] = React.useState(!initialData);
@@ -24,17 +28,23 @@ export default function ContactTypeDefaults({ initialData }: { initialData?: Con
     }
     async function load() {
       setIsLoading(true);
-      const res = await getContactTypeDefaults(activeEntity);
-      if (res.success && res.data && res.data.types.length > 0) {
-        setTypes(res.data.types);
-      } else {
-        // Fallback to hardcoded defaults
+      try {
+        const idToken = await getToken();
+        const res = await getContactTypeDefaults(activeEntity, idToken);
+        if (res.success && res.data && res.data.types.length > 0) {
+          setTypes(res.data.types);
+        } else {
+          // Fallback to hardcoded defaults
+          setTypes(getSystemContactTypes(activeEntity));
+        }
+      } catch {
         setTypes(getSystemContactTypes(activeEntity));
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     load();
-  }, [activeEntity]);
+  }, [activeEntity, getToken, isInitialLoad]);
 
   const handleUpdate = (idx: number, updates: Partial<ContactTypeEntry>) => {
     const newTypes = [...types];
@@ -43,16 +53,20 @@ export default function ContactTypeDefaults({ initialData }: { initialData?: Con
   };
 
   const handleSave = async () => {
-    if (!profile) return;
     setIsSaving(true);
-    const res = await saveContactTypeDefaults(activeEntity, types, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin'
-    });
-    if (res.success) alert('Saved successfully via audit log.');
-    setIsSaving(false);
+    try {
+      const idToken = await getToken();
+      const res = await saveContactTypeDefaults(activeEntity, types, idToken);
+      if (res.success) {
+        toast({ title: 'Contact defaults saved', description: 'System contact types updated.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Save failed', description: res.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
