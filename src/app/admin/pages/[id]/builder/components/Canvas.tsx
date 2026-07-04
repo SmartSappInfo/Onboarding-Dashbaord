@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -595,7 +595,38 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     }, [selectedBlockId, version.structureJson.sections]);
     const panStartRef = useRef({ x: 0, y: 0 });
     const workspaceRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
     const [isMounted, setIsMounted] = useState(false);
+
+    // Bounded canvas offset constraint logic
+    const clampPanOffset = useCallback((x: number, y: number, currentZoom: number) => {
+        const workspace = workspaceRef.current;
+        const canvas = canvasRef.current;
+        if (!workspace || !canvas) return { x, y };
+
+        const rectW = workspace.clientWidth;
+        const rectH = workspace.clientHeight;
+        const canvasW = canvas.clientWidth;
+        const canvasH = canvas.clientHeight;
+
+        const halfW = rectW / 2;
+        const halfH = rectH / 2;
+        const scaledW = (canvasW * currentZoom) / 2;
+        const scaledH = (canvasH * currentZoom) / 2;
+
+        const margin = 80;
+
+        const maxX = rectW - margin - halfW + scaledW;
+        const minX = margin - halfW - scaledW;
+
+        const maxY = rectH - margin - halfH + scaledH;
+        const minY = margin - halfH - scaledH;
+
+        return {
+            x: Math.min(Math.max(x, minX), maxX),
+            y: Math.min(Math.max(y, minY), maxY),
+        };
+    }, []);
     const { toast } = useToast();
 
     const sensors = useSensors(
@@ -639,13 +670,18 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
                 const delta = -e.deltaY * 0.005;
-                setZoom(prev => Math.min(Math.max(0.3, prev + delta), 2.0));
+                setZoom(prev => {
+                    const nextZoom = Math.min(Math.max(0.3, prev + delta), 2.0);
+                    setPanOffset(cur => clampPanOffset(cur.x, cur.y, nextZoom));
+                    return nextZoom;
+                });
             } else {
                 e.preventDefault();
-                setPanOffset(prev => ({
-                    x: prev.x - e.deltaX * 0.8,
-                    y: prev.y - e.deltaY * 0.8,
-                }));
+                setPanOffset(prev => clampPanOffset(
+                    prev.x - e.deltaX * 0.8,
+                    prev.y - e.deltaY * 0.8,
+                    zoom
+                ));
             }
         };
 
@@ -653,7 +689,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         return () => {
             workspace.removeEventListener('wheel', handleNativeWheel);
         };
-    }, []);
+    }, [zoom, clampPanOffset]);
+
+    // Re-clamp panning coordinates when zoom, viewport, or mounting state changes
+    useEffect(() => {
+        if (isMounted) {
+            setPanOffset(prev => clampPanOffset(prev.x, prev.y, zoom));
+        }
+    }, [viewport, zoom, isMounted, clampPanOffset]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         const isMiddleClick = e.button === 1;
@@ -677,10 +720,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         }
 
         if (!isPanning) return;
-        setPanOffset({
-            x: e.clientX - panStartRef.current.x,
-            y: e.clientY - panStartRef.current.y,
-        });
+        setPanOffset(clampPanOffset(
+            e.clientX - panStartRef.current.x,
+            e.clientY - panStartRef.current.y,
+            zoom
+        ));
     };
 
     const handleMouseUp = () => {
@@ -963,6 +1007,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 }}
             >
                 <div
+                    ref={canvasRef}
                     className={cn(
                         "bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none text-slate-800",
                         viewport === 'desktop'
