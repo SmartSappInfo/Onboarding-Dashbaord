@@ -293,11 +293,90 @@ export function useBuilderState() {
     // ─── Block Operations (delegate to pure tree-operations) ─────────
     const addBlock = useCallback((type: PageBlockType, sectionIndex?: number, overrideDefaults?: Record<string, unknown>) => {
         const block = tree.createBlock(type, overrideDefaults);
-        updateStructure(s => tree.insertBlock(s, block, sectionIndex));
+        
+        updateStructure(structure => {
+            const sections = [...structure.sections];
+            if (sections.length === 0) {
+                return {
+                    ...structure,
+                    sections: [{ id: `sec-${Date.now()}`, type: 'section', props: {}, blocks: [block] }]
+                };
+            }
+
+            // 1. Check if there is an active block
+            if (state.selectedBlockId) {
+                let targetSecIdx = -1;
+                let targetBlockIdx = -1;
+                let activeBlockCol = 0;
+
+                for (let sI = 0; sI < sections.length; sI++) {
+                    const bI = sections[sI].blocks.findIndex(b => b.id === state.selectedBlockId);
+                    if (bI !== -1) {
+                        targetSecIdx = sI;
+                        targetBlockIdx = bI;
+                        activeBlockCol = (sections[sI].blocks[bI].props as { column?: number })?.column ?? 0;
+                        break;
+                    }
+                }
+
+                if (targetSecIdx !== -1 && targetBlockIdx !== -1) {
+                    block.props = {
+                        ...(block.props || {}),
+                        column: activeBlockCol
+                    };
+
+                    const newBlocks = [...sections[targetSecIdx].blocks];
+                    newBlocks.splice(targetBlockIdx + 1, 0, block);
+
+                    sections[targetSecIdx] = {
+                        ...sections[targetSecIdx],
+                        blocks: newBlocks
+                    };
+
+                    return { ...structure, sections };
+                }
+            }
+
+            // 2. If no active block, check if there is an active section
+            if (state.selectedSectionId) {
+                const targetSecIdx = sections.findIndex(s => s.id === state.selectedSectionId);
+                if (targetSecIdx !== -1) {
+                    block.props = {
+                        ...(block.props || {}),
+                        column: 0
+                    };
+
+                    sections[targetSecIdx] = {
+                        ...sections[targetSecIdx],
+                        blocks: [...sections[targetSecIdx].blocks, block]
+                    };
+
+                    return { ...structure, sections };
+                }
+            }
+
+            // 3. Fallback: If sectionIndex is provided, append to that section. Otherwise, append to the first section.
+            const fallbackSecIdx = sectionIndex !== undefined
+                ? Math.min(Math.max(sectionIndex, 0), sections.length - 1)
+                : 0;
+
+            block.props = {
+                ...(block.props || {}),
+                column: 0
+            };
+
+            sections[fallbackSecIdx] = {
+                ...sections[fallbackSecIdx],
+                blocks: [...sections[fallbackSecIdx].blocks, block]
+            };
+
+            return { ...structure, sections };
+        });
+
         dispatch({ type: 'SELECT_BLOCK', payload: block.id });
         dispatch({ type: 'SET_TAB', payload: 'edit' });
         dispatch({ type: 'CLOSE_VARIANT_PICKER' });
-    }, [updateStructure]);
+    }, [updateStructure, state.selectedBlockId, state.selectedSectionId]);
 
     const removeBlock = useCallback((blockId: string) => {
         updateStructure(s => tree.removeBlock(s, blockId));
