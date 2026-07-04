@@ -353,6 +353,11 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'qrId' && props.actionType !== 'qr') return null;
             }
 
+            // Conditional field visibility for Hero Block sales elements
+            if (block.type === 'hero') {
+              if (['secondaryTitle', 'secondarySubtitle', 'bulletList'].includes(field.key) && !props.isVideoSales) return null;
+            }
+
             return (
               <div key={field.key} className="space-y-2">
                 {field.kind !== 'list' ? (

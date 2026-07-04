@@ -28,7 +28,14 @@ const schema = z.object({
   gradientTo:       z.string().default('#7C3AED'),
   fontSize:         z.enum(['sm', 'md', 'lg', 'xl', '2xl']).default('xl'),
   isSplit:          z.boolean().default(false),
-});
+
+  // Sales Video Layout Extension
+  isVideoSales:     z.boolean().default(false),
+  secondaryTitle:   z.string().optional().default(''),
+  secondarySubtitle:z.string().optional().default(''),
+  bulletList:       z.string().optional().default(''),
+}).catchall(z.unknown());
+
 type HeroProps = z.infer<typeof schema>;
 
 const ALIGN: Record<HeroProps['align'], string> = {
@@ -43,6 +50,14 @@ const FONT_SIZE: Record<HeroProps['fontSize'], string> = {
   lg: 'text-4xl md:text-5xl',
   xl: 'text-5xl md:text-6xl',
   '2xl': 'text-6xl md:text-7xl',
+};
+
+// Markdown-like formatting helper for headings (*italic blue link style*, _solid blue style_)
+const formatHeadlineText = (text: string) => {
+  if (!text) return '';
+  let html = text.replace(/\*([^*]+)\*/g, '<span class="text-[#3B5FFF] italic font-semibold">$1</span>');
+  html = html.replace(/_([^_]+)_/g, '<span class="text-[#3B5FFF] font-bold">$1</span>');
+  return html;
 };
 
 // Module-level static SVGs for variants (rerender-no-inline-components)
@@ -93,6 +108,20 @@ const SplitThumbnail = (
   </svg>
 );
 
+const VideoSalesThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-700 fill-current opacity-70">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <rect x="25" y="10" width="50" height="4" rx="1" className="text-white fill-white" />
+    <rect x="35" y="16" width="30" height="2.5" rx="1" className="text-slate-500 fill-slate-500" />
+    
+    <rect x="25" y="24" width="50" height="24" rx="2" className="text-slate-800 fill-slate-800" />
+    <polygon points="48,32 54,36 48,40" className="text-blue-500 fill-blue-500" />
+    
+    <rect x="30" y="52" width="40" height="3" rx="1" className="text-white fill-white" />
+    <rect x="35" y="60" width="30" height="6" rx="2" className="text-blue-500 fill-blue-500" />
+  </svg>
+);
+
 registerBlock({
   type: 'hero',
   label: 'Hero',
@@ -111,7 +140,7 @@ registerBlock({
     { kind: 'url', key: 'ctaUrl', label: 'Primary Button Link' },
     { kind: 'text', key: 'ctaSecondaryText', label: 'Secondary Button Label' },
     { kind: 'url', key: 'ctaSecondaryUrl', label: 'Secondary Button Link' },
-    { kind: 'url', key: 'videoUrl', label: 'Background Video Link' },
+    { kind: 'url', key: 'videoUrl', label: 'Video Resource Link' },
     { kind: 'boolean', key: 'lightRaysEnabled', label: 'Enable Light Rays' },
     { kind: 'color', key: 'lightRaysColor', label: 'Light Rays Color' },
     { kind: 'boolean', key: 'gradientText', label: 'Use Text Gradient' },
@@ -125,6 +154,10 @@ registerBlock({
       { value: '2xl', label: 'Double XL' },
     ] },
     { kind: 'boolean', key: 'isSplit', label: 'Split Layout (Text Left / Image Right)' },
+    { kind: 'boolean', key: 'isVideoSales', label: 'Sales Video Funnel Mode' },
+    { kind: 'text', key: 'secondaryTitle', label: 'Secondary Headline (Below Video)' },
+    { kind: 'textarea', key: 'secondarySubtitle', label: 'Secondary Subtitle (Below Video)' },
+    { kind: 'text', key: 'bulletList', label: 'Bullet Trust Points (Comma separated)' },
   ],
   defaults: schema.parse({}),
   schema,
@@ -134,9 +167,28 @@ registerBlock({
     { id: 'hero-image-cta', label: 'Image + CTA', thumbnail: ImageCtaThumbnail, defaults: { align: 'left', ctaText: 'Get Started', ctaUrl: '#next', imageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926' } },
     { id: 'hero-light-rays', label: 'Light Rays BG', thumbnail: LightRaysThumbnail, defaults: { align: 'center', lightRaysEnabled: true, gradientText: true } },
     { id: 'hero-split', label: 'Split Layout', thumbnail: SplitThumbnail, defaults: { align: 'left', isSplit: true, imageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926' } },
+    { 
+      id: 'hero-video-sales', 
+      label: 'Video Sales Funnel', 
+      thumbnail: VideoSalesThumbnail, 
+      defaults: { 
+        align: 'center', 
+        isVideoSales: true, 
+        title: 'Why do parents choose *other schools* over yours?', 
+        subtitle: 'Watch this short video to find out.', 
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', 
+        secondaryTitle: 'Want to make your school the _preferred choice_ for parents in one term?', 
+        secondarySubtitle: 'Book a FREE 30-minutes consultation to see your personalized roadmap to complete the shift.', 
+        ctaText: 'Request Free Consultation Now', 
+        ctaUrl: '#consultation', 
+        bulletList: 'Personalized Roadmap, Complete the shift' 
+      } 
+    },
   ],
   render: (props: HeroProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';
+    const isVideoSales = props.isVideoSales;
+
     const textStyle = {
       color: props.imageUrl ? '#ffffff' : ctx.theme.colors.text,
       fontFamily: ctx.theme.typography.headingFont,
@@ -149,12 +201,13 @@ registerBlock({
           background: `linear-gradient(135deg, ${props.gradientFrom}, ${props.gradientTo})`,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
         }}
       >
         {ctx.interpolate(props.title)}
       </span>
     ) : (
-      ctx.interpolate(props.title)
+      <span dangerouslySetInnerHTML={{ __html: formatHeadlineText(ctx.interpolate(props.title)) }} />
     );
 
     const ctaSectionMarkup = (props.ctaText || props.ctaSecondaryText) ? (
@@ -162,15 +215,16 @@ registerBlock({
         {props.ctaText ? (
           <a
             href={props.ctaUrl}
-            className="px-6 py-3 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-all text-sm active:scale-95 duration-100"
+            className="px-8 py-3.5 rounded-xl font-bold bg-[#3B5FFF] hover:bg-blue-600 text-white transition-all text-sm active:scale-95 duration-100 shadow-[0_4px_20px_rgba(59,95,255,0.35)] inline-flex items-center gap-2"
           >
             {ctx.interpolate(props.ctaText)}
+            <span>→</span>
           </a>
         ) : null}
         {props.ctaSecondaryText ? (
           <a
             href={props.ctaSecondaryUrl}
-            className="px-6 py-3 rounded-xl font-bold border border-slate-700 bg-slate-900/50 hover:bg-slate-900 text-slate-300 transition-all text-sm active:scale-95 duration-100"
+            className="px-8 py-3.5 rounded-xl font-bold border border-slate-700 bg-slate-900/50 hover:bg-slate-900 text-slate-300 transition-all text-sm active:scale-95 duration-100"
           >
             {ctx.interpolate(props.ctaSecondaryText)}
           </a>
@@ -178,6 +232,115 @@ registerBlock({
       </div>
     ) : null;
 
+    const renderVideoPlayer = (url: string) => {
+      if (!url) return null;
+      const isEmbed = url.includes('embed') || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo') || url.includes('loom.com');
+      if (isEmbed) {
+        let embedUrl = url;
+        if (url.includes('youtube.com/watch?v=')) {
+          embedUrl = url.replace('watch?v=', 'embed/');
+        } else if (url.includes('youtu.be/')) {
+          embedUrl = url.replace('youtu.be/', 'youtube.com/embed/');
+        }
+        return (
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Sales video presentation"
+          />
+        );
+      }
+      return (
+        <video
+          src={url}
+          controls
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      );
+    };
+
+    const bulletItems = props.bulletList
+      ? props.bulletList.split(',').map((it) => it.trim()).filter(Boolean)
+      : [];
+
+    const bulletsMarkup = bulletItems.length > 0 ? (
+      <div className="flex flex-wrap gap-4 items-center justify-center mt-4 text-[10px] sm:text-xs font-bold text-slate-400">
+        {bulletItems.map((item, idx) => (
+          <span key={idx} className="inline-flex items-center gap-1.5 bg-slate-500/5 px-3 py-1 rounded-full border border-slate-800">
+            <span className="text-emerald-500 font-extrabold">✓</span>
+            {item}
+          </span>
+        ))}
+      </div>
+    ) : null;
+
+    // --- VIDEO SALES LAYOUT EDIT MODE ---
+    if (isEdit && isVideoSales) {
+      return (
+        <div className="flex flex-col gap-6 py-8 px-4 border border-dashed border-slate-800 rounded-xl relative overflow-hidden bg-slate-950/20 text-center items-center">
+          <div className="w-full max-w-3xl space-y-3">
+            <RawDebouncedInput
+              className="w-full font-black tracking-tight bg-transparent border-none outline-none focus:ring-0 text-3xl sm:text-4xl text-center placeholder:opacity-30"
+              style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
+              value={props.title}
+              placeholder="Why do parents choose *other schools* over yours?"
+              onChange={(value) => ctx.onPropChange?.({ title: value })}
+            />
+            <RawDebouncedInput
+              className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 text-center placeholder:opacity-30 opacity-70"
+              style={{ color: textStyle.color }}
+              value={props.subtitle}
+              placeholder="Watch this short video to find out."
+              onChange={(value) => ctx.onPropChange?.({ subtitle: value })}
+            />
+          </div>
+
+          <div className="relative aspect-video w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-900/60 flex items-center justify-center">
+            {props.videoUrl ? (
+              <div className="absolute inset-0 w-full h-full pointer-events-none">
+                {renderVideoPlayer(props.videoUrl)}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">No video configured yet. Specify a video link in block settings.</p>
+            )}
+          </div>
+
+          <div className="w-full max-w-3xl space-y-3 mt-4">
+            <RawDebouncedInput
+              className="w-full font-bold bg-transparent border-none outline-none focus:ring-0 text-xl sm:text-2xl text-center placeholder:opacity-30"
+              style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
+              value={props.secondaryTitle}
+              placeholder="Want to make your school the _preferred choice_ for parents in one term?"
+              onChange={(value) => ctx.onPropChange?.({ secondaryTitle: value })}
+            />
+            <RawDebouncedTextarea
+              className="w-full text-xs sm:text-sm bg-transparent border-none outline-none focus:ring-0 text-center placeholder:opacity-30 opacity-70 resize-none"
+              style={{ color: textStyle.color }}
+              value={props.secondarySubtitle}
+              placeholder="Book a FREE 30-minutes consultation to see your personalized roadmap to complete the shift."
+              rows={2}
+              onChange={(value) => ctx.onPropChange?.({ secondarySubtitle: value })}
+            />
+          </div>
+
+          <div className="w-full flex flex-col items-center gap-4">
+            {ctaSectionMarkup}
+            <RawDebouncedInput
+              className="w-full text-[10px] bg-transparent border-none outline-none focus:ring-0 text-center placeholder:opacity-30 opacity-50 font-bold"
+              style={{ color: textStyle.color }}
+              value={props.bulletList}
+              placeholder="Personalized Roadmap, Complete the shift"
+              onChange={(value) => ctx.onPropChange?.({ bulletList: value })}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // --- STANDARD HERO EDIT MODE ---
     if (isEdit) {
       return (
         <div className={cn('flex flex-col gap-3 py-8 px-4 border border-dashed border-slate-800 rounded-xl relative overflow-hidden bg-slate-950/20', ALIGN[props.align])}>
@@ -208,6 +371,54 @@ registerBlock({
       );
     }
 
+    // --- VIDEO SALES LAYOUT VIEW MODE ---
+    if (isVideoSales) {
+      return (
+        <section className="w-full py-12 flex flex-col items-center text-center">
+          <div className="w-full max-w-3xl space-y-4 px-4">
+            <h1 
+              className={cn('font-black tracking-tight leading-tight', FONT_SIZE[props.fontSize])} 
+              style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
+            >
+              {titleMarkup}
+            </h1>
+            {props.subtitle ? (
+              <p className="text-base sm:text-lg text-slate-500 font-medium max-w-2xl mx-auto">
+                {ctx.interpolate(props.subtitle)}
+              </p>
+            ) : null}
+          </div>
+
+          {props.videoUrl ? (
+            <div className="w-full max-w-3xl aspect-video rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 my-8 relative bg-slate-950">
+              {renderVideoPlayer(props.videoUrl)}
+            </div>
+          ) : null}
+
+          <div className="w-full max-w-3xl space-y-4 px-4">
+            {props.secondaryTitle ? (
+              <h2 
+                className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white"
+                style={{ fontFamily: textStyle.fontFamily }}
+                dangerouslySetInnerHTML={{ __html: formatHeadlineText(ctx.interpolate(props.secondaryTitle)) }}
+              />
+            ) : null}
+            {props.secondarySubtitle ? (
+              <p className="text-sm sm:text-base text-slate-500 font-medium max-w-xl mx-auto">
+                {ctx.interpolate(props.secondarySubtitle)}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="w-full flex flex-col items-center gap-4 mt-6">
+            {ctaSectionMarkup}
+            {bulletsMarkup}
+          </div>
+        </section>
+      );
+    }
+
+    // --- STANDARD HERO VIEW MODE ---
     const sectionContentMarkup = (
       <div className={cn('relative flex flex-col gap-4 py-20 px-8 rounded-2xl overflow-hidden', ALIGN[props.align])}>
         {props.videoUrl ? (
