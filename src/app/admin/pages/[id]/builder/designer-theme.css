@@ -212,33 +212,33 @@
 
 /* Header & Panels Backgrounds */
 .designer-theme-blue.designer-shell header,
-.designer-theme-blue .bg-slate-900\/90,
-.designer-theme-blue .bg-slate-900 {
+.designer-theme-blue .bg-slate-900\/90:not(.canvas-viewport-frame *),
+.designer-theme-blue .bg-slate-900:not(.canvas-viewport-frame *) {
     background-color: rgba(21, 24, 36, 0.92) !important;
     background: rgba(21, 24, 36, 0.92) !important;
 }
-.designer-theme-blue .bg-slate-950,
-.designer-theme-blue .bg-slate-950\/20,
-.designer-theme-blue .bg-slate-950\/40,
-.designer-theme-blue .bg-slate-950\/80 {
+.designer-theme-blue .bg-slate-950:not(.canvas-viewport-frame *),
+.designer-theme-blue .bg-slate-950\/20:not(.canvas-viewport-frame *),
+.designer-theme-blue .bg-slate-950\/40:not(.canvas-viewport-frame *),
+.designer-theme-blue .bg-slate-950\/80:not(.canvas-viewport-frame *) {
     background-color: #090e1a !important;
     background: #090e1a !important;
 }
 
-.designer-theme-blue .bg-slate-900\/20,
-.designer-theme-blue .bg-slate-900\/30 {
+.designer-theme-blue .bg-slate-900\/20:not(.canvas-viewport-frame *),
+.designer-theme-blue .bg-slate-900\/30:not(.canvas-viewport-frame *) {
     background-color: #0f1322 !important;
     background: #0f1322 !important;
 }
 
 /* Borders */
-.designer-theme-blue .border-slate-700\/50,
-.designer-theme-blue .border-slate-800,
-.designer-theme-blue .border-slate-850,
-.designer-theme-blue .border-slate-800\/80,
-.designer-theme-blue .border-slate-800\/40,
-.designer-theme-blue .border-slate-850\/80,
-.designer-theme-blue .border-slate-800\/50 {
+.designer-theme-blue .border-slate-700\/50:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-800:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-850:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-800\/80:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-800\/40:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-850\/80:not(.canvas-viewport-frame *),
+.designer-theme-blue .border-slate-800\/50:not(.canvas-viewport-frame *) {
     border-color: #1c2234 !important;
 }
 
@@ -328,27 +328,27 @@
 /* ==========================================================================
    Right Settings Panel Light Mode overrides
    ========================================================================== */
-.designer-theme-light .bg-slate-800,
-.designer-theme-light .bg-slate-900,
-.designer-theme-light .bg-slate-900\/50,
-.designer-theme-light .bg-slate-950 {
+.designer-theme-light .bg-slate-800:not(.canvas-viewport-frame *),
+.designer-theme-light .bg-slate-900:not(.canvas-viewport-frame *),
+.designer-theme-light .bg-slate-900\/50:not(.canvas-viewport-frame *),
+.designer-theme-light .bg-slate-950:not(.canvas-viewport-frame *) {
     background-color: #f1f5f9 !important;
     background: #f1f5f9 !important;
 }
 
-.designer-theme-light .border-slate-700,
-.designer-theme-light .border-slate-800 {
+.designer-theme-light .border-slate-700:not(.canvas-viewport-frame *),
+.designer-theme-light .border-slate-800:not(.canvas-viewport-frame *) {
     border-color: #cbd5e1 !important;
 }
 
-.designer-theme-light .text-slate-200,
-.designer-theme-light .text-slate-300,
-.designer-theme-light .text-slate-450,
-.designer-theme-light .text-slate-500 {
+.designer-theme-light .text-slate-200:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-300:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-450:not(.canvas-viewport-frame *),
+.designer-theme-light .text-slate-500:not(.canvas-viewport-frame *) {
     color: #334155 !important;
 }
 
-.designer-theme-light .text-slate-400 {
+.designer-theme-light .text-slate-400:not(.canvas-viewport-frame *) {
     color: #64748b !important;
 }
 
