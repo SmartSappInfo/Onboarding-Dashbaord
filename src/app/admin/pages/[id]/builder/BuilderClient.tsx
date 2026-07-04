@@ -98,9 +98,14 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             id: q.id, title: q.name ?? 'Untitled QR', slug: q.shortPath, redirectUrl: q.redirectUrl,
         })),
     }), [resources.forms, resources.surveys, resources.meetings, resources.qrCodes]);
+    const selectedTheme = React.useMemo(() => {
+        if (!builder.page?.themeId || !resources.themes) return null;
+        return resources.themes.find((t) => t.id === builder.page?.themeId) || null;
+    }, [builder.page?.themeId, resources.themes]);
+
     const editorTheme = React.useMemo(
-        () => resolveTheme({ overrides: builder.page?.settings.themeOverrides }),
-        [builder.page?.settings.themeOverrides],
+        () => resolveTheme({ theme: selectedTheme, overrides: builder.page?.settings.themeOverrides }),
+        [selectedTheme, builder.page?.settings.themeOverrides],
     );
 
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
@@ -276,9 +281,17 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         builder.dispatch({ type: 'SET_PAGE', payload: { ...builder.page, themeId } });
     }, [builder.page, builder.dispatch]);
 
-    const updateThemeOverride = useCallback((key: string, value: string) => {
+    const updateThemeOverride = useCallback((key: string, value: string | Record<string, unknown>) => {
         if (!builder.page) return;
-        const newOverrides = { ...(builder.page.settings.themeOverrides || {}), [key]: value };
+        let finalVal: string | Record<string, unknown> = value;
+        if (key === 'typography' && typeof value === 'string') {
+            try {
+                finalVal = JSON.parse(value) as Record<string, unknown>;
+            } catch {
+                // Ignore parser fail
+            }
+        }
+        const newOverrides = { ...(builder.page.settings.themeOverrides || {}), [key]: finalVal };
         builder.dispatch({ type: 'UPDATE_PAGE_SETTINGS', payload: { themeOverrides: newOverrides } });
     }, [builder.page, builder.dispatch]);
 
@@ -653,11 +666,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 onAddBlock={builder.addBlock}
                                 onRequestBlock={(type) => builder.dispatch({ type: 'OPEN_VARIANT_PICKER', payload: type })}
                                 onAddSection={() => builder.addSection()}
-                                savedSections={resources.savedSections}
-                                onAddSectionFromTemplate={(template) => {
-                                    builder.addSection(template);
-                                    toast({ title: 'Section Added', description: 'Template added to page.' });
-                                }}
                             />
                         )}
 
