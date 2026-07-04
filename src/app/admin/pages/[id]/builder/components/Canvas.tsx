@@ -1004,7 +1004,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         <div 
                                             onClick={onClickHeader}
                                             className={cn(
-                                                "z-40 transition-all shrink-0 select-none",
+                                                "z-50 transition-all shrink-0 select-none",
                                                 headerSettings.overlap ? "absolute top-0 inset-x-0" : "relative w-full",
                                                 isEditMode ? "p-1 cursor-pointer pointer-events-auto border border-dashed border-blue-500/40 hover:border-blue-500 rounded-lg m-1" : "py-4 px-6 pointer-events-none"
                                             )}

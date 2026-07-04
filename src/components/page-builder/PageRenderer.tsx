@@ -187,7 +187,7 @@ export function PageRenderer({
       {page.settings.showHeader !== false && (
         <header 
           className={cn(
-            "w-full z-45 transition-all",
+            "w-full z-50 transition-all",
             headerSettings.overlap 
               ? (headerSettings.sticky ? "fixed top-0 left-0 right-0" : "absolute top-0 left-0 right-0") 
               : (headerSettings.sticky ? "sticky top-0" : "relative")
