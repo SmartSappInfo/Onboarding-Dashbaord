@@ -27,9 +27,9 @@ const schema = z.object({
   customSubheadingColor: z.string().optional().default(''),
   
   // Custom Size overrides (Optional)
-  customTitleSize: z.string().optional().default(''),
-  customTaglineSize: z.string().optional().default(''),
-  customSubheadingSize: z.string().optional().default(''),
+  customTitleSize: z.string().optional().default('default'),
+  customTaglineSize: z.string().optional().default('default'),
+  customSubheadingSize: z.string().optional().default('default'),
 }).catchall(z.unknown());
 
 type TitleProps = z.infer<typeof schema>;
@@ -139,7 +139,7 @@ registerBlock({
       key: 'customTitleSize',
       label: 'Custom Headline Size',
       options: [
-        { value: '', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default Preset Size' },
         { value: 'text-lg', label: 'Small (lg)' },
         { value: 'text-xl', label: 'Medium (xl)' },
         { value: 'text-2xl', label: 'Large (2xl)' },
@@ -155,7 +155,7 @@ registerBlock({
       key: 'customTaglineSize',
       label: 'Custom Tagline Size',
       options: [
-        { value: '', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default Preset Size' },
         { value: 'text-[9px]', label: 'Micro (9px)' },
         { value: 'text-[10px]', label: 'Mini (10px)' },
         { value: 'text-xs', label: 'Small (xs)' },
@@ -168,7 +168,7 @@ registerBlock({
       key: 'customSubheadingSize',
       label: 'Custom Subheading Size',
       options: [
-        { value: '', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default Preset Size' },
         { value: 'text-[11px]', label: 'Micro (11px)' },
         { value: 'text-xs', label: 'Mini (xs)' },
         { value: 'text-sm', label: 'Small (sm)' },
@@ -192,6 +192,10 @@ registerBlock({
     
     const preset = props.preset;
     const isLight = props.textColorMode === 'light';
+
+    const titleSize = props.customTitleSize && props.customTitleSize !== 'default' ? props.customTitleSize : null;
+    const taglineSize = props.customTaglineSize && props.customTaglineSize !== 'default' ? props.customTaglineSize : null;
+    const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
     
     let titleClass = isLight ? 'text-white' : 'text-slate-900 dark:text-white';
     let taglineClass = isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
@@ -200,76 +204,76 @@ registerBlock({
     if (preset === 'hero-title') {
       titleClass = cn(
         isLight ? 'text-white' : 'text-slate-900 dark:text-white',
-        props.customTitleSize || 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight'
+        titleSize || 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight'
       );
       taglineClass = cn(
         isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
-        props.customTaglineSize || 'text-sm uppercase tracking-widest font-extrabold mb-3'
+        taglineSize || 'text-sm uppercase tracking-widest font-extrabold mb-3'
       );
       subClass = cn(
         isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
-        props.customSubheadingSize || 'text-lg md:text-xl mt-4 max-w-2xl'
+        subheadingSize || 'text-lg md:text-xl mt-4 max-w-2xl'
       );
     } else if (preset === 'section-heading') {
       titleClass = cn(
         isLight ? 'text-white' : 'text-slate-900 dark:text-white',
-        props.customTitleSize || 'text-3xl sm:text-4xl font-bold tracking-tight'
+        titleSize || 'text-3xl sm:text-4xl font-bold tracking-tight'
       );
       taglineClass = cn(
         isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
-        props.customTaglineSize || 'text-xs uppercase tracking-widest font-bold mb-2'
+        taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2'
       );
       subClass = cn(
         isLight ? 'text-slate-300 dark:text-slate-350' : 'text-slate-500 dark:text-slate-400',
-        props.customSubheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl'
+        subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl'
       );
     } else if (preset === 'subtitle') {
       titleClass = cn(
         isLight ? 'text-slate-100' : 'text-slate-800 dark:text-slate-100',
-        props.customTitleSize || 'text-xl sm:text-2xl font-semibold tracking-normal'
+        titleSize || 'text-xl sm:text-2xl font-semibold tracking-normal'
       );
       taglineClass = 'hidden';
       subClass = cn(
-        isLight ? 'text-slate-350 dark:text-slate-400' : 'text-slate-500 dark:text-slate-400',
-        props.customSubheadingSize || 'text-xs sm:text-sm mt-1.5 max-w-xl'
+        isLight ? 'text-slate-355' : 'text-slate-500 dark:text-slate-400',
+        subheadingSize || 'text-xs sm:text-sm mt-1.5 max-w-xl'
       );
     } else if (preset === 'accent-tagline') {
       titleClass = cn(
         isLight ? 'text-blue-400 dark:text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
-        props.customTitleSize || 'text-sm sm:text-base font-black uppercase tracking-widest'
+        titleSize || 'text-sm sm:text-base font-black uppercase tracking-widest'
       );
       taglineClass = 'hidden';
       subClass = 'hidden';
     } else if (preset === 'left-accent-border') {
       titleClass = cn(
         isLight ? 'text-white font-bold tracking-tight border-l-4 border-blue-400 pl-4' : 'text-slate-900 dark:text-white font-bold tracking-tight border-l-4 border-[#3B5FFF] pl-4',
-        props.customTitleSize || 'text-2xl sm:text-3xl'
+        titleSize || 'text-2xl sm:text-3xl'
       );
       taglineClass = cn(
         isLight ? 'text-slate-350' : 'text-slate-400 dark:text-slate-500',
-        props.customTaglineSize || 'text-xs uppercase tracking-widest font-bold mb-2 pl-5'
+        taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2 pl-5'
       );
       subClass = cn(
         isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
-        props.customSubheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl pl-5'
+        subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl pl-5'
       );
     } else if (preset === 'elegant-serif') {
       titleClass = cn(
         isLight ? 'text-white' : 'text-slate-900 dark:text-white',
-        props.customTitleSize || 'text-3xl sm:text-5xl font-serif italic font-normal tracking-tight leading-tight'
+        titleSize || 'text-3xl sm:text-5xl font-serif italic font-normal tracking-tight leading-tight'
       );
       taglineClass = cn(
         isLight ? 'text-slate-350' : 'text-slate-450 dark:text-slate-550',
-        props.customTaglineSize || 'text-xs uppercase tracking-widest font-semibold mb-1.5'
+        taglineSize || 'text-xs uppercase tracking-widest font-semibold mb-1.5'
       );
       subClass = cn(
         isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
-        props.customSubheadingSize || 'text-xs sm:text-sm mt-2 max-w-xl font-sans'
+        subheadingSize || 'text-xs sm:text-sm mt-2 max-w-xl font-sans'
       );
     } else if (preset === 'badge-capsule') {
       titleClass = cn(
         isLight ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400',
-        props.customTitleSize || 'text-[10px] sm:text-xs font-black tracking-widest uppercase'
+        titleSize || 'text-[10px] sm:text-xs font-black tracking-widest uppercase'
       );
       taglineClass = 'hidden';
       subClass = 'hidden';
