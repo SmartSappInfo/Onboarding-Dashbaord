@@ -26,8 +26,54 @@ export const pageSectionSchema = z.object({
   blocks: z.array(blockSchema).default([]),
 });
 
+export const navItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  linkType: z.enum(['url', 'scroll', 'action']),
+  url: z.string().optional(),
+  targetSectionId: z.string().optional(),
+  action: z.enum(['receipt_request', 'open_modal_form', 'open_modal_survey', 'open_modal_agreement']).optional(),
+});
+
+export const headerSettingsSchema = z.object({
+  preset: z.enum(['native', 'minimal', 'full-nav', 'cta-only', 'search-nav']).default('native'),
+  overlap: z.boolean().default(false),
+  sticky: z.boolean().default(false),
+  floating: z.boolean().default(false),
+  showSearch: z.boolean().default(false),
+  showCta: z.boolean().default(false),
+  ctaText: z.string().optional(),
+  ctaUrl: z.string().optional(),
+  showPhone: z.boolean().default(false),
+  phoneNumber: z.string().optional(),
+  navItems: z.array(navItemSchema).default([]),
+});
+
+export const footerSettingsSchema = z.object({
+  preset: z.enum(['org', 'simple', 'multi-column', 'social-heavy', 'minimal']).default('org'),
+  overrideOrg: z.boolean().default(false),
+  copyrightText: z.string().optional(),
+  address: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  website: z.string().optional(),
+  socialLinks: z.object({
+    facebook: z.string().optional(),
+    twitter: z.string().optional(),
+    linkedin: z.string().optional(),
+    instagram: z.string().optional(),
+    youtube: z.string().optional(),
+  }).optional(),
+  navItems: z.array(z.object({
+    label: z.string(),
+    url: z.string(),
+  })).optional(),
+});
+
 export const pageStructureSchema = z.object({
   sections: z.array(pageSectionSchema).default([]),
+  header: headerSettingsSchema.optional(),
+  footer: footerSettingsSchema.optional(),
 });
 
 const EMPTY_STRUCTURE: CampaignPageStructure = { sections: [] };

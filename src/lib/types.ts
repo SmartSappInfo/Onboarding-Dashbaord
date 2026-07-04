@@ -3485,8 +3485,51 @@ export interface PageSectionProps {
   visibilityTag?: string;
 }
 
+export interface HeaderNavItem {
+  id: string;
+  label: string;
+  linkType: 'url' | 'scroll' | 'action';
+  url?: string;
+  targetSectionId?: string;
+  action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
+}
+
+export interface PageHeaderSettings {
+  preset: 'native' | 'minimal' | 'full-nav' | 'cta-only' | 'search-nav';
+  overlap: boolean;
+  sticky: boolean;
+  floating: boolean;
+  showSearch: boolean;
+  showCta: boolean;
+  ctaText?: string;
+  ctaUrl?: string;
+  showPhone: boolean;
+  phoneNumber?: string;
+  navItems: HeaderNavItem[];
+}
+
+export interface PageFooterSettings {
+  preset: 'org' | 'simple' | 'multi-column' | 'social-heavy' | 'minimal';
+  overrideOrg: boolean;
+  copyrightText?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  socialLinks?: {
+    facebook?: string;
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  navItems?: Array<{ label: string; url: string }>;
+}
+
 export interface CampaignPageStructure {
   sections: PageSection[];
+  header?: PageHeaderSettings;
+  footer?: PageFooterSettings;
 }
 
 export interface PageTriggerAction {
