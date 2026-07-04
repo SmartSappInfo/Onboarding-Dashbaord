@@ -52,12 +52,16 @@ export function resolveTheme(input: ResolveThemeInput = {}): ResolvedTheme {
   const font = overrides?.typography?.primaryFont;
   const d = DEFAULT_THEME;
 
+  const isDark = overrides?.themeMode === 'dark';
+  const defaultBg = isDark ? '#09090b' : d.colors.background;
+  const defaultText = isDark ? '#f8fafc' : d.colors.text;
+
   return {
     colors: {
       primary: pick(overrides?.primary, theme?.colors.primary, branding?.brandPrimaryColor) ?? d.colors.primary,
       secondary: pick(overrides?.secondary, theme?.colors.secondary, branding?.brandSecondaryColor) ?? d.colors.secondary,
-      background: pick(overrides?.background, theme?.colors.background) ?? d.colors.background,
-      text: pick(theme?.colors.text) ?? d.colors.text,
+      background: pick(overrides?.background, theme?.colors.background) ?? defaultBg,
+      text: pick(theme?.colors.text) ?? defaultText,
       accent: pick(overrides?.accent, theme?.colors.accent) ?? d.colors.accent,
     },
     typography: {

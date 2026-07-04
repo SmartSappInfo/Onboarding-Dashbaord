@@ -3582,6 +3582,7 @@ export interface CampaignPage {
       typography?: {
         primaryFont?: string;
       };
+      themeMode?: 'light' | 'dark';
     };
   };
   stats?: {
