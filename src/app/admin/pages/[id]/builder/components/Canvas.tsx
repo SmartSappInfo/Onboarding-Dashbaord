@@ -50,7 +50,19 @@ import {
     Instagram,
     Youtube,
     MapPin,
-    Mail
+    Mail,
+    Bold,
+    Italic,
+    Underline,
+    Strikethrough,
+    List,
+    ListOrdered,
+    Quote,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    Link2,
+    RemoveFormatting
 } from 'lucide-react';
 import {
     Select,
@@ -586,6 +598,20 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');
 
+    const [toolbarCoords, setToolbarCoords] = useState<{ top: number; left: number } | null>(null);
+
+    const activeBlockType = React.useMemo(() => {
+        if (!selectedBlockId) return null;
+        for (const sec of version.structureJson.sections) {
+            for (const b of sec.blocks) {
+                if (b.id === selectedBlockId) {
+                    return b.type;
+                }
+            }
+        }
+        return null;
+    }, [selectedBlockId, version.structureJson.sections]);
+
     const breadcrumbPath = React.useMemo(() => {
         if (!selectedBlockId) return null;
         for (const sec of version.structureJson.sections) {
@@ -607,6 +633,53 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const workspaceRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
     const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        if (activeBlockType !== 'text' || !selectedBlockId) {
+            setToolbarCoords(null);
+            return;
+        }
+
+        const updatePosition = () => {
+            const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            const workspace = workspaceRef.current;
+            if (!activeEl || !workspace) {
+                setToolbarCoords(null);
+                return;
+            }
+
+            const rect = activeEl.getBoundingClientRect();
+            const workspaceRect = workspace.getBoundingClientRect();
+            
+            const toolbarW = 460;
+            const toolbarH = 42;
+            
+            const top = rect.top - workspaceRect.top - toolbarH - 12; // 12px gap above
+            const left = rect.left - workspaceRect.left + (rect.width - toolbarW) / 2;
+
+            setToolbarCoords({ 
+                top: Math.max(10, top), // Keep inside workspace
+                left: Math.max(10, Math.min(workspaceRect.width - toolbarW - 10, left)) 
+            });
+        };
+
+        updatePosition();
+
+        window.addEventListener('resize', updatePosition);
+        document.addEventListener('selectionchange', updatePosition);
+        
+        const observer = new MutationObserver(updatePosition);
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        if (activeEl) {
+            observer.observe(activeEl, { characterData: true, childList: true, subtree: true });
+        }
+
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            document.removeEventListener('selectionchange', updatePosition);
+            observer.disconnect();
+        };
+    }, [selectedBlockId, activeBlockType, zoom, panOffset]);
 
     // Bounded canvas offset constraint logic
     const clampPanOffset = useCallback((x: number, y: number, currentZoom: number) => {
@@ -993,6 +1066,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             x: transform.x / zoom,
             y: transform.y / zoom,
         };
+    };
+
+    const executeCommand = (command: string, value: string = '') => {
+        document.execCommand(command, false, value);
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        if (activeEl) {
+            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        }
     };
 
     const sectionIds = version.structureJson.sections.map(s => s.id);
@@ -1745,6 +1826,188 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             </button>
                         </React.Fragment>
                     ))}
+                </div>
+            )}
+
+            {/* Inline Floating WYSIWYG Editor Toolbar for Rich Text block */}
+            {toolbarCoords && activeBlockType === 'text' && !isPreview && (
+                <div
+                    className="absolute backdrop-blur bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50 text-slate-200"
+                    style={{
+                        top: `${toolbarCoords.top}px`,
+                        left: `${toolbarCoords.left}px`,
+                    }}
+                >
+                    {/* Formatting Actions */}
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('bold');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Bold"
+                    >
+                        <Bold className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('italic');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Italic"
+                    >
+                        <Italic className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('underline');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Underline"
+                    >
+                        <Underline className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('strikeThrough');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Strikethrough"
+                    >
+                        <Strikethrough className="h-3.5 w-3.5" />
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+
+                    {/* Headings */}
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('formatBlock', '<h1>');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        title="Heading 1"
+                    >
+                        H1
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('formatBlock', '<h2>');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        title="Heading 2"
+                    >
+                        H2
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('formatBlock', '<h3>');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        title="Heading 3"
+                    >
+                        H3
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+
+                    {/* Lists & Quote */}
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('insertUnorderedList');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Bulleted List"
+                    >
+                        <List className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('insertOrderedList');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Numbered List"
+                    >
+                        <ListOrdered className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('formatBlock', '<blockquote>');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Blockquote"
+                    >
+                        <Quote className="h-3.5 w-3.5" />
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+
+                    {/* Alignment */}
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('justifyLeft');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Align Left"
+                    >
+                        <AlignLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('justifyCenter');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Align Center"
+                    >
+                        <AlignCenter className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('justifyRight');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Align Right"
+                    >
+                        <AlignRight className="h-3.5 w-3.5" />
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+
+                    {/* Link & Clear Format */}
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            const url = prompt('Enter the hyperlink URL (e.g. https://google.com):');
+                            if (url !== null) {
+                                executeCommand('createLink', url);
+                            }
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Insert Link"
+                    >
+                        <Link2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            executeCommand('removeFormat');
+                        }}
+                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Clear Formatting"
+                    >
+                        <RemoveFormatting className="h-3.5 w-3.5" />
+                    </button>
                 </div>
             )}
         </main>
