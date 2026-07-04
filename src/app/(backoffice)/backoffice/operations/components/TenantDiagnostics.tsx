@@ -15,7 +15,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { runTenantDiagnostics } from '@/lib/backoffice/backoffice-job-actions';
+import { runTenantDiagnostics, type TenantDiagnosticsData, type DiagnosticIssue } from '@/lib/backoffice/backoffice-job-actions';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useAuth } from '@/firebase';
 
@@ -27,7 +28,7 @@ export default function TenantDiagnostics() {
   const [scopeId, setScopeId] = React.useState('');
   
   const [isRunning, startRunTransition] = React.useTransition();
-  const [result, setResult] = React.useState<any>(null);
+  const [result, setResult] = React.useState<TenantDiagnosticsData | null>(null);
 
   const canExecute = can('operations', 'execute');
 
@@ -52,12 +53,12 @@ export default function TenantDiagnostics() {
          const res = await runTenantDiagnostics(scopeType, scopeId.trim(), token);
 
          if (res.success) {
-           setResult(res.data);
+           setResult(res.data ?? null);
          } else {
            alert(`Failed to execute engine: ${res.error}`);
          }
-       } catch (err: any) {
-         alert(`Auth error: ${err.message}`);
+       } catch (err: unknown) {
+         alert(`Auth error: ${getErrorMessage(err)}`);
        }
      });
   };
@@ -208,7 +209,7 @@ export default function TenantDiagnostics() {
                          </div>
                       </div>
                    ) : (
-                      result.issues.map((issue: any, i: number) => (
+                      result.issues.map((issue: DiagnosticIssue, i: number) => (
                          <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${issue.severity === 'error' ? 'bg-red-500/10 border-red-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}>
                             {issue.severity === 'error' ? <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" /> : <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />}
                             <div className="flex-1">

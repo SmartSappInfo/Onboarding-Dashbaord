@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/select';
 import { listAllFeatures, toggleFeatureKillSwitch } from '@/lib/backoffice/backoffice-feature-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import type { PlatformFeature } from '@/lib/backoffice/backoffice-types';
 
 const STABILITY_COLORS: Record<string, string> = {
@@ -50,23 +52,33 @@ const STABILITY_COLORS: Record<string, string> = {
 export default function FeatureListClient() {
   const { can, profile } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [features, setFeatures] = React.useState<PlatformFeature[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState('all');
 
+  const loadFeatures = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const result = await listAllFeatures(idToken);
+      if (result.success && result.data) {
+        setFeatures(result.data);
+      } else if (result.error) {
+        toast({ variant: 'destructive', title: 'Failed to load features', description: result.error });
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
   React.useEffect(() => {
     loadFeatures();
-  }, []);
-
-  async function loadFeatures() {
-    setIsLoading(true);
-    const result = await listAllFeatures();
-    if (result.success && result.data) {
-      setFeatures(result.data);
-    }
-    setIsLoading(false);
-  }
+  }, [loadFeatures]);
 
   // Filter features
   const filteredFeatures = React.useMemo(() => {
@@ -91,19 +103,23 @@ export default function FeatureListClient() {
   async function handleToggleKillSwitch(feature: PlatformFeature) {
     if (!profile) return;
     const newState = !feature.killSwitch;
-    
+
     if (newState && !(await confirm({ title: 'Kill this feature?', description: 'This overrides all rollouts and turns the feature off for everyone.', confirmText: 'Kill Feature', variant: 'destructive' }))) {
       return;
     }
-    
-    const result = await toggleFeatureKillSwitch(feature.id, newState, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
 
-    if (result.success) loadFeatures();
+    try {
+      const idToken = await getToken();
+      const result = await toggleFeatureKillSwitch(feature.id, newState, idToken);
+
+      if (result.success) {
+        loadFeatures();
+      } else {
+        toast({ variant: 'destructive', title: 'Kill switch not changed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    }
   }
 
   return (

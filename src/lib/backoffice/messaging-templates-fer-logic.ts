@@ -1,4 +1,7 @@
-'use server';
+// NOTE: intentionally NOT 'use server' — this is an internal job processor
+// invoked only from already-authorized entrypoints in backoffice-job-actions.
+// Marking it 'use server' would expose (jobId, actor) as a public endpoint
+// with a spoofable actor (server-auth-actions).
 
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';

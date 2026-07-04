@@ -40,7 +40,10 @@ import {
 } from '@/lib/backoffice/backoffice-job-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useAuth } from '@/firebase';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import type { PlatformJob, PlatformJobType } from '@/lib/backoffice/backoffice-types';
+
+type JobScopeType = 'platform' | 'organization' | 'workspace';
 
 // ─────────────────────────────────────────────────
 // Status badge color map
@@ -97,10 +100,10 @@ export default function JobRunner() {
   const [isTriggering, startTriggerTransition] = React.useTransition();
 
   // Create Job Form State
-  const [newType, setNewType] = React.useState<PlatformJobType>('reseed_templates');
+  const [newType, setNewType] = React.useState<PlatformJobType>('migrate_messaging_templates_fer');
   const [newLabel, setNewLabel] = React.useState('');
   const [newDryRun, setNewDryRun] = React.useState(true);
-  const [newScope, setNewScope] = React.useState<'platform'|'organization'|'workspace'>('platform');
+  const [newScope, setNewScope] = React.useState<JobScopeType>('platform');
   const [newScopeId, setNewScopeId] = React.useState('');
 
   // Slide-over drawer for log inspection
@@ -117,12 +120,18 @@ export default function JobRunner() {
 
   const loadJobs = React.useCallback(async () => {
     setIsLoading(true);
-    const res = await listAllJobs();
-    if (res.success && res.data) {
-      setJobs(res.data);
+    try {
+      const token = await getIdToken();
+      const res = await listAllJobs(token);
+      if (res.success && res.data) {
+        setJobs(res.data);
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, []);
+  }, [getIdToken]);
 
   React.useEffect(() => {
     loadJobs();
@@ -151,8 +160,8 @@ export default function JobRunner() {
          } else {
            alert(res.error);
          }
-       } catch (err: any) {
-         alert(`Auth failed: ${err.message}`);
+       } catch (err: unknown) {
+         alert(`Auth failed: ${getErrorMessage(err)}`);
        }
      });
   };
@@ -165,8 +174,8 @@ export default function JobRunner() {
          const token = await getIdToken();
          const res = await cancelJob(jobId, token);
          if (res.success) await loadJobs();
-       } catch (err: any) {
-         alert(`Failed: ${err.message}`);
+       } catch (err: unknown) {
+         alert(`Failed: ${getErrorMessage(err)}`);
        }
      });
   };
@@ -181,8 +190,8 @@ export default function JobRunner() {
         } else {
           alert(res.error);
         }
-      } catch (err: any) {
-        alert(`Failed: ${err.message}`);
+      } catch (err: unknown) {
+        alert(`Failed: ${getErrorMessage(err)}`);
       }
     });
   };
@@ -222,7 +231,7 @@ export default function JobRunner() {
 
              <div className="pt-4 border-t border-border">
                 <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-2">Scope Target</label>
-                <Select value={newScope} onValueChange={(v: any) => { setNewScope(v); setNewScopeId(''); }}>
+                <Select value={newScope} onValueChange={(v: JobScopeType) => { setNewScope(v); setNewScopeId(''); }}>
                    <SelectTrigger className="h-9 bg-background border-border text-sm">
                       <SelectValue />
                    </SelectTrigger>

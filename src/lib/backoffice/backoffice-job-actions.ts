@@ -1,73 +1,39 @@
 'use server';
 
-import { adminDb, adminAuth } from '../firebase-admin';
+import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
 import { processRbacMigration } from './rbac-migration-logic';
 import { processMessagingTemplatesFer } from './messaging-templates-fer-logic';
 import { processMeetingsFer } from './meetings-fer-logic';
-import type { AuditActor, PlatformJob, PlatformJobType, BackofficeRole } from './backoffice-types';
+import type { AuditActor, PlatformJob, PlatformJobType } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Job Actions
 // Operations for managing background platform jobs, migrations and diagnostics.
 //
-// Security: All mutating actions now verify the caller's Firebase ID token
-// server-side (`server-auth-actions` pattern) and construct the AuditActor
-// from trusted Firestore data — never from client-supplied payloads.
+// Security: every exported action verifies the caller's Firebase ID token
+// AND enforces RBAC via `authorizeBackoffice` (server-auth-actions).
+// The audit actor is derived from trusted Firestore data — never from
+// client-supplied payloads. Internal processors (executeJob and friends)
+// are NOT exported: 'use server' exports are public endpoints.
 // ─────────────────────────────────────────────────
 
-/**
- * Resolves and verifies an authenticated backoffice actor from a Firebase ID token.
- * This is the single source of truth for identity in all mutating server actions.
- *
- * @throws Error if the token is invalid or user lacks backoffice access.
- */
-async function resolveActorFromToken(idToken: string): Promise<AuditActor> {
-  // 1. Verify the token cryptographically
-  const decoded = await adminAuth.verifyIdToken(idToken);
-  const uid = decoded.uid;
-
-  // 2. Fetch the trusted user profile from Firestore
-  const userSnap = await adminDb.collection('users').doc(uid).get();
-  if (!userSnap.exists) {
-    throw new Error('Authenticated user profile not found in database.');
-  }
-
-  const profile = userSnap.data()!;
-  const email = profile.email || decoded.email || '';
-  const name = profile.name || profile.displayName || email;
-
-  // 3. Determine backoffice role from trusted profile data
-  let role: BackofficeRole = 'readonly_auditor';
-
-  if (profile.permissions?.includes('system_admin')) {
-    role = 'super_admin';
-  } else if (profile.backofficeRoles && profile.backofficeRoles.length > 0) {
-    role = profile.backofficeRoles[0];
-  } else {
-    throw new Error('User does not have backoffice access.');
-  }
-
-  return {
-    userId: uid,
-    name,
-    email,
-    role,
-  };
-}
-
 // ─────────────────────────────────────────────────
-// Read Operations (no auth token needed — read-only)
+// Read Operations (require operations:view)
 // ─────────────────────────────────────────────────
 
-export async function listAllJobs(): Promise<{
+export async function listAllJobs(idToken: string): Promise<{
   success: boolean;
   data?: PlatformJob[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'operations', 'view');
+
     const snap = await adminDb.collection('platform_jobs').orderBy('createdAt', 'desc').limit(100).get();
     const jobs = snap.docs.map((doc) => ({
       id: doc.id,
@@ -75,14 +41,14 @@ export async function listAllJobs(): Promise<{
     } as PlatformJob));
 
     return { success: true, data: jobs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_JOBS] listAllJobs failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 // ─────────────────────────────────────────────────
-// Mutating Operations (require idToken verification)
+// Mutating Operations (require operations:execute)
 // ─────────────────────────────────────────────────
 
 export async function createJob(
@@ -96,7 +62,7 @@ export async function createJob(
   idToken: string
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   try {
-    const actor = await resolveActorFromToken(idToken);
+    const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
     if (payload.scope.type !== 'platform' && !payload.scope.id) {
       return { success: false, error: 'Scope ID is required when not targeting the entire platform.' };
@@ -125,27 +91,18 @@ export async function createJob(
 
     await logBackofficeAction(actor, 'job.create', 'job', docRef.id, {
       before: null,
-      after: createAuditSnapshot(newJob as any),
+      after: createAuditSnapshot(newJob as unknown as Record<string, unknown>),
       metadata: { type: payload.type, isDryRun: payload.isDryRun }
     });
 
-    // Asynchronously execute the job in the background (server-after-nonblocking)
-    try {
-      const { unstable_after } = require('next/server');
-      unstable_after(async () => {
-        await executeJob(docRef.id, actor);
-      });
-    } catch (e) {
-      // Fallback if unstable_after is not available
-      executeJob(docRef.id, actor).catch((err) => {
-        console.error('[BACKOFFICE_JOBS] Background job execution failed:', err);
-      });
-    }
+    // Asynchronously execute the job in the background (server-after-nonblocking).
+    // The actor is captured here, post-authorization — never re-derived in background.
+    scheduleJobExecution(docRef.id, actor);
 
     return { success: true, data: docRef.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_JOBS] createJob failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -154,11 +111,11 @@ export async function cancelJob(
   idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const actor = await resolveActorFromToken(idToken);
+    const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
     const docRef = adminDb.collection('platform_jobs').doc(jobId);
     const snap = await docRef.get();
-    
+
     if (!snap.exists) {
       return { success: false, error: 'Job not found' };
     }
@@ -187,9 +144,9 @@ export async function cancelJob(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_JOBS] cancelJob failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -202,7 +159,7 @@ export async function triggerJobExecution(
   idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const actor = await resolveActorFromToken(idToken);
+    const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
     const jobSnap = await adminDb.collection('platform_jobs').doc(jobId).get();
     if (!jobSnap.exists) {
@@ -231,22 +188,12 @@ export async function triggerJobExecution(
       metadata: { previousStatus: job.status }
     });
 
-    // Fire execution
-    try {
-      const { unstable_after } = require('next/server');
-      unstable_after(async () => {
-        await executeJob(jobId, actor);
-      });
-    } catch (e) {
-      executeJob(jobId, actor).catch((err) => {
-        console.error('[BACKOFFICE_JOBS] Manual job execution failed:', err);
-      });
-    }
+    scheduleJobExecution(jobId, actor);
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_JOBS] triggerJobExecution failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -254,24 +201,44 @@ export async function triggerJobExecution(
 // Diagnostics Actions
 // ─────────────────────────────────────────────────
 
+export interface DiagnosticIssue {
+  severity: 'warning' | 'error';
+  component: string;
+  message: string;
+  resolution: string;
+}
+
+export interface DiagnosticStats {
+  configChecks: number;
+  schemaValidations: number;
+  passed: boolean;
+}
+
+export interface TenantDiagnosticsData {
+  issues: DiagnosticIssue[];
+  stats: DiagnosticStats;
+  timestamp: string;
+}
+
 export async function runTenantDiagnostics(
   scopeType: 'organization' | 'workspace',
   scopeId: string,
   idToken: string
-): Promise<{ 
-   success: boolean; 
-   data?: { issues: any[], stats: any, timestamp: string }; 
-   error?: string 
+): Promise<{
+   success: boolean;
+   data?: TenantDiagnosticsData;
+   error?: string
 }> {
   try {
-     const actor = await resolveActorFromToken(idToken);
+     // Diagnostics are read-only inspection tooling → view-level access.
+     const actor = await authorizeBackoffice(idToken, 'operations', 'view');
 
-     const issues = [];
-     const stats = { configChecks: 34, schemaValidations: 12, passed: true };
+     const issues: DiagnosticIssue[] = [];
+     const stats: DiagnosticStats = { configChecks: 34, schemaValidations: 12, passed: true };
 
      if (scopeId.includes('1')) {
-        issues.push({ 
-           severity: 'warning', 
+        issues.push({
+           severity: 'warning',
            component: 'Schema Validation',
            message: 'Detected orphaned custom fields not mapped to standard sections.',
            resolution: 'Run a field cleanup job.'
@@ -280,8 +247,8 @@ export async function runTenantDiagnostics(
      }
 
      if (scopeId.includes('2')) {
-        issues.push({ 
-           severity: 'error', 
+        issues.push({
+           severity: 'error',
            component: 'Feature Resolution',
            message: 'Missing essential capability matrix in organization root.',
            resolution: 'Re-seed base capabilities.'
@@ -291,29 +258,50 @@ export async function runTenantDiagnostics(
 
      await logBackofficeAction(actor, 'diagnostics.run', scopeType, scopeId, { metadata: { passed: stats.passed }});
 
-     return { 
-        success: true, 
-        data: { issues, stats, timestamp: new Date().toISOString() } 
+     return {
+        success: true,
+        data: { issues, stats, timestamp: new Date().toISOString() }
      };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_DIAGNOSTICS] runTenantDiagnostics failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 // ─────────────────────────────────────────────────
-// Job Execution Engine
+// Job Execution Engine (internal — NOT exported)
 // ─────────────────────────────────────────────────
+
+/**
+ * Schedules background execution of a job with a pre-authorized actor.
+ * Prefers Next's after() (non-blocking, survives the response); falls back
+ * to a detached promise when unavailable (e.g. in tests).
+ */
+function scheduleJobExecution(jobId: string, actor: AuditActor): void {
+  try {
+    const { unstable_after } = require('next/server') as { unstable_after: (fn: () => Promise<void>) => void };
+    unstable_after(async () => {
+      await executeJob(jobId, actor);
+    });
+  } catch {
+    executeJob(jobId, actor).catch((err: unknown) => {
+      console.error('[BACKOFFICE_JOBS] Background job execution failed:', err);
+    });
+  }
+}
 
 /**
  * Executes a pending platform job.
  * Dispatches to specific handlers based on job type.
  *
+ * Internal only: callers must already hold operations:execute — the actor
+ * is passed in from an authorized entrypoint (createJob / triggerJobExecution).
+ *
  * CRITICAL: The catch block ALWAYS updates the Firestore document
  * to `status: 'failed'` with a full error trace. This prevents
  * jobs from being permanently stuck in 'pending' or 'running'.
  */
-export async function executeJob(
+async function executeJob(
   jobId: string,
   actor: AuditActor
 ): Promise<{ success: boolean; error?: string }> {
@@ -333,13 +321,13 @@ export async function executeJob(
     switch (job.type) {
       case 'migrate_hierarchical_rbac':
         return await processRbacMigration(jobId, actor);
-      
+
       case 'migrate_legacy_saas_fields':
         return await processSaasFieldMigration(jobId, actor);
 
       case 'migrate_messaging_templates_fer':
         return await processMessagingTemplatesFer(jobId, actor);
-      
+
       case 'migrate_meetings_fer':
         return await processMeetingsFer(jobId, actor);
 
@@ -351,10 +339,11 @@ export async function executeJob(
       default:
         throw new Error(`Execution logic for job type "${job.type}" is not yet implemented.`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // CRITICAL: Always mark the job as failed in Firestore so it never
     // gets permanently stuck in 'pending' or 'running'.
     console.error('[BACKOFFICE_JOBS] executeJob failed:', error);
+    const message = getErrorMessage(error);
 
     try {
       await jobRef.update({
@@ -363,104 +352,33 @@ export async function executeJob(
         'logs': FieldValue.arrayUnion({
           timestamp: new Date().toISOString(),
           level: 'error',
-          message: `Execution failed: ${error.message || 'Unknown error'}`
+          message: `Execution failed: ${message || 'Unknown error'}`
         })
       });
     } catch (updateErr) {
       console.error('[BACKOFFICE_JOBS] Failed to update job status to failed:', updateErr);
     }
 
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   }
 }
 
 // ─────────────────────────────────────────────────
-// Generic Job Processor
-// Used for job types that don't have specialized logic yet.
-// Runs through the standard lifecycle: pending → running → completed.
-// ─────────────────────────────────────────────────
-
-async function processGenericJob(
-  jobId: string,
-  actor: AuditActor,
-  jobName: string,
-  completionMessage: string
-): Promise<{ success: boolean; error?: string }> {
-  const jobRef = adminDb.collection('platform_jobs').doc(jobId);
-
-  try {
-    const jobSnap = await jobRef.get();
-    if (!jobSnap.exists) throw new Error('Job document missing.');
-
-    const jobData = jobSnap.data() as PlatformJob;
-    const isDryRun = jobData.isDryRun;
-
-    // Transition to running
-    await jobRef.update({
-      status: 'running',
-      startedAt: new Date().toISOString(),
-      'logs': FieldValue.arrayUnion({
-        timestamp: new Date().toISOString(),
-        level: 'info',
-        message: `${jobName} started. Dry Run: ${isDryRun}. Initiated by ${actor.name}.`
-      })
-    });
-
-    // Simulate processing time for realistic feedback
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const resultMessage = isDryRun
-      ? `[DRY RUN] ${completionMessage} No mutations were applied.`
-      : completionMessage;
-
-    // Mark completed
-    await jobRef.update({
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      'progress.total': 1,
-      'progress.processed': 1,
-      'progress.errors': 0,
-      'logs': FieldValue.arrayUnion({
-        timestamp: new Date().toISOString(),
-        level: 'info',
-        message: resultMessage
-      })
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error(`[BACKOFFICE_JOBS] ${jobName} failed:`, error);
-
-    await jobRef.update({
-      status: 'failed',
-      completedAt: new Date().toISOString(),
-      'logs': FieldValue.arrayUnion({
-        timestamp: new Date().toISOString(),
-        level: 'error',
-        message: `${jobName} failed: ${error.message}`
-      })
-    });
-
-    return { success: false, error: error.message };
-  }
-}
-
-// ─────────────────────────────────────────────────
-// Specialized Migration: SaaS Field Re-parenting
+// Specialized Migration: SaaS Field Re-parenting (internal)
 // ─────────────────────────────────────────────────
 
 /**
  * Migration Protocol: Re-parents legacy SaaS fields.
- * Safely migrates fields tied to the old `company_metrics` group 
+ * Safely migrates fields tied to the old `company_metrics` group
  * into the modern `saas_operations` group.
  */
-export async function processSaasFieldMigration(
+async function processSaasFieldMigration(
   jobId: string,
   actor: AuditActor
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const jobRef = adminDb.collection('platform_jobs').doc(jobId);
-    
+
     // Set to running
     await jobRef.update({
       status: 'running',
@@ -473,10 +391,10 @@ export async function processSaasFieldMigration(
 
     const fieldsRef = adminDb.collection('app_fields');
     const snapshot = await fieldsRef.where('groupId', '==', 'company_metrics').get();
-    
+
     const total = snapshot.size;
     let processed = 0;
-    let errors = 0;
+    const errors = 0;
 
     // Use batches for atomic updates
     const batchArray: FirebaseFirestore.WriteBatch[] = [];
@@ -520,9 +438,10 @@ export async function processSaasFieldMigration(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[MIGRATION] processSaasFieldMigration failed:', error);
-    
+    const message = getErrorMessage(error);
+
     // Fail job
     await adminDb.collection('platform_jobs').doc(jobId).update({
         status: 'failed',
@@ -530,11 +449,11 @@ export async function processSaasFieldMigration(
         'logs': FieldValue.arrayUnion({
            timestamp: new Date().toISOString(),
            level: 'error',
-           message: `Migration failed: ${error.message}`
+           message: `Migration failed: ${message}`
         })
     });
 
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   }
 }
 
@@ -552,14 +471,14 @@ export interface ClearAutomationResult {
 
 /**
  * Batch-deletes all documents in `automation_runs` and `automation_jobs`.
- * Requires a verified backoffice idToken. Uses chunks of 499 to stay within
+ * Requires operations:execute. Uses chunks of 499 to stay within
  * Firestore's 500-operation batch limit.
  */
 export async function clearAutomationData(
   idToken: string
 ): Promise<ClearAutomationResult> {
   try {
-    const actor = await resolveActorFromToken(idToken);
+    const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
     const BATCH_CAP = 499;
 
@@ -591,7 +510,7 @@ export async function clearAutomationData(
 
     await logBackofficeAction(
       actor,
-      'automation.clear' as any,
+      'automation.clear',
       'platform',
       'automation_data',
       {
@@ -607,8 +526,8 @@ export async function clearAutomationData(
       success: true,
       deleted: { automation_runs: runsDeleted, automation_jobs: jobsDeleted, total },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE] clearAutomationData failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

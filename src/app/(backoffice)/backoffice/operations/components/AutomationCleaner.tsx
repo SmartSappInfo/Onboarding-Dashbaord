@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { clearAutomationData, type ClearAutomationResult } from '@/lib/backoffice/backoffice-job-actions';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useAuth } from '@/firebase';
 
@@ -88,8 +89,8 @@ export default function AutomationCleaner() {
         setLastResult(result);
         setHistory((prev) => [{ ts: new Date().toISOString(), result }, ...prev].slice(0, 10));
         setPhase(result.success ? 'done' : 'error');
-      } catch (err: any) {
-        setLastResult({ success: false, error: err.message });
+      } catch (err: unknown) {
+        setLastResult({ success: false, error: getErrorMessage(err) });
         setPhase('error');
       }
     });

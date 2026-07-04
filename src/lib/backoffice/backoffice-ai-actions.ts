@@ -3,10 +3,15 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
 import { GlobalAiKeysSchema, type GlobalAiKeys, GlobalAiConfigSchema, type GlobalAiConfig } from '../validation/ai-config-schema';
 
-export async function getGlobalAiKeys(): Promise<{
+// Security: every action verifies the caller's ID token and enforces
+// RBAC via `authorizeBackoffice` (server-auth-actions). Actor is
+// derived server-side — never from client payloads.
+
+export async function getGlobalAiKeys(idToken: string): Promise<{
   success: boolean;
   data?: {
     geminiApiKeyExists: boolean;
@@ -16,6 +21,8 @@ export async function getGlobalAiKeys(): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'settings', 'view');
+
     const docRef = adminDb.collection('system_settings').doc('ai_keys');
     const snap = await docRef.get();
     if (!snap.exists) {
@@ -37,20 +44,21 @@ export async function getGlobalAiKeys(): Promise<{
         openRouterApiKeyExists: !!data?.openRouterApiKey,
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_AI] getGlobalAiKeys failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveGlobalAiKeys(
   payload: GlobalAiKeys,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Validate payload
+    // Validate payload, then authenticate + authorize (validate → auth → act)
     const parsed = GlobalAiKeysSchema.parse(payload);
-    
+    const actor = await authorizeBackoffice(idToken, 'settings', 'edit');
+
     const docRef = adminDb.collection('system_settings').doc('ai_keys');
     const snap = await docRef.get();
     let before = null;
@@ -108,13 +116,13 @@ export async function saveGlobalAiKeys(
     );
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_AI] saveGlobalAiKeys failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
-export async function getGlobalAiConfig(): Promise<{
+export async function getGlobalAiConfig(idToken: string): Promise<{
   success: boolean;
   data?: {
     defaultProvider: 'googleai' | 'anthropic' | 'openrouter';
@@ -123,6 +131,8 @@ export async function getGlobalAiConfig(): Promise<{
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'settings', 'view');
+
     const docRef = adminDb.collection('system_settings').doc('ai_config');
     const snap = await docRef.get();
     if (!snap.exists) {
@@ -142,18 +152,19 @@ export async function getGlobalAiConfig(): Promise<{
         defaultModelId: data?.defaultModelId || 'gemini-3-flash-preview',
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_AI] getGlobalAiConfig failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function saveGlobalAiConfig(
   payload: GlobalAiConfig,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const parsed = GlobalAiConfigSchema.parse(payload);
+    const actor = await authorizeBackoffice(idToken, 'settings', 'edit');
     const docRef = adminDb.collection('system_settings').doc('ai_config');
     const snap = await docRef.get();
     let before = null;
@@ -187,8 +198,8 @@ export async function saveGlobalAiConfig(
     );
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_AI] saveGlobalAiConfig failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

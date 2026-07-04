@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getFeatureDetail, updateFeatureRolloutRules, toggleFeatureKillSwitch } from '@/lib/backoffice/backoffice-feature-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { useToast } from '@/hooks/use-toast';
 import type { PlatformFeature, RolloutRule } from '@/lib/backoffice/backoffice-types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,22 +36,30 @@ const STABILITY_COLORS: Record<string, string> = {
 export default function FeatureDetailClient({ featureId }: { featureId: string }) {
   const { profile, can } = useBackoffice();
   const confirm = useConfirm();
+  const getToken = useBackofficeToken();
+  const { toast } = useToast();
   const [feature, setFeature] = React.useState<PlatformFeature | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  
+
   // Local state for editing rollout rules
   const [rules, setRules] = React.useState<RolloutRule[]>([]);
 
   const loadFeature = React.useCallback(async () => {
     setIsLoading(true);
-    const result = await getFeatureDetail(featureId);
-    if (result.success && result.data) {
-      setFeature(result.data);
-      setRules(result.data.rolloutRules || []);
+    try {
+      const idToken = await getToken();
+      const result = await getFeatureDetail(featureId, idToken);
+      if (result.success && result.data) {
+        setFeature(result.data);
+        setRules(result.data.rolloutRules || []);
+      }
+    } catch {
+      // Auth not ready yet — the AuthorizationGate handles redirects.
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [featureId]);
+  }, [featureId, getToken]);
 
   React.useEffect(() => {
     loadFeature();
@@ -73,42 +83,46 @@ export default function FeatureDetailClient({ featureId }: { featureId: string }
   const handleSaveRules = async () => {
     if (!profile || !feature) return;
     setIsSaving(true);
-    const result = await updateFeatureRolloutRules(feature.id, rules, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-    
-    if (result.success) {
-      alert('Rollout rules updated safely.');
-      loadFeature();
-    } else {
-      alert(`Failed to save: ${result.error}`);
+    try {
+      const idToken = await getToken();
+      const result = await updateFeatureRolloutRules(feature.id, rules, idToken);
+
+      if (result.success) {
+        toast({ title: 'Rollout rules updated', description: 'The new rollout configuration is live.' });
+        loadFeature();
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to save rollout rules', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const handleKillSwitch = async () => {
     if (!profile || !feature) return;
     const newState = !feature.killSwitch;
-    
+
     if (newState && !(await confirm({ title: 'Enable kill switch?', description: 'This immediately turns off the feature for everyone, overriding all default states and rollout rules.', confirmText: 'Enable Kill Switch', variant: 'destructive' }))) {
       return;
     }
-    
+
     setIsSaving(true);
-    const result = await toggleFeatureKillSwitch(feature.id, newState, {
-      userId: profile.id,
-      name: profile.name,
-      email: profile.email,
-      role: 'super_admin',
-    });
-    
-    if (result.success) {
-      loadFeature();
+    try {
+      const idToken = await getToken();
+      const result = await toggleFeatureKillSwitch(feature.id, newState, idToken);
+
+      if (result.success) {
+        loadFeature();
+      } else {
+        toast({ variant: 'destructive', title: 'Kill switch not changed', description: result.error ?? 'You may not have permission for this action.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   if (isLoading) {

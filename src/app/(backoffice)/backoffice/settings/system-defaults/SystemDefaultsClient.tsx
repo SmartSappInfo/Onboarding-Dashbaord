@@ -3,6 +3,21 @@
 import * as React from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
+
+// Shape of the system_settings/templates document edited on this screen.
+interface MessageTemplate {
+    subject?: string;
+    emailHtml?: string;
+    smsBody?: string;
+}
+interface SystemTemplates {
+    invitation?: MessageTemplate;
+    passwordReset?: MessageTemplate;
+    bulkUploadCompleted?: MessageTemplate;
+    updatedAt?: string;
+}
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,19 +28,18 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { useBackoffice } from '../../context/BackofficeProvider';
 import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig } from '@/lib/backoffice/backoffice-ai-actions';
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
-    const { profile } = useBackoffice();
-    
+    const getToken = useBackofficeToken();
+
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isReseeding, setIsReseeding] = React.useState(false);
-    const [templates, setTemplates] = React.useState<any>(null);
+    const [templates, setTemplates] = React.useState<SystemTemplates>({});
     const [aiConfig, setAiConfig] = React.useState({
         defaultProvider: 'googleai',
         defaultModelId: 'gemini-3-flash-preview',
@@ -46,8 +60,10 @@ export default function SystemDefaultsClient() {
         const fetchTemplatesAndKeys = async () => {
             if (!firestore) return;
             try {
-                // Fetch templates
-                const configRes = await getGlobalAiConfig();
+                const idToken = await getToken();
+
+                // Fetch global AI config defaults
+                const configRes = await getGlobalAiConfig(idToken);
                 if (configRes.success && configRes.data) {
                     setAiConfig({
                         defaultProvider: configRes.data.defaultProvider,
@@ -56,11 +72,11 @@ export default function SystemDefaultsClient() {
                 }
                 const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
                 if (snap.exists()) {
-                    setTemplates(snap.data());
+                    setTemplates(snap.data() as SystemTemplates);
                 }
 
                 // Fetch AI keys existence
-                const keysRes = await getGlobalAiKeys();
+                const keysRes = await getGlobalAiKeys(idToken);
                 if (keysRes.success && keysRes.data) {
                     setAiKeysExist(keysRes.data);
                     setAiKeys({
@@ -69,42 +85,32 @@ export default function SystemDefaultsClient() {
                         openRouterApiKey: keysRes.data.openRouterApiKeyExists ? '••••••••' : '',
                     });
                 }
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Fetch Error', description: error.message });
+            } catch (error: unknown) {
+                toast({ variant: 'destructive', title: 'Fetch Error', description: getErrorMessage(error) });
             } finally {
                 setIsLoading(false);
             }
         };
         fetchTemplatesAndKeys();
-    }, [firestore, toast]);
+    }, [firestore, toast, getToken]);
 
     const handleSave = async () => {
         if (!firestore || !templates) return;
-        if (!profile?.id) {
-            toast({ variant: 'destructive', title: 'Authentication Error', description: 'Admin authentication required.' });
-            return;
-        }
         setIsSaving(true);
         try {
+            const idToken = await getToken();
+
             // Save templates
             await updateDoc(doc(firestore, 'system_settings', 'templates'), {
                 ...templates,
                 updatedAt: new Date().toISOString()
             });
 
-            // Save global AI keys
-            const actor = {
-                userId: profile.id,
-                name: profile.name || 'Unknown Admin',
-                email: profile.email || '',
-                role: profile.backofficeRoles?.[0] || 'super_admin'
-            };
-
-            // Save global AI config defaults
+            // Save global AI config defaults (server verifies token + settings:edit)
             const configRes = await saveGlobalAiConfig({
                 defaultProvider: aiConfig.defaultProvider as 'googleai' | 'anthropic' | 'openrouter',
                 defaultModelId: aiConfig.defaultModelId,
-            }, actor);
+            }, idToken);
 
             if (!configRes.success) {
                 throw new Error(configRes.error || 'Failed to save global AI defaults');
@@ -114,14 +120,14 @@ export default function SystemDefaultsClient() {
                 geminiApiKey: aiKeys.geminiApiKey,
                 claudeApiKey: aiKeys.claudeApiKey,
                 openRouterApiKey: aiKeys.openRouterApiKey,
-            }, actor);
+            }, idToken);
 
             if (!keysRes.success) {
                 throw new Error(keysRes.error || 'Failed to save global AI keys');
             }
 
             // Refresh key states
-            const freshKeysRes = await getGlobalAiKeys();
+            const freshKeysRes = await getGlobalAiKeys(idToken);
             if (freshKeysRes.success && freshKeysRes.data) {
                 setAiKeysExist(freshKeysRes.data);
                 setAiKeys({
@@ -132,8 +138,8 @@ export default function SystemDefaultsClient() {
             }
 
             toast({ title: 'Settings Saved', description: 'System-wide templates and AI API keys have been updated.' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(error) });
         } finally {
             setIsSaving(false);
         }
@@ -146,10 +152,10 @@ export default function SystemDefaultsClient() {
         try {
             await seedSystemTemplates(firestore);
             const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
-            if (snap.exists()) setTemplates(snap.data());
+            if (snap.exists()) setTemplates(snap.data() as SystemTemplates);
             toast({ title: 'System Reset', description: 'Factory templates have been restored.' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Reset Failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Reset Failed', description: getErrorMessage(error) });
         } finally {
             setIsReseeding(false);
         }

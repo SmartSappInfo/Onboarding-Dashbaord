@@ -3,19 +3,28 @@
 import { adminDb } from '../firebase-admin';
 import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
-import type { AuditActor, PlatformFeature, RolloutRule } from './backoffice-types';
+import { authorizeBackoffice } from './backoffice-auth';
+import { getErrorMessage } from './backoffice-errors';
+import type { PlatformFeature, RolloutRule } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Feature Server Actions
 // Operations for managing platform feature flags.
+//
+// Security: every action verifies the caller's Firebase ID
+// token and enforces RBAC via `authorizeBackoffice` before
+// touching data (server-auth-actions). The audit actor is
+// derived server-side — never from client payloads.
 // ─────────────────────────────────────────────────
 
-export async function listAllFeatures(): Promise<{
+export async function listAllFeatures(idToken: string): Promise<{
   success: boolean;
   data?: PlatformFeature[];
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'features', 'view');
+
     const snap = await adminDb.collection('platform_features').orderBy('key', 'asc').get();
     const features = snap.docs.map((doc) => ({
       id: doc.id,
@@ -23,39 +32,43 @@ export async function listAllFeatures(): Promise<{
     } as PlatformFeature));
 
     return { success: true, data: features };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FEATURE] listAllFeatures failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
-export async function getFeatureDetail(featureId: string): Promise<{
+export async function getFeatureDetail(featureId: string, idToken: string): Promise<{
   success: boolean;
   data?: PlatformFeature;
   error?: string;
 }> {
   try {
+    await authorizeBackoffice(idToken, 'features', 'view');
+
     const doc = await adminDb.collection('platform_features').doc(featureId).get();
     if (!doc.exists) {
       return { success: false, error: 'Feature not found' };
     }
 
     return { success: true, data: { id: doc.id, ...doc.data() } as PlatformFeature };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FEATURE] getFeatureDetail failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function toggleFeatureKillSwitch(
   featureId: string,
   killSwitch: boolean,
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'features', 'execute');
+
     const ref = adminDb.collection('platform_features').doc(featureId);
     const snap = await ref.get();
-    
+
     if (!snap.exists) {
       return { success: false, error: 'Feature not found' };
     }
@@ -78,21 +91,23 @@ export async function toggleFeatureKillSwitch(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FEATURE] toggleFeatureKillSwitch failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 export async function updateFeatureRolloutRules(
   featureId: string,
   rolloutRules: RolloutRule[],
-  actor: AuditActor
+  idToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const actor = await authorizeBackoffice(idToken, 'features', 'edit');
+
     const ref = adminDb.collection('platform_features').doc(featureId);
     const snap = await ref.get();
-    
+
     if (!snap.exists) {
       return { success: false, error: 'Feature not found' };
     }
@@ -114,8 +129,8 @@ export async function updateFeatureRolloutRules(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BACKOFFICE_FEATURE] updateFeatureRolloutRules failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
