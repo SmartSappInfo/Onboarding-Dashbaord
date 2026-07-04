@@ -72,11 +72,39 @@ export const footerSettingsSchema = z.object({
 
 export const pageStructureSchema = z.object({
   sections: z.array(pageSectionSchema).default([]),
-  header: headerSettingsSchema.optional(),
-  footer: footerSettingsSchema.optional(),
+  header: headerSettingsSchema.default({
+    preset: 'native',
+    overlap: false,
+    sticky: false,
+    floating: false,
+    showSearch: false,
+    showCta: false,
+    showPhone: false,
+    navItems: [],
+  }),
+  footer: footerSettingsSchema.default({
+    preset: 'org',
+    overrideOrg: false,
+  }),
 });
 
-const EMPTY_STRUCTURE: CampaignPageStructure = { sections: [] };
+const EMPTY_STRUCTURE: CampaignPageStructure = {
+  sections: [],
+  header: {
+    preset: 'native',
+    overlap: false,
+    sticky: false,
+    floating: false,
+    showSearch: false,
+    showCta: false,
+    showPhone: false,
+    navItems: [],
+  },
+  footer: {
+    preset: 'org',
+    overrideOrg: false,
+  },
+};
 
 /** Validate and normalize raw structure data; returns an empty structure on failure. */
 export function parseStructure(raw: unknown): CampaignPageStructure {
