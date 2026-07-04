@@ -671,6 +671,14 @@ Backoffice changes should always emit immutable admin activity logs, with before
 
 Build the backoffice shell and governance layer first.
 
+> **Status (2026-07-04):** Server-side authorization hardening complete. Every
+> backoffice server action verifies the caller's Firebase ID token and enforces
+> the RBAC matrix via `src/lib/backoffice/backoffice-auth.ts` (no client-supplied
+> actor is trusted). Audit-log reads are gated; `platform_*` collections have
+> Firestore deny/immutability rules + composite indexes; global AI keys are
+> encrypted at rest. See `docs/superpowers/plans/2026-07-04-backoffice-authz-hardening.md`.
+> Remaining Phase-7 governance (MFA enforcement, impersonation, approvals) is future work.
+
 Deliver:
 
 * `/backoffice` app shell
