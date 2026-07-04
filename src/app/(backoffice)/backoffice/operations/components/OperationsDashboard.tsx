@@ -12,7 +12,7 @@ import FixOrgAdminPermissionsFer from './FixOrgAdminPermissionsFer';
 
 export default function OperationsDashboard() {
   return (
-    <div className="flex flex-col h-full overflow-hidden p-6 bg-card">
+    <div className="flex flex-col h-full min-h-[42rem] overflow-hidden p-6 bg-card">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-5 shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
