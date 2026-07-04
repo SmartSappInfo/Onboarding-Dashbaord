@@ -36,6 +36,7 @@ import './choice-cards';
 import './app-download';
 import './step-section';
 import './countdown';
+import './title';
 /** No-op marker to make the side-effect import explicit at call sites. */
 export function registerAllBlocks(): void {
   // Registration happens via the imports above; this exists so callers can

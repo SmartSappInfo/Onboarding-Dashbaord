@@ -3440,7 +3440,7 @@ export interface WidgetDefinition {
 // Campaign Page Builder Types
 // ─────────────────────────────────────────────────
 
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr' | 'video_hero' | 'testimonial_grid' | 'choice_cards' | 'app_download' | 'step_section' | 'countdown';
+export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr' | 'video_hero' | 'testimonial_grid' | 'choice_cards' | 'app_download' | 'step_section' | 'countdown' | 'title';
 
 export interface PageBlock {
   id: string;

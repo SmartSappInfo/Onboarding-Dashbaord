@@ -46,6 +46,7 @@ export const DEFAULT_BLOCK_PROPS: Partial<Record<PageBlockType, Record<string, u
   app_download: { heading: 'Want to get Started?', overlayColor: '#0A1427', overlayOpacity: 0.8, parallaxEnabled: true, iosUrl: '', androidUrl: '' },
   step_section: { stepNumber: 1, heading: 'Step Title', videoUrl: '', mediaPosition: 'bottom' },
   countdown: { targetDate: '', heading: 'Starts in', showDays: true, showHours: true, showMinutes: true, showSeconds: true, theme: 'dark' },
+  title: { preset: 'section-heading', title: 'Section Heading', tagline: 'Tagline Text', subheading: 'Brief descriptive subtitle text goes here.', alignment: 'center', useGradient: false, gradientColor: '#2563eb' },
 };
 
 // ─── Factories ───────────────────────────────────────────────────────────────
