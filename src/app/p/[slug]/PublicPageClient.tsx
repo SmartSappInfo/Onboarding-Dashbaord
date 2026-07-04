@@ -662,7 +662,7 @@ export default function PublicPageClient({
 
             {/* ─── Global Modal Container (Trigger Engine) ─── */}
             <Dialog open={!!modalState} onOpenChange={(open) => !open && setModalState(null)}>
-                <DialogContent className="sm:max-w-lg rounded-3xl p-8 border-0 shadow-2xl font-body">
+                <DialogContent className="sm:max-w-lg rounded-3xl p-0 overflow-hidden border-0 shadow-2xl font-body">
                     <DialogTitle className="sr-only">
                         {modalState?.type === 'form' ? 'Form' : modalState?.type === 'survey' ? 'Survey' : 'Document'}
                     </DialogTitle>
@@ -702,7 +702,7 @@ export default function PublicPageClient({
                         />
                     )}
                     {modalState?.type === 'receipt_request' && (
-                        <div className="space-y-6 py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="space-y-6 p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {receiptFormSuccess ? (
                                 <div className="text-center space-y-4 py-8">
                                     <div className="h-20 w-20 bg-emerald-100 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto">

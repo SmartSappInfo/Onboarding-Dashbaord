@@ -43,19 +43,25 @@ export function EmbeddedMeeting({ meetingId, pageId, displayMode = 'inline', isI
     };
   }, [firestore, meetingId]);
 
-  useEffect(() => {
-    if (!isInModal) return;
+  const [size, setSize] = useState({ height: 600, width: 512 });
 
-    // Listen for postMessage booking completion from inside iframe
+  useEffect(() => {
+    // Listen for postMessage booking completion and resize from inside iframe
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'meeting_booked' && event.data?.meetingId === meetingId) {
         onClose?.();
+      }
+      if (event.data?.type === 'iframe_resize' && event.data?.height) {
+        setSize({
+          height: event.data.height,
+          width: event.data.width || 512
+        });
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [isInModal, meetingId, onClose]);
+  }, [meetingId, onClose]);
 
   if (loading) {
     return (
@@ -74,10 +80,17 @@ export function EmbeddedMeeting({ meetingId, pageId, displayMode = 'inline', isI
 
   if (displayMode === 'inline' || isInModal) {
     return (
-      <div className="w-full min-h-[600px] h-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+      <div 
+        className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
+        style={{
+          height: isInModal ? `${size.height}px` : '600px',
+          maxHeight: '100%',
+        }}
+      >
         <iframe
           src={embedUrl}
-          className="w-full flex-grow min-h-[600px] border-0 bg-transparent"
+          className="w-full flex-grow border-0 bg-transparent"
+          style={{ height: '100%' }}
           title="Book Session"
           allow="geolocation; microphone; camera"
         />

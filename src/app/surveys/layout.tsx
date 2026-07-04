@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, ReactNode } from 'react';
+import IframeResizer from '@/components/iframe-resizer';
 
 function ThemeToggleWrapper() {
   const searchParams = useSearchParams();
@@ -26,6 +27,9 @@ export default function SurveysLayout({ children }: { children: ReactNode }) {
       {children}
       <Suspense fallback={null}>
         <ThemeToggleWrapper />
+      </Suspense>
+      <Suspense fallback={null}>
+        <IframeResizer />
       </Suspense>
     </ThemeProvider>
   );

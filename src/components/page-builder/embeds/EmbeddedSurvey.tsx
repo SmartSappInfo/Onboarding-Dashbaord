@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ClipboardList } from 'lucide-react';
 
@@ -13,27 +13,39 @@ interface EmbeddedSurveyProps {
 }
 
 export function EmbeddedSurvey({ surveyId, pageId, displayMode = 'inline', isInModal = false, onClose }: EmbeddedSurveyProps) {
+  const [size, setSize] = useState({ height: 600, width: 512 });
+
   useEffect(() => {
-    if (!isInModal) return;
-    
-    // Listen for completion postMessage from the iframe
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'survey_submitted' && event.data?.surveyId === surveyId) {
         onClose?.();
+      }
+      if (event.data?.type === 'iframe_resize' && event.data?.height) {
+        setSize({
+          height: event.data.height,
+          width: event.data.width || 512
+        });
       }
     };
     
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [isInModal, surveyId, onClose]);
+  }, [surveyId, onClose]);
 
   if (displayMode === 'inline' || isInModal) {
     const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}`;
     return (
-      <div className="w-full min-h-[600px] h-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+      <div 
+        className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
+        style={{
+          height: isInModal ? `${size.height}px` : '600px',
+          maxHeight: '100%',
+        }}
+      >
         <iframe
           src={embedUrl}
-          className="w-full flex-grow min-h-[600px] border-0 bg-transparent"
+          className="w-full flex-grow border-0 bg-transparent"
+          style={{ height: '100%' }}
           title="Embedded Survey"
           allow="geolocation; microphone; camera"
         />
