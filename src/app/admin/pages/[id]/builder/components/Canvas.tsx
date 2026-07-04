@@ -88,6 +88,7 @@ interface CanvasProps {
     selectedSectionId?: string | null;
     selectedColumnIndex?: number | null;
     onSelectBlock: (id: string | null) => void;
+    themeMode: 'light' | 'dark';
 
     onSetTab: (tab: string) => void;
     onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
@@ -567,6 +568,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     selectedSectionId,
     selectedColumnIndex,
     onSelectBlock,
+    themeMode,
 
     onSetTab,
     onUpdateBlockProps,
@@ -1151,13 +1153,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 <div
                     ref={canvasRef}
                     className={cn(
-                        "canvas-viewport-frame bg-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none text-slate-800",
+                        "canvas-viewport-frame shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none",
+                        themeMode === 'dark' ? "dark" : "light",
                         viewport === 'desktop'
                             ? "w-[1280px] min-h-[800px] rounded-2xl ring-1 ring-slate-800/10"
                             : viewport === 'tablet'
                             ? "w-[768px] min-h-[1024px] rounded-[1.5rem] border-[8px] border-slate-900 ring-1 ring-slate-850"
                             : "w-[390px] min-h-[844px] rounded-[2.5rem] border-[8px] border-slate-900 ring-1 ring-slate-850"
                     )}
+                    style={{
+                        backgroundColor: theme.colors.background,
+                        color: theme.colors.text,
+                        fontFamily: theme.typography.bodyFont + ', sans-serif'
+                    }}
                     onClickCapture={(e) => {
                         if (canvasMode === 'preview') {
                             const target = e.target as HTMLElement;

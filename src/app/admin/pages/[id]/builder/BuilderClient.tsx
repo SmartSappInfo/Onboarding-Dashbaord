@@ -802,6 +802,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     version={version}
                     viewport={builder.viewport}
                     theme={editorTheme}
+                    themeMode={page?.settings?.themeOverrides?.themeMode || 'light'}
                     resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
                     selectedSectionId={builder.selectedSectionId}
