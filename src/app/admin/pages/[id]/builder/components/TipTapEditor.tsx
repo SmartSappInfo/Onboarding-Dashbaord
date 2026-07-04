@@ -78,15 +78,37 @@ export default function TipTapEditor({ content, onChange, placeholder = 'Start w
         immediatelyRender: false,
         extensions,
         content,
-        onUpdate: ({ editor }) => {
-            onChange(editor.getHTML());
-        },
         editorProps: {
             attributes: {
                 class: 'prose prose-sm prose-invert max-w-none px-4 py-3 min-h-[160px] outline-none focus:outline-none text-slate-200 [&_p]:text-slate-300 [&_h1]:text-slate-100 [&_h2]:text-slate-100 [&_h3]:text-slate-100 [&_a]:text-emerald-400 [&_blockquote]:border-emerald-500/30 [&_blockquote]:text-slate-400 [&_code]:bg-slate-700 [&_code]:text-emerald-400 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs',
             },
         },
     });
+
+    // Dynamically update the editor's update listener to prevent stale closures
+    React.useEffect(() => {
+        if (!editor || editor.isDestroyed) return;
+
+        const handleUpdate = () => {
+            onChange(editor.getHTML());
+        };
+
+        editor.on('update', handleUpdate);
+        return () => {
+            editor.off('update', handleUpdate);
+        };
+    }, [editor, onChange]);
+
+    // Safely sync content updates from the parent (e.g. Undo/Redo or block switches)
+    React.useEffect(() => {
+        if (!editor || editor.isDestroyed) return;
+
+        const currentHTML = editor.getHTML();
+        if (content !== currentHTML) {
+            // Set content without triggering the 'update' event to prevent infinite loops
+            editor.commands.setContent(content, { emitUpdate: false });
+        }
+    }, [content, editor]);
 
     if (!editor) return null;
 
