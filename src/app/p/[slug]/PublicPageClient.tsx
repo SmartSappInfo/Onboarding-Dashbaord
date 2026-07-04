@@ -368,7 +368,7 @@ export default function PublicPageClient({
                 <div className="absolute -bottom-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
             </div>
 
-            {page?.settings?.showHeader && (
+            {page?.settings?.showHeader && !USE_PAGE_BUILDER_V2 && (
                 <header className="fixed top-0 z-50 w-full py-4">
                     <div className="container max-w-4xl mx-auto px-6">
                         <div className="flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-border/50 dark:border-zinc-800 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all">
@@ -411,6 +411,7 @@ export default function PublicPageClient({
                             version={{ ...version, structureJson: migrateLegacyStructure(parseStructure(version.structureJson)) }}
                             theme={resolvedTheme}
                             interpolate={interpolate}
+                            orgBranding={orgBranding}
                             fireTrigger={(event, blockId) => {
                                 if (event === 'open_modal_resource' && blockId) {
                                     try {
@@ -764,7 +765,7 @@ export default function PublicPageClient({
                 </DialogContent>
             </Dialog>
 
-            {page?.settings?.showFooter && orgBranding?.landingPageFooterEnabled !== false && (
+            {page?.settings?.showFooter && orgBranding?.landingPageFooterEnabled !== false && !USE_PAGE_BUILDER_V2 && (
                 <Footer orgBranding={orgBranding} />
             )}
         </div>
