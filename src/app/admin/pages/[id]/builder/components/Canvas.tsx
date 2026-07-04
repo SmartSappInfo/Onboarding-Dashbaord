@@ -1018,7 +1018,12 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 "w-full flex items-center justify-between transition-all",
                                                 headerSettings.floating 
                                                     ? "max-w-4xl mx-auto rounded-full border border-slate-200/50 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md py-1.5 px-6 shadow-lg shadow-black/5"
-                                                    : "rounded-none border-b border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-950 py-3 px-8 shadow-sm"
+                                                    : cn(
+                                                        "rounded-none border-b border-slate-200/40 dark:border-zinc-800/40 py-3 px-8 shadow-sm",
+                                                        headerSettings.overlap 
+                                                            ? "bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md" 
+                                                            : "bg-white dark:bg-zinc-950"
+                                                      )
                                             )}>
                                                 {headerSettings.preset === 'minimal' ? (
                                                     <div className="flex items-center justify-center w-full">
@@ -1109,10 +1114,16 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         const padRight = sectionProps.paddingRight || '1.5rem';
                                         const minHeight = sectionProps.minHeight || 'auto';
 
+                                        const headerSettings = version.structureJson.header || { overlap: false, floating: false };
+                                        const isFirstSection = idx === 0;
+                                        const adjustedPadTop = (isFirstSection && headerSettings.overlap && showHeader)
+                                            ? `calc(${padTop} + ${headerSettings.floating ? '5.5rem' : '4.5rem'})`
+                                            : padTop;
+
                                         const sectionStyle: React.CSSProperties = {
                                             position: 'relative',
                                             overflow: 'hidden',
-                                            paddingTop: padTop,
+                                            paddingTop: adjustedPadTop,
                                             paddingBottom: padBottom,
                                             paddingLeft: padLeft,
                                             paddingRight: padRight,

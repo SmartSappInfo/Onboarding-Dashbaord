@@ -188,15 +188,21 @@ export function PageRenderer({
         <header 
           className={cn(
             "w-full z-45 transition-all",
-            headerSettings.overlap ? "absolute top-0 left-0 right-0" : "relative",
-            headerSettings.sticky ? "sticky top-0" : ""
+            headerSettings.overlap 
+              ? (headerSettings.sticky ? "fixed top-0 left-0 right-0" : "absolute top-0 left-0 right-0") 
+              : (headerSettings.sticky ? "sticky top-0" : "relative")
           )}
         >
           <div className={cn(
             "w-full flex items-center justify-between transition-all",
             headerSettings.floating 
               ? "max-w-4xl mx-auto rounded-full border border-slate-200/50 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md py-1.5 px-6 shadow-lg shadow-black/5 mt-4"
-              : "rounded-none border-b border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-950 py-3 px-8 shadow-sm"
+              : cn(
+                  "rounded-none border-b border-slate-200/40 dark:border-zinc-800/40 py-3 px-8 shadow-sm",
+                  headerSettings.overlap 
+                    ? "bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md" 
+                    : "bg-white dark:bg-zinc-950"
+                )
           )}>
             {headerSettings.preset === 'minimal' ? (
               <div className="flex items-center justify-center w-full">

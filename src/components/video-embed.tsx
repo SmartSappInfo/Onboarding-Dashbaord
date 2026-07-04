@@ -83,12 +83,16 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false }: VideoEmb
             onError={() => {
               if (thumbUrl.includes('maxresdefault') && videoId) {
                 setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+              } else {
+                setThumbUrl(null);
               }
             }}
           />
         ) : (
-            <div className="absolute inset-0 bg-slate-800 flex items-center justify-center">
-                <Play className="w-20 h-20 text-white/20" />
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950/70 to-slate-950 flex items-center justify-center overflow-hidden">
+                <div className="absolute -top-12 -left-12 w-48 h-48 rounded-full bg-blue-500/10 blur-3xl" />
+                <div className="absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-purple-500/10 blur-3xl" />
+                <Play className="w-20 h-20 text-white/10" />
             </div>
         )}
         
