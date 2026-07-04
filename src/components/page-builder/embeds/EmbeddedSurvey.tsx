@@ -28,7 +28,7 @@ export function EmbeddedSurvey({ surveyId, pageId, displayMode = 'inline', isInM
   }, [isInModal, surveyId, onClose]);
 
   if (displayMode === 'inline' || isInModal) {
-    const embedUrl = `/s/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}`;
+    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}`;
     return (
       <div className="w-full min-h-[600px] h-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
         <iframe
@@ -51,7 +51,7 @@ export function EmbeddedSurvey({ surveyId, pageId, displayMode = 'inline', isInM
         <p className="text-slate-500 font-medium">Complete our brief survey to continue.</p>
       </div>
       <Button
-        onClick={() => window.open(`/s/${surveyId}${pageId ? `?ref=${pageId}` : ''}`, '_blank', 'noopener,noreferrer')}
+        onClick={() => window.open(`/surveys/${surveyId}${pageId ? `?ref=${pageId}` : ''}`, '_blank', 'noopener,noreferrer')}
         className="w-full h-14 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200"
       >
         Start Survey

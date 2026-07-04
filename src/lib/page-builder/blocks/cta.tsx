@@ -85,7 +85,7 @@ registerBlock({
               } else if (props.actionType === 'form' && props.formId) {
                 window.open(`/f/${props.formId}`, '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'survey' && props.surveyId) {
-                window.open(`/s/${props.surveyId}`, '_blank', 'noopener,noreferrer');
+                window.open(`/surveys/${props.surveyId}`, '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'meeting' && props.meetingId) {
                 const meeting = ctx.resources.meetings?.find((m) => m.id === props.meetingId);
                 const typeSlug = meeting?.type?.id === 'parent' ? 'parent-engagement' : (meeting?.type?.slug || 'parent-engagement');

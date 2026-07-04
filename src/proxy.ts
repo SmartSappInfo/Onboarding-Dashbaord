@@ -9,6 +9,14 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // Auto-correct legacy survey route /s/[slug] -> /surveys/[slug]
+  if (pathname.startsWith('/s/')) {
+    const slug = pathname.substring(3);
+    const url = request.nextUrl.clone();
+    url.pathname = `/surveys/${slug}`;
+    return NextResponse.redirect(url);
+  }
+  
   // Public routes that don't require authentication
   const publicRoutes = [
     '/login',
@@ -19,13 +27,26 @@ export function proxy(request: NextRequest) {
     '/invoice',
     '/pe',
     '/register-new-signup',
+    '/f/',
+    '/meetings/',
+    '/book/',
+    '/q/',
+    '/p/',
+    '/go/',
+    '/unsubscribe/'
   ];
   
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
   
   // Allow public routes to pass through
   if (isPublicRoute) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    // Allow framing on public embedded routes (surveys, forms, meetings, qr, preferences, pages)
+    if (pathname.startsWith('/surveys') || pathname.startsWith('/f/') || pathname.startsWith('/meetings') || pathname.startsWith('/book') || pathname.startsWith('/q/') || pathname.startsWith('/p/')) {
+      response.headers.set('Content-Security-Policy', "frame-ancestors *");
+      response.headers.delete('x-frame-options');
+    }
+    return response;
   }
   
   // For admin and protected routes, add custom headers
