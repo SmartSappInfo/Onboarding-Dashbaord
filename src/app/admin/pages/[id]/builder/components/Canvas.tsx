@@ -614,13 +614,29 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         const scaledW = (canvasW * currentZoom) / 2;
         const scaledH = (canvasH * currentZoom) / 2;
 
-        const margin = 80;
+        const gap = 48;
 
-        const maxX = rectW - margin - halfW + scaledW;
-        const minX = margin - halfW - scaledW;
+        let minX = 0;
+        let maxX = 0;
+        if (canvasW * currentZoom > rectW) {
+            maxX = scaledW - halfW + gap;
+            minX = halfW - scaledW - gap;
+        } else {
+            // Keep centered horizontally if it fits inside the viewport
+            minX = 0;
+            maxX = 0;
+        }
 
-        const maxY = rectH - margin - halfH + scaledH;
-        const minY = margin - halfH - scaledH;
+        let minY = 0;
+        let maxY = 0;
+        if (canvasH * currentZoom > rectH) {
+            maxY = scaledH - halfH + gap;
+            minY = halfH - scaledH - gap;
+        } else {
+            // Keep centered vertically if it fits inside the viewport
+            minY = 0;
+            maxY = 0;
+        }
 
         return {
             x: Math.min(Math.max(x, minX), maxX),
