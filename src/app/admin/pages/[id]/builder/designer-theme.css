@@ -84,6 +84,120 @@
     color: #0f172a !important;
 }
 
+/* Header & Sidebar Elements styling in Light Mode */
+.designer-theme-light.designer-shell header {
+    background-color: #ffffff !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+/* Page title and breadcrumbs */
+.designer-theme-light.designer-shell header .text-slate-100 {
+    color: #0f172a !important;
+}
+.designer-theme-light.designer-shell header .text-slate-500 {
+    color: #64748b !important;
+}
+
+/* Segmented Control Containers (Viewport/Edit/Columns Switchers) */
+.designer-theme-light.designer-shell header .bg-slate-800\/40,
+.designer-theme-light.designer-shell header .bg-slate-900\/40 {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Unselected button states inside segmented controls */
+.designer-theme-light.designer-shell header .bg-slate-800\/40 button,
+.designer-theme-light.designer-shell header .bg-slate-800\/40 a {
+    color: #64748b !important;
+}
+.designer-theme-light.designer-shell header .bg-slate-800\/40 button:hover,
+.designer-theme-light.designer-shell header .bg-slate-800\/40 a:hover {
+    color: #0f172a !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Selected button states inside segmented controls */
+.designer-theme-light.designer-shell header .bg-slate-800\/40 .bg-slate-700 {
+    background-color: #ffffff !important;
+    color: #2563eb !important; /* Premium system blue */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
+.designer-theme-light.designer-shell header .bg-slate-800\/40 .text-blue-400 {
+    color: #2563eb !important;
+}
+
+/* Action button controls (Undo/Redo, Analytics, View Live, Share & Embed, Save) */
+.designer-theme-light.designer-shell header button.border-slate-700,
+.designer-theme-light.designer-shell header a.border-slate-700 {
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    background-color: #ffffff !important;
+}
+.designer-theme-light.designer-shell header button.border-slate-700:hover,
+.designer-theme-light.designer-shell header a.border-slate-700:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+
+/* Text overrides on other header action buttons */
+.designer-theme-light.designer-shell header .text-slate-400,
+.designer-theme-light.designer-shell header .text-slate-300 {
+    color: #475569 !important;
+}
+.designer-theme-light.designer-shell header button:hover .text-slate-400,
+.designer-theme-light.designer-shell header button:hover .text-slate-300 {
+    color: #0f172a !important;
+}
+
+/* Health Metrics (Scorecards) */
+.designer-theme-light.designer-shell header .bg-emerald-500\/10 {
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    border: 1px solid #bbf7d0 !important;
+}
+
+/* Left Sidebar Vertical Tabs in Light Mode */
+.designer-theme-light .w-14.bg-slate-950 {
+    background-color: #ffffff !important;
+    border-right-color: #e2e8f0 !important;
+}
+
+/* Left Sidebar Tab buttons */
+.designer-theme-light .w-14.bg-slate-950 button {
+    color: #64748b !important;
+}
+.designer-theme-light .w-14.bg-slate-950 button:hover {
+    color: #0f172a !important;
+    background-color: #f1f5f9 !important;
+}
+.designer-theme-light .w-14.bg-slate-950 button.bg-emerald-500\/10 {
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    border-color: #bbf7d0 !important;
+}
+
+/* Sidebar Toggle button */
+.designer-theme-light .w-14.bg-slate-950 button.border-slate-800 {
+    border-color: #cbd5e1 !important;
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+}
+.designer-theme-light .w-14.bg-slate-950 button.border-slate-800:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Sidebar Drawer Panel in Light Mode */
+.designer-theme-light .bg-slate-900\/90 {
+    background-color: #ffffff !important;
+    border-right-color: #e2e8f0 !important;
+}
+
+.designer-theme-light .text-slate-500 {
+    color: #64748b !important;
+}
+
 /* ==========================================================================
    System Blue Theme Scoped Overrides
    ========================================================================== */
