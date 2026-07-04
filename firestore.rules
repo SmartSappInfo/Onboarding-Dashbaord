@@ -94,6 +94,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- Platform Control Plane (Backoffice) — server/Admin SDK only ---
+    // All access flows through backoffice server actions that verify the
+    // caller's ID token and enforce RBAC (see backoffice-auth.ts). The Admin
+    // SDK bypasses these rules; denying the client SDK here is defense-in-depth
+    // and guarantees platform_audit_logs immutability.
+    match /platform_features/{id}              { allow read, write: if false; }
+    match /platform_entitlements/{id}          { allow read, write: if false; }
+    match /platform_templates/{id}             { allow read, write: if false; }
+    match /platform_assets/{id}                { allow read, write: if false; }
+    match /platform_provider_settings/{id}     { allow read, write: if false; }
+    match /platform_field_defaults/{id}        { allow read, write: if false; }
+    match /platform_native_fields/{id}         { allow read, write: if false; }
+    match /platform_contact_type_defaults/{id} { allow read, write: if false; }
+    match /platform_industry_field_groups/{id} { allow read, write: if false; }
+    match /platform_jobs/{id}                  { allow read, write: if false; }
+    // Audit logs: never client-readable, never mutable (immutability).
+    match /platform_audit_logs/{id}            { allow read, write: if false; }
+
     // --- Shared Reference Data ---
     match /countries/{countryId} {
       allow read: if isAuthorized();
