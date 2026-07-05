@@ -116,7 +116,10 @@ const TextBlockEditor = ({
       const sanitized = sanitizeHtml(interpolated);
       // We only update if the external content prop is different from our last known content
       if (content !== lastContentRef.current) {
-        containerRef.current.innerHTML = sanitized;
+        const currentHTML = containerRef.current.innerHTML;
+        if (currentHTML !== sanitized) {
+          containerRef.current.innerHTML = sanitized;
+        }
         lastContentRef.current = content;
       }
     }
