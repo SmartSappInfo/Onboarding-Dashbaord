@@ -1,20 +1,38 @@
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getErrorMessage } from './backoffice-errors';
 import type { AuditActor, PlatformJob } from './backoffice-types';
 import type { Meeting, MeetingMessagingConfig } from '../types';
 
-export async function processMeetingsFer(jobId: string, actor: AuditActor): Promise<{ success: boolean; result?: any }> {
+interface FerLogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+interface MeetingsFerResult {
+  enrichedMeetingsCount?: number;
+  updatedRegistrantsCount?: number;
+  isDryRun?: boolean;
+  error?: string;
+}
+
+export async function processMeetingsFer(jobId: string, actor: AuditActor): Promise<{ success: boolean; result?: MeetingsFerResult }> {
   const jobRef = adminDb.collection('platform_jobs').doc(jobId);
-  const logs: any[] = [];
-  
-  const log = (level: 'info' | 'warn' | 'error', message: string, data?: any) => {
-    const entry = { timestamp: new Date().toISOString(), level, message, data };
+  const logs: FerLogEntry[] = [];
+
+  const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<string, unknown>) => {
+    const entry: FerLogEntry = { timestamp: new Date().toISOString(), level, message, data };
     logs.push(entry);
     jobRef.update({ logs: FieldValue.arrayUnion(entry) }).catch(() => {});
   };
 
   try {
-    log('info', 'Started Meetings FER migration', { actor: actor.email });
+    const jobSnap = await jobRef.get();
+    const isDryRun = jobSnap.exists ? Boolean((jobSnap.data() as PlatformJob).isDryRun) : false;
+
+    log('info', 'Started Meetings FER migration', { actor: actor.email, isDryRun });
 
     // ── 1. Count Total Meetings for Progress ──
     const meetingsSnap = await adminDb.collection('meetings').get();
@@ -55,13 +73,13 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
       const snap = await query.get();
       if (snap.empty) break;
 
-      const batch = adminDb.batch();
+      let batch = adminDb.batch();
       let batchWriteCount = 0;
 
       for (const doc of snap.docs) {
         try {
           const data = doc.data() as Meeting;
-          const updates: Record<string, any> = {};
+          const updates: Record<string, unknown> = {};
           let needsUpdate = false;
 
           // -- A. Enrich Meeting Configs --
@@ -115,8 +133,10 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
           if (needsUpdate) {
             updates.ferEnrichedAt = now;
             updates.ferVersion = 'v3-join-page';
-            batch.update(doc.ref, updates);
-            batchWriteCount++;
+            if (!isDryRun) {
+              batch.update(doc.ref, updates);
+              batchWriteCount++;
+            }
             enrichedMeetingsCount++;
           }
 
@@ -149,20 +169,23 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
                   if (!currentUrl.includes('/join?token=')) {
                     // Update to the new join room relative path (will be made absolute by URL helper at dispatch)
                     const newUrl = `/meetings/${typeSlug}/${slug}/join?token=${token}`;
-                    
-                    batch.update(regDoc.ref, {
-                      personalizedMeetingUrl: newUrl,
-                      ferEnrichedAt: now,
-                    });
-                    
-                    batchWriteCount++;
-                    updatedRegistrantsCount++;
 
-                    // Commit early if batch gets too large
-                    if (batchWriteCount >= 450) {
-                      await batch.commit();
-                      batchWriteCount = 0;
+                    if (!isDryRun) {
+                      batch.update(regDoc.ref, {
+                        personalizedMeetingUrl: newUrl,
+                        ferEnrichedAt: now,
+                      });
+                      batchWriteCount++;
+
+                      // Commit early if batch gets too large. A WriteBatch
+                      // cannot be reused after commit — start a fresh one.
+                      if (batchWriteCount >= 450) {
+                        await batch.commit();
+                        batch = adminDb.batch();
+                        batchWriteCount = 0;
+                      }
                     }
+                    updatedRegistrantsCount++;
                   }
                 }
                 lastRegSnap = regDoc;
@@ -171,8 +194,8 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
           }
 
           processedMeetings++;
-        } catch (err: any) {
-          log('error', `Failed to process meeting ${doc.id}`, { error: err.message });
+        } catch (err: unknown) {
+          log('error', `Failed to process meeting ${doc.id}`, { error: getErrorMessage(err) });
           errors++;
         }
 
@@ -189,7 +212,9 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
       });
     }
 
-    log('info', 'Meetings FER migration completed successfully', {
+    log('info', isDryRun
+      ? `[DRY RUN] Meetings FER completed. Would enrich ${enrichedMeetingsCount} meeting(s) and update ${updatedRegistrantsCount} registrant URL(s). No writes performed.`
+      : 'Meetings FER migration completed successfully', {
       enrichedMeetingsCount,
       updatedRegistrantsCount
     });
@@ -199,17 +224,19 @@ export async function processMeetingsFer(jobId: string, actor: AuditActor): Prom
       completedAt: new Date().toISOString(),
       result: {
         enrichedMeetingsCount,
-        updatedRegistrantsCount
+        updatedRegistrantsCount,
+        isDryRun
       }
     });
 
     return { success: true };
-  } catch (error: any) {
-    log('error', 'Critical failure in Meetings FER Job', { error: error.message });
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
+    log('error', 'Critical failure in Meetings FER Job', { error: message });
     await jobRef.update({
       status: 'failed',
       completedAt: new Date().toISOString(),
-      result: { error: error.message }
+      result: { error: message }
     });
     return { success: false };
   }

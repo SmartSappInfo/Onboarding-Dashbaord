@@ -323,8 +323,10 @@ async function executeJob(
       case 'migrate_hierarchical_rbac':
         return await processRbacMigration(jobId, actor);
 
-      case 'migrate_legacy_saas_fields':
-        return await processSaasFieldMigration(jobId, actor);
+      // 'migrate_legacy_saas_fields' (company_metrics → saas_operations
+      // re-parenting) was retired after being applied in all environments;
+      // nothing creates company_metrics fields anymore. The type stays in
+      // PlatformJobType so historical job documents still render.
 
       case 'migrate_messaging_templates_fer':
         return await processMessagingTemplatesFer(jobId, actor);
@@ -367,99 +369,6 @@ async function executeJob(
   }
 }
 
-// ─────────────────────────────────────────────────
-// Specialized Migration: SaaS Field Re-parenting (internal)
-// ─────────────────────────────────────────────────
-
-/**
- * Migration Protocol: Re-parents legacy SaaS fields.
- * Safely migrates fields tied to the old `company_metrics` group
- * into the modern `saas_operations` group.
- */
-async function processSaasFieldMigration(
-  jobId: string,
-  actor: AuditActor
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const jobRef = adminDb.collection('platform_jobs').doc(jobId);
-
-    // Set to running
-    await jobRef.update({
-      status: 'running',
-      'logs': FieldValue.arrayUnion({
-         timestamp: new Date().toISOString(),
-         level: 'info',
-         message: `Started SaaS field migration job by ${actor.name}`
-      })
-    });
-
-    const fieldsRef = adminDb.collection('app_fields');
-    const snapshot = await fieldsRef.where('groupId', '==', 'company_metrics').get();
-
-    const total = snapshot.size;
-    let processed = 0;
-    const errors = 0;
-
-    // Use batches for atomic updates
-    const batchArray: FirebaseFirestore.WriteBatch[] = [];
-    let currentBatch = adminDb.batch();
-    let opCount = 0;
-
-    snapshot.docs.forEach(doc => {
-       currentBatch.update(doc.ref, {
-           groupId: 'saas_operations',
-           updatedAt: new Date().toISOString()
-       });
-       opCount++;
-       processed++;
-
-       if (opCount === 450) {
-           batchArray.push(currentBatch);
-           currentBatch = adminDb.batch();
-           opCount = 0;
-       }
-    });
-
-    if (opCount > 0) {
-        batchArray.push(currentBatch);
-    }
-
-    for (const batch of batchArray) {
-        await batch.commit();
-    }
-
-    await jobRef.update({
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-      'progress.total': total,
-      'progress.processed': processed,
-      'progress.errors': errors,
-      'logs': FieldValue.arrayUnion({
-         timestamp: new Date().toISOString(),
-         level: 'info',
-         message: `Successfully migrated ${processed} fields from company_metrics to saas_operations.`
-      })
-    });
-
-    return { success: true };
-  } catch (error: unknown) {
-    console.error('[MIGRATION] processSaasFieldMigration failed:', error);
-    const message = getErrorMessage(error);
-
-    // Fail job
-    await adminDb.collection('platform_jobs').doc(jobId).update({
-        status: 'failed',
-        completedAt: new Date().toISOString(),
-        'logs': FieldValue.arrayUnion({
-           timestamp: new Date().toISOString(),
-           level: 'error',
-           message: `Migration failed: ${message}`
-        })
-    });
-
-    return { success: false, error: message };
-  }
-}
 
 // ─────────────────────────────────────────────────
 // Automation Data Cleanup
