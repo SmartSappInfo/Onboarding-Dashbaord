@@ -618,7 +618,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');
 
-    const [toolbarCoords, setToolbarCoords] = useState<{ top: number; left: number } | null>(null);
+    const toolbarRef = useRef<HTMLDivElement>(null);
 
     const activeBlockType = React.useMemo(() => {
         if (!selectedBlockId) return null;
@@ -668,16 +668,18 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        const toolbar = toolbarRef.current;
         if (activeBlockType !== 'text' || !selectedBlockId) {
-            setToolbarCoords(null);
+            if (toolbar) toolbar.style.display = 'none';
             return;
         }
 
         const updatePosition = () => {
             const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
             const workspace = workspaceRef.current;
-            if (!activeEl || !workspace) {
-                setToolbarCoords(null);
+            const tb = toolbarRef.current;
+            if (!activeEl || !workspace || !tb) {
+                if (tb) tb.style.display = 'none';
                 return;
             }
 
@@ -690,10 +692,12 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             const top = rect.top - workspaceRect.top - toolbarH - 12; // 12px gap above
             const left = rect.left - workspaceRect.left + (rect.width - toolbarW) / 2;
 
-            setToolbarCoords({ 
-                top: Math.max(10, top), // Keep inside workspace
-                left: Math.max(10, Math.min(workspaceRect.width - toolbarW - 10, left)) 
-            });
+            const finalTop = Math.max(10, top);
+            const finalLeft = Math.max(10, Math.min(workspaceRect.width - toolbarW - 10, left));
+
+            tb.style.top = `${finalTop}px`;
+            tb.style.left = `${finalLeft}px`;
+            tb.style.display = 'flex';
         };
 
         // Defer execution to guarantee DOM paint has finished
@@ -2120,12 +2124,12 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             )}
 
             {/* Inline Floating WYSIWYG Editor Toolbar for Rich Text block */}
-            {toolbarCoords && activeBlockType === 'text' && !isPreview && (
+            {activeBlockType === 'text' && !isPreview && (
                 <div
+                    ref={toolbarRef}
                     className="absolute backdrop-blur bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50 text-slate-200"
                     style={{
-                        top: `${toolbarCoords.top}px`,
-                        left: `${toolbarCoords.left}px`,
+                        display: 'none',
                     }}
                 >
                     {/* Formatting Actions */}
