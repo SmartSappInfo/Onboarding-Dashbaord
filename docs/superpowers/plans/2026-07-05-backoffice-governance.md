@@ -97,13 +97,13 @@ export interface ApprovalRequest {
 4. **RBAC:** add `approvals` module — `view` for all roles, `execute` for `super_admin` and `security_auditor` (decision-makers), `create` implicit via the gated action's own permission.
 
 ### Steps
-- [ ] **A1** Types + `approvals` module in `BackofficeModule` union + ROLE_MATRIX column (matrix parity holds — client imports the same engine).
-- [ ] **A2** Failing tests: four-eyes rejection (same uid), expiry transition, non-pending decision rejected, executor called with stored payload (not caller payload), audit entries written for request + decision.
-- [ ] **A3** Implement `backoffice-approval-actions.ts` + `approval-registry.ts` (executors for the 5 keys, wired to internal fns extracted from org/feature/job actions).
-- [ ] **A4** Convert the 4 gated actions to enqueue; update their call sites' UX (pending toast, disabled state).
-- [ ] **A5** Approvals inbox UI (list pending/decided, approve/reject with confirm, requester can cancel own request).
-- [ ] **A6** Rules + index entries; deploy note.
-- [ ] **A7** `pnpm typecheck && pnpm vitest run src/lib/backoffice` green → commit `feat(backoffice): four-eyes approval workflow for dangerous actions`.
+- [x] **A1** Types + `approvals` module in `BackofficeModule` union + ROLE_MATRIX column (matrix parity holds — client imports the same engine).
+- [x] **A2** Failing tests: four-eyes rejection (same uid), expiry transition, non-pending decision rejected, executor called with stored payload (not caller payload), audit entries written for request + decision.
+- [x] **A3** Implement `backoffice-approval-actions.ts` + `approval-registry.ts` (executors for the 5 keys, wired to internal fns extracted from org/feature/job actions).
+- [x] **A4** Convert the 4 gated actions to enqueue; update their call sites' UX (pending toast, disabled state).
+- [x] **A5** Approvals inbox UI (list pending/decided, approve/reject with confirm, requester can cancel own request).
+- [x] **A6** Rules + index entries; deploy note.
+- [x] **A7** `pnpm typecheck && pnpm vitest run src/lib/backoffice` green → commit `feat(backoffice): four-eyes approval workflow for dangerous actions`.
 
 **Risks:** double-execution on concurrent approvals → decide inside a Firestore transaction on the request doc; executor failure after 'approved' → keep status 'approved' + `executionError`, allow retry by another decision call.
 
@@ -173,6 +173,6 @@ export interface ImpersonationSession {
 - All new collections client-denied; matrix parity intact; no `any`; suite green.
 
 ## Open questions (answer before the relevant phase)
-1. **Q-A:** Is the initial approval-gated action list right? Any to add (e.g. provider-settings save) or drop?
-2. **Q-C:** Which MFA factor(s) will be enabled in Firebase Auth (TOTP recommended; SMS costs/SIM-swap risk)?
-3. **Q-B:** Should `support_admin` also be allowed to impersonate (common for support orgs), or strictly `super_admin`?
+1. **Q-A:** ✅ Confirmed — initial list as proposed.
+2. **Q-C:** ✅ TOTP.
+3. **Q-B:** ✅ super_admin AND support_admin may impersonate.
