@@ -1257,7 +1257,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                         type="text"
                                                                         value={headerSettings.ctaText || 'Get Started'}
                                                                         onChange={(e) => onUpdateHeader?.({ ctaText: e.target.value })}
-                                                                        className="text-white font-bold text-xs text-center focus:ring-0 p-0"
+                                                                        className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-white font-bold text-xs text-center focus:ring-0 p-0"
                                                                         onClick={(e) => e.stopPropagation()}
                                                                         style={{ 
                                                                             width: `${Math.max(5, (headerSettings.ctaText || 'Get Started').length) * 7.5}px`,
@@ -1295,7 +1295,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                                         );
                                                                                         onUpdateHeader?.({ navItems: updatedNavItems });
                                                                                     }}
-                                                                                    className="text-slate-650 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center focus:ring-0 p-0"
+                                                                                    className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-650 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center focus:ring-0 p-0"
                                                                                     style={{ 
                                                                                         width: `${Math.max(4, item.label.length) * 7.5}px`,
                                                                                         background: 'transparent',
@@ -1327,7 +1327,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                             type="text"
                                                                             value={headerSettings.phoneNumber}
                                                                             onChange={(e) => onUpdateHeader?.({ phoneNumber: e.target.value })}
-                                                                            className="text-slate-500 dark:text-slate-400 font-bold text-xs focus:ring-0 p-0"
+                                                                            className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-500 dark:text-slate-400 font-bold text-xs focus:ring-0 p-0"
                                                                             style={{ 
                                                                                 width: `${Math.max(8, headerSettings.phoneNumber.length) * 7.5}px`,
                                                                                 background: 'transparent',
@@ -1348,7 +1348,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                             type="text"
                                                                             value={headerSettings.ctaText || 'Get Started'}
                                                                             onChange={(e) => onUpdateHeader?.({ ctaText: e.target.value })}
-                                                                            className="text-white font-bold text-xs text-center focus:ring-0 p-0"
+                                                                            className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-white font-bold text-xs text-center focus:ring-0 p-0"
                                                                             onClick={(e) => e.stopPropagation()}
                                                                             style={{ 
                                                                                 width: `${Math.max(5, (headerSettings.ctaText || 'Get Started').length) * 7.5}px`,
@@ -1642,7 +1642,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 type="text"
                                                                 value={copyright}
                                                                 onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
-                                                                className="bg-transparent text-slate-400 text-center font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 text-center font-normal text-[10px] focus:ring-0 p-0"
                                                                 style={{ width: `${Math.max(20, copyright.length) * 5.5}px` }}
                                                             />
                                                         ) : (
@@ -1662,7 +1662,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                     type="text"
                                                                     value={copyright}
                                                                     onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
-                                                                    className="text-slate-400 text-center font-normal text-[10px] focus:ring-0 p-0"
+                                                                    className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 text-center font-normal text-[10px] focus:ring-0 p-0"
                                                                     style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
                                                                 />
                                                             ) : (
@@ -1702,7 +1702,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 type="text"
                                                                 value={copyright}
                                                                 onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
-                                                                className="text-slate-500 text-center font-normal text-[10px] focus:ring-0 p-0"
+                                                                className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-500 text-center font-normal text-[10px] focus:ring-0 p-0"
                                                                 style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
                                                             />
                                                         ) : (
@@ -1723,7 +1723,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                         type="text"
                                                                         value={copyright}
                                                                         onChange={(e) => onUpdateFooter?.({ copyrightText: e.target.value, overrideOrg: true })}
-                                                                        className="text-slate-400 text-center md:text-left font-normal text-[10px] focus:ring-0 p-0"
+                                                                        className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 text-center md:text-left font-normal text-[10px] focus:ring-0 p-0"
                                                                         style={{ width: `${Math.max(20, copyright.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
                                                                     />
                                                                 ) : (
@@ -1750,7 +1750,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                                 type="text"
                                                                                 value={address}
                                                                                 onChange={(e) => onUpdateFooter?.({ address: e.target.value, overrideOrg: true })}
-                                                                                className="text-slate-400 font-normal text-[10px] focus:ring-0 p-0"
+                                                                                className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 font-normal text-[10px] focus:ring-0 p-0"
                                                                                 style={{ width: `${Math.max(15, address.length) * 5.5}px`, background: 'transparent', border: 'none', outline: 'none', boxShadow: 'none' }}
                                                                             />
                                                                         ) : (
@@ -1766,7 +1766,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                                 type="text"
                                                                                 value={email}
                                                                                 onChange={(e) => onUpdateFooter?.({ email: e.target.value, overrideOrg: true })}
-                                                                                className="bg-transparent text-slate-400 font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                                className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 font-normal text-[10px] focus:ring-0 p-0"
                                                                                 style={{ width: `${Math.max(12, email.length) * 5.5}px` }}
                                                                             />
                                                                         ) : (
@@ -1782,7 +1782,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                                 type="text"
                                                                                 value={phone}
                                                                                 onChange={(e) => onUpdateFooter?.({ phone: e.target.value, overrideOrg: true })}
-                                                                                className="bg-transparent text-slate-400 font-normal text-[10px] border-none focus:outline-none focus:ring-0 p-0"
+                                                                                className="!bg-transparent !border-0 !shadow-none !outline-none !ring-0 text-slate-400 font-normal text-[10px] focus:ring-0 p-0"
                                                                                 style={{ width: `${Math.max(10, phone.length) * 5.5}px` }}
                                                                             />
                                                                         ) : (
