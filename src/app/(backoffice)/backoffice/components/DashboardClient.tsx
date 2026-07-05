@@ -12,7 +12,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, query, getCountFromServer, where } from 'firebase/firestore';
+import { collection, query, getCountFromServer } from 'firebase/firestore';
+import { useBackofficeToken } from '@/hooks/use-backoffice-token';
+import { getPlatformOpsStats } from '@/lib/backoffice/backoffice-dashboard-actions';
+import { fetchAuditLogs } from '@/lib/backoffice/backoffice-audit-actions';
+import type { PlatformAuditLog } from '@/lib/backoffice/backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Platform Dashboard
@@ -99,6 +103,7 @@ function StatCard({ label, value, icon: Icon, trend, color, isLoading }: StatCar
 
 export default function DashboardClient() {
   const firestore = useFirestore();
+  const getToken = useBackofficeToken();
   const [stats, setStats] = React.useState({
     orgs: 0,
     workspaces: 0,
@@ -108,6 +113,7 @@ export default function DashboardClient() {
     pendingJobs: 0,
     recentAudit: 0,
   });
+  const [recentLogs, setRecentLogs] = React.useState<PlatformAuditLog[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -115,12 +121,18 @@ export default function DashboardClient() {
 
     async function loadStats() {
       try {
-        // Parallel fetch all counts (async-parallel)
-        const [orgsSnap, workspacesSnap, usersSnap, entitiesSnap] = await Promise.all([
+        // Parallel fetch all counts (async-parallel). Tenant collections are
+        // counted via the client SDK (rule-governed); platform_jobs and
+        // platform_audit_logs are client-denied, so their stats come through
+        // the authorized server action.
+        const idToken = await getToken();
+        const [orgsSnap, workspacesSnap, usersSnap, entitiesSnap, opsRes, auditRes] = await Promise.all([
           getCountFromServer(query(collection(firestore!, 'organizations'))),
           getCountFromServer(query(collection(firestore!, 'workspaces'))),
           getCountFromServer(query(collection(firestore!, 'users'))),
           getCountFromServer(query(collection(firestore!, 'entities'))),
+          getPlatformOpsStats(idToken),
+          fetchAuditLogs(idToken, { limit: 8 }),
         ]);
 
         setStats({
@@ -128,10 +140,13 @@ export default function DashboardClient() {
           workspaces: workspacesSnap.data().count,
           users: usersSnap.data().count,
           entities: entitiesSnap.data().count,
-          failedJobs: 0,  // Will connect to platform_jobs in Phase 6
-          pendingJobs: 0,
-          recentAudit: 0,
+          failedJobs: opsRes.data?.failedJobs ?? 0,
+          pendingJobs: opsRes.data?.pendingJobs ?? 0,
+          recentAudit: opsRes.data?.auditActions24h ?? 0,
         });
+        if (auditRes.success && auditRes.data) {
+          setRecentLogs(auditRes.data);
+        }
       } catch (error) {
         console.error('[BACKOFFICE_DASHBOARD] Failed to load stats:', error);
       } finally {
@@ -140,7 +155,7 @@ export default function DashboardClient() {
     }
 
     loadStats();
-  }, [firestore]);
+  }, [firestore, getToken]);
 
   return (
     <div className="space-y-8">
@@ -225,9 +240,28 @@ export default function DashboardClient() {
           <h3 className="text-sm font-semibold text-muted-foreground mb-4">
             Recent Platform Activity
           </h3>
-          <p className="text-xs text-slate-600">
-            Audit log stream will appear here in Phase 7.
-          </p>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-9 bg-accent/60 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : recentLogs.length === 0 ? (
+            <p className="text-xs text-slate-600">No backoffice actions recorded yet.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {recentLogs.map((log) => (
+                <li key={log.id} className="flex items-center gap-3 text-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="font-mono text-[10px] text-muted-foreground shrink-0 w-32 truncate">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
+                  <span className="text-foreground font-medium truncate">{log.action}</span>
+                  <span className="text-muted-foreground truncate ml-auto">{log.actor?.name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

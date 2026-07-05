@@ -15,14 +15,19 @@ const { verifyIdToken, userGet, docGet, docUpdate, docSet, auditAdd } = vi.hoist
   auditAdd: vi.fn(),
 }));
 
+const countChain = {
+  count: () => ({ get: () => Promise.resolve({ data: () => ({ count: 0 }) }) }),
+};
+
 function makeAdminDbMock() {
   return {
     collection: (name: string) => {
       if (name === 'users') return { doc: () => ({ get: userGet }) };
-      if (name === 'platform_audit_logs') return { add: auditAdd };
+      if (name === 'platform_audit_logs') return { add: auditAdd, where: () => countChain };
       return {
         doc: () => ({ get: docGet, update: docUpdate, set: docSet }),
         orderBy: () => ({ get: () => Promise.resolve({ docs: [] }) }),
+        where: () => countChain,
       };
     },
   };
@@ -46,6 +51,7 @@ vi.mock('../secret-vault', () => ({
 
 import { toggleFeatureKillSwitch, listAllFeatures } from '../backoffice-feature-actions';
 import { saveGlobalAiKeys } from '../backoffice-ai-actions';
+import { getPlatformOpsStats } from '../backoffice-dashboard-actions';
 
 function mockUser(profile: Record<string, unknown>): void {
   verifyIdToken.mockResolvedValue({ uid: 'u1', email: 'u@b.c' });
@@ -95,6 +101,24 @@ describe('listAllFeatures (features:view)', () => {
     mockUser({ email: 'u@b.c' });
 
     const res = await listAllFeatures('tok');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/forbidden|access/i);
+  });
+});
+
+describe('getPlatformOpsStats (dashboard:view)', () => {
+  it('allows any backoffice role and returns aggregate counts', async () => {
+    mockUser({ email: 'u@b.c', backofficeRoles: ['readonly_auditor'] });
+
+    const res = await getPlatformOpsStats('tok');
+    expect(res.success).toBe(true);
+    expect(res.data).toEqual({ failedJobs: 0, pendingJobs: 0, auditActions24h: 0 });
+  });
+
+  it('forbids a caller with no backoffice roles', async () => {
+    mockUser({ email: 'u@b.c' });
+
+    const res = await getPlatformOpsStats('tok');
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/forbidden|access/i);
   });
