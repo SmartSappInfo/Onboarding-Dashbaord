@@ -162,7 +162,6 @@ registerBlock({
   category: 'content',
   icon: Type,
   fields: [
-    { kind: 'richtext', key: 'content', label: 'Content Editor' },
     {
       kind: 'select',
       key: 'preset',
@@ -200,17 +199,6 @@ registerBlock({
       ],
     },
     { kind: 'color', key: 'textColor', label: 'Custom Text Color' },
-    {
-      kind: 'select',
-      key: 'textAlign',
-      label: 'Alignment',
-      options: [
-        { value: 'left', label: 'Left Aligned' },
-        { value: 'center', label: 'Centered' },
-        { value: 'right', label: 'Right Aligned' },
-        { value: 'justify', label: 'Justified' },
-      ],
-    },
   ],
   defaults: schema.parse({}),
   schema,

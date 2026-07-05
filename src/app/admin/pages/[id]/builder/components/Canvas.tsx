@@ -65,7 +65,12 @@ import {
     AlignCenter,
     AlignRight,
     Link2,
-    RemoveFormatting
+    RemoveFormatting,
+    Baseline,
+    ChevronDown,
+    CaseSensitive,
+    Check,
+    X
 } from 'lucide-react';
 import {
     Select,
@@ -74,6 +79,13 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger
+} from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
@@ -618,6 +630,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');
 
+    // Inline Link Editing States
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkNewTab, setLinkNewTab] = useState(false);
+
     const toolbarRef = useRef<HTMLDivElement>(null);
 
     const activeBlockType = React.useMemo(() => {
@@ -686,7 +702,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             const rect = activeEl.getBoundingClientRect();
             const workspaceRect = workspace.getBoundingClientRect();
             
-            const toolbarW = 460;
+            const toolbarW = 620;
             const toolbarH = 42;
             
             const top = rect.top - workspaceRect.top - toolbarH - 12; // 12px gap above
@@ -1132,6 +1148,104 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             savedSelectionRangeRef.current = range;
         }
 
+        if (activeEl) {
+            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        }
+    };
+
+    const applyStyleToSelection = (styleName: string, value: string) => {
+        const sel = window.getSelection();
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        if (!activeEl) return;
+
+        let range: Range | null = null;
+        if (sel && sel.rangeCount > 0) {
+            range = sel.getRangeAt(0);
+        }
+
+        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl.contains(range.commonAncestorContainer);
+
+        if (isSelectionCollapsed) {
+            let propKey = '';
+            if (styleName === 'font-family') propKey = 'fontFamily';
+            else if (styleName === 'font-size') propKey = 'fontSize';
+            else if (styleName === 'color') propKey = 'textColor';
+
+            if (propKey) {
+                onUpdateBlockProps(selectedBlockId!, { [propKey]: value });
+            }
+            return;
+        }
+
+        if (!range) return;
+
+        const span = document.createElement('span');
+        span.style.setProperty(styleName, value);
+
+        try {
+            span.appendChild(range.extractContents());
+            range.insertNode(span);
+
+            if (sel) {
+                sel.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.selectNodeContents(span);
+                sel.addRange(newRange);
+                savedSelectionRangeRef.current = newRange;
+            }
+
+            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        } catch (err) {
+            console.error("Failed to apply style span to selection:", err);
+        }
+    };
+
+    const insertHyperlink = (url: string, newTab: boolean) => {
+        const sel = window.getSelection();
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        if (!sel || !activeEl) return;
+
+        let range: Range | null = null;
+        if (sel.rangeCount > 0) range = sel.getRangeAt(0);
+
+        const isSelectionCollapsed = !range || range.collapsed || sel.toString().length === 0 || !activeEl.contains(range.commonAncestorContainer);
+
+        if (isSelectionCollapsed) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.innerText = url;
+            if (newTab) {
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+            }
+            if (range) {
+                range.insertNode(a);
+                sel.removeAllRanges();
+                const newRange = document.createRange();
+                newRange.setStartAfter(a);
+                newRange.collapse(true);
+                sel.addRange(newRange);
+                savedSelectionRangeRef.current = newRange;
+            }
+        } else {
+            document.execCommand('createLink', false, url);
+            if (newTab) {
+                const anchors = activeEl.getElementsByTagName('a');
+                for (let i = 0; i < anchors.length; i++) {
+                    if (anchors[i].getAttribute('href') === url) {
+                        anchors[i].setAttribute('target', '_blank');
+                        anchors[i].setAttribute('rel', 'noopener noreferrer');
+                    }
+                }
+            }
+        }
+
+        onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+    };
+
+    const removeHyperlink = () => {
+        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        document.execCommand('unlink', false);
         if (activeEl) {
             onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
         }
@@ -2185,13 +2299,55 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                         display: 'none',
                     }}
                 >
+                    {/* Fonts & Sizes Dropdowns */}
+                    <div className="flex items-center gap-1">
+                        <Select
+                            onValueChange={(val) => {
+                                applyStyleToSelection('font-family', val === 'default' ? 'inherit' : val);
+                            }}
+                        >
+                            <SelectTrigger className="w-[80px] h-7 bg-slate-950 border-slate-800 text-[10px] font-medium text-slate-350 focus:ring-0 focus:ring-offset-0 px-2 rounded-lg">
+                                <SelectValue placeholder="Font" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-950 border-slate-850 text-slate-200">
+                                <SelectItem value="default" className="text-[10px]">Default</SelectItem>
+                                <SelectItem value="Inter" className="text-[10px] font-sans">Sans (Inter)</SelectItem>
+                                <SelectItem value="Playfair Display" className="text-[10px] font-serif">Serif (Playfair)</SelectItem>
+                                <SelectItem value="Courier New" className="text-[10px] font-mono">Monospace</SelectItem>
+                                <SelectItem value="Georgia" className="text-[10px]">Georgia</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            onValueChange={(val) => {
+                                applyStyleToSelection('font-size', val);
+                            }}
+                        >
+                            <SelectTrigger className="w-[60px] h-7 bg-slate-950 border-slate-800 text-[10px] font-medium text-slate-350 focus:ring-0 focus:ring-offset-0 px-2 rounded-lg">
+                                <SelectValue placeholder="Size" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-950 border-slate-850 text-slate-200">
+                                <SelectItem value="12px" className="text-[10px]">12px</SelectItem>
+                                <SelectItem value="14px" className="text-[10px]">14px</SelectItem>
+                                <SelectItem value="16px" className="text-[10px]">16px</SelectItem>
+                                <SelectItem value="18px" className="text-[10px]">18px</SelectItem>
+                                <SelectItem value="20px" className="text-[10px]">20px</SelectItem>
+                                <SelectItem value="24px" className="text-[10px]">24px</SelectItem>
+                                <SelectItem value="30px" className="text-[10px]">30px</SelectItem>
+                                <SelectItem value="36px" className="text-[10px]">36px</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
+
                     {/* Formatting Actions */}
                     <button
                         onMouseDown={(e) => {
                             e.preventDefault();
                             executeCommand('bold');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Bold"
                     >
                         <Bold className="h-3.5 w-3.5" />
@@ -2201,7 +2357,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('italic');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Italic"
                     >
                         <Italic className="h-3.5 w-3.5" />
@@ -2211,7 +2367,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('underline');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Underline"
                     >
                         <Underline className="h-3.5 w-3.5" />
@@ -2221,13 +2377,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('strikeThrough');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Strikethrough"
                     >
                         <Strikethrough className="h-3.5 w-3.5" />
                     </button>
 
-                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
 
                     {/* Headings */}
                     <button
@@ -2235,7 +2391,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('formatBlock', '<h1>');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
                         title="Heading 1"
                     >
                         H1
@@ -2245,7 +2401,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('formatBlock', '<h2>');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
                         title="Heading 2"
                     >
                         H2
@@ -2255,13 +2411,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('formatBlock', '<h3>');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors text-[10px] font-black w-6 h-6 flex items-center justify-center"
                         title="Heading 3"
                     >
                         H3
                     </button>
 
-                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
 
                     {/* Lists & Quote */}
                     <button
@@ -2269,7 +2425,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('insertUnorderedList');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Bulleted List"
                     >
                         <List className="h-3.5 w-3.5" />
@@ -2279,7 +2435,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('insertOrderedList');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Numbered List"
                     >
                         <ListOrdered className="h-3.5 w-3.5" />
@@ -2289,13 +2445,70 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('formatBlock', '<blockquote>');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Blockquote"
                     >
                         <Quote className="h-3.5 w-3.5" />
                     </button>
 
-                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
+
+                    {/* Text Color Picker */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button
+                                onMouseDown={(e) => e.preventDefault()}
+                                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors flex items-center justify-center"
+                                title="Text Color"
+                            >
+                                <Baseline className="h-3.5 w-3.5" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-48 bg-slate-950 border-slate-850 p-3 rounded-xl shadow-xl z-50 text-slate-200 font-body">
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Preset Colors</Label>
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {[
+                                        '#3b82f6', // blue
+                                        '#10b981', // emerald
+                                        '#8b5cf6', // violet
+                                        '#f97316', // orange
+                                        '#ef4444', // red
+                                        '#09090b', // zinc-950
+                                        '#71717a', // zinc-500
+                                        '#f4f4f5', // zinc-100
+                                        '#38bdf8', // sky-400
+                                        '#a855f7'  // purple-500
+                                    ].map((color) => (
+                                        <button
+                                            key={color}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => applyStyleToSelection('color', color)}
+                                            className="w-5 h-5 rounded-full border border-slate-800 transition-transform hover:scale-110"
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="h-[1px] bg-slate-850 my-2" />
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Custom HEX</Label>
+                                    <Input
+                                        type="text"
+                                        placeholder="#000000"
+                                        className="h-7 text-xs bg-slate-900 border-slate-800 text-slate-200 rounded px-2 focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0 outline-none"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                applyStyleToSelection('color', e.currentTarget.value);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
 
                     {/* Alignment */}
                     <button
@@ -2303,7 +2516,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('justifyLeft');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Align Left"
                     >
                         <AlignLeft className="h-3.5 w-3.5" />
@@ -2313,7 +2526,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('justifyCenter');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Align Center"
                     >
                         <AlignCenter className="h-3.5 w-3.5" />
@@ -2323,34 +2536,78 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             e.preventDefault();
                             executeCommand('justifyRight');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Align Right"
                     >
                         <AlignRight className="h-3.5 w-3.5" />
                     </button>
 
-                    <div className="w-[1px] h-4 bg-slate-850 mx-1" />
+                    <div className="w-[1px] h-4 bg-slate-850 mx-0.5" />
 
-                    {/* Link & Clear Format */}
-                    <button
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            const url = prompt('Enter the hyperlink URL (e.g. https://google.com):');
-                            if (url !== null) {
-                                executeCommand('createLink', url);
-                            }
-                        }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-                        title="Insert Link"
-                    >
-                        <Link2 className="h-3.5 w-3.5" />
-                    </button>
+                    {/* Premium Hyperlink Popover */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button
+                                onMouseDown={(e) => e.preventDefault()}
+                                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
+                                title="Insert Link"
+                            >
+                                <Link2 className="h-3.5 w-3.5" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 bg-slate-950 border-slate-850 p-4 rounded-xl shadow-xl z-50 text-slate-200 font-body space-y-4">
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Link URL</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="https://example.com"
+                                    value={linkUrl}
+                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                    className="h-8 text-xs bg-slate-900 border-slate-800 text-slate-200 rounded px-2 focus-visible:ring-1 focus-visible:ring-slate-700 focus-visible:ring-offset-0 outline-none"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="link-new-tab"
+                                    checked={linkNewTab}
+                                    onChange={(e) => setLinkNewTab(e.target.checked)}
+                                    className="rounded border-slate-800 bg-slate-900 text-blue-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                />
+                                <Label htmlFor="link-new-tab" className="text-xs text-slate-350 cursor-pointer select-none">Open in a new tab</Label>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1">
+                                <button
+                                    onClick={() => {
+                                        if (linkUrl.trim()) {
+                                            insertHyperlink(linkUrl.trim(), linkNewTab);
+                                            setLinkUrl('');
+                                        }
+                                    }}
+                                    className="flex-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                >
+                                    Apply
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        removeHyperlink();
+                                        setLinkUrl('');
+                                    }}
+                                    className="px-2 h-8 border border-slate-800 hover:bg-slate-900 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                                    title="Remove Link"
+                                >
+                                    Unlink
+                                </button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
                     <button
                         onMouseDown={(e) => {
                             e.preventDefault();
                             executeCommand('removeFormat');
                         }}
-                        className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                         title="Clear Formatting"
                     >
                         <RemoveFormatting className="h-3.5 w-3.5" />
