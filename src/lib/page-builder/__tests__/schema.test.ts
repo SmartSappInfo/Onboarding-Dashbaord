@@ -3,9 +3,14 @@ import { parseStructure } from '../schema';
 
 describe('parseStructure', () => {
   it('returns an empty structure for malformed input instead of throwing', () => {
-    expect(parseStructure(null)).toEqual({ sections: [] });
-    expect(parseStructure('garbage')).toEqual({ sections: [] });
-    expect(parseStructure({ sections: 'nope' })).toEqual({ sections: [] });
+    // The empty structure now carries header/footer defaults — assert the
+    // behavior (no sections, defaults present, no throw), not the literal.
+    for (const malformed of [null, 'garbage', { sections: 'nope' }]) {
+      const parsed = parseStructure(malformed);
+      expect(parsed.sections).toEqual([]);
+      expect(parsed.header).toBeDefined();
+      expect(parsed.footer).toBeDefined();
+    }
   });
 
   it('preserves a valid structure', () => {

@@ -1,6 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { PageBlock, BuilderResources } from '@/lib/types';
+
+// The component's import graph transitively reaches @/ai/genkit, whose
+// module-level genkit({ plugins: [anthropic()] }) instantiates the Anthropic
+// client at import time — which refuses to run in a jsdom environment.
+// Stub the server-only leaves so the suite can load the UI under test.
+vi.mock('@/ai/genkit', () => ({
+  ai: {
+    definePrompt: () => vi.fn(),
+    defineFlow: () => vi.fn(),
+    defineTool: () => vi.fn(),
+    generate: vi.fn(),
+  },
+  getModel: vi.fn(),
+}));
+vi.mock('@/lib/firebase-admin', () => ({
+  adminDb: {},
+  adminAuth: {},
+}));
+
 import { AutoBlockEditor } from '../AutoBlockEditor';
 import '@/lib/page-builder/blocks'; // register blocks
 

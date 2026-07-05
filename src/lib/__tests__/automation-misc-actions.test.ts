@@ -18,7 +18,9 @@ const mockExecuteAutomation = vi.fn().mockResolvedValue(undefined);
 const tasksUpdate = vi.fn().mockResolvedValue(undefined);
 const txGet = vi.fn();
 const txUpdate = vi.fn();
+const txSet = vi.fn();
 const automationsGet = vi.fn();
+const mockSyncProjection = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../activity-logger', () => ({
   logActivity: (args: Record<string, unknown>) => mockLogActivity(args),
@@ -36,6 +38,10 @@ vi.mock('../automations/executor', () => ({
   executeAutomation: (...args: unknown[]) => mockExecuteAutomation(...args),
 }));
 
+vi.mock('../contacts/contact-projection-writer', () => ({
+  syncContactProjectionForWE: (...args: unknown[]) => mockSyncProjection(...args),
+}));
+
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn((name: string) => {
@@ -49,10 +55,12 @@ vi.mock('../firebase-admin', () => ({
       }
       if (name === 'automations') return { doc: () => ({ get: automationsGet }) };
       if (name === 'workspaces') return { doc: () => ({ get: async () => ({ exists: true, data: () => ({ organizationId: 'org-1' }) }) }) };
+      if (name === 'leadScores') return { doc: (id: string) => ({ id }) };
+      if (name === 'leadScoreHistory') return { doc: () => ({ id: 'hist-1' }) };
       return { doc: () => ({ update: vi.fn(), get: async () => ({ exists: false }) }) };
     }),
-    runTransaction: (fn: (tx: { get: typeof txGet; update: typeof txUpdate }) => Promise<unknown>) =>
-      fn({ get: txGet, update: txUpdate }),
+    runTransaction: (fn: (tx: { get: typeof txGet; update: typeof txUpdate; set: typeof txSet }) => Promise<unknown>) =>
+      fn({ get: txGet, update: txUpdate, set: txSet }),
   },
 }));
 
@@ -86,9 +94,24 @@ describe('handleUpdateTask (UPDATE_TASK)', () => {
 });
 
 describe('handleUpdateLeadScore (UPDATE_LEAD_SCORE)', () => {
+  // The handler delegates to adjustLeadScoreAction (scoring-performance-engine),
+  // which requires the entity, its workspace_entities relationship, and a
+  // resolvable contact; it writes the new score in-transaction and appends a
+  // leadScoreHistory ledger entry (activity logging was replaced by the ledger).
+  const primeScoringTransaction = (contactScore: number) => {
+    txGet
+      .mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ entityContacts: [{ id: 'c1', name: 'Primary Contact', email: 'c1@x.com', isPrimary: true, score: contactScore }] }),
+      }) // entity
+      .mockResolvedValueOnce({
+        empty: false,
+        docs: [{ ref: { id: 'we-1' }, data: () => ({ entityContacts: [], workspaceTags: [] }) }],
+      }); // workspace_entity query
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCalcAdjustment.mockReturnValue({ entityContacts: [{ id: 'c1' }], leadScore: 42 });
   });
 
   it('throws when context has no entityId', async () => {
@@ -97,20 +120,18 @@ describe('handleUpdateLeadScore (UPDATE_LEAD_SCORE)', () => {
   });
 
   it('applies the computed leadScore to the entity inside a transaction', async () => {
-    txGet
-      .mockResolvedValueOnce({ exists: true, data: () => ({ entityContacts: [] }) }) // entity
-      .mockResolvedValueOnce({ empty: true, docs: [] }); // workspace_entity query
+    primeScoringTransaction(32); // 32 + 10 = 42
     await handleUpdateLeadScore({ operation: 'add', value: 10 }, ctx());
-    expect(mockCalcAdjustment).toHaveBeenCalled();
     expect(txUpdate).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ leadScore: 42 }));
   });
 
-  it('logs a lead_score_updated activity', async () => {
-    txGet
-      .mockResolvedValueOnce({ exists: true, data: () => ({ entityContacts: [] }) })
-      .mockResolvedValueOnce({ empty: true, docs: [] });
+  it('writes a leadScoreHistory ledger entry with the adjustment', async () => {
+    primeScoringTransaction(0);
     await handleUpdateLeadScore({ operation: 'set', value: 5 }, ctx());
-    expect(mockLogActivity).toHaveBeenCalledWith(expect.objectContaining({ type: 'lead_score_updated' }));
+    expect(txSet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ oldScore: 0, newScore: 5, source: 'automation' })
+    );
   });
 });
 
