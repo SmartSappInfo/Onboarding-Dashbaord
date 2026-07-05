@@ -102,7 +102,7 @@ const TextBlockEditor = ({
   interpolate,
 }: TextBlockEditorProps) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const lastContentRef = React.useRef<string>(content);
+  const lastContentRef = React.useRef<string>('');
   const [hasMounted, setHasMounted] = React.useState(false);
 
   React.useEffect(() => {
