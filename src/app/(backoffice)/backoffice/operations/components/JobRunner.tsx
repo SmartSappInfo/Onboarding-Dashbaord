@@ -198,11 +198,11 @@ export default function JobRunner() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 h-full overflow-hidden">
+    <div className="flex flex-col md:flex-row gap-6 items-start">
        {/* ═══════════════════════════════════════════
            Sidebar Wizard — Create New Job
            ═══════════════════════════════════════════ */}
-       <div className="w-full md:w-80 shrink-0 bg-muted/50 border border-border rounded-xl flex flex-col overflow-y-auto">
+       <div className="w-full md:w-80 shrink-0 bg-muted/50 border border-border rounded-xl flex flex-col">
           <div className="p-4 border-b border-border sticky top-0 bg-muted z-10">
              <h3 className="font-semibold text-foreground">Create New Job</h3>
              <p className="text-[10px] text-muted-foreground mt-1">Deploy a mass asynchronous task across tenants.</p>
@@ -301,7 +301,7 @@ export default function JobRunner() {
        {/* ═══════════════════════════════════════════
            Execution Queue Table
            ═══════════════════════════════════════════ */}
-       <div className="flex-1 bg-muted/30 border border-border rounded-xl flex flex-col overflow-hidden relative">
+       <div className="flex-1 w-full min-w-0 bg-muted/30 border border-border rounded-xl flex flex-col overflow-hidden relative max-h-[calc(100svh-13rem)]">
           <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
              <h3 className="font-semibold text-foreground">Execution Queue <span className="text-muted-foreground ml-2 font-normal text-sm">Last 100 Jobs</span></h3>
              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={loadJobs}>

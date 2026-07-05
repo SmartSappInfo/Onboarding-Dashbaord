@@ -12,7 +12,7 @@ import FixOrgAdminPermissionsFer from './FixOrgAdminPermissionsFer';
 
 export default function OperationsDashboard() {
   return (
-    <div className="flex flex-col h-full min-h-[42rem] overflow-hidden p-6 bg-card">
+    <div className="flex flex-col min-h-full p-6 bg-card">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-5 shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
@@ -24,7 +24,7 @@ export default function OperationsDashboard() {
         </div>
       </div>
 
-      <Tabs defaultValue="jobs" className="flex-1 mt-6 overflow-hidden flex flex-col">
+      <Tabs defaultValue="jobs" className="mt-6 flex flex-col">
         <TabsList className="bg-muted/50 p-1.5 rounded-xl border border-border/40 w-full sm:w-auto flex flex-wrap h-auto gap-1 shadow-inner shrink-0">
           <TabsTrigger
             value="jobs"
@@ -64,27 +64,27 @@ export default function OperationsDashboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="jobs" className="flex-1 mt-4 overflow-hidden flex flex-col">
+        <TabsContent value="jobs" className="mt-4">
            <JobRunner />
         </TabsContent>
         
-        <TabsContent value="diagnostics" className="flex-1 mt-4 overflow-hidden flex flex-col">
+        <TabsContent value="diagnostics" className="mt-4">
            <TenantDiagnostics />
         </TabsContent>
 
-        <TabsContent value="automation-cleanup" className="flex-1 mt-4 overflow-hidden flex flex-col">
+        <TabsContent value="automation-cleanup" className="mt-4">
            <AutomationCleaner />
         </TabsContent>
 
-        <TabsContent value="fer-account-status" className="flex-1 mt-4 overflow-hidden flex flex-col">
+        <TabsContent value="fer-account-status" className="mt-4">
            <StripAccountStatusFer />
         </TabsContent>
 
-        <TabsContent value="fer-lifecycle-status" className="flex-1 mt-4 overflow-hidden flex flex-col">
+        <TabsContent value="fer-lifecycle-status" className="mt-4">
            <StripLifecycleStatusFer />
         </TabsContent>
 
-        <TabsContent value="fer-org-admin-perms" className="flex-1 mt-4 overflow-y-auto">
+        <TabsContent value="fer-org-admin-perms" className="mt-4">
            <FixOrgAdminPermissionsFer />
         </TabsContent>
 
