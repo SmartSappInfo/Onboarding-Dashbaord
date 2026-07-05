@@ -2180,7 +2180,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             {activeBlockType === 'text' && !isPreview && (
                 <div
                     ref={toolbarRef}
-                    className="absolute backdrop-blur bg-slate-900/95 border border-slate-800 shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50 text-slate-200"
+                    className="absolute backdrop-blur bg-slate-900/95 border border-slate-950 shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50 text-slate-200"
                     style={{
                         display: 'none',
                     }}

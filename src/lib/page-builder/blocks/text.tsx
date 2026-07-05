@@ -1,3 +1,4 @@
+import React from 'react';
 import { z } from 'zod';
 import { Type } from 'lucide-react';
 import { registerBlock } from '../registry';
@@ -81,6 +82,72 @@ const ChecklistThumbnail = (
   </svg>
 );
 
+interface TextBlockEditorProps {
+  blockId: string;
+  isEdit: boolean;
+  content: string;
+  onBlur?: (html: string) => void;
+  quoteContainerClass: string;
+  cssStyles: string;
+  interpolate: (text: string) => string;
+}
+
+const TextBlockEditor = ({
+  blockId,
+  isEdit,
+  content,
+  onBlur,
+  quoteContainerClass,
+  cssStyles,
+  interpolate,
+}: TextBlockEditorProps) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const lastContentRef = React.useRef<string>(content);
+
+  // Sync content only if the prop actually changes from the last value we wrote/received
+  React.useEffect(() => {
+    if (containerRef.current) {
+      const interpolated = interpolate(content);
+      const sanitized = sanitizeHtml(interpolated);
+      // We only update if the external content prop is different from our last known content
+      if (content !== lastContentRef.current) {
+        containerRef.current.innerHTML = sanitized;
+        lastContentRef.current = content;
+      }
+    }
+  }, [content, interpolate]);
+
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const newHtml = e.currentTarget.innerHTML;
+    lastContentRef.current = newHtml;
+    if (onBlur) {
+      onBlur(newHtml);
+    }
+  };
+
+  return (
+    <div className={cn("w-full py-2", isEdit ? "select-text" : "select-none")}>
+      <style dangerouslySetInnerHTML={{ __html: cssStyles }} />
+      <div className={quoteContainerClass}>
+        <div
+          ref={containerRef}
+          id={`text-block-${blockId}`}
+          className={cn(
+            "prose prose-slate max-w-none p-1 rounded transition-all select-text cursor-text",
+            isEdit
+              ? "outline-none focus:outline-none focus-visible:outline-none border-0 focus:border-0"
+              : "focus:outline-none"
+          )}
+          contentEditable={isEdit}
+          suppressContentEditableWarning
+          onBlur={isEdit ? handleBlur : undefined}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(interpolate(content)) }}
+        />
+      </div>
+    </div>
+  );
+};
+
 registerBlock({
   type: 'text',
   label: 'Rich Text',
@@ -153,8 +220,8 @@ registerBlock({
     const isLight = props.textColorMode === 'light';
     const blockId = _block.id;
 
-    const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
-      ctx.onPropChange?.({ content: e.currentTarget.innerHTML });
+    const handleBlur = (newHtml: string) => {
+      ctx.onPropChange?.({ content: newHtml });
     };
 
     const resolveFont = (family: string | undefined) => {
@@ -204,24 +271,15 @@ registerBlock({
       : "";
 
     return (
-      <div className={cn("w-full py-2", isEdit ? "select-text" : "select-none")}>
-        <style dangerouslySetInnerHTML={{ __html: cssStyles }} />
-        <div className={quoteContainerClass}>
-          <div
-            id={`text-block-${blockId}`}
-            className={cn(
-              "prose prose-slate max-w-none p-1 rounded transition-all select-text cursor-text",
-              isEdit
-                ? "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 outline-none"
-                : "focus:outline-none"
-            )}
-            contentEditable={isEdit}
-            suppressContentEditableWarning
-            onBlur={isEdit ? handleBlur : undefined}
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(ctx.interpolate(props.content as string)) }}
-          />
-        </div>
-      </div>
+      <TextBlockEditor
+        blockId={blockId}
+        isEdit={isEdit}
+        content={props.content as string}
+        onBlur={handleBlur}
+        quoteContainerClass={quoteContainerClass}
+        cssStyles={cssStyles}
+        interpolate={ctx.interpolate}
+      />
     );
   },
 });
