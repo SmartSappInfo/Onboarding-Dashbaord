@@ -72,43 +72,45 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
   }
 
   return (
-    <FormView
-      title={form.title}
-      description={form.description}
-      fields={form.fields}
-      submitLabel={form.settings?.submitButtonLabel || 'Submit'}
-      onSubmit={async (data) => {
-        // Retrieve stored UTM parameters from sessionStorage
-        const storedUtm = typeof window !== 'undefined' ? sessionStorage.getItem(`utm_${pageId}`) : null;
-        let utmData: Record<string, string> | null = null;
-        if (storedUtm) {
-          try {
-            utmData = JSON.parse(storedUtm);
-          } catch (e) {
-            console.error('Failed to parse UTM data:', e);
+    <div className={isInModal ? "p-8 sm:p-10" : ""}>
+      <FormView
+        title={form.title}
+        description={form.description}
+        fields={form.fields}
+        submitLabel={form.settings?.submitButtonLabel || 'Submit'}
+        onSubmit={async (data) => {
+          // Retrieve stored UTM parameters from sessionStorage
+          const storedUtm = typeof window !== 'undefined' ? sessionStorage.getItem(`utm_${pageId}`) : null;
+          let utmData: Record<string, string> | null = null;
+          if (storedUtm) {
+            try {
+              utmData = JSON.parse(storedUtm);
+            } catch (e) {
+              console.error('Failed to parse UTM data:', e);
+            }
           }
-        }
-        
-        // Pass UTM data as metadata
-        const metadata: Record<string, string> = { sourcePageId: pageId || '' };
-        if (utmData) {
-          metadata.utmSource = utmData.source || '';
-          metadata.utmMedium = utmData.medium || '';
-          metadata.utmCampaign = utmData.campaign || '';
-          metadata.utmTerm = utmData.term || '';
-          metadata.utmContent = utmData.content || '';
-        }
+          
+          // Pass UTM data as metadata
+          const metadata: Record<string, string> = { sourcePageId: pageId || '' };
+          if (utmData) {
+            metadata.utmSource = utmData.source || '';
+            metadata.utmMedium = utmData.medium || '';
+            metadata.utmCampaign = utmData.campaign || '';
+            metadata.utmTerm = utmData.term || '';
+            metadata.utmContent = utmData.content || '';
+          }
 
-        const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
-        if (res.success) {
-          setSubmitted(true);
-          if (!isInModal && form.settings?.redirectUrl) {
-            setTimeout(() => { window.location.href = form.settings!.redirectUrl!; }, 2000);
+          const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
+          if (res.success) {
+            setSubmitted(true);
+            if (!isInModal && form.settings?.redirectUrl) {
+              setTimeout(() => { window.location.href = form.settings!.redirectUrl!; }, 2000);
+            }
+          } else {
+            toast({ title: 'Error', description: res.error, variant: 'destructive' });
           }
-        } else {
-          toast({ title: 'Error', description: res.error, variant: 'destructive' });
-        }
-      }}
-    />
+        }}
+      />
+    </div>
   );
 }
