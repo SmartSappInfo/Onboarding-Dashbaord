@@ -154,7 +154,10 @@ export default function JobRunner() {
            scope: { type: newScope, id: newScopeId || undefined }
          }, token);
 
-         if (res.success) {
+         if (res.success && res.pendingApproval) {
+           setNewLabel('');
+           alert('Live job sent for approval — a second admin must approve it. Track it in Approvals.');
+         } else if (res.success) {
            setNewLabel('');
            await loadJobs();
          } else {

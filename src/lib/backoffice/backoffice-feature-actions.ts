@@ -5,6 +5,7 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
+import { enqueueApproval } from './approval-registry';
 import type { PlatformFeature, RolloutRule } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
@@ -62,7 +63,7 @@ export async function toggleFeatureKillSwitch(
   featureId: string,
   killSwitch: boolean,
   idToken: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; pendingApproval?: boolean; requestId?: string; error?: string }> {
   try {
     const actor = await authorizeBackoffice(idToken, 'features', 'execute');
 
@@ -71,6 +72,19 @@ export async function toggleFeatureKillSwitch(
 
     if (!snap.exists) {
       return { success: false, error: 'Feature not found' };
+    }
+
+    // Four-eyes: ENABLING a kill switch is a platform-wide outage lever and
+    // is approval-gated. Disabling (restoring service) stays immediate.
+    if (killSwitch) {
+      const feature = snap.data() as PlatformFeature;
+      const { requestId } = await enqueueApproval(
+        'feature.enable_kill_switch',
+        { featureId },
+        `Enable kill switch for feature "${feature.label || feature.key}" (turns it OFF for everyone)`,
+        actor
+      );
+      return { success: true, pendingApproval: true, requestId };
     }
 
     const before = createAuditSnapshot(snap.data() as Record<string, unknown>);

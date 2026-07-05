@@ -70,11 +70,21 @@ beforeEach(() => {
 });
 
 describe('toggleFeatureKillSwitch (features:execute)', () => {
-  it('allows super_admin and performs the update', async () => {
+  it('enabling is approval-gated: enqueues instead of mutating (four-eyes)', async () => {
     mockUser({ email: 'u@b.c', name: 'U', permissions: ['system_admin'] });
 
     const res = await toggleFeatureKillSwitch('f1', true, 'tok');
     expect(res.success).toBe(true);
+    expect(res.pendingApproval).toBe(true);
+    expect(docUpdate).not.toHaveBeenCalled();
+  });
+
+  it('disabling (restoring service) executes immediately', async () => {
+    mockUser({ email: 'u@b.c', name: 'U', permissions: ['system_admin'] });
+
+    const res = await toggleFeatureKillSwitch('f1', false, 'tok');
+    expect(res.success).toBe(true);
+    expect(res.pendingApproval).toBeUndefined();
     expect(docUpdate).toHaveBeenCalled();
   });
 

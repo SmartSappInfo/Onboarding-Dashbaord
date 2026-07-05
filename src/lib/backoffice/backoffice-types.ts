@@ -32,7 +32,8 @@ export type BackofficeModule =
   | 'assets'
   | 'operations'
   | 'audit'
-  | 'settings';
+  | 'settings'
+  | 'approvals';
 
 /**
  * Actions available within each backoffice module.
@@ -397,4 +398,40 @@ export interface PlatformDashboardStats {
     label: string;
     percentage: number;           // 0–100
   }[];
+}
+
+// ─────────────────────────────────────────────────
+// Approval Workflow (four-eyes governance)
+// ─────────────────────────────────────────────────
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'expired';
+
+/** Registry key of an approval-gated operation. */
+export type ApprovalActionKey =
+  | 'organization.suspend'
+  | 'organization.clear_activity_logs'
+  | 'feature.enable_kill_switch'
+  | 'automation.clear'
+  | 'job.create_live';
+
+/**
+ * A pending dangerous operation awaiting a second admin (four-eyes).
+ * The payload is captured server-side at request time; the approver
+ * approves exactly what was requested — never a client-supplied payload.
+ */
+export interface ApprovalRequest {
+  id: string;
+  actionKey: ApprovalActionKey;
+  /** Serialized, validated inputs captured at request time. */
+  payload: Record<string, unknown>;
+  /** Human summary shown in the inbox, e.g. "Suspend Acme Corp: nonpayment". */
+  summary: string;
+  status: ApprovalStatus;
+  requestedBy: AuditActor;
+  decidedBy?: AuditActor;
+  decidedAt?: string;
+  executedAt?: string;
+  executionError?: string;
+  createdAt: string;
+  expiresAt: string;
 }

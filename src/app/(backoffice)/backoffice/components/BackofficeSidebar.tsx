@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Code,
   Palette,
+  CheckSquare,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -67,6 +68,7 @@ const controlNavItems: NavItem[] = [
 
 const operationsNavItems: NavItem[] = [
   { href: '/backoffice/operations', icon: Wrench, label: 'Operations', module: 'operations' },
+  { href: '/backoffice/approvals', icon: CheckSquare, label: 'Approvals', module: 'approvals' },
   { href: '/backoffice/audit', icon: ScrollText, label: 'Audit Logs', module: 'audit' },
   { href: '/backoffice/settings', icon: Settings, label: 'Settings', module: 'settings' },
 ];

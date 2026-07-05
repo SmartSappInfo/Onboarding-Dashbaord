@@ -472,7 +472,14 @@ function ActivityControlPane({
     try {
       const idToken = await getToken();
       const result = await clearOrganizationActivityLogs(org.id, idToken);
-      if (result.success) {
+      if (result.success && result.pendingApproval) {
+        toast({
+          title: 'Sent for approval',
+          description: 'Deleting all activity logs requires a second admin. Track it in Approvals.',
+        });
+        setShowConfirmModal(false);
+        setConfirmSlug('');
+      } else if (result.success) {
         toast({
           title: 'Logs Cleared',
           description: `Successfully deleted ${result.count} activity logs.`,

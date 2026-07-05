@@ -185,7 +185,9 @@ export default function OrgListClient() {
     try {
       const idToken = await getToken();
       const result = await suspendOrganization(orgId, reason, idToken);
-      if (result.success) {
+      if (result.success && result.pendingApproval) {
+        toast({ title: 'Sent for approval', description: 'Suspending an organization requires a second admin. Track it in Approvals.' });
+      } else if (result.success) {
         loadOrgs();
       } else {
         toast({ variant: 'destructive', title: 'Suspension failed', description: result.error ?? 'You may not have permission for this action.' });

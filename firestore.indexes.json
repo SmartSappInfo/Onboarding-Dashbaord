@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "media_categories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "prospects",
       "queryScope": "COLLECTION",
       "fields": [
@@ -3057,6 +3071,14 @@
       "fields": [
         { "fieldPath": "provider", "order": "ASCENDING" },
         { "fieldPath": "type", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "platform_approval_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

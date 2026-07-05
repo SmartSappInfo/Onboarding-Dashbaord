@@ -113,7 +113,9 @@ export default function FeatureDetailClient({ featureId }: { featureId: string }
       const idToken = await getToken();
       const result = await toggleFeatureKillSwitch(feature.id, newState, idToken);
 
-      if (result.success) {
+      if (result.success && result.pendingApproval) {
+        toast({ title: 'Sent for approval', description: 'Enabling a kill switch requires a second admin. Track it in Approvals.' });
+      } else if (result.success) {
         loadFeature();
       } else {
         toast({ variant: 'destructive', title: 'Kill switch not changed', description: result.error ?? 'You may not have permission for this action.' });

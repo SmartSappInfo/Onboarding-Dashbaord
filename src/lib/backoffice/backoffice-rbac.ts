@@ -30,6 +30,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view', 'create', 'edit', 'delete', 'execute']),
     audit:         new Set(['view', 'create', 'edit', 'delete', 'execute']),
     settings:      new Set(['view', 'create', 'edit', 'delete', 'execute']),
+    approvals:     new Set(['view', 'create', 'edit', 'delete', 'execute']),
   },
 
   tenant_admin_ops: {
@@ -43,6 +44,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 
   release_admin: {
@@ -56,6 +58,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 
   template_admin: {
@@ -69,6 +72,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 
   support_admin: {
@@ -82,6 +86,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view', 'execute']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 
   security_auditor: {
@@ -95,6 +100,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view', 'execute']),
   },
 
   migration_admin: {
@@ -108,6 +114,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view', 'create', 'edit', 'execute']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 
   readonly_auditor: {
@@ -121,6 +128,7 @@ const ROLE_MATRIX: Record<BackofficeRole, Record<BackofficeModule, Set<Backoffic
     operations:    new Set(['view']),
     audit:         new Set(['view']),
     settings:      new Set(['view']),
+    approvals:     new Set(['view']),
   },
 };
 
@@ -243,4 +251,5 @@ export const BACKOFFICE_MODULE_LABELS: Record<BackofficeModule, string> = {
   operations: 'Operations',
   audit: 'Audit Logs',
   settings: 'Settings',
+  approvals: 'Approvals',
 };

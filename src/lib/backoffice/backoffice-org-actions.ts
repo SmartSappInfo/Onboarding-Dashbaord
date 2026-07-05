@@ -5,6 +5,7 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
+import { enqueueApproval } from './approval-registry';
 
 import type { Organization } from '../types';
 
@@ -132,37 +133,26 @@ export async function suspendOrganization(
   orgId: string,
   reason: string,
   idToken: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; pendingApproval?: boolean; requestId?: string; error?: string }> {
   try {
+    // Four-eyes: suspension is approval-gated. This enqueues a request;
+    // the mutation runs in approval-registry once a second admin approves.
     const actor = await authorizeBackoffice(idToken, 'organizations', 'execute');
 
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
     }
+    const orgName = (orgSnap.data() as Organization).name || orgId;
 
-    const before = createAuditSnapshot(orgSnap.data() as Record<string, unknown>);
+    const { requestId } = await enqueueApproval(
+      'organization.suspend',
+      { orgId, reason },
+      `Suspend organization "${orgName}": ${reason}`,
+      actor
+    );
 
-    await adminDb.collection('organizations').doc(orgId).update({
-      status: 'suspended',
-      suspendedAt: new Date().toISOString(),
-      suspendedBy: actor.userId,
-      suspensionReason: reason,
-      updatedAt: new Date().toISOString(),
-    });
-
-    const afterSnap = await adminDb.collection('organizations').doc(orgId).get();
-    const after = createAuditSnapshot(afterSnap.data() as Record<string, unknown>);
-
-    await logBackofficeAction(actor, 'organization.suspend', 'organization', orgId, {
-      scope: 'organization',
-      scopeId: orgId,
-      before,
-      after,
-      metadata: { reason },
-    });
-
-    return { success: true };
+    return { success: true, pendingApproval: true, requestId };
   } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] suspendOrganization failed:', error);
     return { success: false, error: getErrorMessage(error) };
@@ -580,53 +570,26 @@ export async function toggleOrganizationActivityLogging(
 export async function clearOrganizationActivityLogs(
   orgId: string,
   idToken: string
-): Promise<{ success: boolean; count?: number; error?: string }> {
+): Promise<{ success: boolean; pendingApproval?: boolean; requestId?: string; count?: number; error?: string }> {
   try {
+    // Four-eyes: bulk log deletion is approval-gated. The deletion runs in
+    // approval-registry once a second admin approves.
     const actor = await authorizeBackoffice(idToken, 'organizations', 'execute');
 
     const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
     if (!orgSnap.exists) {
       return { success: false, error: 'Organization not found' };
     }
+    const orgName = (orgSnap.data() as Organization).name || orgId;
 
-    const before = createAuditSnapshot(orgSnap.data() as Record<string, unknown>);
+    const { requestId } = await enqueueApproval(
+      'organization.clear_activity_logs',
+      { orgId },
+      `Permanently delete ALL activity logs for organization "${orgName}"`,
+      actor
+    );
 
-    let totalDeleted = 0;
-    let hasMore = true;
-
-    while (hasMore) {
-      const snapshot = await adminDb.collection('activities')
-        .where('organizationId', '==', orgId)
-        .limit(500)
-        .get();
-
-      if (snapshot.empty) {
-        hasMore = false;
-        break;
-      }
-
-      const batch = adminDb.batch();
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      await batch.commit();
-      totalDeleted += snapshot.size;
-
-      if (snapshot.size < 500) {
-        hasMore = false;
-      }
-    }
-
-    await logBackofficeAction(actor, 'organization.clear_activity_logs', 'organization', orgId, {
-      scope: 'organization',
-      scopeId: orgId,
-      before,
-      after: before,
-      metadata: { deletedCount: totalDeleted },
-    });
-
-    return { success: true, count: totalDeleted };
+    return { success: true, pendingApproval: true, requestId };
   } catch (error: unknown) {
     console.error('[BACKOFFICE_ORG] clearOrganizationActivityLogs failed:', error);
     return { success: false, error: getErrorMessage(error) };

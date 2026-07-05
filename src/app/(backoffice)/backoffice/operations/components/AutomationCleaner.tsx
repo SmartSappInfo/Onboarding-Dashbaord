@@ -225,9 +225,13 @@ export default function AutomationCleaner() {
                 <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-3 py-2.5">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                   <div>
-                    <p className="text-xs text-emerald-300 font-medium">Cleanup complete</p>
+                    <p className="text-xs text-emerald-300 font-medium">
+                      {lastResult.pendingApproval ? 'Sent for approval' : 'Cleanup complete'}
+                    </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {lastResult.deleted?.total ?? 0} documents deleted
+                      {lastResult.pendingApproval
+                        ? 'A second admin must approve the wipe. Track it in Approvals.'
+                        : `${lastResult.deleted?.total ?? 0} documents deleted`}
                     </p>
                   </div>
                 </div>

@@ -111,6 +111,8 @@ service cloud.firestore {
     match /platform_jobs/{id}                  { allow read, write: if false; }
     // Audit logs: never client-readable, never mutable (immutability).
     match /platform_audit_logs/{id}            { allow read, write: if false; }
+    // Governance: approval queue is server-only (four-eyes enforced in actions).
+    match /platform_approval_requests/{id}     { allow read, write: if false; }
 
     // --- Shared Reference Data ---
     match /countries/{countryId} {

@@ -6,11 +6,9 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
-import { processRbacMigration } from './rbac-migration-logic';
-import { processMessagingTemplatesFer } from './messaging-templates-fer-logic';
-import { processMeetingsFer } from './meetings-fer-logic';
-import { processEncryptPlatformSecrets } from './encrypt-secrets-logic';
-import type { AuditActor, PlatformJob, PlatformJobType } from './backoffice-types';
+import { scheduleJobExecution } from './job-execution';
+import { enqueueApproval } from './approval-registry';
+import type { PlatformJob, PlatformJobType } from './backoffice-types';
 
 // ─────────────────────────────────────────────────
 // Backoffice Job Actions
@@ -61,12 +59,24 @@ export async function createJob(
     isDryRun: boolean;
   },
   idToken: string
-): Promise<{ success: boolean; data?: string; error?: string }> {
+): Promise<{ success: boolean; data?: string; pendingApproval?: boolean; requestId?: string; error?: string }> {
   try {
     const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
     if (payload.scope.type !== 'platform' && !payload.scope.id) {
       return { success: false, error: 'Scope ID is required when not targeting the entire platform.' };
+    }
+
+    // Four-eyes: LIVE (non-dry-run) jobs mutate tenant data at scale and are
+    // approval-gated. Dry runs execute immediately.
+    if (!payload.isDryRun) {
+      const { requestId } = await enqueueApproval(
+        'job.create_live',
+        { type: payload.type, label: payload.label, description: payload.description, scope: payload.scope },
+        `Run LIVE job "${payload.label || payload.type}" on ${payload.scope.type}${payload.scope.id ? ` ${payload.scope.id}` : ''}`,
+        actor
+      );
+      return { success: true, pendingApproval: true, requestId };
     }
 
     const docRef = adminDb.collection('platform_jobs').doc();
@@ -269,105 +279,9 @@ export async function runTenantDiagnostics(
   }
 }
 
-// ─────────────────────────────────────────────────
-// Job Execution Engine (internal — NOT exported)
-// ─────────────────────────────────────────────────
-
-/**
- * Schedules background execution of a job with a pre-authorized actor.
- * Prefers Next's after() (non-blocking, survives the response); falls back
- * to a detached promise when unavailable (e.g. in tests).
- */
-function scheduleJobExecution(jobId: string, actor: AuditActor): void {
-  try {
-    const { unstable_after } = require('next/server') as { unstable_after: (fn: () => Promise<void>) => void };
-    unstable_after(async () => {
-      await executeJob(jobId, actor);
-    });
-  } catch {
-    executeJob(jobId, actor).catch((err: unknown) => {
-      console.error('[BACKOFFICE_JOBS] Background job execution failed:', err);
-    });
-  }
-}
-
-/**
- * Executes a pending platform job.
- * Dispatches to specific handlers based on job type.
- *
- * Internal only: callers must already hold operations:execute — the actor
- * is passed in from an authorized entrypoint (createJob / triggerJobExecution).
- *
- * CRITICAL: The catch block ALWAYS updates the Firestore document
- * to `status: 'failed'` with a full error trace. This prevents
- * jobs from being permanently stuck in 'pending' or 'running'.
- */
-async function executeJob(
-  jobId: string,
-  actor: AuditActor
-): Promise<{ success: boolean; error?: string }> {
-  const jobRef = adminDb.collection('platform_jobs').doc(jobId);
-
-  try {
-    const jobSnap = await jobRef.get();
-    if (!jobSnap.exists) throw new Error('Job not found');
-
-    const job = jobSnap.data() as PlatformJob;
-
-    if (job.status === 'running' || job.status === 'completed') {
-      throw new Error(`Job is already ${job.status}`);
-    }
-
-    // Router — dispatch to the correct handler
-    switch (job.type) {
-      case 'migrate_hierarchical_rbac':
-        return await processRbacMigration(jobId, actor);
-
-      // 'migrate_legacy_saas_fields' (company_metrics → saas_operations
-      // re-parenting) was retired after being applied in all environments;
-      // nothing creates company_metrics fields anymore. The type stays in
-      // PlatformJobType so historical job documents still render.
-
-      case 'migrate_messaging_templates_fer':
-        return await processMessagingTemplatesFer(jobId, actor);
-
-      case 'migrate_meetings_fer':
-        return await processMeetingsFer(jobId, actor);
-
-      case 'encrypt_platform_secrets':
-        return await processEncryptPlatformSecrets(jobId, actor);
-
-      // NOTE: the former generic job types (reseed_templates, reindex_search,
-      // repair_contacts, backfill_analytics, migrate_data, rebuild_variables,
-      // fix_duplicate_slugs, replay_webhooks, retry_campaigns, restore_archived)
-      // were removed — they executed a no-op processor that logged a fabricated
-      // success message. Re-add a type only together with a real handler.
-      default:
-        throw new Error(`Execution logic for job type "${job.type}" is not yet implemented.`);
-    }
-  } catch (error: unknown) {
-    // CRITICAL: Always mark the job as failed in Firestore so it never
-    // gets permanently stuck in 'pending' or 'running'.
-    console.error('[BACKOFFICE_JOBS] executeJob failed:', error);
-    const message = getErrorMessage(error);
-
-    try {
-      await jobRef.update({
-        status: 'failed',
-        completedAt: new Date().toISOString(),
-        'logs': FieldValue.arrayUnion({
-          timestamp: new Date().toISOString(),
-          level: 'error',
-          message: `Execution failed: ${message || 'Unknown error'}`
-        })
-      });
-    } catch (updateErr) {
-      console.error('[BACKOFFICE_JOBS] Failed to update job status to failed:', updateErr);
-    }
-
-    return { success: false, error: message };
-  }
-}
+// Job execution engine lives in ./job-execution (internal, non-'use server')
+// so the approval registry can schedule approved jobs without exposing a
+// public endpoint.
 
 
 // ─────────────────────────────────────────────────
@@ -378,14 +292,16 @@ async function executeJob(
 
 export interface ClearAutomationResult {
   success: boolean;
+  pendingApproval?: boolean;
+  requestId?: string;
   deleted?: { automation_runs: number; automation_jobs: number; total: number };
   error?: string;
 }
 
 /**
- * Batch-deletes all documents in `automation_runs` and `automation_jobs`.
- * Requires operations:execute. Uses chunks of 499 to stay within
- * Firestore's 500-operation batch limit.
+ * Requests deletion of all `automation_runs` and `automation_jobs`.
+ * Four-eyes: the wipe is approval-gated — it executes in approval-registry
+ * once a second admin approves.
  */
 export async function clearAutomationData(
   idToken: string
@@ -393,52 +309,14 @@ export async function clearAutomationData(
   try {
     const actor = await authorizeBackoffice(idToken, 'operations', 'execute');
 
-    const BATCH_CAP = 499;
-
-    async function deleteCollection(name: string): Promise<number> {
-      const snap = await adminDb.collection(name).get();
-      if (snap.empty) return 0;
-
-      let batch = adminDb.batch();
-      let count = 0;
-      let total = 0;
-
-      for (const doc of snap.docs) {
-        batch.delete(doc.ref);
-        count++;
-        total++;
-        if (count >= BATCH_CAP) {
-          await batch.commit();
-          batch = adminDb.batch();
-          count = 0;
-        }
-      }
-      if (count > 0) await batch.commit();
-      return total;
-    }
-
-    const runsDeleted = await deleteCollection('automation_runs');
-    const jobsDeleted = await deleteCollection('automation_jobs');
-    const total = runsDeleted + jobsDeleted;
-
-    await logBackofficeAction(
-      actor,
+    const { requestId } = await enqueueApproval(
       'automation.clear',
-      'platform',
-      'automation_data',
-      {
-        metadata: {
-          automation_runs: runsDeleted,
-          automation_jobs: jobsDeleted,
-          total,
-        },
-      }
+      {},
+      'Permanently wipe ALL automation_runs and automation_jobs (platform-wide)',
+      actor
     );
 
-    return {
-      success: true,
-      deleted: { automation_runs: runsDeleted, automation_jobs: jobsDeleted, total },
-    };
+    return { success: true, pendingApproval: true, requestId };
   } catch (error: unknown) {
     console.error('[BACKOFFICE] clearAutomationData failed:', error);
     return { success: false, error: getErrorMessage(error) };
