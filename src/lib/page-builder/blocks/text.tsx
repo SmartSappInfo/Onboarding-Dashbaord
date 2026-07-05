@@ -103,10 +103,15 @@ const TextBlockEditor = ({
 }: TextBlockEditorProps) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const lastContentRef = React.useRef<string>(content);
+  const [hasMounted, setHasMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Sync content only if the prop actually changes from the last value we wrote/received
   React.useEffect(() => {
-    if (containerRef.current) {
+    if (hasMounted && containerRef.current) {
       const interpolated = interpolate(content);
       const sanitized = sanitizeHtml(interpolated);
       // We only update if the external content prop is different from our last known content
@@ -115,7 +120,7 @@ const TextBlockEditor = ({
         lastContentRef.current = content;
       }
     }
-  }, [content, interpolate]);
+  }, [content, hasMounted, interpolate]);
 
   const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     const newHtml = e.currentTarget.innerHTML;
@@ -141,7 +146,7 @@ const TextBlockEditor = ({
           contentEditable={isEdit}
           suppressContentEditableWarning
           onBlur={isEdit ? handleBlur : undefined}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(interpolate(content)) }}
+          dangerouslySetInnerHTML={!hasMounted ? { __html: sanitizeHtml(interpolate(content)) } : undefined}
         />
       </div>
     </div>
