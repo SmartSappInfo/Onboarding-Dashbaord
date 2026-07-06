@@ -57,7 +57,7 @@ export const summarizeEntityNotesFlow = ai.defineFlow(
       }
     );
 
-    const fullModelString = resolved.aiModels?.[0] || 'googleai/gemini-2.0-flash';
+    const fullModelString = resolved.aiModels?.[0] || 'googleai/gemini-3.5-flash';
     const [provider, ...rest] = fullModelString.split('/');
     const modelId = rest.join('/');
 

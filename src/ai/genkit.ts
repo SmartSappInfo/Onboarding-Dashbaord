@@ -110,7 +110,7 @@ export async function getModel(params: {
   if (provider === 'openai') {
     provider = 'anthropic';
     if (modelId.startsWith('gpt-')) {
-      modelId = 'claude-sonnet-4-6';
+      modelId = 'claude-3-5-sonnet';
     }
   }
 

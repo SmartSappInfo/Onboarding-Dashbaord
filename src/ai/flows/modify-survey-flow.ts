@@ -163,11 +163,22 @@ const modifySurveyFlow = ai.defineFlow(
         
         while (retries < maxRetries) {
             try {
+                let provider = input.provider || 'anthropic';
+                let modelId = input.modelId || 'claude-3-5-sonnet';
+
+                // Automatically switch to Google Gemini for multimodal (image/PDF) requests 
+                // since the older Anthropic/compat plugins do not support Genkit's media part structure natively.
+                if (input.docDataUri && provider !== 'googleai') {
+                    console.log(`[AI] Multimodal input detected. Routing to Google Gemini (gemini-2.5-pro) to process visual data.`);
+                    provider = 'googleai';
+                    modelId = 'gemini-2.5-pro';
+                }
+
                 // Resolve the model instance with the correct API key for this organization
                 const resolvedModel = await getModel({
                     organizationId: input.organizationId,
-                    provider: input.provider || 'anthropic',
-                    modelId: input.modelId || 'claude-3-5-sonnet',
+                    provider,
+                    modelId,
                 });
 
                 const generatorAi = resolvedModel.customAi || ai;

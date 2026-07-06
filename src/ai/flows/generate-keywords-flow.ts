@@ -29,7 +29,7 @@ const generateKeywordsFlow = ai.defineFlow(
       const resolvedModel = await getModel({
         organizationId: input.organizationId,
         provider: 'googleai',
-        modelId: 'gemini-3-flash-preview',
+        modelId: 'gemini-3.5-flash',
       });
 
       const generatorAi = resolvedModel.customAi || ai;
@@ -51,7 +51,7 @@ Focus on keywords that describe the target audience, subject, and goals of this 
       }
 
       return output;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error generating keywords inside AI flow:', error);
       return { keywords: [] };
     }

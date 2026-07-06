@@ -3,7 +3,7 @@
  * @fileOverview An AI flow to generate HTML email wrappers (Visual Styles).
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateVisualStyleInputSchema = z.object({
@@ -49,7 +49,21 @@ const generateVisualStyleFlow = ai.defineFlow(
     outputSchema: GenerateVisualStyleOutputSchema,
   },
   async (input) => {
-    const { output } = await stylePrompt(input);
+    const provider = input.photoDataUri ? 'googleai' : 'anthropic';
+    const modelId = input.photoDataUri ? 'gemini-3.5-flash' : 'claude-3-5-sonnet';
+
+    const resolvedModel = await getModel({
+        provider,
+        modelId,
+    });
+
+    const generatorAi = resolvedModel.customAi || ai;
+    const { output } = await generatorAi.generate({
+        model: resolvedModel.modelString,
+        prompt: await stylePrompt.render(input),
+        output: { schema: GenerateVisualStyleOutputSchema },
+    });
+
     if (!output) throw new Error("The AI failed to generate a visual style.");
     return output;
   }

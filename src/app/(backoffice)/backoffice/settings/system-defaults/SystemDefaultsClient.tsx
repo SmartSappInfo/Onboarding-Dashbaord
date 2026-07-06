@@ -42,7 +42,7 @@ export default function SystemDefaultsClient() {
     const [templates, setTemplates] = React.useState<SystemTemplates>({});
     const [aiConfig, setAiConfig] = React.useState({
         defaultProvider: 'googleai',
-        defaultModelId: 'gemini-3-flash-preview',
+        defaultModelId: 'gemini-3.5-flash',
     });
 
     const [aiKeys, setAiKeys] = React.useState({

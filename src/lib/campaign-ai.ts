@@ -242,7 +242,7 @@ Rules:
         const geminiModel = await getModel({
           organizationId: params.organizationId,
           provider: 'googleai',
-          modelId: 'gemini-2.0-flash',
+          modelId: 'gemini-3.5-flash',
         });
         const fallbackAi = geminiModel.customAi || ai;
         usedIsAnthropic = false;

@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Falls back with a descriptive user-facing error on protected/bot-blocked pages.
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL = 'gemini-3.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Timeout for the external site fetch (10 seconds max)

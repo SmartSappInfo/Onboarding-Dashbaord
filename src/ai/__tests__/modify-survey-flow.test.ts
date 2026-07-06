@@ -19,7 +19,7 @@ describe('modifySurveyFlow Input Schema', () => {
             },
             organizationId: 'org-123',
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6'
+            modelId: 'claude-3-5-sonnet'
         };
 
         const validImageInput: ModifySurveyInput = {
