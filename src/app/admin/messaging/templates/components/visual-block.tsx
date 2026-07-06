@@ -207,6 +207,15 @@ function renderTextWithVariablePills(text: string): React.ReactNode {
     );
 }
 
+const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
+    if (val === undefined || val === null || val === '') return '';
+    const str = String(val);
+    if (str.endsWith('px') || str.endsWith('%') || str.endsWith('pt') || str.endsWith('em') || str.endsWith('rem')) {
+        return str;
+    }
+    return `${str}${defaultUnit}`;
+};
+
 export function VisualBlock({ 
     block, 
     simulationVars, 
@@ -231,31 +240,31 @@ export function VisualBlock({
     const alignFlexClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
     
     // Detailed Spacing
-    const paddingTop = s.paddingTop ? (s.paddingTop.endsWith('px') || s.paddingTop.endsWith('%') || s.paddingTop.endsWith('pt') ? s.paddingTop : `${s.paddingTop}px`) : '';
-    const paddingBottom = s.paddingBottom ? (s.paddingBottom.endsWith('px') || s.paddingBottom.endsWith('%') || s.paddingBottom.endsWith('pt') ? s.paddingBottom : `${s.paddingBottom}px`) : '';
-    const paddingLeft = s.paddingLeft ? (s.paddingLeft.endsWith('px') || s.paddingLeft.endsWith('%') || s.paddingLeft.endsWith('pt') ? s.paddingLeft : `${s.paddingLeft}px`) : '';
-    const paddingRight = s.paddingRight ? (s.paddingRight.endsWith('px') || s.paddingRight.endsWith('%') || s.paddingRight.endsWith('pt') ? s.paddingRight : `${s.paddingRight}px`) : '';
+    const paddingTop = ensureUnit(s.paddingTop);
+    const paddingBottom = ensureUnit(s.paddingBottom);
+    const paddingLeft = ensureUnit(s.paddingLeft);
+    const paddingRight = ensureUnit(s.paddingRight);
 
     const spacingStyle = {
         paddingTop: paddingTop || undefined,
         paddingBottom: paddingBottom || undefined,
         paddingLeft: paddingLeft || undefined,
         paddingRight: paddingRight || undefined,
-        marginTop: s.marginTop ? (s.marginTop.endsWith('px') ? s.marginTop : `${s.marginTop}px`) : undefined,
-        marginBottom: s.marginBottom ? (s.marginBottom.endsWith('px') ? s.marginBottom : `${s.marginBottom}px`) : undefined,
+        marginTop: s.marginTop ? ensureUnit(s.marginTop) : undefined,
+        marginBottom: s.marginBottom ? ensureUnit(s.marginBottom) : undefined,
     };
 
     // Border and Corner radius
     const borderStyle = {
-        borderWidth: s.borderWidth ? (s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`) : undefined,
+        borderWidth: s.borderWidth ? ensureUnit(s.borderWidth) : undefined,
         borderStyle: s.borderStyle || undefined,
         borderColor: s.borderColor || undefined,
-        borderRadius: s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : undefined,
+        borderRadius: s.borderRadius ? ensureUnit(s.borderRadius) : undefined,
     };
 
     // Typography
     const typographyStyle = {
-        fontSize: s.fontSize ? (s.fontSize.endsWith('px') || s.fontSize.endsWith('pt') ? s.fontSize : `${s.fontSize}px`) : (s.width ? `${s.width}px` : undefined),
+        fontSize: s.fontSize ? ensureUnit(s.fontSize) : (s.width ? ensureUnit(s.width) : undefined),
         fontFamily: s.fontFamily || undefined,
         color: s.color || undefined,
         fontWeight: s.fontWeight || undefined,
@@ -458,7 +467,7 @@ export function VisualBlock({
         }
         case 'text':
             return (
-                <div className={cn("w-full select-text", alignmentClass)} style={{ backgroundColor: s.backgroundColor }}>
+                <div className={cn("w-full select-text whitespace-pre-wrap", alignmentClass)} style={{ backgroundColor: s.backgroundColor }}>
                     {isEditing ? (
                         <SlashTextarea
                             value={block.content || ''}
@@ -473,7 +482,7 @@ export function VisualBlock({
                         />
                     ) : (
                         <div 
-                            className={cn("leading-relaxed m-0 p-0 font-medium select-text w-full break-words", alignmentClass)}
+                            className={cn("leading-relaxed m-0 p-0 font-medium select-text w-full break-words whitespace-pre-wrap", alignmentClass)}
                             style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
                         >
                             <SafeHtml html={block.content || ''} />
@@ -482,9 +491,43 @@ export function VisualBlock({
                 </div>
             );
         case 'button': {
-            const btnBg = s.backgroundColor || 'rgb(37 99 235)';
-            const btnColor = s.color || '#ffffff';
-            const btnRadius = s.borderRadius ? (s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`) : '12px';
+            const variant = s.variant || 'default';
+            
+            let btnBg = s.backgroundColor;
+            let btnColor = s.color;
+            let btnBorderWidth = s.borderWidth ? `${s.borderWidth}px` : undefined;
+            let btnBorderStyle = s.borderStyle || undefined;
+            let btnBorderColor = s.borderColor || undefined;
+            let btnShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+            let btnTextDecoration = 'none';
+
+            if (variant === 'default') {
+                btnBg = btnBg || 'var(--org-primary, rgb(37 99 235))';
+                btnColor = btnColor || '#ffffff';
+            } else if (variant === 'outline') {
+                btnBg = btnBg || 'transparent';
+                btnColor = btnColor || 'var(--org-primary, rgb(37 99 235))';
+                btnBorderWidth = btnBorderWidth || '2px';
+                btnBorderStyle = btnBorderStyle || 'solid';
+                btnBorderColor = btnBorderColor || 'var(--org-primary, rgb(37 99 235))';
+            } else if (variant === 'secondary') {
+                btnBg = btnBg || '#f3f4f6';
+                btnColor = btnColor || '#1f2937';
+            } else if (variant === 'destructive') {
+                btnBg = btnBg || '#dc2626';
+                btnColor = btnColor || '#ffffff';
+            } else if (variant === 'ghost') {
+                btnBg = btnBg || 'transparent';
+                btnColor = btnColor || '#4b5563';
+                btnShadow = 'none';
+            } else if (variant === 'link') {
+                btnBg = btnBg || 'transparent';
+                btnColor = btnColor || 'var(--org-primary, rgb(37 99 235))';
+                btnShadow = 'none';
+                btnTextDecoration = 'underline';
+            }
+
+            const btnRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '12px';
             const btnPadding = `${s.paddingTop || 14}px ${s.paddingRight || 28}px ${s.paddingBottom || 14}px ${s.paddingLeft || 28}px`;
             
             return (
@@ -498,11 +541,12 @@ export function VisualBlock({
                             padding: btnPadding,
                             fontWeight: s.fontWeight || 'bold',
                             fontFamily: s.fontFamily || undefined,
-                            fontSize: s.fontSize ? `${s.fontSize}px` : '16px',
-                            borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
-                            borderStyle: s.borderStyle || undefined,
-                            borderColor: s.borderColor || undefined,
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                            fontSize: s.fontSize ? ensureUnit(s.fontSize) : '16px',
+                            borderWidth: btnBorderWidth,
+                            borderStyle: btnBorderStyle,
+                            borderColor: btnBorderColor,
+                            boxShadow: btnShadow,
+                            textDecoration: btnTextDecoration,
                         }}
                     >
                         {isEditing ? (
@@ -606,7 +650,7 @@ export function VisualBlock({
                         />
                     ) : (
                         <div 
-                            className={cn("font-medium italic select-text p-4 w-full break-words", alignmentClass)}
+                            className={cn("font-medium italic select-text p-4 w-full break-words whitespace-pre-wrap", alignmentClass)}
                             style={{ ...typographyStyle, display: 'block', border: 'none' }}
                         >
                             <SafeHtml html={block.content || ''} />
@@ -1375,7 +1419,7 @@ export function VisualBlock({
                                 style={{ 
                                     font: 'inherit',
                                     color: s.color || undefined,
-                                    fontSize: s.fontSize ? `${s.fontSize}px` : '18px',
+                                    fontSize: s.fontSize ? ensureUnit(s.fontSize) : '18px',
                                     fontWeight: s.fontWeight || 'bold',
                                     fontFamily: s.fontFamily || undefined,
                                 }}
@@ -1391,7 +1435,7 @@ export function VisualBlock({
                                 className="font-bold select-text"
                                 style={{ 
                                     color: s.color || undefined,
-                                    fontSize: s.fontSize ? `${s.fontSize}px` : '18px',
+                                    fontSize: s.fontSize ? ensureUnit(s.fontSize) : '18px',
                                     fontWeight: s.fontWeight || 'bold',
                                     fontFamily: s.fontFamily || undefined,
                                 }}

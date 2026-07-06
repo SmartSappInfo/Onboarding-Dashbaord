@@ -23,7 +23,7 @@ const DetectPdfFieldsInputSchema = z.object({
     })).optional().describe("A list of fields already placed by the user to provide context and avoid duplicates."),
     organizationId: z.string().optional().describe("The organization ID for API key resolution."),
     provider: z.string().optional().default('googleai').describe("The AI provider to use."),
-    modelId: z.string().optional().default('gemini-3-flash-preview').describe("The model ID to use."),
+    modelId: z.string().optional().default('gemini-3.5-flash').describe("The model ID to use."),
 });
 export type DetectPdfFieldsInput = z.infer<typeof DetectPdfFieldsInputSchema>;
 
@@ -116,7 +116,7 @@ const detectPdfFieldsFlow = ai.defineFlow(
     outputSchema: DetectPdfFieldsOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'googleai', modelId = 'gemini-3-flash-preview' } = input;
+    const { organizationId, provider = 'googleai', modelId = 'gemini-3.5-flash' } = input;
 
     // Resolve model dynamically based on user selection/tenant settings
     const resolvedModel = await getModel({

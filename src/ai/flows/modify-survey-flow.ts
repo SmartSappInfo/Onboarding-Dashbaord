@@ -11,11 +11,7 @@
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 import {
-  questionSchema,
-  layoutBlockSchema,
-  logicBlockSchema,
   elementSchema,
-  resultBlockSchema,
   resultPageSchema,
   resultRuleSchema,
   BACKGROUND_PATTERNS,
@@ -24,17 +20,17 @@ import {
 const ModifySurveyInputSchema = z.object({
   userMessage: z.string().describe('The user\'s request for changes.'),
   docContent: z.string().optional().describe('Extracted text from an uploaded document.'),
-  docDataUri: z.string().optional().describe('multimodal PDF data URI.'),
+  docDataUri: z.string().optional().describe('multimodal PDF or Image data URI.'),
   docUrl: z.string().url().optional().describe('URL of the document in media library.'),
   sourceUrl: z.string().url().optional().describe('A webpage URL to analyze for survey content.'),
   currentSurvey: z.object({
     title: z.string().optional(),
     description: z.string().optional(),
-    elements: z.array(z.any()).default([]),
+    elements: z.array(z.unknown()).default([]),
     scoringEnabled: z.boolean().optional(),
     maxScore: z.number().optional(),
-    resultRules: z.array(z.any()).optional(),
-    resultPages: z.array(z.any()).optional(),
+    resultRules: z.array(z.unknown()).optional(),
+    resultPages: z.array(z.unknown()).optional(),
     // Metadata and Styling
     backgroundColor: z.string().optional(),
     backgroundPattern: z.string().optional(),
@@ -53,8 +49,8 @@ const ModifySurveyInputSchema = z.object({
     showSurveyTitles: z.boolean().optional(),
   }),
   organizationId: z.string().optional(),
-  provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-sonnet-4-6'),
+  provider: z.string().optional(),
+  modelId: z.string().optional(),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
 
@@ -108,7 +104,7 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 3. **Scoring**: If 'scoringEnabled' is true (or if the content suggests an assessment), ensure questions have appropriate scores and 'maxScore' is updated.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
 5. **Layouts**: Use appropriate variants for headings (h1, h2, h3).
-6. **Multimodal Analysis**: If a PDF Data URI is provided, use it for deep discovery of fields and structure.
+6. **Multimodal Analysis**: If a PDF or Image Data URI is provided, use it for deep discovery of fields, structure, layout, and text. Extract fields and options faithfully, preserving exact copywriting unless explicitly asked to improve it.
 7. **Entity Focus**: Always refer to the institution/campus as an "Entity". Avoid terms like "School" unless it's part of the official name.
 8. **Modern Controls**: 
    - Use \`email\` and \`phone\` types for contact information.
@@ -125,7 +121,7 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}
 {{#if sourceUrl}}WEBPAGE CONTENT will be provided via multimodal if available, otherwise analyze the request.{{/if}}
-{{#if docDataUri}}MULTIMODAL PDF: {{media url=docDataUri}}{{/if}}
+{{#if docDataUri}}MULTIMODAL ATTACHMENT: {{media url=docDataUri}}{{/if}}
 
 --- CURRENT SURVEY STATE ---
 Title: {{{currentSurvey.title}}}
@@ -171,7 +167,7 @@ const modifySurveyFlow = ai.defineFlow(
                 const resolvedModel = await getModel({
                     organizationId: input.organizationId,
                     provider: input.provider || 'anthropic',
-                    modelId: input.modelId || 'claude-sonnet-4-6',
+                    modelId: input.modelId || 'claude-3-5-sonnet',
                 });
 
                 const generatorAi = resolvedModel.customAi || ai;
@@ -184,13 +180,14 @@ const modifySurveyFlow = ai.defineFlow(
                 
                 if (!output) throw new Error("The AI model failed to process the request.");
                 return output;
-            } catch (error: any) {
+            } catch (error: unknown) {
                 retries++;
+                const err = error as { message?: string; status?: number };
                 // Check for 503 (Service Unavailable) or 429 (Too Many Requests)
-                const isRetryable = error.message?.includes('503') || 
-                                  error.message?.includes('429') || 
-                                  error.status === 503 || 
-                                  error.status === 429;
+                const isRetryable = err.message?.includes('503') || 
+                                  err.message?.includes('429') || 
+                                  err.status === 503 || 
+                                  err.status === 429;
 
                 if (isRetryable && retries < maxRetries) {
                     // Exponential backoff: 1s, 2s, 4s... plus jitter

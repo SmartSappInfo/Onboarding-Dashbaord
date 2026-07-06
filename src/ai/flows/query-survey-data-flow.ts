@@ -10,12 +10,12 @@ import { z } from 'genkit';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 const QuerySurveyDataInputSchema = z.object({
-  survey: z.any().describe('The survey object, including title, description, and elements array.'),
-  responses: z.array(z.any()).describe('An array of survey response objects.'),
+  survey: z.unknown().describe('The survey object, including title, description, and elements array.'),
+  responses: z.array(z.unknown()).describe('An array of survey response objects.'),
   query: z.string().describe('The user\'s natural language query about the data.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
 });
 export type QuerySurveyDataInput = z.infer<typeof QuerySurveyDataInputSchema>;
 
@@ -79,17 +79,20 @@ const querySurveyDataFlow = ai.defineFlow(
         outputSchema: QuerySurveyDataOutputSchema,
     },
     async (input) => {
-        const { survey, responses, query: userQuery, organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
-        const surveyElementsJson = JSON.stringify(survey.elements, null, 2);
+        const { survey, responses, query: userQuery, organizationId, provider = 'anthropic' } = input;
+        const typedSurvey = survey as { title: string; elements: unknown[]; scoringEnabled?: boolean; maxScore?: number };
+        const modelId = input.modelId || (provider === 'openrouter' ? 'openrouter/free' : 'claude-3-5-sonnet');
+        
+        const surveyElementsJson = JSON.stringify(typedSurvey.elements, null, 2);
         const responsesJson = JSON.stringify(responses, null, 2);
         
         const promptText = renderQueryPrompt({
-            title: survey.title,
+            title: typedSurvey.title,
             elementsJson: surveyElementsJson,
             responsesJson: responsesJson,
             userQuery: userQuery,
-            scoringEnabled: !!survey.scoringEnabled,
-            maxScore: survey.maxScore,
+            scoringEnabled: !!typedSurvey.scoringEnabled,
+            maxScore: typedSurvey.maxScore,
         });
 
         // 1. OpenRouter Custom Path

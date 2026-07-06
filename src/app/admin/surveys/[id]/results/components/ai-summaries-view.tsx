@@ -12,6 +12,7 @@ import { collection, addDoc, doc, deleteDoc, onSnapshot } from 'firebase/firesto
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { querySurveyData } from '@/ai/flows/query-survey-data-flow';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { format } from 'date-fns';
 
 import {
@@ -64,22 +65,7 @@ export default function AISummariesView({
     const [isQuerying, setIsQuerying] = React.useState(false);
     const [summaryToDelete, setSummaryToDelete] = React.useState<SurveySummary | null>(null);
 
-    // Live model preferences
-    const [liveProvider, setLiveProvider] = React.useState('googleai');
-    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
-
-    React.useEffect(() => {
-        if (!user || !firestore) return;
-        const userRef = doc(firestore, 'users', user.uid);
-        const unsubscribe = onSnapshot(userRef, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data() as UserProfile;
-                if (data.preferredAiProvider) setLiveProvider(data.preferredAiProvider);
-                if (data.preferredAiModel) setLiveModelId(data.preferredAiModel);
-            }
-        });
-        return () => unsubscribe();
-    }, [user, firestore]);
+    const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),

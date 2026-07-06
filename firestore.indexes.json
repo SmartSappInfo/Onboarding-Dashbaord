@@ -3080,6 +3080,28 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "learning_signals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isPublished",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "validationSuccess",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "editDistance",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -24,12 +24,12 @@ const GenerateAutomationOutputSchema = z.object({
   description: z.string().describe("A concise summary of what this automation does."),
   trigger: z.object({
     type: z.string().describe("The trigger type: 'tag_added', 'survey_submitted', 'form_submitted', 'deal_stage_changed', 'manual'"),
-    config: z.record(z.any()).describe("Configuration options for the trigger (e.g. tagId, surveyId)."),
+    config: z.record(z.unknown()).describe("Configuration options for the trigger (e.g. tagId, surveyId)."),
   }),
   steps: z.array(z.object({
     id: z.string().describe("Unique identifier for this step node (e.g. step_send_welcome)."),
     type: z.enum(['action', 'condition', 'delay']),
-    config: z.record(z.any()).describe("Configuration options matching the node type (e.g. actionType = 'send_email', templateId, durationDays)."),
+    config: z.record(z.unknown()).describe("Configuration options matching the node type (e.g. actionType = 'send_email', templateId, durationDays)."),
     nextStepId: z.string().optional().describe("The ID of the next step to execute in sequence."),
   })).describe("Sequential order of actions, delays, or conditions in the workflow."),
 });
@@ -69,7 +69,7 @@ const generateAutomationFlow = ai.defineFlow(
     outputSchema: GenerateAutomationOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
 
     const resolvedModel = await getModel({
       organizationId,

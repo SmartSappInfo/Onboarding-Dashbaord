@@ -14,11 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
+import type { ExtractSchoolDataOutput } from '@/ai/flows/extract-school-data-flow';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 
 interface AiArchitectDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onDataExtracted: (data: any) => void;
+  onDataExtracted: (data: ExtractSchoolDataOutput) => void;
 }
 
 export function AiArchitectDialog({
@@ -29,6 +31,7 @@ export function AiArchitectDialog({
   const { toast } = useToast();
   const [text, setText] = React.useState('');
   const [isExtracting, setIsExtracting] = React.useState(false);
+  const { provider, modelId } = useLiveAiModel();
 
   const handleExtract = async () => {
     if (!text.trim() || text.trim().length < 50) {
@@ -48,8 +51,8 @@ export function AiArchitectDialog({
     try {
       const result = await extractSchoolData({ 
         text,
-        provider: 'anthropic',
-        modelId: 'claude-sonnet-4-6'
+        provider,
+        modelId
       });
       if (!result || !result.name) {
         throw new Error('AI was unable to identify a name for this record.');
@@ -61,12 +64,13 @@ export function AiArchitectDialog({
         title: 'Architecting Complete',
         description: `Successfully extracted structured data for "${result.name}".`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI Architect extraction error:', error);
+      const err = error as { message?: string };
       toast({
         variant: 'destructive',
         title: 'Architecting Failed',
-        description: error.message || 'An error occurred during extraction.',
+        description: err.message || 'An error occurred during extraction.',
       });
     } finally {
       setIsExtracting(false);

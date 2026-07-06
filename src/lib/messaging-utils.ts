@@ -43,10 +43,15 @@ function sanitizeContent(html: unknown): string {
     .trim();
 }
 
-/**
- * Resolves variables in a text string using {{variable_name}} syntax.
- * Supports tag_list (JSON array) by rendering as a comma-separated string.
- */
+const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
+  if (val === undefined || val === null || val === '') return '';
+  const str = String(val);
+  if (str.endsWith('px') || str.endsWith('%') || str.endsWith('pt') || str.endsWith('em') || str.endsWith('rem')) {
+    return str;
+  }
+  return `${str}${defaultUnit}`;
+};
+
 export function resolveVariables(text: unknown, variables: Record<string, any>): string {
   if (text === null || text === undefined) return '';
   const textStr = String(text);
@@ -253,10 +258,10 @@ export function renderBlocksToHtml(
     const alignStyle = `text-align: ${align};`;
     
     // Spacing
-    const paddingTopVal = s.paddingTop ? (s.paddingTop.endsWith('px') || s.paddingTop.endsWith('%') || s.paddingTop.endsWith('pt') ? s.paddingTop : `${s.paddingTop}px`) : '';
-    const paddingBottomVal = s.paddingBottom ? (s.paddingBottom.endsWith('px') || s.paddingBottom.endsWith('%') || s.paddingBottom.endsWith('pt') ? s.paddingBottom : `${s.paddingBottom}px`) : '';
-    const paddingLeftVal = s.paddingLeft ? (s.paddingLeft.endsWith('px') || s.paddingLeft.endsWith('%') || s.paddingLeft.endsWith('pt') ? s.paddingLeft : `${s.paddingLeft}px`) : '';
-    const paddingRightVal = s.paddingRight ? (s.paddingRight.endsWith('px') || s.paddingRight.endsWith('%') || s.paddingRight.endsWith('pt') ? s.paddingRight : `${s.paddingRight}px`) : '';
+    const paddingTopVal = ensureUnit(s.paddingTop);
+    const paddingBottomVal = ensureUnit(s.paddingBottom);
+    const paddingLeftVal = ensureUnit(s.paddingLeft);
+    const paddingRightVal = ensureUnit(s.paddingRight);
 
     const paddingStyles = [
       paddingTopVal ? `padding-top: ${paddingTopVal};` : '',
@@ -266,21 +271,21 @@ export function renderBlocksToHtml(
     ].filter(Boolean).join(' ') || (s.padding ? `padding: ${s.padding};` : 'padding: 12px 0;');
     
     const marginStyles = [
-      s.marginTop ? `margin-top: ${s.marginTop.endsWith('px') || s.marginTop.endsWith('%') || s.marginTop.endsWith('pt') ? s.marginTop : `${s.marginTop}px`};` : '',
-      s.marginBottom ? `margin-bottom: ${s.marginBottom.endsWith('px') || s.marginBottom.endsWith('%') || s.marginBottom.endsWith('pt') ? s.marginBottom : `${s.marginBottom}px`};` : '',
+      s.marginTop ? `margin-top: ${ensureUnit(s.marginTop)};` : '',
+      s.marginBottom ? `margin-bottom: ${ensureUnit(s.marginBottom)};` : '',
     ].filter(Boolean).join(' ');
 
     // Borders
     const borderStyles = [
-      s.borderWidth ? `border-width: ${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`};` : '',
+      s.borderWidth ? `border-width: ${ensureUnit(s.borderWidth)};` : '',
       s.borderStyle ? `border-style: ${s.borderStyle};` : '',
       s.borderColor ? `border-color: ${s.borderColor};` : '',
-      s.borderRadius ? `border-radius: ${s.borderRadius.endsWith('px') || s.borderRadius.endsWith('%') ? s.borderRadius : `${s.borderRadius}px`};` : '',
+      s.borderRadius ? `border-radius: ${ensureUnit(s.borderRadius)};` : '',
     ].filter(Boolean).join(' ');
 
     const blockBgColor = s.backgroundColor ? `background-color: ${s.backgroundColor};` : '';
     const fontColor = s.color ? `color: ${s.color};` : `color: ${textColor};`;
-    const fontSizeVal = s.fontSize ? (s.fontSize.endsWith('px') || s.fontSize.endsWith('pt') ? s.fontSize : `${s.fontSize}px`) : (s.width ? `${s.width}px` : '');
+    const fontSizeVal = s.fontSize ? ensureUnit(s.fontSize) : (s.width ? ensureUnit(s.width) : '');
     const fontSize = fontSizeVal ? `font-size: ${fontSizeVal};` : '';
     const fontFamily = s.fontFamily ? `font-family: ${s.fontFamily};` : '';
     const fontWeight = s.fontWeight ? `font-weight: ${s.fontWeight};` : '';
@@ -446,7 +451,7 @@ export function renderBlocksToHtml(
             
             // Image border styles (from block styling s)
             const imgBorder = s.borderWidth 
-              ? `${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
+              ? `${ensureUnit(s.borderWidth)} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
               : `1px solid ${dividerColor}`;
 
             // Outer wrapper should not inherit the image border or background color
@@ -464,8 +469,44 @@ export function renderBlocksToHtml(
       case 'button': {
         const title = resolveVariables(block.title || 'Click Here', variables);
         const link = resolveVariables(block.link || '#', variables);
-        const btnBg = s.backgroundColor || options?.style?.primaryColor || '#3B5FFF';
-        const btnColor = s.color || '#ffffff';
+        const variant = s.variant || 'default';
+        const primaryColor = options?.style?.primaryColor || '#3B5FFF';
+
+        let btnBg = s.backgroundColor;
+        let btnColor = s.color;
+        let btnBorderWidth = s.borderWidth ? ensureUnit(s.borderWidth) : '';
+        let btnBorderStyle = s.borderStyle || '';
+        let btnBorderColor = s.borderColor || '';
+        let shadowColor = options?.style?.primaryColor ? `${options.style.primaryColor}4D` : 'rgba(59, 95, 255, 0.3)';
+        let btnShadow = `box-shadow: 0 10px 15px -3px ${shadowColor};`;
+        let btnTextDecoration = 'text-decoration: none;';
+
+        if (variant === 'default') {
+          btnBg = btnBg || primaryColor;
+          btnColor = btnColor || '#ffffff';
+        } else if (variant === 'outline') {
+          btnBg = btnBg || 'transparent';
+          btnColor = btnColor || primaryColor;
+          btnBorderWidth = btnBorderWidth || '2px';
+          btnBorderStyle = btnBorderStyle || 'solid';
+          btnBorderColor = btnBorderColor || primaryColor;
+        } else if (variant === 'secondary') {
+          btnBg = btnBg || '#f3f4f6';
+          btnColor = btnColor || '#1f2937';
+        } else if (variant === 'destructive') {
+          btnBg = btnBg || '#dc2626';
+          btnColor = btnColor || '#ffffff';
+        } else if (variant === 'ghost') {
+          btnBg = btnBg || 'transparent';
+          btnColor = btnColor || '#4b5563';
+          btnShadow = '';
+        } else if (variant === 'link') {
+          btnBg = btnBg || 'transparent';
+          btnColor = btnColor || primaryColor;
+          btnShadow = '';
+          btnTextDecoration = 'text-decoration: underline;';
+        }
+
         const styleRadius = options?.style?.borderRadius;
         const defaultRadius = styleRadius ? (hasUnit(styleRadius) ? styleRadius : `${styleRadius}px`) : '12px';
         const btnRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
@@ -475,15 +516,13 @@ export function renderBlocksToHtml(
           s.paddingRight || '32px',
           s.paddingBottom || '16px',
           s.paddingLeft || '32px'
-        ].map(p => p.endsWith('px') || p.endsWith('%') ? p : `${p}px`).join(' ');
-
-        const shadowColor = options?.style?.primaryColor ? `${options.style.primaryColor}4D` : 'rgba(59, 95, 255, 0.3)';
+        ].map(p => ensureUnit(p)).join(' ');
 
         // Extract button border styles from block styles s
         const btnBorder = [
-          s.borderWidth ? `border-width: ${s.borderWidth.endsWith('px') ? s.borderWidth : `${s.borderWidth}px`}` : '',
-          s.borderStyle ? `border-style: ${s.borderStyle}` : '',
-          s.borderColor ? `border-color: ${s.borderColor}` : '',
+          btnBorderWidth ? `border-width: ${btnBorderWidth}` : '',
+          btnBorderStyle ? `border-style: ${btnBorderStyle}` : '',
+          btnBorderColor ? `border-color: ${btnBorderColor}` : '',
         ].filter(Boolean).join('; ');
 
         // Outer div should not inherit block background color or borders (they belong on the button link)
@@ -494,7 +533,7 @@ export function renderBlocksToHtml(
 
         blockHtml = `
           <div style="${outerStyle} margin: 24px 0;">
-            <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; text-decoration: none; border-radius: ${btnRadius}; ${btnBorder ? `${btnBorder};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 10px 15px -3px ${shadowColor};">
+            <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; ${btnTextDecoration} border-radius: ${btnRadius}; ${btnBorder ? `${btnBorder};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${btnShadow}">
               ${title}
             </a>
           </div>

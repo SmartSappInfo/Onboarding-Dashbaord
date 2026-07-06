@@ -7,7 +7,7 @@ export function useLiveAiModel() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [provider, setProvider] = React.useState('googleai');
-  const [modelId, setModelId] = React.useState('gemini-3-flash-preview');
+  const [modelId, setModelId] = React.useState('gemini-3.5-flash');
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -15,7 +15,7 @@ export function useLiveAiModel() {
 
     let unsubUser = () => {};
     let globalDefaultProvider = 'googleai';
-    let globalDefaultModelId = 'gemini-3-flash-preview';
+    let globalDefaultModelId = 'gemini-3.5-flash';
 
     // 1. Subscribe to global default AI settings
     const configRef = doc(firestore, 'system_settings', 'ai_config');
@@ -53,10 +53,10 @@ export function useLiveAiModel() {
           let preferredAiProvider = data.preferredAiProvider || globalDefaultProvider;
           let preferredAiModel = data.preferredAiModel || globalDefaultModelId;
 
-          // Migrate legacy openai/gpt preferences to anthropic/claude-sonnet-4-6
+          // Migrate legacy openai/gpt preferences to anthropic/claude-3-5-sonnet
           if (preferredAiProvider === 'openai') {
             preferredAiProvider = 'anthropic';
-            preferredAiModel = 'claude-sonnet-4-6';
+            preferredAiModel = 'claude-3-5-sonnet';
           }
 
           setProvider(preferredAiProvider);

@@ -11,6 +11,7 @@ import { ArrowLeft, Sparkles, Loader2, Download, BarChart3, FileText, Brain, Use
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
+import { useLiveAiModel } from "@/hooks/use-live-ai-model";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -33,7 +34,7 @@ const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
  * Extracts a human-readable string from a survey answer value.
  * Handles: plain strings/numbers, {option, other} objects, arrays of mixed types.
  */
-function formatAnswerForCsv(value: any): string {
+function formatAnswerForCsv(value: unknown): string {
     if (value === null || value === undefined) return '';
 
     // Plain primitive
@@ -42,21 +43,20 @@ function formatAnswerForCsv(value: any): string {
     }
 
     // Single object with option/other pattern (e.g. multiple-choice with "Other")
-    if (typeof value === 'object' && !Array.isArray(value)) {
-        if ('option' in value) {
-            const other = value.other ? String(value.other).trim() : '';
-            const option = value.option ? String(value.option).trim() : '';
+    if (typeof value === 'object') {
+        if (Array.isArray(value)) {
+            return value.map(item => formatAnswerForCsv(item)).filter(Boolean).join(' | ');
+        }
+        const valObj = value as Record<string, unknown>;
+        if ('option' in valObj) {
+            const other = valObj.other ? String(valObj.other).trim() : '';
+            const option = valObj.option ? String(valObj.option).trim() : '';
             // If "other" text is filled and meaningful, prefer it; otherwise use the option
             return other.length > 0 ? `${option} (${other})` : option;
         }
         // Generic object fallback — extract values
-        const vals = Object.values(value).filter(v => v !== '' && v !== null && v !== undefined);
+        const vals = Object.values(valObj).filter(v => v !== '' && v !== null && v !== undefined);
         return vals.length > 0 ? vals.map(String).join(' | ') : '';
-    }
-
-    // Array (checkboxes, multi-select)
-    if (Array.isArray(value)) {
-        return value.map(item => formatAnswerForCsv(item)).filter(Boolean).join(' | ');
     }
 
     return String(value);
@@ -80,22 +80,7 @@ export default function SurveyResultsPage() {
     const [attributionFilter, setAttributionFilter] = React.useState<string>('all');
     const [deepLinkFilterType, setDeepLinkFilterType] = React.useState<string | null>(null);
 
-    // Live model preferences
-    const [liveProvider, setLiveProvider] = React.useState('googleai');
-    const [liveModelId, setLiveModelId] = React.useState('gemini-3-flash-preview');
-
-    React.useEffect(() => {
-        if (!user || !firestore) return;
-        const userRef = doc(firestore, 'users', user.uid);
-        const unsubscribe = onSnapshot(userRef, (snap) => {
-            if (snap.exists()) {
-                const data = snap.data() as UserProfile;
-                if (data.preferredAiProvider) setLiveProvider(data.preferredAiProvider);
-                if (data.preferredAiModel) setLiveModelId(data.preferredAiModel);
-            }
-        });
-        return () => unsubscribe();
-    }, [user, firestore]);
+    const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
     React.useEffect(() => {
         const filterUser = searchParams.get('filterUser');

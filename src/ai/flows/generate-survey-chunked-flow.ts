@@ -39,7 +39,7 @@ const BlueprintInputSchema = z.object({
   content: z.string(),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-sonnet-4-6'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type BlueprintInput = z.infer<typeof BlueprintInputSchema>;
 
@@ -113,7 +113,7 @@ const QuestionsInputSchema = z.object({
   blueprint: BlueprintOutputSchema,
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-sonnet-4-6'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type QuestionsInput = z.infer<typeof QuestionsInputSchema>;
 
@@ -279,10 +279,10 @@ export async function generateSurveyQuestions(input: QuestionsInput): Promise<Qu
 
 const LogicInputSchema = z.object({
   blueprint: BlueprintOutputSchema,
-  elements: z.array(z.any()).describe('Elements from Phase 2'),
+  elements: z.array(elementSchema).describe('Elements from Phase 2'),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-sonnet-4-6'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 type LogicInput = z.infer<typeof LogicInputSchema>;
 
@@ -451,7 +451,7 @@ export async function generateSurveyChunked(input: {
 }) {
   const sourceText = await resolveSourceText(input);
   const provider = input.provider || 'openrouter';
-  const modelId = input.modelId || 'gemini-3-flash-preview';
+  const modelId = input.modelId || 'gemini-3.5-flash';
 
   // Phase 1
   const blueprint = await generateSurveyBlueprint({
@@ -511,13 +511,13 @@ async function resolveSourceText(input: { sourceType: string; content: string })
  */
 async function callAI<T>(params: {
   prompt: string;
-  schema: any; // z.ZodType — using any to support ZodDefault/ZodOptional wrappers
+  schema: z.ZodTypeAny; // z.ZodTypeAny to support ZodDefault/ZodOptional wrappers
   input: { organizationId?: string; provider?: string; modelId?: string };
   phaseName: string;
 }): Promise<T> {
   const { prompt, schema, input, phaseName } = params;
   const provider = input.provider || 'openrouter';
-  const modelId = input.modelId || 'gemini-3-flash-preview';
+  const modelId = input.modelId || 'gemini-3.5-flash';
 
   let retries = 0;
   const maxRetries = 3;

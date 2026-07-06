@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
+import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import type { MessageTemplate, MessageStyle } from '@/lib/types';
 import type { WhatsAppDisplayTemplate } from '../lib/unified-template';
 import { renderPreview } from './whatsapp/shared';
@@ -86,15 +87,6 @@ export function TemplatePreviewModal({
             }
         }
 
-        let styleWrapper = '';
-        if (activeStyle) {
-            if (template.target === 'internal_team') {
-                styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
-            } else {
-                styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
-            }
-        }
-
         const channel = template.channel;
         const contentMode = template.contentMode;
 
@@ -109,6 +101,38 @@ export function TemplatePreviewModal({
                 mergedMocks[v] = `[${v.replace(/_/g, ' ')}]`;
             }
         });
+
+        let styleWrapper = '';
+        if (activeStyle) {
+            if (template.target === 'internal_team') {
+                styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
+            } else {
+                styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
+            }
+
+            const brandingData = {
+                name: mergedMocks.org_name ?? 'Acme Academy',
+                logoUrl: mergedMocks.org_logo_url ?? '',
+                email: mergedMocks.org_email ?? 'support@acme.edu',
+                phone: mergedMocks.org_phone ?? '+1 (555) 019-2834',
+                address: mergedMocks.org_address ?? '123 Innovation Way, Suite 400',
+                website: mergedMocks.org_website ?? 'https://smartsapp.com',
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            const styleOverrides = {
+                primaryColor: activeStyle.primaryColor,
+                secondaryColor: activeStyle.secondaryColor,
+                fontFamily: activeStyle.fontFamily,
+                backgroundColor: activeStyle.backgroundColor,
+                textColor: activeStyle.textColor,
+                cardBackgroundColor: activeStyle.cardBackgroundColor,
+                borderRadius: activeStyle.borderRadius,
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            styleWrapper = resolveBrandingPreview(styleWrapper, brandingData, styleOverrides);
+        }
 
         if (channel === 'sms') {
             return resolveVariables(template.body, mergedMocks);

@@ -109,7 +109,7 @@ const GenerateSurveyInputSchema = z.object({
   content: z.string(),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
-  modelId: z.string().optional().default('claude-sonnet-4-6'),
+  modelId: z.string().optional().default('claude-3-5-sonnet'),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
@@ -209,7 +209,7 @@ const generateSurveyFlow = ai.defineFlow(
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: input.modelId || 'gemini-3-flash-preview',
+                    model: input.modelId || 'openrouter/free',
                     response_format: { type: "json_object" },
                     messages: [
                         { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints.' },
@@ -227,7 +227,7 @@ const generateSurveyFlow = ai.defineFlow(
                 // Manually execute schema validation 
                 let parsedJSON = JSON.parse(contentString.replace(/```json/g, '').replace(/```/g, '').trim());
                 return GenerateSurveyOutputSchema.parse(parsedJSON);
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error("Failed to parse OpenRouter structured output:", e);
                 throw new Error("OpenRouter hallucinated invalid JSON schema payload layout. Generation aborted.");
             }
@@ -237,7 +237,7 @@ const generateSurveyFlow = ai.defineFlow(
         const resolvedModel = await getModel({
             organizationId: input.organizationId,
             provider: input.provider || 'anthropic',
-            modelId: input.modelId || 'claude-sonnet-4-6',
+            modelId: input.modelId || 'claude-3-5-sonnet',
         });
 
         const generatorAi = resolvedModel.customAi || ai;

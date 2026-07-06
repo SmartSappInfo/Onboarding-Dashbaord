@@ -163,13 +163,23 @@ export default function MessageTemplatesPage() {
             if (tmpl) {
                 setEditingTemplate(tmpl);
                 setIsAdding(true);
-                // Clear the edit param so it doesn't reopen if cancelled
+                // Clear the edit param and set mode=edit
                 const params = new URLSearchParams(window.location.search);
                 params.delete('edit');
+                params.set('mode', 'edit');
                 router.replace(`${window.location.pathname}?${params.toString()}`);
             }
         }
     }, [editId, allTemplates, router]);
+
+    const mode = searchParams.get('mode');
+    React.useEffect(() => {
+        if (!mode) {
+            setIsAdding(false);
+            setEditingTemplate(null);
+            setNewTemplateContext(undefined);
+        }
+    }, [mode]);
 
     // AI Architect State
     const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
@@ -382,12 +392,18 @@ export default function MessageTemplatesPage() {
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);
         setIsAdding(true);
+        const params = new URLSearchParams(window.location.search);
+        params.set('mode', 'edit');
+        router.replace(`${window.location.pathname}?${params.toString()}`);
     };
 
     const handleCancel = () => {
         setIsAdding(false);
         setEditingTemplate(null);
         setNewTemplateContext(undefined);
+        const params = new URLSearchParams(window.location.search);
+        params.delete('mode');
+        router.replace(`${window.location.pathname}?${params.toString()}`);
     };
 
     /** Open the manual workshop seeded for a specific channel. */
@@ -395,6 +411,9 @@ export default function MessageTemplatesPage() {
         setEditingTemplate(null);
         setNewTemplateContext({ channel });
         setIsAdding(true);
+        const params = new URLSearchParams(window.location.search);
+        params.set('mode', 'new');
+        router.replace(`${window.location.pathname}?${params.toString()}`);
     };
 
     const handleAiArchitect = async () => {
@@ -471,6 +490,9 @@ export default function MessageTemplatesPage() {
             setEditingTemplate(draftTemplate);
             setNewTemplateContext(undefined);
             setIsAdding(true);
+            const params = new URLSearchParams(window.location.search);
+            params.set('mode', 'new');
+            router.replace(`${window.location.pathname}?${params.toString()}`);
             toast({ title: 'Template Draft Created', description: result.explanation });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Generation Failed', description: e instanceof Error ? e.message : 'Unknown error' });
@@ -530,6 +552,9 @@ export default function MessageTemplatesPage() {
             toast({ title: 'Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
+            const params = new URLSearchParams(window.location.search);
+            params.delete('mode');
+            router.replace(`${window.location.pathname}?${params.toString()}`);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         }

@@ -34,6 +34,7 @@ import {
     MousePointer2,
     List,
     Mail as MailIcon,
+    MessageSquare,
     Zap,
     Megaphone,
     Bell,
@@ -42,6 +43,7 @@ import {
     ArrowUp,
     ArrowDown,
     Copy,
+    Pencil,
     Trash2,
     Search,
     GripVertical,
@@ -89,6 +91,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
+import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import { SortableBlockItem } from './visual-block';
 import { blockIcons } from './block-icons';
 import { BlockInspector } from './block-inspector';
@@ -2021,16 +2024,22 @@ export function TemplateWorkshop({
 
     // Collapse / Expand main admin layout sidebar on mount / unmount safely
     const sidebar = React.useContext(SidebarContext);
+    const sidebarRef = React.useRef(sidebar);
+    sidebarRef.current = sidebar;
+
     React.useEffect(() => {
-        if (!sidebar) return;
-        const wasOpen = sidebar.open;
-        sidebar.setOpen(false);
+        const currentSidebar = sidebarRef.current;
+        if (!currentSidebar) return;
+        
+        const wasOpen = currentSidebar.open;
+        currentSidebar.setOpen(false);
+        
         return () => {
             if (wasOpen) {
-                sidebar.setOpen(true);
+                currentSidebar.setOpen(true);
             }
         };
-    }, [sidebar]);
+    }, []); // Run ONLY once on mount and clean up on unmount
 
     // Query field groups dynamically to allow adding custom variables to a specific group
     const firestore = useFirestore();
@@ -2261,7 +2270,7 @@ export function TemplateWorkshop({
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
-    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'variables' | 'validation'>('blocks');
+    const [sidebarTab, setSidebarTab] = React.useState<'architect' | 'blocks' | 'variables' | 'validation'>('architect');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
     const [isResizing, setIsResizing] = React.useState(false);
     const dragStartRef = React.useRef({ mouseX: 0, startWidth: 0 });
@@ -2314,6 +2323,7 @@ export function TemplateWorkshop({
     // Form State
     const [status, setStatus] = React.useState<TemplateStatus>(initialTemplate?.status || 'draft');
     const [name, setName] = React.useState(initialTemplate?.name || '');
+    const [isEditingName, setIsEditingName] = React.useState(false);
     const [category, setCategory] = React.useState(initialTemplate?.category || initialContext?.category || 'general');
     const [channel, setChannel] = React.useState(initialTemplate?.channel || initialContext?.channel || 'email');
     const [contentMode, setContentMode] = React.useState<ContentMode>(
@@ -2348,7 +2358,7 @@ export function TemplateWorkshop({
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
     const [activeBlockSubView, setActiveBlockSubView] = React.useState<string | null>(null);
-    const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'layers'>('properties');
+    const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'layers' | 'validation'>('properties');
     
     // Default style wrapper selector logic
     const [styleId, setStyleId] = React.useState(() => {
@@ -2959,8 +2969,14 @@ export function TemplateWorkshop({
 
     // Safety sync: If we switch away from rich_builder, force the sidebar to 'variables' so it doesn't break
     React.useEffect(() => {
-        if (contentMode !== 'rich_builder' && sidebarTab !== 'variables' && sidebarTab !== 'validation') {
-            setSidebarTab('variables');
+        if (contentMode === 'rich_builder') {
+            if (sidebarTab === 'validation') {
+                setSidebarTab('architect');
+            }
+        } else {
+            if (sidebarTab !== 'variables' && sidebarTab !== 'validation') {
+                setSidebarTab('variables');
+            }
         }
     }, [contentMode, sidebarTab]);
 
@@ -2996,6 +3012,7 @@ export function TemplateWorkshop({
                 }) => Promise<{
                     success: boolean;
                     blocks?: MessageBlock[];
+                    name?: string;
                     subject?: string;
                     previewText?: string;
                     subjectOptions?: Array<{ subject: string; previewText: string }>;
@@ -3027,6 +3044,11 @@ export function TemplateWorkshop({
                 // Back up blocks before mutation for Undo capability
                 setLastBlocksBackup([...blocks]);
                 setBlocks((prev) => [...prev, ...formatted]);
+
+                // Update template title if it is currently empty or untitled
+                if (res.name && (!name || name.trim() === '' || name.toLowerCase().includes('untitled'))) {
+                    setName(res.name);
+                }
 
                 // Sync subject options and auto-apply if current input is empty
                 if (res.subjectOptions && res.subjectOptions.length > 0) {
@@ -3159,9 +3181,33 @@ export function TemplateWorkshop({
             ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
             : null;
         if (!activeStyle) return '';
-        const html = target === 'internal_team'
+        let html = target === 'internal_team'
             ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
             : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
+
+        const brandingData = {
+            name: activeSimVariables.org_name ?? 'SmartSapp Hub',
+            logoUrl: activeSimVariables.org_logo_url ?? '',
+            email: activeSimVariables.org_email ?? 'support@smartsapp.com',
+            phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
+            address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
+            website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+            footerHtml: activeStyle.footerHtml,
+            footerEnabled: activeStyle.footerEnabled !== false
+        };
+        const styleOverrides = {
+            primaryColor: activeStyle.primaryColor,
+            secondaryColor: activeStyle.secondaryColor,
+            fontFamily: activeStyle.fontFamily,
+            backgroundColor: activeStyle.backgroundColor,
+            textColor: activeStyle.textColor,
+            cardBackgroundColor: activeStyle.cardBackgroundColor,
+            borderRadius: activeStyle.borderRadius,
+            footerHtml: activeStyle.footerHtml,
+            footerEnabled: activeStyle.footerEnabled !== false
+        };
+        html = resolveBrandingPreview(html, brandingData, styleOverrides);
+
         const contentIdx = html.indexOf('{{content}}');
         if (contentIdx === -1) return '';
         let headerPart = html.substring(0, contentIdx);
@@ -3193,9 +3239,33 @@ export function TemplateWorkshop({
             ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
             : null;
         if (!activeStyle) return '';
-        const html = target === 'internal_team'
+        let html = target === 'internal_team'
             ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
             : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
+
+        const brandingData = {
+            name: activeSimVariables.org_name ?? 'SmartSapp Hub',
+            logoUrl: activeSimVariables.org_logo_url ?? '',
+            email: activeSimVariables.org_email ?? 'support@smartsapp.com',
+            phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
+            address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
+            website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+            footerHtml: activeStyle.footerHtml,
+            footerEnabled: activeStyle.footerEnabled !== false
+        };
+        const styleOverrides = {
+            primaryColor: activeStyle.primaryColor,
+            secondaryColor: activeStyle.secondaryColor,
+            fontFamily: activeStyle.fontFamily,
+            backgroundColor: activeStyle.backgroundColor,
+            textColor: activeStyle.textColor,
+            cardBackgroundColor: activeStyle.cardBackgroundColor,
+            borderRadius: activeStyle.borderRadius,
+            footerHtml: activeStyle.footerHtml,
+            footerEnabled: activeStyle.footerEnabled !== false
+        };
+        html = resolveBrandingPreview(html, brandingData, styleOverrides);
+
         const contentIdx = html.indexOf('{{content}}');
         if (contentIdx === -1) return '';
         let footerPart = html.substring(contentIdx + 11);
@@ -3227,11 +3297,36 @@ export function TemplateWorkshop({
             : null;
         const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
         
-        const styleWrapper = activeStyle
+        let styleWrapper = activeStyle
             ? (target === 'internal_team'
                 ? (activeStyle.htmlWrapperInternal ?? activeStyle.htmlWrapper ?? '')
                 : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? ''))
             : '';
+
+        if (activeStyle && styleWrapper) {
+            const brandingData = {
+                name: activeSimVariables.org_name ?? 'SmartSapp Hub',
+                logoUrl: activeSimVariables.org_logo_url ?? '',
+                email: activeSimVariables.org_email ?? 'support@smartsapp.com',
+                phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
+                address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
+                website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            const styleOverrides = {
+                primaryColor: activeStyle.primaryColor,
+                secondaryColor: activeStyle.secondaryColor,
+                fontFamily: activeStyle.fontFamily,
+                backgroundColor: activeStyle.backgroundColor,
+                textColor: activeStyle.textColor,
+                cardBackgroundColor: activeStyle.cardBackgroundColor,
+                borderRadius: activeStyle.borderRadius,
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            styleWrapper = resolveBrandingPreview(styleWrapper, brandingData, styleOverrides);
+        }
 
         if (effectiveMode === 'rich_builder') {
             return renderBlocksToHtml(blocks, activeSimVariables, {
@@ -3462,17 +3557,53 @@ export function TemplateWorkshop({
                     <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={onCancel}>
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <div>
-                        <h1 className="font-semibold text-sm tracking-tight leading-none mb-1 truncate max-w-[140px] xl:max-w-[240px]">
-                            {name || 'Untitled Template'}
-                        </h1>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[8px] h-4 font-semibold uppercase border-primary/20 text-primary bg-primary/5">
-                                Messaging Studio
-                            </Badge>
-                            <Badge variant="secondary" className="text-[8px] h-4 font-semibold uppercase">
-                                {mode === 'superadmin_blueprint' ? 'System Blueprint' : 'Workspace'}
-                            </Badge>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-muted/60 rounded-lg shrink-0 flex items-center justify-center border shadow-sm">
+                            {channel === 'email' ? (
+                                <MailIcon className="h-4 w-4 text-blue-500 animate-in zoom-in duration-200" />
+                            ) : channel === 'sms' ? (
+                                <PhoneIcon className="h-4 w-4 text-emerald-500 animate-in zoom-in duration-200" />
+                            ) : (
+                                <MessageSquare className="h-4 w-4 text-green-500 animate-in zoom-in duration-200" />
+                            )}
+                        </div>
+                        <div>
+                            {isEditingName ? (
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    onBlur={() => setIsEditingName(false)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            setIsEditingName(false);
+                                        }
+                                    }}
+                                    className="font-semibold text-sm tracking-tight leading-none bg-transparent border-b border-primary focus:outline-none py-0.5 max-w-[200px]"
+                                    autoFocus
+                                    placeholder="Untitled Template"
+                                />
+                            ) : (
+                                <div className="flex items-center gap-1.5 group">
+                                    <h1 className="font-semibold text-sm tracking-tight leading-none truncate max-w-[140px] xl:max-w-[240px]">
+                                        {name || 'Untitled Template'}
+                                    </h1>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingName(true)}
+                                        className="text-muted-foreground/50 hover:text-muted-foreground transition-colors p-0.5 rounded"
+                                        title="Edit Name"
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 uppercase tracking-wide">
+                                {channel === 'email' ? 'Email Template' : channel === 'sms' ? 'SMS Template' : 'WhatsApp Template'}
+                                {contentMode === 'html_code' && ' (HTML Code)'}
+                                {contentMode === 'plain_text' && ' (Plain Text)'}
+                                {contentMode === 'rich_builder' && ' (Visual Builder)'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -3745,19 +3876,9 @@ export function TemplateWorkshop({
                                     <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
                                         {contentMode === 'rich_builder' ? (
                                             <TabsList className="grid w-full grid-cols-3 h-10 bg-background p-1 rounded-xl">
+                                                <TabsTrigger value="architect" className="text-[9px] font-semibold gap-1.5"><Sparkles className="h-3 w-3 text-blue-500" /> Architect</TabsTrigger>
                                                 <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
                                                 <TabsTrigger value="variables" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Variables</TabsTrigger>
-                                                <TabsTrigger value="validation" className="text-[9px] font-semibold gap-1.5 relative">
-                                                    <AlertTriangle className="h-3 w-3" /> Validation
-                                                    {(errorCount > 0 || warningCount > 0) && (
-                                                        <span className={cn(
-                                                            "absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm",
-                                                            errorCount > 0 ? "bg-red-500 animate-pulse" : "bg-amber-500"
-                                                        )}>
-                                                            {errorCount + warningCount}
-                                                        </span>
-                                                    )}
-                                                </TabsTrigger>
                                             </TabsList>
                                         ) : (
                                             <TabsList className="grid w-full grid-cols-2 h-10 bg-background p-1 rounded-xl">
@@ -3778,6 +3899,110 @@ export function TemplateWorkshop({
                                     </div>
 
                                     <div className="flex-1 min-h-0 relative overflow-hidden bg-muted/5">
+                                        {contentMode === 'rich_builder' && sidebarTab === 'architect' && (
+                                            <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
+                                                {/* Email Architect Card */}
+                                                <div className="bg-card border rounded-xl p-3.5 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                                                            <Sparkles className="h-3.5 w-3.5 text-blue-500 animate-pulse" /> Email Architect (AI)
+                                                        </span>
+                                                        {lastBlocksBackup && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleUndoArchitect}
+                                                                className="text-[9px] font-black text-red-500 hover:text-red-600 bg-red-55/10 hover:bg-red-55/20 px-2 py-0.5 rounded transition-colors"
+                                                            >
+                                                                Undo
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <textarea
+                                                        value={architectPrompt}
+                                                        onChange={(e) => setArchitectPrompt(e.target.value)}
+                                                        placeholder="Describe the email sections or layout details..."
+                                                        className="w-full text-xs bg-muted/40 border rounded-lg p-2 min-h-[200px] focus:outline-none focus:ring-1 focus:ring-primary/20 font-medium"
+                                                        rows={10}
+                                                    />
+                                                    <div className="space-y-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={architectImageUrl}
+                                                            onChange={(e) => setArchitectImageUrl(e.target.value)}
+                                                            placeholder="Paste public image URL..."
+                                                            className="w-full text-[10px] bg-muted/40 border rounded-lg px-2 py-1.5 focus:outline-none"
+                                                        />
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                id="architect-file"
+                                                                className="hidden"
+                                                                onChange={async (e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file && activeWorkspaceId) {
+                                                                        setIsUploadingImage(true);
+                                                                        try {
+                                                                            const url = await uploadArchitectImage(file, activeWorkspaceId);
+                                                                            setArchitectImageUrl(url);
+                                                                            e.target.value = '';
+                                                                        } catch (err: unknown) {
+                                                                            const msg = err instanceof Error ? err.message : 'Upload error';
+                                                                            toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
+                                                                        } finally {
+                                                                            setIsUploadingImage(false);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <label
+                                                                htmlFor="architect-file"
+                                                                className="flex-1 flex items-center justify-center gap-1 cursor-pointer bg-muted hover:bg-muted-foreground/15 text-[9px] font-semibold py-1.5 px-3 rounded-lg border text-muted-foreground transition-all"
+                                                            >
+                                                                <Upload className="h-3 w-3" /> {isUploadingImage ? 'Uploading...' : 'Upload Image'}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground">
+                                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="architectMode"
+                                                                checked={architectMode === 'layout_analysis'}
+                                                                onChange={() => setArchitectMode('layout_analysis')}
+                                                            />
+                                                            Analyze Mockup
+                                                        </label>
+                                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="architectMode"
+                                                                checked={architectMode === 'direct_placement'}
+                                                                onChange={() => setArchitectMode('direct_placement')}
+                                                            />
+                                                            Insert Image
+                                                        </label>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        className="w-full h-8 text-[10px] font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
+                                                        onClick={handleArchitectSubmit}
+                                                        disabled={isArchitecting || isUploadingImage}
+                                                    >
+                                                        {isArchitecting ? (
+                                                            <>
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Designing...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles className="h-3 w-3" /> Architect Email
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {contentMode === 'rich_builder' && sidebarTab === 'blocks' && (
                                             <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
                                                 {activeBlockSubView ? (
@@ -3837,106 +4062,6 @@ export function TemplateWorkshop({
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        {/* Email Architect Card */}
-                                                        <div className="bg-card border rounded-xl p-3 mb-4 space-y-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
-                                                                    <Sparkles className="h-3.5 w-3.5 text-blue-500 animate-pulse" /> Email Architect (AI)
-                                                                </span>
-                                                                {lastBlocksBackup && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleUndoArchitect}
-                                                                        className="text-[9px] font-black text-red-500 hover:text-red-600 bg-red-55/10 hover:bg-red-55/20 px-2 py-0.5 rounded transition-colors"
-                                                                    >
-                                                                        Undo
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                            <textarea
-                                                                value={architectPrompt}
-                                                                onChange={(e) => setArchitectPrompt(e.target.value)}
-                                                                placeholder="Describe the email sections or layout details..."
-                                                                className="w-full text-xs bg-muted/40 border rounded-lg p-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/20"
-                                                                rows={2}
-                                                            />
-                                                            <div className="space-y-1.5">
-                                                                <input
-                                                                    type="text"
-                                                                    value={architectImageUrl}
-                                                                    onChange={(e) => setArchitectImageUrl(e.target.value)}
-                                                                    placeholder="Paste public image URL..."
-                                                                    className="w-full text-[10px] bg-muted/40 border rounded-lg px-2 py-1.5 focus:outline-none"
-                                                                />
-                                                                <div className="flex items-center gap-2">
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        id="architect-file"
-                                                                        className="hidden"
-                                                                        onChange={async (e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file && activeWorkspaceId) {
-                                                                                setIsUploadingImage(true);
-                                                                                try {
-                                                                                    const url = await uploadArchitectImage(file, activeWorkspaceId);
-                                                                                    setArchitectImageUrl(url);
-                                                                                    e.target.value = '';
-                                                                                } catch (err: unknown) {
-                                                                                    const msg = err instanceof Error ? err.message : 'Upload error';
-                                                                                    toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
-                                                                                } finally {
-                                                                                    setIsUploadingImage(false);
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                    <label
-                                                                        htmlFor="architect-file"
-                                                                        className="flex-1 flex items-center justify-center gap-1 cursor-pointer bg-muted hover:bg-muted-foreground/15 text-[9px] font-semibold py-1.5 px-3 rounded-lg border text-muted-foreground transition-all"
-                                                                    >
-                                                                        <Upload className="h-3 w-3" /> {isUploadingImage ? 'Uploading...' : 'Upload Image'}
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground">
-                                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="architectMode"
-                                                                        checked={architectMode === 'layout_analysis'}
-                                                                        onChange={() => setArchitectMode('layout_analysis')}
-                                                                    />
-                                                                    Analyze Mockup
-                                                                </label>
-                                                                <label className="flex items-center gap-1.5 cursor-pointer">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name="architectMode"
-                                                                        checked={architectMode === 'direct_placement'}
-                                                                        onChange={() => setArchitectMode('direct_placement')}
-                                                                    />
-                                                                    Insert Image
-                                                                </label>
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                className="w-full h-8 text-[10px] font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
-                                                                onClick={handleArchitectSubmit}
-                                                                disabled={isArchitecting || isUploadingImage}
-                                                            >
-                                                                {isArchitecting ? (
-                                                                    <>
-                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Designing...
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <Sparkles className="h-3 w-3" /> Architect Email
-                                                                    </>
-                                                                )}
-                                                            </Button>
-                                                        </div>
-
                                                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2 animate-in fade-in duration-200">Block Types</p>
                                                         <div className="grid grid-cols-2 gap-2.5 animate-in slide-in-from-bottom-2 duration-250">
                                                             {(Object.keys(blockIcons) as Array<keyof typeof blockIcons>)
@@ -4276,12 +4401,9 @@ export function TemplateWorkshop({
                                 style={{ backgroundColor: wrapperStyles?.outerBg || 'transparent' }}
                             >
                                 <div className="h-14 shrink-0 bg-background border-b px-6 flex items-center justify-between z-10 shadow-sm text-left">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase">{channel}</Badge>
-                                        <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-semibold uppercase">{contentMode}</Badge>
-                                        
+                                    <div className="flex items-center gap-3.5 flex-wrap">
                                         {/* Undo/Redo controls */}
-                                        <div className="flex items-center gap-1 border-l pl-3 ml-1 border-border/80">
+                                        <div className="flex items-center gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -4306,7 +4428,7 @@ export function TemplateWorkshop({
 
                                         {/* Style wrapper select */}
                                         {contentMode !== 'html_code' && (
-                                            <div className="flex items-center gap-2 border-l pl-3 ml-1 border-border/80">
+                                            <div className="flex items-center gap-2 border-l pl-3 border-border/80">
                                                 <span className="text-[9px] font-bold text-muted-foreground uppercase shrink-0">Style:</span>
                                                 <Select value={styleId} onValueChange={setStyleId}>
                                                     <SelectTrigger className="h-8 w-[140px] rounded-lg text-[10px] bg-background border shadow-sm">
@@ -4333,53 +4455,6 @@ export function TemplateWorkshop({
                                                 </Select>
                                             </div>
                                         )}
-
-                                        {/* Simulation Context Selectors */}
-                                        <div className="flex items-center gap-2 border-l pl-3 ml-1 border-border/80">
-                                            <span className="text-[9px] font-bold text-muted-foreground uppercase shrink-0">Simulate:</span>
-                                            <Select value={simEntity} onValueChange={(val) => { setSimEntity(val); setSimRecordId('none'); }}>
-                                                <SelectTrigger className="h-8 w-[100px] rounded-lg text-[10px] bg-background border shadow-sm">
-                                                    <SelectValue placeholder="Context..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none" className="rounded-lg text-xs">None</SelectItem>
-                                                    <SelectItem value="School" className="rounded-lg text-xs">{entityTerminology || 'Client'}</SelectItem>
-                                                    <SelectItem value="Meeting" className="rounded-lg text-xs">Meeting</SelectItem>
-                                                    <SelectItem value="Survey" className="rounded-lg text-xs">Survey</SelectItem>
-                                                    <SelectItem value="Submission" className="rounded-lg text-xs">Form</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-
-                                            {simEntity === 'School' ? (
-                                                <EntityCombobox
-                                                    value={simRecordId}
-                                                    onChange={setSimRecordId}
-                                                    valueKey="id"
-                                                    noneLabel="Select..."
-                                                    noneValue="none"
-                                                    placeholder="Record..."
-                                                    className="h-8 w-[130px] text-[10px]"
-                                                />
-                                            ) : simEntity !== 'none' && (
-                                                <Select value={simRecordId} onValueChange={setSimRecordId}>
-                                                    <SelectTrigger className="h-8 w-[130px] rounded-lg text-[10px] bg-background border shadow-sm animate-in slide-in-from-left-2 duration-200">
-                                                        <SelectValue placeholder="Record..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="none" className="rounded-lg text-xs">Select...</SelectItem>
-                                                        {simEntity === 'Meeting' && meetings?.map(m => (
-                                                            <SelectItem key={m.id} value={m.id} className="rounded-lg text-xs">{m.heroTitle || m.meetingSlug}</SelectItem>
-                                                        ))}
-                                                        {simEntity === 'Survey' && surveys?.map(s => (
-                                                            <SelectItem key={s.id} value={s.id} className="rounded-lg text-xs">{s.title || s.internalName}</SelectItem>
-                                                        ))}
-                                                        {simEntity === 'Submission' && pdfs?.map(p => (
-                                                            <SelectItem key={p.id} value={p.id} className="rounded-lg text-xs">{p.name || p.publicTitle}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(!isFullScreen)} className="h-9 w-9 rounded-lg">
@@ -4582,6 +4657,26 @@ export function TemplateWorkshop({
                                         >
                                             <Layout className="h-3.5 w-3.5" /> Layers
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRightPanelTab('validation')}
+                                            className={cn(
+                                                "flex-1 py-3 text-center text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all flex items-center justify-center gap-1.5 relative",
+                                                rightPanelTab === 'validation'
+                                                    ? "border-blue-600 text-blue-600 bg-blue-50/5 font-extrabold"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground bg-transparent"
+                                            )}
+                                        >
+                                            <AlertTriangle className="h-3.5 w-3.5" /> Validation
+                                            {(errorCount > 0 || warningCount > 0) && (
+                                                <span className={cn(
+                                                    "absolute -top-0.5 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-sm",
+                                                    errorCount > 0 ? "bg-red-500 animate-pulse" : "bg-amber-500"
+                                                )}>
+                                                    {errorCount + warningCount}
+                                                </span>
+                                            )}
+                                        </button>
                                     </div>
                                     
                                     <div className="flex-1 overflow-y-auto p-4">
@@ -4601,9 +4696,69 @@ export function TemplateWorkshop({
                                                     </p>
                                                 </div>
                                             )
-                                        ) : (
+                                        ) : rightPanelTab === 'layers' ? (
                                             <div className="animate-in fade-in duration-200">
                                                 {renderSidebarBlockOutline()}
+                                            </div>
+                                        ) : (
+                                            <div className="animate-in fade-in duration-200 text-left space-y-4">
+                                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider text-left mb-2">
+                                                    Validation Status
+                                                </p>
+                                                {validationErrors.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                        <div className="h-10 w-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
+                                                            <Check className="h-5 w-5" />
+                                                        </div>
+                                                        <p className="text-xs font-bold text-foreground">All variables are valid</p>
+                                                        <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
+                                                            No typos or context mismatches detected in your subject, preview text, or body content.
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4 text-left">
+                                                        {errorCount > 0 && (
+                                                            <div className="space-y-2">
+                                                                <span className="text-[8px] font-bold text-red-600 uppercase tracking-widest bg-red-500/5 px-2 py-0.5 rounded-md">
+                                                                    Errors ({errorCount})
+                                                                </span>
+                                                                <div className="space-y-1.5">
+                                                                    {validationErrors.filter(e => e.type === 'error').map((err, i) => (
+                                                                        <div key={i} className="p-3 rounded-xl border border-red-100 bg-red-50/30 text-left space-y-1">
+                                                                            <div className="flex items-center gap-1.5 text-red-700 font-bold text-[10px] font-mono">
+                                                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                                                <span>{`{{${err.variable}}}`}</span>
+                                                                            </div>
+                                                                            <p className="text-[9px] text-red-600/90 leading-relaxed font-semibold">
+                                                                                {err.message}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {warningCount > 0 && (
+                                                            <div className="space-y-2 pt-2">
+                                                                <span className="text-[8px] font-bold text-amber-600 uppercase tracking-widest bg-amber-500/5 px-2 py-0.5 rounded-md">
+                                                                    Warnings ({warningCount})
+                                                                </span>
+                                                                <div className="space-y-1.5">
+                                                                    {validationErrors.filter(e => e.type === 'warning').map((err, i) => (
+                                                                        <div key={i} className="p-3 rounded-xl border border-amber-100 bg-amber-50/30 text-left space-y-1">
+                                                                            <div className="flex items-center gap-1.5 text-amber-700 font-bold text-[10px] font-mono">
+                                                                                <AlertTriangle className="h-3.5 w-3.5" />
+                                                                                <span>{`{{${err.variable}}}`}</span>
+                                                                            </div>
+                                                                            <p className="text-[9px] text-amber-600/90 leading-relaxed font-semibold">
+                                                                                {err.message}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

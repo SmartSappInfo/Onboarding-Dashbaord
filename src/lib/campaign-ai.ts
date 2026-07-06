@@ -100,6 +100,7 @@ const FullBlockSchema: z.ZodType<MessageBlock> = z.lazy(() =>
 
 const ArchitectResultSchema = z.object({
   blocks: z.array(FullBlockSchema),
+  name: z.string().optional().describe('A short, professional template name/title matching the email purpose (e.g. "Welcome Onboarding", "Monthly Product Update", "Event Reminder")'),
   subject: z.string().optional().describe('Recommended primary email subject line (under 50 characters, includes hook, benefit, personalization)'),
   previewText: z.string().optional().describe('Recommended primary pre-header preview text'),
   subjectOptions: z.array(
@@ -169,7 +170,7 @@ async function callGenkit(params: {
   const resolvedModel = await getModel({
     organizationId: params.organizationId,
     provider: 'anthropic',
-    modelId: 'claude-sonnet-4-6',
+    modelId: 'claude-3-5-sonnet',
   });
 
   const generatorAi = resolvedModel.customAi || ai;
@@ -228,9 +229,15 @@ Rules:
                         errorMsg.includes('authentication_error') ||
                         errorMsg.includes('permission_denied') ||
                         errorMsg.includes('403');
+    const isConnectionError = errorMsg.toLowerCase().includes('connection') ||
+                              errorMsg.toLowerCase().includes('fetch') ||
+                              errorMsg.toLowerCase().includes('timeout') ||
+                              errorMsg.toLowerCase().includes('econnrefused') ||
+                              errorMsg.toLowerCase().includes('enotfound') ||
+                              errorMsg.toLowerCase().includes('network');
     
-    if (isAuthError && isAnthropic) {
-      console.warn(`[CAMPAIGN-AI] Anthropic generate failed with auth error: "${errorMsg}". Trying Gemini fallback.`);
+    if ((isAuthError || isConnectionError) && isAnthropic) {
+      console.warn(`[CAMPAIGN-AI] Anthropic generate failed with error: "${errorMsg}". Trying Gemini fallback.`);
       try {
         const geminiModel = await getModel({
           organizationId: params.organizationId,
@@ -497,6 +504,7 @@ export async function generateEmailBlocksAction(params: {
 }): Promise<{
   success: boolean;
   blocks?: MessageBlock[];
+  name?: string;
   subject?: string;
   previewText?: string;
   subjectOptions?: Array<{ subject: string; previewText: string }>;
@@ -526,7 +534,7 @@ BLOCK COMPOSITION RULES:
 3. Headers: Use 'heading' blocks with variant 'h1' for the main subject/title, and 'h2' or 'h3' for sub-sections. Keep headings short and punchy.
 4. Body Text: Use 'text' blocks for paragraph content. Split long paragraphs into separate, readable 'text' blocks.
 5. Lists: If the source text contains bullet points, numbered items, or checklists (e.g., benefits, features, rewards, rewards checklist), convert them to a single 'list' block. Set 'listStyle' to 'checkmark' (preferred for benefits), 'arrow', 'unordered', or 'ordered', and put the list items in the 'items' array.
-6. Buttons (Call to Action): Scan for links, placeholders like "[Reserve My Place]", or instructions like "Click the link below to reserve today". Convert these into a 'button' block. Set the button label in 'content', and the link in 'link' (defaulting to '{{rsvp_going_url}}' or a custom link if provided).
+6. Buttons (Call to Action): Scan for links, placeholders like "[Reserve My Place]", or instructions like "Click the link below to reserve today". Convert these into a 'button' block. Set the button label in 'title' (defaulting to a suitable copy like 'Learn More' or 'Reserve My Spot' if not specified in the prompt), and the link in 'link' (defaulting to '{{rsvp_going_url}}' or a custom link if provided).
 7. Dividers: Insert 'divider' blocks to partition large sections (e.g. separating the body text from the monthly rewards checklist, or separating the body from the signature).
 8. Sign-off / Signature: Use a 'text' block for the sign-off ("Warm regards,", name, title) and style it nicely.
 9. Footer: Always append a 'footer' block at the end with standard compliance links (Unsubscribe, contact information) and copyrights using '{{org_name}}'.
@@ -539,12 +547,14 @@ BLOCK PROPERTY MAPPING RULES:
 - Text Blocks ('text'):
   1. Paragraph Body: Place the text content in the 'content' property. Do NOT place paragraph body text in the 'title' property.
 - Button Blocks ('button'):
-  1. Button Label: Place the short call-to-action text in the 'content' property.
+  1. Button Label: Place the short call-to-action text in the 'title' property. Do NOT place it in 'content'. If the copy is missing or empty, suggest a suitable text like 'Reserve My Spot' or 'Click Here'.
   2. Button Link: Place the destination URL in the 'link' property.
 - List Blocks ('list'):
   1. List Items: Provide the list entries inside the 'items' array of strings.
 - Divider Blocks ('divider'):
   1. Properties: Keep 'title', 'content', and 'url' empty or undefined.
+- Template Title/Name ('name' field in result):
+  1. Title generation: Propose a short, professional, and descriptive template title/name corresponding to the email content purpose, and return it in the root 'name' field.
 
 DYNAMIC VARIABLE REPLACEMENT RULES (TRUE INTELLIGENCE):
 Scan the input copy and replace specific personal or organizational placeholders with dynamic double-bracket system tags:
@@ -580,13 +590,39 @@ AESTHETIC RULES:
 
     const parsed = JSON.parse(text) as {
       blocks: MessageBlock[];
+      name?: string;
       subject?: string;
       previewText?: string;
       subjectOptions?: Array<{ subject: string; previewText: string }>;
     };
+
+    const sanitizeBlocks = (blocks: MessageBlock[]): MessageBlock[] => {
+      return (blocks || []).map(block => {
+        const updated = { ...block };
+        if (updated.type === 'button') {
+          // Prioritize title first, fallback to content, fallback to default copy
+          let buttonText = (updated.title || updated.content || '').trim();
+          if (!buttonText) {
+            buttonText = 'Learn More';
+          }
+          updated.title = buttonText;
+          // Delete content if it exists to clean up
+          delete updated.content;
+        }
+        if (updated.columns && Array.isArray(updated.columns)) {
+          updated.columns = updated.columns.map(col => ({
+            ...col,
+            blocks: sanitizeBlocks(col.blocks)
+          }));
+        }
+        return updated;
+      });
+    };
+
     return {
       success: true,
-      blocks: parsed.blocks || [],
+      blocks: sanitizeBlocks(parsed.blocks),
+      name: parsed.name,
       subject: parsed.subject,
       previewText: parsed.previewText,
       subjectOptions: parsed.subjectOptions,

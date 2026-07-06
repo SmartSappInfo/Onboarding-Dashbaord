@@ -8,7 +8,7 @@ import { z } from 'genkit';
 
 const BulkMappingInputSchema = z.object({
   headers: z.array(z.string()).describe('The column headers from the uploaded document.'),
-  sampleRows: z.array(z.record(z.any())).describe('A small sample of rows to provide data context.'),
+  sampleRows: z.array(z.record(z.unknown())).describe('A small sample of rows to provide data context.'),
   systemFields: z.array(z.object({
       key: z.string(),
       label: z.string(),
@@ -16,7 +16,7 @@ const BulkMappingInputSchema = z.object({
   })).describe('The dynamic entity schema fields available for mapping in the target workspace.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
 });
 export type BulkMappingInput = z.infer<typeof BulkMappingInputSchema>;
 
@@ -38,14 +38,8 @@ Analyze the following spreadsheet headers and sample data to suggest the best ma
 - **{{this.key}}** ({{this.label}}): {{this.description}}
 {{/each}}
 
-### DOCUMENT HEADERS:
-{{#each headers}}- {{this}}
-{{/each}}
-
-### SAMPLE DATA:
-\`\`\`json
-{{{json sampleRows}}}
-\`\`\`
+Spreadsheet Headers: {{headers}}
+Sample Rows: {{sampleRows}}
 
 Suggest the most accurate mapping. Your output 'mapping' object MUST use the system field 'key' as the property name, and the exact document header string as the value.
 If a system field cannot be matched to any document header with high confidence, omit it entirely from the mapping object.
@@ -59,7 +53,7 @@ const bulkMappingFlow = ai.defineFlow(
     outputSchema: BulkMappingOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
 
     const resolvedModel = await getModel({
       organizationId,
@@ -79,7 +73,7 @@ const bulkMappingFlow = ai.defineFlow(
             });
             if (!output) throw new Error("The AI failed to suggest a valid header mapping.");
             return output;
-        } catch (e: any) {
+        } catch (e: unknown) {
             retries++;
             if (retries === 3) throw e;
             await new Promise(r => setTimeout(r, 2000 * retries));

@@ -222,20 +222,20 @@ export const leadEnrichmentFlow = ai.defineFlow(
           const fallbackModelDetails = await getModel({
             organizationId,
             provider: 'anthropic',
-            modelId: 'claude-sonnet-4-6'
+            modelId: 'claude-3-5-sonnet'
           });
           currentModel = fallbackModelDetails.modelString;
           activeAiInstance = fallbackModelDetails.customAi || ai;
         } else if (isUnavailable) {
-          if (currentModel.includes('gemini-3-flash-preview')) {
-            currentModel = currentModel.replace('gemini-3-flash-preview', 'gemini-2.0-flash');
+          if (currentModel.includes('gemini-3.5-flash')) {
+            currentModel = currentModel.replace('gemini-3.5-flash', 'gemini-2.5-flash');
             console.log(`[AI] Model unavailable. Downgrading to model: ${currentModel}`);
           } else {
             console.log('[AI] All Google AI models overloaded. Escalating failover to Anthropic Claude...');
             const fallbackModelDetails = await getModel({
               organizationId,
               provider: 'anthropic',
-              modelId: 'claude-sonnet-4-6'
+              modelId: 'claude-3-5-sonnet'
             });
             currentModel = fallbackModelDetails.modelString;
             activeAiInstance = fallbackModelDetails.customAi || ai;

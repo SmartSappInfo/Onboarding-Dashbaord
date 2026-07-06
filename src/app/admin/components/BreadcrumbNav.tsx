@@ -27,6 +27,7 @@ const segmentMap: Record<string, string> = {
   surveys: 'Survey Intelligence',
   pdfs: 'Doc Signing Studio',
   messaging: 'Communications Centre',
+  templates: 'Messaging Template',
   'call-centre': 'Call Centre',
   activities: 'Platform Audit Trail',
   users: 'Team Access Control',
@@ -100,12 +101,21 @@ export function BreadcrumbNav() {
       }
     }
 
+    const mode = searchParams.get('mode');
+    if (pathname === '/admin/messaging/templates' && (mode === 'edit' || mode === 'new')) {
+      items.push({
+        label: mode === 'new' ? 'New' : 'Edit',
+        path: pathname + '?' + searchParams.toString(),
+        isLast: false
+      });
+    }
+
     if (items.length > 0) {
       items[items.length - 1].isLast = true;
     }
 
     return items;
-  }, [segments, customLabels, pathname, track, plural]);
+  }, [segments, customLabels, pathname, track, plural, searchParams]);
 
   // ADAPTIVE LOGIC: Collapse intermediate steps on mobile if path is deep
   const displayItems = React.useMemo(() => {

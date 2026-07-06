@@ -161,7 +161,7 @@ export async function getGlobalAiConfig(idToken: string): Promise<{
         success: true,
         data: {
           defaultProvider: 'googleai',
-          defaultModelId: 'gemini-3-flash-preview',
+          defaultModelId: 'gemini-3.5-flash',
         }
       };
     }
@@ -170,7 +170,7 @@ export async function getGlobalAiConfig(idToken: string): Promise<{
       success: true,
       data: {
         defaultProvider: (data?.defaultProvider || 'googleai') as 'googleai' | 'anthropic' | 'openrouter',
-        defaultModelId: data?.defaultModelId || 'gemini-3-flash-preview',
+        defaultModelId: data?.defaultModelId || 'gemini-3.5-flash',
       }
     };
   } catch (error: unknown) {

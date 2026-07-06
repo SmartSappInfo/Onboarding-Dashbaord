@@ -67,6 +67,24 @@ interface PhaseState {
   icon: React.ElementType;
 }
 
+interface GeneratedSurveyData {
+  title: string;
+  description: string;
+  elements: unknown[];
+  scoringEnabled: boolean;
+  maxScore: number;
+  resultRules: unknown[];
+  resultPages?: Array<Record<string, unknown> & { id: string }>;
+  thankYouTitle: string;
+  thankYouDescription: string;
+  bannerImageQuery: string;
+  aiMetadata?: {
+    isAiGenerated: boolean;
+    learningSignalId: string;
+    isFirstPublishComplete: boolean;
+  };
+}
+
 const INITIAL_PHASES: PhaseState[] = [
   { id: 'blueprint', label: 'Blueprint', description: 'Analyzing content & designing structure', status: 'idle', icon: FileText },
   { id: 'questions', label: 'Questions', description: 'Generating questions & layout blocks', status: 'idle', icon: MessageSquare },
@@ -88,13 +106,13 @@ export default function AiSurveyGenerator() {
   const [phases, setPhases] = React.useState<PhaseState[]>(INITIAL_PHASES);
   const [showProgress, setShowProgress] = React.useState(false);
 
-  // Cached intermediate results for retry (typed as any — these are opaque server action returns)
-  const blueprintRef = React.useRef<any>(null);
-  const questionsRef = React.useRef<any>(null);
-  const logicRef = React.useRef<any>(null);
+  // Cached intermediate results for retry
+  const blueprintRef = React.useRef<unknown>(null);
+  const questionsRef = React.useRef<{ elements: unknown[] } | null>(null);
+  const logicRef = React.useRef<unknown>(null);
   const sourceTextRef = React.useRef<string>('');
   const providerRef = React.useRef<string>('googleai');
-  const modelIdRef = React.useRef<string>('gemini-3-flash-preview');
+  const modelIdRef = React.useRef<string>('gemini-3.5-flash');
   const keyLevelRef = React.useRef<string>('App API');
 
   const form = useForm<FormData>({
@@ -169,9 +187,10 @@ export default function AiSurveyGenerator() {
           modelId,
         });
         updatePhase('blueprint', { status: 'complete' });
-      } catch (error: any) {
-        updatePhase('blueprint', { status: 'failed', error: error.message });
-        throw error;
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        updatePhase('blueprint', { status: 'failed', error: err.message });
+        throw err;
       }
     }
 
@@ -181,17 +200,33 @@ export default function AiSurveyGenerator() {
       
       updatePhase('questions', { status: 'running', error: undefined });
       try {
+        const typedBlueprint = blueprintRef.current as {
+          title: string;
+          description: string;
+          sections: Array<{
+            id: string;
+            title: string;
+            stepperTitle: string;
+            description?: string;
+            estimatedQuestions: number;
+          }>;
+          scoringEnabled: boolean;
+          thankYouTitle: string;
+          thankYouDescription: string;
+          bannerImageQuery: string;
+        };
         questionsRef.current = await generateSurveyQuestions({
-          sourceText: sourceType === 'url' ? resolvedText : resolvedText,
-          blueprint: blueprintRef.current,
+          sourceText: resolvedText,
+          blueprint: typedBlueprint,
           organizationId: activeOrganizationId,
           provider,
           modelId,
         });
         updatePhase('questions', { status: 'complete' });
-      } catch (error: any) {
-        updatePhase('questions', { status: 'failed', error: error.message });
-        throw error;
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        updatePhase('questions', { status: 'failed', error: err.message });
+        throw err;
       }
     }
 
@@ -201,17 +236,33 @@ export default function AiSurveyGenerator() {
       
       updatePhase('logic', { status: 'running', error: undefined });
       try {
+        const typedBlueprint = blueprintRef.current as {
+          title: string;
+          description: string;
+          sections: Array<{
+            id: string;
+            title: string;
+            stepperTitle: string;
+            description?: string;
+            estimatedQuestions: number;
+          }>;
+          scoringEnabled: boolean;
+          thankYouTitle: string;
+          thankYouDescription: string;
+          bannerImageQuery: string;
+        };
         logicRef.current = await generateSurveyLogic({
-          blueprint: blueprintRef.current,
-          elements: questionsRef.current.elements,
+          blueprint: typedBlueprint,
+          elements: questionsRef.current.elements as Parameters<typeof generateSurveyLogic>[0]['elements'],
           organizationId: activeOrganizationId,
           provider,
           modelId,
         });
         updatePhase('logic', { status: 'complete' });
-      } catch (error: any) {
-        updatePhase('logic', { status: 'failed', error: error.message });
-        throw error;
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        updatePhase('logic', { status: 'failed', error: err.message });
+        throw err;
       }
     }
 
@@ -220,10 +271,14 @@ export default function AiSurveyGenerator() {
       throw new Error('Cannot merge — incomplete phases');
     }
 
-    return mergeSurveyPhases(blueprintRef.current, questionsRef.current, logicRef.current);
+    return mergeSurveyPhases(
+      blueprintRef.current as Parameters<typeof mergeSurveyPhases>[0],
+      questionsRef.current as unknown as Parameters<typeof mergeSurveyPhases>[1],
+      logicRef.current as Parameters<typeof mergeSurveyPhases>[2]
+    );
   };
 
-  const saveSurvey = async (generatedData: any) => {
+  const saveSurvey = async (generatedData: GeneratedSurveyData) => {
     if (!firestore) throw new Error('Firestore connection not available');
 
     updatePhase('saving', { status: 'running' });
@@ -236,7 +291,7 @@ export default function AiSurveyGenerator() {
 
     const { resultPages, ...mainSurveyData } = generatedData;
 
-    const newSurvey: Omit<Survey, 'id'> = {
+    const newSurvey = {
       ...mainSurveyData,
       slug,
       status: 'draft',
@@ -248,7 +303,7 @@ export default function AiSurveyGenerator() {
       allowCrossVisibility: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
+    } as unknown as Omit<Survey, 'id'>;
 
     const surveysCollection = collection(firestore, 'surveys');
     const docRef = await addDoc(surveysCollection, newSurvey);
@@ -259,7 +314,7 @@ export default function AiSurveyGenerator() {
     if (resultPages && resultPages.length > 0) {
       const pagesCol = collection(firestore, `surveys/${docRef.id}/resultPages`);
       for (const page of resultPages) {
-        await setDoc(doc(pagesCol, page.id), page);
+        await setDoc(doc(pagesCol, page.id), page as Record<string, unknown>);
       }
     }
 
@@ -304,7 +359,7 @@ export default function AiSurveyGenerator() {
         description: `Model: ${modelId} | Billing: ${keyLevel}`,
       });
 
-      let generatedData: any;
+      let generatedData: GeneratedSurveyData | null = null;
 
       // Fast-path: use legacy monolithic flow for very short content
       if (sourceType === 'text' && content.length < SIMPLE_CONTENT_THRESHOLD) {
@@ -313,13 +368,14 @@ export default function AiSurveyGenerator() {
           description: 'Using fast-path for short content...',
         });
 
-        generatedData = await generateSurvey({
+        const rawGenerated = await generateSurvey({
           sourceType,
           content,
           organizationId: activeOrganizationId,
           provider,
           modelId,
         });
+        generatedData = rawGenerated as unknown as GeneratedSurveyData;
 
         // Mark all AI phases as complete for the stepper
         updatePhase('blueprint', { status: 'complete' });
@@ -327,7 +383,8 @@ export default function AiSurveyGenerator() {
         updatePhase('logic', { status: 'complete' });
       } else {
         // Chunked pipeline for complex content
-        generatedData = await runChunkedGeneration(content, sourceType);
+        const rawGenerated = await runChunkedGeneration(content, sourceType);
+        generatedData = rawGenerated as unknown as GeneratedSurveyData;
       }
 
       if (!generatedData || !generatedData.title) {
@@ -350,7 +407,7 @@ export default function AiSurveyGenerator() {
         ...generatedData,
         aiMetadata: {
           isAiGenerated: true,
-          learningSignalId: signalResult.success ? signalResult.id : 'none',
+          learningSignalId: (signalResult.success && signalResult.id) ? signalResult.id : 'none',
           isFirstPublishComplete: false,
         }
       });
@@ -364,13 +421,14 @@ export default function AiSurveyGenerator() {
       await new Promise(r => setTimeout(r, 800));
       router.push(`/admin/surveys/${surveyId}/edit`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
+      const err = error instanceof Error ? error : new Error(String(error));
       const failedPhase = getFailedPhase();
       toast({
         variant: 'destructive',
         title: failedPhase ? `Failed at ${failedPhase}` : 'Generation Failed',
-        description: error.message || 'The AI failed to generate the survey. Please try again.',
+        description: err.message || 'The AI failed to generate the survey. Please try again.',
       });
     } finally {
       setIsGenerating(false);
@@ -404,12 +462,13 @@ export default function AiSurveyGenerator() {
       await new Promise(r => setTimeout(r, 800));
       router.push(`/admin/surveys/${surveyId}/edit`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
+      const err = error instanceof Error ? error : new Error(String(error));
       toast({
         variant: 'destructive',
         title: 'Retry Failed',
-        description: error.message || 'The retry also failed. Please try again with different content.',
+        description: err.message || 'The retry also failed. Please try again with different content.',
       });
     } finally {
       setIsGenerating(false);

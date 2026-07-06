@@ -78,7 +78,7 @@ export async function generateQuickNoteInsight(
             sentiment: insight.sentiment,
             actionItems: insight.actionItems,
             generatedAt: new Date().toISOString(),
-            model: params.model || 'anthropic/claude-sonnet-4-6',
+            model: params.model || 'anthropic/claude-3-5-sonnet',
           });
         })
         .catch(() => {});

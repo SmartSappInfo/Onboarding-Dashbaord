@@ -15,12 +15,12 @@ const NormalizationContextSchema = z.object({
 });
 
 const BulkNormalizationInputSchema = z.object({
-  rawData: z.record(z.any()).describe('The raw row data from the spreadsheet.'),
+  rawData: z.record(z.unknown()).describe('The raw row data from the spreadsheet.'),
   mapping: z.record(z.string()).describe('The established header mapping.'),
   context: NormalizationContextSchema.describe('Available system entities for ID resolution.'),
   organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
   provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-sonnet-4-6').describe('The model ID to use.'),
+  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
 });
 export type BulkNormalizationInput = z.infer<typeof BulkNormalizationInputSchema>;
 
@@ -97,7 +97,7 @@ const bulkNormalizationFlow = ai.defineFlow(
     outputSchema: BulkNormalizationOutputSchema,
   },
   async (input) => {
-    const { organizationId, provider = 'anthropic', modelId = 'claude-sonnet-4-6' } = input;
+    const { organizationId, provider = 'anthropic', modelId = 'claude-3-5-sonnet' } = input;
 
     const resolvedModel = await getModel({
       organizationId,
@@ -117,7 +117,7 @@ const bulkNormalizationFlow = ai.defineFlow(
             });
             if (!output) throw new Error("Normalization failure.");
             return output;
-        } catch (e: any) {
+        } catch (e: unknown) {
             retries++;
             if (retries === 3) throw e;
             await new Promise(r => setTimeout(r, 2000 * retries));

@@ -98,6 +98,10 @@ function AiChatPanel() {
         setUnreadCount(0);
     };
 
+    interface PdfTextItem {
+        str: string;
+    }
+
     const extractTextFromPdf = async (file: File): Promise<string> => {
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
@@ -106,27 +110,28 @@ function AiChatPanel() {
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
-            const pageText = content.items.map((item: any) => item.str).join(' ');
+            const pageText = content.items.map((item: unknown) => (item as PdfTextItem).str).join(' ');
             fullText += pageText + '\n';
         }
         return fullText;
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !user || !firestore) return;
+    const processFile = async (file: File) => {
+        if (!user || !firestore) return;
 
-        const isAllowed = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type) ||
-                         file.name.endsWith('.docx') || file.name.endsWith('.doc');
-        
-        if (!isAllowed) {
-            toast({ variant: 'destructive', title: 'Unsupported File', description: 'Please upload PDF, TXT or DOCX files.' });
+        const isImage = file.type.startsWith('image/') || /\.(jpeg|jpg|gif|png|webp)$/i.test(file.name);
+        const isDoc = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type) ||
+                      file.name.endsWith('.docx') || file.name.endsWith('.doc');
+
+        if (!isImage && !isDoc) {
+            toast({ variant: 'destructive', title: 'Unsupported File', description: 'Please upload PDF, TXT, DOCX, or image files.' });
             return;
         }
 
         setIsUploadingFile(true);
         try {
-            const storagePath = `media/documents/${Date.now()}-${file.name}`;
+            const folder = isImage ? 'images' : 'documents';
+            const storagePath = `media/${folder}/${Date.now()}-${file.name}`;
             const storageRef = ref(storage, storagePath);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -138,18 +143,24 @@ function AiChatPanel() {
 
             const assetData = {
                 name: file.name, url: downloadUrl, fullPath: storagePath,
-                type: 'document', mimeType: file.type, size: file.size,
-                uploadedBy: user.uid, workspaceIds: [activeWorkspaceId],
+                type: isImage ? 'image' : 'document', mimeType: file.type, size: file.size,
+                uploadedBy: user.uid, workspaceIds: [activeWorkspaceId || ''],
                 createdAt: new Date().toISOString()
             };
             await addDoc(collection(firestore, 'media'), assetData);
 
             let content = '';
             let dataUri = '';
-            if (file.type === 'application/pdf') {
+            if (isImage) {
+                const reader = new FileReader();
+                dataUri = await new Promise<string>((resolve) => {
+                    reader.onload = (e) => resolve(e.target?.result as string);
+                    reader.readAsDataURL(file);
+                });
+            } else if (file.type === 'application/pdf') {
                 content = await extractTextFromPdf(file);
                 const reader = new FileReader();
-                dataUri = await new Promise((resolve) => {
+                dataUri = await new Promise<string>((resolve) => {
                     reader.onload = (e) => resolve(e.target?.result as string);
                     reader.readAsDataURL(file);
                 });
@@ -158,18 +169,37 @@ function AiChatPanel() {
             }
 
             setStagedFile({ name: file.name, url: downloadUrl, content, dataUri });
-            toast({ title: 'Document Prepared', description: `${file.name} ready for analysis.` });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+            toast({ 
+                title: isImage ? 'Image Attached' : 'Document Prepared', 
+                description: `${file.name} ready for analysis.` 
+            });
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : 'Unknown upload error occurred.';
+            toast({ variant: 'destructive', title: 'Upload Failed', description: errMsg });
         } finally {
             setIsUploadingFile(false);
         }
     };
 
-    const handleSend = async () => {
-        if (!input.trim() || isLoading) return;
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        await processFile(file);
+    };
 
-        const userMsg = input.trim();
+    const handlePaste = async (event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const file = event.clipboardData.files?.[0];
+        if (file) {
+            event.preventDefault();
+            await processFile(file);
+        }
+    };
+
+    const handleSend = async () => {
+        if ((!input.trim() && !stagedFile) || isLoading) return;
+
+        const isImg = stagedFile && (stagedFile.dataUri?.startsWith('data:image/') || stagedFile.name.match(/\.(jpeg|jpg|gif|png|webp)$/i));
+        const userMsg = input.trim() || (stagedFile ? `Analyze and extract fields from the attached ${isImg ? 'image' : 'file'}.` : '');
         setInput('');
         setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         setIsLoading(true);
@@ -177,7 +207,7 @@ function AiChatPanel() {
         try {
             const currentData = getValues();
             const urlRegex = /(https?:\/\/[^\s]+)/g;
-            const foundUrl = input.match(urlRegex)?.[0];
+            const foundUrl = userMsg.match(urlRegex)?.[0];
 
             // Use live model preferences tracked via onSnapshot
             const provider = liveProvider;
@@ -474,25 +504,34 @@ function AiChatPanel() {
                                 </CardContent>
 
                                 {/* Footer */}
- <CardFooter className="p-3 border-t bg-card/60 backdrop-blur-md shrink-0">
- <div className={cn("flex flex-col w-full gap-2 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
+                                <CardFooter className="p-3 border-t bg-card/60 backdrop-blur-md shrink-0">
+                                    <div className={cn("flex flex-col w-full gap-2 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
                                         {stagedFile && (
- <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
- <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
- <span className="text-[10px] font-bold text-primary truncate max-w-[180px]">{stagedFile.name}</span>
- <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
- <X className="h-3 w-3" />
+                                            <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
+                                                {stagedFile.dataUri?.startsWith('data:image/') || stagedFile.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                                    <img 
+                                                        src={stagedFile.dataUri || stagedFile.url} 
+                                                        alt="Staged Attachment Preview" 
+                                                        className="h-6 w-6 object-cover rounded border border-primary/25 shrink-0" 
+                                                    />
+                                                ) : (
+                                                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                )}
+                                                <span className="text-[10px] font-bold text-primary truncate max-w-[180px]">{stagedFile.name}</span>
+                                                <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
+                                                    <X className="h-3 w-3" />
                                                 </Button>
                                             </div>
                                         )}
 
- <div className="flex items-end gap-2 w-full">
+                                        <div className="flex items-end gap-2 w-full">
                                             <input
                                                 type="file"
                                                 ref={fileInputRef}
                                                 onChange={handleFileUpload}
- className="hidden"
-                                                accept=".pdf,.docx,.doc,.txt"
+                                                className="hidden"
+                                                accept=".pdf,.docx,.doc,.txt,image/*"
                                             />
                                             <TooltipProvider>
                                                 <Tooltip>
@@ -503,24 +542,25 @@ function AiChatPanel() {
                                                             size="icon"
                                                             disabled={isLoading || isUploadingFile}
                                                             onClick={() => fileInputRef.current?.click()}
- className="h-10 w-10 rounded-xl shrink-0 border border-border/60 hover:bg-accent/10"
+                                                            className="h-10 w-10 rounded-xl shrink-0 border border-border/60 hover:bg-accent/10"
                                                         >
- {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
+                                                            {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
                                                         </Button>
                                                     </TooltipTrigger>
-                                                    <TooltipContent side="top">Attach Document (PDF, DOCX, TXT)</TooltipContent>
+                                                    <TooltipContent side="top">Attach File (PDF, DOCX, TXT, Image)</TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
 
- <div className="flex-1 min-w-0">
+                                            <div className="flex-1 min-w-0">
                                                 {isFullScreen ? (
                                                     <Textarea
                                                         placeholder="Describe your design, paste a link, or send an attachment..."
                                                         value={input}
                                                         onChange={(e) => setInput(e.target.value)}
                                                         onKeyDown={handleKeyDown}
+                                                        onPaste={handlePaste}
                                                         disabled={isLoading}
- className="min-h-[80px] max-h-[200px] rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 p-3 leading-relaxed"
+                                                        className="min-h-[80px] max-h-[200px] rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 p-3 leading-relaxed"
                                                     />
                                                 ) : (
                                                     <Input
@@ -528,8 +568,9 @@ function AiChatPanel() {
                                                         value={input}
                                                         onChange={(e) => setInput(e.target.value)}
                                                         onKeyDown={handleKeyDown}
+                                                        onPaste={handlePaste}
                                                         disabled={isLoading}
- className="h-10 rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
+                                                        className="h-10 rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
                                                     />
                                                 )}
                                             </div>

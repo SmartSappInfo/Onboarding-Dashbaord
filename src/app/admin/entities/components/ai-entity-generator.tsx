@@ -29,6 +29,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
+import type { ExtractSchoolDataOutput } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
 import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -51,7 +52,7 @@ type ModuleOption = Pick<Module, 'id' | 'name' | 'abbreviation' | 'color'>;
 const formSchema = z.object({
   text: z.string().min(50, { message: 'Please provide at least 50 characters of descriptive text.' }),
   provider: z.string().default('anthropic'),
-  modelId: z.string().default('claude-sonnet-4-6'),
+  modelId: z.string().default('claude-3-5-sonnet'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -75,7 +76,7 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
     defaultValues: { 
         text: '',
         provider: 'anthropic',
-        modelId: 'claude-sonnet-4-6'
+        modelId: 'claude-3-5-sonnet'
     },
   });
 
@@ -100,7 +101,7 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
           let modelId = data.preferredAiModel;
           if (provider === 'openai') {
             provider = 'anthropic';
-            modelId = 'claude-sonnet-4-6';
+            modelId = 'claude-3-5-sonnet';
           }
           if (provider) {
             form.setValue('provider', provider);
@@ -174,10 +175,23 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
                 zone: zones?.[0] ? { id: zones[0].id, name: zones[0].name } : undefined,
             },
             interests: finalModules,
-            entityContacts: (result.contacts || []).map((p: any, index: number) => {
+            entityContacts: (result.contacts || []).map((p: { name: string; email?: string | null; phone?: string | null; role: string }, index: number) => {
                 const typeLabel = p.role || 'Contact';
                 const typeKey = typeLabel.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_');
-                const ec: any = {
+                interface ContactEntry {
+                    id: string;
+                    name: string;
+                    typeKey: string;
+                    typeLabel: string;
+                    isPrimary: boolean;
+                    isSignatory: boolean;
+                    order: number;
+                    createdAt: string;
+                    updatedAt: string;
+                    email?: string;
+                    phone?: string;
+                }
+                const ec: ContactEntry = {
                     id: `ec_ai_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`,
                     name: p.name || '',
                     typeKey,
@@ -238,9 +252,10 @@ export default function AiEntityGenerator({ open, onOpenChange }: AiEntityGenera
         onOpenChange(false);
         router.push(`/admin/entities/${entityId}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(error);
-        toast({ variant: 'destructive', title: 'Onboarding Failed', description: error.message });
+        const err = error as { message?: string };
+        toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'An error occurred.' });
     } finally {
         setIsGenerating(false);
     }

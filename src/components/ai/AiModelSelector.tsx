@@ -18,6 +18,7 @@ import { updateUserAiPreferencesAction } from '@/lib/user-preferences-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { UserProfile } from '@/lib/types';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 
 export const AI_PROVIDERS = [
     {
@@ -27,8 +28,10 @@ export const AI_PROVIDERS = [
         color: 'text-orange-500',
         bgColor: 'bg-orange-500/10',
         models: [
-            { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6', description: 'Best balance of speed & intelligence' },
-            { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest Claude model for low-latency tasks' },
+            { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Best balance of speed & intelligence' },
+            { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', description: 'Fastest Claude model for low-latency tasks' },
+            { id: 'claude-3-opus', name: 'Claude 3 Opus', description: 'Deep reasoning & complex tasks' },
+            { id: 'claude-sonnet-5', name: 'Claude 5 Sonnet', description: 'Next-generation Claude model' },
         ]
     },
     {
@@ -38,11 +41,13 @@ export const AI_PROVIDERS = [
         color: 'text-blue-500',
         bgColor: 'bg-blue-500/10',
         models: [
-            { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', description: 'Frontier performance for high-volume tasks' },
+            { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', description: 'Frontier performance for high-volume tasks' },
             { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', description: 'High-frequency, simple tasks' },
+            { id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', description: 'Balanced Gemini 3 model' },
             { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning & multimodal' },
             { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanced performance & low-latency' },
-            { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Legacy balanced multimodal model' },
+            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced logic and analysis' },
+            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Classic low-latency task runner' },
         ]
     },
     {
@@ -52,14 +57,14 @@ export const AI_PROVIDERS = [
         color: 'text-purple-500',
         bgColor: 'bg-purple-500/10',
         models: [
-            { id: 'openrouter/owl-alpha', name: 'Owl Alpha', description: '284B token model optimized for agentic workloads' },
-            { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B', description: 'Strong vision & tool-use (262K context)' },
-            { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', description: '120B parameter model from NVIDIA' },
-            { id: 'qwen/qwen3-coder:free', name: 'Qwen 3 Coder', description: 'Optimized coding model from Qwen' },
-            { id: 'poolside/poolside-laguna-m1:free', name: 'Poolside Laguna M1', description: '185B parameter specialized coding agent' },
-            { id: 'mistral/devstral-2-2512:free', name: 'Devstral 2', description: 'Versatile math & coding model' },
-            { id: 'xiaomi/mimo-v2-flash:free', name: 'Mimo V2 Flash', description: '309B parameter reasoning & coding model' },
-            { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', description: 'Efficient MoE designed for long-context' },
+            { id: 'openrouter/free', name: 'Auto Free Router', description: 'Auto-routes to the best available free model' },
+            { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', description: 'State-of-the-art open reasoning model' },
+            { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', description: 'Highly competent 70B general instruct model' },
+            { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', description: 'Fast low-latency lightweight agent' },
+            { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B', description: 'Optimized coding model from Qwen' },
+            { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B', description: 'High-capacity reasoning & coding' },
+            { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', description: 'Google instruction-tuned 9B parameter model' },
+            { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', description: 'Classic high-performance lightweight model' },
         ]
     }
 ];
@@ -71,8 +76,9 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
     const { toast } = useToast();
     
     const [selectedProvider, setSelectedProvider] = React.useState<string>('anthropic');
-    const [selectedModel, setSelectedModel] = React.useState<string>('claude-sonnet-4-6');
+    const [selectedModel, setSelectedModel] = React.useState<string>('claude-3-5-sonnet');
     const [isLoading, setIsLoading] = React.useState(true);
+    const { modelId: liveModelId } = useLiveAiModel();
 
     const availableProviders = React.useMemo(() => {
         if (!activeOrganization) return [];
@@ -104,7 +110,7 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                     // Automatically migrate legacy 'openai' to 'anthropic'
                     if (provider === 'openai') {
                         provider = 'anthropic';
-                        model = 'claude-sonnet-4-6';
+                        model = 'claude-3-5-sonnet';
                     }
                     
                     // Only apply if the preferred model is still available under the active organization's rules
@@ -169,7 +175,7 @@ export default function AiModelSelector({ className, hideLabel = false }: { clas
                 )}
                 <div className="flex items-center gap-2.5 p-3 bg-orange-500/5 border border-orange-500/10 text-orange-600 rounded-[1.25rem] text-sm font-bold w-[280px]">
                     <Zap className="w-4 h-4 shrink-0 text-orange-500" />
-                    <span>System Default: Claude Sonnet 4.6</span>
+                    <span>System Default: {liveModelId}</span>
                 </div>
             </div>
         );
