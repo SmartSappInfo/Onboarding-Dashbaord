@@ -4,6 +4,7 @@ import { anthropic } from '@genkit-ai/anthropic';
 import { openAICompatible } from '@genkit-ai/compat-oai';
 import { adminDb } from '@/lib/firebase-admin';
 import { openSecret } from '@/lib/backoffice/secret-vault';
+import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
 
 // System default instance using environment variables
 export const ai = genkit({
@@ -201,6 +202,24 @@ export async function getModel(params: {
               const defaultModel = provider === 'googleai' 
                 ? 'googleai/gemini-2.5-flash' 
                 : 'anthropic/claude-3-5-sonnet';
+              
+              // Non-blocking telemetry log
+              logBackofficeAction(
+                { userId: 'system_proxy', email: 'system@smartsapp.com', name: 'AI Key Proxy', role: 'super_admin' },
+                'ai_key.fallback',
+                'provider',
+                provider,
+                {
+                  scope: organizationId ? 'organization' : 'platform',
+                  scopeId: organizationId,
+                  metadata: {
+                    error: errorMsg,
+                    modelId,
+                    fallbackModel: defaultModel
+                  }
+                }
+              ).catch((e) => console.error('[AI] Telemetry logging failed:', e));
+
               return await ai.generate({
                 ...options,
                 model: defaultModel

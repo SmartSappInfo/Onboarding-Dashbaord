@@ -23,12 +23,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload, Shield } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig } from '@/lib/backoffice/backoffice-ai-actions';
+import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig, rotateAllSecretsAction } from '@/lib/backoffice/backoffice-ai-actions';
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
@@ -55,6 +55,51 @@ export default function SystemDefaultsClient() {
         claudeApiKeyExists: false,
         openRouterApiKeyExists: false,
     });
+    const [isRotating, setIsRotating] = React.useState(false);
+
+    const handleRotateSecrets = async () => {
+        const token = await getToken();
+        if (!token) {
+            toast({ variant: 'destructive', title: 'Authentication Failed', description: 'Could not obtain verification credentials.' });
+            return;
+        }
+
+        const proceed = await confirm({
+            title: 'Rotate Encryption Keys',
+            description: 'This will re-encrypt all stored global AI keys under the current active master key. Are you sure you want to proceed?',
+            confirmText: 'Rotate Secrets',
+            cancelText: 'Cancel'
+        });
+
+        if (!proceed) return;
+
+        setIsRotating(true);
+        try {
+            const res = await rotateAllSecretsAction(token);
+            if (res.success) {
+                toast({
+                    title: 'Secrets Rotated Successfully',
+                    description: `Re-encrypted ${res.rotatedCount} keys under the active master key.`
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Rotation Failed',
+                    description: res.error || 'An unknown error occurred.'
+                });
+            }
+        } catch (error: unknown) {
+            const err = error as { message?: string };
+            toast({
+                variant: 'destructive',
+                title: 'Rotation Failed',
+                description: err.message || 'Rotation failed.'
+            });
+        } finally {
+            setIsRotating(false);
+        }
+    };
+
 
     React.useEffect(() => {
         const fetchTemplatesAndKeys = async () => {
@@ -430,6 +475,34 @@ export default function SystemDefaultsClient() {
                             />
                             <p className="text-[10px] text-muted-foreground">Optional alternative provider key routing.</p>
                         </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-border/80 shadow-sm overflow-hidden">
+                    <CardHeader>
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-primary" /> Key Rotation & Security
+                        </CardTitle>
+                        <CardDescription>Verify vault encryption alignment and trigger envelope re-keying.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            If you rotated the master key envelope environment parameters (`WHATSAPP_ENCRYPTION_KEY` / `WHATSAPP_ENCRYPTION_KEY_ID`), click below to re-encrypt stored secrets with the current key.
+                        </p>
+                        <Button 
+                            type="button"
+                            variant="outline" 
+                            disabled={isRotating}
+                            onClick={handleRotateSecrets}
+                            className="w-full rounded-xl flex items-center justify-center gap-2 text-xs font-semibold"
+                        >
+                            {isRotating ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            ) : (
+                                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            Rotate Encrypted Secrets
+                        </Button>
                     </CardContent>
                 </Card>
 

@@ -5,7 +5,7 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
-import { sealSecret, isEnvelope, type EncryptedEnvelope } from './secret-vault';
+import { sealSecret, isEnvelope, needsRotation, rotateSecret, type EncryptedEnvelope } from './secret-vault';
 import { GlobalAiKeysSchema, type GlobalAiKeys, GlobalAiConfigSchema, type GlobalAiConfig } from '../validation/ai-config-schema';
 
 /** A stored secret field: sealed envelope, or empty string when unset. */
@@ -224,3 +224,58 @@ export async function saveGlobalAiConfig(
     return { success: false, error: getErrorMessage(error) };
   }
 }
+
+export async function rotateAllSecretsAction(idToken: string): Promise<{
+  success: boolean;
+  rotatedCount?: number;
+  error?: string;
+}> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'settings', 'edit');
+
+    const docRef = adminDb.collection('system_settings').doc('ai_keys');
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return { success: true, rotatedCount: 0 };
+    }
+
+    const data = snap.data() || {};
+    const updates: Record<string, unknown> = {};
+    let rotatedCount = 0;
+
+    const fields = ['geminiApiKey', 'claudeApiKey', 'openRouterApiKey'] as const;
+    for (const field of fields) {
+      const val = data[field];
+      if (val && needsRotation(val)) {
+        const rotatedVal = rotateSecret(val);
+        if (rotatedVal) {
+          updates[field] = rotatedVal;
+          rotatedCount++;
+        }
+      }
+    }
+
+    if (rotatedCount > 0) {
+      updates.updatedAt = new Date().toISOString();
+      updates.updatedBy = actor.userId;
+      await docRef.set(updates, { merge: true });
+
+      // Audit log of rotation
+      await logBackofficeAction(
+        actor,
+        'system_defaults.secrets_rotate',
+        'system_settings',
+        docRef.id,
+        {
+          metadata: { rotatedFields: Object.keys(updates).filter(k => fields.includes(k as any)) }
+        }
+      );
+    }
+
+    return { success: true, rotatedCount };
+  } catch (error: unknown) {
+    console.error('[BACKOFFICE_AI] rotateAllSecretsAction failed:', error);
+    return { success: false, error: getErrorMessage(error) };
+  }
+}
+

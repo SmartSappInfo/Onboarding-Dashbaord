@@ -52,3 +52,29 @@ export function openSecret(value: unknown): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * Checks if a value (either legacy plaintext string or an encrypted envelope)
+ * was sealed with an outdated encryption key or is in plaintext.
+ */
+export function needsRotation(value: unknown): boolean {
+  if (isEnvelope(value)) {
+    const currentKeyId = process.env.WHATSAPP_ENCRYPTION_KEY_ID || 'default';
+    return value.keyId !== currentKeyId;
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    return true; // legacy plaintext
+  }
+  return false;
+}
+
+/**
+ * Rotates/re-seals a stored secret under the currently active master key.
+ */
+export function rotateSecret(value: unknown): EncryptedEnvelope | undefined {
+  const plaintext = openSecret(value);
+  if (plaintext) {
+    return sealSecret(plaintext);
+  }
+  return undefined;
+}
