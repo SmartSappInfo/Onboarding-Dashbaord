@@ -82,6 +82,50 @@ const ChecklistThumbnail = (
   </svg>
 );
 
+const CalloutThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <rect x="15" y="16" width="70" height="43" rx="4" className="text-slate-850 fill-slate-850" />
+    <rect x="18" y="20" width="2" height="35" rx="0.5" className="text-blue-500 fill-blue-500" />
+    <rect x="24" y="24" width="40" height="3" rx="0.5" className="text-blue-400 fill-blue-400" />
+    <rect x="24" y="32" width="55" height="2" rx="0.5" className="text-slate-350 fill-slate-350" />
+    <rect x="24" y="38" width="55" height="2" rx="0.5" className="text-slate-350 fill-slate-350" />
+    <rect x="24" y="44" width="35" height="2" rx="0.5" className="text-slate-350 fill-slate-350" />
+  </svg>
+);
+
+const StatementThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <rect x="20" y="22" width="60" height="4" rx="1.5" className="text-white fill-white" />
+    <rect x="25" y="32" width="50" height="4" rx="1.5" className="text-white fill-white" />
+    <rect x="35" y="42" width="30" height="3" rx="1" className="text-slate-400 fill-slate-400" />
+    <rect x="42" y="52" width="16" height="2" rx="0.5" className="text-slate-500 fill-slate-500" />
+  </svg>
+);
+
+const StepThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <rect x="15" y="20" width="22" height="9" rx="2" className="text-blue-500 fill-blue-500" />
+    <rect x="42" y="23" width="43" height="4" rx="1" className="text-slate-200 fill-slate-200" />
+    <rect x="15" y="38" width="70" height="3" rx="1" className="text-slate-500 fill-slate-500" />
+    <rect x="15" y="46" width="50" height="3" rx="1" className="text-slate-500 fill-slate-500" />
+  </svg>
+);
+
+const BulletsThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-900 fill-slate-900" />
+    <path d="M 18,22 L 21,25 L 25,19" fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="30" y="20" width="55" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+    <path d="M 18,34 L 21,37 L 25,31" fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="30" y="32" width="55" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+    <path d="M 18,46 L 21,49 L 25,43" fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" />
+    <rect x="30" y="44" width="45" height="3" rx="0.5" className="text-slate-200 fill-slate-200" />
+  </svg>
+);
+
 interface TextBlockEditorProps {
   blockId: string;
   isEdit: boolean;
@@ -209,6 +253,10 @@ registerBlock({
     { id: 'text-quote', label: 'Blockquote Style', description: 'Indented quotation layout with testimonial author details.', thumbnail: QuoteThumbnail, defaults: { preset: 'quote', content: '<p><i>“This onboarding system streamlined our operations, allowing us to manage over 10,000 active students and rosters while maintaining perfect security and compliance.”</i></p><p style="margin-top: 8px; font-size: 11px; color: #64748b;">— <b>Dr. Sarah Jenkins</b>, Academic Compliance Director</p>' } },
     { id: 'text-checklist', label: 'Interactive Checklist', description: 'Interactive checkmark bullets list layout.', thumbnail: ChecklistThumbnail, defaults: { preset: 'checklist', content: '<h4><b>Getting Started Checklist</b></h4><p>Complete these initial steps to fully integrate your campus rosters:</p><p>✅ <b>1. Sync Workspace Database:</b> Hook up your tenant parameters.</p><p>✅ <b>2. Invite Administrators:</b> Set up backoffice roles and permissions.</p><p>✅ <b>3. Publish Campaign Pages:</b> Generate public URLs for registrations.</p>' } },
     { id: 'text-disclaimer', label: 'Small Disclaimer', description: 'Dense, small legal context layout.', thumbnail: DisclaimerThumbnail, defaults: { preset: 'disclaimer', textAlign: 'center', content: '<p>© 2026 SmartSapp. All rights reserved. Roster submissions are subject to validation checks under local administrative rules. Terms of Service apply.</p>' } },
+    { id: 'text-callout', label: 'Callout Box', description: 'Subtle left-bordered callout container layout.', thumbnail: CalloutThumbnail, defaults: { preset: 'paragraph', content: '<div style="background-color: rgba(59, 95, 255, 0.08); border-left: 4px solid #3B5FFF; padding: 18px 20px; border-radius: 4px; color: inherit;"><h4 style="margin: 0 0 6px 0; color: #3B5FFF; font-size: 15px;"><b>Key Information</b></h4><p style="margin: 0; font-size: 13.5px; opacity: 0.9;">Please note that all student records must be validated before you can submit the final roster report. Compliance reviews take 2-3 business days.</p></div>' } },
+    { id: 'text-statement', label: 'Elegant Statement', description: 'Centred large italic statement block.', thumbnail: StatementThumbnail, defaults: { preset: 'lead', textAlign: 'center', content: '<div style="text-align: center; padding: 12px 0;"><h3 style="font-family: Georgia, serif; font-style: italic; font-weight: normal; font-size: 20px; line-height: 1.6; margin-bottom: 8px;">“Education is not preparation for life; education is life itself.”</h3><p style="margin: 0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.15em;">— John Dewey</p></div>' } },
+    { id: 'text-step', label: 'Instruction Step', description: 'Numbered action badge layout.', thumbnail: StepThumbnail, defaults: { preset: 'paragraph', content: '<div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px;"><span style="background-color: #3B5FFF; color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; margin-top: 2px;">STEP 1</span><div style="flex: 1;"><h4 style="margin: 0 0 4px 0; font-size: 15px;"><b>Configure Campaign Settings</b></h4><p style="margin: 0; font-size: 13.5px; opacity: 0.85;">Navigate to the Campaign Settings panel and hook up your target database connection credentials before initiating student invites.</p></div></div>' } },
+    { id: 'text-bullets', label: 'Highlight Bullets', description: 'Bullet list layout with custom checkmarks.', thumbnail: BulletsThumbnail, defaults: { preset: 'paragraph', content: '<h4><b>What is included:</b></h4><ul style="list-style-type: none; padding-left: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"><li style="display: flex; gap: 8px; align-items: center;"><span style="color: #10B981; font-size: 14px;">✔</span> <span style="font-size: 13.5px;">Premium onboarding dashboards & tracking tool</span></li><li style="display: flex; gap: 8px; align-items: center;"><span style="color: #10B981; font-size: 14px;">✔</span> <span style="font-size: 13.5px;">Auto sync options with CSV export</span></li><li style="display: flex; gap: 8px; align-items: center;"><span style="color: #10B981; font-size: 14px;">✔</span> <span style="font-size: 13.5px;">Unlimited campaign page layouts & design tools</span></li></ul>' } },
   ],
   render: (props: TextProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';
