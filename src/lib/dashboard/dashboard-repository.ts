@@ -68,10 +68,16 @@ export const countActiveEntities = cache(async (workspaceId: string): Promise<nu
 
 /** Total capacity across active entities — server-side `sum()`, no document reads. */
 export const sumActiveCapacity = cache(async (workspaceId: string): Promise<number> => {
-  const snap = await activeEntitiesQuery(workspaceId)
-    .aggregate({ total: AggregateField.sum('nominalRoll') })
-    .get();
-  return snap.data().total ?? 0;
+  try {
+    const snap = await activeEntitiesQuery(workspaceId)
+      .aggregate({ total: AggregateField.sum('nominalRoll') })
+      .get();
+    return snap.data().total ?? 0;
+  } catch (error) {
+    console.warn("sumActiveCapacity aggregate query failed, falling back to in-memory calculation:", error);
+    const entities = await getEntityProjections(workspaceId);
+    return entities.reduce((sum, we) => sum + (we.nominalRoll || 0), 0);
+  }
 });
 
 /**
