@@ -335,25 +335,31 @@ function SortableResultBlock({
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const [isHovered, setIsHovered] = React.useState(false);
 
+    const watchedBlock = useWatch({
+        name: `resultPages.${pageIndex}.blocks.${index}`,
+        defaultValue: block
+    });
+    const activeBlock = (watchedBlock || block) as SurveyResultBlock;
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
     };
 
-    const alignClass = block.style?.textAlign === 'center' 
+    const alignClass = activeBlock.style?.textAlign === 'center' 
         ? 'text-center flex flex-col items-center' 
-        : block.style?.textAlign === 'right' 
+        : activeBlock.style?.textAlign === 'right' 
         ? 'text-right flex flex-col items-end' 
-        : block.style?.textAlign === 'justify' 
+        : activeBlock.style?.textAlign === 'justify' 
         ? 'text-justify' 
         : 'text-left';
 
     const renderWysiwygContent = () => {
-        switch (block.type) {
+        switch (activeBlock.type) {
             case 'heading': {
-                const fontClass = block.variant === 'h1' 
+                const fontClass = activeBlock.variant === 'h1' 
                     ? 'text-3xl sm:text-4xl font-semibold tracking-tight' 
-                    : block.variant === 'h3' 
+                    : activeBlock.variant === 'h3' 
                     ? 'text-lg sm:text-xl font-bold tracking-tight' 
                     : 'text-2xl sm:text-3xl font-semibold tracking-tight';
 
@@ -362,7 +368,7 @@ function SortableResultBlock({
                         <input
                             type="text"
                             placeholder="Type heading here..."
-                            value={block.title || ''}
+                            value={activeBlock.title || ''}
                             onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${index}.title`, e.target.value, { shouldDirty: true })}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -371,7 +377,7 @@ function SortableResultBlock({
                             className={cn(
                                 "w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-foreground font-semibold",
                                 fontClass,
-                                block.style?.textAlign === 'center' ? 'text-center' : block.style?.textAlign === 'right' ? 'text-right' : 'text-left'
+                                activeBlock.style?.textAlign === 'center' ? 'text-center' : activeBlock.style?.textAlign === 'right' ? 'text-right' : 'text-left'
                             )}
                         />
                     </div>
@@ -382,7 +388,7 @@ function SortableResultBlock({
                     <div className={cn("w-full py-1", alignClass)}>
                         <textarea
                             placeholder="Type paragraph content here..."
-                            value={block.content || ''}
+                            value={activeBlock.content || ''}
                             onChange={(e) => {
                                 setValue(`resultPages.${pageIndex}.blocks.${index}.content`, e.target.value, { shouldDirty: true });
                                 e.target.style.height = 'auto';
@@ -401,7 +407,7 @@ function SortableResultBlock({
                             }}
                             className={cn(
                                 "w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 text-muted-foreground leading-relaxed text-base resize-none overflow-hidden",
-                                block.style?.textAlign === 'center' ? 'text-center' : block.style?.textAlign === 'right' ? 'text-right' : 'text-left'
+                                activeBlock.style?.textAlign === 'center' ? 'text-center' : activeBlock.style?.textAlign === 'right' ? 'text-right' : 'text-left'
                             )}
                         />
                     </div>
@@ -414,7 +420,7 @@ function SortableResultBlock({
                             <Quote className="h-6 w-6 text-primary/20 shrink-0 mt-1" />
                             <textarea
                                 placeholder="Type quote here..."
-                                value={block.content || ''}
+                                value={activeBlock.content || ''}
                                 onChange={(e) => {
                                     setValue(`resultPages.${pageIndex}.blocks.${index}.content`, e.target.value, { shouldDirty: true });
                                     e.target.style.height = 'auto';
@@ -443,12 +449,12 @@ function SortableResultBlock({
                         <Button 
                             type="button" 
                             size="lg" 
-                            variant={block.style?.variant as 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | null | undefined || 'default'} 
+                            variant={activeBlock.style?.variant as 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | null | undefined || 'default'} 
                             className="h-12 px-6 rounded-xl shadow-sm inline-flex items-center gap-2 max-w-full overflow-hidden active:scale-[0.97] transition-all"
                         >
                             <input
                                 type="text"
-                                value={block.title || ''}
+                                value={activeBlock.title || ''}
                                 onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${index}.title`, e.target.value, { shouldDirty: true })}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -462,11 +468,11 @@ function SortableResultBlock({
                 );
             }
             case 'list': {
-                const listItems = block.items || [];
+                const listItems = activeBlock.items || [];
                 return (
                     <div className={cn("w-full py-1", alignClass)}>
                         {listItems.length > 0 && listItems.some(i => i.trim() !== '') ? (
-                            block.listStyle === 'ordered' ? (
+                            activeBlock.listStyle === 'ordered' ? (
                                 <ol className="list-decimal list-inside space-y-1.5 text-base font-medium text-slate-700 w-full text-left">
                                     {listItems.map((item: string, i: number) => item.trim() !== '' && <li key={i}>{item}</li>)}
                                 </ol>
@@ -491,9 +497,9 @@ function SortableResultBlock({
             case 'image': {
                 return (
                     <div className="w-full py-2 flex justify-center">
-                        {block.url ? (
+                        {activeBlock.url ? (
                             <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-sm border bg-card">
-                                <Image src={block.url} alt="preview" fill sizes="(max-width: 768px) 100vw, 640px" className="object-cover" />
+                                <Image src={activeBlock.url} alt="preview" fill sizes="(max-width: 768px) 100vw, 640px" className="object-cover" />
                             </div>
                         ) : (
                             <div className="w-full py-8 border border-dashed rounded-2xl bg-muted/10 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs">
@@ -507,8 +513,8 @@ function SortableResultBlock({
             case 'video': {
                 return (
                     <div className="w-full py-2">
-                        {block.url ? (
-                            <VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} />
+                        {activeBlock.url ? (
+                            <VideoEmbed url={activeBlock.url} thumbnailUrl={activeBlock.thumbnailUrl} />
                         ) : (
                             <div className="w-full py-8 border border-dashed rounded-2xl bg-muted/10 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs">
                                 <Video className="h-6 w-6 opacity-40 text-primary" />
@@ -521,9 +527,9 @@ function SortableResultBlock({
             case 'audio': {
                 return (
                     <div className="w-full py-2">
-                        {block.url ? (
+                        {activeBlock.url ? (
                             <div className="p-4 bg-muted/20 border rounded-2xl shadow-sm">
-                                <audio controls src={block.url} className="w-full" />
+                                <audio controls src={activeBlock.url} className="w-full" />
                             </div>
                         ) : (
                             <div className="w-full py-8 border border-dashed rounded-2xl bg-muted/10 flex flex-col items-center justify-center gap-2 text-muted-foreground text-xs">
@@ -593,7 +599,7 @@ function SortableResultBlock({
 
             {/* Visual Block Type Badge indicator */}
             <Badge variant="outline" className="absolute bottom-2 right-3 text-[9px] font-semibold opacity-0 group-hover:opacity-40 transition-opacity bg-background select-none uppercase tracking-wider">
-                {block.type}
+                {activeBlock.type}
             </Badge>
 
             {/* Insertion Trigger on Hover Bottom */}
