@@ -326,6 +326,42 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         const cEmail = getAnswerValue(mapping.contactEmailFieldId);
         const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
 
+        // Parse additional mappings and resolve overrides early
+        const mappedInstitutionData: Record<string, string | number | boolean> = {};
+        const mappedPersonData: Record<string, string | number | boolean> = {};
+        const mappedCustomData: Record<string, string | number | boolean> = {};
+        
+        let overriddenEntityName: string | null = null;
+        let overriddenContactName: string | null = null;
+        let overriddenContactEmail: string | null = null;
+        let overriddenContactPhone: string | null = null;
+
+        if (mapping.additionalMappings?.length) {
+          mapping.additionalMappings.forEach((m: { questionId: string; targetField: string }) => {
+            const val = getAnswerValue(m.questionId);
+            if (val !== null && val !== undefined && val !== '') {
+              if (m.targetField.startsWith('institutionData.')) {
+                const field = m.targetField.replace('institutionData.', '');
+                mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
+              } else if (m.targetField.startsWith('personData.')) {
+                const field = m.targetField.replace('personData.', '');
+                mappedPersonData[field] = val;
+              } else if (m.targetField.startsWith('customData.')) {
+                const field = m.targetField.replace('customData.', '');
+                mappedCustomData[field] = val;
+              } else if (m.targetField === 'entity.name') {
+                overriddenEntityName = val;
+              } else if (m.targetField === 'contacts.name') {
+                overriddenContactName = val;
+              } else if (m.targetField === 'contacts.email') {
+                overriddenContactEmail = val;
+              } else if (m.targetField === 'contacts.phone') {
+                overriddenContactPhone = val;
+              }
+            }
+          });
+        }
+
         // Get workspace scope, contact policy, and industry
         const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
         const wsData = wsSnap.data();
@@ -336,11 +372,14 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
 
         // Accept entity.name OR contact.name as the entity name source
-        const resolvedName = eName || cName || '';
+        const resolvedName = overriddenEntityName || eName || cName || '';
         const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+        
+        const resolvedEmail = overriddenContactEmail || cEmail || '';
+        const resolvedPhone = overriddenContactPhone || cPhone || '';
 
         // Validate contact identifiers per workspace policy
-        const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
+        const policyCheck = validateContactIdentifier(resolvedPhone, resolvedEmail, contactPolicy);
 
         if (finalEntityName && policyCheck.valid) {
           // 3.1 Deduplication — search within this workspace only
@@ -349,10 +388,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             .where('displayName', '==', finalEntityName);
           
           let weSnap;
-          if (cEmail) {
-            weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
-          } else if (cPhone) {
-            weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
+          if (resolvedEmail) {
+            weSnap = await dedupeQuery.where('primaryEmail', '==', resolvedEmail).limit(1).get();
+          } else if (resolvedPhone) {
+            weSnap = await dedupeQuery.where('primaryPhone', '==', resolvedPhone).limit(1).get();
           } else {
             weSnap = await dedupeQuery.limit(1).get();
           }
@@ -365,38 +404,19 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             contactTypeKey: 'primary',
           };
           
-          let orgDefaults: any = {};
+          let orgDefaults: Record<string, unknown> = {};
           if (organizationId && organizationId !== 'default') {
             const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
             if (orgSnap.exists) {
-              orgDefaults = orgSnap.data()?.surveyEntityDefaults || {};
+              orgDefaults = (orgSnap.data()?.surveyEntityDefaults as Record<string, unknown>) || {};
             }
           }
           
-          const wsSurveyDefaults = wsData?.surveyEntityDefaults || {};
-          const wsEntityDefaults = wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] || {};
+          const wsSurveyDefaults = (wsData?.surveyEntityDefaults as Record<string, unknown>) || {};
+          const wsEntityDefaults = (wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] as Record<string, unknown>) || {};
           
           // Merge: system < org < workspace survey defaults < workspace entity defaults
           const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
-
-          // 3.3 Extract survey-mapped fields
-          const mappedInstitutionData: any = {};
-          const mappedPersonData: any = {};
-
-          if (mapping.additionalMappings?.length) {
-            mapping.additionalMappings.forEach((m: any) => {
-              const val = getAnswerValue(m.questionId);
-              if (val !== null && val !== undefined && val !== '') {
-                if (m.targetField.startsWith('institutionData.')) {
-                  const field = m.targetField.replace('institutionData.', '');
-                  mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
-                } else if (m.targetField.startsWith('personData.')) {
-                  const field = m.targetField.replace('personData.', '');
-                  mappedPersonData[field] = val;
-                }
-              }
-            });
-          }
 
           // FIX 7: contactScope alignment guard
           if (contactScope === 'person' && Object.keys(mappedInstitutionData).length > 0) {
@@ -407,7 +427,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           }
 
           // FIX 5+6: Build industryData using defaults + survey-mapped fields
-          let industryDataPayload: any | undefined;
+          let industryDataPayload: Record<string, unknown> | undefined;
           if (workspaceIndustry) {
             const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
             const surveyMapped = contactScope === 'institution' ? mappedInstitutionData : mappedPersonData;
@@ -419,13 +439,29 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             };
           }
 
-          const entityPayload: any = {
+          const finalContactName = overriddenContactName || cName || finalEntityName;
+
+          const entityPayload: {
+            name: string;
+            contacts: Array<{
+              name: string;
+              email: string;
+              phone: string;
+              isPrimary: boolean;
+              typeKey: string;
+            }>;
+            globalTags: string[];
+            workspaceTags: string[];
+            customData?: Record<string, string | number | boolean>;
+            personData?: Record<string, string | number | boolean>;
+            industryData?: Record<string, unknown>;
+          } = {
             name: finalEntityName,
             contacts: [
               {
-                name: cName || finalEntityName,
-                email: cEmail || '',
-                phone: cPhone || '',
+                name: finalContactName,
+                email: resolvedEmail,
+                phone: resolvedPhone,
                 isPrimary: true,
                 typeKey: resolvedDefaults.contactTypeKey
               }
@@ -441,6 +477,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           // Pass personData for person entities (non-industry fields like custom CRM props)
           if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
             entityPayload.personData = mappedPersonData;
+          }
+          // Pass customData
+          if (Object.keys(mappedCustomData).length > 0) {
+            entityPayload.customData = mappedCustomData;
           }
 
           if (!weSnap.empty) {
