@@ -18,7 +18,7 @@ import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebas
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { createFieldAction } from '@/lib/fields-actions';
+import { createFieldAction, createFieldGroupAction } from '@/lib/fields-actions';
 import { type SurveyQuestion, type SurveyElement, type AppField, type FieldGroup } from '@/lib/types';
 
 interface SearchOption {
@@ -42,8 +42,9 @@ interface SearchableSelectProps {
 interface CreateFieldDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (data: { label: string; variableName: string }) => void;
+    onSubmit: (data: { label: string; variableName: string; groupId?: string; newGroupName?: string }) => void;
     isSubmitting: boolean;
+    fieldGroups: FieldGroup[];
 }
 
 export default function SurveyLeadCaptureCard() {
@@ -91,10 +92,37 @@ export default function SurveyLeadCaptureCard() {
     const groupedTargetFields = React.useMemo<SearchGroup[]>(() => {
         if (!appFields || !fieldGroups) return [];
         
-        return fieldGroups.map(group => {
+        // 1. Generate Virtual Entity Profile Group based on contact scope
+        const isPerson = activeWorkspace?.contactScope === 'person';
+        const profileOptions: SearchOption[] = isPerson ? [
+            { label: 'Full Name', value: 'entity.name' },
+            { label: 'Email Address', value: 'contacts.email' },
+            { label: 'Phone Number', value: 'contacts.phone' }
+        ] : [
+            { label: 'Institution Name', value: 'entity.name' },
+            { label: 'Focal Person Name', value: 'contacts.name' },
+            { label: 'Focal Person Email', value: 'contacts.email' },
+            { label: 'Focal Person Phone', value: 'contacts.phone' }
+        ];
+
+        const profileGroup: SearchGroup = {
+            label: 'Entity Profile',
+            options: profileOptions
+        };
+
+        // 2. Map existing app fields into their respective groups
+        const mappedGroups = fieldGroups.map(group => {
             const options = appFields
                 .filter(f => f.groupId === group.id && f.status === 'active' && f.type !== 'hidden')
                 .map(f => {
+                    // If it is a custom field, prefix with customData.
+                    if (!f.isNative) {
+                        return {
+                            label: f.label,
+                            value: `customData.${f.variableName}`
+                        };
+                    }
+                    
                     let prefix = 'personData.';
                     if (f.compatibilityScope?.includes('institution') && !f.compatibilityScope?.includes('person')) {
                         prefix = 'institutionData.';
@@ -109,7 +137,9 @@ export default function SurveyLeadCaptureCard() {
                 options
             };
         }).filter(g => g.options.length > 0);
-    }, [appFields, fieldGroups]);
+
+        return [profileGroup, ...mappedGroups];
+    }, [appFields, fieldGroups, activeWorkspace?.contactScope]);
 
     // Dialog state for creating new field on the fly
     const [isCreateFieldOpen, setIsCreateFieldOpen] = React.useState<boolean>(false);
@@ -147,13 +177,40 @@ export default function SurveyLeadCaptureCard() {
         }
     };
 
-    const handleCreateField = async (data: { label: string; variableName: string }) => {
+    const handleCreateField = async (data: { label: string; variableName: string; groupId?: string; newGroupName?: string }) => {
         if (!user || !activeWorkspaceId) return;
         setIsSubmitting(true);
         try {
-            const defaultGroup = fieldGroups?.find(g => g.slug === 'custom' || g.isSystem) || fieldGroups?.[0];
-            const groupId = defaultGroup?.id || '';
-            const section = defaultGroup?.slug || 'custom';
+            let groupId = data.groupId || '';
+            let section = 'custom';
+
+            if (data.newGroupName?.trim()) {
+                const groupRes = await createFieldGroupAction({
+                    workspaceId: activeWorkspaceId,
+                    organizationId: activeOrganizationId || 'default',
+                    name: data.newGroupName.trim(),
+                    description: 'Custom field group created via custom field dialog.',
+                    icon: 'Folder',
+                    color: '#4f46e5',
+                    entityTypes: ['person', 'institution', 'family'],
+                }, user.uid);
+
+                if (groupRes.success && groupRes.id) {
+                    groupId = groupRes.id;
+                    section = data.newGroupName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+                } else {
+                    throw new Error(groupRes.error || 'Failed to create field group.');
+                }
+            } else if (groupId) {
+                const selectedGroup = fieldGroups?.find(g => g.id === groupId);
+                if (selectedGroup) {
+                    section = selectedGroup.slug || 'custom';
+                }
+            } else {
+                const defaultGroup = fieldGroups?.find(g => g.slug === 'custom' || g.isSystem) || fieldGroups?.[0];
+                groupId = defaultGroup?.id || '';
+                section = defaultGroup?.slug || 'custom';
+            }
 
             const res = await createFieldAction({
                 workspaceId: activeWorkspaceId,
@@ -182,8 +239,9 @@ export default function SurveyLeadCaptureCard() {
             } else {
                 toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
             }
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Action Failed', description: error.message || 'Error occurred.' });
+        } catch (error: unknown) {
+            const err = error as { message?: string };
+            toast({ variant: 'destructive', title: 'Action Failed', description: err.message || 'Error occurred.' });
         } finally {
             setIsSubmitting(false);
             setActiveQuestionIdForNewField(null);
@@ -505,6 +563,7 @@ export default function SurveyLeadCaptureCard() {
                 onOpenChange={setIsCreateFieldOpen} 
                 onSubmit={handleCreateField} 
                 isSubmitting={isSubmitting} 
+                fieldGroups={fieldGroups || []}
             />
         </div>
     );
@@ -585,14 +644,34 @@ function SearchableSelect({
     );
 }
 
-// Field Creation Modal Helper
-function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateFieldDialogProps) {
+function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting, fieldGroups }: CreateFieldDialogProps) {
     const [label, setLabel] = React.useState<string>('');
     const [variableName, setVariableName] = React.useState<string>('');
+    const [selectedGroupId, setSelectedGroupId] = React.useState<string>('');
+    const [newGroupName, setNewGroupName] = React.useState<string>('');
+    const [showNewGroupInput, setShowNewGroupInput] = React.useState<boolean>(false);
     
     const handleLabelChange = (val: string) => {
         setLabel(val);
         setVariableName(val.toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, ''));
+    };
+
+    React.useEffect(() => {
+        if (fieldGroups && fieldGroups.length > 0 && !selectedGroupId) {
+            const defaultGroup = fieldGroups.find(g => g.slug === 'custom' || g.isSystem) || fieldGroups[0];
+            if (defaultGroup) {
+                setSelectedGroupId(defaultGroup.id);
+            }
+        }
+    }, [fieldGroups, selectedGroupId]);
+
+    const handleConfirm = () => {
+        onSubmit({ 
+            label, 
+            variableName, 
+            groupId: showNewGroupInput ? undefined : selectedGroupId, 
+            newGroupName: showNewGroupInput ? newGroupName : undefined 
+        });
     };
 
     return (
@@ -621,11 +700,52 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: Creat
                             <code className="text-[11px] font-black text-indigo-600">{variableName || 'waiting_for_label'}</code>
                         </div>
                     </div>
+                    
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Add to Group</Label>
+                        <Select 
+                            value={showNewGroupInput ? 'create_new' : selectedGroupId}
+                            onValueChange={(val) => {
+                                if (val === 'create_new') {
+                                    setShowNewGroupInput(true);
+                                } else {
+                                    setShowNewGroupInput(false);
+                                    setSelectedGroupId(val);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner text-left text-foreground">
+                                <SelectValue placeholder="Select group..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border border-border bg-card">
+                                {fieldGroups.map(group => (
+                                    <SelectItem key={group.id} value={group.id} className="font-bold text-xs">
+                                        {group.name}
+                                    </SelectItem>
+                                ))}
+                                <SelectItem value="create_new" className="font-black text-xs text-indigo-600 focus:text-indigo-700">
+                                    + Create New Group...
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {showNewGroupInput && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Group Name</Label>
+                            <Input 
+                                value={newGroupName} 
+                                onChange={e => setNewGroupName(e.target.value)} 
+                                placeholder="e.g. Enrollment Metrics" 
+                                className="h-12 rounded-2xl border-none bg-muted/20 px-5 font-bold shadow-inner"
+                            />
+                        </div>
+                    )}
                 </div>
                 <DialogFooter className="p-6 pt-0">
                     <Button 
-                        onClick={() => onSubmit({ label, variableName })} 
-                        disabled={isSubmitting || !label} 
+                        onClick={handleConfirm} 
+                        disabled={isSubmitting || !label || (showNewGroupInput && !newGroupName.trim())} 
                         className="w-full h-14 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 bg-indigo-600 hover:bg-indigo-700 text-white"
                     >
                         {isSubmitting ? 'Committing...' : 'Commit to Schema'}
