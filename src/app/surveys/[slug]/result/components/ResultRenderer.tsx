@@ -4,7 +4,6 @@ import * as React from 'react';
 import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Quote, Trophy, Building2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -20,7 +19,7 @@ interface ResultRendererProps {
     allowResubmission?: boolean;
 }
 
-function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: any, displayMode?: 'points' | 'percentage' }) {
+function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: { animate?: boolean }, displayMode?: 'points' | 'percentage' }) {
     const [displayValue, setDisplayValue] = React.useState(0);
     const hasCelebrated = React.useRef(false);
 
@@ -152,13 +151,19 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
             ) : null;
         case 'video':
             return block.url ? <div className={containerClasses}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
+        case 'audio':
+            return block.url ? (
+                <div className={cn("p-4 sm:p-6 bg-muted/20 border rounded-2xl shadow-sm w-full", containerClasses)}>
+                    <audio controls src={block.url} className="w-full" />
+                </div>
+            ) : null;
         case 'button':
             return (
                 <div className={containerClasses}>
                     <Button 
                         asChild 
                         size="lg" 
-                        variant={block.style?.variant as any} 
+                        variant={block.style?.variant as 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | null | undefined} 
                         className="h-12 px-8 text-base font-bold rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto uppercase tracking-wide"
                     >
                         <a href={block.link || '#'} target={block.openInNewTab ? "_blank" : "_self"} rel="noopener noreferrer">

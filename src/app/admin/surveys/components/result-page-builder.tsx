@@ -78,6 +78,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: {
                                         {block.type === 'audio' && block.url && <div className="w-full p-6 bg-card border rounded-2xl shadow-sm"><audio controls src={block.url} className="w-full" /></div>}
                                         {block.type === 'button' && <Button size="lg" variant={block.style?.variant as 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | null | undefined} className="h-14 px-8 text-lg font-semibold rounded-xl shadow-lg">{block.title} <ArrowRight className="ml-2 h-5 w-5"/></Button>}
                                         {block.type === 'quote' && <div className="p-8 bg-card border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
+                                        {block.type === 'divider' && <Separator className="w-full my-8 bg-border/40" />}
                                         {block.type === 'score-card' && (
                                             <Card className="w-full bg-primary text-white border-none shadow-xl rounded-3xl p-8 flex flex-col items-center text-center">
                                                 <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-semibold uppercase">Sample Result</Badge>
