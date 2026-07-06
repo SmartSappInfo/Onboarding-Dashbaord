@@ -50,6 +50,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSidebar, SidebarContext } from '@/components/ui/sidebar';
 import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { createFieldAction, createFieldGroupAction } from '@/lib/fields-actions';
@@ -2017,6 +2018,19 @@ export function TemplateWorkshop({
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const { singular: entityTerminology } = useTerminology();
+
+    // Collapse / Expand main admin layout sidebar on mount / unmount safely
+    const sidebar = React.useContext(SidebarContext);
+    React.useEffect(() => {
+        if (!sidebar) return;
+        const wasOpen = sidebar.open;
+        sidebar.setOpen(false);
+        return () => {
+            if (wasOpen) {
+                sidebar.setOpen(true);
+            }
+        };
+    }, [sidebar]);
 
     // Query field groups dynamically to allow adding custom variables to a specific group
     const firestore = useFirestore();

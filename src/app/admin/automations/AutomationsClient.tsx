@@ -437,8 +437,7 @@ export default function AutomationsClient() {
     const automationsQuery = useMemoFirebase(() => 
         firestore ? query(
             collection(firestore, 'automations'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('createdAt', 'desc')
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
         ) : null, 
     [firestore, activeWorkspaceId]);
 
@@ -451,7 +450,17 @@ export default function AutomationsClient() {
         ) : null, 
     [firestore]);
 
-    const { data: automations, isLoading: isLoadingAuth } = useCollection<Automation>(automationsQuery);
+    const { data: rawAutomations, isLoading: isLoadingAuth } = useCollection<Automation>(automationsQuery);
+
+    const automations = React.useMemo(() => {
+        if (!rawAutomations) return null;
+        return [...rawAutomations].sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
+    }, [rawAutomations]);
+
     const { data: allRuns, isLoading: isLoadingRuns } = useCollection<AutomationRun>(runsQuery);
 
     const pipelinesQuery = useMemoFirebase(() => 
@@ -470,7 +479,7 @@ export default function AutomationsClient() {
 
     const stagesQuery = useMemoFirebase(() => 
         firestore ? query(
-            collection(firestore, 'stages')
+            collection(firestore, 'onboardingStages')
         ) : null,
     [firestore]);
 

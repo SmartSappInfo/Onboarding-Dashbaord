@@ -202,16 +202,57 @@ Rules:
     }
   }
 
-  const { output, text } = await generatorAi.generate({
-    model: resolvedModel.modelString,
-    ...(typeof activePrompt === 'string'
-      ? { prompt: activePrompt }
-      : { messages: [{ role: 'user', content: activePrompt }] }),
-    ...(!isAnthropic && params.jsonMode ? { output: { format: 'json' } } : {}),
-  });
+  const runGenerate = async (genAi: typeof ai, model: string, isModelAnthropic: boolean) => {
+    return await genAi.generate({
+      model,
+      ...(typeof activePrompt === 'string'
+        ? { prompt: activePrompt }
+        : { messages: [{ role: 'user', content: activePrompt }] }),
+      ...(!isModelAnthropic && params.jsonMode ? { output: { format: 'json' } } : {}),
+    });
+  };
+
+  let output: any;
+  let text: string | undefined;
+  let usedIsAnthropic = isAnthropic;
+
+  try {
+    const res = await runGenerate(generatorAi, resolvedModel.modelString, isAnthropic);
+    output = res.output;
+    text = res.text;
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isAuthError = errorMsg.includes('401') || 
+                        errorMsg.includes('UNAUTHENTICATED') || 
+                        errorMsg.includes('x-api-key') || 
+                        errorMsg.includes('authentication_error') ||
+                        errorMsg.includes('permission_denied') ||
+                        errorMsg.includes('403');
+    
+    if (isAuthError && isAnthropic) {
+      console.warn(`[CAMPAIGN-AI] Anthropic generate failed with auth error: "${errorMsg}". Trying Gemini fallback.`);
+      try {
+        const geminiModel = await getModel({
+          organizationId: params.organizationId,
+          provider: 'googleai',
+          modelId: 'gemini-2.0-flash',
+        });
+        const fallbackAi = geminiModel.customAi || ai;
+        usedIsAnthropic = false;
+        const res = await runGenerate(fallbackAi, geminiModel.modelString, false);
+        output = res.output;
+        text = res.text;
+      } catch (fallbackError) {
+        console.error('[CAMPAIGN-AI] Gemini fallback also failed:', fallbackError);
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 
   if (params.jsonMode && activeSchema) {
-    if (!isAnthropic && output) {
+    if (!usedIsAnthropic && output) {
       return JSON.stringify(output);
     }
     
