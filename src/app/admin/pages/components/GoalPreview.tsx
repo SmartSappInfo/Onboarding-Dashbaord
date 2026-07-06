@@ -1,13 +1,18 @@
-'use client';
-
 import * as React from 'react';
 import type { CampaignPage } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import type { CampaignPageVersion } from '@/lib/types';
+import { PageRenderer } from '@/components/page-builder/PageRenderer';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 
 interface GoalPreviewProps {
   goal: CampaignPage['pageGoal'];
   /** Hex color from page.settings.themeOverrides?.primary */
   themeColor?: string;
   pageName?: string;
+  pageId?: string;
+  pageSettings?: CampaignPage['settings'];
 }
 
 // ─── Individual Goal Layouts ──────────────────────────────────────────────────
@@ -258,9 +263,29 @@ export const GoalPreview = React.memo(function GoalPreview({
   goal,
   themeColor = '#6366f1',
   pageName = 'Campaign Page',
+  pageId,
+  pageSettings,
 }: GoalPreviewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const innerRef     = React.useRef<HTMLDivElement>(null);
+  const firestore    = useFirestore();
+  const [version, setVersion] = React.useState<CampaignPageVersion | null>(null);
+
+  React.useEffect(() => {
+    if (!firestore || !pageId) return;
+    const vQuery = query(
+      collection(firestore, 'campaign_page_versions'),
+      where('pageId', '==', pageId),
+      orderBy('versionNumber', 'desc'),
+      limit(1)
+    );
+    const unsubscribe = onSnapshot(vQuery, (snap) => {
+      if (!snap.empty) {
+        setVersion(snap.docs[0].data() as CampaignPageVersion);
+      }
+    }, console.error);
+    return unsubscribe;
+  }, [firestore, pageId]);
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -291,7 +316,38 @@ export const GoalPreview = React.memo(function GoalPreview({
 
     // Risk 2 — always disconnect to prevent memory leaks
     return () => observer.disconnect();
-  }, []); // stable — no deps needed since we read from refs
+  }, [version]);
+
+  if (version) {
+    const resolvedTheme = resolveTheme({
+      overrides: pageSettings?.themeOverrides,
+    });
+    const pageObj = {
+      id: pageId || '',
+      organizationId: '',
+      workspaceIds: [],
+      settings: {
+        showHeader: pageSettings?.showHeader ?? false,
+        showFooter: pageSettings?.showFooter ?? false,
+      }
+    };
+    return (
+      <div
+        ref={containerRef}
+        className="relative w-full h-full overflow-hidden pointer-events-none"
+      >
+        <div ref={innerRef} style={{ position: 'absolute', top: 0, left: 0 }}>
+          <PageRenderer
+            page={pageObj}
+            version={version}
+            theme={resolvedTheme}
+            interpolate={(t) => t}
+            fireTrigger={() => {}}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const Layout = GOAL_LAYOUTS[goal] ?? LeadCaptureLayout;
 

@@ -172,6 +172,8 @@ export const PageCard = React.memo(function PageCard({
           goal={page.pageGoal}
           themeColor={themeColor}
           pageName={page.name}
+          pageId={page.id}
+          pageSettings={page.settings}
         />
 
         {/* Kebab — always visible, top-right */}
