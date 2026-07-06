@@ -9,7 +9,7 @@ import { TemplateGallery } from '../../../messaging/templates/components/templat
 import { isWhatsAppDisplay } from '../../../messaging/templates/lib/unified-template';
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
-import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,83 +91,31 @@ export default function TemplatesClient() {
         }
     }, [editId, templates, router]);
 
-    const variables = React.useMemo(() => {
-        const contactVarDefs = generateContactVariableDefinitions('institution');
-        const firestoreVars = firestoreVariables || [];
-        const existingKeys = new Set(contactVarDefs.map(v => v.key));
-        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+    const [variables, setVariables] = React.useState<VariableDefinition[]>([]);
 
-        // Dynamic terminology variables
-        const terminologyVars: VariableDefinition[] = [
-            {
-                id: 'branding_entity_name',
-                key: 'entity_name',
-                label: `${singular || 'Campus'} Name`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
+    React.useEffect(() => {
+        let active = true;
+        FieldsVariablesService.getVariables({
+            workspaceId: 'onboarding',
+            terminology: singular ? { singular, plural: `${singular}s` } : undefined
+        }).then((res) => {
+            if (!active) return;
+            const mapped = res.map((v) => ({
+                id: v.key,
+                key: v.key,
+                label: v.label,
+                category: v.category,
+                source: v.source,
                 entity: 'Entity',
-                path: 'name',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_email',
-                key: 'entity_email',
-                label: `${singular || 'Campus'} Email`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'email',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_phone',
-                key: 'entity_phone',
-                label: `${singular || 'Campus'} Phone`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'phone',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_location',
-                key: 'entity_location',
-                label: `${singular || 'Campus'} Location`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'locationString',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_initials',
-                key: 'entity_initials',
-                label: `${singular || 'Campus'} Initials`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'initials',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_package',
-                key: 'entity_package',
-                label: `${singular || 'Campus'} Package`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'subscriptionPackageName',
-                type: 'string',
-            }
-        ];
+                path: v.path || '',
+                type: v.dataType,
+            }));
+            setVariables(mapped);
+        }).catch(console.error);
 
-        return [...contactVarDefs, ...terminologyVars, ...deduped];
+        return () => {
+            active = false;
+        };
     }, [firestoreVariables, singular]);
 
     const handleEdit = (tmpl: MessageTemplate) => {

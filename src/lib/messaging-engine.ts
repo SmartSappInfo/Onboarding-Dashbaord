@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType, DefaultSenderProfileIds } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType, DefaultSenderProfileIds, Entity } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { resolveOrgBrandingVars } from './messaging-branding';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
@@ -12,6 +12,7 @@ import { sendEmail, type EmailAttachment } from './resend-service';
 import { sendPushNotification } from './onesignal-service';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
+import { FieldsVariablesService } from './services/fields-variables-service';
 import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
@@ -234,63 +235,27 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
             }
 
-            // FER-01: Dynamic contact variable generation from entityContacts
-            // All contact identity is resolved through getContactVariables —
-            // no direct schoolData field reads for contact/location/initials.
-            const contactVars: Record<string, any> = {
-                entity_name: contact.name,
-                entity_email: contact.primaryContactEmail || '',
-                entity_phone: contact.primaryContactPhone || '',
-                entity_location: contact.locationString || '',
-                entity_initials: contact.initials || '',
-                entity_package: contact.schoolData?.subscriptionPackageName || 'Standard',
-                id: resolvedEntityId || '',
-                initials: contact.initials || '',
-                referee: contact.referee || '',
-                location_string: contact.locationString || '',
-                zone_name: contact.zoneName || '',
+            // Unify variable mapping using the single FieldsVariablesService source of truth
+            const mapCtx = {
+                workspaceId: resolvedWorkspaceId,
+                entityId: resolvedEntityId || undefined,
+                recipientContact: recipient,
+                preloadedEntity: contact as unknown as Partial<Entity>,
+                extraVars: { ...finalVariables } as Record<string, unknown>
             };
-
-            // FER-02: Generate all role/primary/signatory variables from entityContacts
-            const dynamicVars = getContactVariables({ entityContacts: contact.entityContacts || [] });
-            Object.assign(contactVars, dynamicVars);
+            const unifiedMap = await FieldsVariablesService.getVariableValuesMap(mapCtx);
             
-            // Generate recipient-specific variables based on the actual target (email/phone)
-            const recipientVars = getRecipientContactVariables({ entityContacts: contact.entityContacts || [] }, recipient);
-            Object.assign(contactVars, recipientVars);
-            
+            // Resolve agreement url if available
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
                 const baseUrl = await getRequestBaseUrl();
-                contactVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`;
+                unifiedMap.set('agreement_url', `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`);
             }
 
-            Object.entries(contactVars).forEach(([k, v]) => {
-                if (finalVariables[k] === undefined) finalVariables[k] = v;
-            });
-
-            // Resolve tag variables for this contact (FR5.2.1, FR5.2.2, Requirement 7, Requirement 11, Requirement 18)
-            // Pass workspaceId to resolve workspace-scoped tags from workspace_entities.workspaceTags
-            const tagVars = await resolveTagVariables(resolvedEntityId || '', 'school', resolvedWorkspaceId);
-            Object.entries(tagVars).forEach(([k, v]) => {
-                if (finalVariables[k] === undefined) finalVariables[k] = v;
-            });
-
-            // Phase 6: Merge Dynamic Data Buckets
-            const buckets = [
-                contact.financeData,
-                contact.industryData,
-                contact.personData,
-                contact.familyData,
-                contact.customData
-            ];
-
-            buckets.forEach(bucket => {
-                if (bucket) {
-                    Object.entries(bucket).forEach(([k, v]) => {
-                        if (finalVariables[k] === undefined) finalVariables[k] = v;
-                    });
+            unifiedMap.forEach((v, k) => {
+                if (finalVariables[k] === undefined) {
+                    finalVariables[k] = v;
                 }
             });
         }

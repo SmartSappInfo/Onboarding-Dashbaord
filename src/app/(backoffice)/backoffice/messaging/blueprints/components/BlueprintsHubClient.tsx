@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
 import dynamic from 'next/dynamic';
 import { getBlueprintAdoptionStats, updateGlobalTemplate, createGlobalTemplate } from '@/lib/template-actions';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
@@ -282,83 +282,31 @@ export default function BlueprintsHubClient() {
   }, [firestore]);
   const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
 
-  const variables = React.useMemo(() => {
-    const contactVarDefs = generateContactVariableDefinitions('institution');
-    const firestoreVars = firestoreVariables || [];
-    const existingKeys = new Set(contactVarDefs.map((v: VariableDefinition) => v.key));
-    const deduped = firestoreVars.filter((v: VariableDefinition) => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+  const [variables, setVariables] = React.useState<VariableDefinition[]>([]);
 
-    // Dynamic terminology variables
-    const terminologyVars: VariableDefinition[] = [
-        {
-            id: 'branding_entity_name',
-            key: 'entity_name',
-            label: `${singular || 'Campus'} Name`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'name',
-            type: 'string',
-        },
-        {
-            id: 'branding_entity_email',
-            key: 'entity_email',
-            label: `${singular || 'Campus'} Email`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'email',
-            type: 'string',
-        },
-        {
-            id: 'branding_entity_phone',
-            key: 'entity_phone',
-            label: `${singular || 'Campus'} Phone`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'phone',
-            type: 'string',
-        },
-        {
-            id: 'branding_entity_location',
-            key: 'entity_location',
-            label: `${singular || 'Campus'} Location`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'locationString',
-            type: 'string',
-        },
-        {
-            id: 'branding_entity_initials',
-            key: 'entity_initials',
-            label: `${singular || 'Campus'} Initials`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'initials',
-            type: 'string',
-        },
-        {
-            id: 'branding_entity_package',
-            key: 'entity_package',
-            label: `${singular || 'Campus'} Package`,
-            category: 'common',
-            source: 'branding',
-            sourceName: 'Branding & Constants',
-            entity: 'Entity',
-            path: 'subscriptionPackageName',
-            type: 'string',
-        }
-    ];
+  React.useEffect(() => {
+    let active = true;
+    FieldsVariablesService.getVariables({
+      workspaceId: 'onboarding',
+      terminology: singular ? { singular, plural: `${singular}s` } : undefined
+    }).then((res) => {
+      if (!active) return;
+      const mapped = res.map((v) => ({
+        id: v.key,
+        key: v.key,
+        label: v.label,
+        category: v.category,
+        source: v.source,
+        entity: 'Entity',
+        path: v.path || '',
+        type: v.dataType,
+      }));
+      setVariables(mapped);
+    }).catch(console.error);
 
-    return [...contactVarDefs, ...terminologyVars, ...deduped];
+    return () => {
+      active = false;
+    };
   }, [firestoreVariables, singular]);
 
   const categories = [

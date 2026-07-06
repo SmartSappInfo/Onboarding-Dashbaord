@@ -103,11 +103,10 @@ import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { groupContactVariableDefinitions, generateContactVariableDefinitions, generateEntityFieldVariables } from '@/lib/contact-variable-definitions';
-import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { VariablesPanel } from '@/components/shared/VariablesPanel';
 
 async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
     if (!file.type.startsWith('image/')) {
@@ -2165,94 +2164,8 @@ export function TemplateWorkshop({
     };
 
     const variables = React.useMemo(() => {
-        const filtered = (rawVariables || []).filter(v => !v.key.startsWith('school_'));
-        
-        // Dynamically build and inject contact variables
-        const contactVarDefs = generateContactVariableDefinitions('institution');
-        const contactKeys = new Set(contactVarDefs.map(v => v.key));
-        
-        // Filter out existing contact keys from rawVariables to prevent duplicate definitions
-        const nonDuplicateFiltered = filtered.filter(v => !contactKeys.has(v.key));
-
-        // Dynamically build and inject terminology variables
-        const terminologyVars: VariableDefinition[] = [
-            {
-                id: 'branding_entity_name',
-                key: 'entity_name',
-                label: `${entityTerminology || 'Campus'} Name`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'name',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_email',
-                key: 'entity_email',
-                label: `${entityTerminology || 'Campus'} Email`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'email',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_phone',
-                key: 'entity_phone',
-                label: `${entityTerminology || 'Campus'} Phone`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'phone',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_location',
-                key: 'entity_location',
-                label: `${entityTerminology || 'Campus'} Location`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'locationString',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_initials',
-                key: 'entity_initials',
-                label: `${entityTerminology || 'Campus'} Initials`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'initials',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_package',
-                key: 'entity_package',
-                label: `${entityTerminology || 'Campus'} Package`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'subscriptionPackageName',
-                type: 'string',
-            }
-        ];
-        
-        // Entity field variables (all fields from entity creation/editing forms)
-        const entityFieldVars = generateEntityFieldVariables(entityTerminology || 'Entity');
-
-        const seenKeys = new Set(nonDuplicateFiltered.map(v => v.key));
-        const filteredTerminologyVars = terminologyVars.filter(v => !seenKeys.has(v.key));
-        const filteredEntityFieldVars = entityFieldVars.filter(v => !seenKeys.has(v.key) && !new Set(filteredTerminologyVars.map(t => t.key)).has(v.key));
-
-        return [...filteredTerminologyVars, ...contactVarDefs, ...filteredEntityFieldVars, ...nonDuplicateFiltered];
-    }, [rawVariables, entityTerminology]);
+        return (rawVariables || []).filter(v => !v.key.startsWith('school_') && !v.key.includes('focal_person'));
+    }, [rawVariables]);
 
     const recipientRoles = React.useMemo(() => [
         { id: 'participant', label: 'Meeting Participant or Client', type: 'external_client' },
@@ -3388,7 +3301,7 @@ export function TemplateWorkshop({
             blocks,
             category: category as MessageTemplate['category']
         };
-        return validateTemplateVariables(tmpl, [...filteredVars, ...getAllSystemVariables()]);
+        return validateTemplateVariables(tmpl, filteredVars);
     }, [subject, previewText, body, blocks, category, filteredVars]);
 
     const errorCount = React.useMemo(() => validationErrors.filter(e => e.type === 'error').length, [validationErrors]);
@@ -3420,22 +3333,7 @@ export function TemplateWorkshop({
     }, [contactVars, nonContactVars, customVars]);
 
     // Filtered variables for editors based on classification category to prevent context mix-ups
-    const availableVarsForEditor = React.useMemo(() => {
-        const workspaceVars = filteredVars;
-        const sysVars = getAllSystemVariables().filter(v => 
-            v.category === 'general' || 
-            v.category === 'common' || 
-            v.category === category ||
-            (category === 'agreements' && v.category === 'forms') ||
-            (category === 'forms' && v.category === 'agreements')
-        );
-
-        // Deduplicate keys (prefer workspace-specific definitions if there is a collision)
-        const seenKeys = new Set(workspaceVars.map(v => v.key));
-        const dedupedSysVars = sysVars.filter(v => !seenKeys.has(v.key));
-
-        return [...workspaceVars, ...dedupedSysVars];
-    }, [filteredVars, category]);
+    const availableVarsForEditor = filteredVars;
 
     const autocompleteVariables = React.useMemo<TemplateVariable[]>(() => {
         return availableVarsForEditor.map(v => ({
@@ -3530,17 +3428,7 @@ export function TemplateWorkshop({
         return labels;
     }, [surveys, pdfs]);
 
-    const featureSpecificVars = React.useMemo(() => {
-        const sysVars = getAllSystemVariables();
-        if (category === 'meetings') {
-            return sysVars.filter(v => v.category === 'meetings');
-        } else if (category === 'surveys') {
-            return sysVars.filter(v => v.category === 'surveys');
-        } else if (category === 'forms' || category === 'agreements') {
-            return sysVars.filter(v => v.category === 'forms' || v.category === 'agreements');
-        }
-        return [];
-    }, [category]);
+    const featureSpecificVars: VariableDefinition[] = [];
 
     const stepTransition = {
         initial: { opacity: 0, x: 20 },
@@ -4087,237 +3975,19 @@ export function TemplateWorkshop({
 
                                         {sidebarTab === 'variables' && (
                                             <div className="absolute inset-0 flex flex-col overflow-hidden bg-muted/5">
-                                                {/* Variable Header & Actions */}
-                                                <div className="px-4 py-3 border-b border-border/60 shrink-0 bg-background/50 backdrop-blur-sm space-y-2.5">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="text-left">
-                                                            <h4 className="text-xs font-bold text-foreground">Variable Registry</h4>
-                                                            <p className="text-[10px] text-muted-foreground mt-0.5">Insert variables into template blocks</p>
-                                                        </div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setIsAddVarOpen(true)}
-                                                            className="h-8 rounded-lg font-bold text-[10px] gap-1 px-2 border-primary/20 hover:bg-primary/5 hover:text-primary text-primary"
-                                                        >
-                                                            <PlusCircle className="h-3.5 w-3.5" /> Add Custom
-                                                        </Button>
-                                                    </div>
-                                                    <div className="relative">
-                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                                                        <Input
-                                                            placeholder="Search registry..."
-                                                            value={variableSearchQuery}
-                                                            onChange={(e) => setVariableSearchQuery(e.target.value)}
-                                                            className="h-8 pl-8 text-xs rounded-lg bg-background/80 border-border/60 placeholder:text-muted-foreground/50 focus:ring-1 focus:ring-primary/20 w-full"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <ScrollArea className="flex-1">
-                                                    <div className="p-3 text-left">
-                                                        {(() => {
-                                                            const q = variableSearchQuery.toLowerCase().trim();
-                                                            const matchVar = (v: VariableDefinition) => !q || v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
-
-                                                            // Segregated categories
-                                                            const brandingVars = contactVarGroups.other.filter(matchVar);
-                                                            const primaryContacts = contactVarGroups.primary.filter(matchVar);
-                                                            const signatoryContacts = contactVarGroups.signatory.filter(matchVar);
-                                                            const roleContacts = contactVarGroups.roles.filter(matchVar);
-                                                            const entityFieldVars = filteredVars.filter(v => v.source === 'entity_fields').filter(matchVar);
-                                                            const featureVars = featureSpecificVars.filter(matchVar);
-                                                            const customVars = contactVarGroups.custom.filter(matchVar);
-
-                                                            const filteredSurveyGroups = category === 'surveys' ? surveyGroups.map(grp => ({
-                                                                ...grp,
-                                                                variables: grp.variables.filter(matchVar)
-                                                            })).filter(grp => grp.variables.length > 0) : [];
-
-                                                            const filteredPdfGroups = (category === 'forms' || category === 'agreements') ? pdfGroups.map(grp => ({
-                                                                ...grp,
-                                                                variables: grp.variables.filter(matchVar)
-                                                            })).filter(grp => grp.variables.length > 0) : [];
-
-                                                            const totalResults = brandingVars.length
-                                                                + primaryContacts.length
-                                                                + signatoryContacts.length
-                                                                + roleContacts.length
-                                                                + entityFieldVars.length
-                                                                + featureVars.length
-                                                                + customVars.length
-                                                                + filteredSurveyGroups.reduce((s, g) => s + g.variables.length, 0)
-                                                                + filteredPdfGroups.reduce((s, g) => s + g.variables.length, 0);
-
-                                                            if (q && totalResults === 0) {
-                                                                return (
-                                                                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                                                                        <Search className="h-8 w-8 text-muted-foreground/30 mb-3" />
-                                                                        <p className="text-xs font-semibold text-muted-foreground">No variables found</p>
-                                                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Try a different search term</p>
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            const renderVarButton = (v: VariableDefinition, highlightColorClass = 'text-primary') => (
-                                                                <button
-                                                                    key={v.key}
-                                                                    type="button"
-                                                                    onClick={() => handleVariableInsert(v.key)}
-                                                                    className="w-full flex items-center justify-between p-2 rounded-xl border border-border/40 bg-card hover:bg-primary/5 hover:border-primary/20 text-left transition-all group shadow-sm mb-1.5"
-                                                                >
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <p className="text-[10px] font-bold truncate text-foreground/90">{v.label}</p>
-                                                                        <p className={cn("text-[8px] font-mono truncate leading-none mt-0.5 font-semibold", highlightColorClass)}>{`{{${v.key}}}`}</p>
-                                                                    </div>
-                                                                    <PlusCircle className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-2" />
-                                                                </button>
-                                                            );
-
-                                                            return (
-                                                                <Accordion type="multiple" value={accordionValue} onValueChange={setAccordionValue} className="space-y-2">
-                                                                    
-                                                                    {/* System Branding & Constants */}
-                                                                    {brandingVars.length > 0 && (
-                                                                        <AccordionItem value="branding" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Branding & Constants <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider">{brandingVars.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {brandingVars.map(v => renderVarButton(v, 'text-orange-500'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Primary Contacts */}
-                                                                    {primaryContacts.length > 0 && (
-                                                                        <AccordionItem value="primary_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Primary Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 border-blue-500/20">{primaryContacts.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {primaryContacts.map(v => renderVarButton(v, 'text-blue-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Signatory Contacts */}
-                                                                    {signatoryContacts.length > 0 && (
-                                                                        <AccordionItem value="signatory_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Signatory Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 border-purple-500/20">{signatoryContacts.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {signatoryContacts.map(v => renderVarButton(v, 'text-purple-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Role-based Contacts */}
-                                                                    {roleContacts.length > 0 && (
-                                                                        <AccordionItem value="roles_contacts" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Role-based Contacts <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-pink-500/10 text-pink-600 border-pink-500/20">{roleContacts.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {roleContacts.map(v => renderVarButton(v, 'text-pink-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Entity Fields */}
-                                                                    {entityFieldVars.length > 0 && (
-                                                                        <AccordionItem value="entity_fields" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Entity Fields <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 border-sky-500/20">{entityFieldVars.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {entityFieldVars.map(v => renderVarButton(v, 'text-sky-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Feature Specific Variables */}
-                                                                    {featureVars.length > 0 && (
-                                                                        <AccordionItem value="feature_vars" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Feature-Specific <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 border-indigo-500/20">{featureVars.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {featureVars.map(v => renderVarButton(v, 'text-indigo-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Surveys Answers collapsible list */}
-                                                                    {filteredSurveyGroups.length > 0 && (
-                                                                        <AccordionItem value="surveys" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Surveys Answers <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-teal-500/10 text-teal-600 border-teal-500/20">{filteredSurveyGroups.reduce((a, c) => a + c.variables.length, 0)}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3 space-y-3">
-                                                                                {filteredSurveyGroups.map(grp => (
-                                                                                    <div key={grp.id} className="space-y-1.5 p-2.5 bg-muted/40 rounded-xl border border-border/50">
-                                                                                        <p className="text-[9px] font-extrabold text-foreground/80 tracking-wide uppercase px-1">{grp.title}</p>
-                                                                                        <div className="space-y-1">
-                                                                                            {grp.variables.map(v => renderVarButton(v, 'text-teal-600'))}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Forms/PDFs Fields collapsible list */}
-                                                                    {filteredPdfGroups.length > 0 && (
-                                                                        <AccordionItem value="forms" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Forms Fields <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 border-rose-500/20">{filteredPdfGroups.reduce((a, c) => a + c.variables.length, 0)}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3 space-y-3">
-                                                                                {filteredPdfGroups.map(grp => (
-                                                                                    <div key={grp.id} className="space-y-1.5 p-2.5 bg-muted/40 rounded-xl border border-border/50">
-                                                                                        <p className="text-[9px] font-extrabold text-foreground/80 tracking-wide uppercase px-1">{grp.title}</p>
-                                                                                        <div className="space-y-1">
-                                                                                            {grp.variables.map(v => renderVarButton(v, 'text-rose-600'))}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-
-                                                                    {/* Workspace Custom Variables */}
-                                                                    {customVars.length > 0 && (
-                                                                        <AccordionItem value="custom_vars" className="border rounded-2xl bg-card overflow-hidden px-4 shadow-sm border-border/50">
-                                                                            <AccordionTrigger className="hover:no-underline py-3 text-xs font-bold text-foreground">
-                                                                                <span className="flex items-center gap-2">Custom Variables <Badge variant="secondary" className="text-[7px] px-1 py-0 h-3.5 font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border-emerald-500/20">{customVars.length}</Badge></span>
-                                                                            </AccordionTrigger>
-                                                                            <AccordionContent className="pt-1 pb-3">
-                                                                                <div className="space-y-1">
-                                                                                    {customVars.map(v => renderVarButton(v, 'text-emerald-600'))}
-                                                                                </div>
-                                                                            </AccordionContent>
-                                                                        </AccordionItem>
-                                                                    )}
-                                                                </Accordion>
-                                                            );
-                                                        })()}
-                                                    </div>
-                                                </ScrollArea>
+                                                <VariablesPanel
+                                                    workspaceId={activeWorkspaceId}
+                                                    organizationId={initialTemplate?.organizationId}
+                                                    featureContext={
+                                                        category === 'meetings' ? 'meeting' :
+                                                        category === 'surveys' ? 'survey' :
+                                                        category === 'forms' ? 'form' :
+                                                        category === 'agreements' ? 'agreement' : 'common'
+                                                    }
+                                                    terminology={entityTerminology ? { singular: entityTerminology, plural: `${entityTerminology}s` } : undefined}
+                                                    onSelect={(key) => handleVariableInsert(key.replace(/[{}]/g, ''))}
+                                                    className="h-full border-0 rounded-none shadow-none text-left"
+                                                />
                                             </div>
                                         )}
 

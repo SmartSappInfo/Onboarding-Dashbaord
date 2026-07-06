@@ -6,9 +6,8 @@ import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { MessageTemplate } from '@/lib/types';
-import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
 import { validateTemplateVariables, ValidationError } from '@/lib/template-validator';
-import { getAllSystemVariables } from '@/lib/system-variable-definitions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,10 +54,25 @@ export default function TemplateDiagnosticsPage() {
       if (!activeWorkspaceId) return;
       setIsLoadingVars(true);
       try {
-        const res = await getWorkspaceVariablesAction(activeWorkspaceId);
-        if (res.success && res.variables) {
-          setWorkspaceVariables(res.variables);
-        }
+        const res = await FieldsVariablesService.getVariables({
+          workspaceId: activeWorkspaceId,
+          organizationId: activeOrganizationId,
+          featureContext: 'all'
+        });
+        
+        // Map to format required by diagnostics page
+        const mapped = res.map((v) => ({
+          id: v.key,
+          name: v.key,
+          label: v.label,
+          category: v.category === 'contact_specific' ? 'contact' : v.category,
+          featureContext: v.featureContext,
+          source: v.source,
+          dataType: v.dataType,
+          description: v.description || ''
+        }));
+        
+        setWorkspaceVariables(mapped);
       } catch (e) {
         console.error('Failed to load workspace variables', e);
       } finally {
@@ -66,7 +80,7 @@ export default function TemplateDiagnosticsPage() {
       }
     }
     loadWorkspaceVars();
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, activeOrganizationId]);
 
   // Merge and deduplicate templates (Org-specific overrides hide global defaults)
   const templates = React.useMemo(() => {
@@ -74,8 +88,8 @@ export default function TemplateDiagnosticsPage() {
 
     // Filter templates visible in this workspace
     const wsOrgTemplates = orgTemplates.filter((t: MessageTemplate) => t.workspaceIds?.includes(activeWorkspaceId));
-
-    // Deduplicate overridden templates
+    
+    // Global templates overridden by organization templates should be filtered out
     const overriddenGlobalIds = new Set(
       wsOrgTemplates
         .map((t: MessageTemplate) => t.globalTemplateId)
@@ -90,18 +104,42 @@ export default function TemplateDiagnosticsPage() {
   const diagnostics = React.useMemo(() => {
     if (!templates.length || isLoadingVars) return [];
 
-    const systemVars = getAllSystemVariables();
-
     return templates.map((template) => {
       // Filter workspace variables matching this template's category
-      const filteredVars = workspaceVariables.filter(v => 
-        template.category === 'general'
-          ? (v.category === 'general' || v.category === 'common')
-          : (v.category === 'general' || v.category === 'common' || v.category === template.category)
-      );
+      const filteredVars = workspaceVariables.filter(v => {
+        if (
+          v.category === 'core' ||
+          v.category === 'common' ||
+          v.category === 'contact' ||
+          v.category === 'custom'
+        ) {
+          return true;
+        }
+        if (template.category === 'meetings') {
+          return v.category === 'meetings' || v.featureContext === 'meeting';
+        }
+        if (template.category === 'surveys') {
+          return v.category === 'surveys' || v.featureContext === 'survey';
+        }
+        if (template.category === 'forms' || template.category === 'agreements') {
+          return v.category === 'forms' || v.category === 'agreements' || v.featureContext === 'form' || v.featureContext === 'agreement';
+        }
+        return false;
+      });
 
-      const allValidForTemplate = [...filteredVars, ...systemVars];
-      const errors = validateTemplateVariables(template, allValidForTemplate);
+      // Map back to structure expected by template validator (VariableDefinition)
+      const mappedVars = filteredVars.map(v => ({
+        id: v.id,
+        key: v.name,
+        label: v.label,
+        category: v.category,
+        source: v.source,
+        entity: 'Entity',
+        path: '',
+        type: v.dataType
+      }));
+
+      const errors = validateTemplateVariables(template, mappedVars);
       
       const errorCount = errors.filter(e => e.type === 'error').length;
       const warningCount = errors.filter(e => e.type === 'warning').length;

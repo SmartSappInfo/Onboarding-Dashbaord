@@ -52,7 +52,7 @@ const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): strin
   return `${str}${defaultUnit}`;
 };
 
-export function resolveVariables(text: unknown, variables: Record<string, any>): string {
+export function resolveVariables(text: unknown, variables: Record<string, unknown>): string {
   if (text === null || text === undefined) return '';
   const textStr = String(text);
   if (!textStr) return '';

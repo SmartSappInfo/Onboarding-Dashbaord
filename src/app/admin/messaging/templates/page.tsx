@@ -9,7 +9,8 @@ import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
 // import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
-import { generateContactVariableDefinitions } from '@/lib/contact-variable-definitions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import type { UnifiedVariable } from '@/lib/types/variables';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -277,117 +278,35 @@ export default function MessageTemplatesPage() {
         return (meetings || []).toSorted((a, b) => (b.meetingTime || '').localeCompare(a.meetingTime || ''));
     }, [meetings]);
 
-    const variables = React.useMemo(() => {
-        const contactVarDefs = generateContactVariableDefinitions('institution');
-        const firestoreVars = firestoreVariables || [];
-        // Deduplicate by key — dynamic defs take precedence for contact_* keys
-        const existingKeys = new Set(contactVarDefs.map(v => v.key));
-        const deduped = firestoreVars.filter(v => !existingKeys.has(v.key) && !v.key.startsWith('school_'));
+    const [variables, setVariables] = React.useState<VariableDefinition[]>([]);
 
-        // Map workspace-specific active custom fields
-        const customFieldVars = (appFields || []).map(f => {
-            let category = 'custom';
-            let source = 'custom_fields';
-            let sourceName = 'Custom Fields';
-            let path = `customData.${f.variableName}`;
+    React.useEffect(() => {
+        if (!activeWorkspaceId) return;
 
-            if (f.id.startsWith('survey_')) {
-                category = 'surveys';
-                source = 'surveys';
-                sourceName = 'Surveys';
-                path = f.variableName; // Survey responses are resolved directly
-            } else if (f.id.startsWith('pdf_')) {
-                category = 'forms';
-                source = 'forms';
-                sourceName = 'Forms';
-                path = f.variableName; // PDF fields are resolved directly
-            }
+        let active = true;
+        FieldsVariablesService.getVariables({
+            workspaceId: activeWorkspaceId,
+            organizationId: activeOrganizationId,
+            terminology: singular ? { singular, plural: `${singular}s` } : undefined
+        }).then((res) => {
+            if (!active) return;
+            const mapped = res.map((v) => ({
+                id: v.key,
+                key: v.key,
+                label: v.label,
+                category: v.category,
+                source: v.source,
+                entity: 'Entity',
+                path: v.path || '',
+                type: v.dataType,
+            }));
+            setVariables(mapped);
+        }).catch(console.error);
 
-            return {
-                id: f.id,
-                key: f.variableName,
-                label: f.label,
-                category,
-                source,
-                sourceName,
-                entity: 'Entity',
-                path,
-                type: f.type,
-            };
-        }).filter(f => !f.key.startsWith('school_'));
-
-        // Dynamic terminology variables
-        const terminologyVars: VariableDefinition[] = [
-            {
-                id: 'branding_entity_name',
-                key: 'entity_name',
-                label: `${singular || 'Campus'} Name`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'name',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_email',
-                key: 'entity_email',
-                label: `${singular || 'Campus'} Email`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'email',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_phone',
-                key: 'entity_phone',
-                label: `${singular || 'Campus'} Phone`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'phone',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_location',
-                key: 'entity_location',
-                label: `${singular || 'Campus'} Location`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'locationString',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_initials',
-                key: 'entity_initials',
-                label: `${singular || 'Campus'} Initials`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'initials',
-                type: 'string',
-            },
-            {
-                id: 'branding_entity_package',
-                key: 'entity_package',
-                label: `${singular || 'Campus'} Package`,
-                category: 'common',
-                source: 'branding',
-                sourceName: 'Branding & Constants',
-                entity: 'Entity',
-                path: 'subscriptionPackageName',
-                type: 'string',
-            }
-        ];
-
-        return [...contactVarDefs, ...terminologyVars, ...deduped, ...customFieldVars];
-    }, [firestoreVariables, appFields, singular]);
+        return () => {
+            active = false;
+        };
+    }, [activeWorkspaceId, activeOrganizationId, firestoreVariables, appFields, singular]);
 
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);

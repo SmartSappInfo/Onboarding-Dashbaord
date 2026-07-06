@@ -1,6 +1,7 @@
 import { adminDb } from '../../firebase-admin';
 import { createDeal, updateDealStageAction, updateDealValueAction, updateDealStatusAction } from '../../../app/actions/deal-actions';
 import type { ExecutionContext } from '../execution-types';
+import { FieldsVariablesService } from '../../services/fields-variables-service';
 
 export interface DealAutomationActionConfig {
     workspaceId?: string;
@@ -83,18 +84,17 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
     }
     
     // Resolve dynamic variables in title
-    let dealName = config.name || "{{entityName}} Deal";
-    if (dealName.includes('{{') && context.payload) {
-        dealName = dealName.replace(/\{\{(.*?)\}\}/g, (match: string, key: string) => {
-            const cleanKey = key.trim();
-            return context.payload[cleanKey] !== undefined ? String(context.payload[cleanKey]) : match;
-        });
+    let dealName = config.name || "{{entity_name}} Deal";
+    if (dealName.includes('{{entityName}}')) {
+        dealName = dealName.replace('{{entityName}}', '{{entity_name}}');
     }
     
-    if (dealName.includes('{{entityName}}')) {
-        const { resolveContact } = await import('../../contact-adapter');
-        const contact = await resolveContact(context.entityId, context.workspaceId);
-        dealName = dealName.replace('{{entityName}}', contact?.name || 'Contact');
+    if (dealName.includes('{{')) {
+        dealName = await FieldsVariablesService.resolveTemplateVariables(dealName, {
+            workspaceId: targetWorkspaceId,
+            entityId: context.entityId,
+            extraVars: context.payload as Record<string, string | number | boolean | undefined | null>
+        });
     }
 
     const value = config.value ? Number(config.value) : 0;
