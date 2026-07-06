@@ -18,7 +18,7 @@ import { FieldsVariablesService } from '@/lib/services/fields-variables-service'
 export interface VariablesPanelProps {
   workspaceId: string;
   organizationId?: string;
-  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign';
+  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'all';
   sourceId?: string;
   terminology?: { singular: string; plural: string };
   onSelect?: (key: string) => void;

@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { adminDb } from '../firebase-admin';
 import type { 
   UnifiedVariable, 
@@ -10,6 +11,39 @@ import { STATIC_VARIABLES } from '../template-variable-registry-data';
 import { getEffectiveContactTypes } from '../contact-type-actions';
 import type { EntityContact } from '../types';
 import { getBaseUrl } from '../utils/url-helpers';
+
+// Request-scoped document lookup caches to prevent redundant round-trips
+const getWorkspaceDocCached = cache(async (id: string) => {
+  return adminDb.collection('workspaces').doc(id).get();
+});
+
+const getOrgDocCached = cache(async (id: string) => {
+  return adminDb.collection('organizations').doc(id).get();
+});
+
+const getEntityDocCached = cache(async (id: string) => {
+  return adminDb.collection('entities').doc(id).get();
+});
+
+const getMeetingDocCached = cache(async (id: string) => {
+  return adminDb.collection('meetings').doc(id).get();
+});
+
+const getFormDocCached = cache(async (id: string) => {
+  return adminDb.collection('pdfs').doc(id).get();
+});
+
+const getSurveyDocCached = cache(async (id: string) => {
+  return adminDb.collection('surveys').doc(id).get();
+});
+
+const getAgreementDocCached = cache(async (id: string) => {
+  return adminDb.collection('contracts').doc(id).get();
+});
+
+const getUserDocCached = cache(async (id: string) => {
+  return adminDb.collection('users').doc(id).get();
+});
 
 export class FieldsVariablesService {
   /**
@@ -205,7 +239,7 @@ export class FieldsVariablesService {
               
               const validIds = new Set<string>();
               scopeSnap.docs.forEach(doc => validIds.add(doc.id));
-
+ 
               if (validIds.size > 0) {
                 const allDynamicVars = await adminDb.collection('template_variables')
                   .where('isDynamic', '==', true)
@@ -255,59 +289,115 @@ export class FieldsVariablesService {
     valuesMap.set('current_time', now.toLocaleTimeString());
     valuesMap.set('current_year', String(now.getFullYear()));
 
+    // Start parallel independent Firestore reads with isolated error handling
+    const [
+      wsSnap,
+      entitySnap,
+      meetingSnap,
+      formSnap,
+      surveySnap,
+      agreementSnap,
+      userSnap
+    ] = await Promise.all([
+      // 1. Workspace
+      (!context.preloadedWorkspace && context.workspaceId && context.workspaceId !== 'onboarding')
+        ? getWorkspaceDocCached(context.workspaceId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch workspaces failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 2. Entity
+      (!context.preloadedEntity && context.entityId)
+        ? getEntityDocCached(context.entityId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch entities failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 3. Meeting
+      context.meetingId
+        ? getMeetingDocCached(context.meetingId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch meetings failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 4. Form
+      context.formId
+        ? getFormDocCached(context.formId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch forms failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 5. Survey
+      context.surveyId
+        ? getSurveyDocCached(context.surveyId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch surveys failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 6. Agreement
+      context.agreementId
+        ? getAgreementDocCached(context.agreementId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch agreements failed:', err);
+            return null;
+          })
+        : Promise.resolve(null),
+      // 7. User
+      context.userId
+        ? getUserDocCached(context.userId).catch(err => {
+            console.warn('[FieldsVariablesService] Parallel fetch users failed:', err);
+            return null;
+          })
+        : Promise.resolve(null)
+    ]);
+
     // 2. Fetch Workspace and Org settings
     try {
       let wsData = context.preloadedWorkspace;
-      let organizationId = wsData?.organizationId;
-      
-      if (!wsData && context.workspaceId !== 'onboarding') {
-        const wsSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
-        if (wsSnap.exists) {
-          wsData = wsSnap.data();
-          organizationId = wsData?.organizationId;
-        }
+      if (!wsData && wsSnap?.exists) {
+        wsData = wsSnap.data();
       }
 
       if (wsData) {
         valuesMap.set('workspace_name', wsData.name ?? '');
+        const organizationId = wsData.organizationId;
 
         if (organizationId) {
-          const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-          if (orgSnap.exists) {
-            const org = orgSnap.data()!;
-            valuesMap.set('organization_name', org.name ?? '');
-            valuesMap.set('org_name', org.name ?? '');
-            valuesMap.set('org_logo_url', org.logoUrl ?? '');
-            valuesMap.set('org_email', org.email ?? '');
-            valuesMap.set('org_phone', org.phone ?? '');
-            valuesMap.set('org_address', org.address ?? '');
-            valuesMap.set('org_website', org.website ?? '');
-            valuesMap.set('unsubscribe_copy', org.unsubscribeCopy ?? 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.');
-            valuesMap.set('brand_primary_color', org.brandPrimaryColor ?? '#3B5FFF');
-            valuesMap.set('brand_secondary_color', org.brandSecondaryColor ?? '#8B5CF6');
-            valuesMap.set('brand_font_family', org.brandFontFamily ?? 'Figtree');
-            valuesMap.set('org_footer_html', org.footerHtml ?? '');
-            valuesMap.set('org_footer_enabled', String(org.footerEnabled !== false));
+          try {
+            const orgSnap = await getOrgDocCached(organizationId);
+            if (orgSnap?.exists) {
+              const org = orgSnap.data()!;
+              valuesMap.set('organization_name', org.name ?? '');
+              valuesMap.set('org_name', org.name ?? '');
+              valuesMap.set('org_logo_url', org.logoUrl ?? '');
+              valuesMap.set('org_email', org.email ?? '');
+              valuesMap.set('org_phone', org.phone ?? '');
+              valuesMap.set('org_address', org.address ?? '');
+              valuesMap.set('org_website', org.website ?? '');
+              valuesMap.set('unsubscribe_copy', org.unsubscribeCopy ?? 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.');
+              valuesMap.set('brand_primary_color', org.brandPrimaryColor ?? '#3B5FFF');
+              valuesMap.set('brand_secondary_color', org.brandSecondaryColor ?? '#8B5CF6');
+              valuesMap.set('brand_font_family', org.brandFontFamily ?? 'Figtree');
+              valuesMap.set('org_footer_html', org.footerHtml ?? '');
+              valuesMap.set('org_footer_enabled', String(org.footerEnabled !== false));
+            }
+          } catch (err) {
+            console.warn('[FieldsVariablesService] Error fetching organization settings:', err);
           }
         }
       }
     } catch (err) {
-      console.warn('[FieldsVariablesService] Error fetching workspace/org for rendering:', err);
+      console.warn('[FieldsVariablesService] Error processing workspace data:', err);
     }
 
     // 3. Fetch Entity and Contact variables
     let entityContacts: EntityContact[] = [];
     let entityData = context.preloadedEntity;
+    if (!entityData && entitySnap?.exists) {
+      entityData = entitySnap.data();
+    }
 
     if (context.entityId || entityData) {
       try {
-        if (!entityData && context.entityId) {
-          const entitySnap = await adminDb.collection('entities').doc(context.entityId).get();
-          if (entitySnap.exists) {
-            entityData = entitySnap.data();
-          }
-        }
-
         if (entityData) {
           valuesMap.set('entity_name', entityData.name ?? '');
 
@@ -398,56 +488,50 @@ export class FieldsVariablesService {
     }
 
     // 5. Fetch Meeting details (Category: meeting)
-    if (context.meetingId) {
+    if (context.meetingId && meetingSnap?.exists) {
       try {
-        const snap = await adminDb.collection('meetings').doc(context.meetingId).get();
-        if (snap.exists) {
-          const meeting = snap.data()!;
-          valuesMap.set('meeting_title', meeting.heroTitle ?? meeting.type?.name ?? '');
-          valuesMap.set('meeting_link', meeting.meetingLink ?? '');
-          valuesMap.set('meeting_time', meeting.meetingTime ?? '');
-          valuesMap.set('meeting_date', meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleDateString() : '');
-          valuesMap.set('meeting_type', meeting.type?.name ?? '');
-          valuesMap.set('organizer_name', meeting.assignedTo?.name ?? '');
-          valuesMap.set('recording_link', meeting.recordingUrl ?? '');
-          valuesMap.set('resource_link', meeting.resourceUrl ?? '');
-          valuesMap.set('feedback_form_link', meeting.feedbackFormUrl ?? '');
+        const meeting = meetingSnap.data()!;
+        valuesMap.set('meeting_title', meeting.heroTitle ?? meeting.type?.name ?? '');
+        valuesMap.set('meeting_link', meeting.meetingLink ?? '');
+        valuesMap.set('meeting_time', meeting.meetingTime ?? '');
+        valuesMap.set('meeting_date', meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleDateString() : '');
+        valuesMap.set('meeting_type', meeting.type?.name ?? '');
+        valuesMap.set('organizer_name', meeting.assignedTo?.name ?? '');
+        valuesMap.set('recording_link', meeting.recordingUrl ?? '');
+        valuesMap.set('resource_link', meeting.resourceUrl ?? '');
+        valuesMap.set('feedback_form_link', meeting.feedbackFormUrl ?? '');
 
-          const baseUrl = getBaseUrl();
-          valuesMap.set('dashboard_link', `${baseUrl}/admin/meetings/${context.meetingId}`);
+        const baseUrl = getBaseUrl();
+        valuesMap.set('dashboard_link', `${baseUrl}/admin/meetings/${context.meetingId}`);
 
-          if (meeting.meetingTime) {
-            const { generateCalendarLinkFromMeeting } = await import('../calendar-utils');
-            valuesMap.set('calendar_link', generateCalendarLinkFromMeeting(meeting));
-          }
-
-          // Fetch registrant stats
-          const regSnap = await adminDb.collection('meetings').doc(context.meetingId).collection('registrants')
-            .where('status', 'in', ['registered', 'approved', 'attended'])
-            .get();
-
-          const allRegs = regSnap?.docs ?? [];
-          valuesMap.set('registrant_count', String(allRegs.length));
-          const attendedCount = allRegs.filter(d => d.data().status === 'attended').length;
-          valuesMap.set('attendee_count', String(attendedCount));
-          valuesMap.set('no_show_count', String(allRegs.length - attendedCount));
+        if (meeting.meetingTime) {
+          const { generateCalendarLinkFromMeeting } = await import('../calendar-utils');
+          valuesMap.set('calendar_link', generateCalendarLinkFromMeeting(meeting));
         }
+
+        // Fetch registrant stats
+        const regSnap = await adminDb.collection('meetings').doc(context.meetingId).collection('registrants')
+          .where('status', 'in', ['registered', 'approved', 'attended'])
+          .get();
+
+        const allRegs = regSnap?.docs ?? [];
+        valuesMap.set('registrant_count', allRegs.length);
+        const attendedCount = allRegs.filter(d => d.data().status === 'attended').length;
+        valuesMap.set('attendee_count', attendedCount);
+        valuesMap.set('no_show_count', allRegs.length - attendedCount);
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching meeting for rendering:', err);
       }
     }
 
     // 6. Fetch Form details
-    if (context.formId) {
+    if (context.formId && formSnap?.exists) {
       try {
-        const snap = await adminDb.collection('pdfs').doc(context.formId).get();
-        if (snap.exists) {
-          const form = snap.data()!;
-          valuesMap.set('form_name', form.name ?? form.title ?? '');
-          valuesMap.set('form_link', form.publicUrl ?? '');
-          valuesMap.set('submission_deadline', form.deadline ?? '');
-          valuesMap.set('deadline', form.deadline ?? '');
-        }
+        const form = formSnap.data()!;
+        valuesMap.set('form_name', form.name ?? form.title ?? '');
+        valuesMap.set('form_link', form.publicUrl ?? '');
+        valuesMap.set('submission_deadline', form.deadline ?? '');
+        valuesMap.set('deadline', form.deadline ?? '');
 
         // Pre-populate dynamic variables registry
         try {
@@ -487,16 +571,13 @@ export class FieldsVariablesService {
     }
 
     // 7. Fetch Survey details
-    if (context.surveyId) {
+    if (context.surveyId && surveySnap?.exists) {
       try {
-        const snap = await adminDb.collection('surveys').doc(context.surveyId).get();
-        if (snap.exists) {
-          const survey = snap.data()!;
-          valuesMap.set('survey_title', survey.title ?? '');
-          valuesMap.set('survey_link', survey.publicUrl ?? '');
-          const baseUrl = getBaseUrl();
-          valuesMap.set('dashboard_link', `${baseUrl}/admin/surveys/${context.surveyId}`);
-        }
+        const survey = surveySnap.data()!;
+        valuesMap.set('survey_title', survey.title ?? '');
+        valuesMap.set('survey_link', survey.publicUrl ?? '');
+        const baseUrl = getBaseUrl();
+        valuesMap.set('dashboard_link', `${baseUrl}/admin/surveys/${context.surveyId}`);
 
         // Pre-populate dynamic variables registry
         try {
@@ -538,33 +619,27 @@ export class FieldsVariablesService {
     }
 
     // 8. Fetch Agreement details
-    if (context.agreementId) {
+    if (context.agreementId && agreementSnap?.exists) {
       try {
-        const snap = await adminDb.collection('contracts').doc(context.agreementId).get();
-        if (snap.exists) {
-          const contract = snap.data()!;
-          valuesMap.set('contract_name', contract.name ?? contract.title ?? '');
-          valuesMap.set('contract_link', contract.signingUrl ?? contract.publicUrl ?? '');
-          valuesMap.set('signatory_name', contract.signatoryName ?? '');
-          valuesMap.set('deadline', contract.deadline ?? '');
-          valuesMap.set('contract_status', contract.status ?? '');
-          valuesMap.set('signing_date', contract.signedAt ? new Date(contract.signedAt).toLocaleDateString() : '');
-        }
+        const contract = agreementSnap.data()!;
+        valuesMap.set('contract_name', contract.name ?? contract.title ?? '');
+        valuesMap.set('contract_link', contract.signingUrl ?? contract.publicUrl ?? '');
+        valuesMap.set('signatory_name', contract.signatoryName ?? '');
+        valuesMap.set('deadline', contract.deadline ?? '');
+        valuesMap.set('contract_status', contract.status ?? '');
+        valuesMap.set('signing_date', contract.signedAt ? new Date(contract.signedAt).toLocaleDateString() : '');
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching contract data for rendering:', err);
       }
     }
 
     // 8.5. Fetch User details
-    if (context.userId) {
+    if (context.userId && userSnap?.exists) {
       try {
-        const snap = await adminDb.collection('users').doc(context.userId).get();
-        if (snap.exists) {
-          const user = snap.data()!;
-          valuesMap.set('user_name', user.name ?? user.fullName ?? user.displayName ?? '');
-          valuesMap.set('user_email', user.email ?? '');
-          valuesMap.set('user_phone', user.phone ?? '');
-        }
+        const user = userSnap.data()!;
+        valuesMap.set('user_name', user.name ?? user.fullName ?? user.displayName ?? '');
+        valuesMap.set('user_email', user.email ?? '');
+        valuesMap.set('user_phone', user.phone ?? '');
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching user data for rendering:', err);
       }
