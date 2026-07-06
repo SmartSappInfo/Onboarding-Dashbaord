@@ -10,9 +10,27 @@ interface EmbeddedSurveyProps {
   displayMode?: 'inline' | 'button';
   isInModal?: boolean;
   onClose?: () => void;
+  showIcon?: boolean;
+  showHeader?: boolean;
+  headerText?: string;
+  showDescription?: boolean;
+  descriptionText?: string;
+  buttonText?: string;
 }
 
-export function EmbeddedSurvey({ surveyId, pageId, displayMode = 'inline', isInModal = false, onClose }: EmbeddedSurveyProps) {
+export function EmbeddedSurvey({ 
+  surveyId, 
+  pageId, 
+  displayMode = 'inline', 
+  isInModal = false, 
+  onClose,
+  showIcon = true,
+  showHeader = true,
+  headerText = 'Survey',
+  showDescription = true,
+  descriptionText = 'Complete our brief survey to continue.',
+  buttonText = 'Start Survey'
+}: EmbeddedSurveyProps) {
   const [size, setSize] = useState({ height: 600, width: 512 });
 
   useEffect(() => {
@@ -55,18 +73,22 @@ export function EmbeddedSurvey({ surveyId, pageId, displayMode = 'inline', isInM
 
   return (
     <div className="text-center p-12 space-y-6">
-      <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
-        <ClipboardList className="h-8 w-8" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">Survey</h2>
-        <p className="text-slate-500 font-medium">Complete our brief survey to continue.</p>
-      </div>
+      {showIcon && (
+        <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
+          <ClipboardList className="h-8 w-8" />
+        </div>
+      )}
+      {(showHeader || showDescription) && (
+        <div className="space-y-2">
+          {showHeader && <h2 className="text-2xl font-bold">{headerText}</h2>}
+          {showDescription && <p className="text-slate-500 font-medium">{descriptionText}</p>}
+        </div>
+      )}
       <Button
         onClick={() => window.open(`/surveys/${surveyId}${pageId ? `?ref=${pageId}` : ''}`, '_blank', 'noopener,noreferrer')}
         className="w-full h-14 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200"
       >
-        Start Survey
+        {buttonText}
         <ArrowRight className="ml-2 w-5 h-5" />
       </Button>
     </div>
