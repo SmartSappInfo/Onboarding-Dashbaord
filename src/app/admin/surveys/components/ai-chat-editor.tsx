@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button as MovingButton } from '@/components/ui/moving-border';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Paperclip, FileText } from 'lucide-react';
+import { Paperclip, FileText, FolderPlus } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import * as pdfjs from 'pdfjs-dist';
 import { getDoc, doc } from 'firebase/firestore';
@@ -30,10 +30,18 @@ import { createPortal } from 'react-dom';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { onSnapshot } from 'firebase/firestore';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import { saveImageToMediaLibrary } from '@/lib/media-actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Message {
     role: 'user' | 'assistant';
     content: string;
+    attachment?: {
+        name: string;
+        url: string;
+        type: 'image' | 'document';
+        dataUri?: string;
+    };
 }
 
 interface AiChatEditorProps {
@@ -58,6 +66,9 @@ function AiChatPanel() {
     const [isUploadingFile, setIsUploadingFile] = React.useState(false);
     const [stagedFile, setStagedFile] = React.useState<{ name: string; url: string; content?: string; dataUri?: string } | null>(null);
     const [unreadCount, setUnreadCount] = React.useState(0);
+    const [previewImage, setPreviewImage] = React.useState<{ name: string; url: string; dataUri?: string } | null>(null);
+    const [isSavingImage, setIsSavingImage] = React.useState(false);
+    const [isImageSaved, setIsImageSaved] = React.useState(false);
 
     // Live model preferences — updated in real time via the hook
     const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
@@ -201,7 +212,21 @@ function AiChatPanel() {
         const isImg = stagedFile && (stagedFile.dataUri?.startsWith('data:image/') || stagedFile.name.match(/\.(jpeg|jpg|gif|png|webp)$/i));
         const userMsg = input.trim() || (stagedFile ? `Analyze and extract fields from the attached ${isImg ? 'image' : 'file'}.` : '');
         setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+
+        // Capture stagedFile fields to local variables to support immediate state reset
+        const docContent = stagedFile?.content;
+        const docDataUri = stagedFile?.dataUri;
+        const docUrl = stagedFile?.url;
+
+        const attachment = stagedFile ? {
+            name: stagedFile.name,
+            url: stagedFile.url,
+            type: isImg ? 'image' as const : 'document' as const,
+            dataUri: stagedFile.dataUri
+        } : undefined;
+
+        setMessages(prev => [...prev, { role: 'user', content: userMsg, attachment }]);
+        setStagedFile(null); // Clear stage area immediately
         setIsLoading(true);
 
         try {
@@ -215,9 +240,9 @@ function AiChatPanel() {
 
             const result = await modifySurvey({
                 userMessage: userMsg,
-                docContent: stagedFile?.content,
-                docDataUri: stagedFile?.dataUri,
-                docUrl: stagedFile?.url,
+                docContent,
+                docDataUri,
+                docUrl,
                 sourceUrl: foundUrl,
                 organizationId: activeOrganizationId,
                 provider,
@@ -277,31 +302,31 @@ function AiChatPanel() {
 
                 reset(mergedSurvey, { keepDirty: true, keepTouched: true });
                 setMessages(prev => [...prev, { role: 'assistant', content: result.aiSummary }]);
-                setStagedFile(null);
                 toast({ title: 'Architecture Updated', description: 'AI has applied your requested changes.' });
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('AI modification error:', error);
             
             let errorMessage = "I encountered an error while modifying the survey.";
             let suggestion = "Please try rephrasing your request.";
             
-            if (error.message) {
-                if (error.message.includes('API key')) {
+            const err = error as { message?: string };
+            if (err.message) {
+                if (err.message.includes('API key')) {
                     errorMessage = "AI service configuration error.";
                     suggestion = "Please check your AI provider settings or contact an administrator.";
-                } else if (error.message.includes('quota') || error.message.includes('limit')) {
+                } else if (err.message.includes('quota') || err.message.includes('limit')) {
                     errorMessage = "AI service quota exceeded.";
                     suggestion = "Please try again later or contact an administrator about upgrading your plan.";
-                } else if (error.message.includes('network') || error.message.includes('timeout')) {
+                } else if (err.message.includes('network') || err.message.includes('timeout')) {
                     errorMessage = "Network connection error.";
                     suggestion = "Please check your internet connection and try again.";
-                } else if (error.message.includes('unavailable')) {
+                } else if (err.message.includes('unavailable')) {
                     errorMessage = "AI service is temporarily unavailable.";
                     suggestion = "Please try again in a few moments.";
                 } else {
-                    suggestion = `Error details: ${error.message}`;
+                    suggestion = `Error details: ${err.message}`;
                 }
             }
             
@@ -313,7 +338,7 @@ function AiChatPanel() {
             toast({ 
                 variant: 'destructive', 
                 title: 'AI Modification Failed', 
-                description: error.message || 'An unexpected error occurred while processing your request.'
+                description: err.message || 'An unexpected error occurred while processing your request.'
             });
         } finally {
             setIsLoading(false);
@@ -326,6 +351,48 @@ function AiChatPanel() {
 
         toast({ title: 'Feedback Received', description: 'Thank you for helping me improve!' });
         await updateSignalRatingAction(signalId, rating);
+    };
+
+    const handleOpenPreview = (attachment: { name: string; url: string; dataUri?: string }) => {
+        setPreviewImage(attachment);
+        setIsImageSaved(false);
+    };
+
+    const handleSaveToMediaLibrary = async () => {
+        if (!previewImage || !activeWorkspaceId || !user) return;
+        
+        setIsSavingImage(true);
+        try {
+            const res = await saveImageToMediaLibrary({
+                name: previewImage.name,
+                dataUri: previewImage.dataUri || previewImage.url,
+                workspaceId: activeWorkspaceId,
+                userId: user.uid
+            });
+            
+            if (res.success) {
+                setIsImageSaved(true);
+                toast({
+                    title: 'Asset Saved',
+                    description: `"${previewImage.name}" has been successfully added to your Media Library.`
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to Save Asset',
+                    description: res.error || 'An unknown error occurred.'
+                });
+            }
+        } catch (error: unknown) {
+            const err = error as { message?: string };
+            toast({
+                variant: 'destructive',
+                title: 'Save Failed',
+                description: err.message || 'Failed to save image to Media Library.'
+            });
+        } finally {
+            setIsSavingImage(false);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -447,14 +514,41 @@ function AiChatPanel() {
                                                             m.role === 'user' ? "bg-primary text-primary-foreground" : "bg-card border border-border text-primary"
                                                         )}>
  {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                                                        </div>
- <div className={cn(
+ </div>
+                                                        <div className={cn(
                                                             "px-3.5 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
                                                             m.role === 'user'
                                                                 ? "bg-primary text-primary-foreground rounded-tr-sm"
                                                                 : "bg-card border border-border/60 rounded-tl-sm text-foreground"
                                                         )}>
-                                                            {m.content}
+                                                            <div>{m.content}</div>
+                                                            {m.attachment && (
+                                                                <div className="mt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                                                    {m.attachment.type === 'image' ? (
+                                                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                                                        <img 
+                                                                            src={m.attachment.dataUri || m.attachment.url} 
+                                                                            alt={m.attachment.name} 
+                                                                            className="max-w-[200px] max-h-[150px] object-cover rounded-lg border border-border/80 shadow-sm cursor-pointer hover:scale-[1.02] transition-transform" 
+                                                                            onClick={() => {
+                                                                                if (m.attachment) {
+                                                                                    handleOpenPreview(m.attachment);
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        <a 
+                                                                            href={m.attachment.url} 
+                                                                            target="_blank" 
+                                                                            rel="noopener noreferrer" 
+                                                                            className="flex items-center gap-2 p-2 bg-background/50 rounded-lg border border-border text-[11px] font-medium text-foreground hover:bg-accent/15 transition-colors"
+                                                                        >
+                                                                            <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                                            <span className="truncate max-w-[150px]">{m.attachment.name}</span>
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     
@@ -631,6 +725,50 @@ function AiChatPanel() {
                 )}
             </motion.button>
             </RainbowButton>
+
+            {/* Image Preview and Media Library Sync Modal */}
+            <Dialog open={!!previewImage} onOpenChange={(open) => { if (!open) setPreviewImage(null); }}>
+                <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <DialogHeader className="p-4 border-b border-border/60 flex flex-row items-center justify-between">
+                        <DialogTitle className="text-sm font-semibold truncate max-w-[500px]">
+                            {previewImage?.name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-950/5 min-h-[300px] max-h-[500px] overflow-y-auto">
+                        {previewImage && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img 
+                                src={previewImage.dataUri || previewImage.url} 
+                                alt={previewImage.name} 
+                                className="max-w-full max-h-[400px] object-contain rounded-lg shadow-md border border-border/40 select-none"
+                            />
+                        )}
+                    </div>
+                    
+                    <div className="p-4 border-t border-border/60 bg-muted/30 flex items-center justify-end gap-3">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setPreviewImage(null)}
+                            className="rounded-xl px-4 py-2 text-xs font-medium"
+                        >
+                            Close
+                        </Button>
+                        <Button 
+                            onClick={handleSaveToMediaLibrary}
+                            disabled={isSavingImage || isImageSaved}
+                            className="rounded-xl px-4 py-2 text-xs font-medium flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            {isSavingImage ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <FolderPlus className="h-3.5 w-3.5" />
+                            )}
+                            {isImageSaved ? 'Saved to Library' : 'Save to Media Library'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

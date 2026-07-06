@@ -114,6 +114,11 @@ export async function getModel(params: {
     }
   }
 
+  // Map fictional gemini-3.5-flash model to real gemini-2.5-flash model
+  if (provider === 'googleai' && modelId === 'gemini-3.5-flash') {
+    modelId = 'gemini-2.5-flash';
+  }
+
   let apiKey: string | undefined;
 
   // 1. Fetch Organization Key if orgId is provided (Highest Priority)
@@ -194,7 +199,7 @@ export async function getModel(params: {
             if (isAuthError) {
               console.warn(`[AI] Custom API key generation failed with auth error: "${errorMsg}". Falling back to system default instance.`);
               const defaultModel = provider === 'googleai' 
-                ? 'googleai/gemini-3.5-flash' 
+                ? 'googleai/gemini-2.5-flash' 
                 : 'anthropic/claude-3-5-sonnet';
               return await ai.generate({
                 ...options,
