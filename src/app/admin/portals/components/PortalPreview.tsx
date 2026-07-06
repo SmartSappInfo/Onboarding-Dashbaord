@@ -1,6 +1,9 @@
-'use client';
-
 import * as React from 'react';
+import type { CampaignPage, CampaignPageVersion } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { PageRenderer } from '@/components/page-builder/PageRenderer';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +20,8 @@ export interface PortalPreviewProps {
   themeColor?: string;
   /** For custom pages — maps to a page-specific faithful layout */
   pageKey?: string;
+  pageId?: string;
+  pageSettings?: CampaignPage['settings'];
 }
 
 // ─── CUSTOM PAGE LAYOUTS (faithful HTML/CSS recreations) ─────────────────────
@@ -439,6 +444,24 @@ const KIND_LAYOUT_MAP: Record<PortalPreviewProps['kind'], LayoutComponent> = {
 export const PortalPreview = React.memo(function PortalPreview(props: PortalPreviewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const innerRef     = React.useRef<HTMLDivElement>(null);
+  const firestore    = useFirestore();
+  const [version, setVersion] = React.useState<CampaignPageVersion | null>(null);
+
+  React.useEffect(() => {
+    if (!firestore || !props.pageId) return;
+    const vQuery = query(
+      collection(firestore, 'campaign_page_versions'),
+      where('pageId', '==', props.pageId),
+      orderBy('versionNumber', 'desc'),
+      limit(1)
+    );
+    const unsubscribe = onSnapshot(vQuery, (snap) => {
+      if (!snap.empty) {
+        setVersion(snap.docs[0].data() as CampaignPageVersion);
+      }
+    }, console.error);
+    return unsubscribe;
+  }, [firestore, props.pageId]);
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -463,7 +486,38 @@ export const PortalPreview = React.memo(function PortalPreview(props: PortalPrev
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [version]);
+
+  if (version) {
+    const resolvedTheme = resolveTheme({
+      overrides: props.pageSettings?.themeOverrides,
+    });
+    const pageObj = {
+      id: props.pageId || '',
+      organizationId: '',
+      workspaceIds: [],
+      settings: {
+        showHeader: props.pageSettings?.showHeader ?? false,
+        showFooter: props.pageSettings?.showFooter ?? false,
+      }
+    };
+    return (
+      <div
+        ref={containerRef}
+        className="relative w-full h-full overflow-hidden pointer-events-none"
+      >
+        <div ref={innerRef} style={{ position: 'absolute', top: 0, left: 0 }}>
+          <PageRenderer
+            page={pageObj}
+            version={version}
+            theme={resolvedTheme}
+            interpolate={(t) => t}
+            fireTrigger={() => {}}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Route to the correct layout:
   // 1. Custom pages with a known pageKey get their specific faithful recreation

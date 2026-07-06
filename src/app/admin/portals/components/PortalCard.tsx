@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PortalPreview } from './PortalPreview';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import type { CampaignPage } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ export interface PortalCardProps {
   onEditSeo?: (pageKey: string, currentTitle: string, currentPath: string) => void;
   workspaceIds?: string[];
   onAssignWorkspaces?: (pageKey: string, currentWorkspaceIds: string[]) => void;
+  pageId?: string;
+  pageSettings?: CampaignPage['settings'];
 }
 
 // ─── Kind display config ──────────────────────────────────────────────────────
@@ -120,6 +123,8 @@ export const PortalCard = React.memo(function PortalCard({
   onEditSeo,
   workspaceIds = [],
   onAssignWorkspaces,
+  pageId,
+  pageSettings,
 }: PortalCardProps) {
   const cfg        = KIND_CONFIG[kind] ?? KIND_CONFIG.custom;
   const themeColor = themeColorProp ?? THEME_COLOR[kind];
@@ -154,6 +159,8 @@ export const PortalCard = React.memo(function PortalCard({
           questionCount={questionCount}
           fieldCount={fieldCount}
           themeColor={themeColor}
+          pageId={pageId}
+          pageSettings={pageSettings}
         />
 
         {/* Kebab — always visible top-right */}

@@ -392,6 +392,8 @@ export default function PortalsClient() {
                         onEditSeo={handleEditSeo}
                         workspaceIds={workspaceIds}
                         onAssignWorkspaces={handleAssignWorkspaces}
+                        pageId={dbPage?.id}
+                        pageSettings={dbPage?.settings}
                       />
                     );
                   })}

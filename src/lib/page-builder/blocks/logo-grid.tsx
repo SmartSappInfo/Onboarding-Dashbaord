@@ -30,7 +30,7 @@ registerBlock({
     }
     return (
       <div className="flex flex-wrap items-center justify-center gap-8 py-4">
-        {props.logos.map((l) => (
+        {props.logos.filter((l) => l.src).map((l) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={l.id} src={l.src} alt={l.alt} className="h-8 w-auto object-contain opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all" loading="lazy" />
         ))}
