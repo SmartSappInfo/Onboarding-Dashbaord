@@ -1,9 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Workspace, WorkspaceStatus, IndustryVertical, ContactIdentifierPolicy } from '@/lib/types';
+import { doc, getDoc } from 'firebase/firestore';
+import { getWorkspaceStatusDefaults } from '@/lib/industry-defaults';
 import { 
     Zap, 
     Plus, 
@@ -72,6 +74,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
     const { toast } = useToast();
     const { user } = useUser();
     const { activeOrganizationId, activeOrganization } = useTenant();
+    const firestore = useFirestore();
     
     const [isCreating, setIsCreating] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -93,19 +96,42 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         { value: 'Churned', label: 'Churned', color: '#ef4444' }
     ]);
 
+    const [dbDefaults, setDbDefaults] = React.useState<Record<string, WorkspaceStatus[]> | null>(null);
+    const [statusesModified, setStatusesModified] = React.useState(false);
+    const [pendingIndustryChange, setPendingIndustryChange] = React.useState<IndustryVertical | null>(null);
+    const [showResetWarning, setShowResetWarning] = React.useState(false);
+
+    React.useEffect(() => {
+        const loadDbDefaults = async () => {
+            if (!firestore) return;
+            try {
+                const snap = await getDoc(doc(firestore, 'system_settings', 'industries_lifecycle'));
+                if (snap.exists()) {
+                    setDbDefaults(snap.data() as Record<string, WorkspaceStatus[]>);
+                }
+            } catch (error) {
+                console.error('Failed to load global lifecycle defaults:', error);
+            }
+        };
+        loadDbDefaults();
+    }, [firestore]);
+
     const handleAddStatus = () => {
         setStatuses(prev => [...prev, { value: 'New Status', label: 'New Status', color: '#64748b' }]);
+        setStatusesModified(true);
     };
 
     const updateStatus = (index: number, updates: Partial<WorkspaceStatus>) => {
         const next = [...statuses];
         next[index] = { ...next[index], ...updates };
         setStatuses(next);
+        setStatusesModified(true);
     };
 
     const removeStatus = (index: number) => {
         if (statuses.length === 1) return;
         setStatuses(prev => prev.filter((_, i) => i !== index));
+        setStatusesModified(true);
     };
 
     // Get enabled industries from feature flags
@@ -137,11 +163,10 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         setColor('#3B5FFF');
         setContactPolicy('phone_or_email');
         setRestrictVisibilityToAssigned(true);
-        setStatuses([
-            { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
-            { value: 'Active', label: 'Active', color: '#10b981' },
-            { value: 'Churned', label: 'Churned', color: '#ef4444' }
-        ]);
+        setStatuses(getWorkspaceStatusDefaults('SaaS', dbDefaults));
+        setStatusesModified(false);
+        setPendingIndustryChange(null);
+        setShowResetWarning(false);
         setCurrentStep(0);
         setIsCreating(true);
     };
@@ -252,6 +277,32 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         } else {
             toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
         }
+    };
+
+    const handleIndustryScopeChange = (ind: IndustryVertical, scope: 'institution' | 'family' | 'person') => {
+        if (statusesModified) {
+            setPendingIndustryChange(ind);
+            setShowResetWarning(true);
+        } else {
+            setIndustry(ind);
+            setContactScope(scope);
+            setStatuses(getWorkspaceStatusDefaults(ind, dbDefaults));
+        }
+    };
+
+    const confirmIndustryChange = () => {
+        if (!pendingIndustryChange) return;
+        setIndustry(pendingIndustryChange);
+        
+        let recommendedScope: 'institution' | 'family' | 'person' = 'person';
+        if (pendingIndustryChange === 'SaaS') recommendedScope = 'institution';
+        else if (pendingIndustryChange === 'SchoolEnrollment') recommendedScope = 'family';
+        
+        setContactScope(recommendedScope);
+        setStatuses(getWorkspaceStatusDefaults(pendingIndustryChange, dbDefaults));
+        setStatusesModified(false);
+        setShowResetWarning(false);
+        setPendingIndustryChange(null);
     };
 
     const handleNextStep = () => {
@@ -481,8 +532,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
                                             getIndustryDisplayName={getIndustryDisplayName}
                                             getIndustryDescription={getIndustryDescription}
                                             onChange={({ industry: ind, contactScope: scope }) => {
-                                                setIndustry(ind);
-                                                setContactScope(scope);
+                                                handleIndustryScopeChange(ind, scope);
                                             }}
                                         />
                                     )}
@@ -621,6 +671,37 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
                         <AlertDialogCancel className="rounded-xl font-bold h-11">Review Settings</AlertDialogCancel>
                         <AlertDialogAction onClick={performSave} className="rounded-xl font-bold h-11 bg-primary text-white">
                             Confirm & Build Hub
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showResetWarning} onOpenChange={setShowResetWarning}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader className="text-left">
+                        <AlertDialogTitle className="text-lg font-bold flex items-center gap-2">
+                            <Icons.AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            Discard Custom Statuses?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm text-muted-foreground pt-2">
+                            You have modified the status lifecycle steps in Step 4. Changing the industry vertical to <span className="font-bold text-foreground">{pendingIndustryChange}</span> will discard your custom status nodes and reset them to the defaults for the new industry.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+                        <AlertDialogCancel 
+                            onClick={() => {
+                                setPendingIndustryChange(null);
+                                setShowResetWarning(false);
+                            }}
+                            className="rounded-xl font-bold h-11 border-border/80"
+                        >
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmIndustryChange} 
+                            className="rounded-xl font-bold h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Reset & Change
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
