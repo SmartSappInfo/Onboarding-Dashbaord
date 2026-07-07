@@ -23,12 +23,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload, Shield } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload, Shield, PlusCircle, X, Check, Lock, ShieldAlert, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig, rotateAllSecretsAction } from '@/lib/backoffice/backoffice-ai-actions';
+import type { WorkspaceStatus, IndustryVertical } from '@/lib/types';
+import { INDUSTRY_STATUS_DEFAULTS } from '@/lib/industry-defaults';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
+import { cn } from '@/lib/utils';
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
@@ -44,6 +49,9 @@ export default function SystemDefaultsClient() {
         defaultProvider: 'googleai',
         defaultModelId: 'gemini-3.5-flash',
     });
+
+    const [industryLifecycles, setIndustryLifecycles] = React.useState<Record<string, WorkspaceStatus[]>>({});
+    const [selectedIndustryTab, setSelectedIndustryTab] = React.useState<IndustryVertical>('SaaS');
 
     const [aiKeys, setAiKeys] = React.useState({
         geminiApiKey: '',
@@ -101,6 +109,39 @@ export default function SystemDefaultsClient() {
     };
 
 
+    const handleAddStatusForIndustry = (ind: IndustryVertical) => {
+        setIndustryLifecycles(prev => {
+            const currentList = prev[ind] || [];
+            return {
+                ...prev,
+                [ind]: [...currentList, { value: 'New Status', label: 'New Status', color: '#64748b', description: '' }]
+            };
+        });
+    };
+
+    const handleUpdateStatusForIndustry = (ind: IndustryVertical, index: number, updates: Partial<WorkspaceStatus>) => {
+        setIndustryLifecycles(prev => {
+            const currentList = [...(prev[ind] || [])];
+            if (currentList[index]) {
+                currentList[index] = { ...currentList[index], ...updates };
+            }
+            return {
+                ...prev,
+                [ind]: currentList
+            };
+        });
+    };
+
+    const handleRemoveStatusForIndustry = (ind: IndustryVertical, index: number) => {
+        setIndustryLifecycles(prev => {
+            const currentList = (prev[ind] || []).filter((_, i) => i !== index);
+            return {
+                ...prev,
+                [ind]: currentList
+            };
+        });
+    };
+
     React.useEffect(() => {
         const fetchTemplatesAndKeys = async () => {
             if (!firestore) return;
@@ -118,6 +159,14 @@ export default function SystemDefaultsClient() {
                 const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
                 if (snap.exists()) {
                     setTemplates(snap.data() as SystemTemplates);
+                }
+
+                // Fetch industry lifecycle defaults
+                const lifecyclesSnap = await getDoc(doc(firestore, 'system_settings', 'industries_lifecycle'));
+                if (lifecyclesSnap.exists()) {
+                    setIndustryLifecycles(lifecyclesSnap.data() as Record<string, WorkspaceStatus[]>);
+                } else {
+                    setIndustryLifecycles(INDUSTRY_STATUS_DEFAULTS);
                 }
 
                 // Fetch AI keys existence
@@ -148,6 +197,12 @@ export default function SystemDefaultsClient() {
             // Save templates
             await updateDoc(doc(firestore, 'system_settings', 'templates'), {
                 ...templates,
+                updatedAt: new Date().toISOString()
+            });
+
+            // Save industry lifecycle defaults
+            await updateDoc(doc(firestore, 'system_settings', 'industries_lifecycle'), {
+                ...industryLifecycles,
                 updatedAt: new Date().toISOString()
             });
 
@@ -182,7 +237,7 @@ export default function SystemDefaultsClient() {
                 });
             }
 
-            toast({ title: 'Settings Saved', description: 'System-wide templates and AI API keys have been updated.' });
+            toast({ title: 'Settings Saved', description: 'System-wide templates, AI API keys, and industry lifecycles have been updated.' });
         } catch (error: unknown) {
             toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(error) });
         } finally {
@@ -474,6 +529,124 @@ export default function SystemDefaultsClient() {
                                 className="rounded-xl h-11"
                             />
                             <p className="text-[10px] text-muted-foreground">Optional alternative provider key routing.</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Industry Lifecycle Defaults */}
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b p-8">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+                                    <ShieldAlert className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-xl font-bold">Industry Lifecycle Defaults</CardTitle>
+                                    <CardDescription>Configure baseline lifecycle statuses to seed automatically for new workspaces.</CardDescription>
+                                </div>
+                            </div>
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleAddStatusForIndustry(selectedIndustryTab)}
+                                className="h-9 rounded-xl font-bold border-dashed border-2 text-xs active:scale-[0.97]"
+                            >
+                                <PlusCircle className="h-4 w-4 mr-2" /> Add Status Node
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-6">
+                        {/* Industry Switcher Tabs */}
+                        <div className="flex flex-wrap gap-1.5 p-1 bg-muted/50 rounded-2xl border">
+                            {(['SaaS', 'Marketing', 'SchoolEnrollment', 'Consultancy', 'RealEstate', 'Law'] as IndustryVertical[]).map((ind) => {
+                                const isActive = selectedIndustryTab === ind;
+                                return (
+                                    <button
+                                        key={ind}
+                                        type="button"
+                                        onClick={() => setSelectedIndustryTab(ind)}
+                                        className={cn(
+                                            "flex-1 min-w-[100px] py-2 px-3 rounded-xl font-bold text-xs transition-all active:scale-[0.97]",
+                                            isActive
+                                                ? "bg-background text-foreground shadow-sm ring-1 ring-black/5"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        {ind === 'SchoolEnrollment' ? 'School Enrollment' : ind === 'RealEstate' ? 'Real Estate' : ind}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Status List */}
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                            {(!industryLifecycles[selectedIndustryTab] || industryLifecycles[selectedIndustryTab].length === 0) ? (
+                                <p className="text-xs text-muted-foreground text-center py-8">No status nodes defined. Add one to start.</p>
+                            ) : (
+                                industryLifecycles[selectedIndustryTab].map((status, idx) => (
+                                    <div key={idx} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-3 rounded-2xl bg-card border group animate-in fade-in duration-100">
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <button 
+                                                            type="button" 
+                                                            className="w-8 h-8 rounded-lg shadow-sm border shrink-0 active:scale-[0.9]" 
+                                                            style={{ backgroundColor: status.color }} 
+                                                        />
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-2 bg-card border-none shadow-2xl z-[100]">
+                                                        <div className="grid grid-cols-6 gap-1">
+                                                            {ONBOARDING_STAGE_COLORS.map(c => (
+                                                                <button 
+                                                                    key={c} 
+                                                                    type="button" 
+                                                                    onClick={() => handleUpdateStatusForIndustry(selectedIndustryTab, idx, { color: c })} 
+                                                                    className="w-5 h-5 rounded shadow-sm hover:scale-105 active:scale-[0.9] transition-all" 
+                                                                    style={{ backgroundColor: c }} 
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <Input 
+                                                    value={status.label} 
+                                                    onChange={e => handleUpdateStatusForIndustry(selectedIndustryTab, idx, { label: e.target.value, value: e.target.value })} 
+                                                    className="h-9 bg-background font-bold text-xs" 
+                                                />
+                                            </div>
+                                            <Input 
+                                                value={status.description || ''} 
+                                                onChange={e => handleUpdateStatusForIndustry(selectedIndustryTab, idx, { description: e.target.value })} 
+                                                placeholder="Short behavioral description..."
+                                                className="h-9 bg-background font-medium text-[10px]" 
+                                            />
+                                        </div>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => handleRemoveStatusForIndustry(selectedIndustryTab, idx)}
+                                            disabled={industryLifecycles[selectedIndustryTab].length === 1}
+                                            className="h-9 w-9 rounded-xl text-destructive active:scale-[0.9]"
+                                        >
+                                            <X size={16} />
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3 text-left">
+                            <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                                <p className="text-[10px] font-semibold text-blue-900 ">Dynamic Seeding Notice</p>
+                                <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
+                                    New workspaces created under {selectedIndustryTab === 'SchoolEnrollment' ? 'School Enrollment' : selectedIndustryTab === 'RealEstate' ? 'Real Estate' : selectedIndustryTab} will clone these defaults immediately. Existing active workspaces will retain their custom configuration and will not be affected.
+                                </p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
