@@ -371,6 +371,7 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 - \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`
 - \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`
 - Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID
+- **Copy Fidelity (CRITICAL)**: If specific copy, text, or headlines are provided in the source text for the result pages/outcomes, you MUST build the results pages using that exact copy. Do NOT assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize.
 - **Message Templates**: If an outcome is significant (e.g., "High Risk", "Selected"), you may set placeholder IDs like \`"email_template_placeholder"\` or \`"sms_template_placeholder"\` in the \`resultRule\` — the system will prompt the user to link actual templates later.
 
 ### BLUEPRINT:

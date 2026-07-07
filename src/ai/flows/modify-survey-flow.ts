@@ -117,6 +117,7 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 14. **Auto-Advance (STRICT)**: Set \`autoAdvance: false\` for all questions. ONLY set \`autoAdvance: true\` for the LAST question of a section IF AND ONLY IF the following section has \`renderAsPage: true\`.
 15. **Order Fidelity**: Maintain the exact sequence of questions provided in the source material or existing state. Do not re-order unless specifically asked.
 16. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+17. **Result Page Copy Fidelity**: If specific copies, headlines, or body text are provided in the source text for the survey's result pages/outcomes, you MUST use the exact copies. Do not assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize.
 
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}
