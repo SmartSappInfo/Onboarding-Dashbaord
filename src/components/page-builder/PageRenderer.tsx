@@ -124,7 +124,7 @@ export function PageRenderer({
       interpolate,
       resources,
       fireTrigger,
-      page: { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds[0] },
+      page: { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' },
       allowScripts: page.settings.customScriptsAllowed ?? false,
     }),
     [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed],

@@ -245,7 +245,13 @@ export default function PublicPageClient({
             // Check for static fallback
             if (slug === 'subscription-payment') {
                 const data = SUBSCRIPTION_PAYMENT_DATA as any;
-                setPage({ ...data.page, settings: { ...data.page.settings, showHeader: true, showFooter: true } });
+                setPage({
+                    id: 'subscription-payment',
+                    organizationId: 'static',
+                    workspaceIds: ['static'],
+                    ...data.page,
+                    settings: { ...data.page.settings, showHeader: true, showFooter: true }
+                });
                 setVersion(data.version as any);
                 setLoading(false);
                 return;
@@ -671,7 +677,7 @@ export default function PublicPageClient({
                             formId={modalState.targetId || ''}
                             pageId={page.id}
                             organizationId={page.organizationId}
-                            workspaceId={page.workspaceIds[0]}
+                            workspaceId={page.workspaceIds?.[0] || ''}
                             isInModal={true}
                             onSuccess={() => setModalState(null)}
                         />
@@ -696,7 +702,7 @@ export default function PublicPageClient({
                         <EmbeddedQRCode 
                             qrId={modalState.targetId || ''} 
                             organizationId={page.organizationId}
-                            workspaceId={page.workspaceIds[0]}
+                            workspaceId={page.workspaceIds?.[0] || ''}
                             onClose={() => setModalState(null)} 
                             isInModal={true} 
                         />
