@@ -371,7 +371,11 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 - \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`
 - \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`
 - Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID
-- **Copy Fidelity (CRITICAL)**: If specific copy, text, or headlines are provided in the source text for the result pages/outcomes, you MUST build the results pages using that exact copy. Do NOT assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize.
+- **Copy Fidelity (CRITICAL)**: If specific copy, text, or headlines are provided in the source text for the result pages/outcomes, you MUST build the results pages using that exact copy. Do NOT assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize. Specifically:
+  1. The page 'name' and rule 'label' MUST exactly match the outcome title/header (e.g. if the source says "Hidden Growth Blockers (6-11)", the name and label must be "Hidden Growth Blockers" — NOT generic names like "Needs Improvement").
+  2. Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text.
+  3. Extract all links and calls-to-action (e.g. "WATCH THE SCHOOL A VS SCHOOL B PRESENTATION" or "FREE 30-MINUTE CONSULTATION") as 'button' blocks with placeholder link '#' rather than omitting them or summarizing them.
+  4. Ensure score range boundaries ('minScore' and 'maxScore') align exactly with the numbers in the source titles.
 - **Message Templates**: If an outcome is significant (e.g., "High Risk", "Selected"), you may set placeholder IDs like \`"email_template_placeholder"\` or \`"sms_template_placeholder"\` in the \`resultRule\` — the system will prompt the user to link actual templates later.
 
 ### BLUEPRINT:

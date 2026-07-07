@@ -117,7 +117,11 @@ If this is a NEW survey (empty current state), your primary goal is to COMPOSE a
 14. **Auto-Advance (STRICT)**: Set \`autoAdvance: false\` for all questions. ONLY set \`autoAdvance: true\` for the LAST question of a section IF AND ONLY IF the following section has \`renderAsPage: true\`.
 15. **Order Fidelity**: Maintain the exact sequence of questions provided in the source material or existing state. Do not re-order unless specifically asked.
 16. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
-17. **Result Page Copy Fidelity**: If specific copies, headlines, or body text are provided in the source text for the survey's result pages/outcomes, you MUST use the exact copies. Do not assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize.
+17. **Result Page Copy Fidelity**: If specific copies, headlines, or body text are provided in the source text for the survey's result pages/outcomes, you MUST use the exact copies. Do not assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize. Specifically:
+    - The page 'name' and rule 'label' MUST exactly match the outcome title/header (e.g. if the source says "Hidden Growth Blockers (6-11)", the name and label must be "Hidden Growth Blockers" — NOT generic names like "Needs Improvement").
+    - Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text.
+    - Extract all links and calls-to-action (e.g. "WATCH THE SCHOOL A VS SCHOOL B PRESENTATION" or "FREE 30-MINUTE CONSULTATION") as 'button' blocks with placeholder link '#' rather than omitting them or summarizing them.
+    - Ensure score range boundaries ('minScore' and 'maxScore') align exactly with the numbers in the source titles.
 
 --- SOURCE MATERIALS ---
 {{#if docContent}}DOCUMENT CONTENT: {{{docContent}}}{{/if}}

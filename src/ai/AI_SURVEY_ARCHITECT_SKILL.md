@@ -167,3 +167,72 @@ Q: Which statement feels closest to your current situation?
 **Correct Logic:**
 - Create a logic block for Q1 that says: **When** Q1 **Is** "Never", **Then** **Hide** Q2.
 - This ensures users who don't travel aren't asked about airlines.
+
+### Example: Exact Result Page Copy Fidelity
+
+**Source Text:**
+```text
+Hidden Growth Blockers (6–11)
+YOUR SCORE: 6–11
+
+Your school may be attracting interest but losing families before enrollment happens.
+Many schools in this category think they need more marketing. Often, they simply need a better parent experience.
+
+BIGGEST OPPORTUNITY
+Every empty seat may represent a family that considered your school but chose another option.
+Improve response times, follow-up, and communication to increase enrollment without increasing marketing spend.
+
+A QUESTION WORTH ASKING
+If you were choosing a school for your own child today, would you choose your school?
+
+WATCH THE SCHOOL A VS SCHOOL B PRESENTATION
+Learn why parents compare schools, why referrals stop, and how School B schools create trust and peace of mind.
+
+FREE 30-MINUTE CONSULTATION
+Review your results and identify your biggest enrollment opportunities.
+
+YOUR NEXT LEVEL
+More trust. More referrals. More filled seats.
+```
+
+**Correct AI JSON (Result Page & Rule mapping):**
+```json
+{
+  "resultRules": [
+    {
+      "id": "rule_hidden_growth_blockers",
+      "label": "Hidden Growth Blockers",
+      "minScore": 6,
+      "maxScore": 11,
+      "priority": 1,
+      "pageId": "page_hidden_growth_blockers"
+    }
+  ],
+  "resultPages": [
+    {
+      "id": "page_hidden_growth_blockers",
+      "name": "Hidden Growth Blockers",
+      "isDefault": false,
+      "blocks": [
+        { "id": "block_score_card", "type": "score-card" },
+        { "id": "block_title", "type": "heading", "title": "Hidden Growth Blockers (6–11)", "variant": "h1" },
+        { "id": "block_intro_text", "type": "text", "content": "Your school may be attracting interest but losing families before enrollment happens.\n\nMany schools in this category think they need more marketing. Often, they simply need a better parent experience." },
+        { "id": "block_opp_header", "type": "heading", "title": "BIGGEST OPPORTUNITY", "variant": "h2" },
+        { "id": "block_opp_text", "type": "text", "content": "Every empty seat may represent a family that considered your school but chose another option.\n\nImprove response times, follow-up, and communication to increase enrollment without increasing marketing spend." },
+        { "id": "block_question_header", "type": "heading", "title": "A QUESTION WORTH ASKING", "variant": "h2" },
+        { "id": "block_question_quote", "type": "quote", "content": "If you were choosing a school for your own child today, would you choose your school?" },
+        { "id": "block_watch_header", "type": "heading", "title": "WATCH THE SCHOOL A VS SCHOOL B PRESENTATION", "variant": "h2" },
+        { "id": "block_watch_text", "type": "text", "content": "Learn why parents compare schools, why referrals stop, and how School B schools create trust and peace of mind." },
+        { "id": "block_watch_button", "type": "button", "title": "Watch Presentation", "link": "#" },
+        { "id": "block_consult_header", "type": "heading", "title": "FREE 30-MINUTE CONSULTATION", "variant": "h2" },
+        { "id": "block_consult_text", "type": "text", "content": "Review your results and identify your biggest enrollment opportunities." },
+        { "id": "block_consult_button", "type": "button", "title": "Schedule Consultation", "link": "#" },
+        { "id": "block_next_level_header", "type": "heading", "title": "YOUR NEXT LEVEL", "variant": "h2" },
+        { "id": "block_next_level_text", "type": "text", "content": "More trust. More referrals. More filled seats." }
+      ]
+    }
+  ]
+}
+```
+*Note: The page is named exactly "Hidden Growth Blockers", every single piece of content, heading, list/quote, and button is extracted exactly without any summarization or rephrasing, and the score ranges align 1:1 with the defined rule scores.*
+
