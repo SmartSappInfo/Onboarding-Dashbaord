@@ -245,9 +245,9 @@ function SortableRuleItem({
                     {messagingEnabled && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
                             {/* Email Automation */}
-                            <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100 space-y-4">
+                            <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100/70 dark:bg-blue-950/20 dark:border-blue-900/40 space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2 text-blue-600">
+                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                                         <Mail className="h-4 w-4" />
                                         <span className="text-[10px] font-semibold ">Email Completion</span>
                                     </div>
@@ -257,7 +257,7 @@ function SortableRuleItem({
                                                 type="button" 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100 active:scale-[0.98] transition-transform"
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 dark:text-blue-400 gap-1 rounded-lg hover:bg-blue-100/50 dark:hover:bg-blue-900/30 active:scale-[0.98] transition-transform"
                                                 onClick={() => setActiveTemplateConfig({ channel: 'email', templateId: selectedEmailId })}
                                             >
                                                 <Pencil className="h-3 w-3" /> Edit
@@ -267,7 +267,7 @@ function SortableRuleItem({
                                             type="button" 
                                             variant="ghost" 
                                             size="sm" 
-                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100 active:scale-[0.98] transition-transform"
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 dark:text-blue-400 gap-1 rounded-lg hover:bg-blue-100/50 dark:hover:bg-blue-900/30 active:scale-[0.98] transition-transform"
                                             onClick={() => setActiveTemplateConfig({ channel: 'email' })}
                                         >
                                             <PlusCircle className="h-3 w-3" /> New
@@ -296,7 +296,7 @@ function SortableRuleItem({
                                             control={control}
                                             render={({ field }) => (
                                                 <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-9 bg-card border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
+                                                    <SelectTrigger className="h-9 bg-card border-blue-200 dark:border-blue-900/50 text-[10px] font-bold text-blue-700/60 dark:text-blue-400/60 flex items-center gap-2">
                                                         <ShieldCheck className="h-3 w-3" />
                                                         <SelectValue placeholder="Resolved From Identity" />
                                                     </SelectTrigger>
@@ -314,9 +314,9 @@ function SortableRuleItem({
                             </div>
 
                             {/* SMS Automation */}
-                            <div className="p-4 rounded-xl border bg-orange-50/30 border-orange-100 space-y-4">
+                            <div className="p-4 rounded-xl border bg-orange-50/30 border-orange-100/70 dark:bg-orange-950/10 dark:border-orange-900/30 space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2 text-orange-600">
+                                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
                                         <Smartphone className="h-4 w-4" />
                                         <span className="text-[10px] font-semibold ">SMS Completion</span>
                                     </div>
@@ -326,7 +326,7 @@ function SortableRuleItem({
                                                 type="button" 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100 active:scale-[0.98] transition-transform"
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 dark:text-orange-400 gap-1 rounded-lg hover:bg-orange-100/50 dark:hover:bg-orange-900/30 active:scale-[0.98] transition-transform"
                                                 onClick={() => setActiveTemplateConfig({ channel: 'sms', templateId: selectedSmsId })}
                                             >
                                                 <Pencil className="h-3 w-3" /> Edit
@@ -336,7 +336,7 @@ function SortableRuleItem({
                                             type="button" 
                                             variant="ghost" 
                                             size="sm" 
-                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100 active:scale-[0.98] transition-transform"
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 dark:text-orange-400 gap-1 rounded-lg hover:bg-orange-100/50 dark:hover:bg-orange-900/30 active:scale-[0.98] transition-transform"
                                             onClick={() => setActiveTemplateConfig({ channel: 'sms' })}
                                         >
                                             <PlusCircle className="h-3 w-3" /> New
@@ -365,7 +365,7 @@ function SortableRuleItem({
                                             control={control}
                                             render={({ field }) => (
                                                 <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-9 bg-card border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
+                                                    <SelectTrigger className="h-9 bg-card border-orange-200 dark:border-orange-900/50 text-[10px] font-bold text-orange-700/60 dark:text-orange-400/60 flex items-center gap-2">
                                                         <ShieldCheck className="h-3 w-3" />
                                                         <SelectValue placeholder="Resolved From Identity" />
                                                     </SelectTrigger>
@@ -383,9 +383,9 @@ function SortableRuleItem({
                             </div>
 
                             {/* WhatsApp Automation */}
-                            <div className="p-4 rounded-xl border bg-emerald-50/30 border-emerald-100 space-y-4">
+                            <div className="p-4 rounded-xl border bg-emerald-50/30 border-emerald-100/70 dark:bg-emerald-950/10 dark:border-emerald-900/30 space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2 text-emerald-600">
+                                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                                         <Smartphone className="h-4 w-4" />
                                         <span className="text-[10px] font-semibold ">WhatsApp Completion</span>
                                     </div>
@@ -395,7 +395,7 @@ function SortableRuleItem({
                                                 type="button" 
                                                 variant="ghost" 
                                                 size="sm" 
-                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 gap-1 rounded-lg hover:bg-emerald-100 active:scale-[0.98] transition-transform"
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 dark:text-emerald-400 gap-1 rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 active:scale-[0.98] transition-transform"
                                                 onClick={() => setActiveTemplateConfig({ channel: 'whatsapp', templateId: selectedWhatsappId })}
                                             >
                                                 <Pencil className="h-3 w-3" /> Edit
@@ -405,7 +405,7 @@ function SortableRuleItem({
                                             type="button" 
                                             variant="ghost" 
                                             size="sm" 
-                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 gap-1 rounded-lg hover:bg-emerald-100 active:scale-[0.98] transition-transform"
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 dark:text-emerald-400 gap-1 rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30 active:scale-[0.98] transition-transform"
                                             onClick={() => setActiveTemplateConfig({ channel: 'whatsapp' })}
                                         >
                                             <PlusCircle className="h-3 w-3" /> New
@@ -434,7 +434,7 @@ function SortableRuleItem({
                                             control={control}
                                             render={({ field }) => (
                                                 <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                    <SelectTrigger className="h-9 bg-card border-emerald-200 text-[10px] font-bold text-emerald-700/60 flex items-center gap-2">
+                                                    <SelectTrigger className="h-9 bg-card border-emerald-200 dark:border-emerald-900/50 text-[10px] font-bold text-emerald-700/60 dark:text-emerald-400/60 flex items-center gap-2">
                                                         <ShieldCheck className="h-3 w-3" />
                                                         <SelectValue placeholder="Resolved From Identity" />
                                                     </SelectTrigger>
