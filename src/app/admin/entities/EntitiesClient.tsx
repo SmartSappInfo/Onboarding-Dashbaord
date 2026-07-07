@@ -18,7 +18,8 @@ import {
   deleteEntityPermanentlyAction, 
   bulkArchiveEntitiesAction, 
   bulkDeleteEntitiesAction,
-  getFilteredEntityIdsAction
+  getFilteredEntityIdsAction,
+  archiveEntityAction
 } from '@/lib/workspace-entity-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
@@ -144,13 +145,35 @@ export default function EntitiesClient() {
   const [entityToDelete, setEntityToDelete] = useState<WorkspaceEntity | null>(null);
   const [entityToPermanentDelete, setEntityToPermanentDelete] = useState<WorkspaceEntity | null>(null);
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [assigningEntity, setAssigningEntity] = useState<WorkspaceEntity | null>(null);
+
+  const [archiveAllWorkspaces, setArchiveAllWorkspaces] = useState(false);
+  const [deleteAllWorkspaces, setDeleteAllWorkspaces] = useState(false);
+  const [bulkArchiveAll, setBulkArchiveAll] = useState(false);
+  const [bulkDeleteAll, setBulkDeleteAll] = useState(false);
+  const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
-  const [isBulkArchiveOpen, setIsBulkArchiveOpen] = useState(false);
-  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
+
+  useEffect(() => {
+    if (!entityToDelete) setArchiveAllWorkspaces(false);
+  }, [entityToDelete]);
+
+  useEffect(() => {
+    if (!entityToPermanentDelete) setDeleteAllWorkspaces(false);
+  }, [entityToPermanentDelete]);
+
+  useEffect(() => {
+    if (!isBulkArchiveOpen) setBulkArchiveAll(false);
+  }, [isBulkArchiveOpen]);
+
+  useEffect(() => {
+    if (!isBulkDeleteOpen) setBulkDeleteAll(false);
+  }, [isBulkDeleteOpen]);
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanProcessed, setScanProcessed] = useState(0);
@@ -837,19 +860,37 @@ export default function EntitiesClient() {
     return sortedEntities.filter((e: any) => selectedEntityIds.includes(e.id));
   }, [sortedEntities, selectedEntityIds]);
 
-  const handleDeleteEntity = () => {
-    if (!firestore || !entityToDelete) return;
-    const docRef = doc(firestore, 'workspace_entities', entityToDelete.id);
-    updateDoc(docRef, { status: 'archived', updatedAt: new Date().toISOString() }).then(() => {
+  const handleDeleteEntity = async () => {
+    if (!currentUser || !entityToDelete || isArchiving) return;
+    setIsArchiving(true);
+    try {
+      const result = await archiveEntityAction({
+        workspaceEntityId: entityToDelete.id,
+        entityId: entityToDelete.entityId,
+        userId: currentUser.uid,
+        userName: currentUser.displayName || undefined,
+        userEmail: currentUser.email || undefined,
+        archiveAllWorkspaces,
+      });
+
+      if (result.success) {
         const successMessage = getIndustrySuccessMessage('archive', industry, entityToDelete.displayName);
-        toast({ title: successMessage, description: `${entityToDelete.displayName} has been archived.` });
+        toast({
+          title: successMessage,
+          description: `"${entityToDelete.displayName}" has been archived${archiveAllWorkspaces ? ' across all workspaces' : ''}.`,
+        });
         setEntityToDelete(null);
-    }).catch((error) => {
-        const errorMessage = getIndustryErrorMessage('entity_delete_failed', industry, { entityName: entityToDelete.displayName, details: error.message });
-        toast({ variant: 'destructive', title: 'Archive Failed', description: errorMessage });
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update' }));
-        setEntityToDelete(null);
-    });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Failed to archive';
+      const errorMessage = getIndustryErrorMessage('entity_delete_failed', industry, { entityName: entityToDelete.displayName, details: errorMsg });
+      toast({ variant: 'destructive', title: 'Archive Failed', description: errorMessage });
+      setEntityToDelete(null);
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   const handleUnarchiveEntity = (entity: WorkspaceEntity) => {
@@ -870,18 +911,20 @@ export default function EntitiesClient() {
         userId: currentUser.uid,
         userName: currentUser.displayName || undefined,
         userEmail: currentUser.email || undefined,
+        deleteAllWorkspaces,
       });
       if (result.success) {
         toast({
           title: 'Permanently Deleted',
-          description: `"${entityToPermanentDelete.displayName}" has been purged${result.rootEntityDeleted ? ' including the core identity record' : ' from this workspace'}.`,
+          description: `"${entityToPermanentDelete.displayName}" has been purged${deleteAllWorkspaces ? ' across all workspaces' : (result.rootEntityDeleted ? ' including the core identity record' : ' from this workspace')}.`,
         });
         setEntityToPermanentDelete(null);
       } else {
         throw new Error(result.error);
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Failed to delete permanently';
+      toast({ variant: 'destructive', title: 'Delete Failed', description: errorMsg });
     } finally {
       setIsPermanentDeleting(false);
     }
@@ -908,6 +951,7 @@ export default function EntitiesClient() {
           userId: currentUser.uid,
           userName: currentUser.displayName || undefined,
           userEmail: currentUser.email || undefined,
+          archiveAllWorkspaces: bulkArchiveAll,
         });
 
         if (result.success) {
@@ -920,11 +964,12 @@ export default function EntitiesClient() {
         } else {
           throw new Error(result.error);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : 'Failed to bulk archive';
         toast({
           variant: 'destructive',
           title: 'Bulk Archive Failed',
-          description: e.message,
+          description: errorMsg,
         });
       }
     });
@@ -949,6 +994,7 @@ export default function EntitiesClient() {
           userName: currentUser.displayName || undefined,
           userEmail: currentUser.email || undefined,
           purgeRootEntity: true,
+          deleteAllWorkspaces: bulkDeleteAll,
         });
 
         if (result.success) {
@@ -961,11 +1007,12 @@ export default function EntitiesClient() {
         } else {
           throw new Error(result.error);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : 'Failed to bulk delete';
         toast({
           variant: 'destructive',
           title: 'Bulk Delete Failed',
-          description: e.message,
+          description: errorMsg,
         });
       }
     });
@@ -1664,20 +1711,59 @@ export default function EntitiesClient() {
                     </div>
                 </div>
             <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
-                <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle><AlertDialogDescription>This will archive <span className="font-bold">{entityToDelete?.displayName}</span>. You can restore it later from the Archived status filter.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteEntity} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Archive {singular}</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-semibold">{deleteConfirm}</AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4">
+                                <p>This will archive <span className="font-bold text-foreground">{entityToDelete?.displayName}</span>. You can restore it later from the Archived status filter.</p>
+                                <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-foreground select-none">
+                                    <Checkbox
+                                        id="archive-all-workspaces"
+                                        checked={archiveAllWorkspaces}
+                                        onCheckedChange={(checked) => setArchiveAllWorkspaces(checked === true)}
+                                        className="rounded-[4px] border-muted-foreground/30 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 transition-colors"
+                                    />
+                                    <label htmlFor="archive-all-workspaces" className="cursor-pointer">
+                                        Archive across all workspaces in this organization
+                                    </label>
+                                </div>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl" disabled={isArchiving}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteEntity} disabled={isArchiving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold active:scale-[0.97] transition-transform">
+                            {isArchiving ? 'Archiving…' : `Archive ${singular}`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={!!entityToPermanentDelete} onOpenChange={(open) => !open && setEntityToPermanentDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-semibold text-destructive">Permanently Delete?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will <span className="font-bold text-foreground">irreversibly purge</span> <span className="font-bold">{entityToPermanentDelete?.displayName}</span> and all associated data. If this is the last workspace it belongs to, the core identity record will also be deleted. This cannot be undone.
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4">
+                                <p>This will <span className="font-bold text-foreground">irreversibly purge</span> <span className="font-bold text-foreground">{entityToPermanentDelete?.displayName}</span> and all associated data. If this is the last workspace it belongs to, the core identity record will also be deleted. This cannot be undone.</p>
+                                <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-destructive select-none">
+                                    <Checkbox
+                                        id="delete-all-workspaces"
+                                        checked={deleteAllWorkspaces}
+                                        onCheckedChange={(checked) => setDeleteAllWorkspaces(checked === true)}
+                                        className="rounded-[4px] border-destructive/30 data-[state=checked]:bg-destructive data-[state=checked]:border-destructive transition-colors"
+                                    />
+                                    <label htmlFor="delete-all-workspaces" className="cursor-pointer text-destructive">
+                                        Delete permanently from all workspaces in this organization
+                                    </label>
+                                </div>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl" disabled={isPermanentDeleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handlePermanentDelete} disabled={isPermanentDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2">
+                        <AlertDialogAction onClick={handlePermanentDelete} disabled={isPermanentDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2 active:scale-[0.97] transition-transform">
                             {isPermanentDeleting ? 'Deleting…' : '⚠ Delete Forever'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -1688,13 +1774,26 @@ export default function EntitiesClient() {
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-semibold">Archive Selected?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will archive the <span className="font-bold">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural}. You can restore them later from the Archived status filter.
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4">
+                                <p>This will archive the <span className="font-bold text-foreground">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural}. You can restore them later from the Archived status filter.</p>
+                                <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-foreground select-none">
+                                    <Checkbox
+                                        id="bulk-archive-all"
+                                        checked={bulkArchiveAll}
+                                        onCheckedChange={(checked) => setBulkArchiveAll(checked === true)}
+                                        className="rounded-[4px] border-muted-foreground/30 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 transition-colors"
+                                    />
+                                    <label htmlFor="bulk-archive-all" className="cursor-pointer">
+                                        Archive selected records across all workspaces in this organization
+                                    </label>
+                                </div>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl" disabled={isBulkArchiving}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkArchive} disabled={isBulkArchiving} className="bg-amber-600 text-white hover:bg-amber-700 rounded-xl font-bold gap-2">
+                        <AlertDialogAction onClick={handleBulkArchive} disabled={isBulkArchiving} className="bg-amber-600 text-white hover:bg-amber-700 rounded-xl font-bold gap-2 active:scale-[0.97] transition-transform">
                             {isBulkArchiving ? 'Archiving…' : `Archive ${selectedEntityIds.length} ${selectedEntityIds.length === 1 ? singular : plural}`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -1705,13 +1804,26 @@ export default function EntitiesClient() {
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-semibold text-destructive">Permanently Delete Selected?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will <span className="font-bold text-foreground">irreversibly purge</span> the <span className="font-bold">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural} and all associated data. Only previously archived records can be deleted. Core identity records will be purged if they belong to no other workspace. This cannot be undone.
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4">
+                                <p>This will <span className="font-bold text-foreground">irreversibly purge</span> the <span className="font-bold text-foreground">{selectedEntityIds.length}</span> selected {selectedEntityIds.length === 1 ? singular : plural} and all associated data. Only previously archived records can be deleted. Core identity records will be purged if they belong to no other workspace. This cannot be undone.</p>
+                                <div className="flex items-center gap-2 pt-2 text-xs font-semibold text-destructive select-none">
+                                    <Checkbox
+                                        id="bulk-delete-all"
+                                        checked={bulkDeleteAll}
+                                        onCheckedChange={(checked) => setBulkDeleteAll(checked === true)}
+                                        className="rounded-[4px] border-destructive/30 data-[state=checked]:bg-destructive data-[state=checked]:border-destructive transition-colors"
+                                    />
+                                    <label htmlFor="bulk-delete-all" className="cursor-pointer text-destructive">
+                                        Permanently delete selected records from all workspaces in this organization
+                                    </label>
+                                </div>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl" disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} disabled={isBulkDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2">
+                        <AlertDialogAction onClick={handleBulkDelete} disabled={isBulkDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold gap-2 active:scale-[0.97] transition-transform">
                             {isBulkDeleting ? 'Deleting…' : `⚠ Delete ${selectedEntityIds.length} ${selectedEntityIds.length === 1 ? singular : plural} Forever`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
