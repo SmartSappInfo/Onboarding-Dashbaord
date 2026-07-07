@@ -1224,7 +1224,8 @@ export async function getSimulationVariablesAction(params: {
   meetingId?: string;
   surveyId?: string;
   pdfId?: string;
-}): Promise<{ success: boolean; variables?: Record<string, any>; error?: string }> {
+  recipientContact?: string;
+}): Promise<{ success: boolean; variables?: Record<string, any>; contacts?: any[]; error?: string }> {
   try {
     const variables: Record<string, any> = {};
     const resolvedWorkspaceId = params.workspaceId || 'onboarding';
@@ -1307,18 +1308,29 @@ export async function getSimulationVariablesAction(params: {
       variables.location_string = contact.locationString || '';
       variables.zone_name = contact.zoneName || '';
 
-      // Recipient variables (we simulate with primary contact)
-      const primary = contact.entityContacts?.find(c => c.isPrimary) || contact.entityContacts?.[0];
-      if (primary) {
-        variables.contact_name = primary.name || '';
-        variables.contact_email = primary.email || '';
-        variables.contact_phone = primary.phone || '';
+      // Recipient variables (we simulate with selected contact, falling back to primary)
+      let activeContact = contact.entityContacts?.find(c => c.isPrimary) || contact.entityContacts?.[0];
+      if (params.recipientContact && params.recipientContact !== 'none') {
+        const target = params.recipientContact.toLowerCase().trim();
+        const match = contact.entityContacts?.find(c => {
+          return (c.email && c.email.toLowerCase().trim() === target) ||
+                 (c.name && c.name.toLowerCase().trim() === target);
+        });
+        if (match) {
+          activeContact = match;
+        }
+      }
+
+      if (activeContact) {
+        variables.contact_name = activeContact.name || '';
+        variables.contact_email = activeContact.email || '';
+        variables.contact_phone = activeContact.phone || '';
         
-        variables.recipient_name = primary.name || '';
-        variables.recipient_email = primary.email || '';
-        variables.recipient_phone = primary.phone || '';
-        variables.recipient_role = primary.typeLabel || '';
-        variables.recipient_first_name = (primary.name || '').split(' ')[0];
+        variables.recipient_name = activeContact.name || '';
+        variables.recipient_email = activeContact.email || '';
+        variables.recipient_phone = activeContact.phone || '';
+        variables.recipient_role = activeContact.typeLabel || '';
+        variables.recipient_first_name = (activeContact.name || '').split(' ')[0];
       }
 
       // Dynamic role/primary/signatory variables
@@ -1418,7 +1430,11 @@ export async function getSimulationVariablesAction(params: {
       });
     }
 
-    return { success: true, variables };
+    return { 
+      success: true, 
+      variables, 
+      contacts: contact ? contact.entityContacts || [] : [] 
+    };
   } catch (error: any) {
     console.error('getSimulationVariablesAction error:', error.message);
     return { success: false, error: error.message };

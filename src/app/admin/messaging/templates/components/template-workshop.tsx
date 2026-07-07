@@ -2411,6 +2411,8 @@ export function TemplateWorkshop({
     const [simEntity, setSimEntity] = React.useState('none');
     const [simRecordId, setSimRecordId] = React.useState('none');
     const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
+    const [simContacts, setSimContacts] = React.useState<any[]>([]);
+    const [simContactId, setSimContactId] = React.useState<string>('none');
     const [isSimLoading, setIsSimLoading] = React.useState(false);
 
     // Simulation variable fallbacks for brand wrapper previews
@@ -2450,7 +2452,13 @@ export function TemplateWorkshop({
 
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
-    // Sync simulation variables when record ID, entity, or workspace changes
+    // Reset contact selection when entity or record changes
+    React.useEffect(() => {
+        setSimContactId('none');
+        setSimContacts([]);
+    }, [simRecordId, simEntity]);
+
+    // Sync simulation variables when record ID, entity, workspace, or contact selection changes
     React.useEffect(() => {
         let active = true;
         if (simRecordId === 'none' || simEntity === 'none') {
@@ -2468,9 +2476,13 @@ export function TemplateWorkshop({
                     surveyId: simEntity === 'Survey' ? simRecordId : undefined,
                     pdfId: simEntity === 'Submission' ? simRecordId : undefined,
                     workspaceId: activeWorkspaceId,
+                    recipientContact: simContactId !== 'none' ? simContactId : undefined,
                 });
                 if (active && res.success && res.variables) {
                     setSimVariables(res.variables);
+                    if (res.contacts) {
+                        setSimContacts(res.contacts);
+                    }
                 } else if (active) {
                     setSimVariables({});
                 }
@@ -2486,7 +2498,7 @@ export function TemplateWorkshop({
         return () => {
             active = false;
         };
-    }, [simRecordId, simEntity, activeWorkspaceId]);
+    }, [simRecordId, simEntity, activeWorkspaceId, simContactId]);
 
     const sensors = useSensors(useSensor(PointerSensor));
     const sidebarSensors = useSensors(
@@ -4451,6 +4463,9 @@ export function TemplateWorkshop({
                             simEntity={simEntity} setSimEntity={setSimEntity}
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId}
                             meetings={meetings} surveys={surveys} pdfs={pdfs}
+                            contacts={simContacts}
+                            selectedContactId={simContactId}
+                            setSelectedContactId={setSimContactId}
                             resolvedPreview={(tmpl, vars, isDark) => {
                                 const activeStyle = styleId !== 'none'
                                     ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))

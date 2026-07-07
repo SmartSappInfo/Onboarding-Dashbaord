@@ -44,6 +44,9 @@ interface SimulationStudioProps {
     pdfs?: PDFForm[];
     resolvedPreview: (tmpl: MessageTemplate, vars: Record<string, unknown>, isDark?: boolean) => string;
     onNextStep?: () => void;
+    contacts?: any[];
+    selectedContactId?: string;
+    setSelectedContactId?: (val: string) => void;
 }
 
 /**
@@ -121,7 +124,10 @@ export function SimulationStudio({
     surveys,
     pdfs,
     resolvedPreview,
-    onNextStep
+    onNextStep,
+    contacts,
+    selectedContactId,
+    setSelectedContactId
 }: SimulationStudioProps) {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
@@ -191,15 +197,32 @@ export function SimulationStudio({
                             </SelectContent>
                         </Select>
                         {simEntity === 'School' ? (
-                            <EntityCombobox
-                                value={simRecordId}
-                                onChange={setSimRecordId}
-                                valueKey="id"
-                                noneLabel="Select Instance..."
-                                noneValue="none"
-                                placeholder="Pick Record..."
-                                className="h-10 w-[200px] text-xs"
-                            />
+                            <div className="flex items-center gap-3">
+                                <EntityCombobox
+                                    value={simRecordId}
+                                    onChange={setSimRecordId}
+                                    valueKey="id"
+                                    noneLabel="Select Instance..."
+                                    noneValue="none"
+                                    placeholder="Pick Record..."
+                                    className="h-10 w-[200px] text-xs"
+                                />
+                                {simRecordId !== 'none' && contacts && contacts.length > 0 && setSelectedContactId && (
+                                    <Select value={selectedContactId || 'none'} onValueChange={setSelectedContactId}>
+                                        <SelectTrigger className="h-10 w-[180px] rounded-xl bg-muted/20 border-none font-semibold text-[10px] ">
+                                            <SelectValue placeholder="All Contacts (Fallback)..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="none">All Contacts (Fallback)</SelectItem>
+                                            {contacts.map((c: any) => (
+                                                <SelectItem key={c.email || c.name || Math.random().toString()} value={c.email || c.name || ''}>
+                                                    {c.name || 'Unnamed'} ({c.typeLabel || c.typeKey || 'Contact'})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
                         ) : simEntity !== 'none' && (
                             <Select value={simRecordId} onValueChange={setSimRecordId}>
                                 <SelectTrigger className="h-10 w-[200px] rounded-xl bg-muted/20 border-none font-bold text-xs">
