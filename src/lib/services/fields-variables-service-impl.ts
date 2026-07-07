@@ -51,6 +51,14 @@ export class FieldsVariablesService {
    */
   static async getVariables(params: GetVariablesParams): Promise<UnifiedVariable[]> {
     const variables: UnifiedVariable[] = [];
+    const keysSet = new Set<string>();
+
+    const safePush = (v: UnifiedVariable) => {
+      if (!keysSet.has(v.key)) {
+        keysSet.add(v.key);
+        variables.push(v);
+      }
+    };
 
     // 1. Fetch Workspace & Org Details
     let contactScope: 'institution' | 'family' | 'person' = 'institution';
@@ -108,7 +116,7 @@ export class FieldsVariablesService {
         label = label.replace(/Entity/g, singularTerm).replace(/entity/g, singularTerm.toLowerCase());
       }
 
-      variables.push({
+      safePush({
         key: v.name,
         label,
         category: isCommon ? 'core' : 'feature',
@@ -128,12 +136,10 @@ export class FieldsVariablesService {
       { category: 'core', dataType: 'string', description: 'Role or type key of the active contact', source: 'static' }
     ];
     
-    variables.push(
-      { key: 'contact_name', label: 'Contact Name', ...coreContacts[0] },
-      { key: 'contact_email', label: 'Contact Email', ...coreContacts[1] },
-      { key: 'contact_phone', label: 'Contact Phone', ...coreContacts[2] },
-      { key: 'contact_role', label: 'Contact Role', ...coreContacts[3] }
-    );
+    safePush({ key: 'contact_name', label: 'Contact Name', ...coreContacts[0] });
+    safePush({ key: 'contact_email', label: 'Contact Email', ...coreContacts[1] });
+    safePush({ key: 'contact_phone', label: 'Contact Phone', ...coreContacts[2] });
+    safePush({ key: 'contact_role', label: 'Contact Role', ...coreContacts[3] });
 
     // 4. Load Specific Contact Roles (Category: contact_specific)
     try {
@@ -146,7 +152,7 @@ export class FieldsVariablesService {
       uniqueKeys.forEach((key) => {
         const titleCaseKey = key.charAt(0).toUpperCase() + key.slice(1);
         
-        variables.push({
+        safePush({
           key: `contact_name_${key}`,
           label: `${titleCaseKey} Contact Name`,
           category: 'contact_specific',
@@ -154,7 +160,7 @@ export class FieldsVariablesService {
           description: `Full name of the designated ${key} contact`,
           source: 'contact_role',
         });
-        variables.push({
+        safePush({
           key: `contact_email_${key}`,
           label: `${titleCaseKey} Contact Email`,
           category: 'contact_specific',
@@ -162,7 +168,7 @@ export class FieldsVariablesService {
           description: `Email address of the designated ${key} contact`,
           source: 'contact_role',
         });
-        variables.push({
+        safePush({
           key: `contact_phone_${key}`,
           label: `${titleCaseKey} Contact Phone`,
           category: 'contact_specific',
@@ -170,7 +176,7 @@ export class FieldsVariablesService {
           description: `Phone number of the designated ${key} contact`,
           source: 'contact_role',
         });
-        variables.push({
+        safePush({
           key: `contact_role_${key}`,
           label: `${titleCaseKey} Contact Role`,
           category: 'contact_specific',
@@ -205,7 +211,7 @@ export class FieldsVariablesService {
         const isNative = !!field.isNative;
         const isIndustry = !!field.industryOrigin && field.industryOrigin !== 'common';
 
-        variables.push({
+        safePush({
           key: field.variableName,
           label: field.label || field.name,
           category: isNative || isIndustry ? 'industry' : 'custom',
@@ -256,7 +262,7 @@ export class FieldsVariablesService {
           const variable = doc.data();
           if (!variable || !variable.name) return;
 
-          variables.push({
+          safePush({
             key: variable.name,
             label: variable.label || variable.name,
             category: 'feature',
