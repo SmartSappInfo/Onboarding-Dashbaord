@@ -90,6 +90,11 @@ service cloud.firestore {
       allow write: if isSystemAdmin();
     }
 
+    match /system_settings/industries_lifecycle {
+      allow read: if isAuthorized();
+      allow write: if isSystemAdmin();
+    }
+
     match /learning_signals/{signalId} {
       allow read, write: if false;
     }
