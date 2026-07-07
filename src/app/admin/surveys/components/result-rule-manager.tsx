@@ -10,12 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap } from 'lucide-react';
 import type { SurveyResultPage, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
@@ -28,7 +27,7 @@ function SortableRuleItem({
     remove, 
     profiles, 
     automations, 
-    surveyId 
+    _surveyId 
 }: { 
     id: string; 
     index: number; 
@@ -36,7 +35,7 @@ function SortableRuleItem({
     remove: (i: number) => void; 
     profiles?: SenderProfile[]; 
     automations?: SurveyAutomationOption[]; 
-    surveyId?: string; 
+    _surveyId?: string; 
 }) {
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -569,7 +568,7 @@ export default function ResultRuleManager() {
                                         remove={remove} 
                                         profiles={profiles || []}
                                         automations={automations || []}
-                                        surveyId={surveyId}
+                                        _surveyId={surveyId}
                                     />
                                 ))}
                             </div>
