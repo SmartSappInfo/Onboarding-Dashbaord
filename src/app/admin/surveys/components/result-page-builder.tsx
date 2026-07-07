@@ -10,7 +10,8 @@ import {
     Plus, Trash2, Layout, GripVertical, AlignLeft, AlignCenter, AlignRight, 
     Image as ImageIcon, Video, AudioWaveform, Quote, Eye, Copy, 
     ArrowRight, ArrowUp, ArrowDown, PlusCircle, Bold, Italic, Underline,
-    List, ListOrdered, AlignJustify, Sparkles, Settings, X
+    List, ListOrdered, AlignJustify, Sparkles, Settings, X,
+    Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -567,7 +568,7 @@ function SortableResultBlock({
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "relative group rounded-3xl border transition-all duration-300 overflow-hidden cursor-pointer",
+                "relative group rounded-3xl border transition-all duration-300 cursor-pointer",
                 isSelected 
                     ? "border-primary bg-card/90 shadow-lg ring-1 ring-primary/20" 
                     : "border-border hover:border-primary/30 bg-card/30"
@@ -676,8 +677,9 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
             newBlock.url = '';
         }
 
-        insert(insertionIndex, newBlock);
-        setSelectedBlockIdx(insertionIndex);
+        const idx = selectedBlockIdx !== null ? insertionIndex : blocks.length;
+        insert(idx, newBlock);
+        setSelectedBlockIdx(idx);
     };
 
     const duplicateBlock = (index: number) => {
@@ -730,41 +732,7 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
             {/* Split Screen Layout */}
             <div className="flex flex-col xl:flex-row gap-6 items-start">
                 
-                {/* 1. Left Canvas (WYSIWYG layout) */}
-                <div className="flex-1 w-full space-y-6 min-h-[400px]">
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-6">
-                                {blocks.map((block, bIndex) => (
-                                    <SortableResultBlock 
-                                        key={block.id}
-                                        id={block.id}
-                                        index={bIndex}
-                                        pageIndex={pageIndex}
-                                        block={block as SurveyResultBlock}
-                                        remove={removeBlock}
-                                        swap={swapBlocks}
-                                        duplicate={duplicateBlock}
-                                        requestAddBlock={requestAddBlock}
-                                        isSelected={selectedBlockIdx === bIndex}
-                                        onSelect={() => setSelectedBlockIdx(bIndex)}
-                                    />
-                                ))}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-
-                    {blocks.length === 0 && (
-                        <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10">
-                            <p className="text-sm text-muted-foreground mb-4 font-semibold italic">This page has no content yet.</p>
-                            <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
-                            </Button>
-                        </div>
-                    )}
-                </div>
-
-                {/* 2. Right Properties Sidebar */}
+                {/* 1. Left Properties Sidebar */}
                 <Card className="w-full xl:w-[320px] shrink-0 border bg-card shadow-sm rounded-[1.5rem] overflow-hidden self-start">
                     <CardHeader className="py-3.5 px-4 border-b bg-muted/10 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -815,15 +783,84 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
                                 <BlockInspector pageIndex={pageIndex} blockIndex={selectedBlockIdx} />
                             </div>
                         ) : (
-                            <div className="py-16 text-center text-muted-foreground flex flex-col items-center justify-center gap-3">
-                                <Layout className="h-8 w-8 opacity-30 text-primary animate-pulse" />
-                                <p className="text-xs font-semibold leading-relaxed max-w-[200px] mx-auto text-muted-foreground/80">
-                                    Click any block on the left canvas to customize its settings.
-                                </p>
+                            <div className="space-y-6">
+                                <div className="text-center py-4 flex flex-col items-center justify-center gap-2 border-b">
+                                    <Layout className="h-6 w-6 opacity-35 text-primary animate-pulse" />
+                                    <p className="text-xs font-semibold leading-relaxed text-muted-foreground/80 max-w-[220px] mx-auto">
+                                        Click any block on the right canvas to customize, or add a new block:
+                                    </p>
+                                </div>
+                                <div className="space-y-3 pt-2">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
+                                        Add Content Block
+                                    </span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {([
+                                            { type: 'heading', label: 'Heading', icon: Heading1 },
+                                            { type: 'text', label: 'Text Block', icon: Type },
+                                            { type: 'list', label: 'List View', icon: List },
+                                            { type: 'image', label: 'Image', icon: ImageIcon },
+                                            { type: 'video', label: 'Video', icon: Video },
+                                            { type: 'audio', label: 'Audio', icon: AudioWaveform },
+                                            { type: 'button', label: 'Button', icon: MousePointer2 },
+                                            { type: 'quote', label: 'Quote', icon: Quote },
+                                            { type: 'divider', label: 'Divider', icon: Square },
+                                            { type: 'score-card', label: 'Score Card', icon: TrophyIcon },
+                                        ] as const).map(({ type, label, icon: Icon }) => (
+                                            <Button
+                                                key={type}
+                                                variant="outline"
+                                                size="sm"
+                                                type="button"
+                                                className="h-auto py-3 px-2 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs font-bold shadow-sm"
+                                                onClick={() => handleBlockSelect(type)}
+                                            >
+                                                <div className="p-1 bg-primary/10 rounded-lg shrink-0">
+                                                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                </div>
+                                                <span className="text-[9px] tracking-tight text-foreground/80">{label}</span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </CardContent>
                 </Card>
+
+                {/* 2. Right Canvas (WYSIWYG layout) */}
+                <div className="flex-1 w-full space-y-6 min-h-[400px]">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                            <div className="space-y-6">
+                                {blocks.map((block, bIndex) => (
+                                    <SortableResultBlock 
+                                        key={block.id}
+                                        id={block.id}
+                                        index={bIndex}
+                                        pageIndex={pageIndex}
+                                        block={block as SurveyResultBlock}
+                                        remove={removeBlock}
+                                        swap={swapBlocks}
+                                        duplicate={duplicateBlock}
+                                        requestAddBlock={requestAddBlock}
+                                        isSelected={selectedBlockIdx === bIndex}
+                                        onSelect={() => setSelectedBlockIdx(bIndex)}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+
+                    {blocks.length === 0 && (
+                        <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10">
+                            <p className="text-sm text-muted-foreground mb-4 font-semibold italic">This page has no content yet.</p>
+                            <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
+                            </Button>
+                        </div>
+                    )}
+                </div>
 
             </div>
 

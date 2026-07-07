@@ -16,14 +16,11 @@ import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/Template
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { SenderProfile } from '@/lib/types';
-import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 export function MinimalRespondentMessage() {
     const { control, watch, setValue } = useFormContext();
-    const params = useParams();
-    const surveyId = params?.id as string;
     const firestore = useFirestore();
 
     const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms', templateId?: string } | null>(null);
@@ -287,15 +284,6 @@ export function MinimalThankYouPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="confetti-toggle" className="text-xs font-semibold text-slate-500">Confetti</Label>
-                            <Switch 
-                                id="confetti-toggle" 
-                                checked={!!watch('thankYouConfettiEnabled')} 
-                                onCheckedChange={(val) => setValue('thankYouConfettiEnabled', val, { shouldDirty: true })} 
-                                className="scale-90 data-[state=checked]:bg-amber-500"
-                            />
-                        </div>
                         <div className="flex items-center gap-2">
                             <Label htmlFor="redirect-toggle" className="text-xs font-semibold text-slate-500">Redirect URL</Label>
                             <Switch 
