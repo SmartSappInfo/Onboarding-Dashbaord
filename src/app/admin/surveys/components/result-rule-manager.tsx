@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap } from 'lucide-react';
 import type { SurveyResultPage, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -20,11 +21,27 @@ import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
-function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, profiles?: SenderProfile[], surveyId?: string }) {
+function SortableRuleItem({ 
+    id, 
+    index, 
+    pages, 
+    remove, 
+    profiles, 
+    automations, 
+    surveyId 
+}: { 
+    id: string; 
+    index: number; 
+    pages: SurveyResultPage[]; 
+    remove: (i: number) => void; 
+    profiles?: SenderProfile[]; 
+    automations?: SurveyAutomationOption[]; 
+    surveyId?: string; 
+}) {
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
-    const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms', templateId?: string } | null>(null);
+    const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms' | 'whatsapp'; templateId?: string } | null>(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -33,10 +50,16 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
 
     const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
     const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
+    const whatsappProfiles = profiles?.filter(p => p.channel === 'whatsapp' && p.isActive);
 
     const selectedEmailId = watch(`resultRules.${index}.emailTemplateId`);
     const selectedSmsId = watch(`resultRules.${index}.smsTemplateId`);
+    const selectedWhatsappId = watch(`resultRules.${index}.whatsappTemplateId`);
     const currentRulePageId = watch(`resultRules.${index}.pageId`);
+
+    const tagEnabled = watch(`resultRules.${index}.tagEnabled`);
+    const automationEnabled = watch(`resultRules.${index}.automationEnabled`);
+    const messagingEnabled = watch(`resultRules.${index}.messagingEnabled`);
 
     return (
         <div ref={setNodeRef} style={style} className="flex flex-col gap-4 p-6 border-2 rounded-2xl bg-card group relative hover:border-primary/30 transition-all shadow-sm">
@@ -119,148 +142,326 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
 
             <div className="pt-4 border-t border-dashed space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-2 font-semibold ">Outcome Automations</Badge>
-                    <p className="text-[10px] font-bold text-muted-foreground tracking-tighter">Messages sent to respondent</p>
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-2 font-semibold">Outcome Actions</Badge>
+                    <p className="text-[10px] font-bold text-muted-foreground tracking-tighter">Configure tag, workflow, and message automations</p>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Email Automation */}
-                    <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-blue-600">
-                                <Mail className="h-4 w-4" />
-                                <span className="text-[10px] font-semibold ">Email Completion</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {selectedEmailId && selectedEmailId !== 'none' && (
-                                    <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100"
-                                        onClick={() => setActiveTemplateConfig({ channel: 'email', templateId: selectedEmailId })}
-                                    >
-                                        <Pencil className="h-3 w-3" /> Edit
-                                    </Button>
-                                )}
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100"
-                                    onClick={() => setActiveTemplateConfig({ channel: 'email' })}
-                                >
-                                    <PlusCircle className="h-3 w-3" /> New
-                                </Button>
-                            </div>
+
+                {/* Toggles Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Tag Toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
+                        <div className="space-y-0.5">
+                            <Label htmlFor={`tag-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                                <Tag className="h-3.5 w-3.5 text-primary/70" /> Apply Tag
+                            </Label>
+                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Add tag to contact</p>
                         </div>
-                        <div className="space-y-3">
-                            <Controller
-                                name={`resultRules.${index}.emailTemplateId`}
-                                control={control}
-                                render={({ field }) => (
-                                    <MessagingTemplateSelector 
-                                        category="surveys"
-                                        recipientType="respondent"
-                                        channel="email"
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder="Choose email blueprint..."
-                                        compact
-                                    />
-                                )}
-                            />
-                            {selectedEmailId && selectedEmailId !== 'none' && (
-                                <Controller
-                                    name={`resultRules.${index}.emailSenderProfileId`}
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-card border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" />
-                                                <SelectValue placeholder="Resolved From Identity" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
-                                                {emailProfiles?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            )}
-                        </div>
+                        <Switch 
+                            id={`tag-toggle-${index}`}
+                            checked={!!tagEnabled} 
+                            onCheckedChange={(val) => {
+                                setValue(`resultRules.${index}.tagEnabled`, val, { shouldDirty: true });
+                                if (!val) setValue(`resultRules.${index}.applyTag`, '', { shouldDirty: true });
+                            }} 
+                            className="scale-90 data-[state=checked]:bg-primary"
+                        />
                     </div>
 
-                    {/* SMS Automation */}
-                    <div className="p-4 rounded-xl border bg-orange-50/30 border-orange-100 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-orange-600">
-                                <Smartphone className="h-4 w-4" />
-                                <span className="text-[10px] font-semibold ">SMS Completion</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {selectedSmsId && selectedSmsId !== 'none' && (
-                                    <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100"
-                                        onClick={() => setActiveTemplateConfig({ channel: 'sms', templateId: selectedSmsId })}
-                                    >
-                                        <Pencil className="h-3 w-3" /> Edit
-                                    </Button>
-                                )}
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100"
-                                    onClick={() => setActiveTemplateConfig({ channel: 'sms' })}
-                                >
-                                    <PlusCircle className="h-3 w-3" /> New
-                                </Button>
-                            </div>
+                    {/* Automation Toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
+                        <div className="space-y-0.5">
+                            <Label htmlFor={`auto-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                                <Zap className="h-3.5 w-3.5 text-primary/70" /> Trigger Automation
+                            </Label>
+                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Run workflow on match</p>
                         </div>
-                        <div className="space-y-3">
+                        <Switch 
+                            id={`auto-toggle-${index}`}
+                            checked={!!automationEnabled} 
+                            onCheckedChange={(val) => {
+                                setValue(`resultRules.${index}.automationEnabled`, val, { shouldDirty: true });
+                                if (!val) setValue(`resultRules.${index}.triggerAutomationId`, '', { shouldDirty: true });
+                            }} 
+                            className="scale-90 data-[state=checked]:bg-primary"
+                        />
+                    </div>
+
+                    {/* Messaging Toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
+                        <div className="space-y-0.5">
+                            <Label htmlFor={`msg-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                                <Mail className="h-3.5 w-3.5 text-primary/70" /> Respondent Messages
+                            </Label>
+                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Send auto-response blueprints</p>
+                        </div>
+                        <Switch 
+                            id={`msg-toggle-${index}`}
+                            checked={!!messagingEnabled} 
+                            onCheckedChange={(val) => {
+                                setValue(`resultRules.${index}.messagingEnabled`, val, { shouldDirty: true });
+                                if (!val) {
+                                    setValue(`resultRules.${index}.emailTemplateId`, '', { shouldDirty: true });
+                                    setValue(`resultRules.${index}.smsTemplateId`, '', { shouldDirty: true });
+                                    setValue(`resultRules.${index}.whatsappTemplateId`, '', { shouldDirty: true });
+                                }
+                            }} 
+                            className="scale-90 data-[state=checked]:bg-primary"
+                        />
+                    </div>
+                </div>
+
+                {/* Configurations */}
+                <div className="space-y-4">
+                    {/* Tag Configuration */}
+                    {tagEnabled && (
+                        <div className="space-y-2 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            <Label htmlFor={`tag-input-${index}`} className="text-xs font-bold text-slate-700">Contact Tag to Apply</Label>
+                            <Input 
+                                id={`tag-input-${index}`}
+                                placeholder="e.g. Qualified_Lead" 
+                                {...register(`resultRules.${index}.applyTag`)} 
+                                className="h-10 rounded-xl bg-background border border-border/50 shadow-sm focus:ring-1 focus:ring-primary/20"
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Applied to the contact when their score falls in this range.</p>
+                        </div>
+                    )}
+
+                    {/* Automation Configuration */}
+                    {automationEnabled && (
+                        <div className="space-y-2 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            <Label className="text-xs font-bold text-slate-700">Select Workspace Automation Workflow</Label>
                             <Controller
-                                name={`resultRules.${index}.smsTemplateId`}
+                                name={`resultRules.${index}.triggerAutomationId`}
                                 control={control}
                                 render={({ field }) => (
-                                    <MessagingTemplateSelector 
-                                        category="surveys"
-                                        recipientType="respondent"
-                                        channel="sms"
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder="Choose SMS blueprint..."
-                                        compact
-                                    />
+                                    <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                        <SelectTrigger className="h-10 bg-background border border-border/50 rounded-xl">
+                                            <SelectValue placeholder="Choose automation workflow..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="none">No Automation</SelectItem>
+                                            {(automations || []).map((a) => (
+                                                <SelectItem key={a.id} value={a.id}>{a.name}{a.status === 'draft' || !a.isActive ? ' (Draft)' : ''}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 )}
                             />
-                            {selectedSmsId && selectedSmsId !== 'none' && (
-                                <Controller
-                                    name={`resultRules.${index}.smsSenderProfileId`}
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-card border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" />
-                                                <SelectValue placeholder="Resolved From Identity" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
-                                                {smsProfiles?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                />
-                            )}
+                            <p className="text-[9px] text-muted-foreground font-medium">Executes the chosen workflow automatically on outcome match.</p>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Messaging Configuration */}
+                    {messagingEnabled && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            {/* Email Automation */}
+                            <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2 text-blue-600">
+                                        <Mail className="h-4 w-4" />
+                                        <span className="text-[10px] font-semibold ">Email Completion</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {selectedEmailId && selectedEmailId !== 'none' && (
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100 active:scale-[0.98] transition-transform"
+                                                onClick={() => setActiveTemplateConfig({ channel: 'email', templateId: selectedEmailId })}
+                                            >
+                                                <Pencil className="h-3 w-3" /> Edit
+                                            </Button>
+                                        )}
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100 active:scale-[0.98] transition-transform"
+                                            onClick={() => setActiveTemplateConfig({ channel: 'email' })}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <Controller
+                                        name={`resultRules.${index}.emailTemplateId`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MessagingTemplateSelector 
+                                                category="surveys"
+                                                recipientType="respondent"
+                                                channel="email"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Choose email blueprint..."
+                                                compact
+                                            />
+                                        )}
+                                    />
+                                    {selectedEmailId && selectedEmailId !== 'none' && (
+                                        <Controller
+                                            name={`resultRules.${index}.emailSenderProfileId`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-9 bg-card border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        <SelectValue placeholder="Resolved From Identity" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                        {emailProfiles?.map(p => (
+                                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* SMS Automation */}
+                            <div className="p-4 rounded-xl border bg-orange-50/30 border-orange-100 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2 text-orange-600">
+                                        <Smartphone className="h-4 w-4" />
+                                        <span className="text-[10px] font-semibold ">SMS Completion</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {selectedSmsId && selectedSmsId !== 'none' && (
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100 active:scale-[0.98] transition-transform"
+                                                onClick={() => setActiveTemplateConfig({ channel: 'sms', templateId: selectedSmsId })}
+                                            >
+                                                <Pencil className="h-3 w-3" /> Edit
+                                            </Button>
+                                        )}
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100 active:scale-[0.98] transition-transform"
+                                            onClick={() => setActiveTemplateConfig({ channel: 'sms' })}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <Controller
+                                        name={`resultRules.${index}.smsTemplateId`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MessagingTemplateSelector 
+                                                category="surveys"
+                                                recipientType="respondent"
+                                                channel="sms"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Choose SMS blueprint..."
+                                                compact
+                                            />
+                                        )}
+                                    />
+                                    {selectedSmsId && selectedSmsId !== 'none' && (
+                                        <Controller
+                                            name={`resultRules.${index}.smsSenderProfileId`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-9 bg-card border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        <SelectValue placeholder="Resolved From Identity" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                        {smsProfiles?.map(p => (
+                                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* WhatsApp Automation */}
+                            <div className="p-4 rounded-xl border bg-emerald-50/30 border-emerald-100 space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2 text-emerald-600">
+                                        <Smartphone className="h-4 w-4" />
+                                        <span className="text-[10px] font-semibold ">WhatsApp Completion</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {selectedWhatsappId && selectedWhatsappId !== 'none' && (
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 gap-1 rounded-lg hover:bg-emerald-100 active:scale-[0.98] transition-transform"
+                                                onClick={() => setActiveTemplateConfig({ channel: 'whatsapp', templateId: selectedWhatsappId })}
+                                            >
+                                                <Pencil className="h-3 w-3" /> Edit
+                                            </Button>
+                                        )}
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 gap-1 rounded-lg hover:bg-emerald-100 active:scale-[0.98] transition-transform"
+                                            onClick={() => setActiveTemplateConfig({ channel: 'whatsapp' })}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <Controller
+                                        name={`resultRules.${index}.whatsappTemplateId`}
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MessagingTemplateSelector 
+                                                category="surveys"
+                                                recipientType="respondent"
+                                                channel="whatsapp"
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder="Choose WhatsApp blueprint..."
+                                                compact
+                                            />
+                                        )}
+                                    />
+                                    {selectedWhatsappId && selectedWhatsappId !== 'none' && (
+                                        <Controller
+                                            name={`resultRules.${index}.whatsappSenderProfileId`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-9 bg-card border-emerald-200 text-[10px] font-bold text-emerald-700/60 flex items-center gap-2">
+                                                        <ShieldCheck className="h-3 w-3" />
+                                                        <SelectValue placeholder="Resolved From Identity" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                        {whatsappProfiles?.map(p => (
+                                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -277,14 +478,23 @@ function SortableRuleItem({ id, index, pages, remove, profiles, surveyId }: { id
                     onCreated={(template) => {
                         if (activeTemplateConfig.channel === 'email') {
                             setValue(`resultRules.${index}.emailTemplateId`, template.id, { shouldDirty: true });
-                        } else {
+                        } else if (activeTemplateConfig.channel === 'sms') {
                             setValue(`resultRules.${index}.smsTemplateId`, template.id, { shouldDirty: true });
+                        } else {
+                            setValue(`resultRules.${index}.whatsappTemplateId`, template.id, { shouldDirty: true });
                         }
                     }}
                 />
             )}
         </div>
     );
+}
+
+interface SurveyAutomationOption {
+    id: string;
+    name: string;
+    isActive?: boolean;
+    status?: 'draft' | 'published' | 'archived';
 }
 
 export default function ResultRuleManager() {
@@ -299,7 +509,7 @@ export default function ResultRuleManager() {
     const surveyId = params?.id as string;
     const resultPages = watch('resultPages') || [];
     const sensors = useSensors(useSensor(PointerSensor));
-    const { activeOrganization } = useWorkspace();
+    const { activeOrganization, activeWorkspaceId } = useWorkspace();
 
     const profilesQuery = useMemoFirebase(() => {
         const orgId = activeOrganization?.id;
@@ -312,6 +522,17 @@ export default function ResultRuleManager() {
     }, [firestore, activeOrganization?.id]);
 
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
+
+    const automationsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(
+            collection(firestore, 'automations'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('name', 'asc')
+        );
+    }, [firestore, activeWorkspaceId]);
+
+    const { data: automations } = useCollection<SurveyAutomationOption>(automationsQuery);
 
     const onDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -347,6 +568,7 @@ export default function ResultRuleManager() {
                                         pages={resultPages} 
                                         remove={remove} 
                                         profiles={profiles || []}
+                                        automations={automations || []}
                                         surveyId={surveyId}
                                     />
                                 ))}
