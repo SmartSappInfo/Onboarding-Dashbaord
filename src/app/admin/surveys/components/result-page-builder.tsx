@@ -568,10 +568,12 @@ function SortableResultBlock({
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "relative group rounded-3xl border transition-all duration-300 cursor-pointer",
+                "relative group rounded-[1.5rem] border transition-all duration-200 cursor-pointer",
                 isSelected 
-                    ? "border-primary bg-card/90 shadow-lg ring-1 ring-primary/20" 
-                    : "border-border hover:border-primary/30 bg-card/30"
+                    ? "border-primary bg-card/90 shadow-md ring-1 ring-primary/10" 
+                    : isHovered 
+                    ? "border-border bg-card/30 shadow-sm" 
+                    : "border-transparent bg-transparent"
             )}
             onClick={onSelect}
             onMouseEnter={() => setIsHovered(true)}
@@ -829,37 +831,39 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
                 </Card>
 
                 {/* 2. Right Canvas (WYSIWYG layout) */}
-                <div className="flex-1 w-full space-y-6 min-h-[400px]">
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                            <div className="space-y-6">
-                                {blocks.map((block, bIndex) => (
-                                    <SortableResultBlock 
-                                        key={block.id}
-                                        id={block.id}
-                                        index={bIndex}
-                                        pageIndex={pageIndex}
-                                        block={block as SurveyResultBlock}
-                                        remove={removeBlock}
-                                        swap={swapBlocks}
-                                        duplicate={duplicateBlock}
-                                        requestAddBlock={requestAddBlock}
-                                        isSelected={selectedBlockIdx === bIndex}
-                                        onSelect={() => setSelectedBlockIdx(bIndex)}
-                                    />
-                                ))}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
+                <div className="flex-1 w-full min-h-[400px]">
+                    <div className="border bg-background dark:bg-slate-950 rounded-[2rem] shadow-sm p-6 sm:p-10 min-h-[500px] border-border/80">
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-4">
+                                    {blocks.map((block, bIndex) => (
+                                        <SortableResultBlock 
+                                            key={block.id}
+                                            id={block.id}
+                                            index={bIndex}
+                                            pageIndex={pageIndex}
+                                            block={block as SurveyResultBlock}
+                                            remove={removeBlock}
+                                            swap={swapBlocks}
+                                            duplicate={duplicateBlock}
+                                            requestAddBlock={requestAddBlock}
+                                            isSelected={selectedBlockIdx === bIndex}
+                                            onSelect={() => setSelectedBlockIdx(bIndex)}
+                                        />
+                                    ))}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
 
-                    {blocks.length === 0 && (
-                        <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10">
-                            <p className="text-sm text-muted-foreground mb-4 font-semibold italic">This page has no content yet.</p>
-                            <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold">
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
-                            </Button>
-                        </div>
-                    )}
+                        {blocks.length === 0 && (
+                            <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10">
+                                <p className="text-sm text-muted-foreground mb-4 font-semibold italic">This page has no content yet.</p>
+                                <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
             </div>
