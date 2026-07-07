@@ -273,7 +273,7 @@ export function MinimalThankYouPage() {
     return (
         <Card className="rounded-2xl border border-border bg-card overflow-hidden">
             <CardHeader className="bg-muted/10 border-b py-5 px-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner">
                             <FileText className="h-5 w-5 text-emerald-600" />
@@ -283,12 +283,17 @@ export function MinimalThankYouPage() {
                             <CardDescription className="text-xs">Customize what respondents see or where they go after submitting.</CardDescription>
                         </div>
                     </div>
-                    <Switch 
-                        id="redirect-toggle" 
-                        checked={!!redirectEnabled} 
-                        onCheckedChange={(val) => setValue('thankYouRedirectEnabled', val, { shouldDirty: true })} 
-                        className="scale-125 data-[state=checked]:bg-emerald-500"
-                    />
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="redirect-toggle" className="text-xs font-semibold text-slate-500">Redirect URL</Label>
+                            <Switch 
+                                id="redirect-toggle" 
+                                checked={!!redirectEnabled} 
+                                onCheckedChange={(val) => setValue('thankYouRedirectEnabled', val, { shouldDirty: true })} 
+                                className="scale-90 data-[state=checked]:bg-emerald-500"
+                            />
+                        </div>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
