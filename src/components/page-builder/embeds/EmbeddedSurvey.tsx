@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ClipboardList } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface EmbeddedSurveyProps {
   surveyId: string;
@@ -16,6 +17,8 @@ interface EmbeddedSurveyProps {
   showDescription?: boolean;
   descriptionText?: string;
   buttonText?: string;
+  buttonStyle?: 'primary' | 'secondary' | 'glass' | 'glow';
+  primaryColor?: string;
 }
 
 export function EmbeddedSurvey({ 
@@ -29,7 +32,9 @@ export function EmbeddedSurvey({
   headerText = 'Survey',
   showDescription = true,
   descriptionText = 'Complete our brief survey to continue.',
-  buttonText = 'Start Survey'
+  buttonText = 'Start Survey',
+  buttonStyle = 'primary',
+  primaryColor = '#3B5FFF'
 }: EmbeddedSurveyProps) {
   const [size, setSize] = useState({ height: 600, width: 512 });
 
@@ -71,6 +76,12 @@ export function EmbeddedSurvey({
     );
   }
 
+  const isOutline = buttonStyle === 'secondary';
+  const resolvedPrimaryColor = primaryColor || '#3B5FFF';
+  const customButtonStyle: React.CSSProperties = isOutline
+    ? { borderColor: resolvedPrimaryColor, color: resolvedPrimaryColor, borderWidth: '2px', backgroundColor: 'transparent' }
+    : { backgroundColor: resolvedPrimaryColor, color: '#ffffff' };
+
   return (
     <div className="text-center p-12 space-y-6">
       {showIcon && (
@@ -86,7 +97,12 @@ export function EmbeddedSurvey({
       )}
       <Button
         onClick={() => window.open(`/surveys/${surveyId}${pageId ? `?ref=${pageId}` : ''}`, '_blank', 'noopener,noreferrer')}
-        className="w-full h-14 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200"
+        className={cn(
+          "w-full h-14 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200 gap-2 flex items-center justify-center",
+          buttonStyle === 'glass' && 'backdrop-blur-md border border-white/30',
+          buttonStyle === 'glow' && 'shadow-[0_0_20px_rgba(59,95,255,0.3)]',
+        )}
+        style={customButtonStyle}
       >
         {buttonText}
         <ArrowRight className="ml-2 w-5 h-5" />

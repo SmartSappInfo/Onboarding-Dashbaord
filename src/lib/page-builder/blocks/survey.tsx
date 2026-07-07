@@ -2,6 +2,7 @@ import React from 'react';
 import { z } from 'zod';
 import { ListChecks, ArrowRight } from 'lucide-react';
 import { EmbeddedSurvey } from '@/components/page-builder/embeds/EmbeddedSurvey';
+import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
 
 const schema = z.object({ 
@@ -12,7 +13,8 @@ const schema = z.object({
   headerText: z.string().default('Survey'),
   showDescription: z.boolean().default(true),
   descriptionText: z.string().default('Complete our brief survey to continue.'),
-  buttonText: z.string().default('Start Survey')
+  buttonText: z.string().default('Start Survey'),
+  buttonStyle: z.enum(['primary', 'secondary', 'glass', 'glow']).default('primary')
 }).catchall(z.unknown());
 
 type SurveyBlockProps = z.infer<typeof schema>;
@@ -38,7 +40,18 @@ registerBlock({
     { kind: 'text', key: 'headerText', label: 'Header Text' },
     { kind: 'boolean', key: 'showDescription', label: 'Show Description' },
     { kind: 'text', key: 'descriptionText', label: 'Description Text' },
-    { kind: 'text', key: 'buttonText', label: 'Button Label' }
+    { kind: 'text', key: 'buttonText', label: 'Button Label' },
+    { 
+      kind: 'select', 
+      key: 'buttonStyle', 
+      label: 'Button Style', 
+      options: [
+        { value: 'primary', label: 'Primary (Solid)' },
+        { value: 'secondary', label: 'Secondary (Outline)' },
+        { value: 'glass', label: 'Glassmorphism' },
+        { value: 'glow', label: 'Glow Pulse' }
+      ] 
+    }
   ],
   defaults: schema.parse({}),
   schema,
@@ -56,6 +69,8 @@ registerBlock({
             showDescription={props.showDescription}
             descriptionText={props.descriptionText}
             buttonText={props.buttonText}
+            buttonStyle={props.buttonStyle}
+            primaryColor={ctx.theme.colors.primary}
           />
         );
       }
@@ -65,6 +80,12 @@ registerBlock({
     const survey = ctx.resources.surveys.find((s) => s.id === props.surveyId);
 
     if (props.displayMode === 'button') {
+      const isOutline = props.buttonStyle === 'secondary';
+      const buttonBg = ctx.theme.colors.primary || '#3B5FFF';
+      const style = isOutline
+        ? { borderColor: buttonBg, color: buttonBg, borderWidth: 2, backgroundColor: 'transparent' }
+        : { backgroundColor: buttonBg, color: '#ffffff' };
+
       return (
         <div className="text-center p-12 space-y-6 max-w-md mx-auto bg-white/5 rounded-3xl border border-slate-100/10 shadow-sm select-none">
           {props.showIcon && (
@@ -80,7 +101,12 @@ registerBlock({
           )}
           <button
             type="button"
-            className="w-full h-14 rounded-2xl font-bold text-lg bg-indigo-600 text-white flex items-center justify-center gap-2 cursor-default select-none opacity-90"
+            className={cn(
+              "w-full h-14 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 cursor-default select-none opacity-90 transition-all duration-200",
+              props.buttonStyle === 'glass' && 'backdrop-blur-md border border-white/30',
+              props.buttonStyle === 'glow' && 'shadow-[0_0_20px_rgba(59,95,255,0.3)]',
+            )}
+            style={style}
           >
             {props.buttonText}
             <ArrowRight className="w-5 h-5" />
