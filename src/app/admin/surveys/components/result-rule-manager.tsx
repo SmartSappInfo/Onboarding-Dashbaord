@@ -149,12 +149,9 @@ function SortableRuleItem({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Tag Toggle */}
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
-                        <div className="space-y-0.5">
-                            <Label htmlFor={`tag-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
-                                <Tag className="h-3.5 w-3.5 text-primary/70" /> Apply Tag
-                            </Label>
-                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Add tag to contact</p>
-                        </div>
+                        <Label htmlFor={`tag-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                            <Tag className="h-3.5 w-3.5 text-primary/70" /> Apply Tag
+                        </Label>
                         <Switch 
                             id={`tag-toggle-${index}`}
                             checked={!!tagEnabled} 
@@ -168,12 +165,9 @@ function SortableRuleItem({
 
                     {/* Automation Toggle */}
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
-                        <div className="space-y-0.5">
-                            <Label htmlFor={`auto-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
-                                <Zap className="h-3.5 w-3.5 text-primary/70" /> Trigger Automation
-                            </Label>
-                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Run workflow on match</p>
-                        </div>
+                        <Label htmlFor={`auto-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                            <Zap className="h-3.5 w-3.5 text-primary/70" /> Trigger Automation
+                        </Label>
                         <Switch 
                             id={`auto-toggle-${index}`}
                             checked={!!automationEnabled} 
@@ -187,12 +181,9 @@ function SortableRuleItem({
 
                     {/* Messaging Toggle */}
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
-                        <div className="space-y-0.5">
-                            <Label htmlFor={`msg-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
-                                <Mail className="h-3.5 w-3.5 text-primary/70" /> Respondent Messages
-                            </Label>
-                            <p className="text-[9px] text-muted-foreground leading-none font-medium">Send auto-response blueprints</p>
-                        </div>
+                        <Label htmlFor={`msg-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                            <Mail className="h-3.5 w-3.5 text-primary/70" /> Respondent Messages
+                        </Label>
                         <Switch 
                             id={`msg-toggle-${index}`}
                             checked={!!messagingEnabled} 
