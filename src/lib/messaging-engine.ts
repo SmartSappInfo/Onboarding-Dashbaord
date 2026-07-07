@@ -12,7 +12,7 @@ import { sendEmail, type EmailAttachment } from './resend-service';
 import { sendPushNotification } from './onesignal-service';
 import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
-import { FieldsVariablesService } from './services/fields-variables-service';
+import { FieldsVariablesService } from './services/fields-variables-service-impl';
 import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
 import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';

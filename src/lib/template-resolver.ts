@@ -5,7 +5,7 @@ import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel
 import { renderTemplate } from './template-utils';
 import { getBaseUrl } from './utils/url-helpers';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
-import { FieldsVariablesService } from './services/fields-variables-service';
+import { FieldsVariablesService } from './services/fields-variables-service-impl';
 
 // ---------------------------------------------------------------------------
 // Types

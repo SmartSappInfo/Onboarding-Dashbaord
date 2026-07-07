@@ -1,7 +1,7 @@
 import { adminDb } from '../../firebase-admin';
 import { createDeal, updateDealStageAction, updateDealValueAction, updateDealStatusAction } from '../../../app/actions/deal-actions';
 import type { ExecutionContext } from '../execution-types';
-import { FieldsVariablesService } from '../../services/fields-variables-service';
+import { FieldsVariablesService } from '../../services/fields-variables-service-impl';
 
 export interface DealAutomationActionConfig {
     workspaceId?: string;
