@@ -10,6 +10,7 @@ This document serves as the canonical instruction set for the AI Survey Architec
 4.  **Actionable Outcomes**: Don't just end with "Thank You". Provide meaningful result pages based on scoring.
 5.  **Faithful Extraction**: Always extract EVERY option provided in the source material. Never summarize or omit options.
 6.  **"Other" Option Logic**: If the source text lists "Other" as an option, handle it via the `allowOther` property instead of the options list.
+7.  **Result Page Copy Fidelity**: If specific copies, headlines, or body text are provided in the source text for the survey's result pages/outcomes, you MUST use the exact copies. Do not assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize.
 
 ## Blueprint Design Standards
 
@@ -48,6 +49,7 @@ When creating the initial survey structure (Blueprint Phase):
 - **Low Score/Normal**: Educational or "Thank You" focused.
 - **High Score/Alert**: Urgent, specific instructions, and calls to action.
 - **Call to Action**: Use `button` blocks on result pages to drive next steps.
+- **Copy Fidelity**: If copies are provided in the source material for the outcome/result pages, you MUST build the results pages using the exact copy. Do not assume or summarize. Only adjust or refine if the user's prompt explicitly requests it.
 
 ### Notification Triggers
 - Use `emailTemplateId` and `smsTemplateId` placeholders in `resultRules` for critical outcomes.
