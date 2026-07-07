@@ -1250,23 +1250,75 @@ async function triggerPostSubmissionAutomations(
   if (outcomeId) {
     const outcome = surveyData.resultRules?.find(r => r.id === outcomeId);
     if (outcome) {
-      if (outcome.emailTemplateId && outcome.emailTemplateId !== 'none' && respondentEmail) {
-        await sendMessage({
-          templateId: outcome.emailTemplateId,
-          senderProfileId: outcome.emailSenderProfileId || 'default',
-          recipient: respondentEmail,
-          variables: notificationVars,
-          entityId: entityId || undefined
-        }).catch(console.error);
+      // 2a. Apply Tag
+      const tagEnabled = outcome.tagEnabled ?? (!!outcome.applyTag && outcome.applyTag.trim().length > 0);
+      if (tagEnabled && outcome.applyTag && entityId) {
+        try {
+          const { applyTagsAction } = await import('./tag-actions');
+          await applyTagsAction(
+            entityId,
+            'workspace_entity',
+            [outcome.applyTag],
+            'system-survey-engine',
+            'Survey Outcome Engine'
+          );
+        } catch (err: unknown) {
+          console.error(">>> [NOTIFY] Failed to apply outcome contact tag:", err);
+        }
       }
-      if (outcome.smsTemplateId && outcome.smsTemplateId !== 'none' && respondentPhone) {
-        await sendMessage({
-          templateId: outcome.smsTemplateId,
-          senderProfileId: outcome.smsSenderProfileId || 'default',
-          recipient: respondentPhone,
-          variables: notificationVars,
-          entityId: entityId || undefined
-        }).catch(console.error);
+
+      // 2b. Trigger Automation
+      if (outcome.automationEnabled && outcome.triggerAutomationId && entityId) {
+        try {
+          const { runAutomationById } = await import('./automation-processor');
+          const automationPayload = {
+            entityId,
+            entityName: String(notificationVars.entityName || ''),
+            workspaceId,
+            organizationId,
+            surveyId: surveyData.id,
+            surveyTitle: surveyData.title,
+            submissionId: responseId,
+            assignedUserId: responseData.assignedUserId || null,
+            score: responseData.score || null,
+            source: 'survey_outcome',
+          };
+          await runAutomationById(outcome.triggerAutomationId, automationPayload);
+        } catch (err: unknown) {
+          console.error(">>> [NOTIFY] Failed to trigger outcome automation:", err);
+        }
+      }
+
+      // 2c. Send Messages
+      const messagingEnabled = outcome.messagingEnabled ?? (!!outcome.emailTemplateId || !!outcome.smsTemplateId || !!outcome.whatsappTemplateId);
+      if (messagingEnabled) {
+        if (outcome.emailTemplateId && outcome.emailTemplateId !== 'none' && respondentEmail) {
+          await sendMessage({
+            templateId: outcome.emailTemplateId,
+            senderProfileId: outcome.emailSenderProfileId || 'default',
+            recipient: respondentEmail,
+            variables: notificationVars,
+            entityId: entityId || undefined
+          }).catch(console.error);
+        }
+        if (outcome.smsTemplateId && outcome.smsTemplateId !== 'none' && respondentPhone) {
+          await sendMessage({
+            templateId: outcome.smsTemplateId,
+            senderProfileId: outcome.smsSenderProfileId || 'default',
+            recipient: respondentPhone,
+            variables: notificationVars,
+            entityId: entityId || undefined
+          }).catch(console.error);
+        }
+        if (outcome.whatsappTemplateId && outcome.whatsappTemplateId !== 'none' && respondentPhone) {
+          await sendMessage({
+            templateId: outcome.whatsappTemplateId,
+            senderProfileId: outcome.whatsappSenderProfileId || 'default',
+            recipient: respondentPhone,
+            variables: notificationVars,
+            entityId: entityId || undefined
+          }).catch(console.error);
+        }
       }
     }
   }
