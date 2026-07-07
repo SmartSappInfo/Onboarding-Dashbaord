@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { saveWorkspaceAction } from '@/lib/workspace-actions';
 import { Separator } from '@/components/ui/separator';
@@ -217,35 +218,37 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
                   <Briefcase className="h-4 w-4 text-primary" />
                   <h4 className="text-xs font-semibold">Industry Vertical</h4>
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5" />
-                  <span className="text-[9px] font-bold tracking-wider">Locked</span>
-                </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex items-start gap-4 shadow-sm">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <IndustryIcon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="space-y-1 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    This workspace is configured for{' '}
-                    <span className="text-primary">
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="p-2 bg-amber-500/10 text-amber-500 rounded-lg cursor-help shrink-0 active:scale-[0.9] transition-all">
+                        <Lock className="h-5 w-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[280px] p-3 rounded-xl bg-amber-950 border border-amber-800 text-amber-100 shadow-2xl z-[100] text-left">
+                      <p className="text-[10px] font-bold text-amber-400 mb-1">Industry Locked</p>
+                      <p className="text-[9px] font-medium leading-relaxed">
+                        Industry vertical cannot be changed after entities have been linked to this workspace. This ensures feature compatibility and data consistency.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="space-y-1 flex-1 text-left">
+                  <p className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2">
+                    <span>This workspace is configured for</span>
+                    <span className="text-primary font-bold">
                       {getIndustryDisplayName(workspace.industry)}
+                    </span>
+                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      Industry Locked
                     </span>
                   </p>
                   <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
                     {getIndustryDescription(workspace.industry)}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-                <Lock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold text-amber-900 ">Industry Locked</p>
-                  <p className="text-[9px] font-medium text-amber-800/70 leading-relaxed">
-                    Industry vertical cannot be changed after entities have been linked to this workspace. This ensures feature compatibility and data consistency.
                   </p>
                 </div>
               </div>
@@ -258,40 +261,40 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
                   <Building2 className="h-4 w-4 text-primary" />
                   <h4 className="text-xs font-semibold">Contact Scope</h4>
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5" />
-                  <span className="text-[9px] font-bold tracking-wider">Locked</span>
-                </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 flex items-start gap-4 shadow-sm">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  {workspace.contactScope === 'institution' && <Building2 className="h-5 w-5 text-primary" />}
-                  {workspace.contactScope === 'family' && <Users className="h-5 w-5 text-primary" />}
-                  {workspace.contactScope === 'person' && <User className="h-5 w-5 text-primary" />}
-                </div>
-                <div className="space-y-1 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    This workspace manages{' '}
-                    <span className="text-primary">
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="p-2 bg-amber-500/10 text-amber-500 rounded-lg cursor-help shrink-0 active:scale-[0.9] transition-all">
+                        <Lock className="h-5 w-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[280px] p-3 rounded-xl bg-amber-950 border border-amber-800 text-amber-100 shadow-2xl z-[100] text-left">
+                      <p className="text-[10px] font-bold text-amber-400 mb-1">Scope Locked</p>
+                      <p className="text-[9px] font-medium leading-relaxed">
+                        Contact scope cannot be changed after entities have been linked to this workspace. This protects existing data integrity.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="space-y-1 flex-1 text-left">
+                  <p className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2">
+                    <span>This workspace manages</span>
+                    <span className="text-primary font-bold">
                       {workspace.contactScope === 'institution' ? 'Schools' : 
                        workspace.contactScope === 'family' ? 'Families' : 'People'}
+                    </span>
+                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      Scope Locked
                     </span>
                   </p>
                   <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
                     {workspace.contactScope === 'institution' && 'Institutional contacts with billing, contracts, and subscription management.'}
                     {workspace.contactScope === 'family' && 'Family contacts with guardians, children, and admissions workflows.'}
                     {workspace.contactScope === 'person' && 'Individual contacts with personal CRM and lead management.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-                <Lock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold text-amber-900 ">Scope Locked</p>
-                  <p className="text-[9px] font-medium text-amber-800/70 leading-relaxed">
-                    Contact scope cannot be changed after entities have been linked to this workspace. This protects existing data integrity.
                   </p>
                 </div>
               </div>
