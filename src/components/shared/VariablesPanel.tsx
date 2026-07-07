@@ -139,36 +139,38 @@ export function VariablesPanel({
     return (
       <div 
         key={v.key}
-        className="group relative flex flex-col p-2.5 rounded-lg border border-border bg-card/40 hover:bg-accent/40 hover:border-accent-foreground/20 transition-all duration-200 cursor-pointer select-none active:scale-[0.98]"
+        className="group relative flex flex-col p-2.5 rounded-lg border border-border bg-card/30 hover:bg-accent/85 hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-pointer select-none active:scale-[0.98]"
         onClick={() => handleSelect(v.key)}
       >
         <div className="flex items-center justify-between">
-          <code className="text-xs font-mono font-bold text-primary group-hover:text-primary-foreground transition-colors duration-150">
-            {`{{${v.key}}}`}
-          </code>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm font-semibold text-foreground truncate">
+              {v.label}
+            </span>
+            {v.description && (
+              <div className="relative group/tooltip flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0">
+                <Info className="w-3.5 h-3.5" />
+                <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 p-2 bg-popover text-popover-foreground text-[10px] rounded border border-border shadow-md opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 z-50">
+                  {v.description}
+                </div>
+              </div>
+            )}
+          </div>
           {isCopied ? (
-            <span className="text-[10px] text-green-500 font-semibold flex items-center gap-1 animate-fade-in">
+            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1 shrink-0 animate-fade-in">
               <Check className="w-3 h-3" /> Copied
             </span>
           ) : (
-            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
               Click to insert
             </span>
           )}
         </div>
         
-        <div className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-xs font-semibold text-foreground">
-            {v.label}
-          </span>
-          {v.description && (
-            <div className="relative group/tooltip flex items-center justify-center text-muted-foreground hover:text-foreground">
-              <Info className="w-3.5 h-3.5" />
-              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 p-2 bg-popover text-popover-foreground text-[10px] rounded border border-border shadow-md opacity-0 group-hover/tooltip:opacity-100 transition-opacity duration-200 z-50">
-                {v.description}
-              </div>
-            </div>
-          )}
+        <div className="mt-1">
+          <code className="text-[11px] font-mono text-primary/70 group-hover:text-primary transition-colors duration-150">
+            {`{{${v.key}}}`}
+          </code>
         </div>
       </div>
     );
