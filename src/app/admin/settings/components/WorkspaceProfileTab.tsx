@@ -82,7 +82,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
         tasks: true
       }
     );
-  }, [workspace]);
+  }, [workspace.id]);
 
   // Helper function to get industry icon
   const getIndustryIcon = (industryType: IndustryVertical): React.ComponentType<{ className?: string }> => {
