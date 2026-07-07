@@ -56,19 +56,19 @@ export const INDUSTRY_FEATURE_FLAGS: Record<IndustryVertical, boolean> = {
   SaaS: true,
 
   // Priority 2: Marketing Agency CRM
-  Marketing: process.env.NEXT_PUBLIC_INDUSTRY_MARKETING_ENABLED === 'true',
+  Marketing: true,
 
   // Priority 3: School Enrollment / Admissions management
-  SchoolEnrollment: process.env.NEXT_PUBLIC_INDUSTRY_SCHOOL_ENROLLMENT_ENABLED === 'true',
+  SchoolEnrollment: true,
 
   // Priority 4: Consultancy engagement tracking
-  Consultancy: process.env.NEXT_PUBLIC_INDUSTRY_CONSULTANCY_ENABLED === 'true',
+  Consultancy: true,
 
   // Priority 5: Real Estate property and transaction management
-  RealEstate: process.env.NEXT_PUBLIC_INDUSTRY_REAL_ESTATE_ENABLED === 'true',
+  RealEstate: true,
 
   // Priority 6: Law Firm practice management
-  Law: process.env.NEXT_PUBLIC_INDUSTRY_LAW_ENABLED === 'true',
+  Law: true,
 } as const;
 
 /**
