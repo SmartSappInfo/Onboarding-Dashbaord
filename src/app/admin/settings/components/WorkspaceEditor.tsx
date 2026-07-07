@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Workspace, WorkspaceStatus, IndustryVertical } from '@/lib/types';
+import type { Workspace, WorkspaceStatus, IndustryVertical, ContactIdentifierPolicy } from '@/lib/types';
 import { 
     Zap, 
     Plus, 
@@ -56,6 +56,11 @@ import { setOrganizationDefaultWorkspaceAction } from '@/lib/organization-action
 import { getEnabledIndustries } from '@/lib/industry-config';
 import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
 import * as Icons from 'lucide-react';
+import { StepBasics } from './steps/StepBasics';
+import { StepIndustryScope } from './steps/StepIndustryScope';
+import { StepGovernance } from './steps/StepGovernance';
+import { StepFinish } from './steps/StepFinish';
+import { STEPPER_STEPS } from './types';
 
 interface WorkspaceEditorProps {
     workspaces: Workspace[];
@@ -77,6 +82,31 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
     const [contactScope, setContactScope] = React.useState<'institution' | 'family' | 'person'>('institution');
     const [industry, setIndustry] = React.useState<IndustryVertical>('SaaS');
     const [industryFilter, setIndustryFilter] = React.useState<IndustryVertical | 'all'>('all');
+
+    const [currentStep, setCurrentStep] = React.useState(0);
+    const [color, setColor] = React.useState('#3B5FFF');
+    const [contactPolicy, setContactPolicy] = React.useState<ContactIdentifierPolicy>('phone_or_email');
+    const [restrictVisibilityToAssigned, setRestrictVisibilityToAssigned] = React.useState(true);
+    const [statuses, setStatuses] = React.useState<WorkspaceStatus[]>([
+        { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
+        { value: 'Active', label: 'Active', color: '#10b981' },
+        { value: 'Churned', label: 'Churned', color: '#ef4444' }
+    ]);
+
+    const handleAddStatus = () => {
+        setStatuses(prev => [...prev, { value: 'New Status', label: 'New Status', color: '#64748b' }]);
+    };
+
+    const updateStatus = (index: number, updates: Partial<WorkspaceStatus>) => {
+        const next = [...statuses];
+        next[index] = { ...next[index], ...updates };
+        setStatuses(next);
+    };
+
+    const removeStatus = (index: number) => {
+        if (statuses.length === 1) return;
+        setStatuses(prev => prev.filter((_, i) => i !== index));
+    };
 
     // Get enabled industries from feature flags
     const enabledIndustries = React.useMemo(() => getEnabledIndustries(), []);
@@ -104,6 +134,15 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         setDescription('');
         setContactScope('institution');
         setIndustry('SaaS');
+        setColor('#3B5FFF');
+        setContactPolicy('phone_or_email');
+        setRestrictVisibilityToAssigned(true);
+        setStatuses([
+            { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
+            { value: 'Active', label: 'Active', color: '#10b981' },
+            { value: 'Churned', label: 'Churned', color: '#ef4444' }
+        ]);
+        setCurrentStep(0);
         setIsCreating(true);
     };
 
@@ -118,27 +157,21 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         if (!user || !name.trim() || !activeOrganizationId) return;
         setIsSaving(true);
 
-        const defaultStatuses: WorkspaceStatus[] = [
-            { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
-            { value: 'Active', label: 'Active', color: '#10b981' },
-            { value: 'Churned', label: 'Churned', color: '#ef4444' }
-        ];
-
         const result = await saveWorkspaceAction(
             null,
             { 
                 name: name.trim(), 
                 description: description.trim(), 
-                color: '#3B5FFF', 
-                statuses: defaultStatuses,
+                color, 
+                statuses,
                 organizationId: activeOrganizationId,
-                contactScope: contactScope,
+                contactScope,
                 capabilities: getDefaultCapabilities(contactScope),
-                industry: industry,
+                industry,
                 industryScopeLocked: false,
-                contactPolicy: 'phone_or_email',
+                contactPolicy,
                 entityDefaults: {},
-                restrictVisibilityToAssigned: true,
+                restrictVisibilityToAssigned,
                 defaultSmsSenderId: 'SmartSapp',
             },
             user.uid
@@ -219,6 +252,15 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
         } else {
             toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
         }
+    };
+
+    const handleNextStep = () => {
+        if (currentStep === 0 && !name.trim()) return;
+        setCurrentStep(prev => prev + 1);
+    };
+
+    const handleBackStep = () => {
+        setCurrentStep(prev => prev - 1);
     };
 
     return (
@@ -362,238 +404,151 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
                                     <DialogDescription className="text-xs font-bold text-muted-foreground">Architect a new hub identity and its independent lifecycle.</DialogDescription>
                                 </div>
                             </div>
+
+                            {/* Stepper Header Progress Lines */}
+                            <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
+                                {STEPPER_STEPS.map((step, idx) => {
+                                    const isActive = currentStep === idx;
+                                    const isCompleted = currentStep > idx;
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            <div 
+                                                className="flex items-center gap-2 cursor-pointer select-none group"
+                                                onClick={() => {
+                                                    if (isCompleted || isActive) {
+                                                        setCurrentStep(idx);
+                                                    }
+                                                }}
+                                            >
+                                                <div 
+                                                    className={cn(
+                                                        "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 active:scale-90",
+                                                        isActive && "bg-primary text-white ring-2 ring-primary ring-offset-2",
+                                                        isCompleted && "bg-primary/20 text-primary hover:bg-primary/30",
+                                                        !isActive && !isCompleted && "bg-muted text-muted-foreground cursor-not-allowed"
+                                                    )}
+                                                >
+                                                    {isCompleted ? <Check className="w-3.5 h-3.5" /> : idx + 1}
+                                                </div>
+                                                <div className="hidden md:block text-left">
+                                                    <span className={cn(
+                                                        "text-[10px] font-bold block transition-colors",
+                                                        isActive ? "text-foreground" : "text-muted-foreground"
+                                                    )}>
+                                                        {step.label}
+                                                    </span>
+                                                    <span className="text-[8px] text-muted-foreground/60 block font-medium">
+                                                        {step.description}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {idx < STEPPER_STEPS.length - 1 && (
+                                                <div 
+                                                    className={cn(
+                                                        "flex-1 h-0.5 mx-2 rounded transition-colors duration-300",
+                                                        currentStep > idx ? "bg-primary" : "bg-muted"
+                                                    )} 
+                                                />
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
                         </DialogHeader>
 
                         <div className="flex-1 overflow-hidden relative bg-background">
                             <ScrollArea className="h-full">
-                                <div className="p-8 space-y-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Workspace Label</Label>
-                                                <Input 
-                                                    value={name} 
-                                                    onChange={e => setName(e.target.value)} 
-                                                    placeholder="e.g. Higher Education Onboarding" 
-                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-4" 
-                                                    required 
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Objective Brief</Label>
-                                            <Textarea 
-                                                value={description} 
-                                                onChange={e => setDescription(e.target.value)} 
-                                                placeholder="Define the scope..." 
-                                                className="min-h-[135px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 font-medium leading-relaxed" 
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="p-8">
+                                    {currentStep === 0 && (
+                                        <StepBasics 
+                                            name={name}
+                                            color={color}
+                                            description={description}
+                                            onChange={(field, value) => {
+                                                if (field === 'name') setName(value);
+                                                else if (field === 'color') setColor(value);
+                                                else if (field === 'description') setDescription(value);
+                                            }}
+                                        />
+                                    )}
 
-                                    <Separator className="opacity-50" />
-                                    
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 px-1">
-                                            <Briefcase className="h-4 w-4 text-primary" />
-                                            <h4 className="text-xs font-semibold ">Industry Vertical</h4>
-                                            <Badge variant="secondary" className="text-[8px] font-semibold uppercase px-1.5 h-4">Required</Badge>
-                                        </div>
+                                    {currentStep === 1 && (
+                                        <StepIndustryScope 
+                                            industry={industry}
+                                            contactScope={contactScope}
+                                            enabledIndustries={enabledIndustries}
+                                            getIndustryIcon={getIndustryIcon}
+                                            getIndustryDisplayName={getIndustryDisplayName}
+                                            getIndustryDescription={getIndustryDescription}
+                                            onChange={({ industry: ind, contactScope: scope }) => {
+                                                setIndustry(ind);
+                                                setContactScope(scope);
+                                            }}
+                                        />
+                                    )}
 
-                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-                                            Select the industry vertical for this workspace. This determines available features, terminology, and pipeline templates.
-                                        </p>
+                                    {currentStep === 2 && (
+                                        <StepGovernance 
+                                            contactPolicy={contactPolicy}
+                                            restrictVisibilityToAssigned={restrictVisibilityToAssigned}
+                                            onChange={({ contactPolicy: cp, restrictVisibilityToAssigned: rva }) => {
+                                                if (cp !== undefined) setContactPolicy(cp);
+                                                if (rva !== undefined) setRestrictVisibilityToAssigned(rva);
+                                            }}
+                                        />
+                                    )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {enabledIndustries.map((ind) => {
-                                                const Icon = getIndustryIcon(ind);
-                                                return (
-                                                    <button
-                                                        key={ind}
-                                                        type="button"
-                                                        onClick={() => setIndustry(ind)}
-                                                        className={cn(
-                                                            "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
-                                                            industry === ind
-                                                                ? "bg-primary/5 border-primary shadow-md"
-                                                                : "bg-background border-border hover:border-primary/30"
-                                                        )}
-                                                    >
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className={cn(
-                                                                    "p-2 rounded-lg transition-colors",
-                                                                    industry === ind ? "bg-primary/10" : "bg-muted"
-                                                                )}>
-                                                                    <Icon className={cn(
-                                                                        "h-5 w-5",
-                                                                        industry === ind ? "text-primary" : "text-muted-foreground"
-                                                                    )} />
-                                                                </div>
-                                                                {industry === ind && (
-                                                                    <Check className="h-5 w-5 text-primary" />
-                                                                )}
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                <h5 className="text-sm font-semibold text-foreground">{getIndustryDisplayName(ind)}</h5>
-                                                                <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
-                                                                    {getIndustryDescription(ind)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-                                            <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] font-semibold text-blue-900 ">Industry Scope Lock</p>
-                                                <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
-                                                    Industry vertical cannot be changed after the first entity is linked to this workspace. This ensures data consistency and feature compatibility.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <Separator className="opacity-50" />
-                                    
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 px-1">
-                                            <Building2 className="h-4 w-4 text-primary" />
-                                            <h4 className="text-xs font-semibold ">Contact Scope</h4>
-                                            <Badge variant="secondary" className="text-[8px] font-semibold uppercase px-1.5 h-4">Required</Badge>
-                                        </div>
-
-                                        <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
-                                            Select the type of contacts this workspace will manage. This determines the data model, UI, and workflows.
-                                        </p>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => setContactScope('institution')}
-                                                className={cn(
-                                                    "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
-                                                    contactScope === 'institution'
-                                                        ? "bg-primary/5 border-primary shadow-md"
-                                                        : "bg-background border-border hover:border-primary/30"
-                                                )}
-                                            >
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className={cn(
-                                                            "p-2 rounded-lg transition-colors",
-                                                            contactScope === 'institution' ? "bg-primary/10" : "bg-muted"
-                                                        )}>
-                                                            <Building2 className={cn(
-                                                                "h-5 w-5",
-                                                                contactScope === 'institution' ? "text-primary" : "text-muted-foreground"
-                                                            )} />
-                                                        </div>
-                                                        {contactScope === 'institution' && (
-                                                            <Check className="h-5 w-5 text-primary" />
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <h5 className="text-sm font-semibold text-foreground">Schools</h5>
-                                                        <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
-                                                            Institutional contacts with billing, contracts, and subscription management.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => setContactScope('family')}
-                                                className={cn(
-                                                    "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
-                                                    contactScope === 'family'
-                                                        ? "bg-primary/5 border-primary shadow-md"
-                                                        : "bg-background border-border hover:border-primary/30"
-                                                )}
-                                            >
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className={cn(
-                                                            "p-2 rounded-lg transition-colors",
-                                                            contactScope === 'family' ? "bg-primary/10" : "bg-muted"
-                                                        )}>
-                                                            <Users className={cn(
-                                                                "h-5 w-5",
-                                                                contactScope === 'family' ? "text-primary" : "text-muted-foreground"
-                                                            )} />
-                                                        </div>
-                                                        {contactScope === 'family' && (
-                                                            <Check className="h-5 w-5 text-primary" />
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <h5 className="text-sm font-semibold text-foreground">Families</h5>
-                                                        <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
-                                                            Family contacts with guardians, children, and admissions workflows.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => setContactScope('person')}
-                                                className={cn(
-                                                    "p-5 rounded-2xl border-2 transition-all text-left group hover:shadow-lg",
-                                                    contactScope === 'person'
-                                                        ? "bg-primary/5 border-primary shadow-md"
-                                                        : "bg-background border-border hover:border-primary/30"
-                                                )}
-                                            >
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className={cn(
-                                                            "p-2 rounded-lg transition-colors",
-                                                            contactScope === 'person' ? "bg-primary/10" : "bg-muted"
-                                                        )}>
-                                                            <User className={cn(
-                                                                "h-5 w-5",
-                                                                contactScope === 'person' ? "text-primary" : "text-muted-foreground"
-                                                            )} />
-                                                        </div>
-                                                        {contactScope === 'person' && (
-                                                            <Check className="h-5 w-5 text-primary" />
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <h5 className="text-sm font-semibold text-foreground">People</h5>
-                                                        <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
-                                                            Individual contacts with personal CRM and lead management.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        </div>
-
-                                        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-                                            <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                            <div className="space-y-1">
-                                                <p className="text-[10px] font-semibold text-blue-900 ">Scope Selection</p>
-                                                <p className="text-[9px] font-medium text-blue-800/70 leading-relaxed">
-                                                    Contact scope cannot be changed after the first entity is linked to this workspace. Choose carefully based on your workflow needs.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    {currentStep === 3 && (
+                                        <StepFinish 
+                                            formState={{
+                                                name,
+                                                description,
+                                                color,
+                                                industry,
+                                                contactScope,
+                                                contactPolicy,
+                                                restrictVisibilityToAssigned,
+                                                statuses
+                                            }}
+                                            onAddStatus={handleAddStatus}
+                                            onUpdateStatus={updateStatus}
+                                            onRemoveStatus={removeStatus}
+                                            getIndustryDisplayName={getIndustryDisplayName}
+                                        />
+                                    )}
                                 </div>
                             </ScrollArea>
                         </div>
 
-                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between">
-                            <Button type="button" variant="ghost" onClick={() => setIsCreating(false)} className="rounded-xl font-bold h-12 px-8">Discard</Button>
-                            <Button type="submit" disabled={isSaving || !name.trim()} className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12">
-                                {isSaving ? <Zap className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                                Create Workspace
+                        <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between shrink-0">
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                onClick={currentStep === 0 ? () => setIsCreating(false) : handleBackStep} 
+                                className="rounded-xl font-bold h-12 px-8 active:scale-[0.97] transition-transform"
+                            >
+                                {currentStep === 0 ? 'Discard' : 'Back'}
                             </Button>
+                            
+                            {currentStep < 3 ? (
+                                <Button 
+                                    type="button" 
+                                    onClick={handleNextStep}
+                                    disabled={currentStep === 0 && !name.trim()}
+                                    className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12 active:scale-[0.97] transition-transform"
+                                >
+                                    Next
+                                </Button>
+                            ) : (
+                                <Button 
+                                    type="submit" 
+                                    disabled={isSaving || !name.trim()} 
+                                    className="rounded-xl font-semibold px-10 shadow-2xl bg-primary text-white text-xs h-12 active:scale-[0.97] transition-transform"
+                                >
+                                    {isSaving ? <Zap className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1.5" />}
+                                    Create Workspace
+                                </Button>
+                            )}
                         </DialogFooter>
                     </form>
                 </DialogContent>
