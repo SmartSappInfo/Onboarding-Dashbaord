@@ -467,7 +467,7 @@ export default function SurveyFormBuilder() {
                     
                 {/* 2. Right Sidebar - Contextual Settings & Global Tools */}
                 <div className={cn(
-                    "shrink-0 border border-border bg-card rounded-2xl shadow-sm hidden xl:flex overflow-hidden transition-all duration-500 relative z-10 self-start max-h-full", 
+                    "shrink-0 border border-border bg-card rounded-2xl shadow-sm hidden xl:flex overflow-hidden transition-all duration-500 relative z-10 self-start max-h-full xl:sticky xl:top-6 xl:z-20", 
                     isPreviewMode ? "opacity-0 translate-x-full pointer-events-none absolute right-0" : "",
                     isPropertiesBarVisible && !isPreviewMode ? "w-[340px] flex-col min-h-[500px] h-fit" : "w-16 flex-col h-fit"
                 )}>

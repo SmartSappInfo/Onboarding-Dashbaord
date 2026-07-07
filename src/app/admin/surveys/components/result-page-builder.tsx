@@ -766,7 +766,7 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
             <div className="flex flex-col xl:flex-row gap-6 items-start">
                 
                 {/* 1. Left Properties Sidebar */}
-                <Card className="w-full xl:w-[320px] shrink-0 border bg-card shadow-sm rounded-[1.5rem] overflow-hidden self-start">
+                <Card className="w-full xl:w-[320px] shrink-0 border bg-card shadow-sm rounded-[1.5rem] overflow-hidden self-start xl:sticky xl:top-6 xl:z-20">
                     <CardHeader className="py-3.5 px-4 border-b bg-muted/10 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Settings className="h-4 w-4 text-primary" />
