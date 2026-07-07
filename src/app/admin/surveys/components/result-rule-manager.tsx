@@ -19,6 +19,7 @@ import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/Template
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { TagSelector } from '@/components/tags';
 
 function SortableRuleItem({ 
     id, 
@@ -204,13 +205,19 @@ function SortableRuleItem({
                 <div className="space-y-4">
                     {/* Tag Configuration */}
                     {tagEnabled && (
-                        <div className="space-y-2 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
-                            <Label htmlFor={`tag-input-${index}`} className="text-xs font-bold text-slate-700">Contact Tag to Apply</Label>
-                            <Input 
-                                id={`tag-input-${index}`}
-                                placeholder="e.g. Qualified_Lead" 
-                                {...register(`resultRules.${index}.applyTag`)} 
-                                className="h-10 rounded-xl bg-background border border-border/50 shadow-sm focus:ring-1 focus:ring-primary/20"
+                        <div className="space-y-2.5 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            <Label className="text-xs font-bold text-slate-700">Contact Tag to Apply</Label>
+                            <Controller
+                                name={`resultRules.${index}.applyTag`}
+                                control={control}
+                                render={({ field }) => (
+                                    <TagSelector 
+                                        currentTagIds={field.value ? [field.value] : []}
+                                        onTagsChange={(tagIds) => {
+                                            field.onChange(tagIds[tagIds.length - 1] || '');
+                                        }}
+                                    />
+                                )}
                             />
                             <p className="text-[9px] text-muted-foreground font-medium">Applied to the contact when their score falls in this range.</p>
                         </div>
