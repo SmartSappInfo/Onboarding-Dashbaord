@@ -256,7 +256,16 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
-main().catch(err => {
-  console.error('💥 Execution failed:', err);
-  process.exit(1);
-});
+export { handleMigration, handleRollback, handleVerify };
+
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('share-contacts-migration.ts') || 
+  process.argv[1].endsWith('share-contacts-migration.js')
+);
+
+if (isMain) {
+  main().catch(err => {
+    console.error('💥 Execution failed:', err);
+    process.exit(1);
+  });
+}

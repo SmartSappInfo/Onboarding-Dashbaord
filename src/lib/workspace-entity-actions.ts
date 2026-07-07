@@ -493,7 +493,134 @@ export async function updateWorkspaceEntityAction(input: UpdateWorkspaceEntityIn
   }
 }
 
-interface DeleteEntityPermanentlyInput {
+export interface ArchiveEntityInput {
+  workspaceEntityId: string;
+  entityId: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  archiveAllWorkspaces?: boolean;
+}
+
+/**
+ * Archives a workspace_entities record.
+ * If archiveAllWorkspaces is true, archives all workspace_entities for this entity ID within the organization.
+ */
+export async function archiveEntityAction(input: ArchiveEntityInput) {
+  try {
+    const timestamp = new Date().toISOString();
+    const weRef = adminDb.collection('workspace_entities').doc(input.workspaceEntityId);
+    const weSnap = await weRef.get();
+    if (!weSnap.exists) return { success: false, error: 'Workspace-entity record not found' };
+
+    const weData = { id: weSnap.id, ...weSnap.data() } as WorkspaceEntity;
+
+    if (input.archiveAllWorkspaces) {
+      const allWeSnap = await adminDb.collection('workspace_entities')
+        .where('entityId', '==', input.entityId)
+        .where('organizationId', '==', weData.organizationId)
+        .get();
+
+      const batch = adminDb.batch();
+      const updatedEntities: WorkspaceEntity[] = [];
+      allWeSnap.forEach(docSnap => {
+        const data = { id: docSnap.id, ...docSnap.data() } as WorkspaceEntity;
+        if (data.status !== 'archived') {
+          batch.update(docSnap.ref, {
+            status: 'archived',
+            updatedAt: timestamp
+          });
+          updatedEntities.push(data);
+        }
+      });
+
+      if (updatedEntities.length > 0) {
+        await batch.commit();
+
+        for (const entity of updatedEntities) {
+          const updatedValue = { ...entity, status: 'archived', updatedAt: timestamp };
+          await logWorkspaceEntityUpdated({
+            organizationId: entity.organizationId,
+            workspaceId: entity.workspaceId,
+            entityId: entity.entityId,
+            entityType: entity.entityType,
+            userId: input.userId,
+            userName: input.userName || 'Unknown User',
+            userEmail: input.userEmail || '',
+            oldValue: entity,
+            newValue: updatedValue,
+            changedFields: ['status'],
+            operationContext: 'manual_edit',
+          });
+
+          await logActivity({
+            organizationId: entity.organizationId,
+            workspaceId: entity.workspaceId,
+            entityId: entity.entityId,
+            entityType: entity.entityType,
+            displayName: entity.displayName,
+            userId: input.userId,
+            type: 'workspace_entity_updated',
+            source: 'user_action',
+            description: `archived ${entity.entityType} entity "${entity.displayName}" (organization-wide)`,
+            metadata: {
+              workspaceEntityId: entity.id,
+              updatedFields: ['status'],
+              status: 'archived',
+            },
+          });
+        }
+      }
+    } else {
+      await weRef.update({
+        status: 'archived',
+        updatedAt: timestamp
+      });
+
+      const updatedValue = { ...weData, status: 'archived', updatedAt: timestamp };
+      await logWorkspaceEntityUpdated({
+        organizationId: weData.organizationId,
+        workspaceId: weData.workspaceId,
+        entityId: weData.entityId,
+        entityType: weData.entityType,
+        userId: input.userId,
+        userName: input.userName || 'Unknown User',
+        userEmail: input.userEmail || '',
+        oldValue: weData,
+        newValue: updatedValue,
+        changedFields: ['status'],
+        operationContext: 'manual_edit',
+      });
+
+      await logActivity({
+        organizationId: weData.organizationId,
+        workspaceId: weData.workspaceId,
+        entityId: weData.entityId,
+        entityType: weData.entityType,
+        displayName: weData.displayName,
+        userId: input.userId,
+        type: 'workspace_entity_updated',
+        source: 'user_action',
+        description: `archived ${weData.entityType} entity "${weData.displayName}"`,
+        metadata: {
+          workspaceEntityId: weData.id,
+          updatedFields: ['status'],
+          status: 'archived',
+        },
+      });
+    }
+
+    revalidatePath('/admin/entities');
+    revalidatePath('/admin/contacts');
+    return { success: true };
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error during archive';
+    console.error('>>> [WORKSPACE_ENTITY:ARCHIVE] Failed:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}
+
+export interface DeleteEntityPermanentlyInput {
   workspaceEntityId: string;
   entityId: string;
   userId: string;
@@ -501,12 +628,14 @@ interface DeleteEntityPermanentlyInput {
   userEmail?: string;
   /** If true (default), also purges root entities doc when no memberships remain */
   purgeRootEntity?: boolean;
+  /** If true, deletes all workspace entities in the organization for this entity and the root entities doc */
+  deleteAllWorkspaces?: boolean;
 }
 
 /**
- * Permanently deletes an archived workspace_entities record.
- * If no other workspace memberships remain for the entity, also deletes the root entities doc.
- * Requirements: archived-only guard, full audit trail.
+ * Permanently deletes archived workspace_entities records.
+ * If deleteAllWorkspaces is true, deletes all workspace_entities in the organization for this entity and the root entities doc.
+ * Otherwise, deletes only the specified workspace entity record.
  */
 export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanentlyInput) {
   try {
@@ -521,63 +650,141 @@ export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanent
       return { success: false, error: 'Only archived entities can be permanently deleted.' };
     }
 
-    await weRef.delete();
-
-    // Cascade-delete projected contacts for this entity (Phase 6.1)
-    await deleteContactProjectionForEntity(weData.workspaceId, input.entityId);
-
     let rootEntityDeleted = false;
-    if (input.purgeRootEntity !== false) {
-      const remainingSnap = await adminDb
-        .collection('workspace_entities')
+
+    if (input.deleteAllWorkspaces) {
+      const allWeSnap = await adminDb.collection('workspace_entities')
         .where('entityId', '==', input.entityId)
-        .limit(1)
+        .where('organizationId', '==', weData.organizationId)
         .get();
-      if (remainingSnap.empty) {
-        await adminDb.collection('entities').doc(input.entityId).delete();
-        rootEntityDeleted = true;
+
+      const batch = adminDb.batch();
+      const deletedEntities: WorkspaceEntity[] = [];
+      allWeSnap.forEach(docSnap => {
+        batch.delete(docSnap.ref);
+        deletedEntities.push({ id: docSnap.id, ...docSnap.data() } as WorkspaceEntity);
+      });
+
+      await batch.commit();
+
+      for (const entity of deletedEntities) {
+        await deleteContactProjectionForEntity(entity.workspaceId, input.entityId);
       }
+
+      await adminDb.collection('entities').doc(input.entityId).delete();
+      rootEntityDeleted = true;
+
+      for (const entity of deletedEntities) {
+        await logWorkspaceEntityDeleted({
+          organizationId: entity.organizationId,
+          workspaceId: entity.workspaceId,
+          entityId: entity.entityId,
+          entityType: entity.entityType,
+          userId: input.userId,
+          userName: input.userName || 'Unknown User',
+          userEmail: input.userEmail || '',
+          oldValue: entity,
+          operationContext: 'permanent_delete',
+        });
+
+        await logActivity({
+          organizationId: entity.organizationId,
+          workspaceId: entity.workspaceId,
+          entityId: entity.entityId,
+          entityType: entity.entityType,
+          displayName: entity.displayName,
+          userId: input.userId,
+          type: 'entity_unlinked_from_workspace',
+          source: 'user_action',
+          description: `permanently deleted "${entity.displayName}" from workspace and organization`,
+          metadata: { workspaceEntityId: entity.id, rootEntityDeleted: true, deletedAt: timestamp },
+        });
+      }
+    } else {
+      await weRef.delete();
+      await deleteContactProjectionForEntity(weData.workspaceId, input.entityId);
+
+      if (input.purgeRootEntity !== false) {
+        const remainingSnap = await adminDb
+          .collection('workspace_entities')
+          .where('entityId', '==', input.entityId)
+          .limit(1)
+          .get();
+        if (remainingSnap.empty) {
+          await adminDb.collection('entities').doc(input.entityId).delete();
+          rootEntityDeleted = true;
+        }
+      }
+
+      await logWorkspaceEntityDeleted({
+        organizationId: weData.organizationId,
+        workspaceId: weData.workspaceId,
+        entityId: weData.entityId,
+        entityType: weData.entityType,
+        userId: input.userId,
+        userName: input.userName || 'Unknown User',
+        userEmail: input.userEmail || '',
+        oldValue: weData,
+        operationContext: 'permanent_delete',
+      });
+
+      await logActivity({
+        organizationId: weData.organizationId,
+        workspaceId: weData.workspaceId,
+        entityId: weData.entityId,
+        entityType: weData.entityType,
+        displayName: weData.displayName,
+        userId: input.userId,
+        type: 'entity_unlinked_from_workspace',
+        source: 'user_action',
+        description: `permanently deleted "${weData.displayName}" from workspace${rootEntityDeleted ? ' and purged root record' : ''}`,
+        metadata: { workspaceEntityId: input.workspaceEntityId, rootEntityDeleted, deletedAt: timestamp },
+      });
     }
-
-    await logWorkspaceEntityDeleted({
-      organizationId: weData.organizationId,
-      workspaceId: weData.workspaceId,
-      entityId: weData.entityId,
-      entityType: weData.entityType,
-      userId: input.userId,
-      userName: input.userName || 'Unknown User',
-      userEmail: input.userEmail || '',
-      oldValue: weData,
-      operationContext: 'permanent_delete',
-    });
-
-    await logActivity({
-      organizationId: weData.organizationId,
-      workspaceId: weData.workspaceId,
-      entityId: weData.entityId,
-      entityType: weData.entityType,
-      displayName: weData.displayName,
-      userId: input.userId,
-      type: 'entity_unlinked_from_workspace',
-      source: 'user_action',
-      description: `permanently deleted "${weData.displayName}" from workspace${rootEntityDeleted ? ' and purged root record' : ''}`,
-      metadata: { workspaceEntityId: input.workspaceEntityId, rootEntityDeleted, deletedAt: timestamp },
-    });
 
     revalidatePath('/admin/entities');
     revalidatePath('/admin/contacts');
     return { success: true, rootEntityDeleted };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:PERMANENT_DELETE] Failed:', e.message);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error during permanent delete';
+    console.error('>>> [WORKSPACE_ENTITY:PERMANENT_DELETE] Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
-interface BulkArchiveEntitiesInput {
+export interface BulkArchiveEntitiesInput {
   workspaceEntityIds: string[];
   userId: string;
   userName?: string;
   userEmail?: string;
+  archiveAllWorkspaces?: boolean;
+}
+
+/**
+ * Helper to query workspace entities in chunks of 30 to avoid Firestore IN-clause limitations.
+ */
+async function queryWorkspaceEntitiesInChunks(entityIds: string[], organizationId: string): Promise<WorkspaceEntity[]> {
+  const chunkSize = 30;
+  const results: WorkspaceEntity[] = [];
+  const chunks: string[][] = [];
+
+  for (let i = 0; i < entityIds.length; i += chunkSize) {
+    chunks.push(entityIds.slice(i, i + chunkSize));
+  }
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const snap = await adminDb.collection('workspace_entities')
+        .where('entityId', 'in', chunk)
+        .where('organizationId', '==', organizationId)
+        .get();
+      snap.forEach(docSnap => {
+        results.push({ id: docSnap.id, ...docSnap.data() } as WorkspaceEntity);
+      });
+    })
+  );
+
+  return results;
 }
 
 /**
@@ -587,49 +794,59 @@ interface BulkArchiveEntitiesInput {
 export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput) {
   try {
     const timestamp = new Date().toISOString();
-    const { workspaceEntityIds, userId, userName, userEmail } = input;
+    const { workspaceEntityIds, userId, userName, userEmail, archiveAllWorkspaces = false } = input;
 
     if (!workspaceEntityIds || workspaceEntityIds.length === 0) {
       return { success: false, error: 'No entities selected' };
     }
 
-    // Retrieve workspace entities in batches using getAll
     const refs = workspaceEntityIds.map(id => adminDb.collection('workspace_entities').doc(id));
     const snaps = await adminDb.getAll(...refs);
 
     const validEntities: WorkspaceEntity[] = [];
-    const chunks: FirebaseFirestore.DocumentSnapshot[][] = [];
-    const chunkSize = 250;
+    const entityIdsToArchive = new Set<string>();
+    let organizationId = 'default';
 
-    // Partition operations into safe chunks
-    let currentChunk: FirebaseFirestore.DocumentSnapshot[] = [];
     for (const snap of snaps) {
       if (snap.exists) {
         const data = { id: snap.id, ...snap.data() } as WorkspaceEntity;
         if (data.status !== 'archived') {
           validEntities.push(data);
-          currentChunk.push(snap);
-          if (currentChunk.length === chunkSize) {
-            chunks.push(currentChunk);
-            currentChunk = [];
-          }
+          entityIdsToArchive.add(data.entityId);
+          organizationId = data.organizationId;
         }
       }
-    }
-    if (currentChunk.length > 0) {
-      chunks.push(currentChunk);
     }
 
     if (validEntities.length === 0) {
       return { success: true, count: 0 };
     }
 
-    // Commit batches in parallel
+    let entitiesToUpdate: WorkspaceEntity[] = [];
+
+    if (archiveAllWorkspaces) {
+      const entityIdsArray = Array.from(entityIdsToArchive);
+      const allWe = await queryWorkspaceEntitiesInChunks(entityIdsArray, organizationId);
+      entitiesToUpdate = allWe.filter(e => e.status !== 'archived');
+    } else {
+      entitiesToUpdate = validEntities;
+    }
+
+    if (entitiesToUpdate.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const chunks: WorkspaceEntity[][] = [];
+    const chunkSize = 250;
+    for (let i = 0; i < entitiesToUpdate.length; i += chunkSize) {
+      chunks.push(entitiesToUpdate.slice(i, i + chunkSize));
+    }
+
     await Promise.all(
       chunks.map(async (chunk) => {
         const batch = adminDb.batch();
-        for (const snap of chunk) {
-          batch.update(snap.ref, {
+        for (const entity of chunk) {
+          batch.update(adminDb.collection('workspace_entities').doc(entity.id), {
             status: 'archived',
             updatedAt: timestamp,
           });
@@ -638,10 +855,8 @@ export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput)
       })
     );
 
-    // Asynchronously log audit trails and activities (non-blocking)
-    const logPromises = validEntities.map(async (weData) => {
+    const logPromises = entitiesToUpdate.map(async (weData) => {
       const updatedValue = { ...weData, status: 'archived', updatedAt: timestamp };
-      
       try {
         await logWorkspaceEntityUpdated({
           organizationId: weData.organizationId,
@@ -666,7 +881,7 @@ export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput)
           userId,
           type: 'workspace_entity_updated',
           source: 'user_action',
-          description: `archived ${weData.entityType} entity "${weData.displayName}"`,
+          description: `archived ${weData.entityType} entity "${weData.displayName}"${archiveAllWorkspaces ? ' (organization-wide)' : ''}`,
           metadata: {
             workspaceEntityId: weData.id,
             updatedFields: ['status'],
@@ -678,7 +893,6 @@ export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput)
       }
     });
 
-    // Run logging promises in background
     Promise.all(logPromises).catch(err => {
       console.error('>>> [BULK_ARCHIVE:LOGGER_PROMISES_FAIL]', err);
     });
@@ -686,19 +900,21 @@ export async function bulkArchiveEntitiesAction(input: BulkArchiveEntitiesInput)
     revalidatePath('/admin/entities');
     revalidatePath('/admin/contacts');
 
-    return { success: true, count: validEntities.length };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:BULK_ARCHIVE] Failed:', e.message);
-    return { success: false, error: e.message };
+    return { success: true, count: entitiesToUpdate.length };
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error during bulk archive';
+    console.error('>>> [WORKSPACE_ENTITY:BULK_ARCHIVE] Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
-interface BulkDeleteEntitiesInput {
+export interface BulkDeleteEntitiesInput {
   workspaceEntityIds: string[];
   userId: string;
   userName?: string;
   userEmail?: string;
   purgeRootEntity?: boolean;
+  deleteAllWorkspaces?: boolean;
 }
 
 /**
@@ -708,7 +924,7 @@ interface BulkDeleteEntitiesInput {
 export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
   try {
     const timestamp = new Date().toISOString();
-    const { workspaceEntityIds, userId, userName, userEmail, purgeRootEntity = true } = input;
+    const { workspaceEntityIds, userId, userName, userEmail, purgeRootEntity = true, deleteAllWorkspaces = false } = input;
 
     if (!workspaceEntityIds || workspaceEntityIds.length === 0) {
       return { success: false, error: 'No entities selected' };
@@ -718,14 +934,16 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
     const snaps = await adminDb.getAll(...refs);
 
     const validEntities: WorkspaceEntity[] = [];
-    const entityIdsToCheck = new Set<string>();
+    const entityIdsToDelete = new Set<string>();
+    let organizationId = 'default';
 
     for (const snap of snaps) {
       if (snap.exists) {
         const data = { id: snap.id, ...snap.data() } as WorkspaceEntity;
         if (data.status === 'archived') {
           validEntities.push(data);
-          entityIdsToCheck.add(data.entityId);
+          entityIdsToDelete.add(data.entityId);
+          organizationId = data.organizationId;
         }
       }
     }
@@ -734,14 +952,25 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
       return { success: false, error: 'Only archived entities can be permanently deleted. Please archive them first.' };
     }
 
-    // Partition deletion operations into chunks of 250
-    const chunks: WorkspaceEntity[][] = [];
-    const chunkSize = 250;
-    for (let i = 0; i < validEntities.length; i += chunkSize) {
-      chunks.push(validEntities.slice(i, i + chunkSize));
+    let entitiesToDelete: WorkspaceEntity[] = [];
+
+    if (deleteAllWorkspaces) {
+      const entityIdsArray = Array.from(entityIdsToDelete);
+      entitiesToDelete = await queryWorkspaceEntitiesInChunks(entityIdsArray, organizationId);
+    } else {
+      entitiesToDelete = validEntities;
     }
 
-    // Commit deletions
+    if (entitiesToDelete.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const chunks: WorkspaceEntity[][] = [];
+    const chunkSize = 250;
+    for (let i = 0; i < entitiesToDelete.length; i += chunkSize) {
+      chunks.push(entitiesToDelete.slice(i, i + chunkSize));
+    }
+
     await Promise.all(
       chunks.map(async (chunk) => {
         const batch = adminDb.batch();
@@ -752,14 +981,22 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
       })
     );
 
-    // Verify and purge root entities when no other workspace memberships remain
+    for (const entity of entitiesToDelete) {
+      await deleteContactProjectionForEntity(entity.workspaceId, entity.entityId);
+    }
+
     let purgedRootCount = 0;
-    if (purgeRootEntity && entityIdsToCheck.size > 0) {
-      const rootEntitiesArray = Array.from(entityIdsToCheck);
+    if (deleteAllWorkspaces) {
+      const rootPurgeBatch = adminDb.batch();
+      for (const entityId of Array.from(entityIdsToDelete)) {
+        rootPurgeBatch.delete(adminDb.collection('entities').doc(entityId));
+        purgedRootCount++;
+      }
+      await rootPurgeBatch.commit();
+    } else if (purgeRootEntity) {
       const rootPurgeBatch = adminDb.batch();
       let hasRootDeletes = false;
-
-      for (const entityId of rootEntitiesArray) {
+      for (const entityId of Array.from(entityIdsToDelete)) {
         const remainingSnap = await adminDb
           .collection('workspace_entities')
           .where('entityId', '==', entityId)
@@ -771,14 +1008,12 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
           purgedRootCount++;
         }
       }
-
       if (hasRootDeletes) {
         await rootPurgeBatch.commit();
       }
     }
 
-    // Asynchronously log audit trails and activities (non-blocking)
-    const logPromises = validEntities.map(async (weData) => {
+    const logPromises = entitiesToDelete.map(async (weData) => {
       try {
         await logWorkspaceEntityDeleted({
           organizationId: weData.organizationId,
@@ -801,7 +1036,7 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
           userId,
           type: 'entity_unlinked_from_workspace',
           source: 'user_action',
-          description: `permanently deleted "${weData.displayName}" from workspace`,
+          description: `permanently deleted "${weData.displayName}" from workspace${deleteAllWorkspaces ? ' and organization' : ''}`,
           metadata: {
             workspaceEntityId: weData.id,
             deletedAt: timestamp,
@@ -812,7 +1047,6 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
       }
     });
 
-    // Run logging promises in background
     Promise.all(logPromises).catch(err => {
       console.error('>>> [BULK_DELETE:LOGGER_PROMISES_FAIL]', err);
     });
@@ -822,12 +1056,13 @@ export async function bulkDeleteEntitiesAction(input: BulkDeleteEntitiesInput) {
 
     return { 
       success: true, 
-      count: validEntities.length, 
+      count: entitiesToDelete.length, 
       purgedRootCount 
     };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:BULK_DELETE] Failed:', e.message);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error during bulk delete';
+    console.error('>>> [WORKSPACE_ENTITY:BULK_DELETE] Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
