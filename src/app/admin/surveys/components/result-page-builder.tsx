@@ -32,7 +32,7 @@ import { CSS } from '@dnd-kit/utilities';
 import AddResultBlockModal from './add-result-block-modal';
 import { Separator } from '@/components/ui/separator';
 
-function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number, displayMode: 'points' | 'percentage' }) {
+export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, displayMode = 'points' }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore?: number, displayMode?: 'points' | 'percentage' }) {
     React.useEffect(() => {
         if (open && page.confettiEnabled) {
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

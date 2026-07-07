@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText, Link2 } from 'lucide-react';
-import { PageEditor } from './result-page-builder';
+import { Mail, Smartphone, Pencil, PlusCircle, ShieldCheck, HeartHandshake, FileText, Link2, Eye } from 'lucide-react';
+import { PageEditor, PagePreviewModal } from './result-page-builder';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -241,6 +241,7 @@ export function MinimalThankYouPage() {
     const { watch, setValue, register, control } = useFormContext();
     const pages = watch('resultPages') || [];
     const redirectEnabled = watch('thankYouRedirectEnabled');
+    const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
     // Ensure at least one resultPage exists and seed with default content if missing
     React.useEffect(() => {
@@ -284,6 +285,14 @@ export function MinimalThankYouPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="h-9 px-4 gap-2 font-bold text-xs rounded-xl shadow-sm hover:bg-muted"
+                            onClick={() => setIsPreviewOpen(true)}
+                        >
+                            <Eye className="h-4 w-4 text-muted-foreground" /> Preview
+                        </Button>
                         <div className="flex items-center gap-2">
                             <Label htmlFor="redirect-toggle" className="text-xs font-semibold text-slate-500">Redirect URL</Label>
                             <Switch 
@@ -360,6 +369,11 @@ export function MinimalThankYouPage() {
                     <PageEditor pageIndex={0} />
                 )}
             </CardContent>
+            <PagePreviewModal 
+                open={isPreviewOpen} 
+                onOpenChange={setIsPreviewOpen} 
+                page={pages[0]} 
+            />
         </Card>
     );
 }
