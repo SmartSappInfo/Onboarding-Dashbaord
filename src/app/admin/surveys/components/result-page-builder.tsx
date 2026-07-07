@@ -33,6 +33,37 @@ import AddResultBlockModal from './add-result-block-modal';
 import { Separator } from '@/components/ui/separator';
 
 function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number, displayMode: 'points' | 'percentage' }) {
+    React.useEffect(() => {
+        if (open && page.confettiEnabled) {
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduceMotion) return;
+
+            let active = true;
+            let sidesTimer: NodeJS.Timeout;
+
+            import('canvas-confetti').then(({ default: confetti }) => {
+                if (!active) return;
+                const burst = (opts: Record<string, unknown>) =>
+                    confetti({
+                        disableForReducedMotion: true,
+                        colors: ['#5f30e2', '#ffc629', '#10b981', '#3B5FFF', '#e63946'],
+                        ...opts,
+                    });
+
+                burst({ particleCount: 160, spread: 100, startVelocity: 45, origin: { x: 0.5, y: 0.55 } });
+                sidesTimer = setTimeout(() => {
+                    burst({ particleCount: 60, angle: 60, spread: 70, origin: { x: 0, y: 0.7 } });
+                    burst({ particleCount: 60, angle: 120, spread: 70, origin: { x: 1, y: 0.7 } });
+                }, 350);
+            }).catch(console.error);
+
+            return () => {
+                active = false;
+                if (sidesTimer) clearTimeout(sidesTimer);
+            };
+        }
+    }, [open, page.id, page.confettiEnabled]);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-background">
