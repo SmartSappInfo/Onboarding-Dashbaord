@@ -283,17 +283,12 @@ export function MinimalThankYouPage() {
                             <CardDescription className="text-xs">Customize what respondents see or where they go after submitting.</CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Label htmlFor="redirect-toggle" className="text-xs font-semibold text-slate-500">Redirect URL</Label>
-                            <Switch 
-                                id="redirect-toggle" 
-                                checked={!!redirectEnabled} 
-                                onCheckedChange={(val) => setValue('thankYouRedirectEnabled', val, { shouldDirty: true })} 
-                                className="scale-90 data-[state=checked]:bg-emerald-500"
-                            />
-                        </div>
-                    </div>
+                    <Switch 
+                        id="redirect-toggle" 
+                        checked={!!redirectEnabled} 
+                        onCheckedChange={(val) => setValue('thankYouRedirectEnabled', val, { shouldDirty: true })} 
+                        className="scale-125 data-[state=checked]:bg-emerald-500"
+                    />
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
