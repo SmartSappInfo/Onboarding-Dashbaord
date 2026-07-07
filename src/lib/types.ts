@@ -2005,8 +2005,15 @@ export interface SurveyResultRule {
   emailSenderProfileId?: string;
   smsTemplateId?: string;
   smsSenderProfileId?: string;
+  whatsappTemplateId?: string;
+  whatsappSenderProfileId?: string;
   redirectEnabled?: boolean;
   redirectUrl?: string;
+  tagEnabled?: boolean;
+  applyTag?: string;
+  automationEnabled?: boolean;
+  triggerAutomationId?: string;
+  messagingEnabled?: boolean;
 }
 
 export interface SurveyResultPage {
