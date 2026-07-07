@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import dynamic from 'next/dynamic';
 import { getBlueprintAdoptionStats, updateGlobalTemplate, createGlobalTemplate } from '@/lib/template-actions';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
@@ -286,7 +286,7 @@ export default function BlueprintsHubClient() {
 
   React.useEffect(() => {
     let active = true;
-    FieldsVariablesService.getVariables({
+    getVariablesAction({
       workspaceId: 'onboarding',
       terminology: singular ? { singular, plural: `${singular}s` } : undefined
     }).then((res) => {

@@ -9,7 +9,7 @@ import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
 // import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { UnifiedVariable } from '@/lib/types/variables';
 import {
   AlertDialog,
@@ -284,7 +284,7 @@ export default function MessageTemplatesPage() {
         if (!activeWorkspaceId) return;
 
         let active = true;
-        FieldsVariablesService.getVariables({
+        getVariablesAction({
             workspaceId: activeWorkspaceId,
             organizationId: activeOrganizationId,
             terminology: singular ? { singular, plural: `${singular}s` } : undefined

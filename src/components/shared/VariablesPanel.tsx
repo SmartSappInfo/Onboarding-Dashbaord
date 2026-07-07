@@ -13,7 +13,7 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import type { UnifiedVariable } from '@/lib/types/variables';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 
 export interface VariablesPanelProps {
   workspaceId: string;
@@ -53,7 +53,7 @@ export function VariablesPanel({
     if (!workspaceId) return;
     setLoading(true);
     try {
-      const data = await FieldsVariablesService.getVariables({
+      const data = await getVariablesAction({
         workspaceId,
         organizationId,
         featureContext,

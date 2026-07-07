@@ -6,7 +6,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { MessageTemplate } from '@/lib/types';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import { validateTemplateVariables, ValidationError } from '@/lib/template-validator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +54,7 @@ export default function TemplateDiagnosticsPage() {
       if (!activeWorkspaceId) return;
       setIsLoadingVars(true);
       try {
-        const res = await FieldsVariablesService.getVariables({
+        const res = await getVariablesAction({
           workspaceId: activeWorkspaceId,
           organizationId: activeOrganizationId,
           featureContext: 'all'

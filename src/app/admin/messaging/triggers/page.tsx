@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { useToast } from '@/hooks/use-toast';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,7 +198,7 @@ export default function MessagingTriggersPage() {
     if (!activeWorkspaceId) return;
 
     let active = true;
-    FieldsVariablesService.getVariables({
+    getVariablesAction({
       workspaceId: activeWorkspaceId,
       organizationId: activeOrganizationId,
       terminology: singular ? { singular, plural: `${singular}s` } : undefined

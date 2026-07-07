@@ -9,7 +9,7 @@ import { TemplateGallery } from '../../../messaging/templates/components/templat
 import { isWhatsAppDisplay } from '../../../messaging/templates/lib/unified-template';
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
-import { FieldsVariablesService } from '@/lib/services/fields-variables-service';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -95,7 +95,7 @@ export default function TemplatesClient() {
 
     React.useEffect(() => {
         let active = true;
-        FieldsVariablesService.getVariables({
+        getVariablesAction({
             workspaceId: 'onboarding',
             terminology: singular ? { singular, plural: `${singular}s` } : undefined
         }).then((res) => {
