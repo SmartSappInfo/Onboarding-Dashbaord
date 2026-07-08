@@ -12,7 +12,7 @@ import {
     ArrowRight, ArrowUp, ArrowDown, PlusCircle, Bold, Italic, Underline,
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
     Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
-    ClipboardCopy, ClipboardCheck, Clipboard
+    ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -351,6 +351,7 @@ function SortableResultBlock({
     block, 
     remove, 
     swap, 
+    move,
     duplicate,
     requestAddBlock,
     isSelected,
@@ -359,7 +360,8 @@ function SortableResultBlock({
     onToggleBatchSelect,
     onCopySingle,
     copiedBlocks,
-    onPaste
+    onPaste,
+    blocksCount
 }: { 
     id: string, 
     index: number, 
@@ -367,6 +369,7 @@ function SortableResultBlock({
     block: SurveyResultBlock, 
     remove: (i: number) => void,
     swap: (a: number, b: number) => void,
+    move: (from: number, to: number) => void,
     duplicate: (i: number) => void,
     requestAddBlock: (i: number) => void,
     isSelected: boolean,
@@ -375,7 +378,8 @@ function SortableResultBlock({
     onToggleBatchSelect: (checked: boolean) => void,
     onCopySingle: () => void,
     copiedBlocks: SurveyResultBlock[],
-    onPaste: (insertIdx: number) => void
+    onPaste: (insertIdx: number) => void,
+    blocksCount: number
 }) {
     const { setValue } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -644,6 +648,12 @@ function SortableResultBlock({
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
 
+                    {/* Reordering Controls */}
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index - 1)} disabled={index === 0} title="Move up"><ArrowUp className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index + 1)} disabled={index === blocksCount - 1} title="Move down"><ArrowDown className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => move(index, 0)} disabled={index === 0} title="Move to top"><ChevronsUp className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => move(index, blocksCount - 1)} disabled={index === blocksCount - 1} title="Move to bottom"><ChevronsDown className="h-3.5 w-3.5" /></Button>
+
                     <Separator orientation="vertical" className="h-4 mx-0.5" />
 
                     {/* Copy Buttons */}
@@ -660,14 +670,8 @@ function SortableResultBlock({
                         </>
                     )}
 
-                    {/* Navigation Arrows */}
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3 w-3" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3 w-3" /></Button>
-
-                    <Separator orientation="vertical" className="h-4 mx-0.5" />
-
                     {/* Delete button (Last position) */}
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)} title="Delete block"><Trash2 className="h-3 w-3" /></Button>
                 </div>
             )}
 
@@ -866,6 +870,13 @@ export function PageEditor({
         }
     };
 
+    const moveBlock = (from: number, to: number) => {
+        move(from, to);
+        if (selectedBlockIdx === from) {
+            setSelectedBlockIdx(to);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Top Config Card */}
@@ -1016,6 +1027,7 @@ export function PageEditor({
                                             block={block as SurveyResultBlock}
                                             remove={removeBlock}
                                             swap={swapBlocks}
+                                            move={moveBlock}
                                             duplicate={duplicateBlock}
                                             requestAddBlock={requestAddBlock}
                                             isSelected={selectedBlockIdx === bIndex}
@@ -1025,6 +1037,7 @@ export function PageEditor({
                                             onCopySingle={() => handleCopySingle(block as SurveyResultBlock)}
                                             copiedBlocks={copiedBlocks}
                                             onPaste={handlePaste}
+                                            blocksCount={blocks.length}
                                         />
                                     ))}
                                 </div>
