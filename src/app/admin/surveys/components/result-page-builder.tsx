@@ -354,7 +354,12 @@ function SortableResultBlock({
     duplicate,
     requestAddBlock,
     isSelected,
-    onSelect
+    onSelect,
+    isSelectedForBatch,
+    onToggleBatchSelect,
+    onCopySingle,
+    copiedBlocks,
+    onPaste
 }: { 
     id: string, 
     index: number, 
@@ -365,7 +370,12 @@ function SortableResultBlock({
     duplicate: (i: number) => void,
     requestAddBlock: (i: number) => void,
     isSelected: boolean,
-    onSelect: () => void
+    onSelect: () => void,
+    isSelectedForBatch: boolean,
+    onToggleBatchSelect: (checked: boolean) => void,
+    onCopySingle: () => void,
+    copiedBlocks: SurveyResultBlock[],
+    onPaste: (insertIdx: number) => void
 }) {
     const { setValue } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -625,12 +635,21 @@ function SortableResultBlock({
                             <Separator orientation="vertical" className="h-4 mx-0.5" />
                         </>
                     )}
+                    <div className="px-2 shrink-0 flex items-center justify-center">
+                        <Checkbox 
+                            checked={isSelectedForBatch}
+                            onCheckedChange={(checked) => onToggleBatchSelect(!!checked)}
+                            className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-primary rounded shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
                     <div {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded-lg shrink-0">
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                     <Separator orientation="vertical" className="h-4 mx-0.5" />
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3 w-3" /></Button>
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={onCopySingle} title="Copy to clipboard"><ClipboardCopy className="h-3 w-3" /></Button>
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => duplicate(index)}><Copy className="h-3 w-3" /></Button>
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-3 w-3" /></Button>
                 </div>
@@ -648,13 +667,30 @@ function SortableResultBlock({
 
             {/* Insertion Trigger on Hover Bottom */}
             <div
-                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-1.5 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    requestAddBlock(index);
-                }}
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 flex items-center gap-1 p-1 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                onClick={(e) => e.stopPropagation()}
             >
-                <PlusCircle className="h-4 w-4 text-primary" />
+                <button
+                    type="button"
+                    className="p-1 hover:bg-muted rounded-full text-primary transition-colors"
+                    onClick={() => requestAddBlock(index)}
+                    title="Add new block here"
+                >
+                    <PlusCircle className="h-4 w-4" />
+                </button>
+                {copiedBlocks && copiedBlocks.length > 0 && (
+                    <>
+                        <Separator orientation="vertical" className="h-3.5" />
+                        <button
+                            type="button"
+                            className="p-1 hover:bg-muted rounded-full text-emerald-600 transition-colors"
+                            onClick={() => onPaste(index + 1)}
+                            title={`Paste ${copiedBlocks.length} block(s)`}
+                        >
+                            <Clipboard className="h-4 w-4" />
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -942,6 +978,19 @@ export function PageEditor({
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                                 <div className="space-y-4">
+                                    {copiedBlocks && copiedBlocks.length > 0 && (
+                                        <div className="flex justify-center -mb-2">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => handlePaste(0)}
+                                                className="h-8 rounded-full border-dashed border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50 text-[10px] font-bold text-emerald-700 flex items-center gap-1.5 transition-all shadow-sm"
+                                            >
+                                                <Clipboard className="h-3 w-3" /> Paste {copiedBlocks.length} block(s) at start
+                                            </Button>
+                                        </div>
+                                    )}
                                     {blocks.map((block, bIndex) => (
                                         <SortableResultBlock 
                                             key={block.id}
@@ -955,6 +1004,11 @@ export function PageEditor({
                                             requestAddBlock={requestAddBlock}
                                             isSelected={selectedBlockIdx === bIndex}
                                             onSelect={() => setSelectedBlockIdx(bIndex)}
+                                            isSelectedForBatch={selectedPageIdx === pageIndex && selectedBlockIds.has(block.id)}
+                                            onToggleBatchSelect={(checked) => handleToggleSelect(block.id, checked)}
+                                            onCopySingle={() => handleCopySingle(block as SurveyResultBlock)}
+                                            copiedBlocks={copiedBlocks}
+                                            onPaste={handlePaste}
                                         />
                                     ))}
                                 </div>
@@ -962,11 +1016,23 @@ export function PageEditor({
                         </DndContext>
 
                         {blocks.length === 0 && (
-                            <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10">
-                                <p className="text-sm text-muted-foreground mb-4 font-semibold italic">This page has no content yet.</p>
-                                <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
-                                </Button>
+                            <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/10 flex flex-col items-center justify-center gap-3">
+                                <p className="text-sm text-muted-foreground font-semibold italic">This page has no content yet.</p>
+                                <div className="flex items-center gap-3">
+                                    <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }} className="font-bold rounded-xl h-10 shadow-sm">
+                                        <PlusCircle className="mr-2 h-4 w-4 text-primary" /> Add First Block
+                                    </Button>
+                                    {copiedBlocks && copiedBlocks.length > 0 && (
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            onClick={() => handlePaste(0)} 
+                                            className="font-bold border-emerald-200 text-emerald-700 bg-emerald-50/30 hover:bg-emerald-50 rounded-xl h-10 shadow-sm animate-in fade-in zoom-in-95 duration-200"
+                                        >
+                                            <Clipboard className="mr-2 h-4 w-4 text-emerald-600" /> Paste {copiedBlocks.length} block(s)
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -979,6 +1045,56 @@ export function PageEditor({
                 onOpenChange={setIsAddModalOpen} 
                 onSelect={handleBlockSelect} 
             />
+
+            {/* Batch Selection Floating Actions Bar */}
+            {selectedPageIdx === pageIndex && selectedBlockIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-6 animate-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                        <span className="text-sm font-bold text-foreground">
+                            {selectedBlockIds.size} {selectedBlockIds.size === 1 ? 'block' : 'blocks'} selected
+                        </span>
+                    </div>
+                    
+                    <Separator orientation="vertical" className="h-6" />
+                    
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            type="button"
+                            variant="secondary" 
+                            size="sm" 
+                            className="font-bold gap-2 rounded-xl h-9" 
+                            onClick={handleBatchCopy}
+                        >
+                            <Copy className="h-3.5 w-3.5" /> Copy Selected
+                        </Button>
+                        <Button 
+                            type="button"
+                            variant="destructive" 
+                            size="sm" 
+                            className="font-bold gap-2 rounded-xl h-9" 
+                            onClick={handleBatchDelete}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                        </Button>
+                    </div>
+
+                    <Separator orientation="vertical" className="h-6" />
+
+                    <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="sm" 
+                        className="font-semibold text-xs h-9 rounded-xl hover:bg-muted" 
+                        onClick={() => {
+                            setSelectedBlockIds(new Set());
+                            setSelectedPageIdx(null);
+                        }}
+                    >
+                        Clear Selection
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
