@@ -236,3 +236,58 @@ More trust. More referrals. More filled seats.
 ```
 *Note: The page is named exactly "Hidden Growth Blockers", every single piece of content, heading, list/quote, and button is extracted exactly without any summarization or rephrasing, and the score ranges align 1:1 with the defined rule scores.*
 
+---
+
+# Enterprise AI Results Designer Specification
+
+## Objective
+The AI shouldn't simply generate text. It should become an orchestration agent that understands the Results Builder, Outcome Logic, Page Builder, Automation Engine, Messaging Engine, and Survey Settings as editable JSON objects.
+The AI assistant must have complete knowledge of every configurable object inside the Results Builder and be capable of performing almost every action a human administrator can perform through natural language:
+- Create, Edit, Delete, Duplicate, Reorder, Rename, Map, Connect, and Configure every supported object inside Results.
+
+## 1. Areas the AI Controls
+
+### A. Scoring Engine
+- Enable/Disable Scoring
+- Change Total Possible Score (`maxScore`)
+- Switch between Points and Percentage presentation (`scoreDisplayMode`)
+- Configure embedded redirect behavior (`embedRedirectMode`): Show in modal vs. Reload parent page
+
+### B. Threshold Logic
+- Create and edit threshold boundaries (`resultRules`)
+- Programmatically check score ranges to avoid overlap, gaps, or duplicates. Invalid logic should be repaired automatically.
+- Map each threshold rule to its corresponding results page (`resultRules[].pageId` -> `resultPages[].id`).
+
+### C. Outcome Logic (Dispatches)
+- For every threshold/rule, manage and configure switches and data fields for:
+  - Apply Tag (`tagEnabled`, `applyTag`)
+  - Trigger Automation (`automationEnabled`, `triggerAutomationId`)
+  - Respondent Messages (`messagingEnabled`, and template attachments)
+
+### D. Result Pages & Page Builder
+- Create, Delete, Duplicate, Rename, and Reorder pages. Mark a page as the default fallback page.
+- Full editing access to content blocks on pages:
+  - `heading` blocks (variants: h1, h2, h3)
+  - `text` blocks (rich text paragraphs)
+  - `quote` blocks
+  - `button` blocks (title, link, target)
+  - `image`, `video`, `audio` blocks
+  - `score-card` blocks
+  - `divider` blocks
+  - `list` blocks (unordered or ordered, items list)
+
+## 2. Page Generation Modes
+- **Method A (Exact Copy Mode)**: Duplicate an existing page's layout exactly, replacing only specific values like title, description, quote, or image.
+- **Method B (Creative Generation)**: Design a completely new layout matching specific design systems (e.g. Professional, Minimal, Luxury, Modern SaaS, Educational, Dark/Light theme, or Brand theme) from scratch.
+
+## 3. Intelligent Mapping & Messaging Engine Integration
+- Check and link score ranges to the correct results page. Prompt the user if a page is missing.
+- Integrate directly with messaging templates (Email, SMS, WhatsApp) for each threshold.
+- **Guided message template creation (Safer approval flow)**: Instead of generating all messages at once, guide the user step-by-step to review and confirm/edit each template before moving to the next.
+
+## 4. Execution & Safety Protocols
+- **Reason before Change**: Read current state → Plan changes → Validate dependencies → Execute updates → Verify outcomes.
+- **Preview before Apply**: Prior to saving, always output a detailed execution plan listing the changes (e.g. "Create 2 thresholds, 2 result pages, enable messaging") and highlight any destructive items. Allow the user to approve or cancel.
+- **Granular Updates**: Perform precise updates on target elements/rules instead of blindly overriding the entire survey document.
+
+

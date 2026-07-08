@@ -365,12 +365,16 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 
 
 ### RESULT PAGE RULES:
-- Create 2-4 outcome buckets with NON-OVERLAPPING score ranges
-- Every result page MUST start with a \`score-card\` block (shows animated score)
-- Use \`heading\`, \`text\`, \`list\`, \`button\`, \`quote\`, \`divider\` blocks for content
-- \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`
-- \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`
-- Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID
+- Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
+- Every result page MUST start with a \`score-card\` block (shows animated score).
+- Use \`heading\`, \`text\`, \`list\`, \`button\`, \`quote\`, \`divider\` blocks for content.
+- \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`.
+- \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`.
+- Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID.
+- **Outcome Logic (Dispatches)**: If the source text suggests action dispatches for a score threshold, set:
+  - \`tagEnabled: true\` and \`applyTag: "tag_id_placeholder"\`
+  - \`automationEnabled: true\` and \`triggerAutomationId: "automation_id_placeholder"\`
+  - \`messagingEnabled: true\`
 - **Copy Fidelity (CRITICAL)**: If specific copy, text, or headlines are provided in the source text for the result pages/outcomes, you MUST build the results pages using that exact copy. Do NOT assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize. Specifically:
   1. The page 'name' and rule 'label' MUST exactly match the outcome title/header (e.g. if the source says "Hidden Growth Blockers (6-11)", the name and label must be "Hidden Growth Blockers" — NOT generic names like "Needs Improvement").
   2. Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text.
