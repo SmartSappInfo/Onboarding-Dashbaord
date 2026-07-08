@@ -12,7 +12,8 @@ import {
   Archive,
   RefreshCw,
   Plus,
-  Loader2
+  Loader2,
+  Edit
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
+import TemplateDialog from './TemplateDialog';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
@@ -71,6 +73,18 @@ export default function TemplateListClient() {
   const [typeFilter, setTypeFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const [selectedTemplate, setSelectedTemplate] = React.useState<PlatformTemplate | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  function handleNewTemplate() {
+    setSelectedTemplate(null);
+    setIsDialogOpen(true);
+  }
+
+  function handleEditTemplate(tpl: PlatformTemplate) {
+    setSelectedTemplate(tpl);
+    setIsDialogOpen(true);
+  }
 
   async function handleSyncPresets() {
     if (!(await confirm({
@@ -368,6 +382,15 @@ export default function TemplateListClient() {
                             View Details
                           </Link>
                         </DropdownMenuItem>
+                        {can('templates', 'edit') && (
+                          <DropdownMenuItem
+                            onClick={() => handleEditTemplate(tpl)}
+                            className="cursor-pointer rounded-lg"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Template
+                          </DropdownMenuItem>
+                        )}
                         {can('templates', 'edit') ? (
                           <>
                             <DropdownMenuSeparator className="bg-accent" />
@@ -400,6 +423,13 @@ export default function TemplateListClient() {
           </TableBody>
         </Table>
       </div>
+
+      <TemplateDialog
+        template={selectedTemplate}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSuccess={loadTemplates}
+      />
     </div>
   );
 }
