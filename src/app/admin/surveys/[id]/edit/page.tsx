@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where, deleteDoc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -330,6 +330,16 @@ export default function EditSurveyPage() {
             await updateDoc(docRef, pruneUndefined({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() }));
             
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
+            
+            // Delete removed pages from Firestore subcollection
+            const existingPagesSnap = await getDocs(pagesCol);
+            const formPageIds = new Set(resultPages.map((p: any) => p.id));
+            for (const docSnap of existingPagesSnap.docs) {
+                if (!formPageIds.has(docSnap.id)) {
+                    await deleteDoc(doc(pagesCol, docSnap.id));
+                }
+            }
+
             for (const page of resultPages) {
                 await setDoc(doc(pagesCol, page.id), pruneUndefined(page));
             }
@@ -406,6 +416,16 @@ export default function EditSurveyPage() {
 
             await updateDoc(docRef, pruneUndefined({ ...migrateSurveyFormSeo(mainData), updatedAt: new Date().toISOString() }));
             const pagesCol = collection(firestore!, `surveys/${surveyId}/resultPages`);
+            
+            // Delete removed pages from Firestore subcollection
+            const existingPagesSnap = await getDocs(pagesCol);
+            const formPageIds = new Set(resultPages.map((p: any) => p.id));
+            for (const docSnap of existingPagesSnap.docs) {
+                if (!formPageIds.has(docSnap.id)) {
+                    await deleteDoc(doc(pagesCol, docSnap.id));
+                }
+            }
+
             for (const page of resultPages) {
                 await setDoc(doc(pagesCol, page.id), pruneUndefined(page));
             }
