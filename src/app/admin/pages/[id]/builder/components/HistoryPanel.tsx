@@ -17,6 +17,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 
+const LOCAL_INDUSTRY_LABELS: Record<string, string> = {
+  SaaS: 'SaaS Product',
+  SchoolEnrollment: 'School Admissions',
+  Marketing: 'Marketing Agency',
+  Law: 'Law Practice',
+  RealEstate: 'Real Estate',
+  Consultancy: 'Consultancy',
+};
+
 interface HistoryPanelProps {
     readonly versions: CampaignPageVersion[];
     readonly currentVersionId: string | null;
@@ -159,7 +168,7 @@ export const HistoryPanel = React.memo(function HistoryPanel({
                                 <SelectItem value="all">All Verticals</SelectItem>
                                 {getEnabledIndustries().map((ind) => (
                                     <SelectItem key={ind} value={ind}>
-                                        {INDUSTRY_LABELS[ind]}
+                                        {(INDUSTRY_LABELS && INDUSTRY_LABELS[ind as keyof typeof INDUSTRY_LABELS]) || LOCAL_INDUSTRY_LABELS[ind] || ind}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

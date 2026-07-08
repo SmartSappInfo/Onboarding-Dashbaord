@@ -1,5 +1,14 @@
 import type { IndustryVertical } from '@/lib/types';
 
+export const INDUSTRY_LABELS: Record<IndustryVertical, string> = {
+  SaaS: 'SaaS Product',
+  SchoolEnrollment: 'School Admissions',
+  Marketing: 'Marketing Agency',
+  Law: 'Law Practice',
+  RealEstate: 'Real Estate',
+  Consultancy: 'Consultancy',
+};
+
 // ─────────────────────────────────────────────────
 // Interfaces
 // ─────────────────────────────────────────────────
@@ -415,14 +424,6 @@ export const INDUSTRY_CONFIG: Record<IndustryVertical, IndustryContext> = {
   },
 };
 
-export const INDUSTRY_LABELS: Record<IndustryVertical, string> = {
-  SaaS: 'SaaS Product',
-  SchoolEnrollment: 'School Admissions',
-  Marketing: 'Marketing Agency',
-  Law: 'Law Practice',
-  RealEstate: 'Real Estate',
-  Consultancy: 'Consultancy',
-};
 
 // ─────────────────────────────────────────────────
 // Helper Functions
