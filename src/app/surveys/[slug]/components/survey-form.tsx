@@ -1231,6 +1231,12 @@ export default function SurveyForm({
 
         const isInternal = finalDestination.startsWith('/');
 
+        // Append current query string to internal redirects to carry over embed/theme parameters
+        if (isInternal && typeof window !== 'undefined' && window.location.search) {
+            const hasQuery = finalDestination.includes('?');
+            finalDestination = `${finalDestination}${hasQuery ? '&' : '?'}${window.location.search.substring(1)}`;
+        }
+
         // Resolve absolute URL for parent navigation or external redirection
         let absoluteDestination = finalDestination;
         if (isInternal && typeof window !== 'undefined') {
@@ -1246,18 +1252,22 @@ export default function SurveyForm({
             return;
         }
 
+        const queryResultMode = searchParams?.get('resultMode') as 'modal' | 'parent' | null;
+        const activeRedirectMode = queryResultMode || survey.embedRedirectMode || 'modal';
+
         // Always notify parent of completion
         if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
             window.parent.postMessage({
                 type: 'survey_submitted',
                 surveyId: survey.id,
                 submissionId: subId,
-                redirectUrl: absoluteDestination
+                redirectUrl: absoluteDestination,
+                embedRedirectMode: activeRedirectMode
             }, '*');
         }
 
         const isEmbedded = searchParams?.get('embed') === 'true';
-        if (isEmbedded && survey.embedRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        if (isEmbedded && activeRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
             try {
                 window.parent.location.href = absoluteDestination;
                 return;

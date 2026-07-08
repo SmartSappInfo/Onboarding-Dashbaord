@@ -13,6 +13,7 @@ const schema = z.object({
   meetingId: z.string().default(''),
   qrId: z.string().default(''),
   openInModal: z.boolean().default(false),
+  surveyResultMode: z.enum(['modal', 'parent']).default('modal'),
 });
 type CtaProps = z.infer<typeof schema>;
 
@@ -41,6 +42,10 @@ registerBlock({
     { kind: 'resource', key: 'meetingId', label: 'Meeting Target', resource: 'meeting' },
     { kind: 'resource', key: 'qrId', label: 'QR Code Target', resource: 'qr' },
     { kind: 'boolean', key: 'openInModal', label: 'Open in Modal Popup' },
+    { kind: 'select', key: 'surveyResultMode', label: 'Survey Result Display', options: [
+      { value: 'modal', label: 'Show inside Modal' },
+      { value: 'parent', label: 'Redirect parent page' },
+    ] },
     { kind: 'select', key: 'variant', label: 'Button Style', options: [
       { value: 'primary', label: 'Primary (Solid)' },
       { value: 'secondary', label: 'Secondary (Outline)' },
@@ -76,7 +81,7 @@ registerBlock({
                                props.actionType === 'meeting' ? props.meetingId :
                                props.actionType === 'qr' ? props.qrId : '';
               if (targetId) {
-                ctx.fireTrigger?.('open_modal_resource', JSON.stringify({ type: props.actionType, targetId }));
+                ctx.fireTrigger?.('open_modal_resource', JSON.stringify({ type: props.actionType, targetId, resultMode: props.surveyResultMode }));
               }
             } else {
               // Direct navigation / redirection

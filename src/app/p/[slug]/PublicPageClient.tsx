@@ -103,6 +103,7 @@ function useTriggerEngine(
     const [modalState, setModalState] = useState<{
         type: 'form' | 'survey' | 'receipt_request' | 'meeting' | 'qr';
         targetId?: string;
+        resultMode?: 'modal' | 'parent';
     } | null>(null);
     const firedRef = useRef<Set<string>>(new Set());
 
@@ -111,13 +112,14 @@ function useTriggerEngine(
             switch (action.type) {
                 case 'open_modal':
                     if (action.config.modalType && action.config.targetId) {
-                        const mType = action.config.modalType;
-                        if (mType === 'form' || mType === 'survey') {
-                            setModalState({
-                                type: mType,
-                                targetId: action.config.targetId
-                            });
-                        }
+                         const mType = action.config.modalType;
+                         if (mType === 'form' || mType === 'survey') {
+                             setModalState({
+                                 type: mType,
+                                 targetId: action.config.targetId,
+                                 resultMode: action.config.surveyResultMode
+                             });
+                         }
                     }
                     break;
                 case 'redirect':
@@ -430,8 +432,8 @@ export default function PublicPageClient({
                             fireTrigger={(event, blockId) => {
                                 if (event === 'open_modal_resource' && blockId) {
                                     try {
-                                        const { type, targetId } = JSON.parse(blockId);
-                                        setModalState({ type, targetId });
+                                        const { type, targetId, resultMode } = JSON.parse(blockId);
+                                        setModalState({ type, targetId, resultMode });
                                     } catch (err) {
                                         console.error('Failed to open modal resource', err);
                                     }
@@ -688,6 +690,7 @@ export default function PublicPageClient({
                             pageId={page.id}
                             onClose={() => setModalState(null)} 
                             isInModal={true} 
+                            resultMode={modalState.resultMode}
                         />
                     )}
                     {modalState?.type === 'meeting' && page && (

@@ -33,6 +33,7 @@ export const navItemSchema = z.object({
   url: z.string().optional(),
   targetSectionId: z.string().optional(),
   action: z.enum(['receipt_request', 'open_modal_form', 'open_modal_survey', 'open_modal_agreement']).optional(),
+  surveyResultMode: z.enum(['modal', 'parent']).optional(),
 });
 
 export const headerSettingsSchema = z.object({

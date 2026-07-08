@@ -3499,6 +3499,7 @@ export interface HeaderNavItem {
   url?: string;
   targetSectionId?: string;
   action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
+  surveyResultMode?: 'modal' | 'parent';
 }
 
 export interface PageHeaderSettings {
@@ -3547,6 +3548,7 @@ export interface PageTriggerAction {
     modalType?: 'survey' | 'form' | 'agreement';
     targetId?: string; // SurveyId, FormId, AgreementId
     url?: string;
+    surveyResultMode?: 'modal' | 'parent';
   };
 }
 

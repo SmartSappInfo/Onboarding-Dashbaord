@@ -301,6 +301,20 @@ const SettingsPanel = React.memo(function SettingsPanel({
                                                             </select>
                                                         </div>
                                                     )}
+
+                                                    {item.linkType === 'action' && item.action === 'open_modal_survey' && (
+                                                        <div className="space-y-1 animate-in fade-in duration-200">
+                                                            <Label className="text-[8px] font-bold text-slate-500 uppercase">Survey Result Display</Label>
+                                                            <select
+                                                                value={item.surveyResultMode || 'modal'}
+                                                                onChange={(e) => handleUpdateNavItem(item.id, { surveyResultMode: e.target.value as HeaderNavItem['surveyResultMode'] })}
+                                                                className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                                            >
+                                                                <option value="modal">Show inside Modal</option>
+                                                                <option value="parent">Redirect parent page</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

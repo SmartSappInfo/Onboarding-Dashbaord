@@ -175,7 +175,7 @@ export function PageRenderer({
           type = 'agreement';
           targetId = resources.agreements?.[0]?.id || '';
         }
-        fireTrigger('open_modal_resource', JSON.stringify({ type, targetId }));
+        fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: item.surveyResultMode }));
       }
     }
   }, [fireTrigger, resources]);

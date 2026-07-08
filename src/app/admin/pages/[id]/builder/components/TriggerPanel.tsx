@@ -103,23 +103,34 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                             </Select>
 
                                             {action.type === 'open_modal' && (
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <Select value={action.config.modalType || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, modalType: val } })}>
-                                                        <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Type..." /></SelectTrigger>
-                                                        <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
-                                                            <SelectItem value="form" className="text-[9px]">Form</SelectItem>
-                                                            <SelectItem value="survey" className="text-[9px]">Survey</SelectItem>
-                                                            <SelectItem value="agreement" className="text-[9px]">Agreement</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Select value={action.config.targetId || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, targetId: val } })}>
-                                                        <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Target..." /></SelectTrigger>
-                                                        <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
-                                                            {action.config.modalType === 'survey' && surveys.map(s => <SelectItem key={s.id} value={s.id} className="text-[9px]">{s.title}</SelectItem>)}
-                                                            {action.config.modalType === 'form' && forms.map(f => <SelectItem key={f.id} value={f.id} className="text-[9px]">{f.internalName || f.title}</SelectItem>)}
-                                                            {(!action.config.modalType || action.config.modalType === 'agreement') && <SelectItem value="none" disabled className="text-[9px]">Select type first</SelectItem>}
-                                                        </SelectContent>
-                                                    </Select>
+                                                <div className="space-y-2">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <Select value={action.config.modalType || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, modalType: val } })}>
+                                                            <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Type..." /></SelectTrigger>
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                                <SelectItem value="form" className="text-[9px]">Form</SelectItem>
+                                                                <SelectItem value="survey" className="text-[9px]">Survey</SelectItem>
+                                                                <SelectItem value="agreement" className="text-[9px]">Agreement</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Select value={action.config.targetId || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, targetId: val } })}>
+                                                            <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Target..." /></SelectTrigger>
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                                {action.config.modalType === 'survey' && surveys.map(s => <SelectItem key={s.id} value={s.id} className="text-[9px]">{s.title}</SelectItem>)}
+                                                                {action.config.modalType === 'form' && forms.map(f => <SelectItem key={f.id} value={f.id} className="text-[9px]">{f.internalName || f.title}</SelectItem>)}
+                                                                {(!action.config.modalType || action.config.modalType === 'agreement') && <SelectItem value="none" disabled className="text-[9px]">Select type first</SelectItem>}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    {action.config.modalType === 'survey' && (
+                                                        <Select value={action.config.surveyResultMode || 'modal'} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, surveyResultMode: val } })}>
+                                                            <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Result Display..." /></SelectTrigger>
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                                <SelectItem value="modal" className="text-[9px]">Show inside Modal</SelectItem>
+                                                                <SelectItem value="parent" className="text-[9px]">Redirect parent page</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
                                                 </div>
                                             )}
 

@@ -351,6 +351,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'surveyId' && props.actionType !== 'survey') return null;
               if (field.key === 'meetingId' && props.actionType !== 'meeting') return null;
               if (field.key === 'qrId' && props.actionType !== 'qr') return null;
+              if (field.key === 'surveyResultMode' && (props.actionType !== 'survey' || !props.openInModal)) return null;
             }
 
             // Conditional field visibility for Hero Block sales elements

@@ -276,18 +276,22 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
             absoluteDestination = `${window.location.origin}${finalDestination}`;
         }
 
+        const queryResultMode = searchParams?.get('resultMode') as 'modal' | 'parent' | null;
+        const activeRedirectMode = queryResultMode || survey.embedRedirectMode || 'modal';
+
         // Always notify parent of completion
         if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
             window.parent.postMessage({
                 type: 'survey_submitted',
                 surveyId: survey.id,
                 submissionId: submissionId,
-                redirectUrl: absoluteDestination
+                redirectUrl: absoluteDestination,
+                embedRedirectMode: activeRedirectMode
             }, '*');
         }
 
         const isEmbedded = searchParams?.get('embed') === 'true';
-        if (isEmbedded && survey.embedRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        if (isEmbedded && activeRedirectMode === 'parent' && typeof window !== 'undefined' && window.parent && window.parent !== window) {
             try {
                 window.parent.location.href = absoluteDestination;
                 return;

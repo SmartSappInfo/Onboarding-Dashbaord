@@ -19,6 +19,7 @@ interface EmbeddedSurveyProps {
   buttonText?: string;
   buttonStyle?: 'primary' | 'secondary' | 'glass' | 'glow';
   primaryColor?: string;
+  resultMode?: 'modal' | 'parent';
 }
 
 export function EmbeddedSurvey({ 
@@ -34,14 +35,23 @@ export function EmbeddedSurvey({
   descriptionText = 'Complete our brief survey to continue.',
   buttonText = 'Start Survey',
   buttonStyle = 'primary',
-  primaryColor = '#3B5FFF'
+  primaryColor = '#3B5FFF',
+  resultMode
 }: EmbeddedSurveyProps) {
   const [size, setSize] = useState({ height: 600, width: 512 });
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'survey_submitted' && event.data?.surveyId === surveyId) {
-        onClose?.();
+        if (event.data?.embedRedirectMode === 'parent') {
+          if (event.data?.redirectUrl) {
+            window.location.href = event.data.redirectUrl;
+          } else {
+            onClose?.();
+          }
+        } else {
+          // If modal mode, do not call onClose(), let results page show inside iframe
+        }
       }
       if (event.data?.type === 'iframe_resize' && event.data?.height) {
         setSize({
@@ -56,7 +66,7 @@ export function EmbeddedSurvey({
   }, [surveyId, onClose]);
 
   if (displayMode === 'inline' || isInModal) {
-    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}`;
+    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}`;
     return (
       <div 
         className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
