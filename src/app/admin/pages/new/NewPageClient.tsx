@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { collection, query, doc, setDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
+import { getPublishedTemplatesAction } from '@/lib/backoffice/backoffice-template-actions';
+import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -121,8 +123,53 @@ export default function NewPageClient() {
     const [previewTemplate, setPreviewTemplate] = useState<PageTemplate | null>(null);
 
     // Fetch templates
-    const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'page_templates')) : null, [firestore]);
-    const { data: templates, isLoading: templatesLoading } = useCollection<PageTemplate>(templatesQuery);
+    const [platformTemplates, setPlatformTemplates] = useState<PlatformTemplate[]>([]);
+    const [templatesLoading, setTemplatesLoading] = useState(true);
+
+    React.useEffect(() => {
+        let active = true;
+        async function fetchPlatformTemplates() {
+            setTemplatesLoading(true);
+            try {
+                const res = await getPublishedTemplatesAction('page');
+                if (res.success && res.data && active) {
+                    setPlatformTemplates(res.data);
+                }
+            } catch (err) {
+                console.error('Failed to load platform page templates:', err);
+            } finally {
+                if (active) setTemplatesLoading(false);
+            }
+        }
+        fetchPlatformTemplates();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const templates = useMemo(() => {
+        return platformTemplates.map(pt => {
+            const rawContent = pt.content as Record<string, unknown> | null;
+            const goalValue = (rawContent?.goal as string) || pt.category || 'information';
+            const structureValue = (rawContent?.structureJson as import('@/lib/types').CampaignPageStructure) || { sections: [] };
+            const industryValue = (rawContent?.industry as string) || 
+              (typeof pt === 'object' && pt !== null && 'industry' in pt && typeof (pt as Record<string, unknown>).industry === 'string'
+                ? (pt as Record<string, unknown>).industry as string
+                : 'all');
+
+            return {
+                id: pt.id,
+                name: pt.name,
+                description: pt.description,
+                goal: goalValue,
+                isGlobal: pt.scope === 'system',
+                structureJson: structureValue,
+                industry: industryValue,
+                createdAt: pt.createdAt,
+                updatedAt: pt.updatedAt
+            } as PageTemplate;
+        });
+    }, [platformTemplates]);
 
     // Initialize industryFilter once activeWorkspace resolves
     React.useEffect(() => {

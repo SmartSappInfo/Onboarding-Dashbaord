@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import type { CampaignPageVersion, PageSectionTemplate } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { STATIC_SECTION_TEMPLATES } from '@/lib/page-builder/templates/sections';
+import { getPublishedTemplatesAction } from '@/lib/backoffice/backoffice-template-actions';
+import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
 import { INDUSTRY_LABELS, getEnabledIndustries } from '@/lib/industry-config';
 import {
     Select,
@@ -50,15 +52,61 @@ export const HistoryPanel = React.memo(function HistoryPanel({
         }
     }, [activeWorkspace?.industry]);
 
-    // Combine static and custom saved sections
-    const combined = [
-        ...STATIC_SECTION_TEMPLATES.map(s => ({
-            ...s,
-            workspaceId: '',
-            createdAt: new Date().toISOString()
-        } as PageSectionTemplate)),
-        ...savedSections
-    ];
+    const [platformSections, setPlatformSections] = useState<PlatformTemplate[]>([]);
+    const [isSectionsLoading, setIsSectionsLoading] = useState(true);
+
+    React.useEffect(() => {
+        let active = true;
+        async function fetchSections() {
+            try {
+                const res = await getPublishedTemplatesAction('section');
+                if (res.success && res.data && active) {
+                    setPlatformSections(res.data);
+                }
+            } catch (err) {
+                console.error('Failed to load platform section templates:', err);
+            } finally {
+                if (active) setIsSectionsLoading(false);
+            }
+        }
+        fetchSections();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const systemSections = React.useMemo(() => {
+        if (platformSections.length === 0 && !isSectionsLoading) {
+            return STATIC_SECTION_TEMPLATES.map(s => ({
+                ...s,
+                workspaceId: '',
+                createdAt: new Date().toISOString()
+            } as PageSectionTemplate));
+        }
+
+        return platformSections.map(pt => {
+            const rawContent = pt.content as Record<string, unknown> | null;
+            const structureValue = (rawContent?.structure as import('@/lib/types').PageSection) || { id: '', type: 'section', columns: [] };
+            return {
+                id: pt.id,
+                organizationId: '',
+                workspaceId: '',
+                name: pt.name,
+                category: pt.category,
+                structure: structureValue,
+                industry: (rawContent?.industry as string) || (typeof pt === 'object' && pt !== null && 'industry' in pt && typeof (pt as Record<string, unknown>).industry === 'string' ? (pt as Record<string, unknown>).industry as string : 'all'),
+                createdAt: pt.createdAt
+            } as PageSectionTemplate;
+        });
+    }, [platformSections, isSectionsLoading]);
+
+    // Combine system and custom saved sections
+    const combined = React.useMemo(() => {
+        return [
+            ...systemSections,
+            ...savedSections
+        ];
+    }, [systemSections, savedSections]);
 
     const filtered = combined.filter((s) => {
         // 1. Category Filter
@@ -69,7 +117,7 @@ export const HistoryPanel = React.memo(function HistoryPanel({
         if (filter === 'saved' && ['hero', 'testimonials', 'faq', 'gallery'].includes(s.category)) return false;
 
         // 2. Industry Filter
-        if (s.id.startsWith('tpl-') && industryFilter && industryFilter !== 'all') {
+        if (!s.workspaceId && industryFilter && industryFilter !== 'all') {
             if (s.industry && s.industry !== 'all' && s.industry !== industryFilter) {
                 return false;
             }
@@ -80,10 +128,10 @@ export const HistoryPanel = React.memo(function HistoryPanel({
 
     const activeIndustry = activeWorkspace?.industry || 'SaaS';
 
-    const heroCount = combined.filter(s => s.category === 'hero' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
-    const testCount = combined.filter(s => s.category === 'testimonials' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
-    const faqCount = combined.filter(s => s.category === 'faq' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
-    const galCount = combined.filter(s => s.category === 'gallery' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const heroCount = combined.filter(s => s.category === 'hero' && (s.workspaceId || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const testCount = combined.filter(s => s.category === 'testimonials' && (s.workspaceId || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const faqCount = combined.filter(s => s.category === 'faq' && (s.workspaceId || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const galCount = combined.filter(s => s.category === 'gallery' && (s.workspaceId || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
