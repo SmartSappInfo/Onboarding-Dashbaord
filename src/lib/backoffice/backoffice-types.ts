@@ -148,7 +148,9 @@ export type PlatformTemplateType =
   | 'pipeline'
   | 'task'
   | 'theme'
-  | 'role_architecture';
+  | 'role_architecture'
+  | 'section'
+  | 'block';
 
 /**
  * Version record for template history.
