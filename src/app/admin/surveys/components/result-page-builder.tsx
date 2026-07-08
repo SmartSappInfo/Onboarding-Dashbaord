@@ -12,10 +12,12 @@ import {
     ArrowRight, ArrowUp, ArrowDown, PlusCircle, Bold, Italic, Underline,
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
     Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
-    ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown
+    ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown,
+    Pencil
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -879,27 +881,6 @@ export function PageEditor({
 
     return (
         <div className="space-y-6">
-            {/* Top Config Card */}
-            <div className="flex items-center justify-between p-4 rounded-xl border bg-muted/20">
-                <div className="space-y-0.5">
-                    <Label className="text-sm font-semibold flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" /> Celebrate Submission
-                    </Label>
-                    <p className="text-xs text-muted-foreground font-medium">Trigger a confetti explosion when the respondent views this page.</p>
-                </div>
-                <Controller
-                    name={`resultPages.${pageIndex}.confettiEnabled`}
-                    control={control}
-                    render={({ field }) => (
-                        <Switch
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                            className="data-[state=checked]:bg-amber-500"
-                        />
-                    )}
-                />
-            </div>
-
             {/* Split Screen Layout */}
             <div className="flex flex-col xl:flex-row gap-6 items-start">
                 
@@ -1142,6 +1123,7 @@ export default function ResultPageBuilder() {
     const [copiedBlocks, setCopiedBlocks] = React.useState<SurveyResultBlock[]>([]);
     const [selectedBlockIds, setSelectedBlockIds] = React.useState<Set<string>>(new Set());
     const [selectedPageIdx, setSelectedPageIdx] = React.useState<number | null>(null);
+    const [editingPageIdx, setEditingPageIdx] = React.useState<number | null>(null);
 
     React.useEffect(() => {
         try {
@@ -1206,47 +1188,141 @@ export default function ResultPageBuilder() {
                 {pages.map((page, index) => (
                     <AccordionItem key={page.id} value={page.id} className="border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                         <AccordionTrigger className="hover:no-underline py-6">
-                            <div className="flex items-center gap-4 text-left">
-                                <div className="p-2 bg-primary/10 rounded-xl">
-                                    <Layout className="h-5 w-5 text-primary" />
+                            <div className="flex items-center justify-between w-full pr-4" onClick={(e) => {
+                                // Prevent Accordion from opening/closing when clicking on elements in this container
+                            }}>
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className="p-2 bg-primary/10 rounded-xl">
+                                        <Layout className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        {editingPageIdx === index ? (
+                                            <Input 
+                                                value={watch(`resultPages.${index}.name`)}
+                                                onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
+                                                onBlur={() => setEditingPageIdx(null)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        setEditingPageIdx(null);
+                                                    }
+                                                }}
+                                                autoFocus
+                                                className="h-8 py-0 px-2 text-sm font-semibold max-w-[200px] bg-background"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 group/title">
+                                                <span className="font-semibold text-lg leading-none">{(page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
+                                                <button 
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingPageIdx(index);
+                                                    }}
+                                                    className="p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity"
+                                                    title="Rename page"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-muted-foreground font-bold mt-1">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold text-lg leading-none mb-1">{(page as SurveyResultPage).name}</p>
-                                    <p className="text-xs text-muted-foreground font-bold ">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
+
+                                <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                    {/* Default Switch */}
+                                    <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                                        <Switch 
+                                            checked={!!watch(`resultPages.${index}.isDefault`)} 
+                                            onCheckedChange={(val) => {
+                                                if (val) {
+                                                    pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
+                                                }
+                                            }}
+                                        />
+                                        <span className="text-xs font-bold text-muted-foreground select-none">Default</span>
+                                    </div>
+
+                                    {/* Celebrate Switch */}
+                                    <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                                        <Controller
+                                            name={`resultPages.${index}.confettiEnabled`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Switch
+                                                    checked={!!field.value}
+                                                    onCheckedChange={field.onChange}
+                                                    className="data-[state=checked]:bg-amber-500"
+                                                />
+                                            )}
+                                        />
+                                        <span className="text-xs font-bold text-muted-foreground select-none">Celebrate</span>
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div className="h-6 w-[1px] bg-border mx-1" />
+
+                                    {/* Action Buttons with Tooltips */}
+                                    <TooltipProvider>
+                                        <div className="flex items-center gap-1">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        className="h-9 w-9 rounded-lg" 
+                                                        onClick={() => setPreviewPageIdx(index)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <span className="text-[10px] font-bold">Preview Page</span>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        className="h-9 w-9 rounded-lg" 
+                                                        onClick={() => clonePage(index)}
+                                                    >
+                                                        <Copy className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <span className="text-[10px] font-bold">Clone Page</span>
+                                                </TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg" 
+                                                        onClick={() => remove(index)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <span className="text-[10px] font-bold">Delete Page</span>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
+                                    </TooltipProvider>
                                 </div>
-                                {(page as SurveyResultPage).isDefault && <Badge variant="secondary" className="ml-2 bg-green-50 text-green-700 border-green-200">Default Fallback</Badge>}
                             </div>
                         </AccordionTrigger>
-                        <AccordionContent className="pt-4 pb-8 space-y-8 border-t">
-                            <div className="flex flex-wrap items-end gap-4">
-                                <div className="flex-grow space-y-1.5 min-w-[200px]">
-                                    <Label className="text-[10px] font-bold text-muted-foreground">Internal Page Name</Label>
-                                    <Input {...register(`resultPages.${index}.name`)} className="h-11 font-bold" />
-                                </div>
-                                <div className="flex items-center gap-2 pb-2 h-11 px-4 rounded-xl border bg-muted/30">
-                                    <Switch 
-                                        checked={!!watch(`resultPages.${index}.isDefault`)} 
-                                        onCheckedChange={(val) => {
-                                            if (val) {
-                                                pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
-                                            }
-                                        }}
-                                    />
-                                    <Label className="text-xs font-bold">Default Page</Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button type="button" variant="outline" className="h-11 px-4 gap-2 font-bold" onClick={() => setPreviewPageIdx(index)}>
-                                        <Eye className="h-4 w-4" /> Preview
-                                    </Button>
-                                    <Button type="button" variant="outline" className="h-11 px-4 gap-2 font-bold" onClick={() => clonePage(index)}>
-                                        <Copy className="h-4 w-4" /> Clone
-                                    </Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-destructive" onClick={() => remove(index)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-
+                        <AccordionContent className="pt-6 pb-8 space-y-8 border-t">
                             <PageEditor 
                                 pageIndex={index} 
                                 copiedBlocks={copiedBlocks}
