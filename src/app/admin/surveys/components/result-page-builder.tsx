@@ -626,15 +626,10 @@ function SortableResultBlock({
             {/* Hover Floating Actions Menu */}
             {(isSelected || isHovered) && (
                 <div 
-                    className="absolute top-3 right-3 z-30 flex items-center gap-0.5 bg-background border shadow-md rounded-xl p-1 animate-in fade-in zoom-in-95 duration-200"
+                    className="absolute left-1/2 -translate-x-1/2 -top-6 z-30 flex items-center gap-0.5 bg-background border shadow-md rounded-xl p-1 animate-in fade-in zoom-in-95 duration-200 whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {['heading', 'text', 'quote', 'button', 'list'].includes(activeBlock.type) && (
-                        <>
-                            <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
-                            <Separator orientation="vertical" className="h-4 mx-0.5" />
-                        </>
-                    )}
+                    {/* Checkbox (First Position) */}
                     <div className="px-2 shrink-0 flex items-center justify-center">
                         <Checkbox 
                             checked={isSelectedForBatch}
@@ -643,20 +638,41 @@ function SortableResultBlock({
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
+
+                    {/* Dragging Handle */}
                     <div {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded-lg shrink-0">
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
+
                     <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+                    {/* Copy Buttons */}
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={onCopySingle} title="Copy to clipboard"><ClipboardCopy className="h-3 w-3" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => duplicate(index)} title="Duplicate block"><Copy className="h-3 w-3" /></Button>
+
+                    <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+                    {/* Formatting Toolbar */}
+                    {['heading', 'text', 'quote', 'button', 'list'].includes(activeBlock.type) && (
+                        <>
+                            <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
+                            <Separator orientation="vertical" className="h-4 mx-0.5" />
+                        </>
+                    )}
+
+                    {/* Navigation Arrows */}
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3 w-3" /></Button>
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3 w-3" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={onCopySingle} title="Copy to clipboard"><ClipboardCopy className="h-3 w-3" /></Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted" onClick={() => duplicate(index)}><Copy className="h-3 w-3" /></Button>
+
+                    <Separator orientation="vertical" className="h-4 mx-0.5" />
+
+                    {/* Delete button (Last position) */}
                     <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => remove(index)}><Trash2 className="h-3 w-3" /></Button>
                 </div>
             )}
 
             {/* WYSIWYG Content Body */}
-            <div className="p-6">
+            <div className="p-4">
                 {renderWysiwygContent()}
             </div>
 
