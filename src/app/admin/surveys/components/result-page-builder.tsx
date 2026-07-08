@@ -1118,6 +1118,7 @@ export default function ResultPageBuilder() {
     const maxScore = watch('maxScore') || 100;
     const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
     const [previewPageIdx, setPreviewPageIdx] = React.useState<number | null>(null);
+    const watchedPages = watch('resultPages') || [];
 
     // Shared clipboard state for blocks (Next.js hydration-safe)
     const [copiedBlocks, setCopiedBlocks] = React.useState<SurveyResultBlock[]>([]);
@@ -1213,7 +1214,7 @@ export default function ResultPageBuilder() {
                                             />
                                         ) : (
                                             <div className="flex items-center gap-1.5 group/title">
-                                                <span className="font-semibold text-lg leading-none">{(page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
+                                                <span className="font-semibold text-lg leading-none">{(watchedPages[index] as SurveyResultPage)?.name || (page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
                                                 <button 
                                                     type="button"
                                                     onClick={(e) => {
@@ -1351,7 +1352,7 @@ export default function ResultPageBuilder() {
                 <PagePreviewModal 
                     open={previewPageIdx !== null} 
                     onOpenChange={(o) => !o && setPreviewPageIdx(null)} 
-                    page={pages[previewPageIdx] as SurveyResultPage}
+                    page={{ ...pages[previewPageIdx], ...watchedPages[previewPageIdx] } as SurveyResultPage}
                     maxScore={maxScore}
                     displayMode={scoreDisplayMode}
                 />
