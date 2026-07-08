@@ -4,15 +4,18 @@ import React from 'react';
 import { z } from 'zod';
 import { Quote } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import VideoEmbed from '@/components/video-embed';
 import { registerBlock } from '../registry';
 
 const itemSchema = z.object({
-  id:        z.string(),
-  videoUrl:  z.string().default(''),
-  quote:     z.string().default(''),
-  author:    z.string().default(''),
-  avatarUrl: z.string().default(''),
-  role:      z.string().default(''),
+  id:           z.string(),
+  videoUrl:     z.string().default(''),
+  thumbnailUrl: z.string().default(''),
+  badgeText:    z.string().default('Satisfied Parents'),
+  quote:        z.string().default(''),
+  author:       z.string().default(''),
+  avatarUrl:    z.string().default(''),
+  role:         z.string().default(''),
 });
 
 const schema = z.object({
@@ -75,6 +78,8 @@ registerBlock({
     ] },
     { kind: 'list', key: 'items', label: 'Testimonial Items List', itemFields: [
       { kind: 'url', key: 'videoUrl', label: 'Video Link (optional)' },
+      { kind: 'image', key: 'thumbnailUrl', label: 'Video Thumbnail Image (optional)' },
+      { kind: 'text', key: 'badgeText', label: 'Video Badge/Label' },
       { kind: 'textarea', key: 'quote', label: 'Quote Statement' },
       { kind: 'text', key: 'author', label: 'Author Full Name' },
       { kind: 'image', key: 'avatarUrl', label: 'Avatar Image Source' },
@@ -89,7 +94,6 @@ registerBlock({
     { id: 'tgrid-featured', label: 'Featured Testimonial', thumbnail: SingleFeaturedThumbnail, defaults: { columns: '1', cardStyle: 'quote-avatar' } },
   ],
   render: (props: TestimonialGridProps, _block, ctx) => {
-    const isEdit = ctx.mode === 'edit';
     const colsClass = {
       '1': 'grid-cols-1 max-w-2xl mx-auto',
       '2': 'grid-cols-1 md:grid-cols-2',
@@ -98,12 +102,12 @@ registerBlock({
     }[props.columns];
 
     const displayItems = props.items.length > 0 ? props.items : [
-      { id: 'demo1', author: 'Joseph Aidoo', role: 'CTO, SmartSapp', quote: 'This platform makes onboarding a breeze. Highly recommended!', videoUrl: '', avatarUrl: '' },
-      { id: 'demo2', author: 'Ama K.', role: 'Head of Operations', quote: 'Incredible speed. Saved our team hours of manual profile entry.', videoUrl: '', avatarUrl: '' },
+      { id: 'demo1', author: 'Joseph Aidoo', role: 'CTO, SmartSapp', quote: 'This platform makes onboarding a breeze. Highly recommended!', videoUrl: '', thumbnailUrl: '', badgeText: 'Satisfied Parents', avatarUrl: '' },
+      { id: 'demo2', author: 'Ama K.', role: 'Head of Operations', quote: 'Incredible speed. Saved our team hours of manual profile entry.', videoUrl: '', thumbnailUrl: '', badgeText: 'Satisfied Parents', avatarUrl: '' },
     ];
 
     return (
-      <section className="w-full flex flex-col gap-8 py-8">
+      <section className="w-full flex flex-col gap-8 py-8 text-slate-100">
         {/* Header Block */}
         {(props.heading || props.subheading) ? (
           <div className="text-center max-w-2xl mx-auto flex flex-col gap-2">
@@ -136,13 +140,14 @@ registerBlock({
                 {/* Optional Video Header */}
                 {hasVideo ? (
                   <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
-                    <iframe
-                      src={item.videoUrl}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={`Video testimonial by ${item.author}`}
-                    />
+                    <VideoEmbed url={item.videoUrl} thumbnailUrl={item.thumbnailUrl || undefined} className="border-0 shadow-none rounded-none w-full h-full" />
+                    {item.badgeText && (
+                      <div className="absolute bottom-3 left-3 z-30 pointer-events-none">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-100 bg-black/60 px-2 py-0.5 rounded">
+                          {item.badgeText}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : null}
 

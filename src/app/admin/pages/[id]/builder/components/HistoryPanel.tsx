@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { History, FolderHeart, Loader2, Sparkles } from 'lucide-react';
+import { History, FolderHeart, Loader2, Sparkles, Quote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CampaignPageVersion, PageSectionTemplate } from '@/lib/types';
 
@@ -254,15 +254,83 @@ const STATIC_HOMEPAGE_SECTIONS: Omit<PageSectionTemplate, 'workspaceId' | 'creat
   }
 ];
 
+const STATIC_TESTIMONIAL_SECTIONS: Omit<PageSectionTemplate, 'workspaceId' | 'createdAt'>[] = [
+  {
+    id: 'tpl-testimonial-parents',
+    organizationId: '',
+    name: 'Happy Parents Testimonials',
+    category: 'testimonials',
+    structure: {
+      id: 'testimonial-parents-sec',
+      type: 'section',
+      props: {
+        backgroundType: 'color',
+        backgroundColor: '#0A1427',
+        paddingTop: '4rem',
+        paddingBottom: '4rem',
+      },
+      blocks: [
+        {
+          id: 'testimonial-parents-blk',
+          type: 'testimonial_grid',
+          props: {
+            heading: 'Hear From Our Happy Parents',
+            subheading: 'See what parents are saying about their experience with K.NAS.',
+            columns: '3',
+            cardStyle: 'video-quote',
+            items: [
+              {
+                id: 'tp1',
+                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                thumbnailUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136',
+                badgeText: 'SATISFIED PARENTS',
+                quote: 'My child is safe with top security, learning well, growing confident, responsible, and even praying over meals with joy.',
+                author: "Ma'am Edlyn",
+                avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
+                role: 'Satisfied Parent',
+              },
+              {
+                id: 'tp2',
+                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+                badgeText: 'SATISFIED PARENTS',
+                quote: 'Since joining KIS, my kids changed in behavior, learning, and faith. They now sing good songs, learn with joy, and live by Christian values.',
+                author: 'Pastor Simpson',
+                avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
+                role: 'Satisfied Parent',
+              },
+              {
+                id: 'tp3',
+                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                thumbnailUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+                badgeText: 'SATISFIED PARENTS',
+                quote: 'At K.NAS, small classes and caring teachers helped my child improve in reading, writing, and confidence through close attention.',
+                author: 'Esi Kali',
+                avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+                role: 'Satisfied Parent',
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+];
+
 export const HistoryPanel = React.memo(function HistoryPanel({
     versions, currentVersionId, savedSections, isRestoring,
     onRestoreVersion, onAddSectionFromTemplate
 }: HistoryPanelProps) {
-    const [filter, setFilter] = useState<'all' | 'homepage' | 'saved'>('all');
+    const [filter, setFilter] = useState<'all' | 'homepage' | 'testimonials' | 'saved'>('all');
 
     // Combine static and custom saved sections
     const combined = [
         ...STATIC_HOMEPAGE_SECTIONS.map(s => ({
+            ...s,
+            workspaceId: '',
+            createdAt: new Date().toISOString()
+        } as PageSectionTemplate)),
+        ...STATIC_TESTIMONIAL_SECTIONS.map(s => ({
             ...s,
             workspaceId: '',
             createdAt: new Date().toISOString()
@@ -272,7 +340,8 @@ export const HistoryPanel = React.memo(function HistoryPanel({
 
     const filtered = combined.filter((s) => {
         if (filter === 'homepage') return s.category === 'homepage';
-        if (filter === 'saved') return s.category !== 'homepage';
+        if (filter === 'testimonials') return s.category === 'testimonials';
+        if (filter === 'saved') return s.category !== 'homepage' && s.category !== 'testimonials';
         return true;
     });
 
@@ -372,6 +441,17 @@ export const HistoryPanel = React.memo(function HistoryPanel({
                         )}
                     >
                         <Sparkles className="w-2.5 h-2.5" /> Homepage ({STATIC_HOMEPAGE_SECTIONS.length})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFilter('testimonials')}
+                        className={cn(
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1",
+                            filter === 'testimonials' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
+                        )}
+                    >
+                        <Quote className="w-2.5 h-2.5" /> Testimonials ({STATIC_TESTIMONIAL_SECTIONS.length})
                     </Button>
                     <Button
                         variant="ghost"
