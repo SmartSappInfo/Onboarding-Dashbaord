@@ -7,6 +7,7 @@ import { BrainCircuit, Layout, Trophy, ArrowRight, Sparkles, Percent, Hash } fro
 import { cn } from '@/lib/utils';
 import ResultRuleManager from './result-rule-manager';
 import ResultPageBuilder from './result-page-builder';
+import AiChatEditor from './ai-chat-editor';
 import { MinimalRespondentMessage, MinimalThankYouPage } from './minimal-results-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -109,11 +110,14 @@ export default function ResultsStep() {
  <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Enable logic-based survey scoring</p>
                         </div>
                     </div>
-                    <Switch 
-                        checked={!!scoringEnabled} 
-                        onCheckedChange={(val) => setValue('scoringEnabled', val, { shouldDirty: true })} 
-                        className="scale-125 data-[state=checked]:bg-yellow-500"
-                    />
+                    <div className="flex items-center gap-4">
+                        <AiChatEditor variant="icon" />
+                        <Switch 
+                            checked={!!scoringEnabled} 
+                            onCheckedChange={(val) => setValue('scoringEnabled', val, { shouldDirty: true })} 
+                            className="scale-125 data-[state=checked]:bg-yellow-500"
+                        />
+                    </div>
                 </div>
                 {scoringEnabled && (
  <CardContent className="space-y-8">

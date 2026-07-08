@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { SurveyResultPage, SurveyResultBlock } from '@/lib/types';
+import AiChatEditor from './ai-chat-editor';
 import { MediaSelect } from '../../entities/components/media-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -946,9 +947,12 @@ export default function ResultPageBuilder() {
                     <h3 className="text-lg font-semibold text-foreground">Outcome Pages</h3>
                     <p className="text-sm text-muted-foreground">Design unique landing pages for different user scores.</p>
                 </div>
-                <Button onClick={() => append({ id: `pg_${Date.now()}`, name: `Outcome Page ${pages.length + 1}`, blocks: [], isDefault: pages.length === 0 })} className="gap-2 font-bold shadow-lg">
-                    <Plus className="h-4 w-4" /> New Page
-                </Button>
+                <div className="flex items-center gap-3">
+                    <AiChatEditor variant="icon" />
+                    <Button onClick={() => append({ id: `pg_${Date.now()}`, name: `Outcome Page ${pages.length + 1}`, blocks: [], isDefault: pages.length === 0 })} className="gap-2 font-bold shadow-lg">
+                        <Plus className="h-4 w-4" /> New Page
+                    </Button>
+                </div>
             </div>
 
             <Accordion type="single" collapsible className="space-y-4">
