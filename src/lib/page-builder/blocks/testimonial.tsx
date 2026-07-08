@@ -53,9 +53,9 @@ registerBlock({
     const hasVideo = props.videoUrl;
 
     return (
-      <figure className="max-w-lg mx-auto p-6 rounded-2xl border border-slate-850 bg-slate-950/40 text-center space-y-4 shadow-xl backdrop-blur-sm">
+      <figure className="max-w-lg mx-auto p-6 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/40 text-center space-y-4 shadow-xl backdrop-blur-sm">
         {hasVideo ? (
-          <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-900 mb-4">
+          <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4">
             <iframe
               src={props.videoUrl}
               className="absolute inset-0 w-full h-full"
@@ -65,25 +65,25 @@ registerBlock({
             />
           </div>
         ) : (
-          <Quote className="w-8 h-8 mx-auto opacity-40 text-emerald-400" />
+          <Quote className="w-8 h-8 mx-auto opacity-45 text-emerald-500" />
         )}
         
-        <blockquote className="text-sm italic leading-relaxed font-semibold text-slate-300">
+        <blockquote className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200">
           "{ctx.interpolate(props.quote) || 'Add a testimonial quote…'}"
         </blockquote>
         
-        <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-850/50">
+        <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
           {props.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-800 shadow-sm" />
+            <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] font-bold">
+            <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 flex items-center justify-center text-[10px] font-bold">
               {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
             </div>
           )}
           <div className="text-left leading-tight">
-            <p className="text-xs font-black text-slate-200">{props.author || 'Author Name'}</p>
-            {props.role ? <p className="text-[10px] text-slate-500 font-semibold">{props.role}</p> : null}
+            <p className="text-xs font-black text-slate-900 dark:text-slate-100">{props.author || 'Author Name'}</p>
+            {props.role ? <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{props.role}</p> : null}
           </div>
         </figcaption>
       </figure>

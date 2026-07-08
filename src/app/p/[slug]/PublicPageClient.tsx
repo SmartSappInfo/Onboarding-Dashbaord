@@ -624,8 +624,8 @@ export default function PublicPageClient({
 
                                                     {block.type === 'testimonial' && (
                                                         <div className="max-w-lg mx-auto p-8 bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl border border-border/20 dark:border-zinc-800/50 text-center space-y-4">
-                                                            <div className="text-4xl text-slate-200 dark:text-zinc-800">"</div>
-                                                            <p className="text-base italic text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{interpolate(block.props.quote || '')}</p>
+                                                            <div className="text-4xl text-slate-300 dark:text-zinc-700">"</div>
+                                                            <p className="text-base italic text-slate-800 dark:text-slate-200 leading-relaxed font-semibold">{interpolate(block.props.quote || '')}</p>
                                                             <div className="flex items-center justify-center gap-3 pt-2">
                                                                 {block.props.avatarUrl && (
                                                                     <img src={block.props.avatarUrl} alt={block.props.author} className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-zinc-800 shadow-sm" />
