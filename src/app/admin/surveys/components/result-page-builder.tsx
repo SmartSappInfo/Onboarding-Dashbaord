@@ -11,7 +11,8 @@ import {
     Image as ImageIcon, Video, AudioWaveform, Quote, Eye, Copy, 
     ArrowRight, ArrowUp, ArrowDown, PlusCircle, Bold, Italic, Underline,
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
-    Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon
+    Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
+    ClipboardCopy, ClipboardCheck, Clipboard
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -32,6 +33,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import AddResultBlockModal from './add-result-block-modal';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, displayMode = 'points' }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore?: number, displayMode?: 'points' | 'percentage' }) {
     React.useEffect(() => {
@@ -658,7 +660,23 @@ function SortableResultBlock({
     );
 }
 
-export function PageEditor({ pageIndex }: { pageIndex: number }) {
+export function PageEditor({ 
+    pageIndex,
+    copiedBlocks,
+    setCopiedBlocks,
+    selectedBlockIds,
+    setSelectedBlockIds,
+    selectedPageIdx,
+    setSelectedPageIdx
+}: { 
+    pageIndex: number;
+    copiedBlocks: SurveyResultBlock[];
+    setCopiedBlocks: (blocks: SurveyResultBlock[]) => void;
+    selectedBlockIds: Set<string>;
+    setSelectedBlockIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+    selectedPageIdx: number | null;
+    setSelectedPageIdx: React.Dispatch<React.SetStateAction<number | null>>;
+}) {
     const { control, getValues, setValue } = useFormContext();
     const { fields: blocks, remove, move, swap, insert } = useFieldArray({
         control,
@@ -668,6 +686,56 @@ export function PageEditor({ pageIndex }: { pageIndex: number }) {
     const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState(0);
     const [selectedBlockIdx, setSelectedBlockIdx] = React.useState<number | null>(null);
+
+    const handleCopySingle = (block: SurveyResultBlock) => {
+        setCopiedBlocks([block]);
+    };
+
+    const handleToggleSelect = (blockId: string, checked: boolean) => {
+        setSelectedBlockIds((prev) => {
+            const next = new Set(prev);
+            if (checked) {
+                next.add(blockId);
+                setSelectedPageIdx(pageIndex);
+            } else {
+                next.delete(blockId);
+                if (next.size === 0) {
+                    setSelectedPageIdx(null);
+                }
+            }
+            return next;
+        });
+    };
+
+    const handleBatchCopy = () => {
+        const selected = blocks.filter(b => selectedBlockIds.has(b.id)) as SurveyResultBlock[];
+        if (selected.length > 0) {
+            setCopiedBlocks(selected);
+            setSelectedBlockIds(new Set());
+            setSelectedPageIdx(null);
+        }
+    };
+
+    const handleBatchDelete = () => {
+        const indicesToRemove = blocks
+            .map((b, i) => (selectedBlockIds.has(b.id) ? i : -1))
+            .filter(idx => idx !== -1);
+        
+        if (indicesToRemove.length > 0) {
+            remove(indicesToRemove);
+            setSelectedBlockIds(new Set());
+            setSelectedPageIdx(null);
+        }
+    };
+
+    const handlePaste = (insertIdx: number) => {
+        if (copiedBlocks.length === 0) return;
+        const cloned = copiedBlocks.map(b => ({
+            ...JSON.parse(JSON.stringify(b)),
+            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+        }));
+        insert(insertIdx, cloned);
+    };
 
     const sensors = useSensors(useSensor(PointerSensor));
 
@@ -925,6 +993,34 @@ export default function ResultPageBuilder() {
     const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
     const [previewPageIdx, setPreviewPageIdx] = React.useState<number | null>(null);
 
+    // Shared clipboard state for blocks (Next.js hydration-safe)
+    const [copiedBlocks, setCopiedBlocks] = React.useState<SurveyResultBlock[]>([]);
+    const [selectedBlockIds, setSelectedBlockIds] = React.useState<Set<string>>(new Set());
+    const [selectedPageIdx, setSelectedPageIdx] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        try {
+            const item = window.localStorage.getItem('smartsapp_copied_blocks');
+            if (item) {
+                const parsed = JSON.parse(item) as SurveyResultBlock[];
+                if (Array.isArray(parsed)) {
+                    setCopiedBlocks(parsed);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load copied blocks:', e);
+        }
+    }, []);
+
+    const setAndStoreCopiedBlocks = (blocks: SurveyResultBlock[]) => {
+        setCopiedBlocks(blocks);
+        try {
+            window.localStorage.setItem('smartsapp_copied_blocks', JSON.stringify(blocks));
+        } catch (e) {
+            console.error('Failed to save copied blocks:', e);
+        }
+    };
+
     const clonePage = (index: number) => {
         const pageToClone = getValues(`resultPages.${index}`) as SurveyResultPage;
         if (!pageToClone) return;
@@ -1006,7 +1102,15 @@ export default function ResultPageBuilder() {
                                 </div>
                             </div>
 
-                            <PageEditor pageIndex={index} />
+                            <PageEditor 
+                                pageIndex={index} 
+                                copiedBlocks={copiedBlocks}
+                                setCopiedBlocks={setAndStoreCopiedBlocks}
+                                selectedBlockIds={selectedBlockIds}
+                                setSelectedBlockIds={setSelectedBlockIds}
+                                selectedPageIdx={selectedPageIdx}
+                                setSelectedPageIdx={setSelectedPageIdx}
+                            />
                         </AccordionContent>
                     </AccordionItem>
                 ))}

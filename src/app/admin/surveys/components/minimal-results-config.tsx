@@ -15,7 +15,7 @@ import { PageEditor, PagePreviewModal } from './result-page-builder';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { SenderProfile } from '@/lib/types';
+import type { SenderProfile, SurveyResultBlock } from '@/lib/types';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -243,6 +243,34 @@ export function MinimalThankYouPage() {
     const redirectEnabled = watch('thankYouRedirectEnabled');
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
+    // Shared clipboard state for blocks (Next.js hydration-safe)
+    const [copiedBlocks, setCopiedBlocks] = React.useState<SurveyResultBlock[]>([]);
+    const [selectedBlockIds, setSelectedBlockIds] = React.useState<Set<string>>(new Set());
+    const [selectedPageIdx, setSelectedPageIdx] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        try {
+            const item = window.localStorage.getItem('smartsapp_copied_blocks');
+            if (item) {
+                const parsed = JSON.parse(item) as SurveyResultBlock[];
+                if (Array.isArray(parsed)) {
+                    setCopiedBlocks(parsed);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load copied blocks:', e);
+        }
+    }, []);
+
+    const setAndStoreCopiedBlocks = (blocks: SurveyResultBlock[]) => {
+        setCopiedBlocks(blocks);
+        try {
+            window.localStorage.setItem('smartsapp_copied_blocks', JSON.stringify(blocks));
+        } catch (e) {
+            console.error('Failed to save copied blocks:', e);
+        }
+    };
+
     // Ensure at least one resultPage exists and seed with default content if missing
     React.useEffect(() => {
         if (pages.length === 0) {
@@ -366,7 +394,15 @@ export function MinimalThankYouPage() {
                         </div>
                     </div>
                 ) : (
-                    <PageEditor pageIndex={0} />
+                    <PageEditor 
+                        pageIndex={0} 
+                        copiedBlocks={copiedBlocks}
+                        setCopiedBlocks={setAndStoreCopiedBlocks}
+                        selectedBlockIds={selectedBlockIds}
+                        setSelectedBlockIds={setSelectedBlockIds}
+                        selectedPageIdx={selectedPageIdx}
+                        setSelectedPageIdx={setSelectedPageIdx}
+                    />
                 )}
             </CardContent>
             <PagePreviewModal 
