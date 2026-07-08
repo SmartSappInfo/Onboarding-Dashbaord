@@ -21,9 +21,9 @@ import { FileText } from 'lucide-react';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
-function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, answerValue: any }) {
+function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, answerValue: unknown }) {
     if (answerValue === undefined || answerValue === null || answerValue === '') {
- return <p className="text-sm text-muted-foreground italic">No answer provided.</p>
+        return <p className="text-sm text-muted-foreground italic">No answer provided.</p>
     }
     
     if (question.type === 'file-upload' && typeof answerValue === 'string') {
@@ -33,7 +33,7 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
         return (
             <Button variant="outline" asChild size="sm">
                 <a href={answerValue} target="_blank" rel="noopener noreferrer">
- <FileText className="mr-2 h-4 w-4" />
+                    <FileText className="mr-2 h-4 w-4" />
                     {decodedFileName.substring(decodedFileName.indexOf('-') + 1)}
                 </a>
             </Button>
@@ -41,10 +41,11 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
     }
 
     if (question.type === 'checkboxes' && question.allowOther) {
+        const valObj = answerValue as Record<string, unknown>;
         return (
- <ul className="list-disc list-inside">
-                {answerValue.options?.map((opt: string) => <li key={opt}>{opt}</li>)}
-                {answerValue.other && <li key="other"><strong>Other:</strong> {answerValue.other}</li>}
+            <ul className="list-disc list-inside">
+                {Array.isArray(valObj?.options) && (valObj.options as string[]).map((opt: string) => <li key={opt}>{opt}</li>)}
+                {typeof valObj?.other === 'string' && valObj.other.trim() && <li key="other"><strong>Other:</strong> {valObj.other}</li>}
             </ul>
         )
     }
@@ -61,7 +62,7 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
         }
     }
 
- return <p className="text-base font-medium whitespace-pre-wrap">{String(answerValue)}</p>;
+    return <p className="text-base font-medium whitespace-pre-wrap">{String(answerValue)}</p>;
 }
 
 export default function ResponseDetailPage() {
@@ -103,23 +104,23 @@ export default function ResponseDetailPage() {
     const canGoBack = currentIndex > 0;
     const canGoForward = totalResponses > 0 && currentIndex < totalResponses - 1;
 
-    // Logic to calculate points for each question
-    const getPointsForAnswer = (question: SurveyQuestion, value: any): number => {
+    const getPointsForAnswer = (question: SurveyQuestion, value: unknown): number => {
         if (!question.enableScoring || value === undefined || value === null) return 0;
         
         if (question.type === 'yes-no') {
             if (value === 'Yes') return question.yesScore || 0;
             if (value === 'No') return question.noScore || 0;
         } else if (question.type === 'multiple-choice' || question.type === 'dropdown') {
-            const optIndex = question.options?.indexOf(value);
+            const optIndex = question.options?.indexOf(String(value));
             if (optIndex !== undefined && optIndex !== -1) {
                 return (question.optionScores?.[optIndex] || 0);
             }
         } else if (question.type === 'checkboxes') {
-            const selected = question.allowOther ? value.options : value;
+            const valObj = value as Record<string, unknown>;
+            const selected = question.allowOther && valObj ? valObj.options : value;
             if (Array.isArray(selected)) {
-                return selected.reduce((total, val) => {
-                    const optIndex = question.options?.indexOf(val);
+                return selected.reduce((total: number, val) => {
+                    const optIndex = question.options?.indexOf(String(val));
                     if (optIndex !== undefined && optIndex !== -1) {
                         return total + (question.optionScores?.[optIndex] || 0);
                     }

@@ -40,6 +40,8 @@ import { deleteSurveyResponses } from '@/lib/survey-actions';
 import { resolveContact } from '@/lib/contact-adapter';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, stripHtml } from '@/lib/utils';
+import { BentoPagination } from '@/app/admin/entities/components/BentoPagination';
+import type { UserProfile } from '@/lib/types';
 
 /**
  * Component to display entity information for a survey response
@@ -52,9 +54,10 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
     const [isLoading, setIsLoading] = React.useState(true);
 
     React.useEffect(() => {
+        let active = true;
         async function loadContact() {
             if (!response.entityId) {
-                setIsLoading(false);
+                if (active) setIsLoading(false);
                 return;
             }
 
@@ -63,15 +66,18 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
                     response.entityId || '',
                     activeWorkspaceId
                 );
-                setContact(resolved);
+                if (active) setContact(resolved);
             } catch (error) {
                 console.error('Failed to resolve contact:', error);
             } finally {
-                setIsLoading(false);
+                if (active) setIsLoading(false);
             }
         }
 
         loadContact();
+        return () => {
+            active = false;
+        };
     }, [response.entityId, activeWorkspaceId]);
 
     if (isLoading) {
@@ -108,20 +114,28 @@ function SharedByInfo({ userId }: { userId?: string }) {
     const [isLoading, setIsLoading] = React.useState(true);
 
     React.useEffect(() => {
+        let active = true;
         if (!userId || !firestore) {
             setIsLoading(false);
             return;
         }
         
-        getDoc(doc(firestore, 'users', userId)).then((snap: any) => {
-            if (snap.exists()) {
-                setName(snap.data().name || snap.data().email);
+        getDoc(doc(firestore, 'users', userId)).then((snap) => {
+            if (active) {
+                if (snap.exists()) {
+                    const data = snap.data() as UserProfile;
+                    setName(data.name || data.email);
+                }
+                setIsLoading(false);
             }
-            setIsLoading(false);
         }).catch((err) => {
             console.error("SharedByInfo resolution failed:", err);
-            setIsLoading(false);
+            if (active) setIsLoading(false);
         });
+
+        return () => {
+            active = false;
+        };
     }, [userId, firestore]);
 
     if (!userId) return <span className="text-[10px] text-muted-foreground/40 italic">Anonymous</span>;
@@ -137,28 +151,29 @@ function SharedByInfo({ userId }: { userId?: string }) {
     );
 }
 
-function formatAnswer(value: any): string {
+function formatAnswer(value: unknown): string {
     if (value === undefined || value === null) return '-';
     if (Array.isArray(value)) return value.join(', ');
     if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>;
         // Checkboxes with allowOther: { options: string[], other: string }
-        if (Array.isArray(value.options)) {
-            const parts = [...value.options];
-            if (value.other && value.other.trim()) parts.push(`Other: ${value.other.trim()}`);
+        if (Array.isArray(obj.options)) {
+            const parts = [...obj.options] as string[];
+            if (typeof obj.other === 'string' && obj.other.trim()) parts.push(`Other: ${obj.other.trim()}`);
             return parts.length > 0 ? parts.join(', ') : '-';
         }
         // Multiple-choice with allowOther: { option: string, other: string }
-        if (value.option !== undefined) {
-            if (value.option === '__other__') {
-                return value.other?.trim() ? `Other: ${value.other.trim()}` : 'Other (not specified)';
+        if (obj.option !== undefined) {
+            if (obj.option === '__other__') {
+                return typeof obj.other === 'string' && obj.other.trim() ? `Other: ${obj.other.trim()}` : 'Other (not specified)';
             }
             // Regular option selected
-            const parts = [value.option];
-            if (value.other?.trim()) parts.push(`Other: ${value.other.trim()}`);
+            const parts = [String(obj.option)];
+            if (typeof obj.other === 'string' && obj.other.trim()) parts.push(`Other: ${obj.other.trim()}`);
             return parts.join(', ');
         }
         // Fallback for unknown object shapes
-        return Object.entries(value)
+        return Object.entries(obj)
             .filter(([, v]) => v !== '' && v !== null && v !== undefined)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ') || '-';
@@ -208,6 +223,18 @@ function ResponsesListView({
     const [authError, setAuthError] = React.useState<string | null>(null);
     const [columnWidth, setColumnWidth] = React.useState<number>(250);
     const [hiddenColumnIds, setHiddenColumnIds] = React.useState<string[]>([]);
+
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(50);
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [attributionFilter, deepLinkFilterType, columnFilters]);
+
+    const paginatedResponses = React.useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredResponses.slice(start, start + pageSize);
+    }, [filteredResponses, currentPage, pageSize]);
 
     const isSubmittedAtVisible = !hiddenColumnIds.includes('submittedAt');
     const isContactVisible = !hiddenColumnIds.includes('contact');
@@ -567,7 +594,7 @@ function ResponsesListView({
                                 max="500" 
                                 value={columnWidth} 
                                 onChange={(e) => setColumnWidth(Number(e.target.value))}
-                                className="w-full h-1 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none transition-all hover:bg-muted-foreground/30"
+                                className="w-full h-1 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none transition-all hover:bg-muted-foreground/30"
                             />
                             <span className="text-[9px] font-bold text-muted-foreground/80 w-8 shrink-0">{columnWidth}px</span>
                         </div>
@@ -621,6 +648,7 @@ function ResponsesListView({
                                             return next;
                                         });
                                     }}
+                                    aria-label={`Remove filter for ${label}`}
                                     className="hover:text-destructive transition-colors shrink-0 ml-1"
                                 >
                                     <X className="h-3 w-3" />
@@ -709,6 +737,7 @@ function ResponsesListView({
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
+                                                        aria-label={`Filter column: ${stripHtml(q.title || '')}`}
                                                         className={cn(
                                                             "h-6 w-6 rounded-md hover:bg-muted shrink-0",
                                                             isFilterActive && "text-primary bg-primary/10"
@@ -857,8 +886,8 @@ function ResponsesListView({
                         <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                     </TableRow>
                     ))
-                ) : filteredResponses && filteredResponses.length > 0 ? (
-                    filteredResponses.map((response) => (
+                ) : paginatedResponses && paginatedResponses.length > 0 ? (
+                    paginatedResponses.map((response) => (
                     <TableRow key={response.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(response.id) && "bg-primary/5")}>
                         <TableCell 
                             className={cn(
@@ -930,7 +959,7 @@ function ResponsesListView({
                         <TableCell className="text-right pr-6">
                             <DropdownMenu modal={false}>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" aria-label="Response options" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -958,6 +987,20 @@ function ResponsesListView({
                 </TableBody>
             </Table>
 
+            {filteredResponses.length > 0 && (
+                <BentoPagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredResponses.length / pageSize)}
+                    totalRecords={filteredResponses.length}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setCurrentPage(1);
+                    }}
+                />
+            )}
+
             {/* Password Protected Delete Confirmation */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
@@ -978,7 +1021,7 @@ function ResponsesListView({
                             </Label>
                             <Input 
                                 type="password" 
-                                placeholder="Your account password..." 
+                                placeholder="Your account password…" 
                                 value={password} 
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="h-11 rounded-xl"

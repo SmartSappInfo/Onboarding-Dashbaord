@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Survey, SurveyResponse, SurveySession } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveySession, UserProfile } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,7 @@ const CHART_COLORS = [
 ];
 
 // ─── Helper: Resolve user name from ID ───
-function UserName({ userId, users }: { userId: string; users: any[] }) {
+function UserName({ userId, users }: { userId: string; users: UserProfile[] }) {
     const user = React.useMemo(() => users?.find(u => u.id === userId), [users, userId]);
     return (
         <div className="flex items-center gap-3">
@@ -113,7 +113,7 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
             orderBy('name', 'asc')
         );
     }, [firestore, activeOrganizationId]);
-    const { data: users } = useCollection<any>(usersQuery);
+    const { data: users } = useCollection<UserProfile>(usersQuery);
 
     // ─── Compute per-representative stats ───
     const repStats: RepStats[] = React.useMemo(() => {

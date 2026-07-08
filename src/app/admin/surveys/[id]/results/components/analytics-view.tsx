@@ -5,7 +5,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Survey, SurveyResponse, SurveySession, SurveySummary } from "@/lib/types";
+import type { Survey, SurveyResponse, SurveySession, SurveySummary, UserProfile } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend, LineChart, Line, CartesianGrid } from 'recharts';
@@ -154,8 +154,20 @@ function ResponseTrendChart({ responses }: { responses: SurveyResponse[] }) {
     );
 }
 
-const CustomizedBarLabel = (props: any) => {
-    const { x, y, width, value, percentage } = props;
+interface CustomizedBarLabelProps {
+    x?: number | string;
+    y?: number | string;
+    width?: number | string;
+    value?: number | string;
+    percentage: number;
+}
+
+const CustomizedBarLabel = (props: CustomizedBarLabelProps) => {
+    const x = Number(props.x || 0);
+    const y = Number(props.y || 0);
+    const width = Number(props.width || 0);
+    const value = Number(props.value || 0);
+    const percentage = props.percentage;
     const isInside = width > 80;
     
     return (
@@ -164,7 +176,7 @@ const CustomizedBarLabel = (props: any) => {
             y={y + 16} 
             fill={isInside ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))"} 
             textAnchor={isInside ? "end" : "start"} 
- className="text-[10px] font-bold"
+	className="text-[10px] font-bold"
         >
             {`${percentage.toFixed(0)}% (${value})`}
         </text>
@@ -277,7 +289,7 @@ function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text'
 /**
  * Component to display the representative performance leaderboard
  */
-function RepresentativeLeaderboard({ data }: { data: any[] }) {
+function RepresentativeLeaderboard({ data }: { data: AttributionRow[] }) {
     return (
         <Card className="flex flex-col h-full border-none ring-1 ring-border shadow-sm">
             <CardHeader className="bg-muted/10 border-b pb-6">
@@ -517,7 +529,7 @@ export default function AnalyticsView({
             orderBy('name', 'asc')
         );
     }, [firestore, activeOrganizationId]);
-    const { data: users } = useCollection<any>(usersQuery);
+    const { data: users } = useCollection<UserProfile>(usersQuery);
 
     // Fetch Sessions for Drop-off Analytics
     const sessionsQuery = useMemoFirebase(() => {

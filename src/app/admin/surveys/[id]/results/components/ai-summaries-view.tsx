@@ -102,8 +102,8 @@ export default function AISummariesView({
             toast({ title: "AI Response Saved", description: "Your query and its response have been saved to the history." });
             form.reset();
 
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'AI Query Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'AI Query Failed', description: e instanceof Error ? e.message : 'An unknown error occurred.' });
         } finally {
             setIsQuerying(false);
         }
@@ -111,7 +111,7 @@ export default function AISummariesView({
 
     const handleUseAsContext = (summary: SurveySummary) => {
         const contextText = summary.summary.replace(/<[^>]*>?/gm, ''); // strip html
-        form.setValue('prompt', `Based on the previous analysis ("${summary.prompt || 'summary'}"):\n\n"${contextText.substring(0, 150)}..."\n\nMy new question is: `);
+        form.setValue('prompt', `Based on the previous analysis ("${summary.prompt || 'summary'}"):\n\n"${contextText.substring(0, 150)}…"\n\nMy new question is: `);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -181,7 +181,7 @@ export default function AISummariesView({
  className="h-full w-full font-bold bg-slate-900"
                                         >
  {isQuerying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                            {isQuerying ? 'Thinking...' : 'Ask AI'}
+                                            {isQuerying ? 'Thinking…' : 'Ask AI'}
                                         </MovingButton>
                                     </div>
                                 </form>

@@ -62,7 +62,7 @@ function formatAnswerForCsv(value: unknown): string {
     return String(value);
 }
 
-export default function SurveyResultsPage() {
+function SurveyResultsPageContent() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -394,5 +394,17 @@ export default function SurveyResultsPage() {
                 )}
             </div>
         </Tabs>
+    );
+}
+
+export default function SurveyResultsPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        }>
+            <SurveyResultsPageContent />
+        </React.Suspense>
     );
 }
