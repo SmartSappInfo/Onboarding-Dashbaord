@@ -166,11 +166,13 @@ async function callGenkit(params: {
   organizationId?: string;
   jsonMode?: boolean;
   schema?: unknown;
+  provider?: string;
+  modelId?: string;
 }): Promise<string> {
   const resolvedModel = await getModel({
     organizationId: params.organizationId,
-    provider: 'anthropic',
-    modelId: 'claude-3-5-sonnet',
+    provider: params.provider || 'anthropic',
+    modelId: params.modelId || 'claude-3-5-sonnet',
   });
 
   const generatorAi = resolvedModel.customAi || ai;
@@ -501,6 +503,8 @@ export async function generateEmailBlocksAction(params: {
   campaignName?: string;
   context?: string;
   organizationId?: string;
+  provider?: string;
+  modelId?: string;
 }): Promise<{
   success: boolean;
   blocks?: MessageBlock[];
@@ -586,6 +590,8 @@ AESTHETIC RULES:
       organizationId: params.organizationId,
       jsonMode: true,
       schema: ArchitectResultSchema,
+      provider: params.provider,
+      modelId: params.modelId,
     });
 
     const parsed = JSON.parse(text) as {

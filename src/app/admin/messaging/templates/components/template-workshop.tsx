@@ -107,6 +107,8 @@ import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import AiModelSelector from '@/components/ai/AiModelSelector';
 
 async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
     if (!file.type.startsWith('image/')) {
@@ -2020,6 +2022,7 @@ export function TemplateWorkshop({
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const { singular: entityTerminology } = useTerminology();
+    const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
     // Collapse / Expand main admin layout sidebar on mount / unmount safely
     const sidebar = React.useContext(SidebarContext);
@@ -2934,6 +2937,8 @@ export function TemplateWorkshop({
                     mode: 'layout_analysis' | 'direct_placement';
                     organizationId?: string;
                     brandColors?: { primary?: string; secondary?: string; background?: string };
+                    provider?: string;
+                    modelId?: string;
                 }) => Promise<{
                     success: boolean;
                     blocks?: MessageBlock[];
@@ -2950,6 +2955,8 @@ export function TemplateWorkshop({
                 imageUrl: architectImageUrl || undefined,
                 mode: architectMode,
                 organizationId: resolvedOrgId,
+                provider: liveProvider,
+                modelId: liveModelId,
             });
 
             if (res.success && res.blocks) {
@@ -3817,6 +3824,7 @@ export function TemplateWorkshop({
                                                             </button>
                                                         )}
                                                     </div>
+                                                    <AiModelSelector hideLabel className="w-full text-xs" />
                                                     <textarea
                                                         value={architectPrompt}
                                                         onChange={(e) => setArchitectPrompt(e.target.value)}
