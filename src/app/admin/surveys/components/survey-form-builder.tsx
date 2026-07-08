@@ -332,7 +332,7 @@ export default function SurveyFormBuilder() {
 
     return (
         <div className="relative h-full">
-            <div className="flex h-[calc(100vh-8rem)] gap-4 p-4 overflow-hidden bg-transparent">
+            <div className="flex h-[calc(100vh-8rem)] gap-4 p-4 overflow-hidden xl:overflow-visible bg-transparent">
 
 
                 {/* 1. Middle Canvas - The Question Editor or Preview */}

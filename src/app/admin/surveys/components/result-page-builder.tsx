@@ -400,12 +400,12 @@ function SortablePageAccordionItem({
             style={style}
             value={id} 
             className={cn(
-                "border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden",
+                "border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden data-[state=open]:overflow-visible",
                 isDragging && "border-primary/50 shadow-lg ring-1 ring-primary/20"
             )}
         >
             <AccordionTrigger className="hover:no-underline py-6">
-                <div className="flex items-center justify-between w-full pr-4" onClick={(e) => {
+                <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4 pr-4" onClick={(e) => {
                     // Prevent Accordion from opening/closing when clicking on elements in this container
                 }}>
                     <div className="flex items-center gap-4 text-left">
@@ -422,7 +422,7 @@ function SortablePageAccordionItem({
                             <Layout className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            {editingPageIdx === index ? (
+                             {editingPageIdx === index ? (
                                 <Input 
                                     value={watch(`resultPages.${index}.name`) as string || ''}
                                     onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
@@ -457,7 +457,7 @@ function SortablePageAccordionItem({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end pl-11 sm:pl-24 md:pl-0" onClick={(e) => e.stopPropagation()}>
                         {/* Default Switch */}
                         <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
                             <Switch 
@@ -488,7 +488,7 @@ function SortablePageAccordionItem({
                         </div>
 
                         {/* Divider */}
-                        <div className="h-6 w-[1px] bg-border mx-1" />
+                        <div className="h-6 w-[1px] bg-border mx-1 hidden md:block" />
 
                         {/* Action Buttons with Tooltips */}
                         <TooltipProvider>
