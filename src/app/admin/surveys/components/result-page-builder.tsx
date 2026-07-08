@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { 
     Plus, Trash2, Layout, GripVertical, AlignLeft, AlignCenter, AlignRight, 
     Image as ImageIcon, Video, AudioWaveform, Quote, Eye, Copy, 
-    ArrowRight, ArrowUp, ArrowDown, PlusCircle, Bold, Italic, Underline,
+    ArrowRight, ArrowUp, ArrowDown, ArrowUpDown, PlusCircle, Bold, Italic, Underline,
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
     Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
     ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown,
@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { SurveyResultPage, SurveyResultBlock } from '@/lib/types';
+import type { SurveyResultPage, SurveyResultBlock, SurveyResultRule } from '@/lib/types';
 import AiChatEditor from './ai-chat-editor';
 import { MediaSelect } from '../../entities/components/media-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -343,6 +343,223 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                 )}
             </div>
         </div>
+    );
+}
+
+function SortablePageAccordionItem({
+    id,
+    index,
+    page,
+    watchedPages,
+    editingPageIdx,
+    setEditingPageIdx,
+    previewPageIdx,
+    setPreviewPageIdx,
+    clonePage,
+    remove,
+    copiedBlocks,
+    setAndStoreCopiedBlocks,
+    selectedBlockIds,
+    setSelectedBlockIds,
+    selectedPageIdx,
+    setSelectedPageIdx,
+    pages
+}: {
+    id: string;
+    index: number;
+    page: SurveyResultPage;
+    watchedPages: SurveyResultPage[];
+    editingPageIdx: number | null;
+    setEditingPageIdx: (idx: number | null) => void;
+    previewPageIdx: number | null;
+    setPreviewPageIdx: (idx: number | null) => void;
+    clonePage: (idx: number) => void;
+    remove: (idx: number) => void;
+    copiedBlocks: SurveyResultBlock[];
+    setAndStoreCopiedBlocks: (blocks: SurveyResultBlock[]) => void;
+    selectedBlockIds: Set<string>;
+    setSelectedBlockIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+    selectedPageIdx: number | null;
+    setSelectedPageIdx: React.Dispatch<React.SetStateAction<number | null>>;
+    pages: SurveyResultPage[];
+}) {
+    const { control, watch, setValue } = useFormContext();
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    const style = {
+        transform: transform ? CSS.Transform.toString(transform) : undefined,
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        position: 'relative' as const,
+        zIndex: isDragging ? 50 : 'auto',
+    };
+
+    return (
+        <AccordionItem 
+            ref={setNodeRef}
+            style={style}
+            value={id} 
+            className={cn(
+                "border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden",
+                isDragging && "border-primary/50 shadow-lg ring-1 ring-primary/20"
+            )}
+        >
+            <AccordionTrigger className="hover:no-underline py-6">
+                <div className="flex items-center justify-between w-full pr-4" onClick={(e) => {
+                    // Prevent Accordion from opening/closing when clicking on elements in this container
+                }}>
+                    <div className="flex items-center gap-4 text-left">
+                        {/* Drag Handle */}
+                        <div 
+                            {...attributes} 
+                            {...listeners} 
+                            className="cursor-grab p-1 text-muted-foreground/45 hover:text-muted-foreground hover:bg-muted rounded transition-colors shrink-0 mr-1"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <GripVertical className="h-4 w-4" />
+                        </div>
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <Layout className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            {editingPageIdx === index ? (
+                                <Input 
+                                    value={watch(`resultPages.${index}.name`) as string || ''}
+                                    onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
+                                    onBlur={() => setEditingPageIdx(null)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            setEditingPageIdx(null);
+                                        }
+                                    }}
+                                    autoFocus
+                                    className="h-8 py-0 px-2 text-sm font-semibold max-w-[200px] bg-background"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <div className="flex items-center gap-1.5 group/title">
+                                    <span className="font-semibold text-lg leading-none">{(watchedPages[index] as SurveyResultPage)?.name || (page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingPageIdx(index);
+                                        }}
+                                        className="p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity"
+                                        title="Rename page"
+                                    >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-xs text-muted-foreground font-bold mt-1">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                        {/* Default Switch */}
+                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                            <Switch 
+                                checked={!!watch(`resultPages.${index}.isDefault`)} 
+                                onCheckedChange={(val) => {
+                                    if (val) {
+                                        pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
+                                    }
+                                }}
+                            />
+                            <span className="text-xs font-bold text-muted-foreground select-none">Default</span>
+                        </div>
+
+                        {/* Celebrate Switch */}
+                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                            <Controller
+                                name={`resultPages.${index}.confettiEnabled`}
+                                control={control}
+                                render={({ field }) => (
+                                    <Switch
+                                        checked={!!field.value}
+                                        onCheckedChange={field.onChange}
+                                        className="data-[state=checked]:bg-amber-500"
+                                    />
+                                )}
+                            />
+                            <span className="text-xs font-bold text-muted-foreground select-none">Celebrate</span>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="h-6 w-[1px] bg-border mx-1" />
+
+                        {/* Action Buttons with Tooltips */}
+                        <TooltipProvider>
+                            <div className="flex items-center gap-1">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            className="h-9 w-9 rounded-lg" 
+                                            onClick={() => setPreviewPageIdx(index)}
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span className="text-[10px] font-bold">Preview Page</span>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="icon" 
+                                            className="h-9 w-9 rounded-lg" 
+                                            onClick={() => clonePage(index)}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span className="text-[10px] font-bold">Clone Page</span>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg" 
+                                            onClick={() => remove(index)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <span className="text-[10px] font-bold">Delete Page</span>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
+                    </div>
+                </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-6 pb-8 space-y-8 border-t">
+                <PageEditor 
+                    pageIndex={index} 
+                    copiedBlocks={copiedBlocks}
+                    setCopiedBlocks={setAndStoreCopiedBlocks}
+                    selectedBlockIds={selectedBlockIds}
+                    setSelectedBlockIds={setSelectedBlockIds}
+                    selectedPageIdx={selectedPageIdx}
+                    setSelectedPageIdx={setSelectedPageIdx}
+                />
+            </AccordionContent>
+        </AccordionItem>
     );
 }
 
@@ -1111,7 +1328,7 @@ export function PageEditor({
 
 export default function ResultPageBuilder() {
     const { control, watch, setValue, register, getValues } = useFormContext();
-    const { fields: pages, append, remove } = useFieldArray({
+    const { fields: pages, append, remove, move } = useFieldArray({
         control,
         name: 'resultPages',
     });
@@ -1170,6 +1387,44 @@ export default function ResultPageBuilder() {
         append(clonedPage);
     };
 
+    const autoArrangePages = () => {
+        const rules = (getValues('resultRules') || []) as SurveyResultRule[];
+        const pageMinScores: Record<string, number> = {};
+        
+        pages.forEach((page) => {
+            const pageRules = rules.filter((r) => r.pageId === page.id);
+            if (pageRules.length > 0) {
+                const min = Math.min(...pageRules.map((r) => typeof r.minScore === 'number' ? r.minScore : 0));
+                pageMinScores[page.id] = min;
+            } else {
+                pageMinScores[page.id] = (page as SurveyResultPage).isDefault ? -1 : 999999;
+            }
+        });
+
+        const sortedPages = [...pages].sort((a, b) => {
+            const scoreA = pageMinScores[a.id] ?? 999999;
+            const scoreB = pageMinScores[b.id] ?? 999999;
+            return scoreA - scoreB;
+        });
+
+        setValue('resultPages', sortedPages, { shouldDirty: true });
+    };
+
+    const sensors = useSensors(useSensor(PointerSensor));
+
+    const handlePageDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        
+        if (typeof active.id === 'string' && !active.id.startsWith('pg_')) return;
+
+        const oldIndex = pages.findIndex((p) => p.id === active.id);
+        const newIndex = pages.findIndex((p) => p.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+            move(oldIndex, newIndex);
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -1178,6 +1433,17 @@ export default function ResultPageBuilder() {
                     <p className="text-sm text-muted-foreground">Design unique landing pages for different user scores.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {pages.length > 1 && (
+                        <Button 
+                            type="button"
+                            variant="outline" 
+                            onClick={autoArrangePages} 
+                            className="gap-2 font-bold border-2 hover:bg-muted transition-all duration-200"
+                            title="Arrange pages based on their minimum score"
+                        >
+                            <ArrowUpDown className="h-4 w-4 text-muted-foreground" /> Auto Arrange
+                        </Button>
+                    )}
                     <AiChatEditor variant="icon" />
                     <Button onClick={() => append({ id: `pg_${Date.now()}`, name: `Outcome Page ${pages.length + 1}`, blocks: [], isDefault: pages.length === 0 })} className="gap-2 font-bold shadow-lg">
                         <Plus className="h-4 w-4" /> New Page
@@ -1185,158 +1451,34 @@ export default function ResultPageBuilder() {
                 </div>
             </div>
 
-            <Accordion type="single" collapsible className="space-y-4">
-                {pages.map((page, index) => (
-                    <AccordionItem key={page.id} value={page.id} className="border rounded-2xl px-4 bg-card shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                        <AccordionTrigger className="hover:no-underline py-6">
-                            <div className="flex items-center justify-between w-full pr-4" onClick={(e) => {
-                                // Prevent Accordion from opening/closing when clicking on elements in this container
-                            }}>
-                                <div className="flex items-center gap-4 text-left">
-                                    <div className="p-2 bg-primary/10 rounded-xl">
-                                        <Layout className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        {editingPageIdx === index ? (
-                                            <Input 
-                                                value={watch(`resultPages.${index}.name`)}
-                                                onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
-                                                onBlur={() => setEditingPageIdx(null)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        setEditingPageIdx(null);
-                                                    }
-                                                }}
-                                                autoFocus
-                                                className="h-8 py-0 px-2 text-sm font-semibold max-w-[200px] bg-background"
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                        ) : (
-                                            <div className="flex items-center gap-1.5 group/title">
-                                                <span className="font-semibold text-lg leading-none">{(watchedPages[index] as SurveyResultPage)?.name || (page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
-                                                <button 
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingPageIdx(index);
-                                                    }}
-                                                    className="p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity"
-                                                    title="Rename page"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        <p className="text-xs text-muted-foreground font-bold mt-1">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                                    {/* Default Switch */}
-                                    <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
-                                        <Switch 
-                                            checked={!!watch(`resultPages.${index}.isDefault`)} 
-                                            onCheckedChange={(val) => {
-                                                if (val) {
-                                                    pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
-                                                }
-                                            }}
-                                        />
-                                        <span className="text-xs font-bold text-muted-foreground select-none">Default</span>
-                                    </div>
-
-                                    {/* Celebrate Switch */}
-                                    <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
-                                        <Controller
-                                            name={`resultPages.${index}.confettiEnabled`}
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Switch
-                                                    checked={!!field.value}
-                                                    onCheckedChange={field.onChange}
-                                                    className="data-[state=checked]:bg-amber-500"
-                                                />
-                                            )}
-                                        />
-                                        <span className="text-xs font-bold text-muted-foreground select-none">Celebrate</span>
-                                    </div>
-
-                                    {/* Divider */}
-                                    <div className="h-6 w-[1px] bg-border mx-1" />
-
-                                    {/* Action Buttons with Tooltips */}
-                                    <TooltipProvider>
-                                        <div className="flex items-center gap-1">
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="outline" 
-                                                        size="icon" 
-                                                        className="h-9 w-9 rounded-lg" 
-                                                        onClick={() => setPreviewPageIdx(index)}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <span className="text-[10px] font-bold">Preview Page</span>
-                                                </TooltipContent>
-                                            </Tooltip>
-
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="outline" 
-                                                        size="icon" 
-                                                        className="h-9 w-9 rounded-lg" 
-                                                        onClick={() => clonePage(index)}
-                                                    >
-                                                        <Copy className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <span className="text-[10px] font-bold">Clone Page</span>
-                                                </TooltipContent>
-                                            </Tooltip>
-
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg" 
-                                                        onClick={() => remove(index)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <span className="text-[10px] font-bold">Delete Page</span>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </div>
-                                    </TooltipProvider>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-6 pb-8 space-y-8 border-t">
-                            <PageEditor 
-                                pageIndex={index} 
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePageDragEnd}>
+                <SortableContext items={pages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <Accordion type="single" collapsible className="space-y-4">
+                        {pages.map((page, index) => (
+                            <SortablePageAccordionItem
+                                key={page.id}
+                                id={page.id}
+                                index={index}
+                                page={page as SurveyResultPage}
+                                watchedPages={watchedPages as SurveyResultPage[]}
+                                editingPageIdx={editingPageIdx}
+                                setEditingPageIdx={setEditingPageIdx}
+                                previewPageIdx={previewPageIdx}
+                                setPreviewPageIdx={setPreviewPageIdx}
+                                clonePage={clonePage}
+                                remove={remove}
                                 copiedBlocks={copiedBlocks}
-                                setCopiedBlocks={setAndStoreCopiedBlocks}
+                                setAndStoreCopiedBlocks={setAndStoreCopiedBlocks}
                                 selectedBlockIds={selectedBlockIds}
                                 setSelectedBlockIds={setSelectedBlockIds}
                                 selectedPageIdx={selectedPageIdx}
                                 setSelectedPageIdx={setSelectedPageIdx}
+                                pages={pages as SurveyResultPage[]}
                             />
-                        </AccordionContent>
-                    </AccordionItem>
-                ))}
-            </Accordion>
+                        ))}
+                    </Accordion>
+                </SortableContext>
+            </DndContext>
 
             {pages.length === 0 && (
                 <div className="text-center py-20 bg-muted/20 border-2 border-dashed rounded-3xl">
