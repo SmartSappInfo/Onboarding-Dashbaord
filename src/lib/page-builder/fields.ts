@@ -8,7 +8,7 @@ export type BlockField =
   | { kind: 'text'; key: string; label: string; placeholder?: string }
   | { kind: 'textarea'; key: string; label: string; placeholder?: string }
   | { kind: 'richtext'; key: string; label: string }
-  | { kind: 'url'; key: string; label: string; placeholder?: string }
+  | { kind: 'url'; key: string; label: string; placeholder?: string; filterType?: 'image' | 'video' | 'audio' | 'document' | 'link' }
   | { kind: 'image'; key: string; label: string }
   | { kind: 'number'; key: string; label: string; min?: number; max?: number; step?: number }
   | { kind: 'slider'; key: string; label: string; min: number; max: number; step: number }

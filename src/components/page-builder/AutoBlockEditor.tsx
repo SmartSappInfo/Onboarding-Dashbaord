@@ -99,11 +99,12 @@ function ImageField({ label, value, workspaceId, onChange }: {
   );
 }
 
-function UrlField({ label, value, placeholder, workspaceId, onChange }: {
+function UrlField({ label, value, placeholder, workspaceId, filterType, onChange }: {
   label: string;
   value: string;
   placeholder?: string;
   workspaceId?: string;
+  filterType?: import('@/lib/types').MediaAsset['type'];
   onChange: (value: string) => void;
 }) {
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -124,6 +125,7 @@ function UrlField({ label, value, placeholder, workspaceId, onChange }: {
               onChange(asset.url);
               setLibraryOpen(false);
             }}
+            filterType={filterType}
             workspaceId={workspaceId}
           />
         </>
@@ -148,7 +150,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       );
     case 'url':
       return (
-        <UrlField label={field.label} value={asString(value)} placeholder={field.placeholder} workspaceId={workspaceId} onChange={(v) => onChange(v)} />
+        <UrlField label={field.label} value={asString(value)} placeholder={field.placeholder} workspaceId={workspaceId} filterType={field.filterType} onChange={(v) => onChange(v)} />
       );
     case 'textarea':
       return (
