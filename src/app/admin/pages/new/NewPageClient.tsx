@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
+import { INDUSTRY_LABELS, getEnabledIndustries } from '@/lib/industry-config';
 import {
     Select,
     SelectContent,
@@ -256,12 +257,11 @@ export default function NewPageClient() {
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
                                         <SelectItem value="all">All Verticals</SelectItem>
-                                        <SelectItem value="SaaS">SaaS Product</SelectItem>
-                                        <SelectItem value="SchoolEnrollment">School Admissions</SelectItem>
-                                        <SelectItem value="Marketing">Marketing Agency</SelectItem>
-                                        <SelectItem value="Law">Law Practice</SelectItem>
-                                        <SelectItem value="RealEstate">Real Estate</SelectItem>
-                                        <SelectItem value="Consultancy">Consultancy</SelectItem>
+                                        {getEnabledIndustries().map((ind) => (
+                                            <SelectItem key={ind} value={ind}>
+                                                {INDUSTRY_LABELS[ind]}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

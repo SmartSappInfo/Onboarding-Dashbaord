@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import type { CampaignPageVersion, PageSectionTemplate } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { STATIC_SECTION_TEMPLATES } from '@/lib/page-builder/templates/sections';
+import { INDUSTRY_LABELS, getEnabledIndustries } from '@/lib/industry-config';
 import {
     Select,
     SelectContent,
@@ -156,12 +157,11 @@ export const HistoryPanel = React.memo(function HistoryPanel({
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
                                 <SelectItem value="all">All Verticals</SelectItem>
-                                <SelectItem value="SaaS">SaaS Product</SelectItem>
-                                <SelectItem value="SchoolEnrollment">School Admissions</SelectItem>
-                                <SelectItem value="Marketing">Marketing Agency</SelectItem>
-                                <SelectItem value="Law">Law Practice</SelectItem>
-                                <SelectItem value="RealEstate">Real Estate</SelectItem>
-                                <SelectItem value="Consultancy">Consultancy</SelectItem>
+                                {getEnabledIndustries().map((ind) => (
+                                    <SelectItem key={ind} value={ind}>
+                                        {INDUSTRY_LABELS[ind]}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
