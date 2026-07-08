@@ -11,7 +11,8 @@ import {
   CheckCircle,
   Archive,
   RefreshCw,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { listAllTemplates, publishTemplate, deprecateTemplate } from '@/lib/backoffice/backoffice-template-actions';
+import { seedPlatformPageTemplatesAction } from '@/app/actions/seed-platform-page-templates-action';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
@@ -68,6 +70,43 @@ export default function TemplateListClient() {
   const [search, setSearch] = React.useState('');
   const [typeFilter, setTypeFilter] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  async function handleSyncPresets() {
+    if (!(await confirm({
+      title: 'Sync Page & Section Presets?',
+      description: 'This will seed or overwrite the standard system templates in the global catalog.',
+      confirmText: 'Sync Presets'
+    }))) return;
+
+    setIsSyncing(true);
+    try {
+      const idToken = await getToken();
+      const result = await seedPlatformPageTemplatesAction(idToken);
+      if (result.success && result.seededCount) {
+        toast({
+          title: 'Sync completed',
+          description: `Successfully synchronized ${result.seededCount.pages} pages and ${result.seededCount.sections} sections.`
+        });
+        loadTemplates();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sync failed',
+          description: result.error ?? 'Unknown error occurred.'
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        variant: 'destructive',
+        title: 'Authentication error',
+        description: msg
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
 
   const loadTemplates = React.useCallback(async () => {
     setIsLoading(true);
@@ -153,11 +192,28 @@ export default function TemplateListClient() {
             Manage globally available system templates across all organizations.
           </p>
         </div>
-        {can('templates', 'create') && (
-           <Button className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4">
-              <Plus className="h-4 w-4 mr-2" /> New Template
-           </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {can('templates', 'create') && (
+             <Button
+               onClick={handleSyncPresets}
+               disabled={isSyncing}
+               variant="outline"
+               className="border-border text-foreground hover:bg-accent rounded-xl h-10 px-4 cursor-pointer"
+             >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Sync Presets
+             </Button>
+          )}
+          {can('templates', 'create') && (
+             <Button className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4 cursor-pointer">
+                <Plus className="h-4 w-4 mr-2" /> New Template
+             </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
