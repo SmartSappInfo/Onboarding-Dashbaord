@@ -617,6 +617,12 @@ function SortableResultBlock({
                     className="absolute top-3 right-3 z-30 flex items-center gap-0.5 bg-background border shadow-md rounded-xl p-1 animate-in fade-in zoom-in-95 duration-200"
                     onClick={(e) => e.stopPropagation()}
                 >
+                    {['heading', 'text', 'quote', 'button', 'list'].includes(activeBlock.type) && (
+                        <>
+                            <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
+                            <Separator orientation="vertical" className="h-4 mx-0.5" />
+                        </>
+                    )}
                     <div {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded-lg shrink-0">
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
