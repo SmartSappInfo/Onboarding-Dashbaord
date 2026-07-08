@@ -13,6 +13,7 @@ export async function saveSectionAction(
     structure: PageSection;
     organizationId: string;
     workspaceId: string;
+    industry?: string;
   }
 ) {
   try {

@@ -3632,6 +3632,7 @@ export interface PageTemplate {
   thumbnailUrl?: string;
   isGlobal?: boolean;
   organizationId?: string;
+  industry?: string;
 }
 
 export interface PageSectionTemplate {
@@ -3642,6 +3643,7 @@ export interface PageSectionTemplate {
   category: string;
   structure: PageSection;
   createdAt: string;
+  industry?: string;
 }
 
 export interface CampaignPageTheme {

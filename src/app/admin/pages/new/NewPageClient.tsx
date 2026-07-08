@@ -12,6 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     ArrowLeft,
     Loader2,
     Sparkles,
@@ -92,7 +99,7 @@ export default function NewPageClient() {
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
-    const { activeWorkspaceId, activeOrganizationId: organizationId } = useTenant();
+    const { activeWorkspaceId, activeWorkspace, activeOrganizationId: organizationId } = useTenant();
 
     const [name, setName] = useState('');
     const [slug, setSlug] = useState('');
@@ -100,11 +107,19 @@ export default function NewPageClient() {
     const [isCreating, setIsCreating] = useState(false);
     const [searchFilter, setSearchFilter] = useState('');
     const [goalFilter, setGoalFilter] = useState<string | null>(null);
+    const [industryFilter, setIndustryFilter] = useState<string | null>(null);
     const [previewTemplate, setPreviewTemplate] = useState<PageTemplate | null>(null);
 
     // Fetch templates
     const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'page_templates')) : null, [firestore]);
     const { data: templates, isLoading: templatesLoading } = useCollection<PageTemplate>(templatesQuery);
+
+    // Initialize industryFilter once activeWorkspace resolves
+    React.useEffect(() => {
+        if (activeWorkspace?.industry) {
+            setIndustryFilter(activeWorkspace.industry);
+        }
+    }, [activeWorkspace?.industry]);
 
     React.useEffect(() => {
         if (name) {
@@ -117,9 +132,14 @@ export default function NewPageClient() {
         return templates.filter(t => {
             if (searchFilter && !t.name.toLowerCase().includes(searchFilter.toLowerCase()) && !t.description.toLowerCase().includes(searchFilter.toLowerCase())) return false;
             if (goalFilter && t.goal !== goalFilter) return false;
+            
+            // If an industry filter is active, filter strictly. Otherwise, show everything.
+            if (industryFilter && industryFilter !== 'all') {
+                if (t.industry && t.industry !== industryFilter) return false;
+            }
             return true;
         });
-    }, [templates, searchFilter, goalFilter]);
+    }, [templates, searchFilter, goalFilter, industryFilter]);
 
     const goalCounts = useMemo(() => {
         if (!templates) return {};
@@ -226,11 +246,30 @@ export default function NewPageClient() {
                                     className="h-9 pl-10 rounded-xl bg-slate-800/50 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50 placeholder:text-slate-600"
                                 />
                             </div>
+                            <div className="w-[180px]">
+                                <Select
+                                    value={industryFilter || 'all'}
+                                    onValueChange={(val) => setIndustryFilter(val === 'all' ? null : val)}
+                                >
+                                    <SelectTrigger className="bg-slate-800/50 border-slate-700 focus:ring-emerald-500/50 text-slate-300 rounded-xl h-9 text-xs font-semibold">
+                                        <SelectValue placeholder="All Verticals" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
+                                        <SelectItem value="all">All Verticals</SelectItem>
+                                        <SelectItem value="SaaS">SaaS Product</SelectItem>
+                                        <SelectItem value="SchoolEnrollment">School Admissions</SelectItem>
+                                        <SelectItem value="Marketing">Marketing Agency</SelectItem>
+                                        <SelectItem value="Law">Law Practice</SelectItem>
+                                        <SelectItem value="RealEstate">Real Estate</SelectItem>
+                                        <SelectItem value="Consultancy">Consultancy</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <button
                                 onClick={() => setGoalFilter(null)}
                                 className={cn(
                                     "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
-                                    !goalFilter ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "text-slate-500 hover:text-slate-300 border border-slate-700/50 hover:border-slate-600"
+                                    !goalFilter ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "text-slate-500 hover:text-slate-350 border border-slate-700/50 hover:border-slate-600"
                                 )}
                             >
                                 All ({templates?.length || 0})
@@ -303,11 +342,18 @@ export default function NewPageClient() {
 
                                             {/* Meta */}
                                             <div className="p-4 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <h3 className="text-xs font-bold text-slate-200 group-hover:text-slate-100 transition-colors truncate">{t.name}</h3>
-                                                    <Badge className={cn("text-[7px] h-4 border font-bold", GOAL_COLORS[t.goal] || 'bg-slate-700 text-slate-400 border-slate-600')}>
-                                                        {t.goal.replace('_', ' ')}
-                                                    </Badge>
+                                                <div className="flex items-between justify-between w-full">
+                                                    <h3 className="text-xs font-bold text-slate-200 group-hover:text-slate-100 transition-colors truncate max-w-[120px]">{t.name}</h3>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {t.industry && t.industry === (activeWorkspace?.industry || 'SaaS') && (
+                                                            <Badge className="text-[7px] h-4 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-bold tracking-wider">
+                                                                REC
+                                                            </Badge>
+                                                        )}
+                                                        <Badge className={cn("text-[7px] h-4 border font-bold", GOAL_COLORS[t.goal] || 'bg-slate-700 text-slate-400 border-slate-600')}>
+                                                            {t.goal.replace('_', ' ')}
+                                                        </Badge>
+                                                    </div>
                                                 </div>
                                                 <p className="text-[10px] text-slate-500 leading-relaxed line-clamp-2">{t.description}</p>
                                                 <div className="flex items-center gap-2 pt-1">

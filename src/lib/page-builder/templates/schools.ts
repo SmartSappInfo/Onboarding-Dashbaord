@@ -11,6 +11,7 @@ export const SCHOOL_TEMPLATES: PageTemplate[] = [
     description: 'Hero, key dates, program highlights, and a registration form for admissions drives.',
     goal: 'registration',
     isGlobal: true,
+    industry: 'SchoolEnrollment',
     structureJson: {
       sections: [
         sec('school-adm-hero', [
@@ -44,6 +45,7 @@ export const SCHOOL_TEMPLATES: PageTemplate[] = [
     description: 'Event hero, agenda, and an RSVP form for campus open days.',
     goal: 'registration',
     isGlobal: true,
+    industry: 'SchoolEnrollment',
     structureJson: {
       sections: [
         sec('school-od-hero', [
@@ -68,6 +70,7 @@ export const SCHOOL_TEMPLATES: PageTemplate[] = [
     description: 'Bank details and a step-by-step payment procedure for school fees.',
     goal: 'payment',
     isGlobal: true,
+    industry: 'SchoolEnrollment',
     structureJson: {
       sections: [
         sec('school-fee-hero', [

@@ -11,6 +11,7 @@ export const MARKETING_TEMPLATES: PageTemplate[] = [
     description: 'Benefit-driven hero, proof stats, testimonial, and a contact form.',
     goal: 'lead_capture',
     isGlobal: true,
+    industry: 'Marketing',
     structureJson: {
       sections: [
         sec('mkt-lg-hero', [
@@ -46,6 +47,7 @@ export const MARKETING_TEMPLATES: PageTemplate[] = [
     description: 'Event hero, speaker highlights, agenda, and a registration form.',
     goal: 'registration',
     isGlobal: true,
+    industry: 'Marketing',
     structureJson: {
       sections: [
         sec('mkt-web-hero', [
@@ -61,6 +63,74 @@ export const MARKETING_TEMPLATES: PageTemplate[] = [
             blk('mkt-web-form', 'form', { formId: '' }),
           ]),
         ], { heading: 'Reserve your seat' }),
+      ],
+    },
+  },
+  {
+    id: 'mkt-heros-journey',
+    name: "The Hero's Journey Sales Page",
+    description: "Multi-section storytelling framework page: Hook, Pain Point, Solution, Social Proof, FAQ and CTA Form.",
+    goal: 'lead_capture',
+    isGlobal: true,
+    industry: 'Marketing',
+    structureJson: {
+      sections: [
+        sec('hj-hero', [
+          blk('hj-hero-1', 'hero', {
+            title: 'Your Manual Onboarding Nightmare Ends Today',
+            subtitle: 'Automate nominal logs, secure student approvals, and launch compliance forms without code.',
+            align: 'center',
+          }),
+        ]),
+        sec('hj-problem', [
+          blk('hj-problem-text', 'text', {
+            content: '<h2>The Onboarding Struggle is Real</h2><p>Administrators spend over 20 hours per week manually registering students, chasing parents for signatures, and validating Mobile Money receipts. It is slow, insecure, and prone to compliance leaks.</p>',
+          }),
+        ], { heading: 'The Problem' }),
+        sec('hj-solution', [
+          blk('hj-solution-grid', 'stats', {
+            items: [
+              { id: 'hjs1', value: '4.8x', label: 'Faster enrollment cycle' },
+              { id: 'hjs2', value: '100%', label: 'Cryptographic compliance audit' },
+              { id: 'hjs3', value: 'MTN/Telecel', label: 'Mobile Money integrated collections' },
+            ],
+          }),
+        ], { heading: 'Our Solution Framework' }),
+        sec('hj-testimonials', [
+          blk('hj-testimonials-grid', 'testimonial_grid', {
+            heading: 'What Teams Say About Us',
+            subheading: 'Listen to operational directors detailing their onboarding speed metrics.',
+            columns: '2',
+            cardStyle: 'video-quote',
+            items: [
+              {
+                id: 'hjt1',
+                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                quote: 'Using the automated campaign templates cut our student registration drop-off rate by half.',
+                author: 'Ama K. Mensah',
+                role: 'Admissions Director',
+              },
+              {
+                id: 'hjt2',
+                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                quote: 'The Mobile Money billing triggers saved us 40 hours of manual receipt checking during term start.',
+                author: 'Kofi Aidoo',
+                role: 'Registrar, Tech Academy',
+              }
+            ]
+          }),
+        ]),
+        sec('hj-faq', [
+          blk('hj-faq-list', 'faq', {
+            items: [
+              { id: 'hjq1', question: 'How secure is our database?', answer: 'All data is stored inside AES-256 encrypted Firestore nodes with strict role-based access schemas.' },
+              { id: 'hjq2', question: 'Can we migrate existing nominal lists?', answer: 'Yes. Our smart CSV parsing importer normalizes custom files automatically in seconds.' }
+            ],
+          }),
+        ], { heading: 'Frequently Asked Questions' }),
+        sec('hj-form', [
+          blk('hj-form-1', 'form', { formId: '' }),
+        ], { heading: 'Start Your Automatic Onboarding Journey' }),
       ],
     },
   },

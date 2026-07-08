@@ -11,6 +11,7 @@ export const SAAS_TEMPLATES: PageTemplate[] = [
     description: 'Hero, social proof, feature stats, and an email-capture form to build a launch waitlist.',
     goal: 'lead_capture',
     isGlobal: true,
+    industry: 'SaaS',
     structureJson: {
       sections: [
         sec('saas-wl-hero', [
@@ -43,6 +44,7 @@ export const SAAS_TEMPLATES: PageTemplate[] = [
     description: 'Split hero with benefits and an inline signup form, plus a testimonial and FAQ.',
     goal: 'registration',
     isGlobal: true,
+    industry: 'SaaS',
     structureJson: {
       sections: [
         sec('saas-ft-hero', [
@@ -77,6 +79,7 @@ export const SAAS_TEMPLATES: PageTemplate[] = [
     description: 'Value props, proof stats, and a demo-request form for sales-led products.',
     goal: 'lead_capture',
     isGlobal: true,
+    industry: 'SaaS',
     structureJson: {
       sections: [
         sec('saas-demo-hero', [

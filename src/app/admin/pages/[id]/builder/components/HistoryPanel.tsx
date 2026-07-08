@@ -3,9 +3,18 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { History, FolderHeart, Loader2, Sparkles, Quote } from 'lucide-react';
+import { History, FolderHeart, Loader2, Sparkles, Quote, HelpCircle, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CampaignPageVersion, PageSectionTemplate } from '@/lib/types';
+import { useTenant } from '@/context/TenantContext';
+import { STATIC_SECTION_TEMPLATES } from '@/lib/page-builder/templates/sections';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 interface HistoryPanelProps {
     readonly versions: CampaignPageVersion[];
@@ -15,322 +24,25 @@ interface HistoryPanelProps {
     readonly onRestoreVersion: (version: CampaignPageVersion) => void;
     readonly onAddSectionFromTemplate: (template: PageSectionTemplate) => void;
 }
-const STATIC_HOMEPAGE_SECTIONS: Omit<PageSectionTemplate, 'workspaceId' | 'createdAt'>[] = [
-  {
-    id: 'tpl-home-hero',
-    organizationId: '',
-    name: 'Welcome Video Hero',
-    category: 'homepage',
-    structure: {
-      id: 'home-hero-sec',
-      type: 'section',
-      props: {
-        paddingTop: '0rem',
-        paddingBottom: '0rem',
-        paddingLeft: '0rem',
-        paddingRight: '0rem',
-      },
-      blocks: [
-        {
-          id: 'home-hero-blk',
-          type: 'video_hero',
-          props: {
-            heading: 'Streamlined Onboarding for Schools & Teams',
-            subheading: 'Register profiles, collect agreements, and launch automated workflows in minutes.',
-            videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-software-developer-working-on-his-computer-34354-large.mp4',
-            loop: true,
-            muted: true,
-            overlayOpacity: 0.7,
-            ctaText: 'Start Onboarding Now',
-            ctaHref: '#persona-selector',
-            secondaryCtaText: 'Download Mobile App',
-            secondaryCtaHref: '#downloads',
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: 'tpl-home-countdown',
-    organizationId: '',
-    name: 'Onboarding Countdown',
-    category: 'homepage',
-    structure: {
-      id: 'home-countdown-sec',
-      type: 'section',
-      props: {
-        backgroundType: 'color',
-        backgroundColor: '#070a13',
-        paddingTop: '3rem',
-        paddingBottom: '3rem',
-      },
-      blocks: [
-        {
-          id: 'home-countdown-blk',
-          type: 'countdown',
-          props: {
-            targetDate: '2026-12-31T23:59:59Z',
-            heading: 'Limited Registration Period',
-            subtext: 'Secure your team seat and complete onboarding setup before the system window closes.',
-            theme: 'accent',
-            showDays: true,
-            showHours: true,
-            showMinutes: true,
-            showSeconds: true,
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: 'tpl-home-personas',
-    organizationId: '',
-    name: 'Persona Choice Cards',
-    category: 'homepage',
-    structure: {
-      id: 'home-personas-sec',
-      type: 'section',
-      props: {
-        backgroundType: 'gradient',
-        gradientFrom: '#0A1427',
-        gradientTo: '#070A13',
-        gradientAngle: 180,
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-      },
-      blocks: [
-        {
-          id: 'home-personas-blk',
-          type: 'choice_cards',
-          props: {
-            heading: 'Identify Your Persona Track',
-            columns: '2',
-            cards: [
-              {
-                id: 'p1',
-                badgeText: 'FOR OFFICIALS',
-                title: 'School Administrator',
-                description: 'Manage nominal rolls, verify teacher certifications, and coordinate class approvals.',
-                imageUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136',
-                gradient: 'from-emerald-950/80 to-slate-900/90',
-                ctaText: 'Select Admin Track',
-                ctaHref: '#modal-admin',
-                openInModal: true,
-              },
-              {
-                id: 'p2',
-                badgeText: 'FOR STUDENTS & STAFF',
-                title: 'General Signup / Nominee',
-                description: 'Register credentials, review policies, and check onboarding compliance records.',
-                imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644',
-                gradient: 'from-blue-950/80 to-slate-900/90',
-                ctaText: 'Select Nominee Track',
-                ctaHref: '#modal-nominee',
-                openInModal: true,
-              }
-            ]
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: 'tpl-home-steps',
-    organizationId: '',
-    name: 'Onboarding Steps Guide',
-    category: 'homepage',
-    structure: {
-      id: 'home-steps-sec',
-      type: 'section',
-      props: {
-        heading: 'Simple Onboarding Steps',
-        backgroundType: 'color',
-        backgroundColor: '#070a13',
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-      },
-      blocks: [
-        {
-          id: 'home-step1',
-          type: 'step_section',
-          props: {
-            stepNumber: 1,
-            heading: 'Account Enrollment',
-            description: 'Enter organization details, verify identity parameters, and establish your tenant profile workspace.',
-            imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
-            mediaPosition: 'right',
-            accentColor: '#10b981',
-          }
-        },
-        {
-          id: 'home-step2',
-          type: 'step_section',
-          props: {
-            stepNumber: 2,
-            heading: 'Policy Approvals',
-            description: 'Digitally review and authorize compliance documents, nominal rolls, and usage agreements.',
-            imageUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b',
-            mediaPosition: 'left',
-            accentColor: '#3b82f6',
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: 'tpl-home-testimonials',
-    organizationId: '',
-    name: 'Video Testimonials Grid',
-    category: 'homepage',
-    structure: {
-      id: 'home-testimonials-sec',
-      type: 'section',
-      props: {
-        backgroundType: 'color',
-        backgroundColor: '#0A1427',
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-      },
-      blocks: [
-        {
-          id: 'home-testimonials-blk',
-          type: 'testimonial_grid',
-          props: {
-            heading: 'Trusted by Operations Teams Everywhere',
-            subheading: 'Listen to verified video responses detailing our fast migration metrics.',
-            columns: '2',
-            cardStyle: 'video-quote',
-            items: [
-              {
-                id: 't1',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                quote: 'The automation triggers saved us over 40 hours of manual verification checks during rollout.',
-                author: 'Ama K. Mensah',
-                role: 'Registrar, Tech Academy',
-              },
-              {
-                id: 't2',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                quote: 'Using persona choice cards cut our user registration drop-off rate by half.',
-                author: 'Kofi Aidoo',
-                role: 'Operations Director',
-              }
-            ]
-          }
-        }
-      ]
-    }
-  },
-  {
-    id: 'tpl-home-downloads',
-    organizationId: '',
-    name: 'App Download Banner',
-    category: 'homepage',
-    structure: {
-      id: 'home-downloads-sec',
-      type: 'section',
-      props: {
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-      },
-      blocks: [
-        {
-          id: 'home-downloads-blk',
-          type: 'app_download',
-          props: {
-            heading: 'Take Onboarding On The Go',
-            subtext: 'Scan nominal rosters, capture compliance photos, and execute signups anywhere using the SmartSapp mobile client.',
-            backgroundImageUrl: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c',
-            parallaxEnabled: true,
-            overlayColor: '#070a13',
-            overlayOpacity: 0.85,
-            showAppStoreBadges: true,
-            iosUrl: 'https://apps.apple.com',
-            androidUrl: 'https://play.google.com',
-          }
-        }
-      ]
-    }
-  }
-];
-
-const STATIC_TESTIMONIAL_SECTIONS: Omit<PageSectionTemplate, 'workspaceId' | 'createdAt'>[] = [
-  {
-    id: 'tpl-testimonial-parents',
-    organizationId: '',
-    name: 'Happy Parents Testimonials',
-    category: 'testimonials',
-    structure: {
-      id: 'testimonial-parents-sec',
-      type: 'section',
-      props: {
-        backgroundType: 'color',
-        backgroundColor: '#0A1427',
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-      },
-      blocks: [
-        {
-          id: 'testimonial-parents-blk',
-          type: 'testimonial_grid',
-          props: {
-            heading: 'Hear From Our Happy Parents',
-            subheading: 'See what parents are saying about their experience with K.NAS.',
-            columns: '3',
-            cardStyle: 'video-quote',
-            items: [
-              {
-                id: 'tp1',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                thumbnailUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136',
-                badgeText: 'SATISFIED PARENTS',
-                quote: 'My child is safe with top security, learning well, growing confident, responsible, and even praying over meals with joy.',
-                author: "Ma'am Edlyn",
-                avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2',
-                role: 'Satisfied Parent',
-              },
-              {
-                id: 'tp2',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                thumbnailUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-                badgeText: 'SATISFIED PARENTS',
-                quote: 'Since joining KIS, my kids changed in behavior, learning, and faith. They now sing good songs, learn with joy, and live by Christian values.',
-                author: 'Pastor Simpson',
-                avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
-                role: 'Satisfied Parent',
-              },
-              {
-                id: 'tp3',
-                videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                thumbnailUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
-                badgeText: 'SATISFIED PARENTS',
-                quote: 'At K.NAS, small classes and caring teachers helped my child improve in reading, writing, and confidence through close attention.',
-                author: 'Esi Kali',
-                avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
-                role: 'Satisfied Parent',
-              }
-            ]
-          }
-        }
-      ]
-    }
-  }
-];
+// Static presets loaded from sections.ts repository
 
 export const HistoryPanel = React.memo(function HistoryPanel({
     versions, currentVersionId, savedSections, isRestoring,
     onRestoreVersion, onAddSectionFromTemplate
 }: HistoryPanelProps) {
-    const [filter, setFilter] = useState<'all' | 'homepage' | 'testimonials' | 'saved'>('all');
+    const [filter, setFilter] = useState<'all' | 'hero' | 'testimonials' | 'faq' | 'gallery' | 'saved'>('all');
+    const { activeWorkspace } = useTenant();
+    const [industryFilter, setIndustryFilter] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (activeWorkspace?.industry) {
+            setIndustryFilter(activeWorkspace.industry);
+        }
+    }, [activeWorkspace?.industry]);
 
     // Combine static and custom saved sections
     const combined = [
-        ...STATIC_HOMEPAGE_SECTIONS.map(s => ({
-            ...s,
-            workspaceId: '',
-            createdAt: new Date().toISOString()
-        } as PageSectionTemplate)),
-        ...STATIC_TESTIMONIAL_SECTIONS.map(s => ({
+        ...STATIC_SECTION_TEMPLATES.map(s => ({
             ...s,
             workspaceId: '',
             createdAt: new Date().toISOString()
@@ -339,11 +51,29 @@ export const HistoryPanel = React.memo(function HistoryPanel({
     ];
 
     const filtered = combined.filter((s) => {
-        if (filter === 'homepage') return s.category === 'homepage';
-        if (filter === 'testimonials') return s.category === 'testimonials';
-        if (filter === 'saved') return s.category !== 'homepage' && s.category !== 'testimonials';
+        // 1. Category Filter
+        if (filter === 'hero' && s.category !== 'hero') return false;
+        if (filter === 'testimonials' && s.category !== 'testimonials') return false;
+        if (filter === 'faq' && s.category !== 'faq') return false;
+        if (filter === 'gallery' && s.category !== 'gallery') return false;
+        if (filter === 'saved' && ['hero', 'testimonials', 'faq', 'gallery'].includes(s.category)) return false;
+
+        // 2. Industry Filter
+        if (s.id.startsWith('tpl-') && industryFilter && industryFilter !== 'all') {
+            if (s.industry && s.industry !== 'all' && s.industry !== industryFilter) {
+                return false;
+            }
+        }
+        
         return true;
     });
+
+    const activeIndustry = activeWorkspace?.industry || 'SaaS';
+
+    const heroCount = combined.filter(s => s.category === 'hero' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const testCount = combined.filter(s => s.category === 'testimonials' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const faqCount = combined.filter(s => s.category === 'faq' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
+    const galCount = combined.filter(s => s.category === 'gallery' && (!s.id.startsWith('tpl-') || !industryFilter || industryFilter === 'all' || s.industry === 'all' || s.industry === industryFilter)).length;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -409,56 +139,97 @@ export const HistoryPanel = React.memo(function HistoryPanel({
 
             {/* Section Library */}
             <section className="space-y-4 pt-4 border-t border-slate-700/50">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 bg-violet-500/10 rounded-lg">
                             <FolderHeart className="h-4 w-4 text-violet-400" />
                         </div>
                         <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Section Library</h4>
                     </div>
+                    <div className="w-[130px]">
+                        <Select
+                            value={industryFilter || 'all'}
+                            onValueChange={(val) => setIndustryFilter(val === 'all' ? null : val)}
+                        >
+                            <SelectTrigger className="bg-slate-800/50 border-slate-700 focus:ring-emerald-500/50 text-slate-300 rounded-lg h-7 text-[10px] font-bold">
+                                <SelectValue placeholder="All Verticals" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-300">
+                                <SelectItem value="all">All Verticals</SelectItem>
+                                <SelectItem value="SaaS">SaaS Product</SelectItem>
+                                <SelectItem value="SchoolEnrollment">School Admissions</SelectItem>
+                                <SelectItem value="Marketing">Marketing Agency</SelectItem>
+                                <SelectItem value="Law">Law Practice</SelectItem>
+                                <SelectItem value="RealEstate">Real Estate</SelectItem>
+                                <SelectItem value="Consultancy">Consultancy</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex gap-1.5 pb-2">
+                <div className="flex gap-1.5 pb-2 overflow-x-auto pr-1 custom-scrollbar">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setFilter('all')}
                         className={cn(
-                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider",
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0",
                             filter === 'all' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
                         )}
                     >
-                        All ({combined.length})
+                        All ({filtered.length})
                     </Button>
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setFilter('homepage')}
+                        onClick={() => setFilter('hero')}
                         className={cn(
-                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1",
-                            filter === 'homepage' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1 shrink-0",
+                            filter === 'hero' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
                         )}
                     >
-                        <Sparkles className="w-2.5 h-2.5" /> Homepage ({STATIC_HOMEPAGE_SECTIONS.length})
+                        <Sparkles className="w-2.5 h-2.5" /> Hero ({heroCount})
                     </Button>
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setFilter('testimonials')}
                         className={cn(
-                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1",
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1 shrink-0",
                             filter === 'testimonials' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
                         )}
                     >
-                        <Quote className="w-2.5 h-2.5" /> Testimonials ({STATIC_TESTIMONIAL_SECTIONS.length})
+                        <Quote className="w-2.5 h-2.5" /> Testimonials ({testCount})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFilter('faq')}
+                        className={cn(
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1 shrink-0",
+                            filter === 'faq' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
+                        )}
+                    >
+                        <HelpCircle className="w-2.5 h-2.5" /> FAQ ({faqCount})
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFilter('gallery')}
+                        className={cn(
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider gap-1 shrink-0",
+                            filter === 'gallery' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
+                        )}
+                    >
+                        <ImageIcon className="w-2.5 h-2.5" /> Gallery ({galCount})
                     </Button>
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setFilter('saved')}
                         className={cn(
-                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider",
+                            "h-6 px-2.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0",
                             filter === 'saved' ? "bg-slate-700 text-emerald-400" : "text-slate-400 hover:text-slate-350"
                         )}
                     >
@@ -475,9 +246,16 @@ export const HistoryPanel = React.memo(function HistoryPanel({
                                 onClick={() => onAddSectionFromTemplate(s)}
                             >
                                 <div className="text-left">
-                                    <p className="text-[11px] font-bold text-slate-300 group-hover:text-violet-400 transition-colors">{s.name}</p>
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="text-[11px] font-bold text-slate-300 group-hover:text-violet-400 transition-colors truncate max-w-[150px]">{s.name}</p>
+                                        {s.industry && s.industry === activeIndustry && (
+                                            <Badge className="text-[6px] h-3 bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-bold px-1 rounded-sm uppercase tracking-wider shrink-0">
+                                                REC
+                                            </Badge>
+                                        )}
+                                    </div>
                                     <p className="text-[9px] text-slate-500">
-                                        {s.category === 'homepage' ? 'Homepage block' : s.category} · {s.structure.blocks.length} block{s.structure.blocks.length !== 1 ? 's' : ''}
+                                        {s.category} · {s.structure.blocks.length} block{s.structure.blocks.length !== 1 ? 's' : ''}
                                     </p>
                                 </div>
                                 <Badge variant="outline" className="text-[7px] h-4 bg-slate-900 border-slate-700 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">

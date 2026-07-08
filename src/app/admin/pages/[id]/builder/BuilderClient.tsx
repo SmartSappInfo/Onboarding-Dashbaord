@@ -203,7 +203,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
-    const { activeWorkspaceId, activeOrganizationId: organizationId } = useTenant();
+    const { activeWorkspaceId, activeWorkspace, activeOrganizationId: organizationId } = useTenant();
 
     const builder = useBuilderState();
     const resources = useBuilderResources();
@@ -437,6 +437,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             structure: savingSection,
             organizationId,
             workspaceId: activeWorkspaceId,
+            industry: activeWorkspace?.industry || 'SaaS',
         });
         if (res.success) {
             toast({ title: 'Success', description: 'Section saved to your library.' });
