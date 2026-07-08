@@ -66,9 +66,10 @@ const bulkMappingFlow = ai.defineFlow(
     let retries = 0;
     while (retries < 3) {
         try {
+            const rendered = await mappingPrompt.render(input);
             const { output } = await generatorAi.generate({
                 model: resolvedModel.modelString,
-                prompt: await mappingPrompt.render(input),
+                ...rendered,
                 output: { schema: BulkMappingOutputSchema }
             });
             if (!output) throw new Error("The AI failed to suggest a valid header mapping.");

@@ -114,9 +114,10 @@ const generateEmailTemplateFlow = ai.defineFlow(
 
     const generatorAi = resolvedModel.customAi || ai;
 
+    const rendered = await templatePrompt.render(input);
     const { output } = await generatorAi.generate({
       model: resolvedModel.modelString,
-      prompt: await templatePrompt.render(input),
+      ...rendered,
       output: { schema: GenerateEmailTemplateOutputSchema }
     });
 

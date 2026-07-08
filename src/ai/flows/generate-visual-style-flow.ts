@@ -58,9 +58,10 @@ const generateVisualStyleFlow = ai.defineFlow(
     });
 
     const generatorAi = resolvedModel.customAi || ai;
+    const rendered = await stylePrompt.render(input);
     const { output } = await generatorAi.generate({
         model: resolvedModel.modelString,
-        prompt: await stylePrompt.render(input),
+        ...rendered,
         output: { schema: GenerateVisualStyleOutputSchema },
     });
 

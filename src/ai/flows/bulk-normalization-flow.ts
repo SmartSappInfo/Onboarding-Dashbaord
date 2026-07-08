@@ -110,9 +110,10 @@ const bulkNormalizationFlow = ai.defineFlow(
     let retries = 0;
     while (retries < 3) {
         try {
+            const rendered = await normalizationPrompt.render(input);
             const { output } = await generatorAi.generate({
                 model: resolvedModel.modelString,
-                prompt: await normalizationPrompt.render(input),
+                ...rendered,
                 output: { schema: BulkNormalizationOutputSchema }
             });
             if (!output) throw new Error("Normalization failure.");

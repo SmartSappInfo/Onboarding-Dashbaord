@@ -127,9 +127,10 @@ const detectPdfFieldsFlow = ai.defineFlow(
 
     const generatorAi = resolvedModel.customAi || ai;
 
+    const rendered = await detectionPrompt.render(input);
     const { output } = await generatorAi.generate({
       model: resolvedModel.modelString,
-      prompt: await detectionPrompt.render(input),
+      ...rendered,
       output: { schema: DetectPdfFieldsOutputSchema }
     });
 

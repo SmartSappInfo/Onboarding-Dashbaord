@@ -196,9 +196,10 @@ const modifySurveyFlow = ai.defineFlow(
 
                 const generatorAi = resolvedModel.customAi || ai;
 
+                const rendered = await modifyPrompt.render(input);
                 const { output } = await generatorAi.generate({
                     model: resolvedModel.modelString,
-                    prompt: await modifyPrompt.render(input),
+                    ...rendered,
                     output: { schema: ModifySurveyOutputSchema },
                 });
                 
