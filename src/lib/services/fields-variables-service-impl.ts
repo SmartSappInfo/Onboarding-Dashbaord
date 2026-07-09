@@ -244,6 +244,8 @@ export class FieldsVariablesService {
               { key: 'contact_name', label: 'Contact Name (Captured)', desc: 'Contact name captured on lead sheet' },
               { key: 'contact_email', label: 'Contact Email (Captured)', desc: 'Contact email captured on lead sheet' },
               { key: 'contact_phone', label: 'Contact Phone (Captured)', desc: 'Contact phone captured on lead sheet' },
+              { key: 'result_url', label: 'Survey Results Link', desc: 'Personalized URL to view results' },
+              { key: 'survey_results_link', label: 'Survey Results Link (Alias)', desc: 'Personalized URL to view results' },
             ];
 
             surveyStaticVars.forEach((sv) => {

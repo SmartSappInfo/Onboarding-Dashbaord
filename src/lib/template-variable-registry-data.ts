@@ -790,6 +790,17 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     isDynamic: false,
     isComputed: true,
   },
+  {
+    id: 'survey_results_link',
+    name: 'survey_results_link',
+    label: 'Survey Results Link (Alias)',
+    description: 'Personalized URL to view completed survey results (alias)',
+    dataType: 'url',
+    context: 'survey',
+    exampleValue: 'https://app.example.com/surveys/satisfaction/result/response-123',
+    isDynamic: false,
+    isComputed: true,
+  },
 
   // ── Agreement ────────────────────────────────────────────────────────────
   {
