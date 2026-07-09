@@ -1341,7 +1341,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onClick={handleCanvasClick}
-            className="flex-1 overflow-hidden relative select-none bg-slate-950 canvas-workspace-bg"
+            className={cn("flex-1 overflow-hidden relative bg-slate-950 canvas-workspace-bg", isPreview ? "select-none" : "select-text")}
             style={{ 
                 cursor: isPanning ? 'grabbing' : panToolActive ? 'grab' : commentsMode ? 'cell' : 'default' 
             }}
@@ -1371,7 +1371,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 <div
                     ref={canvasRef}
                     className={cn(
-                        "canvas-viewport-frame shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative select-none",
+                        "canvas-viewport-frame shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-300 relative",
+                        isPreview ? "select-none" : "select-text",
                         themeMode === 'dark' ? "dark" : "light",
                         viewport === 'desktop'
                             ? "w-[1280px] min-h-[800px] rounded-2xl ring-1 ring-slate-800/10"

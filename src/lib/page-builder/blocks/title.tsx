@@ -327,7 +327,7 @@ registerBlock({
         ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
         : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400";
       return (
-        <div className={`py-2 w-full ${alignClass} select-none`}>
+        <div className={cn("py-2 w-full", alignClass, isEdit ? "select-text" : "select-none")}>
           <span 
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text outline-none",
@@ -348,7 +348,7 @@ registerBlock({
     }
 
     return (
-      <div className={`py-4 w-full ${alignClass} select-none`}>
+      <div className={cn("py-4 w-full", alignClass, isEdit ? "select-text" : "select-none")}>
         {/* Top Tagline */}
         {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
           <p
