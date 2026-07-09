@@ -1,3 +1,4 @@
+import React from 'react';
 import { z } from 'zod';
 import { Heading } from 'lucide-react';
 import { registerBlock } from '../registry';
@@ -199,6 +200,55 @@ registerBlock({
     const taglineSize = props.customTaglineSize && props.customTaglineSize !== 'default' ? props.customTaglineSize : null;
     const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
     
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const titleRef = React.useRef<HTMLHeadingElement | HTMLSpanElement>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const taglineRef = React.useRef<HTMLParagraphElement>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const subheadingRef = React.useRef<HTMLParagraphElement>(null);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastTitleRef = React.useRef<string>('');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastTaglineRef = React.useRef<string>('');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastSubheadingRef = React.useRef<string>('');
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [hasMounted, setHasMounted] = React.useState(false);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useEffect(() => {
+      setHasMounted(true);
+    }, []);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useEffect(() => {
+      if (hasMounted) {
+        if (titleRef.current) {
+          const expected = isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title));
+          if (expected !== titleRef.current.innerHTML) {
+            titleRef.current.innerHTML = expected;
+          }
+          lastTitleRef.current = props.title;
+        }
+        if (taglineRef.current) {
+          const expected = isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline));
+          if (expected !== taglineRef.current.innerHTML) {
+            taglineRef.current.innerHTML = expected;
+          }
+          lastTaglineRef.current = props.tagline;
+        }
+        if (subheadingRef.current) {
+          const expected = isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading));
+          if (expected !== subheadingRef.current.innerHTML) {
+            subheadingRef.current.innerHTML = expected;
+          }
+          lastSubheadingRef.current = props.subheading;
+        }
+      }
+    }, [props.title, props.tagline, props.subheading, isEdit, hasMounted, ctx]);
+
     let titleClass = isLight ? 'text-white' : 'text-slate-900 dark:text-white';
     let taglineClass = isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
     let subClass = isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400';
@@ -219,44 +269,41 @@ registerBlock({
     } else if (preset === 'section-heading') {
       titleClass = cn(
         isLight ? 'text-white' : 'text-slate-900 dark:text-white',
-        titleSize || 'text-3xl sm:text-4xl font-bold tracking-tight'
+        titleSize || 'text-3xl sm:text-4xl font-extrabold tracking-tight mb-3'
       );
       taglineClass = cn(
-        isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
-        taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2'
+        isLight ? 'text-blue-450' : 'text-[#3B5FFF] dark:text-blue-450',
+        taglineSize || 'text-xs uppercase tracking-widest font-black mb-2'
       );
       subClass = cn(
         isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
-        subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl'
+        subheadingSize || 'text-sm sm:text-base mt-3 max-w-2xl'
       );
     } else if (preset === 'subtitle') {
       titleClass = cn(
-        isLight ? 'text-slate-100' : 'text-slate-800 dark:text-slate-100',
-        titleSize || 'text-xl sm:text-2xl font-semibold tracking-normal'
+        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
+        titleSize || 'text-base sm:text-lg font-medium leading-relaxed max-w-xl'
       );
       taglineClass = 'hidden';
-      subClass = cn(
-        isLight ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400',
-        subheadingSize || 'text-xs sm:text-sm mt-1.5 max-w-xl'
-      );
+      subClass = 'hidden';
     } else if (preset === 'accent-tagline') {
       titleClass = cn(
         isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
-        titleSize || 'text-sm sm:text-base font-black uppercase tracking-widest'
+        titleSize || 'text-xs uppercase tracking-widest font-black'
       );
       taglineClass = 'hidden';
       subClass = 'hidden';
     } else if (preset === 'left-accent-border') {
       titleClass = cn(
-        isLight ? 'text-white font-bold tracking-tight border-l-4 border-blue-400 pl-4' : 'text-slate-900 dark:text-white font-bold tracking-tight border-l-4 border-[#3B5FFF] pl-4',
-        titleSize || 'text-2xl sm:text-3xl'
+        isLight ? 'text-white' : 'text-slate-900 dark:text-white',
+        titleSize || 'text-2xl sm:text-3xl font-extrabold tracking-tight'
       );
       taglineClass = cn(
-        isLight ? 'text-slate-300' : 'text-slate-400 dark:text-slate-500',
-        taglineSize || 'text-xs uppercase tracking-widest font-bold mb-2 pl-5'
+        isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400',
+        taglineSize || 'text-[10px] uppercase tracking-widest font-black mb-1.5'
       );
       subClass = cn(
-        isLight ? 'text-slate-200' : 'text-slate-500 dark:text-slate-400',
+        isLight ? 'text-slate-350' : 'text-slate-500 dark:text-slate-400',
         subheadingSize || 'text-sm sm:text-base mt-2 max-w-2xl pl-5'
       );
     } else if (preset === 'elegant-serif') {
@@ -329,6 +376,7 @@ registerBlock({
       return (
         <div className={cn("py-2 w-full", alignClass, isEdit ? "select-text" : "select-none")}>
           <span 
+            ref={titleRef as React.RefObject<HTMLSpanElement>}
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text outline-none",
               capsuleBgClass,
@@ -341,7 +389,7 @@ registerBlock({
             data-prop-key="title"
             data-rich="true"
             onBlur={isEdit ? handleTitleBlur : undefined}
-            dangerouslySetInnerHTML={{ __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) }}
+            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) } : undefined}
           />
         </div>
       );
@@ -352,6 +400,7 @@ registerBlock({
         {/* Top Tagline */}
         {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
           <p
+            ref={taglineRef}
             className={cn(taglineClass, focusRingClass, "outline-none")}
             style={taglineStyles}
             contentEditable={isEdit}
@@ -360,12 +409,13 @@ registerBlock({
             data-prop-key="tagline"
             data-rich="true"
             onBlur={isEdit ? handleTaglineBlur : undefined}
-            dangerouslySetInnerHTML={{ __html: isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline)) }}
+            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline)) } : undefined}
           />
         )}
 
         {/* Main Headline */}
         <h2
+          ref={titleRef as React.RefObject<HTMLHeadingElement>}
           className={cn(titleClass, "transition-all duration-300 outline-none", focusRingClass)}
           style={titleStyles}
           contentEditable={isEdit}
@@ -374,12 +424,13 @@ registerBlock({
           data-prop-key="title"
           data-rich="true"
           onBlur={isEdit ? handleTitleBlur : undefined}
-          dangerouslySetInnerHTML={{ __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) }}
+          dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) } : undefined}
         />
 
         {/* Supporting Subheading */}
         {props.subheading && preset !== 'accent-tagline' && (
           <p
+            ref={subheadingRef}
             className={cn(subClass, focusRingClass, "outline-none")}
             style={subheadingStyles}
             contentEditable={isEdit}
@@ -388,7 +439,7 @@ registerBlock({
             data-prop-key="subheading"
             data-rich="true"
             onBlur={isEdit ? handleSubheadingBlur : undefined}
-            dangerouslySetInnerHTML={{ __html: isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading)) }}
+            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading)) } : undefined}
           />
         )}
       </div>

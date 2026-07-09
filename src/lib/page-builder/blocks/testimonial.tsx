@@ -68,6 +68,7 @@ registerBlock({
     const hasVideo = props.videoUrl;
     const playInline = props.playMode === 'inline';
     // eslint-disable-next-line react-hooks/rules-of-hooks
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [modalOpen, setModalOpen] = React.useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [avatarLibraryOpen, setAvatarLibraryOpen] = React.useState(false);
@@ -75,6 +76,55 @@ registerBlock({
     const [videoLibraryOpen, setVideoLibraryOpen] = React.useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [thumbnailLibraryOpen, setThumbnailLibraryOpen] = React.useState(false);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const quoteRef = React.useRef<HTMLQuoteElement>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const authorRef = React.useRef<HTMLParagraphElement>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const roleRef = React.useRef<HTMLParagraphElement>(null);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastQuoteRef = React.useRef<string>('');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastAuthorRef = React.useRef<string>('');
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const lastRoleRef = React.useRef<string>('');
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [hasMounted, setHasMounted] = React.useState(false);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useEffect(() => {
+      setHasMounted(true);
+    }, []);
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    React.useEffect(() => {
+      if (hasMounted) {
+        if (quoteRef.current) {
+          const expected = ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote));
+          if (expected !== quoteRef.current.innerHTML) {
+            quoteRef.current.innerHTML = expected;
+          }
+          lastQuoteRef.current = props.quote;
+        }
+        if (authorRef.current) {
+          const expected = props.author || '';
+          if (expected !== authorRef.current.innerText) {
+            authorRef.current.innerText = expected;
+          }
+          lastAuthorRef.current = expected;
+        }
+        if (roleRef.current) {
+          const expected = props.role || '';
+          if (expected !== roleRef.current.innerText) {
+            roleRef.current.innerText = expected;
+          }
+          lastRoleRef.current = expected;
+        }
+      }
+    }, [props.quote, props.author, props.role, ctx.mode, hasMounted, ctx]);
 
     const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
       <>
@@ -178,14 +228,19 @@ registerBlock({
         )}
         
         <blockquote 
+          ref={quoteRef}
           contentEditable={ctx.mode === 'edit'}
           suppressContentEditableWarning
           data-block-id={_block.id}
           data-prop-key="quote"
           data-rich="true"
-          onBlur={(e) => ctx.onPropChange?.({ quote: e.currentTarget.innerHTML })}
+          onBlur={(e) => {
+            const newHtml = e.currentTarget.innerHTML;
+            lastQuoteRef.current = newHtml;
+            ctx.onPropChange?.({ quote: newHtml });
+          }}
           className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]"
-          dangerouslySetInnerHTML={{ __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) }}
+          dangerouslySetInnerHTML={!hasMounted ? { __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) } : undefined}
         />
         
         <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
@@ -223,26 +278,36 @@ registerBlock({
             {ctx.mode === 'edit' ? (
               <>
                 <p 
+                  ref={authorRef}
                   contentEditable
                   suppressContentEditableWarning
                   data-block-id={_block.id}
                   data-prop-key="author"
                   data-rich="false"
-                  onBlur={(e) => ctx.onPropChange?.({ author: e.currentTarget.textContent || '' })}
+                  onBlur={(e) => {
+                    const text = e.currentTarget.innerText || '';
+                    lastAuthorRef.current = text;
+                    ctx.onPropChange?.({ author: text });
+                  }}
                   className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
                 >
-                  {props.author || 'Author Name'}
+                  {!hasMounted ? (props.author || 'Author Name') : undefined}
                 </p>
                 <p 
+                  ref={roleRef}
                   contentEditable
                   suppressContentEditableWarning
                   data-block-id={_block.id}
                   data-prop-key="role"
                   data-rich="false"
-                  onBlur={(e) => ctx.onPropChange?.({ role: e.currentTarget.textContent || '' })}
+                  onBlur={(e) => {
+                    const text = e.currentTarget.innerText || '';
+                    lastRoleRef.current = text;
+                    ctx.onPropChange?.({ role: text });
+                  }}
                   className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
                 >
-                  {props.role || 'Role / Company'}
+                  {!hasMounted ? (props.role || 'Role / Company') : undefined}
                 </p>
               </>
             ) : (
