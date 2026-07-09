@@ -29,6 +29,15 @@ const contextLabels: Record<string, string> = {
   entity: 'Entity',
   deal: 'Deal',
   agent: 'Agent',
+  core: 'General Identity & Contacts',
+  contact: 'General Identity & Contacts',
+  contact_specific: 'Contact Specific Role',
+  general: 'General Variables',
+  common: 'Common Variables',
+  custom: 'Custom Variables',
+  regional: 'Regional Metadata',
+  financial: 'Financial Configuration',
+  interests: 'Interests',
 };
 
 export function convertToVisualHtml(text: string): string {

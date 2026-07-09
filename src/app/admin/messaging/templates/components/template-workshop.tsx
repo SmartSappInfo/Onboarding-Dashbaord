@@ -3498,22 +3498,67 @@ export function TemplateWorkshop({
     }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel, target]);
 
     const filteredVars = React.useMemo(() => {
-        let list = variables;
-        if (category === 'general') {
-            list = variables.filter(v => v.category === 'general' || v.category === 'common' || v.category === 'custom');
-        } else {
-            list = variables.filter(v => 
-                v.category === 'general' || 
-                v.category === 'common' || 
-                v.category === 'custom' ||
-                v.category === category
-            );
-        }
+        // 1. Initial category/feature scoping
+        let list = variables.filter(v => {
+            const cat = v.category;
+            
+            // Core, common, contact, and custom fields are always available in all templates
+            if (
+                cat === 'core' ||
+                cat === 'contact_specific' ||
+                cat === 'contact' ||
+                cat === 'general' ||
+                cat === 'common' ||
+                cat === 'custom' ||
+                cat === 'regional' ||
+                cat === 'financial' ||
+                cat === 'interests'
+            ) {
+                return true;
+            }
 
-        // Active simulation context-aware variable filtering
+            // Map template category to variable context/category keys
+            const contextMap: Record<string, string[]> = {
+                meetings: ['meeting', 'meetings'],
+                surveys: ['survey', 'surveys'],
+                forms: ['form', 'forms'],
+                agreements: ['agreement', 'agreements']
+            };
+
+            const allowedContexts = contextMap[category] || [];
+            
+            // Check if variable is a feature/dynamic variable for the current template category
+            const isFeatureVar = cat === 'feature' || v.source === 'dynamic_form';
+            if (isFeatureVar) {
+                if (category === 'general') return false;
+                
+                const vId = (v.id || '').toLowerCase();
+                const vKey = (v.key || '').toLowerCase();
+                const vSource = (v.source || '').toLowerCase();
+                
+                return allowedContexts.some(ctx => 
+                    vId.startsWith(ctx) || 
+                    vKey.startsWith(ctx) || 
+                    vSource.includes(ctx)
+                );
+            }
+
+            return cat === category;
+        });
+
+        // 2. Active simulation context-aware variable filtering
         if (simRecordId !== 'none') {
             list = list.filter(v => {
-                if (v.category === 'general' || v.category === 'common' || v.category === 'custom' || v.key.startsWith('contact_') || v.category === 'contact') {
+                const cat = v.category;
+                if (
+                    cat === 'general' || 
+                    cat === 'common' || 
+                    cat === 'custom' || 
+                    cat === 'core' ||
+                    cat === 'contact' ||
+                    cat === 'contact_specific' ||
+                    v.key.startsWith('contact_')
+                ) {
                     return true;
                 }
                 if (simEntity === 'Survey') {
