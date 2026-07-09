@@ -42,7 +42,9 @@ export function validateTemplateVariables(
       varName.startsWith('form_fields.') || 
       varName.startsWith('survey_fields.');
 
-    if (isDynamicContactRole || isDynamicSubmissionField) {
+    const isSystemVariable = varName === 'encrypted_recipient_token';
+
+    if (isDynamicContactRole || isDynamicSubmissionField || isSystemVariable) {
       continue;
     }
 
