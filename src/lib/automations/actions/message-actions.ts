@@ -367,7 +367,6 @@ export async function handleDirectMessage(
             {
               ...buildOrgFooterVars(vars as Record<string, string>),
               unsubscribe_link: recipientUnsubLink,
-              unsubscribe_url: recipientUnsubLink,
             },
           );
 
