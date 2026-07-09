@@ -12,7 +12,7 @@ export const ai = genkit({
     googleAI(),
     anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'placeholder-key-to-prevent-load-time-error' }), // System default Anthropic
   ],
-  model: 'anthropic/claude-3-5-sonnet',
+  model: 'anthropic/claude-3-5-sonnet-20241022',
 });
 
 // In-memory cache for custom Genkit instances to avoid plugin initialization overhead
@@ -120,6 +120,11 @@ export async function getModel(params: {
     modelId = 'gemini-2.5-flash';
   }
 
+  // Map generic claude-3-5-sonnet/claude-3.5-sonnet model to real API model name
+  if (provider === 'anthropic' && (modelId === 'claude-3-5-sonnet' || modelId === 'claude-3.5-sonnet')) {
+    modelId = 'claude-3-5-sonnet-20241022';
+  }
+
   let apiKey: string | undefined;
 
   // 1. Fetch Organization Key if orgId is provided (Highest Priority)
@@ -201,7 +206,7 @@ export async function getModel(params: {
               console.warn(`[AI] Custom API key generation failed with auth error: "${errorMsg}". Falling back to system default instance.`);
               const defaultModel = provider === 'googleai' 
                 ? 'googleai/gemini-2.5-flash' 
-                : 'anthropic/claude-3-5-sonnet';
+                : 'anthropic/claude-3-5-sonnet-20241022';
               
               // Non-blocking telemetry log
               logBackofficeAction(
