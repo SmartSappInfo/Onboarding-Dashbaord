@@ -1417,6 +1417,7 @@ export default function SurveyForm({
             submittedAt: new Date().toISOString(), 
             answers, 
             score,
+            respondentName: variables.contact_name || null,
             sourcePageId: sourcePageId || null,
             entityId: survey.entityId || null,
             entityName: survey.entityName || null,

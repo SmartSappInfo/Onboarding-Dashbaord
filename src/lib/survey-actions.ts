@@ -579,7 +579,9 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         entityId: finalEntityId,
         score: responseData.score !== undefined ? responseData.score : 0,
         survey_score: responseData.score !== undefined ? responseData.score : 0,
-        max_score: surveyData.maxScore || 100
+        max_score: surveyData.maxScore || 100,
+        respondent_name: responseData.respondentName || "",
+        respondentName: responseData.respondentName || ""
       };
 
       // Internal Team Alerts
@@ -1195,6 +1197,7 @@ export async function finalizeSurveySubmission(
         {
           answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
           score: responseData.score,
+          respondentName: responseData.respondentName,
           sourcePageId: responseData.sourcePageId,
           assignedUserId: responseData.assignedUserId
         },
@@ -1220,6 +1223,7 @@ async function triggerPostSubmissionAutomations(
   responseData: {
     answers: Array<{ questionId: string; value: string | string[] }>;
     score?: number;
+    respondentName?: string | null;
     sourcePageId?: string | null;
     assignedUserId?: string | null;
   },
@@ -1245,7 +1249,9 @@ async function triggerPostSubmissionAutomations(
     entityId: entityId || '',
     score: responseData.score !== undefined ? responseData.score : 0,
     survey_score: responseData.score !== undefined ? responseData.score : 0,
-    max_score: surveyData.maxScore || 100
+    max_score: surveyData.maxScore || 100,
+    respondent_name: responseData.respondentName || '',
+    respondentName: responseData.respondentName || ''
   };
 
   // 1. Webhook

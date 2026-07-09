@@ -247,6 +247,7 @@ export class FieldsVariablesService {
               { key: 'contact_phone', label: 'Contact Phone (Captured)', desc: 'Contact phone captured on lead sheet' },
               { key: 'result_url', label: 'Survey Results Link', desc: 'Personalized URL to view results' },
               { key: 'survey_results_link', label: 'Survey Results Link (Alias)', desc: 'Personalized URL to view results' },
+              { key: 'respondent_name', label: 'Respondent Name', desc: 'Name of the person who filled or is filling out the survey' },
             ];
 
             surveyStaticVars.forEach((sv) => {
@@ -661,6 +662,11 @@ export class FieldsVariablesService {
         const baseUrl = getBaseUrl();
         valuesMap.set('dashboard_link', `${baseUrl}/admin/surveys/${context.surveyId}`);
 
+        // Initialize respondent_name with contact fallback first
+        const activeContactName = valuesMap.get('contact_name') as string | undefined;
+        const activeEntityName = valuesMap.get('entity_name') as string | undefined;
+        valuesMap.set('respondent_name', activeContactName || activeEntityName || '');
+
         // Pre-populate dynamic variables registry
         try {
           const dynamicVarsSnap = await adminDb
@@ -761,6 +767,11 @@ export class FieldsVariablesService {
 
         const surveySlug = survey.slug || context.surveyId;
         if (responseId && responseData) {
+          const leadDetails = responseData.leadDetails as Record<string, unknown> | undefined;
+          const rName = responseData.respondentName || leadDetails?.name || leadDetails?.contactName;
+          if (rName) {
+            valuesMap.set('respondent_name', String(rName));
+          }
           if (responseData.score !== undefined) {
             valuesMap.set('score', responseData.score);
             valuesMap.set('survey_score', responseData.score);

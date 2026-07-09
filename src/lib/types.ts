@@ -2079,6 +2079,7 @@ export interface SurveyResponse {
   assignedUserId?: string; // User who shared the survey link
   sourcePageId?: string | null;
   leadDetails?: Record<string, string>;
+  respondentName?: string | null;
 }
 
 export interface SurveySummary {
