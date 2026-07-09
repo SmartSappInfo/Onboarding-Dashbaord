@@ -141,6 +141,34 @@ export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, dis
                                                 </div>
                                             </Card>
                                         )}
+                                        {block.type === 'outcome-categories' && (
+                                            <div className="w-full border rounded-2xl bg-card p-6 shadow-sm flex flex-col gap-4 text-left">
+                                                <h4 className="text-sm font-bold text-foreground opacity-90">{block.title || 'Compared with other schools:'}</h4>
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-3 p-3 bg-primary/10 border-l-4 border-primary rounded-r-xl">
+                                                        <span className="font-mono text-sm font-bold">6-11</span>
+                                                        <span className="text-sm">→</span>
+                                                        <span className="text-sm font-bold">Cash Flow At Risk</span>
+                                                        <span className="ml-auto text-xs font-semibold text-primary">← You Are Here</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
+                                                        <span className="font-mono text-sm">12-16</span>
+                                                        <span className="text-sm">→</span>
+                                                        <span className="text-sm">Building Momentum</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
+                                                        <span className="font-mono text-sm">17-21</span>
+                                                        <span className="text-sm">→</span>
+                                                        <span className="text-sm">Growth Ready</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
+                                                        <span className="font-mono text-sm">22-24</span>
+                                                        <span className="text-sm">→</span>
+                                                        <span className="text-sm">Collection Leader</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -543,6 +571,13 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                             checked={!!block.style?.animate} 
                             onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.animate`, val, { shouldDirty: true })}
                         />
+                    </div>
+                )}
+
+                {block.type === 'outcome-categories' && (
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-semibold text-muted-foreground">Section Header Title (Optional)</Label>
+                        <Input placeholder="Compared with other schools:" {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
                     </div>
                 )}
             </div>
@@ -1032,6 +1067,33 @@ function SortableResultBlock({
                     </div>
                 );
             }
+            case 'outcome-categories': {
+                return (
+                    <div className="w-full py-2">
+                        <div className="w-full border rounded-2xl bg-card p-5 shadow-sm flex flex-col gap-3 text-left">
+                            <span className="text-xs font-bold text-foreground opacity-90">{activeBlock.title || 'Compared with other schools:'}</span>
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 p-2.5 bg-primary/10 border-l-4 border-primary rounded-r-lg">
+                                    <span className="font-mono text-xs font-bold">6-11</span>
+                                    <span className="text-xs">→</span>
+                                    <span className="text-xs font-bold text-foreground">Cash Flow At Risk</span>
+                                    <span className="ml-auto text-[10px] font-semibold text-primary">← You Are Here</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2.5 text-muted-foreground bg-muted/10 border-l-4 border-transparent rounded-r-lg opacity-60">
+                                    <span className="font-mono text-xs">12-16</span>
+                                    <span className="text-xs">→</span>
+                                    <span className="text-xs">Building Momentum</span>
+                                </div>
+                                <div className="flex items-center gap-2 p-2.5 text-muted-foreground bg-muted/10 border-l-4 border-transparent rounded-r-lg opacity-60">
+                                    <span className="font-mono text-xs">17-21</span>
+                                    <span className="text-xs">→</span>
+                                    <span className="text-xs">Growth Ready</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
             default:
                 return null;
         }
@@ -1382,6 +1444,7 @@ export function PageEditor({
                                             { type: 'quote', label: 'Quote', icon: Quote },
                                             { type: 'divider', label: 'Divider', icon: Square },
                                             { type: 'score-card', label: 'Score Card', icon: TrophyIcon },
+                                            { type: 'outcome-categories', label: 'Categories', icon: Layout },
                                         ] as const).map(({ type, label, icon: Icon }) => (
                                             <Button
                                                 key={type}

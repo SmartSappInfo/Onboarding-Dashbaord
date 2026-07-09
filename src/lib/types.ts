@@ -2026,7 +2026,7 @@ export interface SurveyResultPage {
 
 export interface SurveyResultBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer';
+  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'quote' | 'divider' | 'score-card' | 'list' | 'logo' | 'header' | 'footer' | 'outcome-categories';
   title?: string;
   content?: string;
   url?: string;

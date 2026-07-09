@@ -367,7 +367,13 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 ### RESULT PAGE RULES:
 - Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
 - Every result page MUST start with a \`score-card\` block (shows animated score).
-- Use \`heading\`, \`text\`, \`list\`, \`button\`, \`quote\`, \`divider\` blocks for content.
+- Use \`heading\`, \`text\`, \`list\`, \`button\`, \`quote\`, \`divider\`, \`outcome-categories\` blocks for content.
+- **Block Properties Matching (CRITICAL)**:
+  - For \`heading\` blocks: You MUST put the heading text in the \`title\` property. Do NOT leave \`title\` empty or use the \`content\` property.
+  - For \`button\` blocks: You MUST put the button label text in the \`title\` property.
+  - For \`text\` blocks: You MUST put the paragraph text in the \`content\` property.
+  - For \`quote\` blocks: You MUST put the quote text in the \`content\` property.
+  - For \`outcome-categories\` blocks: Add this block type to show the visual category list/brackets compared with other entities. Use \`title\` to configure a custom section header if desired.
 - \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`.
 - \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`.
 - Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID.

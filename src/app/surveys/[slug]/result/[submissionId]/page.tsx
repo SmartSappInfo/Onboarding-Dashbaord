@@ -105,6 +105,10 @@ async function getResultData(slug: string, submissionId: string) {
         // Logo resolution chain: survey logo → org logo → null
         const logoUrl = survey.logoUrl || organizationLogoUrl || null;
 
+        // Fetch all result pages for mapping in dynamic categories
+        const resultPagesSnap = await adminDb.collection('surveys').doc(survey.id).collection('resultPages').get();
+        const resultPages = resultPagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SurveyResultPage));
+
         if (redirectUrl) {
             const variables: Record<string, string | number | boolean | null | undefined> = {
                 submission_id: response.id,
@@ -137,7 +141,7 @@ async function getResultData(slug: string, submissionId: string) {
             });
             
             const finalRedirectUrl = replaceVariablesInUrl(redirectUrl, variables);
-            return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: finalRedirectUrl };
+            return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: finalRedirectUrl, resultPages };
         }
 
         // Compile variables on resolvedPage blocks
@@ -228,7 +232,7 @@ async function getResultData(slug: string, submissionId: string) {
             resolvedPage.blocks = compiledBlocks;
         }
 
-        return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: null };
+        return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: null, resultPages };
     } catch (error) {
         console.error("Error fetching result data:", error);
         return null;
@@ -377,6 +381,7 @@ export default async function SurveyResultPage({
                         page={data.page}
                         logoUrl={data.logoUrl}
                         allowResubmission={data.survey.allowResubmission}
+                        resultPages={data.resultPages}
                     />
                 </main>
                 <footer className={cn(

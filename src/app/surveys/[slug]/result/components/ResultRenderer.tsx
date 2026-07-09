@@ -20,6 +20,7 @@ interface ResultRendererProps {
     page: SurveyResultPage | null;
     logoUrl?: string | null;
     allowResubmission?: boolean;
+    resultPages?: SurveyResultPage[];
 }
 
 function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: { animate?: boolean }, displayMode?: 'points' | 'percentage' }) {
@@ -178,7 +179,9 @@ function BlockRenderer({
     displayMode,
     surveyId,
     responseId,
-    entityId
+    entityId,
+    resultPages,
+    survey
 }: { 
     block: SurveyResultBlock, 
     score: number, 
@@ -186,7 +189,9 @@ function BlockRenderer({
     displayMode?: 'points' | 'percentage',
     surveyId: string,
     responseId: string,
-    entityId?: string | null
+    entityId?: string | null,
+    resultPages?: SurveyResultPage[],
+    survey: Survey
 }) {
     const alignment = block.style?.textAlign || 'left';
     
@@ -262,12 +267,70 @@ function BlockRenderer({
             return <hr className="w-full my-8 border-t-2 border-border/30" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} displayMode={displayMode} />;
+        case 'outcome-categories': {
+            if (!survey.resultRules || survey.resultRules.length === 0) return null;
+
+            const sortedRules = [...survey.resultRules].sort((a, b) => a.minScore - b.minScore);
+
+            return (
+                <div className={cn("w-full border rounded-2xl bg-card/65 backdrop-blur-md p-6 sm:p-8 shadow-md flex flex-col gap-4 text-left border-border/80", containerClasses)}>
+                    {block.title && (
+                        <h4 className="text-base sm:text-lg font-bold text-foreground opacity-90 tracking-tight">
+                            {block.title}
+                        </h4>
+                    )}
+                    <div className="flex flex-col gap-3">
+                        {sortedRules.map((rule) => {
+                            const isCurrent = score >= rule.minScore && score <= rule.maxScore;
+                            const matchedPage = resultPages?.find(p => p.id === rule.pageId);
+                            const categoryName = rule.label || matchedPage?.name || 'Untitled Category';
+
+                            return (
+                                <motion.div
+                                    key={rule.id}
+                                    initial={isCurrent ? { scale: 0.98, opacity: 0.9 } : undefined}
+                                    animate={isCurrent ? { scale: 1, opacity: 1 } : undefined}
+                                    transition={{ duration: 0.4, ease: "easeOut" }}
+                                    className={cn(
+                                        "flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border transition-all duration-300",
+                                        isCurrent 
+                                            ? "bg-primary/10 border-primary text-foreground font-semibold shadow-sm ring-1 ring-primary/20"
+                                            : "bg-muted/10 border-transparent text-muted-foreground opacity-60"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Badge 
+                                            variant={isCurrent ? "default" : "secondary"} 
+                                            className={cn(
+                                                "font-mono text-sm tracking-tight px-3 py-1 font-bold shrink-0",
+                                                isCurrent ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                            )}
+                                        >
+                                            {rule.minScore}–{rule.maxScore}
+                                        </Badge>
+                                        <span className="text-sm select-none">→</span>
+                                        <span className={cn("text-base", isCurrent ? "text-foreground font-bold" : "text-muted-foreground")}>
+                                            {categoryName}
+                                        </span>
+                                    </div>
+                                    {isCurrent && (
+                                        <div className="sm:ml-auto flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary animate-pulse shrink-0">
+                                            <span>← You Are Here</span>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
         default:
             return null;
     }
 }
 
-export default function ResultRenderer({ survey, response, page, logoUrl, allowResubmission }: ResultRendererProps) {
+export default function ResultRenderer({ survey, response, page, logoUrl, allowResubmission, resultPages }: ResultRendererProps) {
     React.useEffect(() => {
         if (page?.confettiEnabled) {
             const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -366,6 +429,8 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
                         surveyId={survey.id}
                         responseId={response.id}
                         entityId={response.entityId}
+                        resultPages={resultPages}
+                        survey={survey}
                     />
                 ))}
             </div>

@@ -42,6 +42,7 @@ const blockTypes: { type: SurveyResultBlock['type']; label: string; description:
     { type: 'quote', label: 'Quote', description: 'Styled block for highlights.', icon: Quote },
     { type: 'divider', label: 'Divider', description: 'Horizontal spacing line.', icon: Square },
     { type: 'score-card', label: 'Score Card', description: 'Dynamic, animated score display.', icon: Trophy },
+    { type: 'outcome-categories', label: 'Outcome Categories', description: 'Visual pointer showing all performance brackets.', icon: LayoutList },
 ];
 
 export default function AddResultBlockModal({ open, onOpenChange, onSelect }: AddResultBlockModalProps) {

@@ -32,7 +32,7 @@ export const LAYOUT_TYPES = [
 
 export const RESULT_BLOCK_TYPES = [
   'heading', 'text', 'image', 'video', 'button', 'quote',
-  'divider', 'score-card', 'list', 'logo', 'header', 'footer'
+  'divider', 'score-card', 'list', 'logo', 'header', 'footer', 'outcome-categories'
 ] as const;
 
 export const LOGIC_OPERATORS = [
@@ -123,12 +123,12 @@ export const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBl
 export const resultBlockSchema = z.object({
   id: z.string(),
   type: z.enum(RESULT_BLOCK_TYPES),
-  title: z.string().optional(),
-  content: z.string().optional().describe('Rich text content for text blocks'),
-  url: z.string().optional().describe('Image/video URL'),
-  link: z.string().optional().describe('Button destination URL'),
+  title: z.string().optional().describe('Heading text (for heading blocks) or Button label (for button blocks). REQUIRED for heading and button blocks. DO NOT leave empty or put heading/button text in the content field.'),
+  content: z.string().optional().describe('Paragraph text (for text blocks) or Quote text (for quote blocks). REQUIRED for text and quote blocks. DO NOT use this field for heading blocks.'),
+  url: z.string().optional().describe('Image/video/audio URL'),
+  link: z.string().optional().describe('Button destination URL (link/path)'),
   openInNewTab: z.boolean().optional(),
-  variant: z.enum(HEADING_VARIANTS).optional(),
+  variant: z.enum(HEADING_VARIANTS).optional().describe('Heading variant (h1, h2, h3)'),
   listStyle: z.enum(['ordered', 'unordered']).optional().describe('REQUIRED for list blocks'),
   items: z.array(z.string()).optional().describe('List items — REQUIRED for list blocks'),
   style: z.object({
