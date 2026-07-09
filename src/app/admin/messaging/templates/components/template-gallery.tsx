@@ -213,7 +213,16 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
             <CardHeader className="p-5 shrink-0 bg-background border-t">
                 <div className="min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                        <CardTitle className="text-sm font-semibold truncate text-foreground group-hover:text-blue-600 transition-colors leading-tight tracking-tight">{template.name}</CardTitle>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="text-sm font-semibold truncate text-foreground group-hover:text-blue-600 transition-colors leading-tight tracking-tight cursor-default max-w-[190px]">{template.name}</div>
+                                </TooltipTrigger>
+                                <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
+                                    {template.name}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         {template.workspaceIds && template.workspaceIds.length > 1 ? (
                             <TooltipProvider>
                                 <Tooltip>
@@ -285,7 +294,16 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
             {/* Title and Subtitle Info */}
             <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground truncate">{template.name}</span>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="font-semibold text-sm text-foreground truncate cursor-default max-w-[250px]">{template.name}</span>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
+                                {template.name}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     {template.workspaceIds && template.workspaceIds.length > 1 && (
                         <TooltipProvider>
                             <Tooltip>
@@ -437,7 +455,16 @@ function WhatsAppTemplateCard({ template, onPreview, onSendTest, onAdopt }: What
 
             <CardHeader className="p-5 shrink-0 bg-background border-t">
                 <div className="min-w-0 space-y-1.5">
-                    <CardTitle className="text-sm font-semibold truncate text-foreground leading-tight tracking-tight">{template.name}</CardTitle>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="text-sm font-semibold truncate text-foreground leading-tight tracking-tight cursor-default max-w-[190px]">{template.name}</div>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
+                                {template.name}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     {template.waStatus === 'REJECTED' && template.rejectedReason ? (
                         <p className="text-[8px] font-semibold text-red-600 line-clamp-1">Reason: {template.rejectedReason}</p>
                     ) : null}
@@ -488,7 +515,16 @@ function WhatsAppTemplateRow({ template, onPreview, onSendTest, onAdopt }: Whats
     return (
         <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-xl bg-card hover:bg-muted/10 hover:shadow-md transition-all duration-300 gap-4 border-border/50">
             <div className="flex-1 min-w-0 space-y-1">
-                <span className="font-semibold text-sm text-foreground truncate">{template.name}</span>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span className="font-semibold text-sm text-foreground truncate cursor-default max-w-[250px]">{template.name}</span>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
+                            {template.name}
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
                 <div className="text-xs text-muted-foreground truncate opacity-80 max-w-xl">
                     <span className="italic">Body: &ldquo;{template.body}&rdquo;</span>
                 </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import type { VariableDefinition, TemplateVariable } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +120,31 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         onChange,
     });
 
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+
+    const updateCoords = React.useCallback(() => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.top + autocompleteCoords.top + window.scrollY,
+                left: rect.left + autocompleteCoords.left + window.scrollX,
+            });
+        }
+    }, [autocompleteCoords]);
+
+    React.useEffect(() => {
+        if (showAutocomplete) {
+            updateCoords();
+            window.addEventListener('scroll', updateCoords, true);
+            window.addEventListener('resize', updateCoords);
+        }
+        return () => {
+            window.removeEventListener('scroll', updateCoords, true);
+            window.removeEventListener('resize', updateCoords);
+        };
+    }, [showAutocomplete, updateCoords]);
+
     // Auto-scroll selected autocomplete item into view
     React.useEffect(() => {
         if (!dropdownRef.current) return;
@@ -161,7 +187,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
 
     return (
         <div className="space-y-3">
-            <div className="relative">
+            <div ref={containerRef} className="relative">
                 <Textarea
                     ref={textareaRef}
                     value={value}
@@ -181,14 +207,14 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                 />
 
                 {/* Floating Autocomplete Dropdown Popover */}
-                {showAutocomplete && filteredVars.length > 0 && (
+                {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
                     <div
                         ref={dropdownRef}
                         style={{
                             position: 'absolute',
-                            top: autocompleteCoords.top,
-                            left: autocompleteCoords.left,
-                            zIndex: 1000,
+                            top: `${coords.top}px`,
+                            left: `${coords.left}px`,
+                            zIndex: 10000,
                         }}
                         className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
                     >
@@ -230,7 +256,8 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                                 </button>
                             );
                         })}
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
 

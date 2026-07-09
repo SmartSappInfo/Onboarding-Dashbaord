@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -231,8 +232,33 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
 
     const formatting = useFormatting(localRef, value, onChange);
 
+    const containerRef = React.useRef<HTMLDivElement>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const lastValueRef = React.useRef(value);
+    const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
+
+    const updateCoords = React.useCallback(() => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCoords({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.max(250, rect.width),
+        });
+      }
+    }, []);
+
+    React.useEffect(() => {
+      if (showAutocomplete) {
+        updateCoords();
+        window.addEventListener('scroll', updateCoords, true);
+        window.addEventListener('resize', updateCoords);
+      }
+      return () => {
+        window.removeEventListener('scroll', updateCoords, true);
+        window.removeEventListener('resize', updateCoords);
+      };
+    }, [showAutocomplete, updateCoords]);
 
     React.useEffect(() => {
       if (localRef.current) {
@@ -271,7 +297,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     };
 
     return (
-      <div className="relative w-full">
+      <div ref={containerRef} className="relative w-full">
         {enableFormatting && formatting.isFocused && formatting.hasSelection && (
           <FormattingToolbar 
             onFormat={formatting.applyFormatting} 
@@ -341,17 +367,18 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           )}
         />
 
-        {showAutocomplete && filteredVars.length > 0 && (
+        {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
           <div
             ref={dropdownRef}
             style={{
               position: 'absolute',
-              top: '100%',
-              left: 0,
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              width: `${coords.width}px`,
               marginTop: '4px',
-              zIndex: 1000,
+              zIndex: 10000,
             }}
-            className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+            className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
           >
             {filteredVars.map((v, idx) => {
               const labelText = contextLabels[v.context] || String(v.context);
@@ -382,7 +409,8 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
                 </button>
               );
             })}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
@@ -423,8 +451,33 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
 
     const formatting = useFormatting(localRef, value, onChange);
 
+    const containerRef = React.useRef<HTMLDivElement>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const lastValueRef = React.useRef(value);
+    const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
+
+    const updateCoords = React.useCallback(() => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCoords({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.max(250, rect.width),
+        });
+      }
+    }, []);
+
+    React.useEffect(() => {
+      if (showAutocomplete) {
+        updateCoords();
+        window.addEventListener('scroll', updateCoords, true);
+        window.addEventListener('resize', updateCoords);
+      }
+      return () => {
+        window.removeEventListener('scroll', updateCoords, true);
+        window.removeEventListener('resize', updateCoords);
+      };
+    }, [showAutocomplete, updateCoords]);
 
     React.useEffect(() => {
       if (localRef.current) {
@@ -463,7 +516,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     };
 
     return (
-      <div className="relative w-full">
+      <div ref={containerRef} className="relative w-full">
         {enableFormatting && formatting.isFocused && formatting.hasSelection && (
           <FormattingToolbar 
             onFormat={formatting.applyFormatting} 
@@ -531,17 +584,18 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           )}
         />
 
-        {showAutocomplete && filteredVars.length > 0 && (
+        {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
           <div
             ref={dropdownRef}
             style={{
               position: 'absolute',
-              top: '100%',
-              left: 0,
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              width: `${coords.width}px`,
               marginTop: '4px',
-              zIndex: 1000,
+              zIndex: 10000,
             }}
-            className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+            className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
           >
             {filteredVars.map((v, idx) => {
               const labelText = contextLabels[v.context] || String(v.context);
@@ -572,7 +626,8 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
                 </button>
               );
             })}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );

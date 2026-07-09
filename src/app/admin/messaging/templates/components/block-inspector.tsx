@@ -270,11 +270,12 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         onFieldChange={val => onUpdate({ url: val })} 
                                     />
                                 </div>
-                                <Input 
-                                    ref={headingUrlRef}
+                                <SlashInput 
+                                    ref={headingUrlRef as any}
                                     value={block.url || ''} 
-                                    onChange={e => onUpdate({ url: e.target.value })} 
-                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    onChange={val => onUpdate({ url: val })} 
+                                    variables={autocompleteVariables}
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 text-xs font-mono" 
                                     placeholder="Type 'calendar', 'clock', 'envelope' or image URL"
                                 />
                             </div>
@@ -752,9 +753,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                             />
                             <div className="space-y-2 pt-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Or Paste Direct URL Link</Label>
-                                <Input 
+                                <SlashInput 
                                     value={block.url || ''} 
-                                    onChange={e => onUpdate({ url: e.target.value })} 
+                                    onChange={val => onUpdate({ url: val })} 
+                                    variables={autocompleteVariables}
                                     placeholder="https://..."
                                     className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                 />
@@ -767,11 +769,12 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Logo URL</Label>
-                                <Input 
+                                <SlashInput 
                                     value={block.url || ''} 
-                                    onChange={e => onUpdate({ url: e.target.value })} 
+                                    onChange={val => onUpdate({ url: val })} 
+                                    variables={autocompleteVariables}
                                     placeholder="Paste logo image link..."
-                                    className="h-10 rounded-xl text-xs bg-muted/10"
+                                    className="h-10 rounded-xl text-xs bg-muted/10 font-mono"
                                 />
                             </div>
                         </div>
