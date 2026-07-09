@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, Search } from 'lucide-react';
 import type { Survey, CampaignPage, BookingPage, QRCode } from '@/lib/types';
 
@@ -51,7 +51,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const [open, setOpen] = React.useState<boolean>(false);
   const [search, setSearch] = React.useState<string>('');
-  const [activeTab, setActiveTab] = React.useState<string>('dynamic');
+  const [targetType, setTargetType] = React.useState<string>('dynamic');
 
   const [surveys, setSurveys] = React.useState<ResourceItem[]>([]);
   const [forms, setForms] = React.useState<ResourceItem[]>([]);
@@ -143,8 +143,8 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
     fetchResources();
   }, [open, firestore, activeWorkspaceId, activeOrganizationId]);
 
-  const getItemsForTab = (): ResourceItem[] => {
-    switch (activeTab) {
+  const getItemsForTarget = (): ResourceItem[] => {
+    switch (targetType) {
       case 'dynamic':
         return DYNAMIC_VARIABLES;
       case 'surveys':
@@ -164,7 +164,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
     }
   };
 
-  const filteredItems = getItemsForTab().filter(
+  const filteredItems = getItemsForTarget().filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.path.toLowerCase().includes(search.toLowerCase())
@@ -184,49 +184,63 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
           <DialogTitle className="text-xl font-bold tracking-tight text-slate-800">Select Link Target</DialogTitle>
         </DialogHeader>
 
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/40" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search available links..."
-            className="pl-9 h-10 rounded-xl bg-muted/30 border-none shadow-none text-sm placeholder:text-muted-foreground/45"
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Target Type</label>
+            <Select value={targetType} onValueChange={(val) => {
+              setTargetType(val);
+              setSearch('');
+            }}>
+              <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm focus:ring-0">
+                <SelectValue placeholder="Select target type" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-none shadow-xl bg-background/95 backdrop-blur-xl">
+                <SelectItem value="dynamic" className="rounded-lg">Dynamic Variables (rsvp, survey, unsubscribe...)</SelectItem>
+                <SelectItem value="surveys" className="rounded-lg">Published Workspace Surveys</SelectItem>
+                <SelectItem value="forms" className="rounded-lg">Published Forms & PDFs</SelectItem>
+                <SelectItem value="pages" className="rounded-lg">Published Campaign Pages</SelectItem>
+                <SelectItem value="bookings" className="rounded-lg">Published Booking Pages</SelectItem>
+                <SelectItem value="qrs" className="rounded-lg">QR Studio Codes</SelectItem>
+                <SelectItem value="static" className="rounded-lg">Predefined Static Pages</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Link Target</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground/40" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search matching published items..."
+                className="pl-9 h-11 rounded-xl bg-muted/20 border-none shadow-none text-sm placeholder:text-muted-foreground/45"
+              />
+            </div>
+            
+            <ScrollArea className="h-64 border border-border/50 rounded-2xl p-2 bg-muted/5 mt-2">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-12 text-sm text-muted-foreground/60">No matching published items found.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-1">
+                  {filteredItems.map((item) => (
+                    <button
+                      key={item.id || item.path}
+                      onClick={() => handleSelect(item.path)}
+                      className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-slate-755">{item.name}</div>
+                        <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5">{item.path}</div>
+                      </div>
+                      <Link className="h-3.5 w-3.5 text-muted-foreground/30" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
         </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-7 h-10 p-1 bg-muted/40 rounded-xl mb-4">
-            <TabsTrigger value="dynamic" className="text-[10px] font-semibold rounded-lg">Dynamic</TabsTrigger>
-            <TabsTrigger value="surveys" className="text-[10px] font-semibold rounded-lg">Surveys</TabsTrigger>
-            <TabsTrigger value="forms" className="text-[10px] font-semibold rounded-lg">Forms</TabsTrigger>
-            <TabsTrigger value="pages" className="text-[10px] font-semibold rounded-lg">Pages</TabsTrigger>
-            <TabsTrigger value="bookings" className="text-[10px] font-semibold rounded-lg">Bookings</TabsTrigger>
-            <TabsTrigger value="qrs" className="text-[10px] font-semibold rounded-lg">QRs</TabsTrigger>
-            <TabsTrigger value="static" className="text-[10px] font-semibold rounded-lg">Static</TabsTrigger>
-          </TabsList>
-
-          <ScrollArea className="h-64 border border-border/50 rounded-2xl p-2 bg-muted/5">
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-12 text-sm text-muted-foreground/60">No matching links found.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-1">
-                {filteredItems.map((item) => (
-                  <button
-                    key={item.id || item.path}
-                    onClick={() => handleSelect(item.path)}
-                    className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-slate-755">{item.name}</div>
-                      <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5">{item.path}</div>
-                    </div>
-                    <Link className="h-3.5 w-3.5 text-muted-foreground/30" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </Tabs>
       </DialogContent>
     </Dialog>
   );
