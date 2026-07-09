@@ -367,6 +367,7 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 ### RESULT PAGE RULES (CRITICAL DESIGN PRINCIPLES):
 - **Bucket Coverage**: Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
 - **Structure**: Every result page MUST start with a \`score-card\` block (shows animated score).
+- **Outcome Categories Block Usage**: Every result page MUST include the \`outcome-categories\` block near the top of the page (usually right below the \`score-card\`). This ensures that the user is placed visually inside their matched performance category relative to the other categories.
 - **Harness All Block Types**: Do not just write paragraphs. A professional outcome page uses a structured layout of content. Use the full library of blocks to build a rich page design:
   - \`score-card\`: Standard at the top of every page.
   - \`outcome-categories\`: Put this block near the top of pages to show the visual category list/brackets compared with other entities. Use \`title\` to configure a custom section header.
@@ -378,6 +379,8 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
   - \`divider\`: Use to create breathing room between visual sections.
   - \`image\` / \`video\` / \`audio\`: Embed rich media if the source text recommends video case studies, audio instructions, or diagrams.
   - \`code\`: Use custom code block ONLY as a last resort when custom widgets (like Calendly scheduling frames or third-party checkouts) are requested by the prompt and cannot be represented by normal builder blocks. Put the raw embed code in the \`content\` property.
+- **Text vs List Blocks (CRITICAL)**: You MUST extract list/bullet items (lines starting with bullets, dashes, asterisks, or numbers like \`•\`, \`-\`, \`*\`, \`1.\`, \`2.\`) into their own dedicated \`list\` blocks. Under no circumstances should you lump bullet items together with normal paragraph text inside a single \`text\` block. Separate the preceding paragraphs into a \`text\` block, place the bullet points in a \`list\` block, and place succeeding paragraphs in another \`text\` block.
+- **Title Case for Headings/Titles**: Convert all heading text, button titles, and page names to **Title Case** (e.g. "What This May Be Costing You" instead of "WHAT THIS MAY BE COSTING YOU" or "what this may be costing you"), even if the source copy is written in ALL CAPS or lowercase.
 - **Block Properties Matching (CRITICAL)**:
   - For \`heading\` blocks: You MUST put the heading text in the \`title\` property. Do NOT leave \`title\` empty or use the \`content\` property.
   - For \`button\` blocks: You MUST put the button label text in the \`title\` property.
@@ -391,7 +394,7 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
   - \`messagingEnabled: true\`
 - **Copy Fidelity (CRITICAL)**: If specific copy, text, or headlines are provided in the source text for the result pages/outcomes, you MUST build the results pages using that exact copy. Do NOT assume, summarize, or rephrase unless explicitly directed by the user prompt to adjust, refine, or summarize. Specifically:
   1. The page 'name' and rule 'label' MUST exactly match the outcome title/header (e.g. if the source says "Hidden Growth Blockers (6-11)", the name and label must be "Hidden Growth Blockers" — NOT generic names like "Needs Improvement").
-  2. Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text.
+  2. Map all headers to 'heading' blocks, all body text to 'text' blocks, and all quotes to 'quote' blocks exactly as they are written in the source text, adhering to the Text vs List blocks separation rule.
   3. Extract all links and calls-to-action (e.g. "WATCH THE SCHOOL A VS SCHOOL B PRESENTATION" or "FREE 30-MINUTE CONSULTATION") as 'button' blocks with placeholder link '#' rather than omitting them or summarizing them.
   4. Ensure score range boundaries ('minScore' and 'maxScore') align exactly with the numbers in the source titles.
 - **Message Templates**: If an outcome is significant (e.g., "High Risk", "Selected"), you may set placeholder IDs like \`"email_template_placeholder"\` or \`"sms_template_placeholder"\` in the \`resultRule\` — the system will prompt the user to link actual templates later.
