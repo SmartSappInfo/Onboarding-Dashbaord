@@ -17,7 +17,7 @@ const schema = z.object({
   thumbnailUrl: z.string().default(''),
   playMode: z.enum(['inline', 'modal']).default('inline'),
   // New fields for the split-video layout
-  preset: z.enum(['standard', 'split-video']).default('standard'),
+  preset: z.enum(['standard', 'split-video', 'horizontal-dark']).default('standard'),
   schoolName: z.string().default(''),
   schoolSubtitle: z.string().default(''),
   logoUrl: z.string().default(''),
@@ -54,6 +54,18 @@ const SplitVideoTestimonialThumbnail = (
   </svg>
 );
 
+const HorizontalDarkTestimonialThumbnail = (
+  <svg viewBox="0 0 100 75" className="w-full h-full text-slate-400 fill-current opacity-75">
+    <rect x="0" y="0" width="100" height="75" rx="6" className="text-slate-950 fill-slate-950" />
+    <rect x="8" y="22" width="20" height="20" rx="6" className="text-slate-800 fill-slate-800" />
+    <rect x="36" y="24" width="56" height="3" rx="1" className="text-slate-200 fill-slate-200" />
+    <rect x="36" y="32" width="46" height="3" rx="1" className="text-slate-200 fill-slate-200" />
+    <line x1="36" y1="44" x2="92" y2="44" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.3" />
+    <rect x="36" y="50" width="30" height="2" rx="0.5" className="text-slate-500 fill-slate-500" />
+    <rect x="36" y="55" width="40" height="2" rx="0.5" className="text-slate-500 fill-slate-500" />
+  </svg>
+);
+
 registerBlock({
   type: 'testimonial',
   label: 'Testimonial',
@@ -66,7 +78,8 @@ registerBlock({
       label: 'Layout Style Preset',
       options: [
         { value: 'standard', label: 'Standard Text + Avatar' },
-        { value: 'split-video', label: 'Sunflower Split Video Card' }
+        { value: 'split-video', label: 'Sunflower Split Video Card' },
+        { value: 'horizontal-dark', label: 'Horizontal Dark Gradient Card' }
       ]
     },
     { kind: 'textarea', key: 'quote', label: 'Quote Statement' },
@@ -111,6 +124,22 @@ registerBlock({
         videoCaption: 'How Sunflower School cleared their debtors lists without stress',
         playMode: 'modal'
       } 
+    },
+    {
+      id: 'testi-horizontal-dark',
+      label: 'Horizontal Dark Card (North Hills)',
+      thumbnail: HorizontalDarkTestimonialThumbnail,
+      defaults: {
+        preset: 'horizontal-dark',
+        quote: '"SmartSapp Fee Collection is the icing on the cake for me. It came to take the stress away from us, as far as fee collection is concerned"',
+        author: 'Mrs. Bertha Kyei',
+        role: 'Administrator',
+        schoolName: 'North Hills International School',
+        avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80',
+        videoUrl: '',
+        thumbnailUrl: '',
+        playMode: 'inline'
+      }
     }
   ],
   render: (props: TestimonialProps, _block, ctx) => {
@@ -252,6 +281,149 @@ registerBlock({
         />
       </>
     );
+
+    if (props.preset === 'horizontal-dark') {
+      return (
+        <div className="max-w-5xl mx-auto p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#0F172A] to-[#1E293B] dark:from-[#080C14] dark:to-[#0D1321] text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative border border-slate-800/40 group/card">
+          
+          {/* Rounded Squircle Avatar/Image on the left */}
+          <div className="relative group/avatar cursor-pointer shrink-0">
+            {props.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={props.avatarUrl} 
+                alt={props.author} 
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] object-cover shadow-lg border border-white/10" 
+              />
+            ) : (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] bg-slate-800 border border-slate-700/50 text-slate-400 flex items-center justify-center text-xs font-bold shadow-lg">
+                {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
+              </div>
+            )}
+            {ctx.mode === 'edit' && ctx.page?.workspaceId && (
+              <>
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setAvatarLibraryOpen(true); }}
+                  className="absolute inset-0 flex items-center justify-center rounded-[2rem] bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
+                >
+                  <span className="text-[8px] font-bold text-white uppercase tracking-wider scale-90">Change</span>
+                </div>
+                <MediaSelectorDialog
+                  open={avatarLibraryOpen}
+                  onOpenChange={setAvatarLibraryOpen}
+                  onSelectAsset={(asset) => {
+                    ctx.onPropChange?.({ avatarUrl: asset.url });
+                    setAvatarLibraryOpen(false);
+                  }}
+                  filterType="image"
+                  workspaceId={ctx.page.workspaceId}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Testimonial content on the right */}
+          <div className="flex-1 w-full self-stretch flex flex-col justify-between py-1">
+            {/* Quote block */}
+            <div className="mb-4">
+              <blockquote 
+                ref={quoteRef}
+                contentEditable={ctx.mode === 'edit'}
+                suppressContentEditableWarning
+                data-block-id={_block.id}
+                data-prop-key="quote"
+                data-rich="true"
+                onBlur={(e) => {
+                  const newHtml = e.currentTarget.innerHTML;
+                  lastQuoteRef.current = newHtml;
+                  ctx.onPropChange?.({ quote: newHtml });
+                }}
+                className="text-base md:text-lg font-medium leading-relaxed text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full"
+                dangerouslySetInnerHTML={!hasMounted ? { __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) } : undefined}
+              />
+            </div>
+
+            {/* Horizontal line divider */}
+            <div className="border-t border-white/10 w-full my-4" />
+
+            {/* Author, Role & School Name Info */}
+            <div className="text-left space-y-0.5">
+              <div className="text-xs md:text-sm text-slate-300 dark:text-slate-400 font-semibold flex items-center gap-1">
+                {ctx.mode === 'edit' ? (
+                  <>
+                    <span 
+                      ref={authorRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      data-block-id={_block.id}
+                      data-prop-key="author"
+                      data-rich="false"
+                      onBlur={(e) => {
+                        const text = e.currentTarget.innerText || '';
+                        lastAuthorRef.current = text;
+                        ctx.onPropChange?.({ author: text });
+                      }}
+                      className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text text-white font-bold"
+                    >
+                      {!hasMounted ? (props.author || 'Author Name') : undefined}
+                    </span>
+                    <span>,</span>
+                    <span 
+                      ref={roleRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      data-block-id={_block.id}
+                      data-prop-key="role"
+                      data-rich="false"
+                      onBlur={(e) => {
+                        const text = e.currentTarget.innerText || '';
+                        lastRoleRef.current = text;
+                        ctx.onPropChange?.({ role: text });
+                      }}
+                      className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal text-slate-350"
+                    >
+                      {!hasMounted ? (props.role || 'Role') : undefined}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-white font-bold">{props.author}</span>
+                    <span>,</span>
+                    <span className="font-normal text-slate-350">{props.role}</span>
+                  </>
+                )}
+              </div>
+
+              {/* School Name */}
+              <div>
+                {ctx.mode === 'edit' ? (
+                  <p 
+                    ref={schoolNameRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    data-block-id={_block.id}
+                    data-prop-key="schoolName"
+                    data-rich="false"
+                    onBlur={(e) => {
+                      const text = e.currentTarget.innerText || '';
+                      lastSchoolNameRef.current = text;
+                      ctx.onPropChange?.({ schoolName: text });
+                    }}
+                    className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block"
+                  >
+                    {!hasMounted ? (props.schoolName || 'School Name') : undefined}
+                  </p>
+                ) : (
+                  <p className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium">{props.schoolName}</p>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
 
     if (props.preset === 'split-video') {
       const videoCaptionText = props.videoCaption || 'How Sunflower School cleared their debtors lists without stress';
