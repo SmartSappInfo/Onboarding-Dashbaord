@@ -294,6 +294,17 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     isDynamic: false,
     isComputed: true, // Computed at send-time
   },
+  {
+    id: 'common_unsubscribe_url',
+    name: 'unsubscribe_url',
+    label: 'Unsubscribe URL',
+    description: 'Auto-generated link to allow recipients to opt out',
+    dataType: 'url',
+    context: 'common',
+    exampleValue: 'https://app.example.com/unsubscribe/12345',
+    isDynamic: false,
+    isComputed: true, // Computed at send-time
+  },
 
   // ── Meeting ──────────────────────────────────────────────────────────────
   {

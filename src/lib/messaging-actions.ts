@@ -1245,6 +1245,7 @@ export async function getSimulationVariablesAction(params: {
     variables.current_time = new Date().toLocaleTimeString();
     variables.current_year = new Date().getFullYear().toString();
     variables.unsubscribe_link = `${getBaseUrl()}/unsubscribe/sample`;
+    variables.unsubscribe_url = variables.unsubscribe_link;
 
     // Concurrently fetch the initial workspace, app fields, contact, meeting, survey, and PDF documents
     const wsPromise = adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();

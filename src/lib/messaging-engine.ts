@@ -506,6 +506,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // Phase 7: Inject Unsubscribe Link (Secure, tokenized preference link)
     const { generateSecureUnsubscribeLink } = await import('./services/unsubscribe-service');
     finalVariables.unsubscribe_link = await generateSecureUnsubscribeLink(recipient, resolvedEntityId, resolvedWorkspaceId);
+    finalVariables.unsubscribe_url = finalVariables.unsubscribe_link;
 
     // 6. Resolve Style Wrapper
     let styleWrapper = '';
