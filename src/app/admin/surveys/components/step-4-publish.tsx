@@ -309,6 +309,34 @@ export default function Step4Publish() {
                     </div>
                 </div>
 
+                {/* Show Footer Toggle */}
+                <div className={cn(
+                    "rounded-2xl border-2 transition-all duration-300",
+                    watch('showFooter') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
+                )}>
+                    <div className="flex items-center justify-between p-5">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className={cn("p-2 rounded-lg transition-colors", watch('showFooter') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                <Layout className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-semibold tracking-tight">Show Footer</Label>
+                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Display the organization landing page footer at the bottom of the survey</p>
+                            </div>
+                        </div>
+                        <Controller
+                            name="showFooter"
+                            control={control}
+                            render={({ field }) => (
+                                <Switch 
+                                    checked={!!field.value} 
+                                    onCheckedChange={field.onChange} 
+                                />
+                            )}
+                        />
+                    </div>
+                </div>
+
                 {/* Resubmission Toggle */}
                 <div className={cn(
                     "rounded-2xl border-2 transition-all duration-300",

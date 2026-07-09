@@ -294,9 +294,9 @@ export default function SurveyDisplay({
                         )}
                     </div>
                  </main>
-                 {!isEmbedded && orgBranding?.landingPageFooterEnabled !== false && (
-                     <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
-                 )}
+                  {!isEmbedded && survey.showFooter === true && orgBranding?.landingPageFooterEnabled !== false && (
+                      <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
+                  )}
             </div>
         )
     }
@@ -403,9 +403,9 @@ export default function SurveyDisplay({
                     </AnimatePresence>
                 </div>
             </main>
-             {!isEmbedded && orgBranding?.landingPageFooterEnabled !== false && (
-                 <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
-             )}
+              {!isEmbedded && survey.showFooter === true && orgBranding?.landingPageFooterEnabled !== false && (
+                  <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
+              )}
         </div>
     );
 }

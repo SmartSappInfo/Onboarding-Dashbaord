@@ -1073,8 +1073,10 @@ export default function SurveyForm({
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
-        const isIntroPage = survey.showIntroAsPage ?? survey.showCoverPage ?? true;
-        if (isIntroPage && survey.showSurveyTitles !== false) p.push([]); 
+        // Default to showing intro page. Only skip if showIntroAsPage is explicitly false
+        // (not merely undefined). Legacy surveys may have showCoverPage but not showIntroAsPage.
+        const isIntroPage = survey.showIntroAsPage !== false;
+        if (isIntroPage) p.push([]); 
         survey.elements.forEach(element => {
             if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
                 p.push(currentPage);
@@ -1083,7 +1085,7 @@ export default function SurveyForm({
         });
         if (currentPage.length > 0) p.push(currentPage);
         return p.length > 0 ? p : [[]];
-    }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles, survey.showIntroAsPage]);
+    }, [survey.elements, survey.showIntroAsPage]);
 
     const pageStatuses = React.useMemo(() => {
         return pages.map((pageElements) => {
@@ -1775,8 +1777,6 @@ export default function SurveyForm({
                 <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
                     {isCoverPage ? (
                         <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                            {showTitles && (
-                                <>
                                     {survey.videoUrl ? (
                                         <VideoHero 
                                             videoUrl={survey.videoUrl} 
@@ -1795,16 +1795,13 @@ export default function SurveyForm({
                                             {survey.description}
                                         </div>
                                     </div>
-                                </>
-                            )}
                             <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
                                 {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                             </button>
                         </div>
                     ) : (
                         <>
-                            {/* Inline Header (When Standalone Intro is OFF) */}
-                            {!(survey.showIntroAsPage ?? survey.showCoverPage ?? true) && showTitles && (
+                            {/* Survey Title & Description — always visible */}
                                 <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                                     {survey.videoUrl ? (
                                         <VideoHero 
@@ -1825,7 +1822,6 @@ export default function SurveyForm({
                                         </div>
                                     </div>
                                 </div>
-                            )}
 
                             <div ref={stepperRef}>
                                 <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} elementStates={elementStates} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} />

@@ -104,6 +104,7 @@ export const SURVEY_DEFAULTS = {
   patternColor: '#3B5FFF',
   showCoverPage: true,
   showSurveyTitles: true,
+  showFooter: false,
   startButtonText: "Let's Start",
   submitButtonText: "Submit",
   embedRedirectMode: 'modal' as const,

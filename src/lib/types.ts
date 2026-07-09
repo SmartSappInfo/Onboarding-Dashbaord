@@ -1854,6 +1854,7 @@ export interface Survey {
   questionTitleBold?: boolean;
   optionsColumns?: number;
   showBranding?: boolean;
+  showFooter?: boolean;
   backgroundColor?: string;
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;

@@ -103,7 +103,7 @@ export function computeFunnelData(survey: Survey, sessions: SurveySession[]): Fu
     const pageElements: SurveyElement[][] = [];
     let currentPage: SurveyElement[] = [];
 
-    if (survey.showCoverPage && survey.showSurveyTitles !== false) pageElements.push([]);
+    if (survey.showIntroAsPage !== false) pageElements.push([]);
     survey.elements.forEach(element => {
         if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
             pageElements.push(currentPage);

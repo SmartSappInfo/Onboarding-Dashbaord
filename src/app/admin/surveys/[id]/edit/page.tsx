@@ -78,6 +78,7 @@ const formSchema = z.object({
   webhookId: z.string().optional(),
   webhookEnabled: z.boolean().default(false),
   showDebugProcessingModal: z.boolean().default(false),
+  showFooter: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
   scoreDisplayMode: z.enum(['points', 'percentage']).default('points'),
   maxScore: z.number().min(0).default(100),
@@ -286,6 +287,7 @@ export default function EditSurveyPage() {
                 showIntroAsPage: survey.showIntroAsPage ?? survey.showCoverPage ?? true,
                 stepperVariant: survey.stepperVariant || 'full',
                 showBranding: survey.showBranding ?? true,
+                showFooter: survey.showFooter ?? false,
                 // Project the canonical nested `seo` (or legacy flat fields) onto
                 // the flat form fields the editor binds to.
                 ...surveyToSeoFormFields(survey),

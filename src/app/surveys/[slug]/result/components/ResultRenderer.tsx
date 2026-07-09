@@ -320,7 +320,7 @@ function BlockRenderer({
         case 'outcome-categories': {
             if (!survey.resultRules || survey.resultRules.length === 0) return null;
 
-            const sortedRules = [...survey.resultRules].sort((a, b) => a.minScore - b.minScore);
+            const sortedRules = [...survey.resultRules].sort((a, b) => b.minScore - a.minScore);
 
             return (
                 <div className={cn("w-full border rounded-2xl bg-card/65 backdrop-blur-md p-6 sm:p-8 shadow-md flex flex-col gap-4 text-left border-border/80", containerClasses)}>

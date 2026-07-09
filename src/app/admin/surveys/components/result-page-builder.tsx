@@ -145,16 +145,10 @@ export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, dis
                                             <div className="w-full border rounded-2xl bg-card p-6 shadow-sm flex flex-col gap-4 text-left">
                                                 <h4 className="text-sm font-bold text-foreground opacity-90">{block.title || 'Compared with other schools:'}</h4>
                                                 <div className="flex flex-col gap-2">
-                                                    <div className="flex items-center gap-3 p-3 bg-primary/10 border-l-4 border-primary rounded-r-xl">
-                                                        <span className="font-mono text-sm font-bold">6-11</span>
-                                                        <span className="text-sm">→</span>
-                                                        <span className="text-sm font-bold">Cash Flow At Risk</span>
-                                                        <span className="ml-auto text-xs font-semibold text-primary">← You Are Here</span>
-                                                    </div>
                                                     <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
-                                                        <span className="font-mono text-sm">12-16</span>
+                                                        <span className="font-mono text-sm">22-24</span>
                                                         <span className="text-sm">→</span>
-                                                        <span className="text-sm">Building Momentum</span>
+                                                        <span className="text-sm">Collection Leader</span>
                                                     </div>
                                                     <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
                                                         <span className="font-mono text-sm">17-21</span>
@@ -162,9 +156,15 @@ export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, dis
                                                         <span className="text-sm">Growth Ready</span>
                                                     </div>
                                                     <div className="flex items-center gap-3 p-3 text-muted-foreground bg-muted/20 border-l-4 border-transparent rounded-r-xl opacity-60">
-                                                        <span className="font-mono text-sm">22-24</span>
+                                                        <span className="font-mono text-sm">12-16</span>
                                                         <span className="text-sm">→</span>
-                                                        <span className="text-sm">Collection Leader</span>
+                                                        <span className="text-sm">Building Momentum</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 p-3 bg-primary/10 border-l-4 border-primary rounded-r-xl">
+                                                        <span className="font-mono text-sm font-bold">6-11</span>
+                                                        <span className="text-sm">→</span>
+                                                        <span className="text-sm font-bold">Cash Flow At Risk</span>
+                                                        <span className="ml-auto text-xs font-semibold text-primary">← You Are Here</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1083,21 +1083,21 @@ function SortableResultBlock({
                         <div className="w-full border rounded-2xl bg-card p-5 shadow-sm flex flex-col gap-3 text-left">
                             <span className="text-xs font-bold text-foreground opacity-90">{activeBlock.title || 'Compared with other schools:'}</span>
                             <div className="flex flex-col gap-1.5">
-                                <div className="flex items-center gap-2 p-2.5 bg-primary/10 border-l-4 border-primary rounded-r-lg">
-                                    <span className="font-mono text-xs font-bold">6-11</span>
+                                <div className="flex items-center gap-2 p-2.5 text-muted-foreground bg-muted/10 border-l-4 border-transparent rounded-r-lg opacity-60">
+                                    <span className="font-mono text-xs">17-21</span>
                                     <span className="text-xs">→</span>
-                                    <span className="text-xs font-bold text-foreground">Cash Flow At Risk</span>
-                                    <span className="ml-auto text-[10px] font-semibold text-primary">← You Are Here</span>
+                                    <span className="text-xs">Growth Ready</span>
                                 </div>
                                 <div className="flex items-center gap-2 p-2.5 text-muted-foreground bg-muted/10 border-l-4 border-transparent rounded-r-lg opacity-60">
                                     <span className="font-mono text-xs">12-16</span>
                                     <span className="text-xs">→</span>
                                     <span className="text-xs">Building Momentum</span>
                                 </div>
-                                <div className="flex items-center gap-2 p-2.5 text-muted-foreground bg-muted/10 border-l-4 border-transparent rounded-r-lg opacity-60">
-                                    <span className="font-mono text-xs">17-21</span>
+                                <div className="flex items-center gap-2 p-2.5 bg-primary/10 border-l-4 border-primary rounded-r-lg">
+                                    <span className="font-mono text-xs font-bold">6-11</span>
                                     <span className="text-xs">→</span>
-                                    <span className="text-xs">Growth Ready</span>
+                                    <span className="text-xs font-bold text-foreground">Cash Flow At Risk</span>
+                                    <span className="ml-auto text-[10px] font-semibold text-primary">← You Are Here</span>
                                 </div>
                             </div>
                         </div>
