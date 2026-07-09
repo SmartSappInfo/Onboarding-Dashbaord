@@ -11,6 +11,8 @@ import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import { useTerminology } from '@/hooks/use-terminology';
 
 const TemplateWorkshop = dynamic(
     () => import('../templates/components/template-workshop').then(m => m.TemplateWorkshop),
@@ -49,11 +51,41 @@ export function TemplateWorkshopSheet({
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
     const { activeOrganizationId } = useTenant();
+    const { singular } = useTerminology();
 
     const [isSaving, setIsSaving] = React.useState(false);
     const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
     const [initialTemplate, setInitialTemplate] = React.useState<MessageTemplate | null>(null);
     const [mountKey, setMountKey] = React.useState(Date.now());
+    const [variables, setVariables] = React.useState<VariableDefinition[]>([]);
+
+    React.useEffect(() => {
+        if (!activeWorkspaceId) return;
+
+        let active = true;
+        getVariablesAction({
+            workspaceId: activeWorkspaceId,
+            organizationId: activeOrganizationId,
+            terminology: singular ? { singular, plural: `${singular}s` } : undefined
+        }).then((res) => {
+            if (!active) return;
+            const mapped = res.map((v) => ({
+                id: v.key,
+                key: v.key,
+                label: v.label,
+                category: v.category,
+                source: v.source,
+                entity: 'Entity',
+                path: v.path || '',
+                type: v.dataType,
+            }));
+            setVariables(mapped);
+        }).catch(console.error);
+
+        return () => {
+            active = false;
+        };
+    }, [activeWorkspaceId, activeOrganizationId, singular]);
 
     React.useEffect(() => {
         if (open) {
@@ -186,7 +218,7 @@ export function TemplateWorkshopSheet({
                     <TemplateWorkshop
                         key={mountKey}
                         initialTemplate={initialTemplate}
-                        variables={firestoreVariables || []}
+                        variables={variables || []}
                         styles={styles || []}
                         meetings={meetings || []}
                         surveys={surveys || []}
