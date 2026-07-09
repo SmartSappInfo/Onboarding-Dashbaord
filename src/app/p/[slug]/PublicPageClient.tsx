@@ -473,6 +473,7 @@ export default function PublicPageClient({
                             theme={resolvedTheme}
                             interpolate={interpolate}
                             orgBranding={orgBranding}
+                            variablesMap={variablesMap}
                             fireTrigger={(event, blockId) => {
                                 if (event === 'open_modal_resource' && blockId) {
                                     try {

@@ -1926,6 +1926,9 @@ export interface LeadCaptureFieldSetting {
   show: boolean;
   label: string;
   required: boolean;
+  type?: string;
+  isCustom?: boolean;
+  placeholder?: string;
 }
 
 export interface LeadCaptureFieldsConfig {
@@ -1933,6 +1936,7 @@ export interface LeadCaptureFieldsConfig {
   email: LeadCaptureFieldSetting;
   phone: LeadCaptureFieldSetting;
   company: LeadCaptureFieldSetting;
+  [key: string]: LeadCaptureFieldSetting | undefined;
 }
 
 export interface SurveyElement {
@@ -2073,6 +2077,7 @@ export interface SurveyResponse {
   workspaceId?: string | null; // Workspace context at time of submission
   assignedUserId?: string; // User who shared the survey link
   sourcePageId?: string | null;
+  leadDetails?: Record<string, string>;
 }
 
 export interface SurveySummary {
@@ -3501,6 +3506,9 @@ export interface PageSectionProps {
   visibilityDevice?: 'all' | 'desktop' | 'mobile';
   visibilityBehavior?: 'all' | 'has_tag' | 'no_tag';
   visibilityTag?: string;
+  visibilityRuleField?: string;
+  visibilityRuleOperator?: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty' | 'greater_than' | 'less_than';
+  visibilityRuleValue?: string;
 }
 
 export interface HeaderNavItem {

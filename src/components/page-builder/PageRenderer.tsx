@@ -46,6 +46,61 @@ interface PageRendererProps {
   interpolate: (text: string) => string;
   fireTrigger: (event: string, blockId?: string) => void;
   orgBranding?: OrgBranding | null;
+  variablesMap?: Record<string, string>;
+}
+
+function checkVisibility(
+  props: Record<string, unknown>,
+  variablesMap: Record<string, string> = {}
+): boolean {
+  // 1. Tag Filtering
+  const visibilityBehavior = props.visibilityBehavior as string | undefined;
+  if (visibilityBehavior && visibilityBehavior !== 'all') {
+    const tagsStr = variablesMap['contact_tags'] || '';
+    const tagList = tagsStr.split(',').map((t: string) => t.trim().toLowerCase());
+    const targetTag = props.visibilityTag ? String(props.visibilityTag).trim().toLowerCase() : '';
+    const hasTag = tagList.includes(targetTag);
+
+    if (visibilityBehavior === 'has_tag' && !hasTag) return false;
+    if (visibilityBehavior === 'no_tag' && hasTag) return false;
+  }
+
+  // 2. General Conditional Rules
+  const ruleField = props.visibilityRuleField as string | undefined;
+  if (ruleField) {
+    const fieldKey = ruleField.replace(/\{\{|\}\}/g, '').trim();
+    const val = variablesMap[fieldKey] || '';
+    const op = props.visibilityRuleOperator as string | undefined;
+    const ruleVal = props.visibilityRuleValue ? String(props.visibilityRuleValue).trim().toLowerCase() : '';
+    const compareVal = val.trim().toLowerCase();
+
+    let isMatch = true;
+    if (op === 'equals') {
+      isMatch = compareVal === ruleVal;
+    } else if (op === 'not_equals') {
+      isMatch = compareVal !== ruleVal;
+    } else if (op === 'contains') {
+      isMatch = compareVal.includes(ruleVal);
+    } else if (op === 'not_contains') {
+      isMatch = !compareVal.includes(ruleVal);
+    } else if (op === 'is_empty') {
+      isMatch = compareVal === '';
+    } else if (op === 'is_not_empty') {
+      isMatch = compareVal !== '';
+    } else if (op === 'greater_than') {
+      const numVal = parseFloat(val);
+      const numRule = parseFloat(String(props.visibilityRuleValue || '0'));
+      isMatch = !isNaN(numVal) && !isNaN(numRule) && numVal > numRule;
+    } else if (op === 'less_than') {
+      const numVal = parseFloat(val);
+      const numRule = parseFloat(String(props.visibilityRuleValue || '0'));
+      isMatch = !isNaN(numVal) && !isNaN(numRule) && numVal < numRule;
+    }
+
+    if (!isMatch) return false;
+  }
+
+  return true;
 }
 
 const EMPTY_RESOURCES: BuilderResources = { forms: [], surveys: [], agreements: [], meetings: [], qrCodes: [] };
@@ -110,6 +165,7 @@ export function PageRenderer({
   interpolate,
   fireTrigger,
   orgBranding = null,
+  variablesMap = {},
 }: PageRendererProps) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -287,6 +343,9 @@ export function PageRenderer({
             visibilityDevice?: string;
             visibilityBehavior?: string;
             visibilityTag?: string;
+            visibilityRuleField?: string;
+            visibilityRuleOperator?: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'is_empty' | 'is_not_empty' | 'greater_than' | 'less_than';
+            visibilityRuleValue?: string;
             paddingTop?: string;
             paddingBottom?: string;
             paddingLeft?: string;
@@ -313,6 +372,11 @@ export function PageRenderer({
             overlayColor?: string;
             overlayOpacity?: number;
           };
+
+          // Conditional Visibility Check
+          if (variablesMap && !checkVisibility(sectionProps, variablesMap)) {
+            return null;
+          }
           const heading = typeof sectionProps.heading === 'string' ? sectionProps.heading : '';
 
           // Device Visibility overrides
@@ -365,9 +429,15 @@ export function PageRenderer({
           const layout = sectionProps.layout || '1-col';
           const colsCount = layout === '2-col' ? 2 : layout === '3-col' ? 3 : layout === '4-col' ? 4 : layout === 'grid' ? 2 : 1;
 
+          // Filter visible blocks based on rules
+          const visibleBlocks = section.blocks.filter(b => {
+            const blockProps = (b.props || {}) as Record<string, unknown>;
+            return !variablesMap || checkVisibility(blockProps, variablesMap);
+          });
+
           // Partition blocks by column index
           const columnsBlocks = Array.from({ length: colsCount }, (_, colIdx) => {
-            return section.blocks.filter(b => {
+            return visibleBlocks.filter(b => {
               const colVal = ((b.props || {}) as { column?: number }).column ?? 0;
               if (colIdx === colsCount - 1) {
                 return colVal >= colIdx;
