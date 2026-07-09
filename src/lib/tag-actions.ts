@@ -4,7 +4,7 @@ import { adminDb } from './firebase-admin';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath as nextRevalidatePath } from 'next/cache';
-import type { Tag, TagCategory, TagAuditLog } from './types';
+import type { Tag, TagCategory, TagAuditLog, EntityType } from './types';
 import { logActivity } from './activity-logger';
 import { userHasTagPermission } from './tag-permissions';
 
@@ -928,13 +928,31 @@ export async function bulkApplyTagsAction(
     const total = contactIds.length;
     const partialFailures: string[] = [];
     // Updated WE state (with new tags) to re-project after a successful commit.
-    const weToResync: Array<Record<string, any>> = [];
+    const weToResync: Array<Record<string, unknown>> = [];
+
+    // Pre-fetch all tag documents in parallel to construct an in-memory O(1) map
+    const tagsSnap = await Promise.all(
+      tagIds.map(tagId => adminDb.collection('tags').doc(tagId).get())
+    );
+    const tagsMap = new Map<string, Tag>();
+    tagsSnap.forEach(snap => {
+      if (snap.exists) {
+        tagsMap.set(snap.id, snap.data() as Tag);
+      }
+    });
+
+    interface BulkTagChange {
+      contactId: string;
+      contactData: Record<string, unknown>;
+      tagIds: string[];
+    }
 
     for (let i = 0; i < contactIds.length; i += batchSize) {
       const chunk = contactIds.slice(i, i + batchSize);
       const batch = adminDb.batch();
       const chunkProcessed: string[] = [];
-      const chunkWe: Array<Record<string, any>> = [];
+      const chunkWe: Array<Record<string, unknown>> = [];
+      const contactNewTags: BulkTagChange[] = [];
 
       for (const contactId of chunk) {
         try {
@@ -943,15 +961,17 @@ export async function bulkApplyTagsAction(
           if (!contactSnap.exists) continue;
 
           const data = contactSnap.data()!;
-          const existingTags = new Set<string>(data[tagsField] || []);
-          const taggedAt: Record<string, string> = { ...data.taggedAt };
-          const taggedBy: Record<string, string> = { ...data.taggedBy };
+          const existingTags = new Set<string>((data[tagsField] as string[]) || []);
+          const taggedAt = { ...(data.taggedAt as Record<string, string>) };
+          const taggedBy = { ...(data.taggedBy as Record<string, string>) };
 
+          const newlyAddedTags: string[] = [];
           tagIds.forEach(tagId => {
             if (!existingTags.has(tagId)) {
               existingTags.add(tagId);
               taggedAt[tagId] = timestamp;
               taggedBy[tagId] = userId;
+              newlyAddedTags.push(tagId);
             }
           });
 
@@ -962,11 +982,18 @@ export async function bulkApplyTagsAction(
           });
 
           chunkProcessed.push(contactId);
+          if (newlyAddedTags.length > 0) {
+            contactNewTags.push({
+              contactId,
+              contactData: data,
+              tagIds: newlyAddedTags
+            });
+          }
           // Workspace-tag changes feed audience segmentation → re-project.
           if (contactType === 'workspace_entity') {
             chunkWe.push({ ...data, id: contactId, workspaceTags: Array.from(existingTags) });
           }
-        } catch (readErr: any) {
+        } catch (readErr: unknown) {
           partialFailures.push(contactId);
           failedCount++;
         }
@@ -977,15 +1004,64 @@ export async function bulkApplyTagsAction(
         await batch.commit();
         processedCount += chunkProcessed.length;
         weToResync.push(...chunkWe);
-      } catch (commitErr: any) {
-        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitErr.message}`;
+
+        // After successful commit, log activities to trigger automations asynchronously
+        for (const item of contactNewTags) {
+          const resolvedEntityId = contactType === 'workspace_entity' ? ((item.contactData.entityId as string) || item.contactId) : item.contactId;
+          for (const tagId of item.tagIds) {
+            const tag = tagsMap.get(tagId);
+            let resolvedWorkspaceId = contactType === 'workspace_entity' ? ((item.contactData.workspaceId as string) || tag?.workspaceId) : tag?.workspaceId;
+            let resolvedOrganizationId = contactType === 'workspace_entity' ? ((item.contactData.organizationId as string) || tag?.organizationId) : ((item.contactData.organizationId as string) || tag?.organizationId);
+
+            if (!resolvedWorkspaceId && resolvedEntityId) {
+              try {
+                const colRef = adminDb.collection('workspace_entities');
+                if (typeof colRef.where === 'function') {
+                  const weSnap = await colRef
+                    .where('entityId', '==', resolvedEntityId)
+                    .limit(1)
+                    .get();
+                  if (!weSnap.empty) {
+                    const weData = weSnap.docs[0].data();
+                    resolvedWorkspaceId = weData.workspaceId as string;
+                    if (!resolvedOrganizationId) resolvedOrganizationId = weData.organizationId as string;
+                  }
+                }
+              } catch (lookupErr) {
+                console.error('[BULK_TAG_ADDED] Fallback workspace lookup failed:', lookupErr);
+              }
+            }
+
+            if (resolvedWorkspaceId) {
+              await logActivity({
+                organizationId: resolvedOrganizationId || 'default',
+                workspaceId: resolvedWorkspaceId,
+                entityId: resolvedEntityId,
+                entityType: contactType === 'workspace_entity' ? ((item.contactData.entityType as EntityType) || 'institution') : (contactType as EntityType),
+                displayName: (item.contactData.displayName as string) || (item.contactData.name as string),
+                type: 'tag_added',
+                source: 'activity',
+                userId,
+                description: `Tag "${tag?.name || tagId}" applied.`,
+                metadata: {
+                  tagId,
+                  tagName: tag?.name,
+                  contactType,
+                  appliedBy: userId,
+                  isAutomation: userId.startsWith('automation:') || userId.startsWith('system-') || userId === 'system',
+                }
+              });
+            }
+          }
+        }
+      } catch (commitErr: unknown) {
+        const commitError = commitErr as Error;
+        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
         console.error('bulkApplyTagsAction batch error:', commitErr);
         errors.push(msg);
         failedCount += chunkProcessed.length;
         partialFailures.push(...chunkProcessed);
       }
-
-      // onProgress callback removed - not part of function signature
     }
 
     // Re-project contacts for the re-tagged workspace_entities (Phase 6.1/6.3).
@@ -1005,9 +1081,10 @@ export async function bulkApplyTagsAction(
       }
       try {
         await usageBatch.commit();
-      } catch (usageErr: any) {
+      } catch (usageErr: unknown) {
+        const usageError = usageErr as Error;
         console.error('bulkApplyTagsAction usage count update error:', usageErr);
-        errors.push(`Usage count update failed: ${usageErr.message}`);
+        errors.push(`Usage count update failed: ${usageError.message}`);
       }
     }
 
@@ -1028,9 +1105,10 @@ export async function bulkApplyTagsAction(
 
     safeRevalidatePath(`/admin/${collection}`);
     return { success: true, processedCount, failedCount, errors, partialFailures };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     console.error('Bulk apply tags error:', error);
-    return { success: false, error: getUserFriendlyErrorMessage(error) };
+    return { success: false, error: getUserFriendlyErrorMessage(err) };
   }
 }
 
@@ -1072,10 +1150,28 @@ export async function bulkRemoveTagsAction(
     const total = contactIds.length;
     const partialFailures: string[] = [];
 
+    // Pre-fetch all tag documents in parallel to construct an in-memory O(1) map
+    const tagsSnap = await Promise.all(
+      tagIds.map(tagId => adminDb.collection('tags').doc(tagId).get())
+    );
+    const tagsMap = new Map<string, Tag>();
+    tagsSnap.forEach(snap => {
+      if (snap.exists) {
+        tagsMap.set(snap.id, snap.data() as Tag);
+      }
+    });
+
+    interface BulkTagChange {
+      contactId: string;
+      contactData: Record<string, unknown>;
+      tagIds: string[];
+    }
+
     for (let i = 0; i < contactIds.length; i += batchSize) {
       const chunk = contactIds.slice(i, i + batchSize);
       const batch = adminDb.batch();
       const chunkProcessed: string[] = [];
+      const contactRemovedTags: BulkTagChange[] = [];
 
       for (const contactId of chunk) {
         try {
@@ -1084,18 +1180,30 @@ export async function bulkRemoveTagsAction(
           if (!contactSnap.exists) continue;
 
           const data = contactSnap.data()!;
-          const taggedAt: Record<string, string> = { ...data.taggedAt };
-          const taggedBy: Record<string, string> = { ...data.taggedBy };
+          const taggedAt = { ...(data.taggedAt as Record<string, string>) };
+          const taggedBy = { ...(data.taggedBy as Record<string, string>) };
 
-          const remainingTags = (data[tagsField] || []).filter((t: string) => !tagIds.includes(t));
+          const remainingTags = ((data[tagsField] as string[]) || []).filter((t: string) => !tagIds.includes(t));
+          const newlyRemovedTags: string[] = [];
           tagIds.forEach(tagId => {
+            if (((data[tagsField] as string[]) || []).includes(tagId)) {
+              newlyRemovedTags.push(tagId);
+            }
             delete taggedAt[tagId];
             delete taggedBy[tagId];
           });
 
           batch.update(contactRef, { [tagsField]: remainingTags, taggedAt, taggedBy });
           chunkProcessed.push(contactId);
-        } catch (readErr: any) {
+
+          if (newlyRemovedTags.length > 0) {
+            contactRemovedTags.push({
+              contactId,
+              contactData: data,
+              tagIds: newlyRemovedTags
+            });
+          }
+        } catch (readErr: unknown) {
           partialFailures.push(contactId);
           failedCount++;
         }
@@ -1105,15 +1213,64 @@ export async function bulkRemoveTagsAction(
       try {
         await batch.commit();
         processedCount += chunkProcessed.length;
-      } catch (commitErr: any) {
-        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitErr.message}`;
+
+        // After successful commit, log activities to trigger automations asynchronously
+        for (const item of contactRemovedTags) {
+          const resolvedEntityId = contactType === 'workspace_entity' ? ((item.contactData.entityId as string) || item.contactId) : item.contactId;
+          for (const tagId of item.tagIds) {
+            const tag = tagsMap.get(tagId);
+            let resolvedWorkspaceId = contactType === 'workspace_entity' ? ((item.contactData.workspaceId as string) || tag?.workspaceId) : tag?.workspaceId;
+            let resolvedOrganizationId = contactType === 'workspace_entity' ? ((item.contactData.organizationId as string) || tag?.organizationId) : ((item.contactData.organizationId as string) || tag?.organizationId);
+
+            if (!resolvedWorkspaceId && resolvedEntityId) {
+              try {
+                const colRef = adminDb.collection('workspace_entities');
+                if (typeof colRef.where === 'function') {
+                  const weSnap = await colRef
+                    .where('entityId', '==', resolvedEntityId)
+                    .limit(1)
+                    .get();
+                  if (!weSnap.empty) {
+                    const weData = weSnap.docs[0].data();
+                    resolvedWorkspaceId = weData.workspaceId as string;
+                    if (!resolvedOrganizationId) resolvedOrganizationId = weData.organizationId as string;
+                  }
+                }
+              } catch (lookupErr) {
+                console.error('[BULK_TAG_REMOVED] Fallback workspace lookup failed:', lookupErr);
+              }
+            }
+
+            if (resolvedWorkspaceId) {
+              await logActivity({
+                organizationId: resolvedOrganizationId || 'default',
+                workspaceId: resolvedWorkspaceId,
+                entityId: resolvedEntityId,
+                entityType: contactType === 'workspace_entity' ? ((item.contactData.entityType as EntityType) || 'institution') : (contactType as EntityType),
+                displayName: (item.contactData.displayName as string) || (item.contactData.name as string),
+                type: 'tag_removed',
+                source: 'activity',
+                userId,
+                description: `Tag "${tag?.name || tagId}" removed.`,
+                metadata: {
+                  tagId,
+                  tagName: tag?.name,
+                  contactType,
+                  appliedBy: userId,
+                  isAutomation: userId.startsWith('automation:') || userId.startsWith('system-') || userId === 'system',
+                }
+              });
+            }
+          }
+        }
+      } catch (commitErr: unknown) {
+        const commitError = commitErr as Error;
+        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
         console.error('bulkRemoveTagsAction batch error:', commitErr);
         errors.push(msg);
         failedCount += chunkProcessed.length;
         partialFailures.push(...chunkProcessed);
       }
-
-      // onProgress callback removed - not part of function signature
     }
 
     // Decrement tag usage counts — chunk to stay within the 500-op batch limit
@@ -1128,9 +1285,10 @@ export async function bulkRemoveTagsAction(
       }
       try {
         await usageBatch.commit();
-      } catch (usageErr: any) {
+      } catch (usageErr: unknown) {
+        const usageError = usageErr as Error;
         console.error('bulkRemoveTagsAction usage count update error:', usageErr);
-        errors.push(`Usage count update failed: ${usageErr.message}`);
+        errors.push(`Usage count update failed: ${usageError.message}`);
       }
     }
 
@@ -1151,9 +1309,10 @@ export async function bulkRemoveTagsAction(
 
     safeRevalidatePath(`/admin/${collection}`);
     return { success: true, processedCount, failedCount, errors, partialFailures };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error;
     console.error('Bulk remove tags error:', error);
-    return { success: false, error: getUserFriendlyErrorMessage(error) };
+    return { success: false, error: getUserFriendlyErrorMessage(err) };
   }
 }
 

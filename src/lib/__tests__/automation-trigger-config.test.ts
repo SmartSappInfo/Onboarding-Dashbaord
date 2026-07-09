@@ -630,4 +630,38 @@ describe('evaluateTriggerConfig', () => {
       ).toBe(false);
     });
   });
+
+  describe('unconstrained fallback triggers', () => {
+    const fallbacks = [
+      'ENTITY_CREATED',
+      'ENTITY_UPDATED',
+      'ENTITY_ASSIGNED',
+      'ENTITY_LINKED',
+      'ENTITY_UNLINKED',
+      'WORKSPACE_ENTITY_UPDATED',
+      'TASK_CREATED',
+      'TASK_COMPLETED',
+      'PDF_SIGNED',
+      'CAMPAIGN_PAGE_SUBMITTED',
+      'DEAL_CREATED',
+      'DEAL_STATUS_CHANGED',
+      'DEAL_VALUE_CHANGED',
+      'DATE_REACHED',
+      'TASK_OVERDUE',
+      'EMAIL_BOUNCED',
+      'DEAL_OWNER_CHANGED',
+      'ENTITY_INACTIVE',
+    ] as const;
+
+    it('always evaluates to true as unconstrained fallbacks', () => {
+      for (const triggerType of fallbacks) {
+        const auto = makeAutomation({
+          triggers: [{ id: 't1', type: triggerType, config: {} }],
+        });
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, {}))
+        ).toBe(true);
+      }
+    });
+  });
 });

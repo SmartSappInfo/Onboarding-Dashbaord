@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import type { School, OnboardingStage, EntityType, EntityContact, IndustryVertical } from './types';
+import type { School, OnboardingStage, EntityType, EntityContact, IndustryVertical, Tag } from './types';
 import crypto from 'crypto';
 import {
   enforceContactConstraints,
@@ -523,6 +523,11 @@ export async function updateEntityAction(
     const timestamp = new Date().toISOString();
     let updatedPrimaryEmail: string | undefined;
     let updatedPrimaryPhone: string | undefined;
+
+    let addedGlobalTags: string[] = [];
+    let removedGlobalTags: string[] = [];
+    let addedWorkspaceTags: string[] = [];
+    let removedWorkspaceTags: string[] = [];
     
     // 1. Resolve Entity reference
     const entityRef = adminDb.collection('entities').doc(entityId);
@@ -594,7 +599,13 @@ export async function updateEntityAction(
     if (entityContacts) {
       entityUpdate.entityContacts = entityContacts;
     }
-    if (data.globalTags) entityUpdate.globalTags = data.globalTags;
+    if (data.globalTags) {
+      const oldGlobalTags = ((entitySnap.exists ? entitySnap.data()?.globalTags : null) as string[]) || [];
+      const newGlobalTags = data.globalTags as string[];
+      addedGlobalTags = newGlobalTags.filter(t => !oldGlobalTags.includes(t));
+      removedGlobalTags = oldGlobalTags.filter(t => !newGlobalTags.includes(t));
+      entityUpdate.globalTags = data.globalTags;
+    }
     if (data.status) entityUpdate.status = data.status.toLowerCase();
 
     // Root fields update
@@ -744,7 +755,13 @@ export async function updateEntityAction(
         if (isCurrentWorkspace) {
           if (data.assignedTo !== undefined) weUpdate.assignedTo = data.assignedTo;
           if (data.status) weUpdate.status = data.status.toLowerCase();
-          if (data.workspaceTags) weUpdate.workspaceTags = data.workspaceTags;
+          if (data.workspaceTags) {
+            const oldWorkspaceTags = (weData.workspaceTags as string[]) || [];
+            const newWorkspaceTags = data.workspaceTags as string[];
+            addedWorkspaceTags = newWorkspaceTags.filter(t => !oldWorkspaceTags.includes(t));
+            removedWorkspaceTags = oldWorkspaceTags.filter(t => !newWorkspaceTags.includes(t));
+            weUpdate.workspaceTags = data.workspaceTags;
+          }
         }
         
         await doc.ref.update(weUpdate);
@@ -814,6 +831,58 @@ export async function updateEntityAction(
     } catch (err) {
       // fallback if after() is called outside request context
       await checkEntityFieldChangedTrigger(entityId, oldEntityData, data, workspaceId, organizationId).catch(() => {});
+    }
+
+    // Fire tag triggers for any added or removed tags
+
+    const allTagIdsToFetch = Array.from(new Set([
+      ...addedGlobalTags,
+      ...removedGlobalTags,
+      ...addedWorkspaceTags,
+      ...removedWorkspaceTags
+    ]));
+
+    if (allTagIdsToFetch.length > 0) {
+      try {
+        const tagsSnap = await Promise.all(
+          allTagIdsToFetch.map(tagId => adminDb.collection('tags').doc(tagId).get())
+        );
+        const tagsMap = new Map<string, Tag>();
+        tagsSnap.forEach(snap => {
+          if (snap.exists) tagsMap.set(snap.id, snap.data() as Tag);
+        });
+
+        const logTagChange = async (tagIds: string[], type: 'tag_added' | 'tag_removed') => {
+          for (const tagId of tagIds) {
+            const tag = tagsMap.get(tagId);
+            await logActivity({
+              organizationId,
+              workspaceId,
+              entityId,
+              entityType,
+              displayName,
+              type,
+              source: 'user_action',
+              userId,
+              description: `Tag "${tag?.name || tagId}" ${type === 'tag_added' ? 'applied' : 'removed'} via profile update.`,
+              metadata: {
+                tagId,
+                tagName: tag?.name,
+                contactType: 'entity',
+                appliedBy: userId,
+                isAutomation: userId.startsWith('automation:') || userId.startsWith('system-') || userId === 'system',
+              }
+            });
+          }
+        };
+
+        await logTagChange(addedGlobalTags, 'tag_added');
+        await logTagChange(removedGlobalTags, 'tag_removed');
+        await logTagChange(addedWorkspaceTags, 'tag_added');
+        await logTagChange(removedWorkspaceTags, 'tag_removed');
+      } catch (tagTriggerErr) {
+        console.error('[ENTITY:UPDATE] Failed to trigger tag automations:', tagTriggerErr);
+      }
     }
 
     return { success: true };
