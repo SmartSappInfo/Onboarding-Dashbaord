@@ -241,7 +241,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 entityId: resolvedEntityId || undefined,
                 recipientContact: recipient,
                 preloadedEntity: contact as unknown as Partial<Entity>,
-                extraVars: { ...finalVariables } as Record<string, unknown>
+                extraVars: { ...finalVariables } as Record<string, unknown>,
+                surveyId: (finalVariables._surveyId || finalVariables.surveyId || (template as any).surveyId) as string | undefined,
+                responseId: (finalVariables._responseId || finalVariables.responseId || finalVariables.submissionId) as string | undefined
             };
             const unifiedMap = await FieldsVariablesService.getVariableValuesMap(mapCtx);
             

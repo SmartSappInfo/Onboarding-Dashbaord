@@ -678,30 +678,142 @@ export class FieldsVariablesService {
           console.warn('[FieldsVariablesService] Error fetching dynamic survey variables:', err);
         }
 
-        if (context.responseId) {
-          const respSnap = await adminDb.collection('surveys').doc(context.surveyId).collection('responses').doc(context.responseId).get();
+        let responseId = context.responseId;
+        let responseData: Record<string, unknown> | null = null;
+
+        if (responseId) {
+          const respSnap = await adminDb.collection('surveys').doc(context.surveyId).collection('responses').doc(responseId).get();
           if (respSnap.exists) {
-            const response = respSnap.data()!;
-            if (response.score !== undefined) valuesMap.set('score', response.score);
-            valuesMap.set('result_message', response.resultMessage ?? '');
-            valuesMap.set('completion_date', response.submittedAt ? new Date(response.submittedAt).toLocaleDateString() : '');
-            valuesMap.set('completion_status', response.status ?? 'Completed');
-            const surveySlug = survey.slug || context.surveyId;
-            valuesMap.set('result_url', `${baseUrl}/surveys/${surveySlug}/result/${context.responseId}`);
-
-            if (response.answers && typeof response.answers === 'object') {
-              Object.entries(response.answers).forEach(([questionId, val]) => {
-                valuesMap.set(`survey_fields.${questionId}`, val !== null && val !== undefined ? String(val) : '');
-              });
+            responseData = respSnap.data() as Record<string, unknown>;
+          }
+        } else if (context.entityId) {
+          // Attempt compound query first with in-memory sort fallback
+          try {
+            const respQuery = await adminDb.collection('surveys')
+              .doc(context.surveyId)
+              .collection('responses')
+              .where('entityId', '==', context.entityId)
+              .orderBy('submittedAt', 'desc')
+              .limit(1)
+              .get();
+            
+            if (!respQuery.empty) {
+              responseId = respQuery.docs[0].id;
+              responseData = respQuery.docs[0].data() as Record<string, unknown>;
             }
+          } catch (err) {
+            console.warn('[FieldsVariablesService] Compound query failed, executing fallback in-memory sort:', err);
+            // Fallback: simple query (does not require compound index)
+            try {
+              const respQuery = await adminDb.collection('surveys')
+                .doc(context.surveyId)
+                .collection('responses')
+                .where('entityId', '==', context.entityId)
+                .get();
+              
+              if (!respQuery.empty) {
+                const sortedDocs = [...respQuery.docs].sort((a, b) => {
+                  const aVal = String(a.data().submittedAt || '');
+                  const bVal = String(b.data().submittedAt || '');
+                  return bVal.localeCompare(aVal);
+                });
+                responseId = sortedDocs[0].id;
+                responseData = sortedDocs[0].data() as Record<string, unknown>;
+              }
+            } catch (fallbackErr) {
+              console.warn('[FieldsVariablesService] Fallback query failed:', fallbackErr);
+            }
+          }
+        } else if (context.recipientContact) {
+          // Attempt email/phone match if entityId is not available
+          const target = context.recipientContact.toLowerCase().trim();
+          const targetDigits = target.replace(/\D/g, '');
+          
+          try {
+            const respQuery = await adminDb.collection('surveys')
+              .doc(context.surveyId)
+              .collection('responses')
+              .get();
+            
+            const matchedDocs = respQuery.docs.filter((doc) => {
+              const data = doc.data();
+              if (!data) return false;
+              const leadEmail = String(data.leadDetails?.email || data.email || '').toLowerCase().trim();
+              const leadPhone = String(data.leadDetails?.phone || data.phone || '').replace(/\D/g, '');
+              
+              return (leadEmail && leadEmail === target) || (targetDigits && leadPhone && leadPhone.endsWith(targetDigits));
+            });
 
-            if (response.leadDetails && typeof response.leadDetails === 'object') {
-              Object.entries(response.leadDetails).forEach(([fKey, val]) => {
-                valuesMap.set(fKey, val !== null && val !== undefined ? String(val) : '');
-                valuesMap.set(`lead_${fKey}`, val !== null && val !== undefined ? String(val) : '');
+            if (matchedDocs.length > 0) {
+              const sortedDocs = matchedDocs.sort((a, b) => {
+                const aVal = String(a.data().submittedAt || '');
+                const bVal = String(b.data().submittedAt || '');
+                return bVal.localeCompare(aVal);
+              });
+              responseId = sortedDocs[0].id;
+              responseData = sortedDocs[0].data() as Record<string, unknown>;
+            }
+          } catch (err) {
+            console.warn('[FieldsVariablesService] Recipient contact matching failed:', err);
+          }
+        }
+
+        const surveySlug = survey.slug || context.surveyId;
+        if (responseId && responseData) {
+          if (responseData.score !== undefined) {
+            valuesMap.set('score', responseData.score);
+            valuesMap.set('survey_score', responseData.score);
+          }
+          if (responseData.maxScore !== undefined) {
+            valuesMap.set('max_score', responseData.maxScore);
+          }
+          valuesMap.set('result_message', responseData.resultMessage ?? '');
+          valuesMap.set('completion_date', responseData.submittedAt ? new Date(String(responseData.submittedAt)).toLocaleDateString() : '');
+          valuesMap.set('completion_status', responseData.status ?? 'Completed');
+          valuesMap.set('outcome_label', responseData.outcome ?? '');
+          
+          const personalizedUrl = `${baseUrl}/surveys/${surveySlug}/result/${responseId}`;
+          valuesMap.set('result_url', personalizedUrl);
+          valuesMap.set('survey_results_link', personalizedUrl);
+
+          if (responseData.answers && typeof responseData.answers === 'object') {
+            if (Array.isArray(responseData.answers)) {
+              responseData.answers.forEach((ans: unknown) => {
+                if (ans && typeof ans === 'object' && 'questionId' in ans && 'value' in ans) {
+                  const qAns = ans as { questionId: string; value: unknown };
+                  const valStr = typeof qAns.value === 'object' ? JSON.stringify(qAns.value) : String(qAns.value);
+                  valuesMap.set(`survey_fields.${qAns.questionId}`, valStr);
+                  valuesMap.set(qAns.questionId, valStr);
+                }
+              });
+            } else {
+              Object.entries(responseData.answers).forEach(([questionId, val]) => {
+                const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                valuesMap.set(`survey_fields.${questionId}`, valStr);
+                valuesMap.set(questionId, valStr);
               });
             }
           }
+
+          if (responseData.leadDetails && typeof responseData.leadDetails === 'object') {
+            Object.entries(responseData.leadDetails).forEach(([fKey, val]) => {
+              const valStr = val !== null && val !== undefined ? String(val) : '';
+              valuesMap.set(fKey, valStr);
+              valuesMap.set(`lead_${fKey}`, valStr);
+            });
+          }
+        } else {
+          // Fallback to public survey link if no response completed yet
+          const publicUrl = survey.publicUrl || `${baseUrl}/surveys/${surveySlug}`;
+          valuesMap.set('result_url', publicUrl);
+          valuesMap.set('survey_results_link', publicUrl);
+          valuesMap.set('score', 0);
+          valuesMap.set('survey_score', 0);
+          valuesMap.set('max_score', survey.maxScore || 100);
+          valuesMap.set('result_message', '');
+          valuesMap.set('completion_date', '');
+          valuesMap.set('completion_status', 'Pending');
+          valuesMap.set('outcome_label', '');
         }
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching survey data for rendering:', err);
