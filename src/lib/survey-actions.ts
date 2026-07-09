@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { canUser } from './workspace-permissions';
@@ -1443,4 +1443,78 @@ async function triggerPostSubmissionAutomations(
       sourcePageId: responseData.sourcePageId || null,
     },
   }).catch(console.error);
+}
+
+export async function executeSurveyResultButtonActions(params: {
+  surveyId: string;
+  responseId: string;
+  entityId: string;
+  addTagIds?: string[];
+  triggerAutomationId?: string;
+  fireWebhookUrl?: string;
+}) {
+  const { surveyId, responseId, entityId, addTagIds, triggerAutomationId, fireWebhookUrl } = params;
+  
+  try {
+    const surveySnap = await adminDb.collection('surveys').doc(surveyId).get();
+    if (!surveySnap.exists) throw new Error('Survey not found');
+    const surveyData = surveySnap.data() as Survey;
+    const organizationId = surveyData.organizationId || 'default';
+    const workspaceId = surveyData.workspaceIds?.[0] || '';
+
+    // Load workspace entity
+    const weSnap = await adminDb.collection('workspace_entities').doc(entityId).get();
+    if (!weSnap.exists) throw new Error('Contact/entity not found');
+    const weData = weSnap.data() as WorkspaceEntity;
+
+    // 1. Add Tag(s)
+    if (addTagIds && addTagIds.length > 0) {
+      const { applyTagsAction } = await import('./tag-actions');
+      await applyTagsAction(entityId, 'workspace_entity', addTagIds, 'system-survey-results-button');
+    }
+
+    // 2. Trigger Automation
+    if (triggerAutomationId && triggerAutomationId !== 'none') {
+      const { runAutomationById } = await import('./automation-processor');
+      const automationPayload = {
+        entityId,
+        entityName: weData.displayName || '',
+        workspaceId,
+        organizationId,
+        surveyId,
+        surveyTitle: surveyData.title,
+        submissionId: responseId,
+        source: 'survey_results_button',
+      };
+      await runAutomationById(triggerAutomationId, automationPayload);
+    }
+
+    // 3. Fire Webhook
+    if (fireWebhookUrl) {
+      const payload = {
+        surveyId,
+        surveyTitle: surveyData.title,
+        responseId,
+        entityId,
+        entityName: weData.displayName || '',
+        primaryEmail: weData.primaryEmail || '',
+        primaryPhone: weData.primaryPhone || '',
+        contacts: weData.entityContacts || [],
+        timestamp: new Date().toISOString()
+      };
+      await fetch(fireWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(err => {
+        console.error(`[survey-actions] Webhook fire failed:`, err);
+      });
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`[survey-actions] executeSurveyResultButtonActions failed:`, err);
+    return { success: false, error: msg };
+  }
 }

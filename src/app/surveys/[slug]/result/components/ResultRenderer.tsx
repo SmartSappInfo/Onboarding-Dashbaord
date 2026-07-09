@@ -10,6 +10,9 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { executeSurveyResultButtonActions } from '@/lib/survey-actions';
 
 interface ResultRendererProps {
     survey: Survey;
@@ -104,7 +107,87 @@ function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: 
     );
 }
 
-function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyResultBlock, score: number, maxScore: number, displayMode?: 'points' | 'percentage' }) {
+function ActionButton({ 
+    block, 
+    surveyId, 
+    responseId, 
+    entityId 
+}: { 
+    block: SurveyResultBlock, 
+    surveyId: string, 
+    responseId: string, 
+    entityId?: string | null 
+}) {
+    const router = useRouter();
+    const [loading, setLoading] = React.useState(false);
+
+    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+        const hasSideEffects = 
+            (block.addTagIds && block.addTagIds.length > 0) || 
+            (block.triggerAutomationId && block.triggerAutomationId !== 'none') || 
+            (block.fireWebhookEnabled && block.fireWebhookUrl);
+
+        if (hasSideEffects && entityId) {
+            e.preventDefault();
+            setLoading(true);
+            try {
+                await executeSurveyResultButtonActions({
+                    surveyId,
+                    responseId,
+                    entityId,
+                    addTagIds: block.addTagIds,
+                    triggerAutomationId: block.triggerAutomationId,
+                    fireWebhookUrl: block.fireWebhookEnabled ? block.fireWebhookUrl : undefined
+                });
+            } catch (err) {
+                console.error('Failed to execute results button actions:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        // Complete navigation
+        if (block.link) {
+            if (block.openInNewTab) {
+                window.open(block.link, '_blank', 'noopener,noreferrer');
+            } else {
+                router.push(block.link);
+            }
+        }
+    };
+
+    return (
+        <Button 
+            disabled={loading}
+            onClick={handleClick}
+            size="lg" 
+            variant={block.style?.variant as 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | null | undefined} 
+            className="h-12 px-8 text-base font-bold rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto uppercase tracking-wide flex items-center justify-center gap-2"
+        >
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            {block.title} 
+            {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
+        </Button>
+    );
+}
+
+function BlockRenderer({ 
+    block, 
+    score, 
+    maxScore, 
+    displayMode,
+    surveyId,
+    responseId,
+    entityId
+}: { 
+    block: SurveyResultBlock, 
+    score: number, 
+    maxScore: number, 
+    displayMode?: 'points' | 'percentage',
+    surveyId: string,
+    responseId: string,
+    entityId?: string | null
+}) {
     const alignment = block.style?.textAlign || 'left';
     
     const containerClasses = cn(
@@ -160,16 +243,12 @@ function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyR
         case 'button':
             return (
                 <div className={containerClasses}>
-                    <Button 
-                        asChild 
-                        size="lg" 
-                        variant={block.style?.variant as 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | null | undefined} 
-                        className="h-12 px-8 text-base font-bold rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto uppercase tracking-wide"
-                    >
-                        <a href={block.link || '#'} target={block.openInNewTab ? "_blank" : "_self"} rel="noopener noreferrer">
-                            {block.title} <ArrowRight className="ml-2 h-5 w-5" />
-                        </a>
-                    </Button>
+                    <ActionButton 
+                        block={block} 
+                        surveyId={surveyId} 
+                        responseId={responseId} 
+                        entityId={entityId} 
+                    />
                 </div>
             );
         case 'quote':
@@ -284,6 +363,9 @@ export default function ResultRenderer({ survey, response, page, logoUrl, allowR
                         score={response.score || 0} 
                         maxScore={survey.maxScore || 100} 
                         displayMode={survey.scoreDisplayMode}
+                        surveyId={survey.id}
+                        responseId={response.id}
+                        entityId={response.entityId}
                     />
                 ))}
             </div>

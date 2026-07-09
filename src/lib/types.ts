@@ -2045,6 +2045,17 @@ export interface SurveyResultBlock {
     width?: string;
   };
   thumbnailUrl?: string;
+  actionType?: 'url' | 'page' | 'survey' | 'form' | 'meeting' | 'qr';
+  targetPageId?: string;
+  targetSurveyId?: string;
+  targetFormId?: string;
+  targetMeetingId?: string;
+  targetQrId?: string;
+  addTagIds?: string[];
+  triggerAutomationId?: string;
+  passEntityAsQuery?: boolean;
+  fireWebhookEnabled?: boolean;
+  fireWebhookUrl?: string;
 }
 
 export interface SurveyResponse {

@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase-admin';
-import type { Survey, SurveyResponse, SurveyResultPage } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultBlock, WorkspaceEntity } from '@/lib/types';
 import { notFound, redirect } from 'next/navigation';
 import ResultRenderer from '../components/ResultRenderer';
 import { Building2 } from 'lucide-react';
@@ -7,6 +7,7 @@ import Image from 'next/image';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { getOrgBranding } from '@/lib/org-branding';
 import { cn } from '@/lib/utils';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 
 // Force dynamic rendering - requires Firebase Admin
 export const dynamic = 'force-dynamic';
@@ -137,6 +138,94 @@ async function getResultData(slug: string, submissionId: string) {
             
             const finalRedirectUrl = replaceVariablesInUrl(redirectUrl, variables);
             return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: finalRedirectUrl };
+        }
+
+        // Compile variables on resolvedPage blocks
+        if (resolvedPage && resolvedPage.blocks) {
+            // Load contact/entity
+            let workspaceEntity: WorkspaceEntity | null = null;
+            if (response.entityId) {
+                const weSnap = await adminDb.collection('workspace_entities').doc(response.entityId).get();
+                if (weSnap.exists) {
+                    workspaceEntity = { id: weSnap.id, ...weSnap.data() } as WorkspaceEntity;
+                }
+            }
+
+            const varContext = {
+                workspaceId: survey.workspaceIds?.[0] || '',
+                entityId: response.entityId || undefined,
+                submissionId: response.id,
+                surveyId: survey.id
+            };
+
+            const compiledBlocks: SurveyResultBlock[] = [];
+            for (const block of resolvedPage.blocks) {
+                const newBlock = { ...block };
+                
+                // Resolve text fields
+                if (newBlock.title) {
+                    newBlock.title = await FieldsVariablesService.resolveTemplateVariables(newBlock.title, varContext);
+                }
+                if (newBlock.content) {
+                    newBlock.content = await FieldsVariablesService.resolveTemplateVariables(newBlock.content, varContext);
+                }
+                if (newBlock.items && newBlock.items.length > 0) {
+                    newBlock.items = await Promise.all(
+                        newBlock.items.map(item => FieldsVariablesService.resolveTemplateVariables(item, varContext))
+                    );
+                }
+
+                // Pre-resolve button action links
+                if (newBlock.type === 'button') {
+                    let resolvedLink = newBlock.link || '#';
+                    const actionType = newBlock.actionType || 'url';
+
+                    if (actionType === 'page' && newBlock.targetPageId) {
+                        const pageDoc = await adminDb.collection('campaign_pages').doc(newBlock.targetPageId).get();
+                        if (pageDoc.exists) {
+                            resolvedLink = `/p/${pageDoc.data()?.slug || newBlock.targetPageId}`;
+                        }
+                    } else if (actionType === 'survey' && newBlock.targetSurveyId) {
+                        const surveyDoc = await adminDb.collection('surveys').doc(newBlock.targetSurveyId).get();
+                        if (surveyDoc.exists) {
+                            resolvedLink = `/surveys/${surveyDoc.data()?.slug || newBlock.targetSurveyId}`;
+                        }
+                    } else if (actionType === 'form' && newBlock.targetFormId) {
+                        resolvedLink = `/f/${newBlock.targetFormId}`;
+                    } else if (actionType === 'meeting' && newBlock.targetMeetingId) {
+                        const meetingDoc = await adminDb.collection('meetings').doc(newBlock.targetMeetingId).get();
+                        if (meetingDoc.exists) {
+                            const mData = meetingDoc.data();
+                            const typeSlug = mData?.type?.id === 'parent' ? 'parent-engagement' : (mData?.type?.slug || 'parent-engagement');
+                            const targetSlug = mData?.slug || newBlock.targetMeetingId;
+                            resolvedLink = `/meetings/${typeSlug}/${targetSlug}`;
+                        }
+                    } else if (actionType === 'qr' && newBlock.targetQrId) {
+                        const qrDoc = await adminDb.collectionGroup('qr_codes').where('id', '==', newBlock.targetQrId).limit(1).get();
+                        if (!qrDoc.empty) {
+                            const qrData = qrDoc.docs[0].data();
+                            resolvedLink = qrData.slug ? `/q/${qrData.slug}` : (qrData.redirectUrl || '#');
+                        }
+                    }
+
+                    // Append entity parameters if passEntityAsQuery is enabled
+                    if (newBlock.passEntityAsQuery && workspaceEntity) {
+                        const hasQuery = resolvedLink.includes('?');
+                        const params = new URLSearchParams();
+                        params.set('contactId', workspaceEntity.entityId || workspaceEntity.id);
+                        if (workspaceEntity.primaryEmail) params.set('email', workspaceEntity.primaryEmail);
+                        if (workspaceEntity.primaryPhone) params.set('phone', workspaceEntity.primaryPhone);
+                        if (workspaceEntity.displayName) params.set('name', workspaceEntity.displayName);
+                        
+                        resolvedLink = `${resolvedLink}${hasQuery ? '&' : '?'}${params.toString()}`;
+                    }
+
+                    newBlock.link = resolvedLink;
+                }
+
+                compiledBlocks.push(newBlock);
+            }
+            resolvedPage.blocks = compiledBlocks;
         }
 
         return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: null };

@@ -13,7 +13,7 @@ import {
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
     Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
     ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown,
-    Pencil
+    Pencil, ChevronDown
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -36,6 +36,12 @@ import { CSS } from '@dnd-kit/utilities';
 import AddResultBlockModal from './add-result-block-modal';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { TagSelector } from '@/components/tags/TagSelector';
+import { VariablesPanel } from '@/components/shared/VariablesPanel';
+import type { CampaignPage, Survey, Form, Meeting, Automation } from '@/lib/types';
 
 export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, displayMode = 'points' }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore?: number, displayMode?: 'points' | 'percentage' }) {
     React.useEffect(() => {
@@ -214,8 +220,41 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
 }
 
 function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockIndex: number }) {
-    const { register, setValue } = useFormContext();
+    const { register, setValue, control } = useFormContext();
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
+
+    const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+    const firestore = useFirestore();
+
+    const pagesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'campaign_pages'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+    const { data: campaignPages } = useCollection<CampaignPage>(pagesQuery);
+
+    const surveysQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'surveys'), where('status', '==', 'published'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+    const { data: surveys } = useCollection<Survey>(surveysQuery);
+
+    const formsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'forms'), where('status', '==', 'published'), where('workspaceId', '==', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+    const { data: forms } = useCollection<Form>(formsQuery);
+
+    const meetingsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'meetings'), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+    const { data: meetings } = useCollection<Meeting>(meetingsQuery);
+
+    const automationsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeWorkspaceId) return null;
+        return query(collection(firestore, 'automations'), where('isActive', '==', true), where('workspaceIds', 'array-contains', activeWorkspaceId));
+    }, [firestore, activeWorkspaceId]);
+    const { data: automations } = useCollection<Automation>(automationsQuery);
 
     if (!block) return null;
 
@@ -307,9 +346,96 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                 {block.type === 'button' && (
                     <div className="space-y-4 pt-4 border-t">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold text-muted-foreground">Link URL</Label>
-                            <Input placeholder="https://..." {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.link`)} />
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Action Click Type</Label>
+                            <Select 
+                                value={block.actionType || 'url'} 
+                                onValueChange={(val) => {
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.actionType`, val, { shouldDirty: true });
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.link`, '', { shouldDirty: true });
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetPageId`, '', { shouldDirty: true });
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetSurveyId`, '', { shouldDirty: true });
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetFormId`, '', { shouldDirty: true });
+                                    setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetMeetingId`, '', { shouldDirty: true });
+                                }}
+                            >
+                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="url">Redirect to URL</SelectItem>
+                                    <SelectItem value="page">Open Landing Page</SelectItem>
+                                    <SelectItem value="survey">Open Survey</SelectItem>
+                                    <SelectItem value="form">Open Form</SelectItem>
+                                    <SelectItem value="meeting">Open Meeting Action</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
+
+                        {(!block.actionType || block.actionType === 'url') && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Link URL</Label>
+                                <Input placeholder="https://..." {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.link`)} />
+                            </div>
+                        )}
+
+                        {block.actionType === 'page' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Target Landing Page</Label>
+                                <Select
+                                    value={block.targetPageId || ''}
+                                    onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetPageId`, val, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className="h-10"><SelectValue placeholder="Select landing page..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {campaignPages?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {block.actionType === 'survey' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Target Survey</Label>
+                                <Select
+                                    value={block.targetSurveyId || ''}
+                                    onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetSurveyId`, val, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className="h-10"><SelectValue placeholder="Select survey..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {block.actionType === 'form' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Target Form</Label>
+                                <Select
+                                    value={block.targetFormId || ''}
+                                    onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetFormId`, val, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className="h-10"><SelectValue placeholder="Select form..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {forms?.map(f => <SelectItem key={f.id} value={f.id}>{f.internalName || f.title}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {block.actionType === 'meeting' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground">Target Meeting</Label>
+                                <Select
+                                    value={block.targetMeetingId || ''}
+                                    onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.targetMeetingId`, val, { shouldDirty: true })}
+                                >
+                                    <SelectTrigger className="h-10"><SelectValue placeholder="Select meeting page..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between">
                             <Label className="text-xs font-bold">Open in New Tab</Label>
                             <Switch 
@@ -317,6 +443,7 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                                 onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.openInNewTab`, val, { shouldDirty: true })}
                             />
                         </div>
+
                         <div className="space-y-2">
                             <Label className="text-[10px] font-semibold text-muted-foreground">Button Style</Label>
                             <Select 
@@ -329,6 +456,83 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        <div className="space-y-2 pt-4 border-t border-border/50">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Additional Action: Add Tag(s)</Label>
+                            <Controller
+                                name={`resultPages.${pageIndex}.blocks.${blockIndex}.addTagIds`}
+                                control={control}
+                                defaultValue={[]}
+                                render={({ field }) => (
+                                    <TagSelector
+                                        currentTagIds={field.value || []}
+                                        onTagsChange={field.onChange}
+                                    />
+                                )}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground">Additional Action: Trigger Automation</Label>
+                            <Select
+                                value={block.triggerAutomationId || 'none'}
+                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.triggerAutomationId`, val === 'none' ? '' : val, { shouldDirty: true })}
+                            >
+                                <SelectTrigger className="h-10"><SelectValue placeholder="Select automation..." /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    {automations?.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/10">
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-bold">Pass Lead parameters</Label>
+                                <p className="text-[10px] text-muted-foreground">Forward contactId, name, email as query parameters</p>
+                            </div>
+                            <Switch 
+                                checked={!!block.passEntityAsQuery} 
+                                onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.passEntityAsQuery`, val, { shouldDirty: true })}
+                            />
+                        </div>
+
+                        <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label className="text-xs font-bold">Fire Webhook</Label>
+                                    <p className="text-[10px] text-muted-foreground">Post contact & response details on click</p>
+                                </div>
+                                <Switch 
+                                    checked={!!block.fireWebhookEnabled} 
+                                    onCheckedChange={(val) => {
+                                        setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.fireWebhookEnabled`, val, { shouldDirty: true });
+                                        if (!val) setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.fireWebhookUrl`, '', { shouldDirty: true });
+                                    }}
+                                />
+                            </div>
+                            {block.fireWebhookEnabled && (
+                                <Input 
+                                    placeholder="Webhook URL (https://...)" 
+                                    value={block.fireWebhookUrl || ''} 
+                                    onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.fireWebhookUrl`, e.target.value, { shouldDirty: true })} 
+                                    className="h-10 text-sm bg-background border-slate-700 text-slate-200"
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {['heading', 'text', 'quote'].includes(block.type) && activeWorkspaceId && (
+                    <div className="pt-4 border-t border-border/50 mt-4 space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Double-Brace Variables</Label>
+                        <p className="text-[10px] text-muted-foreground leading-normal mb-2">
+                            Use these variable tags to personalize your results text. Click any tag to copy it.
+                        </p>
+                        <VariablesPanel 
+                            workspaceId={activeWorkspaceId} 
+                            featureContext="survey" 
+                        />
                     </div>
                 )}
 
@@ -404,148 +608,151 @@ function SortablePageAccordionItem({
                 isDragging && "border-primary/50 shadow-lg ring-1 ring-primary/20"
             )}
         >
-            <AccordionTrigger className="hover:no-underline py-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4 pr-4" onClick={(e) => {
+            <AccordionTrigger asChild className="hover:no-underline py-6">
+                <div className="flex flex-row items-center justify-between w-full gap-4 pr-4" onClick={(e) => {
                     // Prevent Accordion from opening/closing when clicking on elements in this container
                 }}>
-                    <div className="flex items-center gap-4 text-left">
-                        {/* Drag Handle */}
-                        <div 
-                            {...attributes} 
-                            {...listeners} 
-                            className="cursor-grab p-1 text-muted-foreground/45 hover:text-muted-foreground hover:bg-muted rounded transition-colors shrink-0 mr-1"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <GripVertical className="h-4 w-4" />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between flex-1 gap-4">
+                        <div className="flex items-center gap-4 text-left">
+                            {/* Drag Handle */}
+                            <div 
+                                {...attributes} 
+                                {...listeners} 
+                                className="cursor-grab p-1 text-muted-foreground/45 hover:text-muted-foreground hover:bg-muted rounded transition-colors shrink-0 mr-1"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <GripVertical className="h-4 w-4" />
+                            </div>
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Layout className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                 {editingPageIdx === index ? (
+                                    <Input 
+                                        value={watch(`resultPages.${index}.name`) as string || ''}
+                                        onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
+                                        onBlur={() => setEditingPageIdx(null)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                setEditingPageIdx(null);
+                                            }
+                                        }}
+                                        autoFocus
+                                        className="h-8 py-0 px-2 text-sm font-semibold max-w-[200px] bg-background"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                ) : (
+                                    <div className="flex items-center gap-1.5 group/title">
+                                        <span className="font-semibold text-lg leading-none">{(watchedPages[index] as SurveyResultPage)?.name || (page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingPageIdx(index);
+                                            }}
+                                            className="p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity"
+                                            title="Rename page"
+                                        >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                                <p className="text-xs text-muted-foreground font-bold mt-1">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
+                            </div>
                         </div>
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <Layout className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                             {editingPageIdx === index ? (
-                                <Input 
-                                    value={watch(`resultPages.${index}.name`) as string || ''}
-                                    onChange={(e) => setValue(`resultPages.${index}.name`, e.target.value, { shouldDirty: true })}
-                                    onBlur={() => setEditingPageIdx(null)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            setEditingPageIdx(null);
+
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end pl-11 sm:pl-24 md:pl-0" onClick={(e) => e.stopPropagation()}>
+                            {/* Default Switch */}
+                            <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                                <Switch 
+                                    checked={!!watch(`resultPages.${index}.isDefault`)} 
+                                    onCheckedChange={(val) => {
+                                        if (val) {
+                                            pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
                                         }
                                     }}
-                                    autoFocus
-                                    className="h-8 py-0 px-2 text-sm font-semibold max-w-[200px] bg-background"
-                                    onClick={(e) => e.stopPropagation()}
                                 />
-                            ) : (
-                                <div className="flex items-center gap-1.5 group/title">
-                                    <span className="font-semibold text-lg leading-none">{(watchedPages[index] as SurveyResultPage)?.name || (page as SurveyResultPage).name || `Outcome Page ${index + 1}`}</span>
-                                    <button 
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingPageIdx(index);
-                                        }}
-                                        className="p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity"
-                                        title="Rename page"
-                                    >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            )}
-                            <p className="text-xs text-muted-foreground font-bold mt-1">{(page as SurveyResultPage).blocks?.length || 0} Content Blocks</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end pl-11 sm:pl-24 md:pl-0" onClick={(e) => e.stopPropagation()}>
-                        {/* Default Switch */}
-                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
-                            <Switch 
-                                checked={!!watch(`resultPages.${index}.isDefault`)} 
-                                onCheckedChange={(val) => {
-                                    if (val) {
-                                        pages.forEach((_, i) => setValue(`resultPages.${i}.isDefault`, i === index, { shouldDirty: true }));
-                                    }
-                                }}
-                            />
-                            <span className="text-xs font-bold text-muted-foreground select-none">Default</span>
-                        </div>
-
-                        {/* Celebrate Switch */}
-                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
-                            <Controller
-                                name={`resultPages.${index}.confettiEnabled`}
-                                control={control}
-                                render={({ field }) => (
-                                    <Switch
-                                        checked={!!field.value}
-                                        onCheckedChange={field.onChange}
-                                        className="data-[state=checked]:bg-amber-500"
-                                    />
-                                )}
-                            />
-                            <span className="text-xs font-bold text-muted-foreground select-none">Celebrate</span>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="h-6 w-[1px] bg-border mx-1 hidden md:block" />
-
-                        {/* Action Buttons with Tooltips */}
-                        <TooltipProvider>
-                            <div className="flex items-center gap-1">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="icon" 
-                                            className="h-9 w-9 rounded-lg" 
-                                            onClick={() => setPreviewPageIdx(index)}
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <span className="text-[10px] font-bold">Preview Page</span>
-                                    </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            size="icon" 
-                                            className="h-9 w-9 rounded-lg" 
-                                            onClick={() => clonePage(index)}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <span className="text-[10px] font-bold">Clone Page</span>
-                                    </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg" 
-                                            onClick={() => remove(index)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <span className="text-[10px] font-bold">Delete Page</span>
-                                    </TooltipContent>
-                                </Tooltip>
+                                <span className="text-xs font-bold text-muted-foreground select-none">Default</span>
                             </div>
-                        </TooltipProvider>
+
+                            {/* Celebrate Switch */}
+                            <div className="flex items-center gap-2 h-9 px-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors">
+                                <Controller
+                                    name={`resultPages.${index}.confettiEnabled`}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Switch
+                                            checked={!!field.value}
+                                            onCheckedChange={field.onChange}
+                                            className="data-[state=checked]:bg-amber-500"
+                                        />
+                                    )}
+                                />
+                                <span className="text-xs font-bold text-muted-foreground select-none">Celebrate</span>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="h-6 w-[1px] bg-border mx-1 hidden md:block" />
+
+                            {/* Action Buttons with Tooltips */}
+                            <TooltipProvider>
+                                <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-9 w-9 rounded-lg" 
+                                                onClick={() => setPreviewPageIdx(index)}
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <span className="text-[10px] font-bold">Preview Page</span>
+                                        </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="icon" 
+                                                className="h-9 w-9 rounded-lg" 
+                                                onClick={() => clonePage(index)}
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <span className="text-[10px] font-bold">Clone Page</span>
+                                        </TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg" 
+                                                onClick={() => remove(index)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <span className="text-[10px] font-bold">Delete Page</span>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TooltipProvider>
+                        </div>
                     </div>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 text-muted-foreground" />
                 </div>
             </AccordionTrigger>
             <AccordionContent className="pt-6 pb-8 space-y-8 border-t">
