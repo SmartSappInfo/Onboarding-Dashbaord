@@ -1422,14 +1422,33 @@ export async function getSimulationVariablesAction(params: {
 
     // Process Survey Variables (latest response)
     if (responsesSnap && !responsesSnap.empty) {
-      const resData = responsesSnap.docs[0].data();
+      const resDoc = responsesSnap.docs[0];
+      const resData = resDoc.data();
       variables.survey_score = resData.score || 0;
       variables.max_score = resData.maxScore || 100;
       variables.outcome_label = resData.outcome || '';
       
+      const baseUrl = getBaseUrl();
+      let surveySlug = params.surveyId || 'survey';
+      if (params.surveyId) {
+        try {
+          const sSnap = await adminDb.collection('surveys').doc(params.surveyId).get();
+          if (sSnap.exists) {
+            surveySlug = sSnap.data()?.slug || params.surveyId;
+          }
+        } catch { /* ignore */ }
+      }
+      const personalizedUrl = `${baseUrl}/surveys/${surveySlug}/result/${resDoc.id}`;
+      variables.result_url = personalizedUrl;
+      variables.survey_results_link = personalizedUrl;
+      
       // Flatten answers
-      resData.answers?.forEach((a: any) => {
-        variables[a.questionId] = typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value);
+      const answersList = (resData.answers || []) as unknown[];
+      answersList.forEach((a) => {
+        if (a && typeof a === 'object' && 'questionId' in a && 'value' in a) {
+          const ans = a as { questionId: string; value: unknown };
+          variables[ans.questionId] = typeof ans.value === 'object' ? JSON.stringify(ans.value) : String(ans.value);
+        }
       });
     }
 
