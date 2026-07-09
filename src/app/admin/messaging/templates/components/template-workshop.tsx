@@ -42,6 +42,9 @@ import {
     Redo,
     ArrowUp,
     ArrowDown,
+    ArrowUpToLine,
+    ArrowDownToLine,
+    X,
     Copy,
     Pencil,
     Trash2,
@@ -2186,6 +2189,8 @@ export function TemplateWorkshop({
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
+    const [selectedBlockIds, setSelectedBlockIds] = React.useState<string[]>([]);
+    const localClipboardRef = React.useRef<MessageBlock[] | null>(null);
     const [sidebarTab, setSidebarTab] = React.useState<'architect' | 'blocks' | 'variables' | 'validation'>('architect');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
     const [isResizing, setIsResizing] = React.useState(false);
@@ -2590,9 +2595,17 @@ export function TemplateWorkshop({
         return next;
     }, []);
 
-    const swapBlocksRecursively = React.useCallback((items: MessageBlock[], id: string, direction: 'up' | 'down'): MessageBlock[] => {
+    const swapBlocksRecursively = React.useCallback((items: MessageBlock[], id: string, direction: 'up' | 'down' | 'top' | 'bottom'): MessageBlock[] => {
         const idx = items.findIndex(item => item.id === id);
         if (idx !== -1) {
+            if (direction === 'top') {
+                if (idx === 0) return items;
+                return arrayMove(items, idx, 0);
+            }
+            if (direction === 'bottom') {
+                if (idx === items.length - 1) return items;
+                return arrayMove(items, idx, items.length - 1);
+            }
             const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
             if (targetIdx >= 0 && targetIdx < items.length) {
                 return arrayMove(items, idx, targetIdx);
@@ -2646,6 +2659,212 @@ export function TemplateWorkshop({
             return updateSwap(prev);
         });
     }, []);
+
+    // Selection, Clipboard & Batch Operations Helpers
+    const regenerateBlockIds = React.useCallback((items: MessageBlock[]): MessageBlock[] => {
+        return items.map(block => {
+            const newId = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            const updatedBlock: MessageBlock = {
+                ...block,
+                id: newId
+            };
+            if (block.type === 'columns' && block.columns) {
+                updatedBlock.columns = block.columns.map(col => ({
+                    ...col,
+                    blocks: regenerateBlockIds(col.blocks)
+                }));
+            }
+            return updatedBlock;
+        });
+    }, []);
+
+    const insertBlocksRecursively = React.useCallback((items: MessageBlock[], targetId: string, newItems: MessageBlock[]): MessageBlock[] => {
+        const idx = items.findIndex(item => item.id === targetId);
+        if (idx !== -1) {
+            const next = [...items];
+            next.splice(idx + 1, 0, ...newItems);
+            return next;
+        }
+        return items.map(item => {
+            if (item.type === 'columns' && item.columns) {
+                return {
+                    ...item,
+                    columns: item.columns.map(col => ({
+                        ...col,
+                        blocks: insertBlocksRecursively(col.blocks, targetId, newItems)
+                    }))
+                };
+            }
+            return item;
+        });
+    }, []);
+
+    const handleToggleSelectBlock = React.useCallback((id: string) => {
+        setSelectedBlockIds(prev => {
+            if (prev.includes(id)) {
+                const updated = prev.filter(x => x !== id);
+                if (selectedBlockId === id) {
+                    setSelectedBlockId(updated.length > 0 ? updated[updated.length - 1] : null);
+                }
+                return updated;
+            } else {
+                const updated = [...prev, id];
+                setSelectedBlockId(id);
+                return updated;
+            }
+        });
+    }, [selectedBlockId]);
+
+    const handleCopyToClipboard = React.useCallback(async () => {
+        if (selectedBlockIds.length === 0) return;
+        
+        const collectSelectedBlocks = (items: MessageBlock[]): MessageBlock[] => {
+            let collected: MessageBlock[] = [];
+            for (const item of items) {
+                if (selectedBlockIds.includes(item.id)) {
+                    collected.push(item);
+                } else if (item.type === 'columns' && item.columns) {
+                    for (const col of item.columns) {
+                        collected = [...collected, ...collectSelectedBlocks(col.blocks)];
+                    }
+                }
+            }
+            return collected;
+        };
+
+        const selectedBlocks = collectSelectedBlocks(blocks);
+        if (selectedBlocks.length === 0) return;
+
+        const dataToCopy = {
+            type: 'email-blocks-clip',
+            blocks: selectedBlocks
+        };
+
+        try {
+            const jsonString = JSON.stringify(dataToCopy, null, 2);
+            await navigator.clipboard.writeText(jsonString);
+            localClipboardRef.current = selectedBlocks;
+            toast({
+                title: 'Blocks Copied',
+                description: `${selectedBlocks.length} block(s) copied to clipboard.`
+            });
+        } catch (err) {
+            console.error('Failed to copy to clipboard', err);
+            localClipboardRef.current = selectedBlocks;
+            toast({
+                title: 'Blocks Copied (Local)',
+                description: `${selectedBlocks.length} block(s) copied to local clipboard fallback.`
+            });
+        }
+    }, [selectedBlockIds, blocks, toast]);
+
+    const handlePasteFromClipboard = React.useCallback(async () => {
+        let clipboardBlocks: MessageBlock[] | null = null;
+        
+        try {
+            const text = await navigator.clipboard.readText();
+            const parsed = JSON.parse(text);
+            if (parsed && parsed.type === 'email-blocks-clip' && Array.isArray(parsed.blocks)) {
+                clipboardBlocks = parsed.blocks;
+            }
+        } catch (err) {
+            console.log('Using local fallback for paste', err);
+        }
+
+        if ((!clipboardBlocks || clipboardBlocks.length === 0) && localClipboardRef.current) {
+            clipboardBlocks = localClipboardRef.current;
+        }
+
+        if (!clipboardBlocks || clipboardBlocks.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Paste Failed',
+                description: 'No email blocks found in clipboard.'
+            });
+            return;
+        }
+
+        const freshBlocks = regenerateBlockIds(clipboardBlocks);
+
+        setBlocks(prev => {
+            if (selectedBlockId) {
+                return insertBlocksRecursively(prev, selectedBlockId, freshBlocks);
+            } else {
+                return [...prev, ...freshBlocks];
+            }
+        });
+
+        setSelectedBlockIds(freshBlocks.map(b => b.id));
+        if (freshBlocks.length > 0) {
+            setSelectedBlockId(freshBlocks[freshBlocks.length - 1].id);
+        }
+
+        toast({
+            title: 'Blocks Pasted',
+            description: `Pasted ${freshBlocks.length} block(s).`
+        });
+    }, [selectedBlockId, toast, regenerateBlockIds, insertBlocksRecursively]);
+
+    const handleDeleteSelected = React.useCallback(() => {
+        if (selectedBlockIds.length === 0) return;
+        
+        setBlocks(prev => {
+            let next = prev;
+            for (const id of selectedBlockIds) {
+                next = removeBlockRecursively(next, id);
+            }
+            return next;
+        });
+
+        setSelectedBlockIds([]);
+        if (selectedBlockId && selectedBlockIds.includes(selectedBlockId)) {
+            setSelectedBlockId(null);
+        }
+
+        toast({
+            title: 'Blocks Deleted',
+            description: `Deleted ${selectedBlockIds.length} selected block(s).`
+        });
+    }, [selectedBlockIds, selectedBlockId, toast, removeBlockRecursively]);
+
+    const handleClearSelection = React.useCallback(() => {
+        setSelectedBlockIds([]);
+        setSelectedBlockId(null);
+    }, []);
+
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            const isInput = activeEl && (
+                activeEl.tagName === 'INPUT' || 
+                activeEl.tagName === 'TEXTAREA' || 
+                activeEl.hasAttribute('contenteditable') ||
+                activeEl.closest('[contenteditable="true"]')
+            );
+            if (isInput) return;
+
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+                if (selectedBlockIds.length > 0) {
+                    e.preventDefault();
+                    handleCopyToClipboard();
+                }
+            }
+
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+                e.preventDefault();
+                handlePasteFromClipboard();
+            }
+
+            if (e.key === 'Escape') {
+                if (selectedBlockIds.length > 0) {
+                    handleClearSelection();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedBlockIds, handleCopyToClipboard, handlePasteFromClipboard, handleClearSelection]);
 
     const customCollisionDetection = React.useCallback((args: any) => {
         const pointerCollisions = pointerWithin(args);
@@ -4148,7 +4367,6 @@ export function TemplateWorkshop({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Button variant="ghost" size="icon" onClick={() => setIsFullScreen(!isFullScreen)} className="h-9 w-9 rounded-lg">
-                                            {isFullScreen ? <Minimize2 className="h-4.5 w-4.5" /> : <Maximize2 className="h-4.5 w-4.5" />}
                                         </Button>
                                         <Button onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-md active:scale-95 transition-all">
                                             Next: Simulation <ArrowRight className="h-4 w-4" />
@@ -4156,7 +4374,7 @@ export function TemplateWorkshop({
                                     </div>
                                 </div>
 
-                                <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
+                                <ScrollArea className="flex-1" onClick={() => { setSelectedBlockId(null); setSelectedBlockIds([]); }}>
                                     <div className="max-w-4xl mx-auto p-8 pb-64">
                                         {/* Subject & Preview Text (Email Only) — with variable insertion support */}
                                         {channel === 'email' && (
@@ -4286,9 +4504,13 @@ export function TemplateWorkshop({
                                                                         index={idx}
                                                                         block={block}
                                                                         isSelected={selectedBlockId === block.id}
+                                                                        isMultiSelected={selectedBlockIds.includes(block.id)}
+                                                                        onToggleSelect={() => handleToggleSelectBlock(block.id)}
+                                                                        onMoveToTop={() => setBlocks(p => swapBlocksRecursively(p, block.id, 'top'))}
+                                                                        onMoveToBottom={() => setBlocks(p => swapBlocksRecursively(p, block.id, 'bottom'))}
                                                                         simulationVars={activeSimVariables}
                                                                         autocompleteVariables={autocompleteVariables}
-                                                                        onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('blocks'); }}
+                                                                        onSelect={() => { setSelectedBlockId(block.id); setSelectedBlockIds([block.id]); setSidebarTab('blocks'); }}
                                                                         onRemove={() => { setBlocks(prev => removeBlockRecursively(prev, block.id)); if (selectedBlockId === block.id) setSelectedBlockId(null); }}
                                                                         onDuplicate={() => { setBlocks(prev => duplicateBlockRecursively(prev, block.id)); }}
                                                                         onSwap={(a, b) => setBlocks(p => swapBlocksRecursively(p, block.id, b < a ? 'up' : 'down'))}
@@ -4314,6 +4536,67 @@ export function TemplateWorkshop({
                                                 )}
                                             </div>
                                         ) : null}
+                                        
+                                        {/* Floating Selection & Batch Actions Toolbar */}
+                                        {selectedBlockIds.length > 0 && (
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-background/90 backdrop-blur-md border border-border/80 px-4 py-2.5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                                <div className="flex items-center gap-2 pr-2 border-r border-border/80">
+                                                    <Badge className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded-lg text-[10px]">
+                                                        {selectedBlockIds.length}
+                                                    </Badge>
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                        Selected
+                                                    </span>
+                                                </div>
+                                                
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleCopyToClipboard}
+                                                    className="h-8 rounded-xl text-xs font-bold gap-1.5 px-3"
+                                                    title="Copy selected blocks to clipboard (Cmd+C)"
+                                                >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                    Copy
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handlePasteFromClipboard}
+                                                    className="h-8 rounded-xl text-xs font-bold gap-1.5 px-3"
+                                                    title="Paste blocks from clipboard after selection (Cmd+V)"
+                                                >
+                                                    <Upload className="h-3.5 w-3.5" />
+                                                    Paste
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleDeleteSelected}
+                                                    className="h-8 rounded-xl text-xs font-bold gap-1.5 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                                    title="Delete selected blocks"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                    Delete
+                                                </Button>
+
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={handleClearSelection}
+                                                    className="h-7 w-7 rounded-xl hover:bg-muted"
+                                                    title="Clear Selection (Esc)"
+                                                >
+                                                    <X className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
                             </div>
@@ -4730,20 +5013,22 @@ export function TemplateWorkshop({
                             <AlertCircle className="h-5 w-5 animate-bounce" />
                             Unresolved Variable Errors
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-3 text-left">
-                            <p>
-                                This template contains <strong>{errorCount} variable error(s)</strong> (typos or unrecognized tags) that will fail to resolve during messaging dispatch:
-                            </p>
-                            <div className="p-3 bg-muted rounded-xl max-h-[150px] overflow-y-auto font-mono text-[10px] space-y-1 border">
-                                {validationErrors.filter(e => e.type === 'error').map((err, i) => (
-                                    <div key={i} className="text-red-600 font-semibold">
-                                        • {`{{${err.variable}}}`}: Unrecognized variable name
-                                    </div>
-                                ))}
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-left">
+                                <p>
+                                    This template contains <strong>{errorCount} variable error(s)</strong> (typos or unrecognized tags) that will fail to resolve during messaging dispatch:
+                                </p>
+                                <div className="p-3 bg-muted rounded-xl max-h-[150px] overflow-y-auto font-mono text-[10px] space-y-1 border">
+                                    {validationErrors.filter(e => e.type === 'error').map((err, i) => (
+                                        <div key={i} className="text-red-600 font-semibold">
+                                            • {`{{${err.variable}}}`}: Unrecognized variable name
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Sending messages with invalid tags will display raw tokens to your users. Are you sure you want to save anyway?
+                                </p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Sending messages with invalid tags will display raw tokens to your users. Are you sure you want to save anyway?
-                            </p>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

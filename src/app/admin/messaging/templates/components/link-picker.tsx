@@ -4,15 +4,9 @@ import * as React from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Link, Search } from 'lucide-react';
+import { Link, Search, ChevronDown } from 'lucide-react';
 import type { Survey, CampaignPage, BookingPage, QRCode } from '@/lib/types';
 
 interface LinkPickerProps {
@@ -50,12 +44,26 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
   const [open, setOpen] = React.useState<boolean>(false);
   const [search, setSearch] = React.useState<string>('');
   const [targetType, setTargetType] = React.useState<string>('dynamic');
+  
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const [surveys, setSurveys] = React.useState<ResourceItem[]>([]);
   const [forms, setForms] = React.useState<ResourceItem[]>([]);
   const [pages, setPages] = React.useState<ResourceItem[]>([]);
   const [bookings, setBookings] = React.useState<ResourceItem[]>([]);
   const [qrs, setQrs] = React.useState<ResourceItem[]>([]);
+
+  // Close dropdown on outside click (custom outside-click implementation)
+  React.useEffect(() => {
+    if (!open) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [open]);
 
   React.useEffect(() => {
     if (!open || !firestore || !activeWorkspaceId) return;
@@ -175,29 +183,40 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-[380px] p-5 rounded-[2rem] border border-border shadow-2xl bg-background/98 backdrop-blur-xl z-[150]" align="end">
-        <div className="space-y-4">
+    <div className="relative inline-block text-left" ref={containerRef}>
+      {/* Trigger Button toggles open state */}
+      <div onClick={() => setOpen((prev) => !prev)}>
+        {trigger}
+      </div>
+
+      {open && (
+        <div 
+          className="absolute right-0 top-full mt-2 w-[360px] p-5 rounded-[2rem] border border-border shadow-2xl bg-background/98 backdrop-blur-xl z-[9999] space-y-4"
+          onMouseDown={(e) => e.stopPropagation()} // Stop click propagation to prevent outside click trigger
+        >
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Target Type</label>
-            <Select value={targetType} onValueChange={(val) => {
-              setTargetType(val);
-              setSearch('');
-            }}>
-              <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm focus:ring-0">
-                <SelectValue placeholder="Select target type" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-xl bg-background/98 backdrop-blur-xl z-[160]">
-                <SelectItem value="dynamic" className="rounded-lg">Dynamic Variables (rsvp, survey, unsubscribe...)</SelectItem>
-                <SelectItem value="surveys" className="rounded-lg">Published Workspace Surveys</SelectItem>
-                <SelectItem value="forms" className="rounded-lg">Published Forms & PDFs</SelectItem>
-                <SelectItem value="pages" className="rounded-lg">Published Campaign Pages</SelectItem>
-                <SelectItem value="bookings" className="rounded-lg">Published Booking Pages</SelectItem>
-                <SelectItem value="qrs" className="rounded-lg">QR Studio Codes</SelectItem>
-                <SelectItem value="static" className="rounded-lg">Predefined Static Pages</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <select
+                value={targetType}
+                onChange={(e) => {
+                  setTargetType(e.target.value);
+                  setSearch('');
+                }}
+                className="w-full h-11 px-3.5 pr-10 rounded-xl bg-muted/30 border-none font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
+              >
+                <option value="dynamic">Dynamic Variables (rsvp, survey...)</option>
+                <option value="surveys">Published Workspace Surveys</option>
+                <option value="forms">Published Forms & PDFs</option>
+                <option value="pages">Published Campaign Pages</option>
+                <option value="bookings">Published Booking Pages</option>
+                <option value="qrs">QR Studio Codes</option>
+                <option value="static">Predefined Static Pages</option>
+              </select>
+              <div className="absolute right-3.5 top-3.5 pointer-events-none text-muted-foreground/50">
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -235,7 +254,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
             </ScrollArea>
           </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
