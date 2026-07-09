@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { z } from 'zod';
-import { Quote, Play } from 'lucide-react';
+import { Quote, Play, Edit } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
 const schema = z.object({
   quote: z.string().default(''),
@@ -67,12 +68,60 @@ registerBlock({
     const playInline = props.playMode === 'inline';
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [modalOpen, setModalOpen] = React.useState(false);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [avatarLibraryOpen, setAvatarLibraryOpen] = React.useState(false);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [videoLibraryOpen, setVideoLibraryOpen] = React.useState(false);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const [thumbnailLibraryOpen, setThumbnailLibraryOpen] = React.useState(false);
+
+    const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
+      <>
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 p-1 rounded-lg backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setVideoLibraryOpen(true); }}
+            className="px-2 py-1 text-[9px] font-bold text-white hover:text-emerald-400 transition-colors"
+          >
+            Change Video
+          </button>
+          <span className="h-3 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setThumbnailLibraryOpen(true); }}
+            className="px-2 py-1 text-[9px] font-bold text-white hover:text-emerald-400 transition-colors"
+          >
+            Change Cover
+          </button>
+        </div>
+        <MediaSelectorDialog
+          open={videoLibraryOpen}
+          onOpenChange={setVideoLibraryOpen}
+          onSelectAsset={(asset) => {
+            ctx.onPropChange?.({ videoUrl: asset.url });
+            setVideoLibraryOpen(false);
+          }}
+          filterType="video"
+          workspaceId={ctx.page.workspaceId}
+        />
+        <MediaSelectorDialog
+          open={thumbnailLibraryOpen}
+          onOpenChange={setThumbnailLibraryOpen}
+          onSelectAsset={(asset) => {
+            ctx.onPropChange?.({ thumbnailUrl: asset.url });
+            setThumbnailLibraryOpen(false);
+          }}
+          filterType="image"
+          workspaceId={ctx.page.workspaceId}
+        />
+      </>
+    );
 
     return (
-      <figure className="max-w-lg mx-auto p-6 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/40 text-center space-y-4 shadow-xl backdrop-blur-sm">
+      <figure className="max-w-lg mx-auto p-6 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/40 text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card">
         {hasVideo ? (
           playInline ? (
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4">
+            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 group">
               <iframe
                 src={props.videoUrl}
                 className="absolute inset-0 w-full h-full"
@@ -80,6 +129,7 @@ registerBlock({
                 allowFullScreen
                 title={`Testimonial video visual`}
               />
+              {changeControls}
             </div>
           ) : (
             <>
@@ -105,6 +155,7 @@ registerBlock({
                     <Play className="w-5 h-5 fill-current ml-0.5" />
                   </div>
                 </div>
+                {changeControls}
               </div>
               
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -125,22 +176,72 @@ registerBlock({
           <Quote className="w-8 h-8 mx-auto opacity-45 text-emerald-500" />
         )}
         
-        <blockquote className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200">
-          "{ctx.interpolate(props.quote) || 'Add a testimonial quote…'}"
+        <blockquote 
+          contentEditable={ctx.mode === 'edit'}
+          suppressContentEditableWarning
+          onBlur={(e) => ctx.onPropChange?.({ quote: e.currentTarget.textContent || '' })}
+          className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-h-[20px]"
+        >
+          {ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
         </blockquote>
         
         <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
-          {props.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 flex items-center justify-center text-[10px] font-bold">
-              {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
-            </div>
-          )}
+          <div className="relative group/avatar cursor-pointer">
+            {props.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 flex items-center justify-center text-[10px] font-bold">
+                {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
+              </div>
+            )}
+            {ctx.mode === 'edit' && ctx.page?.workspaceId && (
+              <>
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setAvatarLibraryOpen(true); }}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity z-10"
+                >
+                  <span className="text-[8px] font-bold text-white uppercase tracking-wider scale-90">Change</span>
+                </div>
+                <MediaSelectorDialog
+                  open={avatarLibraryOpen}
+                  onOpenChange={setAvatarLibraryOpen}
+                  onSelectAsset={(asset) => {
+                    ctx.onPropChange?.({ avatarUrl: asset.url });
+                    setAvatarLibraryOpen(false);
+                  }}
+                  filterType="image"
+                  workspaceId={ctx.page.workspaceId}
+                />
+              </>
+            )}
+          </div>
           <div className="text-left leading-tight">
-            <p className="text-xs font-black text-slate-900 dark:text-slate-100">{props.author || 'Author Name'}</p>
-            {props.role ? <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{props.role}</p> : null}
+            {ctx.mode === 'edit' ? (
+              <>
+                <p 
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => ctx.onPropChange?.({ author: e.currentTarget.textContent || '' })}
+                  className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
+                >
+                  {props.author || 'Author Name'}
+                </p>
+                <p 
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) => ctx.onPropChange?.({ role: e.currentTarget.textContent || '' })}
+                  className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
+                >
+                  {props.role || 'Role / Company'}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-black text-slate-900 dark:text-slate-100">{props.author || 'Author Name'}</p>
+                {props.role ? <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{props.role}</p> : null}
+              </>
+            )}
           </div>
         </figcaption>
       </figure>

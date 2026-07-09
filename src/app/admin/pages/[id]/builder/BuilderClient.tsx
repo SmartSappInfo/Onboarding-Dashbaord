@@ -970,6 +970,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     themeMode={page?.settings?.themeOverrides?.themeMode || 'light'}
                     resources={builderResources}
                     selectedBlockId={builder.selectedBlockId}
+                    page={page ? { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' } : undefined}
                     selectedSectionId={builder.selectedSectionId}
                     selectedColumnIndex={builder.selectedColumnIndex}
                     onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}

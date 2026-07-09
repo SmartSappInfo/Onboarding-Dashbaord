@@ -98,6 +98,7 @@ interface CanvasProps {
     version: CampaignPageVersion;
     viewport: 'desktop' | 'tablet' | 'mobile';
     theme: ResolvedTheme;
+    page?: { id: string; organizationId: string; workspaceId: string };
     resources: BuilderResources;
     selectedBlockId: string | null;
     selectedSectionId?: string | null;
@@ -581,6 +582,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     version,
     viewport,
     theme,
+    page,
     resources,
     selectedBlockId,
     selectedSectionId,
@@ -1011,6 +1013,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         theme,
         interpolate,
         resources,
+        page,
         onPropChange: (patch: Record<string, unknown>) => onUpdateBlockProps(blockId, patch)
     });
 

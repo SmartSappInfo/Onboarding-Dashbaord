@@ -542,15 +542,67 @@ export const STATIC_SECTION_TEMPLATES: StaticSectionTemplate[] = [
       },
       blocks: [
         {
-          id: 'testimonial-featured-blk',
-          type: 'testimonial',
+          id: 'testimonial-container-card',
+          type: 'container',
           props: {
-            quote: 'This system cut our team registration cycle time from days to literally under ten minutes. The OTP validation and digital signature consent are incredibly robust.',
-            author: 'Amos Boateng',
-            role: 'Head of Nominal Approvals, KIS',
-            avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
-            videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-          }
+            maxWidth: 'sm',
+            padding: 24,
+            background: 'transparent'
+          },
+          blocks: [
+            {
+              id: 'testimonial-video-blk',
+              type: 'video',
+              props: {
+                url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                provider: 'youtube',
+                thumbnailUrl: '',
+                playMode: 'inline'
+              }
+            },
+            {
+              id: 'testimonial-quote-blk',
+              type: 'text',
+              props: {
+                content: '<p class="text-base italic font-semibold text-center text-slate-800 dark:text-slate-200">"This system cut our team registration cycle time from days to literally under ten minutes. The OTP validation and digital signature consent are incredibly robust."</p>'
+              }
+            },
+            {
+              id: 'testimonial-divider-blk',
+              type: 'divider',
+              props: {
+                style: 'solid'
+              }
+            },
+            {
+              id: 'testimonial-author-row',
+              type: 'columns',
+              props: {
+                variant: '1-1',
+                gap: 16
+              },
+              blocks: [
+                {
+                  id: 'testimonial-avatar-blk',
+                  type: 'image',
+                  props: {
+                    src: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
+                    alt: 'Amos Boateng',
+                    width: 'small',
+                    borderRadius: 'circle',
+                    alignment: 'right'
+                  }
+                },
+                {
+                  id: 'testimonial-author-text-blk',
+                  type: 'text',
+                  props: {
+                    content: '<div class="text-left leading-tight pt-1"><p class="text-xs font-black text-slate-900 dark:text-slate-100">Amos Boateng</p><p class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Head of Nominal Approvals, KIS</p></div>'
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }
