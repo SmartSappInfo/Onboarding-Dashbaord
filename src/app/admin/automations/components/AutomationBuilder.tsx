@@ -124,7 +124,13 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         return initialEdges.map((edge: any) => {
             if (!edge.sourceHandle) {
                 const sourceNode = initialNodes?.find((n: any) => n.id === edge.source);
-                if (sourceNode?.type === 'conditionNode' || sourceNode?.type === 'tagConditionNode') {
+                if (sourceNode?.type === 'conditionNode') {
+                    return { ...edge, sourceHandle: 'true' };
+                }
+                if (sourceNode?.type === 'tagConditionNode') {
+                    if (sourceNode.data?.conditions?.length) {
+                        return { ...edge, sourceHandle: sourceNode.data.conditions[0].id };
+                    }
                     return { ...edge, sourceHandle: 'true' };
                 }
             }
@@ -603,6 +609,14 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     const handleUpdateNodeData = (nodeId: string, newData: any) => {
         setNodes(nds => nds.map(node => {
             if (node.id === nodeId) {
+                if (node.type === 'tagConditionNode' && node.data?.conditions && newData.conditions) {
+                    const oldIds = node.data.conditions.map((c: any) => c.id);
+                    const newIds = newData.conditions.map((c: any) => c.id);
+                    const deletedIds = oldIds.filter((id: string) => !newIds.includes(id));
+                    if (deletedIds.length > 0) {
+                        setEdges(eds => eds.filter(e => !(e.source === nodeId && deletedIds.includes(e.sourceHandle || ''))));
+                    }
+                }
                 return { ...node, data: { ...node.data, ...newData } };
             }
             return node;
@@ -964,26 +978,49 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             let targetX = parentNode.position.x;
             let targetY = parentNode.position.y + 140;
 
-            if (!sourceHandle && (parentNode.type === 'conditionNode' || parentNode.type === 'tagConditionNode')) {
-                const hasTrueEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'true');
-                if (!hasTrueEdge) {
-                    sourceHandle = 'true';
-                } else {
-                    sourceHandle = 'false';
+            if (parentNode.type === 'tagConditionNode') {
+                if (parentNode.data?.conditions?.length) {
+                    const unconnectedCond = parentNode.data.conditions.find(
+                        (c: any) => !edges.some(e => e.source === parentNode.id && e.sourceHandle === c.id)
+                    );
+                    if (unconnectedCond) {
+                        sourceHandle = unconnectedCond.id;
+                    } else if (!edges.some(e => e.source === parentNode.id && e.sourceHandle === 'none')) {
+                        sourceHandle = 'none';
+                    }
+                } else if (!sourceHandle) {
+                    const hasTrueEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'true');
+                    sourceHandle = hasTrueEdge ? 'false' : 'true';
                 }
+            } else if (!sourceHandle && parentNode.type === 'conditionNode') {
+                const hasTrueEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'true');
+                sourceHandle = hasTrueEdge ? 'false' : 'true';
             } else if (!sourceHandle && parentNode.type === 'abSplitNode') {
                 const hasAEdge = edges.some(e => e.source === parentNode.id && e.sourceHandle === 'a');
-                if (!hasAEdge) {
-                    sourceHandle = 'a';
-                } else {
-                    sourceHandle = 'b';
-                }
+                sourceHandle = hasAEdge ? 'b' : 'a';
             }
 
-            if (sourceHandle === 'true' || sourceHandle === 'a') {
-                targetX -= 120;
-            } else if (sourceHandle === 'false' || sourceHandle === 'b') {
-                targetX += 120;
+            let handleIndex = -1;
+            let totalHandlesCount = 1;
+            if (parentNode.type === 'tagConditionNode') {
+                const parentHandles = parentNode.data?.conditions 
+                    ? [...parentNode.data.conditions.map((c: any) => c.id), 'none'] 
+                    : ['true', 'false'];
+                handleIndex = parentHandles.indexOf(sourceHandle || '');
+                totalHandlesCount = parentHandles.length;
+            } else if (parentNode.type === 'abSplitNode') {
+                const parentHandles = ['a', 'b'];
+                handleIndex = parentHandles.indexOf(sourceHandle || '');
+                totalHandlesCount = 2;
+            } else if (parentNode.type === 'conditionNode') {
+                const parentHandles = ['true', 'false'];
+                handleIndex = parentHandles.indexOf(sourceHandle || '');
+                totalHandlesCount = 2;
+            }
+
+            if (handleIndex !== -1 && totalHandlesCount > 1) {
+                const stepDisplacement = 240 / (totalHandlesCount - 1);
+                targetX += -120 + (handleIndex * stepDisplacement);
             }
 
             const hasCollision = nodes.some(n => {
@@ -1167,6 +1204,9 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             const hasAConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'a');
             const hasBConnection = edges.some(e => e.source === node.id && e.sourceHandle === 'b');
             const hasDefaultConnection = edges.some(e => e.source === node.id && (!e.sourceHandle || e.sourceHandle === 'default' || e.sourceHandle === ''));
+            const connectedSourceHandles = edges
+                .filter(e => e.source === node.id && e.sourceHandle)
+                .map(e => e.sourceHandle as string);
             const stepData = stepMap[node.id];
 
             // Toolbar state
@@ -1187,6 +1227,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     isDefaultConnected: hasDefaultConnection,
                     isTrueConnected: node.type === 'abSplitNode' ? hasAConnection : hasTrueConnection,
                     isFalseConnected: node.type === 'abSplitNode' ? hasBConnection : hasFalseConnection,
+                    connectedSourceHandles,
                     // Execution overlay data
                     ...(selectedRun ? {
                         executionStatus: stepData?.status || null,

@@ -37,3 +37,41 @@ export function evaluateTagCondition(
       return false;
   }
 }
+
+/**
+ * Evaluates a switch-style TagConditionNode against a contact's current tag IDs.
+ * Returns an array of matching branch handles. If none match, returns ['none'].
+ */
+export function evaluateTagSplitSwitch(
+  contactTags: string[],
+  node: TagConditionNode
+): string[] {
+  const { conditions, evaluationMode } = node.data;
+
+  // 1. Fallback to legacy binary True/False logic if no conditions are defined
+  if (!conditions) {
+    const isTrue = evaluateTagCondition(contactTags, node);
+    return isTrue ? ['true'] : ['false'];
+  }
+
+  // 2. Evaluate new multi-branch conditions
+  const contactTagSet = new Set(contactTags);
+  const matchedHandles: string[] = [];
+
+  for (const cond of conditions) {
+    if (cond.tagId && contactTagSet.has(cond.tagId)) {
+      matchedHandles.push(cond.id);
+      if (!evaluationMode || evaluationMode === 'first_match') {
+        break; // First-Match Wins
+      }
+    }
+  }
+
+  // 3. Fallback to 'none' handle if no conditions matched
+  if (matchedHandles.length === 0) {
+    return ['none'];
+  }
+
+  return matchedHandles;
+}
+

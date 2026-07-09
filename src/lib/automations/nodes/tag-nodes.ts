@@ -1,16 +1,20 @@
 import { resolveContact } from '../../contact-adapter';
-import { evaluateTagCondition } from '../../tag-condition';
+import { evaluateTagSplitSwitch } from '../../tag-condition';
 import type { TagConditionNode } from '../../types';
 import type { ExecutionContext } from '../execution-types';
 
 export async function evaluateTagConditionNode(
   node: TagConditionNode,
   context: ExecutionContext
-): Promise<boolean> {
-  if (!context.entityId) return false;
+): Promise<string[]> {
+  if (!context.entityId) {
+    return node.data.conditions ? ['none'] : ['false'];
+  }
   const contact = await resolveContact(context.entityId, context.workspaceId);
-  if (!contact) return false;
-  return evaluateTagCondition(contact.tags || [], node);
+  if (!contact) {
+    return node.data.conditions ? ['none'] : ['false'];
+  }
+  return evaluateTagSplitSwitch(contact.tags || [], node);
 }
 
 export async function processTagActionNode(

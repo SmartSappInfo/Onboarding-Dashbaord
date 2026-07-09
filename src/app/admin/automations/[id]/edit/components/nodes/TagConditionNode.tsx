@@ -42,6 +42,10 @@ export function TagConditionNode({ id, data, selected }: any) {
   const { allTags } = useWorkspaceScopedQueries();
 
   const getTagConditionDescription = () => {
+    if (data.conditions) {
+      const conditionCount = data.conditions.length;
+      return `${conditionCount} Condition${conditionCount !== 1 ? 's' : ''} + Default`;
+    }
     const watchedTags = tagIds.map((tid: string) => {
       const tag = allTags?.find((t: any) => t.id === tid);
       return tag ? tag.name : tid;
@@ -124,51 +128,131 @@ export function TagConditionNode({ id, data, selected }: any) {
         </div>
       </Card>
 
-      {/* True Path */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="true"
-        className={cn(
-          "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
-          data.isTrueConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
-        )}
-        style={{ width: '12px', height: '12px', bottom: '-6px', left: '25%' }}
-        onClick={(e) => {
-          if (!data.isTrueConnected && data.onAddStep) {
-            e.stopPropagation();
-            data.onAddStep(id, 'true');
-          }
-        }}
-      >
-        {!data.isTrueConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
-      </Handle>
-      <span className="absolute text-[9px] font-bold text-emerald-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '25%', transform: 'translateX(-150%)' }}>
-        True
-      </span>
+      {data.conditions ? (
+        // Multi-condition Switch Mode
+        <>
+          {data.conditions.map((cond: { id: string; tagId: string }, idx: number) => {
+            const tag = allTags?.find((t: any) => t.id === cond.tagId);
+            const tagName = tag ? tag.name : (cond.tagId || 'Select tag...');
+            const isConnected = data.connectedSourceHandles?.includes(cond.id);
+            const total = data.conditions.length + 1;
+            const leftPercent = ((idx + 1) * 100) / (total + 1);
 
-      {/* False Path */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="false"
-        className={cn(
-          "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
-          data.isFalseConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
-        )}
-        style={{ width: '12px', height: '12px', bottom: '-6px', left: '75%' }}
-        onClick={(e) => {
-          if (!data.isFalseConnected && data.onAddStep) {
-            e.stopPropagation();
-            data.onAddStep(id, 'false');
-          }
-        }}
-      >
-        {!data.isFalseConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
-      </Handle>
-      <span className="absolute text-[9px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '75%', transform: 'translateX(50%)' }}>
-        False
-      </span>
+            return (
+              <React.Fragment key={cond.id}>
+                <Handle
+                  type="source"
+                  position={Position.Bottom}
+                  id={cond.id}
+                  className={cn(
+                    "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
+                    isConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+                  )}
+                  style={{ width: '12px', height: '12px', bottom: '-6px', left: `${leftPercent}%` }}
+                  onClick={(e) => {
+                    if (!isConnected && data.onAddStep) {
+                      e.stopPropagation();
+                      data.onAddStep(id, cond.id);
+                    }
+                  }}
+                >
+                  {!isConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+                </Handle>
+                <span 
+                  className="absolute text-[8px] font-bold text-violet-600 select-none animate-fade-in truncate max-w-[55px] text-center" 
+                  style={{ bottom: '-20px', left: `${leftPercent}%`, transform: 'translateX(-50%)' }}
+                  title={tagName}
+                >
+                  {tagName}
+                </span>
+              </React.Fragment>
+            );
+          })}
+          {(() => {
+            const total = data.conditions.length + 1;
+            const leftPercent = (total * 100) / (total + 1);
+            const isConnected = data.connectedSourceHandles?.includes('none');
+
+            return (
+              <React.Fragment key="none">
+                <Handle
+                  type="source"
+                  position={Position.Bottom}
+                  id="none"
+                  className={cn(
+                    "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
+                    isConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+                  )}
+                  style={{ width: '12px', height: '12px', bottom: '-6px', left: `${leftPercent}%` }}
+                  onClick={(e) => {
+                    if (!isConnected && data.onAddStep) {
+                      e.stopPropagation();
+                      data.onAddStep(id, 'none');
+                    }
+                  }}
+                >
+                  {!isConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+                </Handle>
+                <span 
+                  className="absolute text-[8px] font-bold text-rose-600 select-none animate-fade-in text-center" 
+                  style={{ bottom: '-20px', left: `${leftPercent}%`, transform: 'translateX(-50%)' }}
+                >
+                  None
+                </span>
+              </React.Fragment>
+            );
+          })()}
+        </>
+      ) : (
+        // Legacy binary True/False Mode
+        <>
+          {/* True Path */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="true"
+            className={cn(
+              "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
+              data.isTrueConnected ? "bg-emerald-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+            )}
+            style={{ width: '12px', height: '12px', bottom: '-6px', left: '25%' }}
+            onClick={(e) => {
+              if (!data.isTrueConnected && data.onAddStep) {
+                e.stopPropagation();
+                data.onAddStep(id, 'true');
+              }
+            }}
+          >
+            {!data.isTrueConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+          </Handle>
+          <span className="absolute text-[9px] font-bold text-emerald-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '25%', transform: 'translateX(-150%)' }}>
+            True
+          </span>
+
+          {/* False Path */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="false"
+            className={cn(
+              "border-2 border-white shadow-lg transition-colors flex items-center justify-center cursor-pointer",
+              data.isFalseConnected ? "bg-rose-500" : "bg-blue-500 animate-pulse hover:bg-blue-600"
+            )}
+            style={{ width: '12px', height: '12px', bottom: '-6px', left: '75%' }}
+            onClick={(e) => {
+              if (!data.isFalseConnected && data.onAddStep) {
+                e.stopPropagation();
+                data.onAddStep(id, 'false');
+              }
+            }}
+          >
+            {!data.isFalseConnected && <Plus className="h-2.5 w-2.5 text-white pointer-events-none" />}
+          </Handle>
+          <span className="absolute text-[9px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '75%', transform: 'translateX(50%)' }}>
+            False
+          </span>
+        </>
+      )}
       {data.note && (
           <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md px-1.5 py-0.5 max-w-[200px] cursor-pointer" onClick={() => data.onToggleNote?.()}>
               <StickyNote className="h-2.5 w-2.5 text-amber-500 shrink-0" />

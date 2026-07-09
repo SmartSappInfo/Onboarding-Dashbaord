@@ -12,6 +12,7 @@ import { processTagActionNode, evaluateTagConditionNode } from './nodes/tag-node
 import { evaluateConditionNode } from '../automation-condition';
 import { adminDb } from '../firebase-admin';
 import { enrichExecutionContext } from './nodes/traverse';
+import type { TagConditionNode } from '../types';
 
 export interface TestAutomationStepInput {
   workspaceId: string;
@@ -164,8 +165,9 @@ export async function testAutomationStep(
       );
       executionResult = { message: `Condition evaluated to ${evaluation ? 'TRUE' : 'FALSE'}.` };
     } else if (testNode.type === 'tagConditionNode') {
-      evaluation = await evaluateTagConditionNode(testNode, context);
-      executionResult = { message: `Tag condition evaluated to ${evaluation ? 'TRUE' : 'FALSE'}.` };
+      const matched = await evaluateTagConditionNode(testNode as unknown as TagConditionNode, context);
+      evaluation = matched.length > 0 && !matched.includes('false') && !matched.includes('none');
+      executionResult = { message: `Tag split routed to: ${matched.join(', ')}` };
     } else if (testNode.type === 'delayNode') {
       const config = testNode.data?.config || {};
       executionResult = {

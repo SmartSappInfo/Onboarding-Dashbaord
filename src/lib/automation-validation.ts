@@ -88,16 +88,32 @@ function validateLogicNodes(nodes: BlueprintNode[]): void {
         break;
       }
       case 'tagConditionNode': {
-        if (!node.data?.logic) {
-          throw new AutomationValidationError(
-            `Tag condition "${label}" requires a logic mode.`
-          );
-        }
-        const tagIds = node.data?.tagIds as string[] | undefined;
-        if (!tagIds?.length) {
-          throw new AutomationValidationError(
-            `Tag condition "${label}" requires at least one tag.`
-          );
+        const conditions = node.data?.conditions as Array<{ id: string; tagId: string }> | undefined;
+        if (conditions) {
+          if (conditions.length === 0) {
+            throw new AutomationValidationError(
+              `Tag Split "${label}" requires at least one condition branch.`
+            );
+          }
+          for (let i = 0; i < conditions.length; i++) {
+            if (!conditions[i].tagId) {
+              throw new AutomationValidationError(
+                `Tag Split "${label}" condition branch #${i + 1} is missing a selected tag.`
+              );
+            }
+          }
+        } else {
+          if (!node.data?.logic) {
+            throw new AutomationValidationError(
+              `Tag condition "${label}" requires a logic mode.`
+            );
+          }
+          const tagIds = node.data?.tagIds as string[] | undefined;
+          if (!tagIds?.length) {
+            throw new AutomationValidationError(
+              `Tag condition "${label}" requires at least one tag.`
+            );
+          }
         }
         break;
       }

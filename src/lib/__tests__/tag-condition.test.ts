@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect } from 'vitest';
-import { evaluateTagCondition } from '../tag-condition';
+import { evaluateTagCondition, evaluateTagSplitSwitch } from '../tag-condition';
 import type { TagConditionNode } from '../types';
 
 function makeNode(
@@ -8,6 +8,13 @@ function makeNode(
   tagIds: string[]
 ): TagConditionNode {
   return { id: 'test', type: 'tag_condition', data: { logic, tagIds } };
+}
+
+function makeSwitchNode(
+  conditions: Array<{ id: string; tagId: string }>,
+  evaluationMode?: 'first_match' | 'all_matches'
+): TagConditionNode {
+  return { id: 'test', type: 'tag_condition', data: { conditions, evaluationMode } };
 }
 
 describe('evaluateTagCondition', () => {
@@ -71,3 +78,51 @@ describe('evaluateTagCondition', () => {
     });
   });
 });
+
+describe('evaluateTagSplitSwitch', () => {
+  describe('Legacy fallback', () => {
+    it('routes to true/false when conditions are missing', () => {
+      const node = makeNode('has_tag', ['vip']);
+      expect(evaluateTagSplitSwitch(['vip'], node)).toEqual(['true']);
+      expect(evaluateTagSplitSwitch(['other'], node)).toEqual(['false']);
+    });
+  });
+
+  describe('First-Match Wins (Default)', () => {
+    it('routes to the first matching condition branch', () => {
+      const node = makeSwitchNode([
+        { id: 'cond_1', tagId: 'tag_a' },
+        { id: 'cond_2', tagId: 'tag_b' }
+      ]);
+      expect(evaluateTagSplitSwitch(['tag_a'], node)).toEqual(['cond_1']);
+      expect(evaluateTagSplitSwitch(['tag_b'], node)).toEqual(['cond_2']);
+      expect(evaluateTagSplitSwitch(['tag_a', 'tag_b'], node)).toEqual(['cond_1']);
+    });
+
+    it('routes to none when no tags match', () => {
+      const node = makeSwitchNode([
+        { id: 'cond_1', tagId: 'tag_a' }
+      ]);
+      expect(evaluateTagSplitSwitch(['other'], node)).toEqual(['none']);
+    });
+  });
+
+  describe('All-Matches Trigger', () => {
+    it('routes to all matching condition branches', () => {
+      const node = makeSwitchNode([
+        { id: 'cond_1', tagId: 'tag_a' },
+        { id: 'cond_2', tagId: 'tag_b' }
+      ], 'all_matches');
+      expect(evaluateTagSplitSwitch(['tag_a'], node)).toEqual(['cond_1']);
+      expect(evaluateTagSplitSwitch(['tag_a', 'tag_b'], node)).toEqual(['cond_1', 'cond_2']);
+    });
+
+    it('routes to none when no tags match', () => {
+      const node = makeSwitchNode([
+        { id: 'cond_1', tagId: 'tag_a' }
+      ], 'all_matches');
+      expect(evaluateTagSplitSwitch(['other'], node)).toEqual(['none']);
+    });
+  });
+});
+

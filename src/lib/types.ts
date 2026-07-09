@@ -257,6 +257,11 @@ export interface TagTriggerConfig {
   appliedBy?: 'manual' | 'automatic';
 }
 
+export interface TagConditionBranch {
+  id: string;
+  tagId: string;
+}
+
 /**
  * Automation node that evaluates tag conditions during flow execution.
  */
@@ -264,10 +269,23 @@ export interface TagConditionNode {
   id: string;
   type: 'tag_condition';
   data: {
-    logic: 'has_tag' | 'has_all_tags' | 'has_any_tag' | 'not_has_tag';
-    tagIds: string[];
+    // --- Legacy Fields ---
+    logic?: 'has_tag' | 'has_all_tags' | 'has_any_tag' | 'not_has_tag';
+    tagIds?: string[];
+
+    // --- Switch Fields ---
+    evaluationMode?: 'first_match' | 'all_matches';
+    conditions?: TagConditionBranch[];
+
+    // --- Runtime/Visual Fields ---
+    stepNumber?: number | null;
+    isDefaultConnected?: boolean;
+    isTrueConnected?: boolean;
+    isFalseConnected?: boolean;
+    connectedSourceHandles?: string[];
   };
 }
+
 
 /**
  * Automation node that applies or removes tags as an automation action.

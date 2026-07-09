@@ -8,7 +8,7 @@ import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
 import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
 import { notifyAutomationFailed } from '../automation-lifecycle-notify';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: any): 'a' | 'b' {
   const fallbackId = entityId || payload?.email || payload?.phone || Math.random().toString();
@@ -248,17 +248,16 @@ export async function traverseNodes(
       metadata: { evaluation: targetHandle as 'true' | 'false' },
     });
   } else if (currentNode.type === 'tagConditionNode') {
-    const isTrue = await evaluateTagConditionNode(currentNode, context);
-    const targetHandle = isTrue ? 'true' : 'false';
-    outgoingEdges = outgoingEdges.filter((e) => e.sourceHandle === targetHandle);
+    const matchedHandles = await evaluateTagConditionNode(currentNode, context);
+    outgoingEdges = outgoingEdges.filter((e) => matchedHandles.includes(e.sourceHandle || ''));
 
     logStepExecution(context.runId, {
       nodeId: currentNode.id,
       nodeType: 'tagConditionNode',
-      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Tag Condition'),
+      nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Tag Split'),
       status: 'success',
       executedAt: new Date().toISOString(),
-      metadata: { evaluation: targetHandle as 'true' | 'false' },
+      metadata: { evaluation: matchedHandles.join(', ') },
     });
   } else if (currentNode.type === 'abSplitNode') {
     const splitRatio = (currentNode.data?.config?.splitRatio as number) ?? 50;

@@ -32,6 +32,7 @@ import { TriggerConfigPanel } from './TriggerConfigPanel';
 import { ActionConfigPanel } from './ActionConfigPanel';
 import { SearchInput } from './SearchInput';
 import { MessageNodeStatsPanel } from './message-stats/MessageNodeStatsPanel';
+import { TagSelector } from '@/components/tags/TagSelector';
 
 interface NodeInspectorProps {
     node: any;
@@ -1390,60 +1391,175 @@ export function NodeInspector({
 
                     {node.type === 'tagConditionNode' ? (
                         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-violet-500/5 p-6 rounded-[2rem] border border-violet-500/20 shadow-inner">
-                            <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
-                                <Tag className="h-3 w-3" /> Tag Logic
-                            </Label>
-                            <Select value={data.logic || ''} onValueChange={(v) => updateTagNodeData({ logic: v })}>
-                                <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                                    <SelectValue placeholder="Select logic..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    <SelectItem value="has_tag">Has any of these tags</SelectItem>
-                                    <SelectItem value="has_all_tags">Has all of these tags</SelectItem>
-                                    <SelectItem value="not_has_tag">Does not have these tags</SelectItem>
-                                </SelectContent>
-                            </Select>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Tags</Label>
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {(data.tagIds || []).map((id: string) => {
-                                        const tag = allTags?.find((t: TagType) => t.id === id);
-                                        return (
-                                            <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-violet-500/10 text-violet-600 border-none">
-                                                <span className="text-[10px] font-bold">{tag?.name || id}</span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-4 w-4 rounded-md"
-                                                    onClick={() =>
-                                                        updateTagNodeData({
-                                                            tagIds: (data.tagIds || []).filter((t: string) => t !== id),
-                                                        })
-                                                    }
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            </Badge>
-                                        );
-                                    })}
-                                </div>
+                                <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+                                    <SplitSquareVertical className="h-3.5 w-3.5" /> Routing Mode
+                                </Label>
                                 <Select
-                                    value=""
+                                    value={data.conditions ? 'switch' : 'legacy'}
                                     onValueChange={(v) => {
-                                        const current = data.tagIds || [];
-                                        if (!current.includes(v)) updateTagNodeData({ tagIds: [...current, v] });
+                                        if (v === 'switch') {
+                                            updateTagNodeData({
+                                                conditions: [
+                                                    { id: `cond_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, tagId: '' }
+                                                ],
+                                                logic: undefined,
+                                                tagIds: undefined,
+                                            });
+                                        } else {
+                                            updateTagNodeData({
+                                                logic: 'has_tag',
+                                                tagIds: [],
+                                                conditions: undefined,
+                                            });
+                                        }
                                     }}
                                 >
                                     <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                                        <SelectValue placeholder="Add tags..." />
+                                        <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
-                                        {(allTags || []).map((tag: TagType) => (
-                                            <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-                                        ))}
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="legacy">Standard Split (Legacy)</SelectItem>
+                                        <SelectItem value="switch">Multi-tag Route (Switch)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
+
+                            {data.conditions ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+                                            Evaluation Mode
+                                        </Label>
+                                        <Select
+                                            value={data.evaluationMode || 'first_match'}
+                                            onValueChange={(v) => updateTagNodeData({ evaluationMode: v })}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="first_match">First-Match Wins</SelectItem>
+                                                <SelectItem value="all_matches">All-Matches Trigger</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Route Conditions</Label>
+                                        <div className="space-y-3">
+                                            {data.conditions.map((cond: { id: string; tagId: string }, idx: number) => (
+                                                <div key={cond.id} className="flex flex-col gap-2 p-3 rounded-xl border border-violet-500/10 bg-violet-500/5">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] font-bold text-violet-600">Branch #{idx + 1}</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-md"
+                                                            onClick={() => {
+                                                                const updated = data.conditions.filter((c: any) => c.id !== cond.id);
+                                                                updateTagNodeData({ conditions: updated });
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <TagSelector
+                                                            currentTagIds={cond.tagId ? [cond.tagId] : []}
+                                                            onTagsChange={(newTags) => {
+                                                                const lastTag = newTags[newTags.length - 1] || '';
+                                                                const updated = data.conditions.map((c: any) => {
+                                                                    if (c.id === cond.id) {
+                                                                        return { ...c, tagId: lastTag };
+                                                                    }
+                                                                    return c;
+                                                                });
+                                                                updateTagNodeData({ conditions: updated });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full h-9 rounded-xl border-dashed text-xs font-bold gap-1 mt-2 text-violet-600 hover:bg-violet-50 border-violet-200"
+                                            onClick={() => {
+                                                const newCond = {
+                                                    id: `cond_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                                                    tagId: '',
+                                                };
+                                                updateTagNodeData({
+                                                    conditions: [...(data.conditions || []), newCond]
+                                                });
+                                            }}
+                                        >
+                                            <PlusCircle className="h-3.5 w-3.5" />
+                                            Add Condition Branch
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
+                                        <Tag className="h-3 w-3" /> Tag Logic
+                                    </Label>
+                                    <Select value={data.logic || ''} onValueChange={(v) => updateTagNodeData({ logic: v })}>
+                                        <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                            <SelectValue placeholder="Select logic..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="has_tag">Has any of these tags</SelectItem>
+                                            <SelectItem value="has_all_tags">Has all of these tags</SelectItem>
+                                            <SelectItem value="not_has_tag">Does not have these tags</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Tags</Label>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {(data.tagIds || []).map((id: string) => {
+                                                const tag = allTags?.find((t: TagType) => t.id === id);
+                                                return (
+                                                    <Badge key={id} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-violet-500/10 text-violet-600 border-none">
+                                                        <span className="text-[10px] font-bold">{tag?.name || id}</span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-4 w-4 rounded-md"
+                                                            onClick={() =>
+                                                                updateTagNodeData({
+                                                                    tagIds: (data.tagIds || []).filter((t: string) => t !== id),
+                                                                })
+                                                            }
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </Button>
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
+                                        <Select
+                                            value=""
+                                            onValueChange={(v) => {
+                                                const current = data.tagIds || [];
+                                                if (!current.includes(v)) updateTagNodeData({ tagIds: [...current, v] });
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                <SelectValue placeholder="Add tags..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl max-h-[300px] overflow-y-auto">
+                                                {(allTags || []).map((tag: TagType) => (
+                                                    <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ) : null}
 

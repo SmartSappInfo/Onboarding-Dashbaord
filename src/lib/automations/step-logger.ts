@@ -7,7 +7,7 @@ export interface StepLogEntry {
   durationMs?: number;
   error?: string;
   metadata?: {
-    evaluation?: 'true' | 'false';  // For condition nodes
+    evaluation?: string;             // For condition nodes
     actionType?: string;             // For action nodes
     delayUntil?: string;             // For delay nodes
     resumedAt?: string;              // For delay resume
