@@ -134,6 +134,19 @@ export function SimulationStudio({
     const [previewDevice, setPreviewDevice] = React.useState<'desktop' | 'mobile'>('desktop');
     const [mockValues, setMockValues] = React.useState<Record<string, string>>({});
 
+    // Synchronize loaded simulation variables into mockValues state
+    React.useEffect(() => {
+        const initialMocks: Record<string, string> = {};
+        if (simVariables) {
+            Object.entries(simVariables).forEach(([key, val]) => {
+                if (val !== undefined && val !== null) {
+                    initialMocks[key] = String(val);
+                }
+            });
+        }
+        setMockValues(initialMocks);
+    }, [simVariables]);
+
     // Auto-detect all variable tokens from the template body, subject, and previewText
     const detectedVars = React.useMemo(() => {
         const content = `${template.subject || ''} ${template.previewText || ''} ${template.body || ''} ${JSON.stringify(template.blocks || [])}`;
@@ -201,7 +214,6 @@ export function SimulationStudio({
                                 <EntityCombobox
                                     value={simRecordId}
                                     onChange={setSimRecordId}
-                                    valueKey="id"
                                     noneLabel="Select Instance..."
                                     noneValue="none"
                                     placeholder="Pick Record..."
