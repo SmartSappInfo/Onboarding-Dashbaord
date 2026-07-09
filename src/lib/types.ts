@@ -2654,6 +2654,7 @@ export interface ScheduledMessage {
   // Snapshot content overrides
   customSubject?: string | null;
   customBody?: string | null;
+  customPreviewText?: string | null;
   
   // Custom sender profile configuration
   senderProfileId?: string | null;

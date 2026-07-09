@@ -669,8 +669,15 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     let resolvedSubject = input.subject !== undefined
         ? resolveVariables(input.subject, finalVariables)
         : (template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null);
-    let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
+    let resolvedPreviewText = input.previewText !== undefined
+        ? (input.previewText ? resolveVariables(input.previewText, finalVariables) : '')
+        : (template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null);
     let resolvedLogTitle = resolveVariables(template.name, finalVariables);
+
+    if (template.channel === 'email' && resolvedPreviewText) {
+        const { injectPreviewTextIntoHtml } = await import('./messaging-utils');
+        resolvedBody = injectPreviewTextIntoHtml(resolvedBody, resolvedPreviewText);
+    }
 
     // Phase 7: Suppression Check (Unsubscribe compliance)
     const isTx = input.messageType === 'transactional' || 
@@ -763,6 +770,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             createdAt: new Date().toISOString(),
             customSubject: resolvedSubject,
             customBody: resolvedBody,
+            customPreviewText: resolvedPreviewText || null,
             senderProfileId: sender.id || null,
             senderName: sender.name || null,
             senderIdentifier: sender.identifier || null,
@@ -966,6 +974,7 @@ export async function sendRawMessage(input: {
     recipient: string,
     body: string,
     subject?: string,
+    previewText?: string,
     senderProfileId?: string,
     organizationId?: string,
     variables?: Record<string, unknown>,
@@ -981,7 +990,7 @@ export async function sendRawMessage(input: {
     isResend?: boolean,
     scheduledAt?: string
 }) {
-    const { channel, recipient, body, subject, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
+    const { channel, recipient, body, subject, previewText, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
 
     try {
         // Resolve the tenant FIRST (no cross-tenant fallback), then the sender.
@@ -1053,6 +1062,12 @@ export async function sendRawMessage(input: {
 
         let resolvedBody = resolveVariables(body, variables);
         const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
+        const resolvedPreviewText = previewText ? resolveVariables(previewText, variables) : undefined;
+
+        if (channel === 'email' && resolvedPreviewText) {
+            const { injectPreviewTextIntoHtml } = await import('./messaging-utils');
+            resolvedBody = injectPreviewTextIntoHtml(resolvedBody, resolvedPreviewText);
+        }
 
         // 7.8 Intercept Scheduling if scheduledAt is provided
         if (scheduledAt) {
@@ -1073,6 +1088,7 @@ export async function sendRawMessage(input: {
                 createdAt: new Date().toISOString(),
                 customSubject: resolvedSubject,
                 customBody: resolvedBody,
+                customPreviewText: resolvedPreviewText || null,
                 senderProfileId: sender.id || null,
                 senderName: sender.name || null,
                 senderIdentifier: sender.identifier || null,
@@ -1203,6 +1219,7 @@ export async function sendRawMessage(input: {
             channel,
             recipient,
             subject: resolvedSubject || null,
+            previewText: resolvedPreviewText || null,
             body: resolvedBody,
             status: 'sent',
             sentAt: new Date().toISOString(),

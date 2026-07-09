@@ -546,6 +546,7 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
           recipient: msg.recipientContact,
           body: msg.customBody || '',
           subject: msg.channel === 'email' ? (msg.customSubject || undefined) : undefined,
+          previewText: msg.customPreviewText || undefined,
           senderProfileId: msg.senderProfileId || 'default',
           organizationId: msg.organizationId,
           variables: msg.variables ?? {},
@@ -563,6 +564,7 @@ export async function processScheduledMessages(): Promise<{ sent: number; failed
           workspaceId: msg.workspaceId,
           body: msg.customBody || undefined,
           subject: msg.customSubject || undefined,
+          previewText: msg.customPreviewText || undefined,
         });
       }
 

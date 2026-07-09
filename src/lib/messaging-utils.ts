@@ -1178,3 +1178,25 @@ export function parseHtmlToBlocks(html: string): MessageBlock[] {
   }
   return blocks;
 }
+
+/**
+ * Injects a hidden preheader div containing the preview text into the compiled HTML.
+ * Uses the standard email spacing trick to prevent subsequent body text from leaking into the preview.
+ */
+export function injectPreviewTextIntoHtml(html: string, previewText: string): string {
+  if (!previewText) return html;
+  
+  // Gmail/Outlook preview spacing trick
+  const spacing = '&nbsp;&zwnj;'.repeat(150);
+  const preheaderHtml = `<div style="display: none; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: #ffffff; font-family: sans-serif;">${previewText}${spacing}</div>`;
+
+  // Inject right after opening <body> tag if it exists, else prepend to the start
+  const bodyTagRegex = /<body[^>]*>/i;
+  const match = html.match(bodyTagRegex);
+  if (match && match.index !== undefined) {
+    const insertIdx = match.index + match[0].length;
+    return html.slice(0, insertIdx) + preheaderHtml + html.slice(insertIdx);
+  }
+  return preheaderHtml + html;
+}
+
