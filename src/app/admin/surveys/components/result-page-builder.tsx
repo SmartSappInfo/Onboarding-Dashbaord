@@ -1437,104 +1437,106 @@ export function PageEditor({
                     </div>
 
                     <CardContent className="p-4 overflow-y-auto flex-1">
-                        {activeTab === 'variables' ? (
-                            <div className="space-y-3">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
-                                    Double-Brace Variables
-                                </span>
-                                <p className="text-[10px] text-muted-foreground leading-normal mb-2 px-1">
-                                    Use these variable tags to personalize your results text. Click any tag to copy it.
-                                </p>
-                                {activeWorkspaceId ? (
-                                    <VariablesPanel 
-                                        workspaceId={activeWorkspaceId} 
-                                        featureContext="survey" 
-                                        sourceId={getValues('id') || undefined}
-                                    />
-                                ) : (
-                                    <p className="text-xs text-muted-foreground italic px-1">No active workspace detected</p>
-                                )}
-                            </div>
-                        ) : selectedBlockIdx !== null && blocks[selectedBlockIdx] ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between pb-2 border-b">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                        {(blocks[selectedBlockIdx] as SurveyResultBlock).type} Block Settings
-                                    </span>
-                                </div>
-                                
-                                {/* Formatting Controls inside Sidebar for Heading/Text */}
-                                {['heading', 'text', 'quote', 'button', 'list'].includes((blocks[selectedBlockIdx] as SurveyResultBlock).type) && (
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-bold text-muted-foreground">Text Alignment</Label>
-                                        <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={selectedBlockIdx} minimal />
-                                    </div>
-                                )}
+                        <div className={`space-y-3 ${activeTab === 'variables' ? '' : 'hidden'}`}>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
+                                Double-Brace Variables
+                            </span>
+                            <p className="text-[10px] text-muted-foreground leading-normal mb-2 px-1">
+                                Use these variable tags to personalize your results text. Click any tag to copy it.
+                            </p>
+                            {activeWorkspaceId ? (
+                                <VariablesPanel 
+                                    workspaceId={activeWorkspaceId} 
+                                    featureContext="survey" 
+                                    sourceId={getValues('id') || undefined}
+                                />
+                            ) : (
+                                <p className="text-xs text-muted-foreground italic px-1">No active workspace detected</p>
+                            )}
+                        </div>
 
-                                {/* Heading tags selection */}
-                                {(blocks[selectedBlockIdx] as SurveyResultBlock).type === 'heading' && (
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-bold text-muted-foreground">Size Style</Label>
-                                        <Select 
-                                            value={(blocks[selectedBlockIdx] as SurveyResultBlock).variant || 'h2'} 
-                                            onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${selectedBlockIdx}.variant`, val, { shouldDirty: true })}
-                                        >
-                                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="h1">H1 (Large)</SelectItem>
-                                                <SelectItem value="h2">H2 (Medium)</SelectItem>
-                                                <SelectItem value="h3">H3 (Small)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                        {activeTab !== 'variables' && (
+                            selectedBlockIdx !== null && blocks[selectedBlockIdx] ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between pb-2 border-b">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                            {(blocks[selectedBlockIdx] as SurveyResultBlock).type} Block Settings
+                                        </span>
                                     </div>
-                                )}
+                                    
+                                    {/* Formatting Controls inside Sidebar for Heading/Text */}
+                                    {['heading', 'text', 'quote', 'button', 'list'].includes((blocks[selectedBlockIdx] as SurveyResultBlock).type) && (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground">Text Alignment</Label>
+                                            <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={selectedBlockIdx} minimal />
+                                        </div>
+                                    )}
 
-                                <BlockInspector pageIndex={pageIndex} blockIndex={selectedBlockIdx} />
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                <div className="text-center py-4 flex flex-col items-center justify-center gap-2 border-b">
-                                    <Layout className="h-6 w-6 opacity-35 text-primary animate-pulse" />
-                                    <p className="text-xs font-semibold leading-relaxed text-muted-foreground/80 max-w-[220px] mx-auto">
-                                        Click any block on the right canvas to customize, or add a new block:
-                                    </p>
-                                </div>
-                                <div className="space-y-3 pt-2">
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
-                                        Add Content Block
-                                    </span>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {([
-                                            { type: 'heading', label: 'Heading', icon: Heading1 },
-                                            { type: 'text', label: 'Text Block', icon: Type },
-                                            { type: 'list', label: 'List View', icon: List },
-                                            { type: 'image', label: 'Image', icon: ImageIcon },
-                                            { type: 'video', label: 'Video', icon: Video },
-                                            { type: 'audio', label: 'Audio', icon: AudioWaveform },
-                                            { type: 'button', label: 'Button', icon: MousePointer2 },
-                                            { type: 'quote', label: 'Quote', icon: Quote },
-                                            { type: 'divider', label: 'Divider', icon: Square },
-                                            { type: 'score-card', label: 'Score Card', icon: TrophyIcon },
-                                            { type: 'outcome-categories', label: 'Categories', icon: Layout },
-                                            { type: 'code', label: 'Custom Code', icon: Code2 },
-                                        ] as const).map(({ type, label, icon: Icon }) => (
-                                            <Button
-                                                key={type}
-                                                variant="outline"
-                                                size="sm"
-                                                type="button"
-                                                className="h-auto py-3 px-2 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs font-bold shadow-sm"
-                                                onClick={() => handleBlockSelect(type)}
+                                    {/* Heading tags selection */}
+                                    {(blocks[selectedBlockIdx] as SurveyResultBlock).type === 'heading' && (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground">Size Style</Label>
+                                            <Select 
+                                                value={(blocks[selectedBlockIdx] as SurveyResultBlock).variant || 'h2'} 
+                                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${selectedBlockIdx}.variant`, val, { shouldDirty: true })}
                                             >
-                                                <div className="p-1 bg-primary/10 rounded-lg shrink-0">
-                                                    <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                </div>
-                                                <span className="text-[9px] tracking-tight text-foreground/80">{label}</span>
-                                            </Button>
-                                        ))}
+                                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="h1">H1 (Large)</SelectItem>
+                                                    <SelectItem value="h2">H2 (Medium)</SelectItem>
+                                                    <SelectItem value="h3">H3 (Small)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+
+                                    <BlockInspector pageIndex={pageIndex} blockIndex={selectedBlockIdx} />
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="text-center py-4 flex flex-col items-center justify-center gap-2 border-b">
+                                        <Layout className="h-6 w-6 opacity-35 text-primary animate-pulse" />
+                                        <p className="text-xs font-semibold leading-relaxed text-muted-foreground/80 max-w-[220px] mx-auto">
+                                            Click any block on the right canvas to customize, or add a new block:
+                                        </p>
+                                    </div>
+                                    <div className="space-y-3 pt-2">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
+                                            Add Content Block
+                                        </span>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {([
+                                                { type: 'heading', label: 'Heading', icon: Heading1 },
+                                                { type: 'text', label: 'Text Block', icon: Type },
+                                                { type: 'list', label: 'List View', icon: List },
+                                                { type: 'image', label: 'Image', icon: ImageIcon },
+                                                { type: 'video', label: 'Video', icon: Video },
+                                                { type: 'audio', label: 'Audio', icon: AudioWaveform },
+                                                { type: 'button', label: 'Button', icon: MousePointer2 },
+                                                { type: 'quote', label: 'Quote', icon: Quote },
+                                                { type: 'divider', label: 'Divider', icon: Square },
+                                                { type: 'score-card', label: 'Score Card', icon: TrophyIcon },
+                                                { type: 'outcome-categories', label: 'Categories', icon: Layout },
+                                                { type: 'code', label: 'Custom Code', icon: Code2 },
+                                            ] as const).map(({ type, label, icon: Icon }) => (
+                                                <Button
+                                                    key={type}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    type="button"
+                                                    className="h-auto py-3 px-2 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs font-bold shadow-sm"
+                                                    onClick={() => handleBlockSelect(type)}
+                                                >
+                                                    <div className="p-1 bg-primary/10 rounded-lg shrink-0">
+                                                        <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
+                                                    </div>
+                                                    <span className="text-[9px] tracking-tight text-foreground/80">{label}</span>
+                                                </Button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )
                         )}
                     </CardContent>
                 </Card>

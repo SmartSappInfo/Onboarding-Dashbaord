@@ -56,6 +56,9 @@ export function VariablesPanel({
     dynamicFeature: false,
   });
 
+  const terminologySingular = terminology?.singular;
+  const terminologyPlural = terminology?.plural;
+
   // Fetch variables
   const fetchVariables = React.useCallback(async () => {
     if (!workspaceId) return;
@@ -66,7 +69,7 @@ export function VariablesPanel({
         organizationId,
         featureContext,
         sourceId,
-        terminology,
+        terminology: terminologySingular && terminologyPlural ? { singular: terminologySingular, plural: terminologyPlural } : undefined,
       });
       setVariables(data);
     } catch (err) {
@@ -74,7 +77,7 @@ export function VariablesPanel({
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, organizationId, featureContext, sourceId, terminology]);
+  }, [workspaceId, organizationId, featureContext, sourceId, terminologySingular, terminologyPlural]);
 
   React.useEffect(() => {
     fetchVariables();

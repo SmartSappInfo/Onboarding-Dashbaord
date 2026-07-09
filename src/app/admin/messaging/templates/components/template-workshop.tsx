@@ -4257,23 +4257,21 @@ export function TemplateWorkshop({
                                             </div>
                                         )}
 
-                                        {sidebarTab === 'variables' && (
-                                            <div className="absolute inset-0 flex flex-col overflow-hidden bg-muted/5">
-                                                <VariablesPanel
-                                                    workspaceId={activeWorkspaceId}
-                                                    organizationId={initialTemplate?.organizationId}
-                                                    featureContext={
-                                                        category === 'meetings' ? 'meeting' :
-                                                        category === 'surveys' ? 'survey' :
-                                                        category === 'forms' ? 'form' :
-                                                        category === 'agreements' ? 'agreement' : 'common'
-                                                    }
-                                                    terminology={entityTerminology ? { singular: entityTerminology, plural: `${entityTerminology}s` } : undefined}
-                                                    onSelect={(key) => handleVariableInsert(key.replace(/[{}]/g, ''))}
-                                                    className="h-full border-0 rounded-none shadow-none text-left"
-                                                />
-                                            </div>
-                                        )}
+                                        <div className={`absolute inset-0 flex flex-col overflow-hidden bg-muted/5 ${sidebarTab === 'variables' ? '' : 'hidden'}`}>
+                                            <VariablesPanel
+                                                workspaceId={activeWorkspaceId}
+                                                organizationId={initialTemplate?.organizationId}
+                                                featureContext={
+                                                    category === 'meetings' ? 'meeting' :
+                                                    category === 'surveys' ? 'survey' :
+                                                    category === 'forms' ? 'form' :
+                                                    category === 'agreements' ? 'agreement' : 'common'
+                                                }
+                                                terminology={entityTerminology ? { singular: entityTerminology, plural: `${entityTerminology}s` } : undefined}
+                                                onSelect={(key) => handleVariableInsert(key.replace(/[{}]/g, ''))}
+                                                className="h-full border-0 rounded-none shadow-none text-left"
+                                            />
+                                        </div>
 
                                         {sidebarTab === 'validation' && (
                                             <div className="absolute inset-0 flex flex-col overflow-hidden">
