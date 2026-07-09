@@ -104,8 +104,18 @@ registerBlock({
             }
           }}
         >
-          {ctx.interpolate(props.label)}
-          <ArrowRight className="h-4 w-4" />
+          <span
+            contentEditable={ctx.mode === 'edit'}
+            suppressContentEditableWarning
+            data-block-id={block.id}
+            data-prop-key="label"
+            data-rich="false"
+            onBlur={(e) => ctx.onPropChange?.({ label: e.currentTarget.textContent || '' })}
+            className="outline-none min-w-[20px] inline-block cursor-text"
+          >
+            {ctx.mode === 'edit' ? props.label : ctx.interpolate(props.label)}
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0" />
         </button>
       </div>
     );

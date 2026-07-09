@@ -158,6 +158,9 @@ registerBlock({
             <figcaption 
               contentEditable={ctx.mode === 'edit'}
               suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="caption"
+              data-rich="false"
               onBlur={(e) => ctx.onPropChange?.({ caption: e.currentTarget.textContent || '' })}
               className="px-5 py-4 border-t border-slate-100 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 text-xs font-semibold text-center tracking-wide leading-relaxed outline-none"
               style={{ color: props.captionColor }}

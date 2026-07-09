@@ -650,6 +650,33 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         return null;
     }, [selectedBlockId, version.structureJson.sections]);
 
+    const getBlockStructuralState = (blockId: string | null) => {
+        if (!blockId) return { isFirst: true, isLast: true };
+        
+        for (const section of version.structureJson.sections) {
+            const idx = section.blocks.findIndex(b => b.id === blockId);
+            if (idx !== -1) {
+                return {
+                    isFirst: idx === 0,
+                    isLast: idx === section.blocks.length - 1,
+                };
+            }
+
+            for (const parentBlock of section.blocks) {
+                if (parentBlock.blocks) {
+                    const nestedIdx = parentBlock.blocks.findIndex(b => b.id === blockId);
+                    if (nestedIdx !== -1) {
+                        return {
+                            isFirst: nestedIdx === 0,
+                            isLast: nestedIdx === parentBlock.blocks.length - 1,
+                        };
+                    }
+                }
+            }
+        }
+        return { isFirst: true, isLast: true };
+    };
+
     const breadcrumbPath = React.useMemo(() => {
         if (!selectedBlockId) return null;
         for (const sec of version.structureJson.sections) {
@@ -687,16 +714,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
     useEffect(() => {
         const toolbar = toolbarRef.current;
-        if (activeBlockType !== 'text' || !selectedBlockId) {
+        if (!selectedBlockId) {
             if (toolbar) toolbar.style.display = 'none';
             return;
         }
 
         const updatePosition = () => {
-            const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            const activeEl = document.activeElement;
             const workspace = workspaceRef.current;
             const tb = toolbarRef.current;
-            if (!activeEl || !workspace || !tb) {
+            
+            if (
+                !activeEl || 
+                !workspace || 
+                !tb || 
+                activeEl.getAttribute('contenteditable') !== 'true' ||
+                !workspace.contains(activeEl)
+            ) {
                 if (tb) tb.style.display = 'none';
                 return;
             }
@@ -704,7 +738,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             const rect = activeEl.getBoundingClientRect();
             const workspaceRect = workspace.getBoundingClientRect();
             
-            const toolbarW = 620;
+            const toolbarW = 730;
             const toolbarH = 42;
             
             const top = rect.top - workspaceRect.top - toolbarH - 12; // 12px gap above
@@ -718,7 +752,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             tb.style.display = 'flex';
         };
 
-        // Defer execution to guarantee DOM paint has finished
         const rafId = requestAnimationFrame(() => {
             updatePosition();
         });
@@ -727,12 +760,16 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
         window.addEventListener('resize', updatePosition);
         document.addEventListener('selectionchange', updatePosition);
+        document.addEventListener('focusin', updatePosition);
+        document.addEventListener('focusout', updatePosition);
         
         return () => {
             cancelAnimationFrame(rafId);
             clearTimeout(timeoutId);
             window.removeEventListener('resize', updatePosition);
             document.removeEventListener('selectionchange', updatePosition);
+            document.removeEventListener('focusin', updatePosition);
+            document.removeEventListener('focusout', updatePosition);
         };
     }, [selectedBlockId, activeBlockType, zoom, panOffset]);
 
@@ -1126,15 +1163,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
     const executeCommand = (command: string, value: string = '') => {
         const sel = window.getSelection();
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        let activeEl = document.activeElement as HTMLElement | null;
+        if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
+            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        }
+        if (!activeEl) return;
         let range: Range | null = null;
         if (sel && sel.rangeCount > 0) {
             range = sel.getRangeAt(0);
         }
 
-        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl?.contains(range.commonAncestorContainer);
+        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl.contains(range.commonAncestorContainer);
 
-        if (activeEl && isSelectionCollapsed) {
+        if (isSelectionCollapsed) {
             const selectAllRange = document.createRange();
             selectAllRange.selectNodeContents(activeEl);
             if (sel) {
@@ -1151,14 +1192,22 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             savedSelectionRangeRef.current = range;
         }
 
-        if (activeEl) {
-            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
+        const propKey = activeEl.getAttribute('data-prop-key') || 'content';
+        const isRich = activeEl.getAttribute('data-rich') !== 'false';
+        
+        if (blockId && propKey) {
+            const newValue = isRich ? activeEl.innerHTML : (activeEl.textContent || '');
+            onUpdateBlockProps(blockId, { [propKey]: newValue });
         }
     };
 
     const applyStyleToSelection = (styleName: string, value: string) => {
         const sel = window.getSelection();
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        let activeEl = document.activeElement as HTMLElement | null;
+        if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
+            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        }
         if (!activeEl) return;
 
         let range: Range | null = null;
@@ -1174,38 +1223,51 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             else if (styleName === 'font-size') propKey = 'fontSize';
             else if (styleName === 'color') propKey = 'textColor';
 
-            if (propKey) {
-                onUpdateBlockProps(selectedBlockId!, { [propKey]: value });
+            const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
+            const targetPropKey = activeEl.getAttribute('data-prop-key') || propKey;
+
+            if (blockId && targetPropKey) {
+                onUpdateBlockProps(blockId, { [targetPropKey]: value });
             }
             return;
         }
 
-        if (!range) return;
-
-        const span = document.createElement('span');
-        span.style.setProperty(styleName, value);
-
-        try {
-            span.appendChild(range.extractContents());
-            range.insertNode(span);
-
-            if (sel) {
-                sel.removeAllRanges();
-                const newRange = document.createRange();
-                newRange.selectNodeContents(span);
-                sel.addRange(newRange);
-                savedSelectionRangeRef.current = newRange;
+        if (styleName === 'font-family') {
+            document.execCommand('fontName', false, value);
+        } else if (styleName === 'font-size') {
+            document.execCommand('fontSize', false, '7');
+            const fontSpans = activeEl.getElementsByTagName('font');
+            for (let i = 0; i < fontSpans.length; i++) {
+                const el = fontSpans[i];
+                if (el.size === '7') {
+                    el.removeAttribute('size');
+                    el.style.fontSize = value;
+                }
             }
+        } else if (styleName === 'color') {
+            document.execCommand('foreColor', false, value);
+        }
 
-            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
-        } catch (err) {
-            console.error("Failed to apply style span to selection:", err);
+        if (sel && sel.rangeCount > 0) {
+            savedSelectionRangeRef.current = sel.getRangeAt(0);
+        }
+
+        const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
+        const propKey = activeEl.getAttribute('data-prop-key') || 'content';
+        const isRich = activeEl.getAttribute('data-rich') !== 'false';
+        
+        if (blockId && propKey) {
+            const newValue = isRich ? activeEl.innerHTML : (activeEl.textContent || '');
+            onUpdateBlockProps(blockId, { [propKey]: newValue });
         }
     };
 
     const insertHyperlink = (url: string, newTab: boolean) => {
         const sel = window.getSelection();
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        let activeEl = document.activeElement as HTMLElement | null;
+        if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
+            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        }
         if (!sel || !activeEl) return;
 
         let range: Range | null = null;
@@ -1243,14 +1305,29 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             }
         }
 
-        onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
+        const propKey = activeEl.getAttribute('data-prop-key') || 'content';
+        const isRich = activeEl.getAttribute('data-rich') !== 'false';
+        
+        if (blockId && propKey) {
+            const newValue = isRich ? activeEl.innerHTML : (activeEl.textContent || '');
+            onUpdateBlockProps(blockId, { [propKey]: newValue });
+        }
     };
 
     const removeHyperlink = () => {
-        const activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        let activeEl = document.activeElement as HTMLElement | null;
+        if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
+            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+        }
+        if (!activeEl) return;
         document.execCommand('unlink', false);
-        if (activeEl) {
-            onUpdateBlockProps(selectedBlockId!, { content: activeEl.innerHTML });
+        const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
+        const propKey = activeEl.getAttribute('data-prop-key') || 'content';
+        const isRich = activeEl.getAttribute('data-rich') !== 'false';
+        if (blockId && propKey) {
+            const newValue = isRich ? activeEl.innerHTML : (activeEl.textContent || '');
+            onUpdateBlockProps(blockId, { [propKey]: newValue });
         }
     };
 
@@ -2294,7 +2371,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             )}
 
             {/* Inline Floating WYSIWYG Editor Toolbar for Rich Text block */}
-            {activeBlockType === 'text' && !isPreview && (
+            {!isPreview && (
                 <div
                     ref={toolbarRef}
                     className="absolute backdrop-blur bg-slate-900/95 border border-slate-950 shadow-2xl rounded-xl p-1.5 flex items-center gap-1 z-50 text-slate-200"
@@ -2615,6 +2692,62 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     >
                         <RemoveFormatting className="h-3.5 w-3.5" />
                     </button>
+
+                    <div className="w-[1px] h-4 bg-slate-800/60 mx-1" />
+
+                    {/* Structural Actions (Move Up, Move Down, Duplicate, Delete) */}
+                    <div className="flex items-center gap-0.5 pl-0.5">
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId && !getBlockStructuralState(selectedBlockId).isFirst) {
+                                    onMoveBlock(selectedBlockId, 'up');
+                                }
+                            }}
+                            disabled={!selectedBlockId || getBlockStructuralState(selectedBlockId).isFirst}
+                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-350 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Block Up"
+                        >
+                            <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId && !getBlockStructuralState(selectedBlockId).isLast) {
+                                    onMoveBlock(selectedBlockId, 'down');
+                                }
+                            }}
+                            disabled={!selectedBlockId || getBlockStructuralState(selectedBlockId).isLast}
+                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-350 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Block Down"
+                        >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId) {
+                                    onDuplicateBlock(selectedBlockId);
+                                }
+                            }}
+                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-350 hover:text-emerald-450 transition-colors"
+                            title="Duplicate Block"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId) {
+                                    onRemoveBlock(selectedBlockId);
+                                }
+                            }}
+                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-350 hover:text-red-400 transition-colors"
+                            title="Delete Block"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
                 </div>
             )}
         </main>

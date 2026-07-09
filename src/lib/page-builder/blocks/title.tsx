@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Heading } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '../sanitize';
 
 const schema = z.object({
   preset: z.enum([
@@ -309,16 +310,16 @@ registerBlock({
       ...(props.customSubheadingColor ? { color: props.customSubheadingColor } : {}),
     };
 
-    const handleTitleBlur = (e: React.FocusEvent<HTMLHeadingElement>) => {
-      ctx.onPropChange?.({ title: e.currentTarget.innerText });
+    const handleTitleBlur = (e: React.FocusEvent<HTMLHeadingElement | HTMLSpanElement>) => {
+      ctx.onPropChange?.({ title: e.currentTarget.innerHTML });
     };
 
     const handleTaglineBlur = (e: React.FocusEvent<HTMLParagraphElement>) => {
-      ctx.onPropChange?.({ tagline: e.currentTarget.innerText });
+      ctx.onPropChange?.({ tagline: e.currentTarget.innerHTML });
     };
 
     const handleSubheadingBlur = (e: React.FocusEvent<HTMLParagraphElement>) => {
-      ctx.onPropChange?.({ subheading: e.currentTarget.innerText });
+      ctx.onPropChange?.({ subheading: e.currentTarget.innerHTML });
     };
 
     if (preset === 'badge-capsule') {
@@ -329,17 +330,19 @@ registerBlock({
         <div className={`py-2 w-full ${alignClass} select-none`}>
           <span 
             className={cn(
-              "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text",
+              "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text outline-none",
               capsuleBgClass,
               focusRingClass
             )}
             style={titleStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
+            data-block-id={_block.id}
+            data-prop-key="title"
+            data-rich="true"
             onBlur={isEdit ? handleTitleBlur : undefined}
-          >
-            {ctx.interpolate(props.title)}
-          </span>
+            dangerouslySetInnerHTML={{ __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) }}
+          />
         </div>
       );
     }
@@ -349,38 +352,44 @@ registerBlock({
         {/* Top Tagline */}
         {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
           <p
-            className={cn(taglineClass, focusRingClass)}
+            className={cn(taglineClass, focusRingClass, "outline-none")}
             style={taglineStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
+            data-block-id={_block.id}
+            data-prop-key="tagline"
+            data-rich="true"
             onBlur={isEdit ? handleTaglineBlur : undefined}
-          >
-            {ctx.interpolate(props.tagline)}
-          </p>
+            dangerouslySetInnerHTML={{ __html: isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline)) }}
+          />
         )}
 
         {/* Main Headline */}
         <h2
-          className={cn(titleClass, "transition-all duration-300", focusRingClass)}
+          className={cn(titleClass, "transition-all duration-300 outline-none", focusRingClass)}
           style={titleStyles}
           contentEditable={isEdit}
           suppressContentEditableWarning
+          data-block-id={_block.id}
+          data-prop-key="title"
+          data-rich="true"
           onBlur={isEdit ? handleTitleBlur : undefined}
-        >
-          {ctx.interpolate(props.title)}
-        </h2>
+          dangerouslySetInnerHTML={{ __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) }}
+        />
 
         {/* Supporting Subheading */}
         {props.subheading && preset !== 'accent-tagline' && (
           <p
-            className={cn(subClass, focusRingClass)}
+            className={cn(subClass, focusRingClass, "outline-none")}
             style={subheadingStyles}
             contentEditable={isEdit}
             suppressContentEditableWarning
+            data-block-id={_block.id}
+            data-prop-key="subheading"
+            data-rich="true"
             onBlur={isEdit ? handleSubheadingBlur : undefined}
-          >
-            {ctx.interpolate(props.subheading)}
-          </p>
+            dangerouslySetInnerHTML={{ __html: isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading)) }}
+          />
         )}
       </div>
     );

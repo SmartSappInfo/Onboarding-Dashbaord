@@ -179,8 +179,11 @@ registerBlock({
         <blockquote 
           contentEditable={ctx.mode === 'edit'}
           suppressContentEditableWarning
-          onBlur={(e) => ctx.onPropChange?.({ quote: e.currentTarget.textContent || '' })}
-          className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-h-[20px]"
+          data-block-id={_block.id}
+          data-prop-key="quote"
+          data-rich="true"
+          onBlur={(e) => ctx.onPropChange?.({ quote: e.currentTarget.innerHTML })}
+          className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]"
         >
           {ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
         </blockquote>
@@ -222,6 +225,9 @@ registerBlock({
                 <p 
                   contentEditable
                   suppressContentEditableWarning
+                  data-block-id={_block.id}
+                  data-prop-key="author"
+                  data-rich="false"
                   onBlur={(e) => ctx.onPropChange?.({ author: e.currentTarget.textContent || '' })}
                   className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
                 >
@@ -230,6 +236,9 @@ registerBlock({
                 <p 
                   contentEditable
                   suppressContentEditableWarning
+                  data-block-id={_block.id}
+                  data-prop-key="role"
+                  data-rich="false"
                   onBlur={(e) => ctx.onPropChange?.({ role: e.currentTarget.textContent || '' })}
                   className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
                 >

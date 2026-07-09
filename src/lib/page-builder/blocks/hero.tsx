@@ -282,19 +282,27 @@ registerBlock({
       return (
         <div className="flex flex-col gap-6 py-8 px-4 border border-dashed border-slate-800 rounded-xl relative overflow-hidden bg-slate-950/20 text-center items-center">
           <div className="w-full max-w-3xl space-y-3">
-            <RawDebouncedInput
-              className="w-full font-black tracking-tight bg-transparent border-none outline-none focus:ring-0 text-3xl sm:text-4xl text-center placeholder:opacity-30"
+            <h1
+              className="w-full font-black tracking-tight text-3xl sm:text-4xl text-center placeholder:opacity-30 outline-none"
               style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
-              value={props.title}
-              placeholder="Why do parents choose *other schools* over yours?"
-              onChange={(value) => ctx.onPropChange?.({ title: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="title"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ title: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.title || 'Why do parents choose *other schools* over yours?' }}
             />
-            <RawDebouncedInput
-              className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 text-center placeholder:opacity-30 opacity-70"
+            <p
+              className="w-full text-sm text-center placeholder:opacity-30 opacity-70 outline-none"
               style={{ color: textStyle.color }}
-              value={props.subtitle}
-              placeholder="Watch this short video to find out."
-              onChange={(value) => ctx.onPropChange?.({ subtitle: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="subtitle"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ subtitle: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.subtitle || 'Watch this short video to find out.' }}
             />
           </div>
 
@@ -309,20 +317,27 @@ registerBlock({
           </div>
 
           <div className="w-full max-w-3xl space-y-3 mt-4">
-            <RawDebouncedInput
-              className="w-full font-bold bg-transparent border-none outline-none focus:ring-0 text-xl sm:text-2xl text-center placeholder:opacity-30"
+            <h2
+              className="w-full font-bold text-xl sm:text-2xl text-center placeholder:opacity-30 outline-none"
               style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
-              value={props.secondaryTitle}
-              placeholder="Want to make your school the _preferred choice_ for parents in one term?"
-              onChange={(value) => ctx.onPropChange?.({ secondaryTitle: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="secondaryTitle"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ secondaryTitle: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.secondaryTitle || 'Want to make your school the preferred choice for parents in one term?' }}
             />
-            <RawDebouncedTextarea
-              className="w-full text-xs sm:text-sm bg-transparent border-none outline-none focus:ring-0 text-center placeholder:opacity-30 opacity-70 resize-none"
+            <p
+              className="w-full text-xs sm:text-sm text-center placeholder:opacity-30 opacity-70 outline-none min-h-[2.5rem]"
               style={{ color: textStyle.color }}
-              value={props.secondarySubtitle}
-              placeholder="Book a FREE 30-minutes consultation to see your personalized roadmap to complete the shift."
-              rows={2}
-              onChange={(value) => ctx.onPropChange?.({ secondarySubtitle: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="secondarySubtitle"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ secondarySubtitle: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.secondarySubtitle || 'Book a FREE 30-minutes consultation to see your roadmap.' }}
             />
           </div>
 
@@ -350,20 +365,27 @@ registerBlock({
             </div>
           ) : null}
           <div className="relative z-10 w-full flex flex-col gap-3">
-            <RawDebouncedInput
-              className={cn('w-full font-black tracking-tight bg-transparent border-none outline-none focus:ring-0 placeholder:opacity-30', FONT_SIZE[props.fontSize])}
+            <h1
+              className={cn('w-full font-black tracking-tight placeholder:opacity-30 outline-none', FONT_SIZE[props.fontSize])}
               style={textStyle}
-              value={props.title}
-              placeholder="Hero Title"
-              onChange={(value) => ctx.onPropChange?.({ title: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="title"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ title: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.title || 'Hero Title' }}
             />
-            <RawDebouncedTextarea
-              className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 resize-none placeholder:opacity-30"
+            <p
+              className="w-full text-sm placeholder:opacity-30 outline-none min-h-[3rem]"
               style={{ color: textStyle.color, textAlign: props.align, opacity: 0.7 }}
-              value={props.subtitle}
-              placeholder="Hero subtitle text"
-              rows={2}
-              onChange={(value) => ctx.onPropChange?.({ subtitle: value })}
+              contentEditable={isEdit}
+              suppressContentEditableWarning
+              data-block-id={_block.id}
+              data-prop-key="subtitle"
+              data-rich="true"
+              onBlur={(e) => ctx.onPropChange?.({ subtitle: e.currentTarget.innerHTML })}
+              dangerouslySetInnerHTML={{ __html: props.subtitle || 'Hero subtitle text' }}
             />
             {ctaSectionMarkup}
           </div>
