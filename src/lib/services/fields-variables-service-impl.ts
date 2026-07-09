@@ -860,12 +860,13 @@ export class FieldsVariablesService {
   /**
    * Synchronously substitutes dynamic variables inside text using a pre-fetched values map.
    */
-  static resolveTextWithMap(templateText: string, valuesMap: Map<string, unknown>): string {
+  static resolveTextWithMap(templateText: string, valuesMap: Map<string, unknown>, keepMissing = true): string {
     if (!templateText) return '';
     return templateText.replace(/\{\{(.*?)\}\}/g, (match, key) => {
       const cleanKey = key.trim();
       const val = valuesMap.get(cleanKey);
-      return val !== undefined ? String(val) : '';
+      if (val !== undefined) return String(val);
+      return keepMissing ? match : '';
     });
   }
 
@@ -878,7 +879,7 @@ export class FieldsVariablesService {
     context: DataResolutionContext
   ): Promise<string> {
     const valuesMap = await this.getVariableValuesMap(context);
-    return this.resolveTextWithMap(templateText, valuesMap);
+    return this.resolveTextWithMap(templateText, valuesMap, false);
   }
 
   /**

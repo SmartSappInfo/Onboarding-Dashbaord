@@ -214,8 +214,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedContact = contact;
         
         if (contact) {
-            const signatory = getRecipientContact(contact, recipient);
-            
             // Populate identifiers
             if (contact.schoolData?.id && !resolvedEntityId) {
                 resolvedEntityId = contact.schoolData.id;
@@ -234,44 +232,57 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             if (!resolvedWorkspaceId) {
                 resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
             }
+        }
+    }
 
-            // Unify variable mapping using the single FieldsVariablesService source of truth
-            const mapCtx = {
-                workspaceId: resolvedWorkspaceId,
-                entityId: resolvedEntityId || undefined,
-                recipientContact: recipient,
-                preloadedEntity: contact as unknown as Partial<Entity>,
-                extraVars: { ...finalVariables } as Record<string, unknown>,
-                surveyId: (finalVariables._surveyId || finalVariables.surveyId || (template as any).surveyId) as string | undefined,
-                responseId: (finalVariables._responseId || finalVariables.responseId || finalVariables.submissionId) as string | undefined
-            };
-            const unifiedMap = await FieldsVariablesService.getVariableValuesMap(mapCtx);
-            
-            // Resolve agreement url if available
+    // Ensure resolvedWorkspaceId is not undefined/empty (Requirement 11)
+    if (!resolvedWorkspaceId) {
+        resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+    }
+
+    // Unify variable mapping using the single FieldsVariablesService source of truth
+    const signatory = resolvedContact ? getRecipientContact(resolvedContact, recipient) : null;
+    const mapCtx = {
+        workspaceId: resolvedWorkspaceId,
+        entityId: resolvedEntityId || undefined,
+        recipientContact: recipient,
+        preloadedEntity: resolvedContact as unknown as Partial<Entity> | undefined,
+        extraVars: { ...finalVariables } as Record<string, unknown>,
+        surveyId: (finalVariables._surveyId || finalVariables.surveyId || (template as any).surveyId) as string | undefined,
+        responseId: (finalVariables._responseId || finalVariables.responseId || finalVariables.submissionId) as string | undefined
+    };
+    
+    try {
+        const unifiedMap = await FieldsVariablesService.getVariableValuesMap(mapCtx);
+        
+        // Resolve agreement url if available
+        if (resolvedEntityId) {
             const contractSnap = await adminDb.collection('contracts').where('entityId', '==', resolvedEntityId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
                 const baseUrl = await getRequestBaseUrl();
                 unifiedMap.set('agreement_url', `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`);
             }
-
-            // Populate encrypted recipient token (Task 2)
-            if (signatory?.id) {
-                const { encryptToken } = await import('@/lib/crypto');
-                unifiedMap.set('encrypted_recipient_token', encryptToken(signatory.id));
-            } else if (resolvedContact?.id) {
-                const { encryptToken } = await import('@/lib/crypto');
-                unifiedMap.set('encrypted_recipient_token', encryptToken(resolvedContact.id));
-            } else {
-                unifiedMap.set('encrypted_recipient_token', '');
-            }
-
-            unifiedMap.forEach((v, k) => {
-                if (finalVariables[k] === undefined) {
-                    finalVariables[k] = v;
-                }
-            });
         }
+
+        // Populate encrypted recipient token (Task 2)
+        if (signatory?.id) {
+            const { encryptToken } = await import('@/lib/crypto');
+            unifiedMap.set('encrypted_recipient_token', encryptToken(signatory.id));
+        } else if (resolvedContact?.id) {
+            const { encryptToken } = await import('@/lib/crypto');
+            unifiedMap.set('encrypted_recipient_token', encryptToken(resolvedContact.id));
+        } else {
+            unifiedMap.set('encrypted_recipient_token', '');
+        }
+
+        unifiedMap.forEach((v, k) => {
+            if (finalVariables[k] === undefined) {
+                finalVariables[k] = v;
+            }
+        });
+    } catch (varMapErr) {
+        console.error('>>> [MSG-ENGINE] Failed to resolve FieldsVariablesService map:', varMapErr);
     }
 
     if (finalVariables.encrypted_recipient_token === undefined) {

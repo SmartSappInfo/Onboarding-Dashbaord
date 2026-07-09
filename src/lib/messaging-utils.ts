@@ -1,6 +1,7 @@
 import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
+import { FieldsVariablesService } from './services/fields-variables-service-impl';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -58,24 +59,28 @@ export function resolveVariables(text: unknown, variables: Record<string, unknow
   const textStr = String(text);
   if (!textStr) return '';
   const sanitized = sanitizeContent(textStr);
-  return sanitized.replace(/\{\{(.*?)\}\}/g, (match, key) => {
-    const cleanKey = key.replace(/^\{+/, '').replace(/\}+$/, '').trim();
-    let value = variables[cleanKey];
-    if (value === undefined) {
-      // Try camelCase fallback (e.g. rsvp_going_url -> rsvpGoingUrl)
-      const camelKey = cleanKey.replace(/_([a-z])/g, (_: string, p1: string) => p1.toUpperCase());
-      value = variables[camelKey];
-    }
-    if (value === undefined) return match;
-    // tag_list is stored as JSON array string — render as comma-separated for display
-    if (cleanKey === 'tag_list') {
+
+  const valuesMap = new Map<string, unknown>();
+  Object.entries(variables).forEach(([k, v]) => {
+    let finalVal = v;
+    if (k === 'tag_list') {
       try {
-        const arr = JSON.parse(String(value));
-        if (Array.isArray(arr)) return arr.join(', ');
-      } catch { /* fall through */ }
+        const arr = JSON.parse(String(v));
+        if (Array.isArray(arr)) finalVal = arr.join(', ');
+      } catch { /* ignore */ }
     }
-    return String(value);
+    valuesMap.set(k, finalVal);
+
+    // Also register camelCase version for keys with underscores
+    if (k.includes('_')) {
+      const camelKey = k.replace(/_([a-z])/g, (_: string, p1: string) => p1.toUpperCase());
+      if (variables[camelKey] === undefined) {
+        valuesMap.set(camelKey, finalVal);
+      }
+    }
   });
+
+  return FieldsVariablesService.resolveTextWithMap(sanitized, valuesMap);
 }
 
 /**

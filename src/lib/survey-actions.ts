@@ -571,7 +571,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         ...responseData.answers.reduce((acc: any, ans: any) => ({ ...acc, [ans.questionId]: ans.value }), {}),
         survey_title: surveyData.title,
         survey_id: surveyId,
+        surveyId: surveyId,
         submission_id: docRef.id,
+        submissionId: docRef.id,
+        responseId: docRef.id,
         workspaceId,
         entityId: finalEntityId
       };
@@ -1194,7 +1197,7 @@ export async function finalizeSurveySubmission(
         },
         workspaceId,
         organizationId,
-        null,
+        responseData.entityId || null,
         respondentEmail ? String(respondentEmail) : null,
         respondentPhone ? String(respondentPhone) : null,
         outcomeId
@@ -1231,7 +1234,10 @@ async function triggerPostSubmissionAutomations(
     }), {}),
     survey_title: surveyData.title,
     survey_id: surveyData.id,
+    surveyId: surveyData.id,
     submission_id: responseId,
+    submissionId: responseId,
+    responseId: responseId,
     workspaceId: workspaceId,
     entityId: entityId || ''
   };
@@ -1335,7 +1341,13 @@ async function triggerPostSubmissionAutomations(
       smsTemplateId: surveyData.adminAlertSmsTemplateId,
       whatsappTemplateId: surveyData.adminAlertWhatsappTemplateId,
       channel: surveyData.adminAlertChannel,
-      variables: { ...notificationVars, event_type: 'Survey Completion' }
+      variables: {
+        ...notificationVars,
+        event_type: 'Survey Completion',
+        surveyId: surveyData.id,
+        responseId: responseId,
+        submissionId: responseId
+      }
     }).catch(console.error);
   }
 
@@ -1348,7 +1360,12 @@ async function triggerPostSubmissionAutomations(
       smsTemplateId: surveyData.externalAlertSmsTemplateId,
       whatsappTemplateId: surveyData.externalAlertWhatsappTemplateId,
       channel: surveyData.externalAlertChannel,
-      variables: notificationVars
+      variables: {
+        ...notificationVars,
+        surveyId: surveyData.id,
+        responseId: responseId,
+        submissionId: responseId
+      }
     }).catch(console.error);
   }
 
@@ -1368,7 +1385,10 @@ async function triggerPostSubmissionAutomations(
         variables: { 
           ...notificationVars, 
           assigned_userId: assignedUserId,
-          is_assigned_alert: true 
+          is_assigned_alert: true,
+          surveyId: surveyData.id,
+          responseId: responseId,
+          submissionId: responseId
         },
         channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
       });
@@ -1399,6 +1419,8 @@ async function triggerPostSubmissionAutomations(
         score: responseData.score || 0,
         result_message: outcome?.label || 'No specific result outcome reached.',
         surveyId: surveyData.id,
+        responseId: responseId,
+        submissionId: responseId,
         organizationId: organizationId,
         category: 'surveys'
       },
