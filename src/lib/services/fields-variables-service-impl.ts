@@ -684,6 +684,8 @@ export class FieldsVariablesService {
             valuesMap.set('result_message', response.resultMessage ?? '');
             valuesMap.set('completion_date', response.submittedAt ? new Date(response.submittedAt).toLocaleDateString() : '');
             valuesMap.set('completion_status', response.status ?? 'Completed');
+            const surveySlug = survey.slug || context.surveyId;
+            valuesMap.set('result_url', `${baseUrl}/surveys/${surveySlug}/result/${context.responseId}`);
 
             if (response.answers && typeof response.answers === 'object') {
               Object.entries(response.answers).forEach(([questionId, val]) => {

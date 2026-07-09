@@ -11,7 +11,6 @@ import type { Survey, CampaignPage, BookingPage, QRCode } from '@/lib/types';
 
 interface LinkPickerProps {
   onSelect: (url: string) => void;
-  trigger: React.ReactNode;
 }
 
 interface ResourceItem {
@@ -36,16 +35,14 @@ const DYNAMIC_VARIABLES: ResourceItem[] = [
   { id: 'dyn-4', name: 'Personalized Meeting Link', path: '{{meeting_link}}' },
   { id: 'dyn-5', name: 'Add to Calendar Link', path: '{{calendar_link}}' },
   { id: 'dyn-6', name: 'Unsubscribe Link', path: '{{unsubscribe_link}}' },
+  { id: 'dyn-7', name: 'Survey Results Link', path: '{{result_url}}' },
 ];
 
-export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
+export function LinkPicker({ onSelect }: LinkPickerProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
-  const [open, setOpen] = React.useState<boolean>(false);
   const [search, setSearch] = React.useState<string>('');
   const [targetType, setTargetType] = React.useState<string>('dynamic');
-  
-  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const [surveys, setSurveys] = React.useState<ResourceItem[]>([]);
   const [forms, setForms] = React.useState<ResourceItem[]>([]);
@@ -53,20 +50,8 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
   const [bookings, setBookings] = React.useState<ResourceItem[]>([]);
   const [qrs, setQrs] = React.useState<ResourceItem[]>([]);
 
-  // Close dropdown on outside click (custom outside-click implementation)
   React.useEffect(() => {
-    if (!open) return;
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open || !firestore || !activeWorkspaceId) return;
+    if (!firestore || !activeWorkspaceId) return;
 
     const fetchResources = async () => {
       try {
@@ -147,7 +132,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
     };
 
     fetchResources();
-  }, [open, firestore, activeWorkspaceId, activeOrganizationId]);
+  }, [firestore, activeWorkspaceId, activeOrganizationId]);
 
   const getItemsForTarget = (): ResourceItem[] => {
     switch (targetType) {
@@ -178,83 +163,70 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
 
   const handleSelect = (path: string) => {
     onSelect(path);
-    setOpen(false);
     setSearch('');
   };
 
   return (
-    <div className="relative inline-block text-left" ref={containerRef}>
-      {/* Trigger Button toggles open state */}
-      <div onClick={() => setOpen((prev) => !prev)}>
-        {trigger}
-      </div>
-
-      {open && (
-        <div 
-          className="absolute right-0 top-full mt-2 w-[360px] p-5 rounded-[2rem] border border-border shadow-2xl bg-background/98 backdrop-blur-xl z-[9999] space-y-4"
-          onMouseDown={(e) => e.stopPropagation()} // Stop click propagation to prevent outside click trigger
-        >
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Target Type</label>
-            <div className="relative">
-              <select
-                value={targetType}
-                onChange={(e) => {
-                  setTargetType(e.target.value);
-                  setSearch('');
-                }}
-                className="w-full h-11 px-3.5 pr-10 rounded-xl bg-muted/30 border-none font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
-              >
-                <option value="dynamic">Dynamic Variables (rsvp, survey...)</option>
-                <option value="surveys">Published Workspace Surveys</option>
-                <option value="forms">Published Forms & PDFs</option>
-                <option value="pages">Published Campaign Pages</option>
-                <option value="bookings">Published Booking Pages</option>
-                <option value="qrs">QR Studio Codes</option>
-                <option value="static">Predefined Static Pages</option>
-              </select>
-              <div className="absolute right-3.5 top-3.5 pointer-events-none text-muted-foreground/50">
-                <ChevronDown className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Link Target</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground/40" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search matching published items..."
-                className="pl-9 h-11 rounded-xl bg-muted/20 border-none shadow-none text-sm placeholder:text-muted-foreground/45"
-              />
-            </div>
-            
-            <ScrollArea className="h-64 border border-border/50 rounded-2xl p-2 bg-muted/5 mt-2">
-              {filteredItems.length === 0 ? (
-                <div className="text-center py-12 text-sm text-muted-foreground/60">No matching published items found.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-1">
-                  {filteredItems.map((item) => (
-                    <button
-                      key={item.id || item.path}
-                      onClick={() => handleSelect(item.path)}
-                      className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
-                    >
-                      <div>
-                        <div className="text-sm font-semibold text-slate-755">{item.name}</div>
-                        <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5">{item.path}</div>
-                      </div>
-                      <Link className="h-3.5 w-3.5 text-muted-foreground/30" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+    <div className="w-full p-4 rounded-2xl border border-border/80 bg-muted/10 space-y-4 text-left animate-in fade-in slide-in-from-top-1 duration-200">
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Target Type</label>
+        <div className="relative">
+          <select
+            value={targetType}
+            onChange={(e) => {
+              setTargetType(e.target.value);
+              setSearch('');
+            }}
+            className="w-full h-11 px-3.5 pr-10 rounded-xl bg-muted/20 border-none font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
+          >
+            <option value="dynamic">Dynamic Variables (rsvp, survey...)</option>
+            <option value="surveys">Published Workspace Surveys</option>
+            <option value="forms">Published Forms & PDFs</option>
+            <option value="pages">Published Campaign Pages</option>
+            <option value="bookings">Published Booking Pages</option>
+            <option value="qrs">QR Studio Codes</option>
+            <option value="static">Predefined Static Pages</option>
+          </select>
+          <div className="absolute right-3.5 top-3.5 pointer-events-none text-muted-foreground/50">
+            <ChevronDown className="h-4 w-4" />
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Link Target</label>
+        <div className="relative">
+          <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground/40" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search matching published items..."
+            className="pl-9 h-11 rounded-xl bg-muted/20 border-none shadow-none text-sm placeholder:text-muted-foreground/45"
+          />
+        </div>
+        
+        <ScrollArea className="h-64 border border-border/50 rounded-2xl p-2 bg-muted/5 mt-2">
+          {filteredItems.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground/60">No matching published items found.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-1">
+              {filteredItems.map((item) => (
+                <button
+                  key={item.id || item.path}
+                  onClick={() => handleSelect(item.path)}
+                  className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-slate-755">{item.name}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5">{item.path}</div>
+                  </div>
+                  <Link className="h-3.5 w-3.5 text-muted-foreground/30" />
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }
