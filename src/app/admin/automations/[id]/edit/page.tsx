@@ -52,6 +52,28 @@ const AutomationActivityLog = dynamic(
   }
 );
 
+function getFunctionalSnapshot(data: any) {
+  if (!data) return null;
+  return {
+    name: data.name,
+    description: data.description || '',
+    triggers: data.triggers ?? [],
+    edges: data.edges?.map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      type: e.type,
+    })) ?? [],
+    nodes: data.nodes?.map((n: any) => ({
+      id: n.id,
+      type: n.type,
+      data: n.data,
+    })) ?? [],
+  };
+}
+
 /**
  * @fileOverview High-fidelity Automation Blueprint Editor.
  */
@@ -136,25 +158,25 @@ export default function EditAutomationPage() {
   // Set initial snapshot when automation loads from Firestore
   React.useEffect(() => {
     if (automation && !savedSnapshot) {
-      setSavedSnapshot(JSON.stringify({
+      setSavedSnapshot(JSON.stringify(getFunctionalSnapshot({
         name: automation.name,
         description: automation.description || '',
         nodes: automation.nodes,
         edges: automation.edges,
         triggers: automation.triggers ?? [],
-      }));
+      })));
     }
   }, [automation, savedSnapshot]);
 
   const isDirty = React.useMemo(() => {
     if (!savedSnapshot) return false;
-    const currentStr = JSON.stringify({
+    const currentStr = JSON.stringify(getFunctionalSnapshot({
       name: currentData.name,
       description: currentData.description,
       nodes: currentData.nodes,
       edges: currentData.edges,
       triggers: currentData.triggers,
-    });
+    }));
     return currentStr !== savedSnapshot;
   }, [savedSnapshot, currentData]);
 
@@ -246,13 +268,13 @@ export default function EditAutomationPage() {
       });
       clearAutomationBackup(automationId);
       // Update saved snapshot so isDirty resets to false
-      setSavedSnapshot(JSON.stringify({
+      setSavedSnapshot(JSON.stringify(getFunctionalSnapshot({
         name: currentData.name,
         description: currentData.description,
         nodes: currentData.nodes,
         edges: currentData.edges,
         triggers: currentData.triggers,
-      }));
+      })));
       if (isNew && res.id) {
         unregisterUnsavedChanges('automation-builder');
         router.push(`/admin/automations/${res.id}/edit`);
