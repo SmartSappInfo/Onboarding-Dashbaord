@@ -9,6 +9,7 @@ import { STATIC_VARIABLES } from '../template-variable-registry-data';
 import { getEffectiveContactTypes } from '../contact-type-actions';
 import type { EntityContact } from '../types';
 import { getBaseUrl } from '../utils/url-helpers';
+import { resolveTextWithMap } from '../utils/variable-replacer';
 
 // Request-scoped document lookup caches to prevent redundant round-trips
 const getWorkspaceDocCached = cache(async (id: string) => {
@@ -862,13 +863,7 @@ export class FieldsVariablesService {
    * Synchronously substitutes dynamic variables inside text using a pre-fetched values map.
    */
   static resolveTextWithMap(templateText: string, valuesMap: Map<string, unknown>, keepMissing = true): string {
-    if (!templateText) return '';
-    return templateText.replace(/\{\{(.*?)\}\}/g, (match, key) => {
-      const cleanKey = key.trim();
-      const val = valuesMap.get(cleanKey);
-      if (val !== undefined) return String(val);
-      return keepMissing ? match : '';
-    });
+    return resolveTextWithMap(templateText, valuesMap, keepMissing);
   }
 
   /**

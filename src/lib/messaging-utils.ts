@@ -1,7 +1,7 @@
 import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
-import { FieldsVariablesService } from './services/fields-variables-service-impl';
+import { resolveTextWithMap } from './utils/variable-replacer';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -80,7 +80,7 @@ export function resolveVariables(text: unknown, variables: Record<string, unknow
     }
   });
 
-  return FieldsVariablesService.resolveTextWithMap(sanitized, valuesMap);
+  return resolveTextWithMap(sanitized, valuesMap);
 }
 
 /**
