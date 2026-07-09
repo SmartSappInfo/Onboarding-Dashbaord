@@ -37,6 +37,8 @@ import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { cn } from '@/lib/utils';
 import { blockIcons } from './block-icons';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LinkPicker } from './link-picker';
 
 interface BlockInspectorProps {
     block: MessageBlock;
@@ -86,7 +88,6 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
     if (!block) return null;
 
-    const isFinanceContext = templateCategory === 'agreements';
     const s = block.style || {};
 
     const toggleSection = (section: string) => {
@@ -402,15 +403,26 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center px-1">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Link Target URL</Label>
-                                    {isFinanceContext && (
-                                        <button 
-                                            type="button"
-                                            onClick={() => onUpdate({ link: '{{agreement_url}}' })}
-                                            className="flex items-center gap-1 text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 hover:bg-blue-100/50 transition-all"
-                                        >
-                                            <FileText className="h-2.5 w-2.5" /> Use Agreement Link
-                                        </button>
-                                    )}
+                                    <LinkPicker 
+                                        onSelect={(url) => {
+                                            // Keep tracking state if checked
+                                            const hasTracking = block.link?.includes('ref={{encrypted_recipient_token}}');
+                                            let finalUrl = url;
+                                            if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                const joiner = finalUrl.includes('?') ? '&' : '?';
+                                                finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+                                            }
+                                            onUpdate({ link: finalUrl });
+                                        }}
+                                        trigger={
+                                            <button 
+                                                type="button"
+                                                className="flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/[0.04] px-2.5 py-1 rounded-full border border-primary/10 hover:bg-primary/[0.08] active:scale-[0.97] transition-all"
+                                            >
+                                                <LinkIcon className="h-2.5 w-2.5" /> Choose Link Target
+                                            </button>
+                                        }
+                                    />
                                 </div>
                                 <div className="relative group flex items-center w-full">
                                     <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
@@ -428,6 +440,30 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                             onFieldChange={val => onUpdate({ link: val })} 
                                         />
                                     </div>
+                                </div>
+
+                                <div className="flex items-center space-x-2 px-1 py-1">
+                                    <Checkbox
+                                        id="track-visitor"
+                                        checked={Boolean(block.link?.includes('ref={{encrypted_recipient_token}}'))}
+                                        onCheckedChange={(checked) => {
+                                            let currentLink = block.link || '';
+                                            // Strip existing ref query parameters
+                                            currentLink = currentLink.replace(/[?&]ref=\{\{encrypted_recipient_token\}\}/, '');
+                                            if (checked === true) {
+                                                const joiner = currentLink.includes('?') ? '&' : '?';
+                                                currentLink = `${currentLink}${joiner}ref={{encrypted_recipient_token}}`;
+                                            }
+                                            onUpdate({ link: currentLink });
+                                        }}
+                                        className="rounded-md"
+                                    />
+                                    <label
+                                        htmlFor="track-visitor"
+                                        className="text-[10px] font-semibold text-muted-foreground cursor-pointer select-none leading-none"
+                                    >
+                                        Track Visitor Identity (Encrypt Recipient Details)
+                                    </label>
                                 </div>
                             </div>
                             <div className="space-y-2">

@@ -1,5 +1,6 @@
 import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
+import { getBaseUrl } from './utils/url-helpers';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -468,7 +469,10 @@ export function renderBlocksToHtml(
 
       case 'button': {
         const title = resolveVariables(block.title || 'Click Here', variables);
-        const link = resolveVariables(block.link || '#', variables);
+        let link = resolveVariables(block.link || '#', variables);
+        if (link.startsWith('/')) {
+          link = `${getBaseUrl()}${link}`;
+        }
         const variant = s.variant || 'default';
         const primaryColor = options?.style?.primaryColor || '#3B5FFF';
 

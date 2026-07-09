@@ -253,12 +253,27 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 unifiedMap.set('agreement_url', `${baseUrl}/forms/${contractData.pdfId}?entityId=${resolvedEntityId}`);
             }
 
+            // Populate encrypted recipient token (Task 2)
+            if (signatory?.id) {
+                const { encryptToken } = await import('@/lib/crypto');
+                unifiedMap.set('encrypted_recipient_token', encryptToken(signatory.id));
+            } else if (resolvedContact?.id) {
+                const { encryptToken } = await import('@/lib/crypto');
+                unifiedMap.set('encrypted_recipient_token', encryptToken(resolvedContact.id));
+            } else {
+                unifiedMap.set('encrypted_recipient_token', '');
+            }
+
             unifiedMap.forEach((v, k) => {
                 if (finalVariables[k] === undefined) {
                     finalVariables[k] = v;
                 }
             });
         }
+    }
+
+    if (finalVariables.encrypted_recipient_token === undefined) {
+        finalVariables.encrypted_recipient_token = '';
     }
 
     // Ensure resolvedWorkspaceId is not undefined/empty (Requirement 11)

@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { PageEventChannel } from '@/lib/types';
+import { decryptRecipientAction } from '@/app/actions/recipient-tracking-actions';
 
 interface PageAnalyticsReaderProps {
   /** Called once when a ?ref= entity ID is detected in the URL. */
@@ -30,8 +31,12 @@ export function PageAnalyticsReader({
   onReady,
 }: PageAnalyticsReaderProps) {
   const searchParams = useSearchParams();
+  const hasRun = useRef<boolean>(false);
 
   useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const ref = searchParams.get('ref');
     const channelParam = searchParams.get('ch') as PageEventChannel | null;
 
@@ -40,7 +45,20 @@ export function PageAnalyticsReader({
       channelParam ?? (ref ? 'email' : 'direct');
 
     if (ref) {
-      onEntityDetected(ref, channel);
+      const isEncrypted = ref.split(':').length === 3;
+      if (isEncrypted) {
+        decryptRecipientAction(ref)
+          .then((res) => {
+            if (res.success && res.contactId) {
+              onEntityDetected(res.contactId, channel);
+            }
+          })
+          .catch((err: unknown) => {
+            console.warn('[PageAnalyticsReader] Decryption action failed:', err);
+          });
+      } else {
+        onEntityDetected(ref, channel);
+      }
     }
 
     onReady(channel);
