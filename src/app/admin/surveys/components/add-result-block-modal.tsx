@@ -21,6 +21,7 @@ import {
     Trophy,
     List,
     LayoutList,
+    Code2,
 } from 'lucide-react';
 import type { SurveyResultBlock } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,6 +44,7 @@ const blockTypes: { type: SurveyResultBlock['type']; label: string; description:
     { type: 'divider', label: 'Divider', description: 'Horizontal spacing line.', icon: Square },
     { type: 'score-card', label: 'Score Card', description: 'Dynamic, animated score display.', icon: Trophy },
     { type: 'outcome-categories', label: 'Outcome Categories', description: 'Visual pointer showing all performance brackets.', icon: LayoutList },
+    { type: 'code', label: 'Custom Code', description: 'Embed raw HTML or custom code script.', icon: Code2 },
 ];
 
 export default function AddResultBlockModal({ open, onOpenChange, onSelect }: AddResultBlockModalProps) {

@@ -172,6 +172,28 @@ function ActionButton({
     );
 }
 
+function CustomCodeRenderer({ code, containerClasses }: { code: string; containerClasses?: string }) {
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+        
+        containerRef.current.innerHTML = '';
+        
+        try {
+            const range = document.createRange();
+            range.selectNode(containerRef.current);
+            const fragment = range.createContextualFragment(code);
+            containerRef.current.appendChild(fragment);
+        } catch (err) {
+            console.error("Error embedding custom code block:", err);
+            containerRef.current.innerHTML = code;
+        }
+    }, [code]);
+
+    return <div ref={containerRef} className={containerClasses} />;
+}
+
 function BlockRenderer({ 
     block, 
     score, 
@@ -325,6 +347,10 @@ function BlockRenderer({
                 </div>
             );
         }
+        case 'code':
+            return block.content ? (
+                <CustomCodeRenderer code={block.content} containerClasses={containerClasses} />
+            ) : null;
         default:
             return null;
     }

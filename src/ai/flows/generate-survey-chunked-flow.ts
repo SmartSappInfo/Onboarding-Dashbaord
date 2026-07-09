@@ -364,18 +364,26 @@ You MUST return a single JSON object with these keys: "scoringPatches", "logicBl
 \`\`\`
 
 
-### RESULT PAGE RULES:
-- Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
-- Every result page MUST start with a \`score-card\` block (shows animated score).
-- Use \`heading\`, \`text\`, \`list\`, \`button\`, \`quote\`, \`divider\`, \`outcome-categories\` blocks for content.
+### RESULT PAGE RULES (CRITICAL DESIGN PRINCIPLES):
+- **Bucket Coverage**: Create 2-4 outcome buckets with NON-OVERLAPPING score ranges. Gaps between ranges must not exist, and ranges must not overlap.
+- **Structure**: Every result page MUST start with a \`score-card\` block (shows animated score).
+- **Harness All Block Types**: Do not just write paragraphs. A professional outcome page uses a structured layout of content. Use the full library of blocks to build a rich page design:
+  - \`score-card\`: Standard at the top of every page.
+  - \`outcome-categories\`: Put this block near the top of pages to show the visual category list/brackets compared with other entities. Use \`title\` to configure a custom section header.
+  - \`heading\`: Use to structure different sections with sizes (\`variant: "h1" | "h2" | "h3"\`).
+  - \`text\`: Use for main descriptions and explanations.
+  - \`list\`: Use to break down key takeaways, pain points, or checklist steps. Always specify \`listStyle: "ordered" | "unordered"\` and \`items: string[]\`.
+  - \`quote\`: Use to highlight important key client statements, stats, or key highlights.
+  - \`button\`: Use to drive actions/calls to action (such as watching a presentation, booking a meeting, or downloading a resource). Always include \`title\` (label) and \`link\` (URL).
+  - \`divider\`: Use to create breathing room between visual sections.
+  - \`image\` / \`video\` / \`audio\`: Embed rich media if the source text recommends video case studies, audio instructions, or diagrams.
+  - \`code\`: Use custom code block ONLY as a last resort when custom widgets (like Calendly scheduling frames or third-party checkouts) are requested by the prompt and cannot be represented by normal builder blocks. Put the raw embed code in the \`content\` property.
 - **Block Properties Matching (CRITICAL)**:
   - For \`heading\` blocks: You MUST put the heading text in the \`title\` property. Do NOT leave \`title\` empty or use the \`content\` property.
   - For \`button\` blocks: You MUST put the button label text in the \`title\` property.
   - For \`text\` blocks: You MUST put the paragraph text in the \`content\` property.
   - For \`quote\` blocks: You MUST put the quote text in the \`content\` property.
-  - For \`outcome-categories\` blocks: Add this block type to show the visual category list/brackets compared with other entities. Use \`title\` to configure a custom section header if desired.
-- \`list\` blocks MUST include \`listStyle\` ("ordered" or "unordered") and \`items: string[]\`.
-- \`button\` blocks MUST include \`title\` (button label), \`link\` (URL), \`openInNewTab: true\`.
+  - For \`code\` blocks: Put the raw embed code in the \`content\` property.
 - Each \`resultRule\` needs a unique ID, \`priority\` (lower = higher), and \`pageId\` matching a result page ID.
 - **Outcome Logic (Dispatches)**: If the source text suggests action dispatches for a score threshold, set:
   - \`tagEnabled: true\` and \`applyTag: "tag_id_placeholder"\`

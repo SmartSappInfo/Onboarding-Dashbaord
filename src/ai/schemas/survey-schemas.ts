@@ -32,7 +32,7 @@ export const LAYOUT_TYPES = [
 
 export const RESULT_BLOCK_TYPES = [
   'heading', 'text', 'image', 'video', 'button', 'quote',
-  'divider', 'score-card', 'list', 'logo', 'header', 'footer', 'outcome-categories'
+  'divider', 'score-card', 'list', 'logo', 'header', 'footer', 'outcome-categories', 'code'
 ] as const;
 
 export const LOGIC_OPERATORS = [
@@ -123,8 +123,8 @@ export const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBl
 export const resultBlockSchema = z.object({
   id: z.string(),
   type: z.enum(RESULT_BLOCK_TYPES),
-  title: z.string().optional().describe('Heading text (for heading blocks) or Button label (for button blocks). REQUIRED for heading and button blocks. DO NOT leave empty or put heading/button text in the content field.'),
-  content: z.string().optional().describe('Paragraph text (for text blocks) or Quote text (for quote blocks). REQUIRED for text and quote blocks. DO NOT use this field for heading blocks.'),
+  title: z.string().optional().describe('Heading text (for heading blocks) or Button label (for button blocks). REQUIRED for heading and button blocks. DO NOT leave empty or put heading/button text in the content field. For code blocks, this can be an optional descriptive label.'),
+  content: z.string().optional().describe('Paragraph text (for text blocks), Quote text (for quote blocks), or Custom HTML/Embed Code (for code blocks). REQUIRED for text, quote, and code blocks. DO NOT use this field for heading blocks.'),
   url: z.string().optional().describe('Image/video/audio URL'),
   link: z.string().optional().describe('Button destination URL (link/path)'),
   openInNewTab: z.boolean().optional(),

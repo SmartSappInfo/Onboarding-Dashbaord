@@ -1,3 +1,4 @@
+import React from 'react';
 import { z } from 'zod';
 import { Columns2 } from 'lucide-react';
 import { registerBlock } from '../registry';

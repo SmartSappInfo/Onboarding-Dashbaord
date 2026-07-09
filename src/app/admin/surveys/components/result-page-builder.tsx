@@ -13,7 +13,7 @@ import {
     List, ListOrdered, AlignJustify, Sparkles, Settings, X,
     Heading1, Type, MousePointer2, Square, Trophy as TrophyIcon,
     ClipboardCopy, ClipboardCheck, Clipboard, ChevronsUp, ChevronsDown,
-    Pencil, ChevronDown
+    Pencil, ChevronDown, Code2
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -167,6 +167,14 @@ export function PagePreviewModal({ open, onOpenChange, page, maxScore = 100, dis
                                                         <span className="text-sm">Collection Leader</span>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        )}
+                                        {block.type === 'code' && (
+                                            <div className="w-full border rounded-2xl bg-slate-950 p-4 font-mono text-xs text-slate-300 text-left overflow-x-auto">
+                                                <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-500">Custom HTML / Script Embed</span>
+                                                </div>
+                                                <pre className="whitespace-pre">{block.content || '// Custom HTML or Script code will render here'}</pre>
                                             </div>
                                         )}
                                     </div>
@@ -551,18 +559,7 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                     </div>
                 )}
 
-                {['heading', 'text', 'quote'].includes(block.type) && activeWorkspaceId && (
-                    <div className="pt-4 border-t border-border/50 mt-4 space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Double-Brace Variables</Label>
-                        <p className="text-[10px] text-muted-foreground leading-normal mb-2">
-                            Use these variable tags to personalize your results text. Click any tag to copy it.
-                        </p>
-                        <VariablesPanel 
-                            workspaceId={activeWorkspaceId} 
-                            featureContext="survey" 
-                        />
-                    </div>
-                )}
+
 
                 {block.type === 'score-card' && (
                     <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
@@ -578,6 +575,19 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                     <div className="space-y-2">
                         <Label className="text-[10px] font-semibold text-muted-foreground">Section Header Title (Optional)</Label>
                         <Input placeholder="Compared with other schools:" {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
+                    </div>
+                )}
+
+                {block.type === 'code' && (
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-semibold text-muted-foreground">Custom HTML or Embed Script</Label>
+                        <Textarea 
+                            placeholder="<!-- Embed custom code here -->" 
+                            rows={6}
+                            value={block.content || ''}
+                            onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.content`, e.target.value, { shouldDirty: true })}
+                            className="font-mono text-xs bg-slate-950 text-slate-100"
+                        />
                     </div>
                 )}
             </div>
@@ -1094,6 +1104,18 @@ function SortableResultBlock({
                     </div>
                 );
             }
+            case 'code': {
+                return (
+                    <div className="w-full py-2">
+                        <div className="w-full border rounded-2xl bg-slate-950 p-4 font-mono text-xs text-slate-300 text-left overflow-x-auto">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 mb-2">
+                                <span className="text-[10px] uppercase font-bold text-slate-500">Custom Code Block</span>
+                            </div>
+                            <pre className="whitespace-pre">{activeBlock.content || '<!-- Embed script or custom HTML here -->'}</pre>
+                        </div>
+                    </div>
+                );
+            }
             default:
                 return null;
         }
@@ -1227,9 +1249,11 @@ export function PageEditor({
         name: `resultPages.${pageIndex}.blocks`,
     });
 
+    const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
     const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState(0);
     const [selectedBlockIdx, setSelectedBlockIdx] = React.useState<number | null>(null);
+    const [activeTab, setActiveTab] = React.useState<'blocks' | 'variables'>('blocks');
 
     const handleCopySingle = (block: SurveyResultBlock) => {
         setCopiedBlocks([block]);
@@ -1371,8 +1395,8 @@ export function PageEditor({
             <div className="flex flex-col xl:flex-row gap-6 items-start">
                 
                 {/* 1. Left Properties Sidebar */}
-                <Card className="w-full xl:w-[320px] shrink-0 border bg-card shadow-sm rounded-[1.5rem] overflow-hidden self-start xl:sticky xl:top-6 xl:z-20">
-                    <CardHeader className="py-3.5 px-4 border-b bg-muted/10 flex flex-row items-center justify-between">
+                <Card className="w-full xl:w-[320px] shrink-0 border bg-card shadow-sm rounded-[1.5rem] overflow-hidden self-start xl:sticky xl:top-6 xl:z-20 max-h-[calc(100vh-8rem)] flex flex-col">
+                    <CardHeader className="py-3 px-4 border-b bg-muted/10 shrink-0 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Settings className="h-4 w-4 text-primary" />
                             <span className="font-bold text-sm">Block Properties</span>
@@ -1383,8 +1407,54 @@ export function PageEditor({
                             </Button>
                         )}
                     </CardHeader>
-                    <CardContent className="p-4">
-                        {selectedBlockIdx !== null && blocks[selectedBlockIdx] ? (
+                    
+                    {/* Tab Navigation */}
+                    <div className="flex border-b bg-muted/5 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('blocks')}
+                            className={cn(
+                                "flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all border-b-2 outline-none",
+                                activeTab === 'blocks'
+                                    ? "border-primary text-primary bg-primary/5"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            {selectedBlockIdx !== null ? 'Settings' : 'Blocks'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('variables')}
+                            className={cn(
+                                "flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all border-b-2 outline-none",
+                                activeTab === 'variables'
+                                    ? "border-primary text-primary bg-primary/5"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Variables
+                        </button>
+                    </div>
+
+                    <CardContent className="p-4 overflow-y-auto flex-1">
+                        {activeTab === 'variables' ? (
+                            <div className="space-y-3">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block px-1">
+                                    Double-Brace Variables
+                                </span>
+                                <p className="text-[10px] text-muted-foreground leading-normal mb-2 px-1">
+                                    Use these variable tags to personalize your results text. Click any tag to copy it.
+                                </p>
+                                {activeWorkspaceId ? (
+                                    <VariablesPanel 
+                                        workspaceId={activeWorkspaceId} 
+                                        featureContext="survey" 
+                                    />
+                                ) : (
+                                    <p className="text-xs text-muted-foreground italic px-1">No active workspace detected</p>
+                                )}
+                            </div>
+                        ) : selectedBlockIdx !== null && blocks[selectedBlockIdx] ? (
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between pb-2 border-b">
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -1445,6 +1515,7 @@ export function PageEditor({
                                             { type: 'divider', label: 'Divider', icon: Square },
                                             { type: 'score-card', label: 'Score Card', icon: TrophyIcon },
                                             { type: 'outcome-categories', label: 'Categories', icon: Layout },
+                                            { type: 'code', label: 'Custom Code', icon: Code2 },
                                         ] as const).map(({ type, label, icon: Icon }) => (
                                             <Button
                                                 key={type}

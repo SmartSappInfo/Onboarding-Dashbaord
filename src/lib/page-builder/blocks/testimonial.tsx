@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { Quote, Play, Edit } from 'lucide-react';
 import { registerBlock } from '../registry';
@@ -69,38 +69,38 @@ registerBlock({
     const playInline = props.playMode === 'inline';
     // eslint-disable-next-line react-hooks/rules-of-hooks
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [modalOpen, setModalOpen] = React.useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [avatarLibraryOpen, setAvatarLibraryOpen] = React.useState(false);
+    const [avatarLibraryOpen, setAvatarLibraryOpen] = useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [videoLibraryOpen, setVideoLibraryOpen] = React.useState(false);
+    const [videoLibraryOpen, setVideoLibraryOpen] = useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [thumbnailLibraryOpen, setThumbnailLibraryOpen] = React.useState(false);
+    const [thumbnailLibraryOpen, setThumbnailLibraryOpen] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const quoteRef = React.useRef<HTMLQuoteElement>(null);
+    const quoteRef = useRef<HTMLQuoteElement>(null);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const authorRef = React.useRef<HTMLParagraphElement>(null);
+    const authorRef = useRef<HTMLParagraphElement>(null);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const roleRef = React.useRef<HTMLParagraphElement>(null);
+    const roleRef = useRef<HTMLParagraphElement>(null);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastQuoteRef = React.useRef<string>('');
+    const lastQuoteRef = useRef<string>('');
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastAuthorRef = React.useRef<string>('');
+    const lastAuthorRef = useRef<string>('');
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastRoleRef = React.useRef<string>('');
+    const lastRoleRef = useRef<string>('');
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [hasMounted, setHasMounted] = React.useState(false);
+    const [hasMounted, setHasMounted] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useEffect(() => {
+    useEffect(() => {
       setHasMounted(true);
     }, []);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useEffect(() => {
+    useEffect(() => {
       if (hasMounted) {
         if (quoteRef.current) {
           const expected = ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote));
