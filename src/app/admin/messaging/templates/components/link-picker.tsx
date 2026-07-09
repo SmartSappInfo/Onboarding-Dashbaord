@@ -5,12 +5,10 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -177,13 +175,9 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-2xl rounded-[2rem] p-6 border-none shadow-2xl bg-background/95 backdrop-blur-xl">
-        <DialogHeader className="mb-2">
-          <DialogTitle className="text-xl font-bold tracking-tight text-slate-800">Select Link Target</DialogTitle>
-        </DialogHeader>
-
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent className="w-[380px] p-5 rounded-[2rem] border border-border shadow-2xl bg-background/98 backdrop-blur-xl z-[150]" align="end">
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Target Type</label>
@@ -194,7 +188,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
               <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm focus:ring-0">
                 <SelectValue placeholder="Select target type" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-xl bg-background/95 backdrop-blur-xl">
+              <SelectContent className="rounded-xl border-none shadow-xl bg-background/98 backdrop-blur-xl z-[160]">
                 <SelectItem value="dynamic" className="rounded-lg">Dynamic Variables (rsvp, survey, unsubscribe...)</SelectItem>
                 <SelectItem value="surveys" className="rounded-lg">Published Workspace Surveys</SelectItem>
                 <SelectItem value="forms" className="rounded-lg">Published Forms & PDFs</SelectItem>
@@ -241,7 +235,7 @@ export function LinkPicker({ onSelect, trigger }: LinkPickerProps) {
             </ScrollArea>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   );
 }
