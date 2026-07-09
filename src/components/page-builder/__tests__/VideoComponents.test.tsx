@@ -65,7 +65,6 @@ describe('Video Components and Autoplay behavior', () => {
     const mockVersion: CampaignPageVersion = {
       id: 'v1',
       pageId: 'page1',
-      name: 'v1',
       isPublished: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
