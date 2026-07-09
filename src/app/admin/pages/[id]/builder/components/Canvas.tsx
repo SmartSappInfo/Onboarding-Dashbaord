@@ -1694,8 +1694,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                                                             <video
                                                                 src={sectionProps.backgroundVideoUrl}
-                                                                autoPlay
-                                                                loop
+                                                                autoPlay={canvasMode === 'preview'}
+                                                                loop={canvasMode === 'preview'}
                                                                 muted
                                                                 playsInline
                                                                 className="w-full h-full object-cover"

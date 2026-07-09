@@ -7,6 +7,7 @@ import { registerBlock } from '../registry';
 import { sanitizeHtml } from '../sanitize';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import VideoEmbed from '@/components/video-embed';
 
 const schema = z.object({
   quote: z.string().default(''),
@@ -583,12 +584,10 @@ registerBlock({
             {hasVideo ? (
               playInline ? (
                 <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 group">
-                  <iframe
-                    src={props.videoUrl}
-                    className="absolute inset-0 w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={`Testimonial video visual`}
+                  <VideoEmbed
+                    url={props.videoUrl}
+                    thumbnailUrl={props.thumbnailUrl || undefined}
+                    disabled={ctx.mode === 'edit' || ctx.isThumbnail}
                   />
                   {changeControls}
                 </div>
@@ -701,12 +700,10 @@ registerBlock({
         {hasVideo ? (
           playInline ? (
             <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 group">
-              <iframe
-                src={props.videoUrl}
-                className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={`Testimonial video visual`}
+              <VideoEmbed
+                url={props.videoUrl}
+                thumbnailUrl={props.thumbnailUrl || undefined}
+                disabled={ctx.mode === 'edit' || ctx.isThumbnail}
               />
               {changeControls}
             </div>

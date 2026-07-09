@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
 import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
+import VideoEmbed from '@/components/video-embed';
 
 // Dynamic import for WebGL LightRays to prevent SSR hydration errors
 const LightRays = dynamic(() => import('@/components/LightRays'), { ssr: false });
@@ -234,30 +235,11 @@ registerBlock({
 
     const renderVideoPlayer = (url: string) => {
       if (!url) return null;
-      const isEmbed = url.includes('embed') || url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo') || url.includes('loom.com');
-      if (isEmbed) {
-        let embedUrl = url;
-        if (url.includes('youtube.com/watch?v=')) {
-          embedUrl = url.replace('watch?v=', 'embed/');
-        } else if (url.includes('youtu.be/')) {
-          embedUrl = url.replace('youtu.be/', 'youtube.com/embed/');
-        }
-        return (
-          <iframe
-            src={embedUrl}
-            className="absolute inset-0 w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title="Sales video presentation"
-          />
-        );
-      }
       return (
-        <video
-          src={url}
-          controls
-          playsInline
-          className="w-full h-full object-cover"
+        <VideoEmbed
+          url={url}
+          disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+          className="absolute inset-0 w-full h-full border-none shadow-none"
         />
       );
     };

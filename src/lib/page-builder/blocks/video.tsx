@@ -121,11 +121,18 @@ registerBlock({
     return (
       <div className="group rounded-2xl overflow-hidden border border-black/10 shadow-sm aspect-video bg-black relative">
         {playInline ? (
-          <VideoEmbed url={props.url} thumbnailUrl={props.thumbnailUrl || undefined} />
+          <VideoEmbed
+            url={props.url}
+            thumbnailUrl={props.thumbnailUrl || undefined}
+            disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+          />
         ) : (
           <>
             <div 
-              onClick={() => setModalOpen(true)}
+              onClick={() => {
+                if (ctx.mode === 'edit' || ctx.isThumbnail) return;
+                setModalOpen(true);
+              }}
               className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
             >
               {props.thumbnailUrl ? (

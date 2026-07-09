@@ -30,10 +30,11 @@ interface VideoEmbedProps {
   thumbnailUrl?: string;
   className?: string;
   autoPlay?: boolean;
+  disabled?: boolean;
 }
 
-const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false }: VideoEmbedProps) => {
-  const [isPlaying, setIsPlaying] = React.useState(autoPlay);
+const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled = false }: VideoEmbedProps) => {
+  const [isPlaying, setIsPlaying] = React.useState(autoPlay && !disabled);
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
   
   const videoId = extractYouTubeID(url);
@@ -70,7 +71,10 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false }: VideoEmb
           "relative aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-slate-900 group cursor-pointer",
           className
         )}
-        onClick={() => setIsPlaying(true)}
+        onClick={() => {
+          if (disabled) return;
+          setIsPlaying(true);
+        }}
       >
         {/* Background Thumbnail */}
         {thumbUrl ? (

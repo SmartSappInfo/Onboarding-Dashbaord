@@ -36,6 +36,8 @@ export interface BlockRenderContext {
   page?: { id: string; organizationId: string; workspaceId: string };
   /** Whether custom-code (`html`) blocks may render — gated by page settings. */
   allowScripts?: boolean;
+  /** Whether page is being rendered inside listview/thumbnail mode */
+  isThumbnail?: boolean;
   /** Rendered nested children, one node per child block (layout blocks). */
   renderChildren?: () => ReactNode[];
 }

@@ -47,6 +47,7 @@ interface PageRendererProps {
   fireTrigger: (event: string, blockId?: string) => void;
   orgBranding?: OrgBranding | null;
   variablesMap?: Record<string, string>;
+  isThumbnail?: boolean;
 }
 
 function checkVisibility(
@@ -166,6 +167,7 @@ export function PageRenderer({
   fireTrigger,
   orgBranding = null,
   variablesMap = {},
+  isThumbnail = false,
 }: PageRendererProps) {
   const [isMounted, setIsMounted] = useState(false);
 
@@ -182,8 +184,9 @@ export function PageRenderer({
       fireTrigger,
       page: { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' },
       allowScripts: page.settings.customScriptsAllowed ?? false,
+      isThumbnail: !!isThumbnail,
     }),
-    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed],
+    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed, isThumbnail],
   );
 
   const sections = version.structureJson.sections;
@@ -475,7 +478,7 @@ export function PageRenderer({
               data-tag={sectionProps.visibilityTag}
             >
               {/* HTML5 Video Loop Background */}
-              {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
+              {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && !isThumbnail && (
                 <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                   <video
                     src={sectionProps.backgroundVideoUrl}

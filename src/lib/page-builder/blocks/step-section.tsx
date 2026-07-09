@@ -6,6 +6,7 @@ import { Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
 import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
+import VideoEmbed from '@/components/video-embed';
 
 const schema = z.object({
   stepNumber:    z.number().int().min(1).default(1),
@@ -78,12 +79,10 @@ registerBlock({
       return (
         <div className="w-full flex-1 aspect-video rounded-2xl overflow-hidden border border-slate-850 bg-slate-950 relative shadow-2xl">
           {props.videoUrl ? (
-            <iframe
-              src={props.videoUrl}
-              className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={`Step video visual`}
+            <VideoEmbed
+              url={props.videoUrl}
+              disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+              className="absolute inset-0 w-full h-full border-none shadow-none"
             />
           ) : props.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

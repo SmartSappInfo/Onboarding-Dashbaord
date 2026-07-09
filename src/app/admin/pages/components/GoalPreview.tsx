@@ -343,6 +343,7 @@ export const GoalPreview = React.memo(function GoalPreview({
             theme={resolvedTheme}
             interpolate={(t) => t}
             fireTrigger={() => {}}
+            isThumbnail={true}
           />
         </div>
       </div>
