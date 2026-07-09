@@ -28,9 +28,9 @@ describe('BlockRenderer', () => {
   it('renders an editable input for a hero block in edit mode', () => {
     const block: PageBlock = { id: 'h1', type: 'hero', props: { title: 'My Title' } };
     const { container } = render(<BlockRenderer block={block} ctx={ctx('edit')} />);
-    const input = container.querySelector('input');
-    expect(input).not.toBeNull();
-    expect((input as HTMLInputElement).value).toBe('My Title');
+    const editable = container.querySelector('[contenteditable="true"]');
+    expect(editable).not.toBeNull();
+    expect(editable?.textContent).toBe('My Title');
   });
 
   it('renders a non-throwing fallback for an unknown block type', () => {
