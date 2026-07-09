@@ -576,7 +576,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         submissionId: docRef.id,
         responseId: docRef.id,
         workspaceId,
-        entityId: finalEntityId
+        entityId: finalEntityId,
+        score: responseData.score !== undefined ? responseData.score : 0,
+        survey_score: responseData.score !== undefined ? responseData.score : 0,
+        max_score: surveyData.maxScore || 100
       };
 
       // Internal Team Alerts
@@ -1239,7 +1242,10 @@ async function triggerPostSubmissionAutomations(
     submissionId: responseId,
     responseId: responseId,
     workspaceId: workspaceId,
-    entityId: entityId || ''
+    entityId: entityId || '',
+    score: responseData.score !== undefined ? responseData.score : 0,
+    survey_score: responseData.score !== undefined ? responseData.score : 0,
+    max_score: surveyData.maxScore || 100
   };
 
   // 1. Webhook

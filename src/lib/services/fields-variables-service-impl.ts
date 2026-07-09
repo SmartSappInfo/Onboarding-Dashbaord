@@ -764,8 +764,9 @@ export class FieldsVariablesService {
             valuesMap.set('score', responseData.score);
             valuesMap.set('survey_score', responseData.score);
           }
-          if (responseData.maxScore !== undefined) {
-            valuesMap.set('max_score', responseData.maxScore);
+          const resolvedMaxScore = responseData.maxScore !== undefined ? responseData.maxScore : survey.maxScore;
+          if (resolvedMaxScore !== undefined) {
+            valuesMap.set('max_score', resolvedMaxScore);
           }
           valuesMap.set('result_message', responseData.resultMessage ?? '');
           valuesMap.set('completion_date', responseData.submittedAt ? new Date(String(responseData.submittedAt)).toLocaleDateString() : '');
