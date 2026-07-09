@@ -4,6 +4,7 @@ import React from 'react';
 import { z } from 'zod';
 import { Quote, Play, Edit } from 'lucide-react';
 import { registerBlock } from '../registry';
+import { sanitizeHtml } from '../sanitize';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
@@ -184,9 +185,8 @@ registerBlock({
           data-rich="true"
           onBlur={(e) => ctx.onPropChange?.({ quote: e.currentTarget.innerHTML })}
           className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]"
-        >
-          {ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
-        </blockquote>
+          dangerouslySetInnerHTML={{ __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) }}
+        />
         
         <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
           <div className="relative group/avatar cursor-pointer">
