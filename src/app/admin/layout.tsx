@@ -3,6 +3,7 @@ import { Suspense, type ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import AdminLayoutClient from './layout-client';
 import FirebaseBootstrap from '@/firebase/FirebaseBootstrap';
+import '@/lib/whatsapp-template-actions';
 
 // The admin control plane is auth-gated; never index it.
 export const metadata: Metadata = {
