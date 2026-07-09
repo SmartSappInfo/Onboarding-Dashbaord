@@ -172,7 +172,7 @@ export default function LogActivityModal({ entity, open, onOpenChange }: LogActi
  <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1 text-left">Notes / Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder={`e.g., Spoke with the focal person about the upcoming kickoff meeting. They requested more info on billing.`}
+                      placeholder={`e.g., Spoke with the contact person about the upcoming kickoff meeting. They requested more info on billing.`}
  className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed text-left"
                       {...field}
                     />

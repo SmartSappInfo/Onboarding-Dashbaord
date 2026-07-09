@@ -125,12 +125,16 @@ const formSchema = z.object({
   leadCaptureMode: z.enum(['questions', 'form']).default('questions'),
   leadCaptureTitle: z.string().optional(),
   leadCaptureDescription: z.string().optional(),
-  leadCaptureFieldsConfig: z.object({
-    name: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
-    email: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
-    phone: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() }),
-    company: z.object({ show: z.boolean(), label: z.string(), required: z.boolean() })
-  }).optional(),
+  leadCaptureFieldsConfig: z.record(
+    z.object({
+      show: z.boolean(),
+      label: z.string(),
+      required: z.boolean(),
+      isCustom: z.boolean().optional(),
+      type: z.string().optional(),
+      placeholder: z.string().optional()
+    })
+  ).optional(),
   assignmentEnabled: z.boolean().default(false),
   assignedUsers: z.array(z.string()).default([]),
   notifyAssignedUsers: z.object({
@@ -160,8 +164,8 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = [
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Results', icon: BarChart3 },
-        { n: 4, label: 'Automations', icon: Zap },
+        { n: 3, label: 'Automations', icon: Zap },
+        { n: 4, label: 'Results', icon: BarChart3 },
         { n: 5, label: 'Publish', icon: Share2 }
     ];
 
@@ -448,8 +452,7 @@ export default function EditSurveyPage() {
         let fieldsToValidate: (keyof FormData)[] = [];
         if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
         if (step === 2) fieldsToValidate = ['elements'];
-        if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
-        if (step === 4) fieldsToValidate = [
+        if (step === 3) fieldsToValidate = [
             'createEntity', 
             'entityMapping', 
             'leadCaptureMode', 
@@ -461,6 +464,7 @@ export default function EditSurveyPage() {
             'autoTags', 
             'autoAutomations'
         ];
+        if (step === 4) fieldsToValidate = ['resultRules', 'resultPages'];
         
         const isStepValid = await trigger(fieldsToValidate);
         if (!isStepValid) {

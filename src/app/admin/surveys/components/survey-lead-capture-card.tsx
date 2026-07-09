@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Database, Plus, Search, Check, PlusCircle, ListTree } from 'lucide-react';
+import { Database, Plus, Search, Check, PlusCircle, ListTree, Trash2, Eye, EyeOff, User, Mail, Phone, Building2, HelpCircle, Layout as LayoutIcon } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -100,9 +100,9 @@ export default function SurveyLeadCaptureCard() {
             { label: 'Phone Number', value: 'contacts.phone' }
         ] : [
             { label: 'Institution Name', value: 'entity.name' },
-            { label: 'Focal Person Name', value: 'contacts.name' },
-            { label: 'Focal Person Email', value: 'contacts.email' },
-            { label: 'Focal Person Phone', value: 'contacts.phone' }
+            { label: 'Contact Person Name', value: 'contacts.name' },
+            { label: 'Contact Person Email', value: 'contacts.email' },
+            { label: 'Contact Person Phone', value: 'contacts.phone' }
         ];
 
         const profileGroup: SearchGroup = {
@@ -148,6 +148,16 @@ export default function SurveyLeadCaptureCard() {
 
     const additionalMappings = (watch('entityMapping.additionalMappings') || []) as { questionId: string; targetField: string }[];
 
+    const fieldsConfig = watch('leadCaptureFieldsConfig') || {};
+    const allKeys = Object.keys(fieldsConfig);
+    const standardKeys = ['name', 'email', 'phone', 'company'];
+    const sortedKeys = React.useMemo(() => {
+        return [
+            ...standardKeys.filter(k => allKeys.includes(k)),
+            ...allKeys.filter(k => !standardKeys.includes(k))
+        ];
+    }, [fieldsConfig]);
+
     // Ensure default config values are loaded in form state if createEntity is toggled
     React.useEffect(() => {
         if (createEntity) {
@@ -159,10 +169,10 @@ export default function SurveyLeadCaptureCard() {
             }
             if (!watch('leadCaptureFieldsConfig')) {
                 setValue('leadCaptureFieldsConfig', {
-                    name: { show: true, label: 'Full Name', required: true },
-                    email: { show: true, label: 'Email Address', required: true },
-                    phone: { show: false, label: 'Phone Number', required: false },
-                    company: { show: false, label: 'Company Name', required: false }
+                    name: { show: true, label: 'Full Name', required: true, placeholder: 'Enter your name' },
+                    email: { show: true, label: 'Email Address', required: true, placeholder: 'name@example.com' },
+                    phone: { show: false, label: 'Phone Number', required: false, placeholder: '+1 (555) 000-0000' },
+                    company: { show: false, label: 'Company Name', required: false, placeholder: 'Enter company name' }
                 }, { shouldDirty: true });
             }
         }
@@ -354,10 +364,10 @@ export default function SurveyLeadCaptureCard() {
                                     control={control}
                                     render={({ field }) => (
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-semibold">Focal Person Name</Label>
+                                            <Label className="text-sm font-semibold">Contact Person Name</Label>
                                             <Select onValueChange={field.onChange} value={field.value || ''}>
                                                 <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
-                                                    <SelectValue placeholder="Identify focal person source..." />
+                                                    <SelectValue placeholder="Identify contact person source..." />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl">
                                                     {questions.map(q => (
@@ -418,83 +428,170 @@ export default function SurveyLeadCaptureCard() {
                             </div>
                         </div>
                     ) : (
-                        /* Page Copy Config & Toggles */
-                        <div className="space-y-8 animate-in fade-in duration-300">
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[9px] font-bold uppercase tracking-tight">Page Presentation Copy</Badge>
-                                    <div className="h-px flex-1 bg-border/40" />
-                                </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-semibold">Lead Page Title</Label>
-                                        <Controller
-                                            name="leadCaptureTitle"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Input {...field} placeholder="e.g. Claim Your Results" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                            )}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-semibold">Lead Page Description</Label>
-                                        <Controller
-                                            name="leadCaptureDescription"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Textarea {...field} placeholder="Enter your contact details to save your response..." className="rounded-xl min-h-[80px] bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                            )}
-                                        />
-                                    </div>
-                                </div>
+                        /* Interactive WYSIWYG Lead Capture Form Canvas */
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[9px] font-bold uppercase tracking-tight">WYSIWYG Form Editor Canvas</Badge>
+                                <div className="h-px flex-1 bg-border/40" />
                             </div>
 
-                            <div className="h-px w-full bg-border" />
-
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[9px] font-bold uppercase tracking-tight">Lead Capture Form Fields</Badge>
-                                    <div className="h-px flex-1 bg-border/40" />
+                            <div className="w-full max-w-xl mx-auto bg-card border border-border/85 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 sm:space-y-8 text-left bg-gradient-to-b from-card to-muted/20 relative">
+                                <div className="absolute top-3 right-3 flex items-center gap-1 bg-slate-900/10 dark:bg-slate-100/10 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-muted-foreground select-none">
+                                    <LayoutIcon className="h-3 w-3 mr-1" /> Preview Canvas
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {['name', 'email', 'phone', 'company'].map((fKey) => (
-                                        <div key={fKey} className="p-4 rounded-2xl bg-muted/10 border border-border/40 space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold capitalize">{fKey} Field</span>
-                                                <Controller
-                                                    name={`leadCaptureFieldsConfig.${fKey}.show`}
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Switch checked={!!field.value} onCheckedChange={field.onChange} />
-                                                    )}
-                                                />
-                                            </div>
-                                            {watch(`leadCaptureFieldsConfig.${fKey}.show`) && (
-                                                <div className="space-y-3 pt-2 border-t border-border/40 animate-in fade-in duration-200">
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground">Field Label</Label>
+
+                                <div className="space-y-4 text-center border-b border-border/50 pb-6 pt-2">
+                                    <Controller
+                                        name="leadCaptureTitle"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <input
+                                                type="text"
+                                                {...field}
+                                                placeholder="Claim Your Results"
+                                                className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b border-dashed border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none text-center transition-all px-2 py-1 text-slate-800 dark:text-slate-100"
+                                            />
+                                        )}
+                                    />
+                                    <Controller
+                                        name="leadCaptureDescription"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <textarea
+                                                {...field}
+                                                placeholder="Kindly provide your details so that we can send you your results"
+                                                className="w-full text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-md mx-auto bg-transparent border-b border-dashed border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none text-center transition-all resize-none px-2 py-1 font-medium"
+                                                rows={2}
+                                            />
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    {sortedKeys.map((fKey) => {
+                                        const fCfg = fieldsConfig[fKey] || {};
+                                        const isShow = !!fCfg.show;
+                                        const isRequired = !!fCfg.required;
+                                        const isCustom = !!fCfg.isCustom;
+
+                                        return (
+                                            <div key={fKey} className={cn(
+                                                "p-4 rounded-2xl border transition-all relative group/field",
+                                                isShow ? "bg-muted/10 border-border/50" : "bg-muted/30 border-dashed border-border/30 opacity-60"
+                                            )}>
+                                                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                                                    <div className="flex items-center gap-1.5 flex-1 min-w-[150px]">
+                                                        {fKey === 'name' && <User className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />}
+                                                        {fKey === 'email' && <Mail className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />}
+                                                        {fKey === 'phone' && <Phone className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />}
+                                                        {fKey === 'company' && <Building2 className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />}
+                                                        
                                                         <Controller
                                                             name={`leadCaptureFieldsConfig.${fKey}.label`}
                                                             control={control}
                                                             render={({ field }) => (
-                                                                <Input {...field} className="h-9 text-xs rounded-lg bg-card" />
+                                                                <input
+                                                                    type="text"
+                                                                    {...field}
+                                                                    className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-transparent border-b border-dashed border-transparent hover:border-muted-foreground/30 focus:border-primary focus:outline-none flex-1 min-w-0"
+                                                                    placeholder="Field Label"
+                                                                />
                                                             )}
                                                         />
+                                                        {isRequired && <span className="text-destructive font-bold text-xs shrink-0">*</span>}
                                                     </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground">Required</Label>
-                                                        <Controller
-                                                            name={`leadCaptureFieldsConfig.${fKey}.required`}
-                                                            control={control}
-                                                            render={({ field }) => (
-                                                                <Switch checked={!!field.value} onCheckedChange={field.onChange} className="scale-90" />
+
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {/* Required Button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setValue(`leadCaptureFieldsConfig.${fKey}.required`, !isRequired, { shouldDirty: true })}
+                                                            className={cn(
+                                                                "text-[10px] px-2 py-0.5 rounded-md font-bold transition-all border shrink-0",
+                                                                isRequired ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
                                                             )}
-                                                        />
+                                                        >
+                                                            Required
+                                                        </button>
+
+                                                        {/* Visible/Show Button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setValue(`leadCaptureFieldsConfig.${fKey}.show`, !isShow, { shouldDirty: true })}
+                                                            className={cn(
+                                                                "p-1 rounded-lg border transition-all shrink-0",
+                                                                isShow ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/40 text-muted-foreground/60 border-transparent hover:bg-muted/60"
+                                                            )}
+                                                            title={isShow ? "Visible" : "Hidden"}
+                                                        >
+                                                            {isShow ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                                                        </button>
+
+                                                        {/* Delete Custom Field */}
+                                                        {isCustom && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const current = { ...fieldsConfig };
+                                                                    delete current[fKey];
+                                                                    setValue('leadCaptureFieldsConfig', current, { shouldDirty: true });
+                                                                }}
+                                                                className="p-1 rounded-lg border border-transparent text-destructive hover:bg-destructive/10 hover:border-destructive/20 transition-all shrink-0"
+                                                                title="Delete field"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))}
+
+                                                {isShow ? (
+                                                    <Controller
+                                                        name={`leadCaptureFieldsConfig.${fKey}.placeholder`}
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <input
+                                                                type="text"
+                                                                {...field}
+                                                                value={field.value || ''}
+                                                                placeholder={`e.g. Enter ${fCfg.label?.toLowerCase() || fKey}...`}
+                                                                className="w-full h-11 rounded-xl bg-muted/20 border border-border/80 px-4 text-xs font-semibold text-muted-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary transition-all mt-1.5"
+                                                            />
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-11 rounded-xl bg-muted/40 border border-dashed border-border/80 px-4 text-xs font-semibold text-muted-foreground/30 flex items-center select-none opacity-40 mt-1.5">
+                                                        (Field Disabled/Hidden)
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="pt-4 border-t border-border/40 flex justify-center">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const current = watch('leadCaptureFieldsConfig') || {};
+                                            const customKey = `custom_${Date.now()}`;
+                                            setValue('leadCaptureFieldsConfig', {
+                                                ...current,
+                                                [customKey]: {
+                                                    show: true,
+                                                    label: 'Custom Field',
+                                                    required: false,
+                                                    isCustom: true,
+                                                    type: 'text'
+                                                }
+                                            }, { shouldDirty: true });
+                                        }}
+                                        className="rounded-xl border-dashed border-2 border-primary/40 text-primary hover:bg-primary/5 px-6 h-10 font-bold transition-all text-xs flex items-center gap-1.5"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" /> Add Custom Field
+                                    </Button>
                                 </div>
                             </div>
                         </div>

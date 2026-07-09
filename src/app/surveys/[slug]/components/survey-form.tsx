@@ -51,6 +51,7 @@ interface SurveyFormProps {
     sourcePageId?: string;
     assignedUserId?: string;
     resolvedLogoUrl?: string | null;
+    simulatedValues?: Record<string, string>;
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -355,7 +356,8 @@ const ElementRenderer = ({
     surveyId,
     onAutoAdvance,
     clearError,
-    survey
+    survey,
+    simulatedValues
 }: { 
     element: SurveyElement; 
     control: any, 
@@ -366,7 +368,22 @@ const ElementRenderer = ({
     onAutoAdvance?: () => void;
     clearError: (id: string) => void;
     survey: Survey;
+    simulatedValues?: Record<string, string>;
 }) => {
+
+    const interpolateText = (text: string | undefined | null): string => {
+        if (!text) return '';
+        if (!simulatedValues || Object.keys(simulatedValues).length === 0) return text;
+        return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+            const trimmed = key.trim();
+            return simulatedValues[trimmed] !== undefined ? simulatedValues[trimmed] : match;
+        });
+    };
+
+    const interpolateArray = (items: string[] | undefined | null): string[] => {
+        if (!items) return [];
+        return items.map(item => interpolateText(item));
+    };
 
     if (isLogic(element) || !isVisible) {
         return null;
@@ -392,13 +409,13 @@ const ElementRenderer = ({
                         "text-xl sm:text-2xl block leading-tight tracking-tight text-foreground/90 whitespace-pre-wrap",
                         survey.questionTitleBold !== false ? "font-bold" : "font-semibold"
                     )}>
-                        <span dangerouslySetInnerHTML={{ __html: question.title }} />
+                        <span dangerouslySetInnerHTML={{ __html: interpolateText(question.title) }} />
                         {isRequired && <span className="text-destructive ml-1.5">*</span>}
                     </Label>
                     {question.description && (
                         <div 
                             className="text-base text-muted-foreground font-medium whitespace-pre-wrap leading-relaxed opacity-70"
-                            dangerouslySetInnerHTML={{ __html: question.description }}
+                            dangerouslySetInnerHTML={{ __html: interpolateText(question.description) }}
                         />
                     )}
                 </div>
@@ -492,7 +509,7 @@ const ElementRenderer = ({
                                             errors[question.id] && "bg-destructive/5"
                                         )}>
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
-                                            <span className="flex-1 leading-tight">{opt}</span>
+                                            <span className="flex-1 leading-tight">{interpolateText(opt)}</span>
                                         </Label>
                                     ))}
                                     {question.allowOther && (
@@ -569,7 +586,7 @@ const ElementRenderer = ({
                                                     }}
                                                     className="size-5 border-2"
                                                 />
-                                                <span className="flex-1 leading-tight">{opt}</span>
+                                                <span className="flex-1 leading-tight">{interpolateText(opt)}</span>
                                             </Label>
                                         )
                                     })}
@@ -710,14 +727,14 @@ const ElementRenderer = ({
                 const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl" : Tag === 'h3' ? "text-xl" : "text-2xl";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, fontWeightClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
-                        <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
+                        <span dangerouslySetInnerHTML={{ __html: interpolateText(block.title || '') }} />
                     </Tag>
                 );
             }
             case 'description':
                 return (
                     <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
-                        <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
+                        <div dangerouslySetInnerHTML={{ __html: interpolateText(block.text || '') }} />
                     </div>
                 );
             case 'divider':
@@ -933,12 +950,22 @@ export default function SurveyForm({
     isPreview = false, 
     sourcePageId, 
     assignedUserId, 
-    resolvedLogoUrl 
+    resolvedLogoUrl,
+    simulatedValues
 }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
+
+    const interpolateText = React.useCallback((text: string | undefined | null): string => {
+        if (!text) return '';
+        if (!simulatedValues || Object.keys(simulatedValues).length === 0) return text;
+        return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+            const trimmed = key.trim();
+            return simulatedValues[trimmed] !== undefined ? simulatedValues[trimmed] : match;
+        });
+    }, [simulatedValues]);
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
     
@@ -1792,9 +1819,9 @@ export default function SurveyForm({
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-[25px] sm:text-[34px] font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{survey.title}</h1>
+                                        <h1 className="text-[25px] sm:text-[34px] font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{interpolateText(survey.title)}</h1>
                                         <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap">
-                                            {survey.description}
+                                            {interpolateText(survey.description)}
                                         </div>
                                     </div>
                                 </div>
@@ -1806,9 +1833,9 @@ export default function SurveyForm({
 
                              {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateText(pageSection.title || '') }} />
                                     {pageSection.description && (
-                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateText(pageSection.description) }} />
                                     )}
                                 </div>
                             )}
@@ -1831,6 +1858,7 @@ export default function SurveyForm({
                                                     onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
                                                     clearError={(id) => form.clearErrors(id)}
                                                     survey={survey}
+                                                    simulatedValues={simulatedValues}
                                                 />
                                             )
                                         })}

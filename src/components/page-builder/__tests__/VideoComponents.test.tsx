@@ -73,15 +73,18 @@ describe('Video Components and Autoplay behavior', () => {
         sections: [
           {
             id: 's1',
-            backgroundType: 'video',
-            backgroundVideoUrl: 'https://example.com/bg.mp4',
+            type: 'section',
+            props: {
+              backgroundType: 'video',
+              backgroundVideoUrl: 'https://example.com/bg.mp4',
+            },
             blocks: [],
           },
         ],
       },
     };
 
-    it('renders background video when isThumbnail is false', () => {
+    it('renders background video when isThumbnail is false', async () => {
       const { container } = render(
         <PageRenderer
           page={mockPage as any}
@@ -92,10 +95,12 @@ describe('Video Components and Autoplay behavior', () => {
           isThumbnail={false}
         />
       );
+      // Wait for isMounted to be set to true
+      await new Promise((resolve) => setTimeout(resolve, 10));
       expect(container.querySelector('video')).not.toBeNull();
     });
 
-    it('does not render background video when isThumbnail is true', () => {
+    it('does not render background video when isThumbnail is true', async () => {
       const { container } = render(
         <PageRenderer
           page={mockPage as any}
@@ -106,6 +111,7 @@ describe('Video Components and Autoplay behavior', () => {
           isThumbnail={true}
         />
       );
+      await new Promise((resolve) => setTimeout(resolve, 10));
       expect(container.querySelector('video')).toBeNull();
     });
   });

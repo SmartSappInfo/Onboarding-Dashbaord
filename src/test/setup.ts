@@ -12,3 +12,15 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+
+import { vi } from 'vitest';
+
+vi.mock('@/ai/genkit', () => ({
+  ai: {
+    definePrompt: () => vi.fn(),
+    defineFlow: () => vi.fn(),
+    defineTool: () => vi.fn(),
+    generate: vi.fn(),
+  },
+  getModel: vi.fn(),
+}));

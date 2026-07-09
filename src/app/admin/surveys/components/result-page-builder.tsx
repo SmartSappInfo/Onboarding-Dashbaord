@@ -1449,6 +1449,7 @@ export function PageEditor({
                                     <VariablesPanel 
                                         workspaceId={activeWorkspaceId} 
                                         featureContext="survey" 
+                                        sourceId={getValues('id') || undefined}
                                     />
                                 ) : (
                                     <p className="text-xs text-muted-foreground italic px-1">No active workspace detected</p>

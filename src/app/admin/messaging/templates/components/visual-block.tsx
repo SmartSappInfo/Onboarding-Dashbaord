@@ -7,6 +7,8 @@ import {
     GripVertical, 
     ArrowUp, 
     ArrowDown, 
+    ArrowUpToLine,
+    ArrowDownToLine,
     Copy, 
     Trash2, 
     Heading1, 
@@ -1651,11 +1653,16 @@ interface SortableBlockItemProps {
     onDuplicateSubBlock?: (parentBlockId: string, colIdx: number, subBlockId: string) => void;
     onSwapSubBlocks?: (parentBlockId: string, colIdx: number, a: number, b: number) => void;
     onUpdateSubBlock?: (subBlockId: string, updates: Partial<MessageBlock>) => void;
+    isMultiSelected?: boolean;
+    onToggleSelect?: () => void;
+    onMoveToTop?: () => void;
+    onMoveToBottom?: () => void;
 }
 
 export function SortableBlockItem({ 
     id, index, block, isSelected, simulationVars, autocompleteVariables, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate,
-    selectedSubBlockId, onSelectSubBlock, onRemoveSubBlock, onDuplicateSubBlock, onSwapSubBlocks, onUpdateSubBlock
+    selectedSubBlockId, onSelectSubBlock, onRemoveSubBlock, onDuplicateSubBlock, onSwapSubBlocks, onUpdateSubBlock,
+    isMultiSelected, onToggleSelect, onMoveToTop, onMoveToBottom
 }: SortableBlockItemProps) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
@@ -1683,9 +1690,18 @@ export function SortableBlockItem({
 
             <div className={cn(
                 "absolute -top-[27px] left-0 right-0 z-20 flex items-center justify-between pointer-events-none opacity-0 group-hover/block:opacity-100 transition-opacity duration-200",
-                isSelected && "opacity-100"
+                (isSelected || isMultiSelected) && "opacity-100"
             )}>
                 <div className="pointer-events-auto bg-blue-600 text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-t-lg flex items-center gap-1.5 shadow-md">
+                    <input 
+                        type="checkbox" 
+                        checked={isMultiSelected || false}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            onToggleSelect?.();
+                        }}
+                        className="h-3 w-3 rounded border-white/30 text-blue-600 focus:ring-blue-500 cursor-pointer bg-white/20 accent-blue-600 mr-0.5"
+                    />
                     {React.createElement(blockIcons[block.type] || Type, { className: "h-3 w-3" })}
                     {block.type}
                 </div>
@@ -1693,6 +1709,15 @@ export function SortableBlockItem({
                     <div {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-white/20 rounded transition-colors text-white" title="Drag to reorder">
                         <GripVertical className="h-3 w-3" />
                     </div>
+                    <button 
+                        type="button" 
+                        className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-30 disabled:pointer-events-none" 
+                        onClick={(e) => { e.stopPropagation(); onMoveToTop?.(); }} 
+                        disabled={index === 0}
+                        title="Move to Top"
+                    >
+                        <ArrowUpToLine className="h-3 w-3" />
+                    </button>
                     <button 
                         type="button" 
                         className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-30 disabled:pointer-events-none" 
@@ -1710,6 +1735,15 @@ export function SortableBlockItem({
                         title="Move Down"
                     >
                         <ArrowDown className="h-3 w-3" />
+                    </button>
+                    <button 
+                        type="button" 
+                        className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-30 disabled:pointer-events-none" 
+                        onClick={(e) => { e.stopPropagation(); onMoveToBottom?.(); }} 
+                        disabled={index === totalCount - 1}
+                        title="Move to Bottom"
+                    >
+                        <ArrowDownToLine className="h-3 w-3" />
                     </button>
                     <button 
                         type="button" 

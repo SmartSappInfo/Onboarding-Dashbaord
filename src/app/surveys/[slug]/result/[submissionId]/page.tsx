@@ -276,10 +276,10 @@ export default async function SurveyResultPage({
     searchParams 
 }: { 
     params: Promise<{ slug: string; submissionId: string }>,
-    searchParams: Promise<{ theme?: string, embed?: string }>
+    searchParams: Promise<{ theme?: string, embed?: string, preview?: string, workspaceId?: string }>
 }) {
     const { slug, submissionId } = await params;
-    const { theme, embed } = await searchParams;
+    const { theme, embed, preview, workspaceId } = await searchParams;
     const data = await getResultData(slug, submissionId);
 
     if (!data) notFound();
@@ -291,6 +291,8 @@ export default async function SurveyResultPage({
     const primaryColor = data.orgBranding?.brandPrimaryColor || '#3B5FFF';
     const secondaryColor = data.orgBranding?.brandSecondaryColor || '#8B5CF6';
     const brandFont = data.orgBranding?.brandFontFamily || 'Inter';
+
+    const resolvedWorkspaceId = workspaceId || data.survey.workspaceIds?.[0] || '';
 
     // Helper to convert hex to space-separated HSL channels (e.g. "221 83% 53%")
     const hexToHslChannels = (hexColor: string): string => {
@@ -382,6 +384,8 @@ export default async function SurveyResultPage({
                         logoUrl={data.logoUrl}
                         allowResubmission={data.survey.allowResubmission}
                         resultPages={data.resultPages}
+                        preview={preview === 'true'}
+                        workspaceId={resolvedWorkspaceId}
                     />
                 </main>
                 <footer className={cn(

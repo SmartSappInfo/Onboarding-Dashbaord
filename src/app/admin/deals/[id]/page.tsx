@@ -594,7 +594,7 @@ export default function DealDetailsPage() {
 
                                             {entityContacts.length > 0 && (
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase flex items-center gap-1.5"><User className="h-3 w-3" /> Focal Contacts</Label>
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase flex items-center gap-1.5"><User className="h-3 w-3" /> Contact Persons</Label>
                                                     <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto p-1.5 rounded-xl bg-muted/20 border border-primary/10">
                                                         {entityContacts.map(c => {
                                                             const selected = selectedFocalContactIds.includes(c.id);

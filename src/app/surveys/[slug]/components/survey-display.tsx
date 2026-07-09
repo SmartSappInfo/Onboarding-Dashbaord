@@ -12,7 +12,15 @@ import SurveyLoader from '../../components/survey-loader';
 import { useTheme } from 'next-themes';
 import Footer from '@/components/footer';
 import { useToast } from '@/hooks/use-toast';
-import { submitPublicSurveyLead, finalizeSurveySubmission } from '@/lib/survey-actions';
+import { submitPublicSurveyLead, finalizeSurveySubmission, getWorkspaceEntitiesForSimulationAction } from '@/lib/survey-actions';
+import { getVariableValuesMapAction } from '@/lib/services/fields-variables-service';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -47,6 +55,63 @@ export default function SurveyDisplay({
     const searchParams = useSearchParams();
     const { resolvedTheme, setTheme } = useTheme();
     const themeParam = searchParams?.get('theme');
+
+    const [entities, setEntities] = React.useState<any[]>([]);
+    const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
+    const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
+    const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>({});
+    const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
+
+    const isPreviewMode = searchParams?.get('preview') === 'true';
+
+    React.useEffect(() => {
+        if (isPreviewMode && resolvedWorkspaceId) {
+            getWorkspaceEntitiesForSimulationAction(resolvedWorkspaceId).then((data) => {
+                setEntities(data);
+                if (data.length > 0) {
+                    setSelectedEntityId(data[0].id);
+                    if (data[0].contacts && data[0].contacts.length > 0) {
+                        setSelectedContactEmail(data[0].contacts[0].email);
+                    }
+                }
+            }).catch(err => {
+                console.error("Failed to load workspace entities for simulation:", err);
+            });
+        }
+    }, [resolvedWorkspaceId, isPreviewMode]);
+
+    React.useEffect(() => {
+        if (isPreviewMode && resolvedWorkspaceId && selectedEntityId && selectedEntityId !== 'none') {
+            setIsLoadingSimulation(true);
+            getVariableValuesMapAction({
+                workspaceId: resolvedWorkspaceId,
+                entityId: selectedEntityId,
+                recipientContact: selectedContactEmail && selectedContactEmail !== 'none' ? selectedContactEmail : undefined,
+                surveyId: survey.id
+            }).then((values) => {
+                setSimulatedValues(values);
+                setIsLoadingSimulation(false);
+            }).catch(err => {
+                console.error("Failed to fetch simulated variable values:", err);
+                setIsLoadingSimulation(false);
+            });
+        } else {
+            setSimulatedValues({});
+        }
+    }, [selectedEntityId, selectedContactEmail, resolvedWorkspaceId, survey.id, isPreviewMode]);
+
+    const handleEntityChange = (entityId: string) => {
+        setSelectedEntityId(entityId);
+        const match = entities.find(e => e.id === entityId);
+        if (match && match.contacts && match.contacts.length > 0) {
+            setSelectedContactEmail(match.contacts[0].email);
+        } else {
+            setSelectedContactEmail('none');
+        }
+    };
+
+    const activeEntity = entities.find(e => e.id === selectedEntityId);
+    const activeContacts = activeEntity?.contacts || [];
 
     React.useEffect(() => {
         if (themeParam === 'dark' || themeParam === 'light') {
@@ -128,7 +193,58 @@ export default function SurveyDisplay({
 
     if (isSubmitted) {
         return (
-            <div className="min-h-screen flex flex-col justify-center relative" style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+            <div className={cn("min-h-screen flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+                {isPreviewMode && (
+                    <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Simulation Mode</span>
+                            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
+                                {survey.title}
+                            </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-400">Simulate Entity:</span>
+                                {entities.length > 0 ? (
+                                    <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+                                        <SelectTrigger className="w-[180px] h-8 bg-slate-800 border-slate-700 text-white rounded-lg text-xs font-semibold focus:ring-0 focus:ring-offset-0">
+                                            <SelectValue placeholder="Select Entity" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
+                                            {entities.map((e) => (
+                                                <SelectItem key={e.id} value={e.id} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
+                                                    {e.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <span className="text-xs text-slate-500 italic">No workspace entities found</span>
+                                )}
+                            </div>
+
+                            {selectedEntityId !== 'none' && activeContacts.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-400">Contact:</span>
+                                    <Select value={selectedContactEmail} onValueChange={setSelectedContactEmail}>
+                                        <SelectTrigger className="w-[180px] h-8 bg-slate-800 border-slate-700 text-white rounded-lg text-xs font-semibold focus:ring-0 focus:ring-offset-0">
+                                            <SelectValue placeholder="Select Contact" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
+                                            {activeContacts.map((c: any) => (
+                                                <SelectItem key={c.email || c.phone} value={c.email} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
+                                                    {c.name} ({c.typeLabel || c.typeKey || 'Contact'})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
                  <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
                  <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
@@ -189,7 +305,58 @@ export default function SurveyDisplay({
     const showHeader = !!survey.showSurveyTitles;
 
     return (
-        <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+        <div className={cn("min-h-screen flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+            {isPreviewMode && (
+                <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Simulation Mode</span>
+                        <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
+                            {survey.title}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-400">Simulate Entity:</span>
+                            {entities.length > 0 ? (
+                                <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+                                    <SelectTrigger className="w-[180px] h-8 bg-slate-800 border-slate-700 text-white rounded-lg text-xs font-semibold focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder="Select Entity" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
+                                        {entities.map((e) => (
+                                            <SelectItem key={e.id} value={e.id} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
+                                                {e.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <span className="text-xs text-slate-500 italic">No workspace entities found</span>
+                            )}
+                        </div>
+
+                        {selectedEntityId !== 'none' && activeContacts.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-400">Contact:</span>
+                                <Select value={selectedContactEmail} onValueChange={setSelectedContactEmail}>
+                                    <SelectTrigger className="w-[180px] h-8 bg-slate-800 border-slate-700 text-white rounded-lg text-xs font-semibold focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder="Select Contact" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
+                                        {activeContacts.map((c: any) => (
+                                            <SelectItem key={c.email || c.phone} value={c.email} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
+                                                {c.name} ({c.typeLabel || c.typeKey || 'Contact'})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
                 <div className="max-w-4xl w-full mx-auto px-4">
@@ -229,6 +396,7 @@ export default function SurveyDisplay({
                                     sourcePageId={resolvedSourcePageId}
                                     assignedUserId={assignedUserId}
                                     resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
+                                    simulatedValues={simulatedValues}
                                 />
                             </motion.div>
                         )}
@@ -311,6 +479,7 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
     const [email, setEmail] = React.useState<string>('');
     const [phone, setPhone] = React.useState<string>('');
     const [company, setCompany] = React.useState<string>('');
+    const [customValues, setCustomValues] = React.useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
 
@@ -327,10 +496,20 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const nextErrors: Record<string, string> = {};
-        if (fieldsConfig.name.show && fieldsConfig.name.required && !name.trim()) nextErrors.name = 'Name is required';
-        if (fieldsConfig.email.show && fieldsConfig.email.required && !email.trim()) nextErrors.email = 'Email is required';
-        if (fieldsConfig.phone.show && fieldsConfig.phone.required && !phone.trim()) nextErrors.phone = 'Phone number is required';
-        if (fieldsConfig.company.show && fieldsConfig.company.required && !company.trim()) nextErrors.company = 'Company name is required';
+        if (fieldsConfig.name?.show && fieldsConfig.name?.required && !name.trim()) nextErrors.name = 'Name is required';
+        if (fieldsConfig.email?.show && fieldsConfig.email?.required && !email.trim()) nextErrors.email = 'Email is required';
+        if (fieldsConfig.phone?.show && fieldsConfig.phone?.required && !phone.trim()) nextErrors.phone = 'Phone number is required';
+        if (fieldsConfig.company?.show && fieldsConfig.company?.required && !company.trim()) nextErrors.company = 'Company name is required';
+
+        // Custom fields validation
+        Object.keys(fieldsConfig).forEach(fKey => {
+            if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
+                const fCfg = fieldsConfig[fKey];
+                if (fCfg?.show && fCfg?.required && !(customValues[fKey] || '').trim()) {
+                    nextErrors[fKey] = `${fCfg.label || fKey} is required`;
+                }
+            }
+        });
 
         if (Object.keys(nextErrors).length > 0) {
             setErrors(nextErrors);
@@ -340,10 +519,11 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
         setIsSubmitting(true);
         try {
             const res = await submitPublicSurveyLead(survey.id, submissionId, workspaceId, {
-                name: fieldsConfig.name.show ? name : undefined,
-                email: fieldsConfig.email.show ? email : undefined,
-                phone: fieldsConfig.phone.show ? phone : undefined,
-                company: fieldsConfig.company.show ? company : undefined
+                name: fieldsConfig.name?.show ? name : undefined,
+                email: fieldsConfig.email?.show ? email : undefined,
+                phone: fieldsConfig.phone?.show ? phone : undefined,
+                company: fieldsConfig.company?.show ? company : undefined,
+                ...customValues
             }, outcomeId);
 
             if (res.success) {
@@ -407,7 +587,7 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.name && "border-destructive focus:ring-destructive/20 focus:border-destructive"
                             )}
-                            placeholder="Enter your name"
+                            placeholder={fieldsConfig.name.placeholder || "Enter your name"}
                         />
                         {errors.name && <p className="text-xs text-destructive font-semibold ml-1">{errors.name}</p>}
                     </div>
@@ -423,7 +603,7 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.email && "border-destructive focus:ring-destructive/20 focus:border-destructive"
                             )}
-                            placeholder="name@example.com"
+                            placeholder={fieldsConfig.email.placeholder || "name@example.com"}
                         />
                         {errors.email && <p className="text-xs text-destructive font-semibold ml-1">{errors.email}</p>}
                     </div>
@@ -439,12 +619,12 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.phone && "border-destructive focus:ring-destructive/20 focus:border-destructive"
                             )}
-                            placeholder="+1 (555) 000-0000"
+                            placeholder={fieldsConfig.phone.placeholder || "+1 (555) 000-0000"}
                         />
                         {errors.phone && <p className="text-xs text-destructive font-semibold ml-1">{errors.phone}</p>}
                     </div>
                 )}
-                {fieldsConfig.company.show && (
+                {fieldsConfig.company?.show && (
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{fieldsConfig.company.label}</label>
                         <input
@@ -455,11 +635,39 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.company && "border-destructive focus:ring-destructive/20 focus:border-destructive"
                             )}
-                            placeholder="Enter company name"
+                            placeholder={fieldsConfig.company.placeholder || "Enter company name"}
                         />
                         {errors.company && <p className="text-xs text-destructive font-semibold ml-1">{errors.company}</p>}
                     </div>
                 )}
+
+                {Object.keys(fieldsConfig).map((fKey) => {
+                    if (fKey === 'name' || fKey === 'email' || fKey === 'phone' || fKey === 'company') return null;
+                    const fCfg = fieldsConfig[fKey];
+                    if (!fCfg || !fCfg.show) return null;
+                    return (
+                        <div key={fKey} className="space-y-2 animate-in fade-in duration-200">
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                {fCfg.label}
+                                {fCfg.required && <span className="text-destructive ml-1">*</span>}
+                            </label>
+                            <input
+                                type={fCfg.type === 'number' ? 'number' : fCfg.type === 'phone' ? 'tel' : fCfg.type === 'email' ? 'email' : 'text'}
+                                value={customValues[fKey] || ''}
+                                onChange={(e) => {
+                                    setCustomValues(prev => ({ ...prev, [fKey]: e.target.value }));
+                                    if (errors[fKey]) setErrors(prev => ({ ...prev, [fKey]: '' }));
+                                }}
+                                className={cn(
+                                    "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
+                                    errors[fKey] && "border-destructive focus:ring-destructive/20 focus:border-destructive"
+                                )}
+                                placeholder={fCfg.placeholder || `Enter your ${fCfg.label?.toLowerCase() || fKey}`}
+                            />
+                            {errors[fKey] && <p className="text-xs text-destructive font-semibold ml-1">{errors[fKey]}</p>}
+                        </div>
+                    );
+                })}
 
                 <div className="pt-4">
                     <Button

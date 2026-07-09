@@ -890,6 +890,7 @@ export async function submitPublicSurveyLead(
     email?: string;
     phone?: string;
     company?: string;
+    [key: string]: string | undefined;
   },
   outcomeId?: string | null
 ): Promise<{ success: boolean; error?: string }> {
@@ -1103,7 +1104,8 @@ export async function submitPublicSurveyLead(
     if (finalEntityId) {
       await responseRef.update({ 
         entityId: finalEntityId,
-        assignedUserId: responseData.assignedUserId || null 
+        assignedUserId: responseData.assignedUserId || null,
+        leadDetails: leadData
       });
 
       // Trigger post-submission automations, notifications, webhooks, and logs
@@ -1516,5 +1518,65 @@ export async function executeSurveyResultButtonActions(params: {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error(`[survey-actions] executeSurveyResultButtonActions failed:`, err);
     return { success: false, error: msg };
+  }
+}
+
+export async function getWorkspaceEntitiesForSimulationAction(workspaceId: string): Promise<Array<{
+  id: string;
+  name: string;
+  contacts: Array<{
+    name: string;
+    email: string;
+    phone: string;
+    typeLabel?: string;
+    typeKey?: string;
+  }>;
+}>> {
+  if (!workspaceId) return [];
+  try {
+    const weSnap = await adminDb.collection('workspace_entities')
+      .where('workspaceId', '==', workspaceId)
+      .limit(100)
+      .get();
+    
+    if (weSnap.empty) return [];
+
+    const results: Array<{ id: string; name: string; contacts: any[] }> = [];
+    
+    const promises = weSnap.docs.map(async (weDoc) => {
+      const weData = weDoc.data();
+      const entityId = weData.entityId;
+      if (!entityId) return null;
+
+      try {
+        const entityDoc = await adminDb.collection('entities').doc(entityId).get();
+        if (!entityDoc.exists) {
+          return {
+            id: entityId,
+            name: weData.displayName || weData.name || 'Unnamed Entity',
+            contacts: weData.entityContacts || []
+          };
+        }
+        const entityData = entityDoc.data()!;
+        return {
+          id: entityId,
+          name: entityData.name || weData.displayName || weData.name || 'Unnamed Entity',
+          contacts: entityData.entityContacts || weData.entityContacts || []
+        };
+      } catch (err) {
+        console.error(`Error loading entity doc ${entityId} for simulation:`, err);
+        return {
+          id: entityId,
+          name: weData.displayName || weData.name || 'Unnamed Entity',
+          contacts: weData.entityContacts || []
+        };
+      }
+    });
+
+    const resolved = await Promise.all(promises);
+    return resolved.filter((item): item is NonNullable<typeof item> => item !== null);
+  } catch (error) {
+    console.error('Error in getWorkspaceEntitiesForSimulationAction:', error);
+    return [];
   }
 }
