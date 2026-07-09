@@ -195,12 +195,14 @@ export default function PublicPageClient({
     slug,
     initialPage = null,
     initialVersion = null,
-    orgBranding = null
+    orgBranding = null,
+    preloadedVariables = {}
 }: { 
     slug: string;
     initialPage?: CampaignPage | null;
     initialVersion?: CampaignPageVersion | null;
     orgBranding?: OrgBranding | null;
+    preloadedVariables?: Record<string, string>;
 }) {
     const db = useFirestore();
     const searchParams = useSearchParams();
@@ -209,6 +211,43 @@ export default function PublicPageClient({
     const [loading, setLoading] = useState(!initialPage);
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
+    const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
+
+    // Fallback: Resolve variables client-side if preloadedVariables was empty but query params exist
+    useEffect(() => {
+        if (Object.keys(variablesMap).length > 0) return;
+        if (!page || !page.workspaceIds || page.workspaceIds.length === 0) return;
+
+        const email = searchParams?.get('email') || searchParams?.get('contactEmail');
+        const phone = searchParams?.get('phone') || searchParams?.get('contactPhone');
+        const entityId = searchParams?.get('entityId') || searchParams?.get('entity');
+
+        if (!email && !phone && !entityId) return;
+
+        const fetchFallbackVariables = async () => {
+            try {
+                const paramsRecord: Record<string, string> = {};
+                searchParams.forEach((v, k) => {
+                    paramsRecord[k] = v;
+                });
+
+                const { resolveEntityContextFromParamsAction, getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
+                const entityCtx = await resolveEntityContextFromParamsAction(page.workspaceIds, paramsRecord);
+                if (entityCtx.entityId || entityCtx.recipientContact) {
+                    const dynamicVars = await getVariableValuesMapAction({
+                        workspaceId: page.workspaceIds[0],
+                        entityId: entityCtx.entityId || undefined,
+                        recipientContact: entityCtx.recipientContact || undefined
+                    });
+                    setVariablesMap(dynamicVars);
+                }
+            } catch (err) {
+                console.error('[PublicPageClient] Client fallback variable resolution failed:', err);
+            }
+        };
+
+        fetchFallbackVariables();
+    }, [page, searchParams, variablesMap]);
 
     // Intercept clicks on links starting with #modal- (e.g. <a href="#modal-survey-123">)
     useEffect(() => {
@@ -357,6 +396,11 @@ export default function PublicPageClient({
     const interpolate = (text: string) => {
         if (!text) return '';
         let result = text;
+        // 1. Resolve from database entity variables mapping
+        Object.entries(variablesMap).forEach(([key, val]) => {
+            result = result.replace(new RegExp(`{{${key}}}`, 'g'), val);
+        });
+        // 2. Fall back to raw url search parameters
         searchParams.forEach((value, key) => {
             result = result.replace(new RegExp(`{{${key}}}`, 'g'), value);
         });

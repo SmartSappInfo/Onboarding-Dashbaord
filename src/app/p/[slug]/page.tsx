@@ -76,11 +76,19 @@ export async function generateMetadata(
     };
 }
 
-export default async function PublicPageRoute({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PublicPageRoute({ 
+    params,
+    searchParams
+}: { 
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<Record<string, string>>;
+}) {
     const { slug } = await params;
+    const resolvedSearchParams = await searchParams;
     const page = await getPageBySlug(slug);
     let version = null;
     let orgBranding = null;
+    let preloadedVariables: Record<string, string> = {};
 
     if (page) {
         // Parallelize independent reads (vercel-react-best-practices: async-parallel).
@@ -88,6 +96,26 @@ export default async function PublicPageRoute({ params }: { params: Promise<{ sl
             getOrgBranding(page.organizationId),
             page.publishedVersionId ? getPageVersion(page.publishedVersionId) : Promise.resolve(null),
         ]);
+
+        if (page.workspaceIds && page.workspaceIds.length > 0) {
+            try {
+                const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+                const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
+                    page.workspaceIds, 
+                    resolvedSearchParams
+                );
+                if (entityCtx.entityId || entityCtx.recipientContact) {
+                    const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
+                    preloadedVariables = await getVariableValuesMapAction({
+                        workspaceId: page.workspaceIds[0],
+                        entityId: entityCtx.entityId || undefined,
+                        recipientContact: entityCtx.recipientContact || undefined
+                    });
+                }
+            } catch (err) {
+                console.warn('[PublicPageRoute] Failed to preload entity variables:', err);
+            }
+        }
     }
 
     return (
@@ -96,6 +124,7 @@ export default async function PublicPageRoute({ params }: { params: Promise<{ sl
             initialPage={page} 
             initialVersion={version} 
             orgBranding={orgBranding} 
+            preloadedVariables={preloadedVariables}
         />
     );
 }

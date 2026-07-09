@@ -227,7 +227,82 @@ export class FieldsVariablesService {
     }
 
     // 6. Load Dynamic Form / Survey Fields from template_variables
-    if (params.featureContext === 'form' || params.featureContext === 'survey') {
+    if (params.featureContext === 'survey' && params.sourceId) {
+      try {
+        const surveySnap = await adminDb.collection('surveys').doc(params.sourceId).get();
+        if (surveySnap.exists) {
+          const surveyData = surveySnap.data();
+          if (surveyData) {
+            // Expose standard Computed Survey Variables
+            const surveyStaticVars = [
+              { key: 'survey_title', label: 'Survey Title', desc: 'Title of the survey' },
+              { key: 'survey_score', label: 'Survey Score (Points)', desc: 'Respondent\'s total score in points' },
+              { key: 'score', label: 'Score', desc: 'Alias for survey score' },
+              { key: 'max_score', label: 'Survey Max Score', desc: 'Total possible score in the survey' },
+              { key: 'outcome_label', label: 'Outcome Label', desc: 'Name of the matched outcome rule' },
+              { key: 'submission_date', label: 'Submission Date', desc: 'Formatted date of survey submission' },
+              { key: 'contact_name', label: 'Contact Name (Captured)', desc: 'Contact name captured on lead sheet' },
+              { key: 'contact_email', label: 'Contact Email (Captured)', desc: 'Contact email captured on lead sheet' },
+              { key: 'contact_phone', label: 'Contact Phone (Captured)', desc: 'Contact phone captured on lead sheet' },
+            ];
+
+            surveyStaticVars.forEach((sv) => {
+              safePush({
+                key: sv.key,
+                label: sv.label,
+                category: 'feature',
+                dataType: sv.key.includes('score') ? 'number' : 'string',
+                description: sv.desc,
+                source: 'dynamic_form',
+                featureContext: 'survey',
+              });
+            });
+
+            // Expose each question answer dynamically
+            const elements = surveyData.elements || [];
+            elements.forEach((el: any) => {
+              if (el && el.id && (el.title || el.text)) {
+                // Determine if it is a question
+                const isQ = 'isRequired' in el || ['text', 'long-text', 'email', 'phone', 'number', 'link', 'yes-no', 'multiple-choice', 'checkboxes'].includes(el.type);
+                if (isQ) {
+                  const plainText = (el.title || el.text || '').replace(/<[^>]*>/gm, '').trim();
+                  safePush({
+                    key: el.id,
+                    label: `Q: ${plainText.substring(0, 50)}${plainText.length > 50 ? '...' : ''}`,
+                    category: 'feature',
+                    dataType: 'string',
+                    description: `User's response to question: "${plainText}"`,
+                    source: 'dynamic_form',
+                    featureContext: 'survey',
+                  });
+                }
+              }
+            });
+
+            // Expose custom lead capture fields dynamically
+            const leadFields = surveyData.leadCaptureFieldsConfig || {};
+            Object.keys(leadFields).forEach((fKey) => {
+              if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
+                const fCfg = leadFields[fKey];
+                if (fCfg && fCfg.show) {
+                  safePush({
+                    key: fKey,
+                    label: `Lead: ${fCfg.label || fKey}`,
+                    category: 'feature',
+                    dataType: 'string',
+                    description: `Captured lead value: "${fCfg.label || fKey}"`,
+                    source: 'dynamic_form',
+                    featureContext: 'survey',
+                  });
+                }
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[FieldsVariablesService] Failed to load survey questions for variables:', err);
+      }
+    } else if (params.featureContext === 'form' || params.featureContext === 'survey') {
       try {
         const docsToProcess = params.sourceId
           ? (await adminDb.collection('template_variables')
@@ -615,6 +690,13 @@ export class FieldsVariablesService {
                 valuesMap.set(`survey_fields.${questionId}`, val !== null && val !== undefined ? String(val) : '');
               });
             }
+
+            if (response.leadDetails && typeof response.leadDetails === 'object') {
+              Object.entries(response.leadDetails).forEach(([fKey, val]) => {
+                valuesMap.set(fKey, val !== null && val !== undefined ? String(val) : '');
+                valuesMap.set(`lead_${fKey}`, val !== null && val !== undefined ? String(val) : '');
+              });
+            }
           }
         }
       } catch (err) {
@@ -681,5 +763,101 @@ export class FieldsVariablesService {
   ): Promise<string> {
     const valuesMap = await this.getVariableValuesMap(context);
     return this.resolveTextWithMap(templateText, valuesMap);
+  }
+
+  /**
+   * Resolves the entityId and recipientContact identifier based on URL search query parameters.
+   * Leverages automatic single-field indexes securely on the server-side to avoid compound index restrictions.
+   */
+  static async resolveEntityContextFromParams(
+    workspaceIds: string[],
+    searchParams: Record<string, string>
+  ): Promise<{ entityId: string | null; recipientContact: string | null }> {
+    const entityIdParam = searchParams.entityId || searchParams.entity;
+    const emailParam = searchParams.email || searchParams.contactEmail;
+    const phoneParam = searchParams.phone || searchParams.contactPhone;
+
+    // 1. Direct ID lookup
+    if (entityIdParam) {
+      try {
+        const snap = await adminDb.collection('workspace_entities')
+          .where('entityId', '==', entityIdParam)
+          .get();
+        const docMatch = snap.docs.find(doc => {
+          const wId = doc.data().workspaceId;
+          return workspaceIds.includes(wId);
+        });
+        if (docMatch) {
+          return { entityId: entityIdParam, recipientContact: emailParam || phoneParam || null };
+        }
+      } catch (err) {
+        console.warn('[FieldsVariablesService] Error verifying entityId parameter:', err);
+      }
+    }
+
+    // 2. Email-based lookup
+    if (emailParam) {
+      const cleanEmail = emailParam.toLowerCase().trim();
+      if (cleanEmail) {
+        try {
+          // Query workspace_entities globally using automatic single-field indexes
+          const snap = await adminDb.collection('workspace_entities')
+            .where('primaryEmail', '==', cleanEmail)
+            .get();
+          // Filter by workspace tenancy in memory
+          const docMatch = snap.docs.find(doc => {
+            const wId = doc.data().workspaceId;
+            return workspaceIds.includes(wId);
+          });
+          if (docMatch) {
+            const data = docMatch.data();
+            return { entityId: (data.entityId as string) || null, recipientContact: cleanEmail };
+          }
+
+          // Fallback: search within nested contact records in memory if needed
+          const allSnaps = await adminDb.collection('workspace_entities')
+            .where('workspaceId', 'in', workspaceIds)
+            .get();
+          for (const doc of allSnaps.docs) {
+            const data = doc.data();
+            const contacts = (data.entityContacts || []) as EntityContact[];
+            const found = contacts.some(c => c.email && c.email.toLowerCase().trim() === cleanEmail);
+            if (found) {
+              return { entityId: (data.entityId as string) || null, recipientContact: cleanEmail };
+            }
+          }
+        } catch (err) {
+          console.warn('[FieldsVariablesService] Error resolving entityId by email parameter:', err);
+        }
+      }
+    }
+
+    // 3. Phone-based lookup
+    if (phoneParam) {
+      const targetDigits = phoneParam.replace(/\D/g, '');
+      if (targetDigits) {
+        try {
+          // Scan within nested contact records in memory
+          const allSnaps = await adminDb.collection('workspace_entities')
+            .where('workspaceId', 'in', workspaceIds)
+            .get();
+          for (const doc of allSnaps.docs) {
+            const data = doc.data();
+            const contacts = (data.entityContacts || []) as EntityContact[];
+            const found = contacts.some(c => {
+              const digits = c.phone ? c.phone.replace(/\D/g, '') : '';
+              return digits && digits.endsWith(targetDigits); // robust match on suffix digits
+            });
+            if (found) {
+              return { entityId: (data.entityId as string) || null, recipientContact: phoneParam };
+            }
+          }
+        } catch (err) {
+          console.warn('[FieldsVariablesService] Error resolving entityId by phone parameter:', err);
+        }
+      }
+    }
+
+    return { entityId: null, recipientContact: null };
   }
 }
