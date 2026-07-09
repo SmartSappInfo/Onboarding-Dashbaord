@@ -535,13 +535,14 @@ Mode Guidelines:
 BLOCK COMPOSITION RULES:
 1. DO NOT merge the entire text into a single block. Segment the content logically.
 2. Top-Branding: Place a 'logo' or 'header' block at the very top (utilizing '{{org_logo_url}}' for logo url).
-3. Headers: Use 'heading' blocks with variant 'h1' for the main subject/title, and 'h2' or 'h3' for sub-sections. Keep headings short and punchy.
+3. Headers: Use 'heading' blocks with variant 'h1' for the main subject/title, and 'h2' or 'h3' for sub-sections. Keep headings short and punchy. ALWAYS use Title Case (Capitalize First Letters, not all-caps/CAPITAL letters) for headings and titles, even if the user's raw prompt/copy is written in CAPITAL letters.
 4. Body Text: Use 'text' blocks for paragraph content. Split long paragraphs into separate, readable 'text' blocks.
 5. Lists: If the source text contains bullet points, numbered items, or checklists (e.g., benefits, features, rewards, rewards checklist), convert them to a single 'list' block. Set 'listStyle' to 'checkmark' (preferred for benefits), 'arrow', 'unordered', or 'ordered', and put the list items in the 'items' array.
 6. Buttons (Call to Action): Scan for links, placeholders like "[Reserve My Place]", or instructions like "Click the link below to reserve today". Convert these into a 'button' block. Set the button label in 'title' (defaulting to a suitable copy like 'Learn More' or 'Reserve My Spot' if not specified in the prompt), and the link in 'link' (defaulting to '{{rsvp_going_url}}' or a custom link if provided).
-7. Dividers: Insert 'divider' blocks to partition large sections (e.g. separating the body text from the monthly rewards checklist, or separating the body from the signature).
-8. Sign-off / Signature: Use a 'text' block for the sign-off ("Warm regards,", name, title) and style it nicely.
-9. Footer: Always append a 'footer' block at the end with standard compliance links (Unsubscribe, contact information) and copyrights using '{{org_name}}'.
+7. Score Card: If the email copy suggests a survey score, assessment result, points, or survey marks (e.g., "you scored 85", "your result: 92 points", "your survey score card"), insert a 'score-card' block to visually highlight the score.
+8. Dividers: Insert 'divider' blocks to partition large sections (e.g. separating the body text from the monthly rewards checklist, or separating the body from the signature).
+9. Sign-off / Signature: Use a 'text' block for the sign-off ("Warm regards,", name, title) and style it nicely.
+10. Footer: Always append a 'footer' block at the end with standard compliance links (Unsubscribe, contact information) and copyrights using '{{org_name}}'.
 
 BLOCK PROPERTY MAPPING RULES:
 - Heading Blocks ('heading'):
@@ -563,12 +564,13 @@ BLOCK PROPERTY MAPPING RULES:
 DYNAMIC VARIABLE REPLACEMENT RULES (TRUE INTELLIGENCE):
 Scan the input copy and replace specific personal or organizational placeholders with dynamic double-bracket system tags:
 1. Recipient Greetings: Replace greetings like "Dear (Name)", "Dear [Name]", "Dear Parent", "Hi [Client]" with "Dear {{contact_name}}" or "Hi {{contact_name}}".
-2. School/Organization Name: Replace occurrences of the sending school or company name (e.g. "SmartSapp", "our school", "the school name") with "{{org_name}}".
+2. School/Organization Name (The Sender): Replace occurrences of the sending school or company name (e.g. "SmartSapp", "our school", "the school name") with "{{org_name}}". **Note: Do NOT use "{{org_name}}" for personalizing client details; it is strictly for the sender. For the recipient client's own school/business/organization name, use "{{entity_name}}".**
 3. Contact Details:
    - Replace phone numbers of the sender/school with "{{org_phone}}".
    - Replace email addresses of the sender/school with "{{org_email}}".
    - Replace physical addresses of the sender/school with "{{org_address}}".
-4. Personal Details:
+4. Recipient Client details (The Recipient):
+   - Recipient's business/school/organization/company name -> "{{entity_name}}"
    - Recipient Email -> "{{contact_email}}"
    - Recipient Phone -> "{{contact_phone}}"
    - Recipient Name -> "{{contact_name}}"
