@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ interface SurveyLoaderProps {
 /**
  * @fileOverview Branded pre-loader for Survey experiences.
  * Features an animated organization logo/icon and pulsing status indicators.
+ * When branding is disabled (logoUrl === 'none'), falls back to an animated spinner.
  */
 export default function SurveyLoader({ label = "Preparing your experience...", className, logoUrl }: SurveyLoaderProps) {
     return (
@@ -30,7 +31,9 @@ export default function SurveyLoader({ label = "Preparing your experience...", c
                 
                 {/* Icon Container */}
                 <div className="relative bg-white rounded-[2.5rem] p-6 shadow-2xl ring-1 ring-black/5 flex items-center justify-center min-h-[120px] min-w-[120px]">
-                    {logoUrl === 'none' ? null : logoUrl ? (
+                    {logoUrl === 'none' ? (
+                        <Loader2 className="h-14 w-14 text-primary/70 animate-spin" />
+                    ) : logoUrl ? (
                          <div className="relative h-16 w-32">
                              <img src={logoUrl} alt="Loading..." className="w-full h-full object-contain animate-pulse" />
                          </div>
