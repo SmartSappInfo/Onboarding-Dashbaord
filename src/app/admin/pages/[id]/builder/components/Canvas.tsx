@@ -898,6 +898,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         if (!workspace) return;
 
         const handleNativeWheel = (e: WheelEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && target.closest('.ai-chat-panel-container')) {
+                return;
+            }
+
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
                 const delta = -e.deltaY * 0.005;
@@ -2299,7 +2304,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
             {/* Floating AI Chat Widget / Experience Copilot Panel */}
             {isAiChatOpen && (
-                <div className="absolute bottom-24 right-20 w-80 h-[500px] bg-slate-950/95 border border-slate-850/85 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-300">
+                <div className="absolute bottom-24 right-20 w-80 h-[500px] bg-slate-950/95 border border-slate-850/85 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-300 ai-chat-panel-container">
                     <AiCopilotPanel
                         version={version}
                         onAppendSection={onAppendSection || (() => {})}
