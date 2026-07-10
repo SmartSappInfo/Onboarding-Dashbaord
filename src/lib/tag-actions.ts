@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { adminDb } from './firebase-admin';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -929,6 +930,8 @@ export async function bulkApplyTagsAction(
     const partialFailures: string[] = [];
     // Updated WE state (with new tags) to re-project after a successful commit.
     const weToResync: Array<Record<string, unknown>> = [];
+    // Collect ALL tag-change events across every batch; fired via after() post-response.
+    const allContactNewTags: BulkTagChange[] = [];
 
     // Pre-fetch all tag documents in parallel to construct an in-memory O(1) map
     const tagsSnap = await Promise.all(
@@ -1004,14 +1007,42 @@ export async function bulkApplyTagsAction(
         await batch.commit();
         processedCount += chunkProcessed.length;
         weToResync.push(...chunkWe);
+        // Accumulate events — DO NOT await logActivity inside the batch loop.
+        // Firing automation events here would block subsequent batch commits and
+        // cause HTTP timeouts on large datasets (10k+ contacts). Events are
+        // dispatched via after() once all writes are committed.
+        allContactNewTags.push(...contactNewTags);
+      } catch (commitErr: unknown) {
+        const commitError = commitErr as Error;
+        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
+        console.error('bulkApplyTagsAction batch error:', commitErr);
+        errors.push(msg);
+        failedCount += chunkProcessed.length;
+        partialFailures.push(...chunkProcessed);
+      }
+    }
 
-        // After successful commit, log activities to trigger automations asynchronously
-        for (const item of contactNewTags) {
-          const resolvedEntityId = contactType === 'workspace_entity' ? ((item.contactData.entityId as string) || item.contactId) : item.contactId;
+    // Dispatch automation events for ALL successfully-committed tag changes.
+    // Using after() runs this outside the HTTP response window, preventing timeouts
+    // and ensuring every contact's automation is triggered even for 10k+ bulk ops.
+    if (allContactNewTags.length > 0) {
+      after(async () => {
+        for (const item of allContactNewTags) {
+          const resolvedEntityId =
+            contactType === 'workspace_entity'
+              ? ((item.contactData.entityId as string) || item.contactId)
+              : item.contactId;
+
           for (const tagId of item.tagIds) {
             const tag = tagsMap.get(tagId);
-            let resolvedWorkspaceId = contactType === 'workspace_entity' ? ((item.contactData.workspaceId as string) || tag?.workspaceId) : tag?.workspaceId;
-            let resolvedOrganizationId = contactType === 'workspace_entity' ? ((item.contactData.organizationId as string) || tag?.organizationId) : ((item.contactData.organizationId as string) || tag?.organizationId);
+            let resolvedWorkspaceId =
+              contactType === 'workspace_entity'
+                ? ((item.contactData.workspaceId as string) || tag?.workspaceId)
+                : tag?.workspaceId;
+            let resolvedOrganizationId =
+              contactType === 'workspace_entity'
+                ? ((item.contactData.organizationId as string) || tag?.organizationId)
+                : ((item.contactData.organizationId as string) || tag?.organizationId);
 
             if (!resolvedWorkspaceId && resolvedEntityId) {
               try {
@@ -1024,7 +1055,8 @@ export async function bulkApplyTagsAction(
                   if (!weSnap.empty) {
                     const weData = weSnap.docs[0].data();
                     resolvedWorkspaceId = weData.workspaceId as string;
-                    if (!resolvedOrganizationId) resolvedOrganizationId = weData.organizationId as string;
+                    if (!resolvedOrganizationId)
+                      resolvedOrganizationId = weData.organizationId as string;
                   }
                 }
               } catch (lookupErr) {
@@ -1033,35 +1065,43 @@ export async function bulkApplyTagsAction(
             }
 
             if (resolvedWorkspaceId) {
-              await logActivity({
-                organizationId: resolvedOrganizationId || 'default',
-                workspaceId: resolvedWorkspaceId,
-                entityId: resolvedEntityId,
-                entityType: contactType === 'workspace_entity' ? ((item.contactData.entityType as EntityType) || 'institution') : (contactType as EntityType),
-                displayName: (item.contactData.displayName as string) || (item.contactData.name as string),
-                type: 'tag_added',
-                source: 'activity',
-                userId,
-                description: `Tag "${tag?.name || tagId}" applied.`,
-                metadata: {
-                  tagId,
-                  tagName: tag?.name,
-                  contactType,
-                  appliedBy: userId,
-                  isAutomation: userId.startsWith('automation:') || userId.startsWith('system-') || userId === 'system',
-                }
-              });
+              try {
+                await logActivity({
+                  organizationId: resolvedOrganizationId || 'default',
+                  workspaceId: resolvedWorkspaceId,
+                  entityId: resolvedEntityId,
+                  entityType:
+                    contactType === 'workspace_entity'
+                      ? ((item.contactData.entityType as EntityType) || 'institution')
+                      : (contactType as EntityType),
+                  displayName:
+                    (item.contactData.displayName as string) ||
+                    (item.contactData.name as string),
+                  type: 'tag_added',
+                  source: 'activity',
+                  userId,
+                  description: `Tag "${tag?.name || tagId}" applied.`,
+                  metadata: {
+                    tagId,
+                    tagName: tag?.name,
+                    contactType,
+                    appliedBy: userId,
+                    isAutomation:
+                      userId.startsWith('automation:') ||
+                      userId.startsWith('system-') ||
+                      userId === 'system',
+                  },
+                });
+              } catch (activityErr) {
+                console.error(
+                  `[BULK_TAG_ADDED] logActivity failed for entity=${resolvedEntityId} tag=${tagId}:`,
+                  activityErr
+                );
+              }
             }
           }
         }
-      } catch (commitErr: unknown) {
-        const commitError = commitErr as Error;
-        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
-        console.error('bulkApplyTagsAction batch error:', commitErr);
-        errors.push(msg);
-        failedCount += chunkProcessed.length;
-        partialFailures.push(...chunkProcessed);
-      }
+      });
     }
 
     // Re-project contacts for the re-tagged workspace_entities (Phase 6.1/6.3).
