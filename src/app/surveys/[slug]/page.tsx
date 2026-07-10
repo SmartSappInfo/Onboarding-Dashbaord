@@ -96,10 +96,11 @@ export default async function PublicSurveyPage({
     searchParams 
 }: { 
     params: Promise<{ slug: string }>,
-    searchParams: Promise<{ sourcePageId?: string, ref?: string, preview?: string, workspaceId?: string, ws?: string, embed?: string }>
+    searchParams: Promise<Record<string, string | undefined>>
 }) {
     const { slug } = await params;
-    const { sourcePageId, ref, preview, workspaceId, ws, embed } = await searchParams;
+    const resolvedSearchParams = await searchParams;
+    const { sourcePageId, ref, preview, workspaceId, ws, embed } = resolvedSearchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
@@ -110,6 +111,62 @@ export default async function PublicSurveyPage({
     const incomingWs = workspaceId || ws;
     if (incomingWs && survey.workspaceIds?.includes(incomingWs)) {
         resolvedWorkspaceId = incomingWs;
+    }
+
+    let preloadedVariables: Record<string, string> = {};
+    let resolvedEntityId = survey.entityId || null;
+    let resolvedRecipientContact: string | null = null;
+
+    if (ref) {
+        const isEncrypted = ref.split(':').length === 3;
+        if (isEncrypted) {
+            try {
+                const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
+                const decryptRes = await decryptRecipientAction(ref);
+                if (decryptRes.success && decryptRes.contactId) {
+                    resolvedRecipientContact = decryptRes.contactEmail || null;
+                }
+            } catch (err) {
+                console.warn('[PublicSurveyPage] Failed to decrypt ref token:', err);
+            }
+        }
+    }
+
+    if (survey.workspaceIds && survey.workspaceIds.length > 0) {
+        try {
+            const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+            const paramsRecord: Record<string, string> = {};
+            Object.entries(resolvedSearchParams).forEach(([k, v]) => {
+                if (v !== undefined) {
+                    paramsRecord[k] = v;
+                }
+            });
+            if (ref) {
+                paramsRecord.entityId = ref;
+            }
+            if (resolvedRecipientContact) {
+                paramsRecord.email = resolvedRecipientContact;
+            }
+
+            const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
+                survey.workspaceIds,
+                paramsRecord
+            );
+            if (entityCtx.entityId || entityCtx.recipientContact) {
+                resolvedEntityId = entityCtx.entityId;
+                resolvedRecipientContact = entityCtx.recipientContact;
+
+                const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
+                preloadedVariables = await getVariableValuesMapAction({
+                    workspaceId: resolvedWorkspaceId,
+                    entityId: entityCtx.entityId || undefined,
+                    recipientContact: entityCtx.recipientContact || undefined,
+                    surveyId: survey.id
+                });
+            }
+        } catch (err) {
+            console.warn('[PublicSurveyPage] Failed to preload variables:', err);
+        }
     }
 
     let organizationLogoUrl: string | null = null;
@@ -237,6 +294,7 @@ export default async function PublicSurveyPage({
                 entityLogoUrl={entityLogoUrl} 
                 orgBranding={orgBranding}
                 resolvedWorkspaceId={resolvedWorkspaceId}
+                preloadedVariables={preloadedVariables}
             />
         </>
     );

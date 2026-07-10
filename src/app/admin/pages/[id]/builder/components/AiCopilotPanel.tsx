@@ -98,7 +98,7 @@ export function AiCopilotPanel({
           id: b.id,
           type: b.type as import('@/lib/types').PageBlockType,
           props: b.props as Record<string, unknown>,
-        }));
+        })) as import('@/lib/types').PageBlock[] | undefined;
 
         assistantMsg.suggestedAction = {
           type: response.suggestedAction.type as 'add_section' | 'update_text',

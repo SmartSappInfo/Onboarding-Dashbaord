@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
 import { AnimatePresence, motion } from 'framer-motion';
 
+
 interface SurveyDisplayProps {
     survey: Survey;
     sourcePageId?: string;
@@ -33,6 +34,7 @@ interface SurveyDisplayProps {
     entityLogoUrl?: string | null;
     orgBranding?: OrgBranding | null;
     resolvedWorkspaceId?: string;
+    preloadedVariables?: Record<string, string>;
 }
 
 export default function SurveyDisplay({ 
@@ -42,7 +44,8 @@ export default function SurveyDisplay({
     organizationLogoUrl, 
     entityLogoUrl,
     orgBranding,
-    resolvedWorkspaceId = ''
+    resolvedWorkspaceId = '',
+    preloadedVariables = {}
 }: SurveyDisplayProps) {
     useIframeHeightReporter(survey.slug);
 
@@ -59,7 +62,7 @@ export default function SurveyDisplay({
     const [entities, setEntities] = React.useState<any[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
     const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
-    const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>({});
+    const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>(preloadedVariables);
     const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
 
     const isPreviewMode = searchParams?.get('preview') === 'true';
@@ -379,6 +382,7 @@ export default function SurveyDisplay({
                                     workspaceId={resolvedWorkspaceId}
                                     outcomeId={outcomeId}
                                     onCompleted={() => setIsSubmitted(true)}
+                                    simulatedValues={simulatedValues}
                                 />
                             </motion.div>
                         ) : (
@@ -416,9 +420,17 @@ interface LeadCaptureFormViewProps {
     workspaceId: string;
     outcomeId: string | null;
     onCompleted: () => void;
+    simulatedValues?: Record<string, string>;
 }
 
-function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onCompleted }: LeadCaptureFormViewProps) {
+function LeadCaptureFormView({ 
+    survey, 
+    submissionId, 
+    workspaceId, 
+    outcomeId, 
+    onCompleted,
+    simulatedValues = {}
+}: LeadCaptureFormViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -483,6 +495,8 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
     const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
 
+    const hasAutoSubmitted = React.useRef(false);
+
     const fieldsConfig = survey.leadCaptureFieldsConfig || {
         name: { show: true, label: 'Full Name', required: true },
         email: { show: true, label: 'Email Address', required: true },
@@ -492,6 +506,91 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
 
     const title = survey.leadCaptureTitle || 'Save Your Results';
     const description = survey.leadCaptureDescription || 'Kindly provide your details so that we can send you your results';
+
+    React.useEffect(() => {
+        // Resolve initial values from preloaded/simulated variables map
+        let resolvedName = name || simulatedValues.contact_name || simulatedValues.name || '';
+        if (!resolvedName && (simulatedValues.contact_first_name || simulatedValues.contact_last_name)) {
+            resolvedName = [simulatedValues.contact_first_name, simulatedValues.contact_last_name].filter(Boolean).join(' ');
+        }
+        const resolvedEmail = email || simulatedValues.contact_email || simulatedValues.email || '';
+        const resolvedPhone = phone || simulatedValues.contact_phone || simulatedValues.phone || '';
+        const resolvedCompany = company || simulatedValues.entity_name || simulatedValues.company || simulatedValues.school_name || '';
+
+        if (resolvedName && resolvedName !== name) setName(resolvedName);
+        if (resolvedEmail && resolvedEmail !== email) setEmail(resolvedEmail);
+        if (resolvedPhone && resolvedPhone !== phone) setPhone(resolvedPhone);
+        if (resolvedCompany && resolvedCompany !== company) setCompany(resolvedCompany);
+
+        const nextCustom = { ...customValues };
+        let hasCustomUpdate = false;
+        Object.keys(fieldsConfig).forEach(fKey => {
+            if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
+                const val = simulatedValues[fKey];
+                if (val && !nextCustom[fKey]) {
+                    nextCustom[fKey] = val;
+                    hasCustomUpdate = true;
+                }
+            }
+        });
+        if (hasCustomUpdate) {
+            setCustomValues(nextCustom);
+        }
+
+        // Automatic silent skip verification
+        const isNameValid = !fieldsConfig.name?.show || !fieldsConfig.name?.required || !!resolvedName.trim();
+        const isEmailValid = !fieldsConfig.email?.show || !fieldsConfig.email?.required || !!resolvedEmail.trim();
+        const isPhoneValid = !fieldsConfig.phone?.show || !fieldsConfig.phone?.required || !!resolvedPhone.trim();
+        const isCompanyValid = !fieldsConfig.company?.show || !fieldsConfig.company?.required || !!resolvedCompany.trim();
+
+        let isCustomValid = true;
+        Object.keys(fieldsConfig).forEach(fKey => {
+            if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
+                const fCfg = fieldsConfig[fKey];
+                if (fCfg?.show && fCfg?.required && !(nextCustom[fKey] || '').trim()) {
+                    isCustomValid = false;
+                }
+            }
+        });
+
+        if (
+            isNameValid &&
+            isEmailValid &&
+            isPhoneValid &&
+            isCompanyValid &&
+            isCustomValid &&
+            !hasAutoSubmitted.current &&
+            searchParams?.get('preview') !== 'true'
+        ) {
+            hasAutoSubmitted.current = true;
+            
+            const triggerAutoSubmit = async () => {
+                setIsSubmitting(true);
+                try {
+                    const res = await submitPublicSurveyLead(survey.id, submissionId, workspaceId, {
+                        name: fieldsConfig.name?.show ? resolvedName : undefined,
+                        email: fieldsConfig.email?.show ? resolvedEmail : undefined,
+                        phone: fieldsConfig.phone?.show ? resolvedPhone : undefined,
+                        company: fieldsConfig.company?.show ? resolvedCompany : undefined,
+                        ...nextCustom
+                    }, outcomeId);
+
+                    if (res.success) {
+                        const searchParamsObj = new URLSearchParams(window.location.search);
+                        const queryStr = searchParamsObj.toString() ? `?${searchParamsObj.toString()}` : '';
+                        performLeadCaptureNavigation(`/surveys/${survey.slug}/result/${submissionId}${queryStr}`);
+                    } else {
+                        console.warn('[Auto-Submit] Failed to auto-submit lead:', res.error);
+                        setIsSubmitting(false);
+                    }
+                } catch (err) {
+                    console.error('[Auto-Submit] Error auto-submitting lead:', err);
+                    setIsSubmitting(false);
+                }
+            };
+            triggerAutoSubmit();
+        }
+    }, [simulatedValues, fieldsConfig, survey, submissionId, workspaceId, outcomeId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -567,6 +666,17 @@ function LeadCaptureFormView({ survey, submissionId, workspaceId, outcomeId, onC
             setIsSubmitting(false);
         }
     };
+
+    if (isSubmitting) {
+        return (
+            <div className="w-full max-w-xl mx-auto bg-card/60 dark:bg-slate-900/60 backdrop-blur-xl border border-border/80 dark:border-slate-800/80 rounded-3xl p-10 sm:p-20 shadow-2xl flex items-center justify-center min-h-[400px]">
+                <SurveyLoader 
+                    label="Saving Your Profile & Loading Results..." 
+                    logoUrl={survey.showBranding !== false ? (survey.logoUrl || null) : 'none'} 
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-xl mx-auto bg-card/60 dark:bg-slate-900/60 backdrop-blur-xl border border-border/80 dark:border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-500 text-left">
