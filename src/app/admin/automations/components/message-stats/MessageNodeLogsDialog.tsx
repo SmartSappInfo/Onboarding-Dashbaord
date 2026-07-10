@@ -26,17 +26,14 @@ import {
   Search, 
   Activity, 
   CheckCircle2, 
-  XCircle, 
   Eye, 
   MousePointer2, 
-  User, 
-  Building, 
-  Users, 
   ExternalLink,
   Loader2,
   AlertCircle,
-  TrendingUp,
-  AlertTriangle,
+  Download,
+  FileSpreadsheet,
+  FileText,
   ArrowUpRight
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -50,6 +47,7 @@ import {
   Tooltip as ChartTooltip 
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTenant } from '@/context/TenantContext';
 
 interface MessageNodeLogsDialogProps {
   isOpen: boolean;
@@ -65,6 +63,11 @@ interface MessageNodeLogsDialogProps {
 interface MessageContactRowDetailsProps {
   log: MessageLog;
   workspaceId: string;
+}
+
+interface ResolvedExportLog extends MessageLog {
+  resolvedEntityName: string;
+  resolvedContactPerson: string;
 }
 
 function MessageContactRowDetails({ log, workspaceId }: MessageContactRowDetailsProps) {
@@ -141,11 +144,13 @@ export function MessageNodeLogsDialog({
   channel,
   initialTab = 'sent'
 }: MessageNodeLogsDialogProps) {
+  const { activeWorkspaceId, activeOrganization } = useTenant();
   const [logs, setLogs] = React.useState<MessageLog[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const [search, setSearch] = React.useState('');
+  const [isExporting, setIsExporting] = React.useState(false);
 
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
@@ -287,14 +292,418 @@ export function MessageNodeLogsDialog({
 
   const ChannelIcon = channel === 'email' ? Mail : Smartphone;
 
+  // Batch resolve Entity Names and Contact Names for export
+  const resolveAllNames = async (logsToExport: MessageLog[]): Promise<ResolvedExportLog[]> => {
+    const { resolveContact } = await import('@/lib/contact-adapter');
+    const cache = new Map<string, import('@/lib/types').ResolvedContact>();
+
+    const resolved: ResolvedExportLog[] = [];
+    for (const log of logsToExport) {
+      let entityName = log.entityName || log.displayName || '-';
+      let contactPerson = log.displayName || '-';
+
+      if (log.entityId) {
+        let contact = cache.get(log.entityId);
+        if (!contact) {
+          const res = await resolveContact(log.entityId, activeWorkspaceId || 'global');
+          if (res) {
+            contact = res;
+            cache.set(log.entityId, res);
+          }
+        }
+
+        if (contact) {
+          entityName = contact.name || '-';
+          const cleanRecipient = log.recipient.toLowerCase().trim();
+          const matchedContact = contact.contacts?.find(
+            c => c.email?.toLowerCase().trim() === cleanRecipient ||
+                 c.phone?.replace(/[+\s-]/g, '') === cleanRecipient.replace(/[+\s-]/g, '')
+          );
+          contactPerson = matchedContact?.name || contact.primaryContactName || '-';
+        }
+      }
+
+      resolved.push({
+        ...log,
+        resolvedEntityName: entityName,
+        resolvedContactPerson: contactPerson
+      });
+    }
+    return resolved;
+  };
+
+  // Export to Excel (.xlsx)
+  const handleExportExcel = async () => {
+    if (filteredLogs.length === 0) return;
+    setIsExporting(true);
+    try {
+      const XLSX = await import('xlsx');
+      const resolved = await resolveAllNames(filteredLogs);
+
+      const sheetData = resolved.map(log => ({
+        'Recipient Address': log.recipient,
+        'Entity Name': log.resolvedEntityName,
+        'Contact Person': log.resolvedContactPerson,
+        'Dispatched At': log.sentAt ? format(new Date(log.sentAt), 'yyyy-MM-dd HH:mm:ss') : '-',
+        'Delivery Status': log.providerStatus || log.status || 'Sent'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(sheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Delivery Ledger');
+
+      // Autofit columns
+      const maxColLen = sheetData.reduce((acc, row) => {
+        Object.keys(row).forEach((key, idx) => {
+          const val = String(row[key as keyof typeof row] || '');
+          acc[idx] = Math.max(acc[idx] || 10, val.length + 2);
+        });
+        return acc;
+      }, [] as number[]);
+      worksheet['!cols'] = maxColLen.map(w => ({ wch: w }));
+
+      XLSX.writeFile(workbook, `delivery_ledger_${nodeLabel.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+    } catch (err) {
+      console.error('Excel Export Failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export to CSV
+  const handleExportCSV = async () => {
+    if (filteredLogs.length === 0) return;
+    setIsExporting(true);
+    try {
+      const resolved = await resolveAllNames(filteredLogs);
+
+      const headers = ['Recipient Address', 'Entity Name', 'Contact Person', 'Dispatched At', 'Delivery Status'];
+      const rows = resolved.map(log => [
+        log.recipient,
+        log.resolvedEntityName,
+        log.resolvedContactPerson,
+        log.sentAt ? format(new Date(log.sentAt), 'yyyy-MM-dd HH:mm:ss') : '-',
+        log.providerStatus || log.status || 'Sent'
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(r => r.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `delivery_ledger_${nodeLabel.replace(/\s+/g, '_').toLowerCase()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('CSV Export Failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Helper to load logo URL into base64 (with CORS handling)
+  const getBase64ImageFromUrl = async (imageUrl: string): Promise<string | null> => {
+    try {
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.warn('Failed to load image as base64 (likely CORS):', err);
+      return null;
+    }
+  };
+
+  // Export to PDF
+  const handleExportPDF = async () => {
+    if (filteredLogs.length === 0) return;
+    setIsExporting(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const resolved = await resolveAllNames(filteredLogs);
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      let y = 15;
+
+      // Draw Logo Header
+      if (activeOrganization?.logoUrl) {
+        const base64 = await getBase64ImageFromUrl(activeOrganization.logoUrl);
+        if (base64) {
+          doc.addImage(base64, 'PNG', 15, y, 14, 14);
+        } else {
+          // Circular Initials Logo Badge
+          doc.setFillColor(99, 102, 241);
+          doc.circle(22, y + 7, 7, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.text(activeOrganization.name.charAt(0).toUpperCase(), 22, y + 9.5, { align: 'center' });
+        }
+      } else {
+        // Fallback Initials Logo Badge
+        doc.setFillColor(99, 102, 241);
+        doc.circle(22, y + 7, 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        const letter = activeOrganization?.name ? activeOrganization.name.charAt(0).toUpperCase() : 'S';
+        doc.text(letter, 22, y + 9.5, { align: 'center' });
+      }
+
+      // Organization name and details
+      doc.setTextColor(15, 23, 42); // Slate-900
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(activeOrganization?.name || 'SmartSapp CRM', 34, y + 4.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139); // Slate-500
+      doc.text(`Report generated on: ${format(new Date(), 'PPP p')}`, 34, y + 9);
+      doc.text(`Channel: ${channel.toUpperCase()}  |  Automation ID: ${automationId}`, 34, y + 13);
+
+      y += 20;
+
+      // Report Header Banner
+      doc.setFillColor(248, 250, 252);
+      doc.rect(15, y, 180, 10, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(15, y, 180, 10, 'S');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text(`DELIVERY AUDIT REPORT: "${nodeLabel.toUpperCase()}"`, 19, y + 6.5);
+
+      y += 15;
+
+      // KPI Metrics Cards Block (4 cards)
+      const cardW = 42.5;
+      const cardGap = 3.3;
+      const cardH = 16;
+
+      const cards = [
+        { label: 'Total Dispatched', val: stats.sent.toString(), sub: 'messages', col: [15, 23, 42] },
+        { label: 'Engagement Rate', val: `${openRate}%`, sub: `${stats.opened} read`, col: [16, 185, 129] },
+        { label: channel === 'email' ? 'CTR' : 'Reply Rate', val: `${channel === 'email' ? clickRate : replyRate}%`, sub: `${channel === 'email' ? stats.clicked : stats.replied} active`, col: [99, 102, 241] },
+        { label: 'Bounce / Failed', val: `${bounceRate}%`, sub: `${stats.bounced} failed`, col: [239, 68, 68] }
+      ];
+
+      cards.forEach((card, idx) => {
+        const cardX = 15 + idx * (cardW + cardGap);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(cardX, y, cardW, cardH, 'FD');
+
+        // Card Label
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(card.label.toUpperCase(), cardX + 3.5, y + 4.5);
+
+        // Card Value
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11.5);
+        doc.setTextColor(card.col[0], card.col[1], card.col[2]);
+        doc.text(card.val, cardX + 3.5, y + 10);
+
+        // Card Subtitle
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.setTextColor(148, 163, 184);
+        doc.text(card.sub, cardX + 3.5, y + 13.5);
+      });
+
+      y += cardH + 10;
+
+      // Table Header
+      doc.setFillColor(241, 245, 249);
+      doc.rect(15, y, 180, 8, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.line(15, y, 195, y);
+      doc.line(15, y + 8, 195, y + 8);
+
+      doc.setTextColor(71, 85, 105);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('RECIPIENT', 18, y + 5.5);
+      doc.text('ENTITY NAME', 78, y + 5.5);
+      doc.text('CONTACT PERSON', 134, y + 5.5);
+      doc.text('STATUS', 176, y + 5.5);
+
+      y += 8;
+
+      // Rows render
+      const drawRow = (log: ResolvedExportLog, index: number, yPos: number) => {
+        if (index % 2 === 0) {
+          doc.setFillColor(250, 250, 250);
+          doc.rect(15, yPos, 180, 8, 'F');
+        }
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(15, yPos + 8, 195, yPos + 8);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(30, 41, 59);
+
+        // Recipient
+        const rec = log.recipient.length > 32 ? log.recipient.substring(0, 30) + '...' : log.recipient;
+        doc.text(rec, 18, yPos + 5.5);
+
+        // Entity Name
+        const entName = log.resolvedEntityName.length > 30 ? log.resolvedEntityName.substring(0, 28) + '...' : log.resolvedEntityName;
+        doc.text(entName, 78, yPos + 5.5);
+
+        // Contact Person
+        const conName = log.resolvedContactPerson.length > 22 ? log.resolvedContactPerson.substring(0, 20) + '...' : log.resolvedContactPerson;
+        doc.text(conName, 134, yPos + 5.5);
+
+        // Status badge
+        const hasOpened = log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
+        const hasClicked = log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
+        const hasFailed = log.status === 'failed' || log.providerStatus === 'bounced';
+
+        let statusText = 'Sent';
+        let textCol = [100, 116, 139]; // Muted
+        if (hasFailed) {
+          statusText = 'Failed';
+          textCol = [239, 68, 68]; // Red
+        } else if (hasClicked) {
+          statusText = 'Clicked';
+          textCol = [99, 102, 241]; // Indigo
+        } else if (hasOpened) {
+          statusText = channel === 'email' ? 'Opened' : 'Read';
+          textCol = [16, 185, 129]; // Emerald
+        } else if (log.deliveredAt || log.providerStatus === 'delivered') {
+          statusText = 'Delivered';
+          textCol = [59, 130, 246]; // Blue
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+        doc.text(statusText, 176, yPos + 5.5);
+      };
+
+      const drawFooter = (pageNum: number, totalPages: number) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text('SmartSapp CRM - Delivery Report', 15, 287);
+        doc.text(`Page ${pageNum} of ${totalPages}`, 195, 287, { align: 'right' });
+      };
+
+      let pageNum = 1;
+      resolved.forEach((log, index) => {
+        if (y > 268) {
+          drawFooter(pageNum, 99); // placeholder
+          doc.addPage();
+          pageNum++;
+          y = 15;
+
+          // Header on new page
+          doc.setFillColor(241, 245, 249);
+          doc.rect(15, y, 180, 8, 'F');
+          doc.setDrawColor(226, 232, 240);
+          doc.line(15, y, 195, y);
+          doc.line(15, y + 8, 195, y + 8);
+
+          doc.setTextColor(71, 85, 105);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text('RECIPIENT', 18, y + 5.5);
+          doc.text('ENTITY NAME', 78, y + 5.5);
+          doc.text('CONTACT PERSON', 134, y + 5.5);
+          doc.text('STATUS', 176, y + 5.5);
+
+          y += 8;
+        }
+
+        drawRow(log, index, y);
+        y += 8;
+      });
+
+      // Update footers page numbers
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawFooter(i, totalPages);
+      }
+
+      doc.save(`delivery_report_${nodeLabel.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+    } catch (err) {
+      console.error('PDF Export Failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 overflow-hidden bg-background border border-border/80 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1">
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
-            <ChannelIcon className="h-5 w-5 text-primary" />
-            <span>Delivery Analytics: &quot;{nodeLabel}&quot;</span>
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
+              <ChannelIcon className="h-5 w-5 text-primary" />
+              <span>Delivery Analytics: &quot;{nodeLabel}&quot;</span>
+            </DialogTitle>
+
+            {/* Export Toolbar */}
+            {!isLoading && logs.length > 0 && (
+              <div className="flex items-center gap-1.5 shrink-0 pr-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span>Export PDF</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95"
+                  onClick={handleExportExcel}
+                  disabled={isExporting}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>XLSX</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150 active:scale-95"
+                  onClick={handleExportCSV}
+                  disabled={isExporting}
+                >
+                  <FileText className="h-3.5 w-3.5 text-blue-500" />
+                  <span>CSV</span>
+                </Button>
+              </div>
+            )}
+          </div>
           <DialogDescription className="text-xs text-muted-foreground">
             Drill down into recipient engagement, delivery distribution, and contact logs.
           </DialogDescription>
