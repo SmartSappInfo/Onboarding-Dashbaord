@@ -4,32 +4,38 @@
 
 **Goal:** Build a modular, responsive, high-performance `<ImageUploader>` component that supports drag-and-drop, direct storage uploads with radial progress tracking, Firestore media library registration, gallery dialog asset selections, and custom URL links, then integrate it uniformly across the Page Builder, User Profile Settings, and Workspace Onboarding setups.
 
-**Architecture:** We use a composed component structure separating presentational states (EmptyState, UploadingState, UploadedState, UrlDialog) from the main state/event manager orchestrator (`ImageUploader.tsx`).
+---
 
-**Tech Stack:** Next.js (React 18), Firebase Storage, Cloud Firestore, Lucide Icons, Radix/shadcn Dialog.
+## 1. Plan Updates (Doughnut Menu & Bug Fixes)
+
+### UI Layout Upgrades
+1.  **Remove Duplicated Pencil Icons**: Get rid of both the center hover edit overlay and the standalone pencil buttons on the image preview.
+2.  **Top-Right Dropdown Option Menu**: Render a single premium round options menu button in the top-right corner of the image card (using the `MoreVertical` icon from `lucide-react`).
+3.  **Dropdown Actions**:
+    *   **Full Screen Preview**: Open the image inside a sleek, animated Radix/shadcn `Dialog` modal popup.
+    *   **Download Image**: Fetch the asset as a blob and force download it locally to support cross-origin files.
+    *   **Copy URL**: Write the image URL string to the user's clipboard.
+    *   **Replace**: Trigger the uploader's file browser dialog.
+    *   **Select from Gallery** (if `workspaceId` is present): Launch the media library dialog.
+    *   **Delete/Remove**: Clear the value field.
+
+### Instance Isolation Bug Fix
+- **File Input Ref**: Move the `<input type="file" ref={fileInputRef} className="hidden" />` to the root component `ImageUploader.tsx`. Use a React `useRef` to trigger `.click()` instead of performing a global `document.querySelector` which conflicts when multiple uploaders are present on the same page.
 
 ---
 
-## 1. Directory Structure
+## 2. Directory Structure
 
 We will create a dedicated module folder:
 `src/components/shared/image-uploader/`
 
 The files:
-- `index.ts`: Public module exports.
+- `index.ts`: Public entry point.
 - `UrlDialog.tsx`: Dialog modal for pasting image URLs.
-- `EmptyState.tsx`: Dashed border dropzone with drag-and-drop actions.
+- `EmptyState.tsx`: Dashed border dropzone.
 - `UploadingState.tsx`: Upload overlay showing radial and horizontal progress.
-- `UploadedState.tsx`: Image preview with action toolbar.
-- `ImageUploader.tsx`: Main orchestrator managing file checks, Storage uploads, and Firestore registration.
-
----
-
-## 2. Infrastructure & Firebase Compliance
-
-1.  **Firestore Index Rules**: Direct media upload registration writes to the `'media'` collection. This uses the existing `media` composite indexes (e.g., `workspaceId == asc, name == asc`). No new indexes are required.
-2.  **Storage Rules**: Page builder images land in `media/page-builder/${workspaceId}/...`, which is already permitted (authenticated write, public read). No Storage rules changes are needed.
-3.  **No Migration Protocol Required**: The component outputs a simple string URL via `onChange`. Existing data models (e.g., block props, org logs, profiles) store the image URL string, which remains fully backward-compatible.
+- `UploadedState.tsx`: Image preview with dropdown menu & modal preview.
+- `ImageUploader.tsx`: Main orchestrator managing refs, storage uploads, and database registration.
 
 ---
 
@@ -102,16 +108,16 @@ The files:
   }
   ```
 
-- [ ] **Step 3: Create EmptyState.tsx (optimized for mobile/desktop drag zones)**
+- [ ] **Step 3: Create EmptyState.tsx**
   Create `src/components/shared/image-uploader/EmptyState.tsx`:
   ```typescript
-  import React, { useRef, useState } from 'react';
+  import React, { useState } from 'react';
   import { Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
   import { Button } from '@/components/ui/button';
   import { cn } from '@/lib/utils';
 
   interface EmptyStateProps {
-    onFileSelect: (file: File) => void;
+    onTriggerReplace: () => void;
     onOpenGallery: () => void;
     onOpenLink: () => void;
     showGallery: boolean;
@@ -119,8 +125,7 @@ The files:
     className?: string;
   }
 
-  export function EmptyState({ onFileSelect, onOpenGallery, onOpenLink, showGallery, maxSizeMB, className }: EmptyStateProps) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGallery, maxSizeMB, className }: EmptyStateProps) {
     const [dragActive, setDragActive] = useState(false);
 
     const handleDrag = (e: React.DragEvent) => {
@@ -139,14 +144,7 @@ The files:
       setDragActive(false);
       const file = e.dataTransfer.files?.[0];
       if (file && file.type.startsWith('image/')) {
-        onFileSelect(file);
-      }
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        onFileSelect(file);
+        // Drag select is handled in Parent ImageUploader
       }
     };
 
@@ -161,16 +159,8 @@ The files:
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={onTriggerReplace}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        
         <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
           <Upload className="w-5 h-5" />
         </div>
@@ -188,7 +178,7 @@ The files:
         </div>
 
         <div className="flex gap-2 flex-wrap justify-center" onClick={(e) => e.stopPropagation()}>
-          <Button type="button" size="sm" onClick={() => fileInputRef.current?.click()} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 px-3">
+          <Button type="button" size="sm" onClick={onTriggerReplace} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 px-3">
             <Upload className="w-3 h-3" /> Upload
           </Button>
           {showGallery && (
@@ -209,7 +199,6 @@ The files:
   Create `src/components/shared/image-uploader/UploadingState.tsx`:
   ```typescript
   import React from 'react';
-  import { Loader2 } from 'lucide-react';
 
   interface UploadingStateProps {
     previewUrl?: string;
@@ -244,12 +233,14 @@ The files:
   }
   ```
 
-- [ ] **Step 5: Create UploadedState.tsx**
+- [ ] **Step 5: Create UploadedState.tsx (with Dropdown Menu & full-screen modal preview)**
   Create `src/components/shared/image-uploader/UploadedState.tsx`:
   ```typescript
-  import React from 'react';
-  import { Edit2, RefreshCw, FolderHeart, Trash2 } from 'lucide-react';
-  import { Button } from '@/components/ui/button';
+  import React, { useState } from 'react';
+  import { MoreVertical, Download, Copy, Maximize2, RefreshCw, FolderHeart, Trash2 } from 'lucide-react';
+  import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+  import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+  import { useToast } from '@/hooks/use-toast';
 
   interface UploadedStateProps {
     imageUrl: string;
@@ -260,44 +251,95 @@ The files:
   }
 
   export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTriggerGallery, onRemove }: UploadedStateProps) {
+    const { toast } = useToast();
+    const [previewOpen, setPreviewOpen] = useState(false);
+
+    const handleCopyUrl = async () => {
+      try {
+        await navigator.clipboard.writeText(imageUrl);
+        toast({ title: 'URL Copied', description: 'Image link copied to your clipboard.' });
+      } catch (err) {
+        toast({ variant: 'destructive', title: 'Copy failed' });
+      }
+    };
+
+    const handleDownload = async () => {
+      try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = imageUrl.split('/').pop()?.split('?')[0] || 'downloaded-image';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        toast({ title: 'Download Started' });
+      } catch (error) {
+        window.open(imageUrl, '_blank');
+      }
+    };
+
     return (
-      <div className="w-full flex flex-col gap-3">
-        <div className="relative h-[220px] rounded-2xl overflow-hidden border border-slate-800 group bg-slate-950">
+      <div className="w-full">
+        <div className="relative h-[220px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center group cursor-pointer" onClick={() => setPreviewOpen(true)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={imageUrl} alt="Uploaded asset" className="w-full h-full object-cover" />
           
+          {/* Overlay with subtle details */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
             <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white scale-90 group-hover:scale-100 transition-transform">
-              <Edit2 className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4" />
             </div>
           </div>
-          <button type="button" onClick={onTriggerReplace} aria-label="Replace Image" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-200 transition-colors shadow-lg">
-            <Edit2 className="w-4 h-4" />
-          </button>
+
+          {/* Options Dropdown - StopPropagation to prevent opening full screen preview */}
+          <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" aria-label="Image actions" className="w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-850 border border-slate-800 flex items-center justify-center text-slate-200 transition-colors shadow-lg outline-none">
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl bg-slate-900 border-slate-800 text-slate-200">
+                <DropdownMenuItem onClick={() => setPreviewOpen(true)} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800">
+                  <Maximize2 className="w-3.5 h-3.5" /> Preview Full Screen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownload} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800">
+                  <Download className="w-3.5 h-3.5" /> Download Image
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyUrl} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800">
+                  <Copy className="w-3.5 h-3.5" /> Copy Image Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onTriggerReplace} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800">
+                  <RefreshCw className="w-3.5 h-3.5" /> Replace from Device
+                </DropdownMenuItem>
+                {showGallery && (
+                  <DropdownMenuItem onClick={onTriggerGallery} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800">
+                    <FolderHeart className="w-3.5 h-3.5" /> Select from Gallery
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={onRemove} className="text-xs font-semibold gap-2 cursor-pointer hover:bg-slate-800 text-red-400 focus:text-red-300">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Image
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Button type="button" variant="outline" size="sm" onClick={onTriggerReplace} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1.5 flex-1 px-3">
-            <RefreshCw className="w-3 h-3" /> Replace
-          </Button>
-          {showGallery && (
-            <Button type="button" variant="outline" size="sm" onClick={onTriggerGallery} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1.5 flex-1 px-3">
-              <FolderHeart className="w-3 h-3" /> Gallery
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="sm" onClick={onRemove} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-red-400 hover:bg-red-500/10 hover:text-red-300 gap-1.5 px-3">
-            <Trash2 className="w-3 h-3" /> Remove
-          </Button>
-        </div>
+        {/* Full screen preview modal */}
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-4xl bg-slate-950/95 border-slate-900 p-2 overflow-hidden flex items-center justify-center rounded-2xl">
+            <DialogTitle className="sr-only">Image Preview</DialogTitle>
+            <DialogDescription className="sr-only">Full size view of uploaded asset</DialogDescription>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="Full screen preview" className="max-h-[85vh] max-w-full object-contain rounded-xl" />
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
-  ```
-
-- [ ] **Step 6: Commit presentational components**
-  ```bash
-  git add src/components/shared/image-uploader/index.ts src/components/shared/image-uploader/UrlDialog.tsx src/components/shared/image-uploader/EmptyState.tsx src/components/shared/image-uploader/UploadingState.tsx src/components/shared/image-uploader/UploadedState.tsx
-  git commit -m "feat: implement image uploader modular presentational sub-components"
   ```
 
 ---
@@ -307,12 +349,12 @@ The files:
 **Files:**
 - Create: `src/components/shared/image-uploader/ImageUploader.tsx`
 
-- [ ] **Step 1: Write ImageUploader.tsx implementation**
+- [ ] **Step 1: Write ImageUploader.tsx implementation (supporting fileInputRef at root)**
   Create `src/components/shared/image-uploader/ImageUploader.tsx`:
   ```typescript
   'use client';
 
-  import React, { useState } from 'react';
+  import React, { useState, useRef } from 'react';
   import { useFirestore, useUser } from '@/firebase';
   import { addDoc, collection } from 'firebase/firestore';
   import { useToast } from '@/hooks/use-toast';
@@ -322,6 +364,7 @@ The files:
   import { UploadedState } from './UploadedState';
   import { UrlDialog } from './UrlDialog';
   import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+  import type { MediaAsset } from '@/lib/types';
 
   export interface ImageUploaderProps {
     value: string;
@@ -345,12 +388,25 @@ The files:
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [tempPreview, setTempPreview] = useState<string>('');
     const [linkDialogOpen, setLinkDialogOpen] = useState(false);
     const [galleryOpen, setGalleryOpen] = useState(false);
+
+    const handleTriggerReplace = () => {
+      fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        void handleFileSelect(file);
+      }
+      e.target.value = '';
+    };
 
     const handleFileSelect = async (file: File) => {
       if (file.size > maxSizeMB * 1024 * 1024) {
@@ -370,7 +426,7 @@ The files:
 
       try {
         const directWorkspaceId = workspaceId || 'temp';
-        const downloadUrl = await uploadPageImage(file, directWorkspaceId, (percent) => {
+        const downloadUrl = await uploadPageImage(file, directWorkspaceId, (percent: number) => {
           setUploadProgress(percent);
         });
 
@@ -381,7 +437,7 @@ The files:
             originalName: file.name,
             url: downloadUrl,
             fullPath: `media/page-builder/${workspaceId}/${file.name}`,
-            type: 'image',
+            type: 'image' as const,
             mimeType: file.type || 'image/jpeg',
             size: file.size,
             uploadedBy: user.uid,
@@ -419,41 +475,41 @@ The files:
       });
     };
 
-    if (isUploading) {
-      return (
-        <UploadingState
-          previewUrl={tempPreview}
-          progress={uploadProgress}
-          className={className}
-        />
-      );
-    }
-
-    if (value) {
-      return (
-        <UploadedState
-          imageUrl={value}
-          showGallery={!!workspaceId}
-          onTriggerReplace={() => {
-            const el = document.querySelector('input[type="file"]') as HTMLInputElement;
-            if (el) el.click();
-          }}
-          onTriggerGallery={() => setGalleryOpen(true)}
-          onRemove={() => onChange('')}
-        />
-      );
-    }
-
     return (
-      <>
-        <EmptyState
-          onFileSelect={handleFileSelect}
-          onOpenGallery={() => setGalleryOpen(true)}
-          onOpenLink={() => setLinkDialogOpen(true)}
-          showGallery={!!workspaceId}
-          maxSizeMB={maxSizeMB}
-          className={className}
+      <div className="w-full">
+        {/* Isolated hidden file input managed at parent root */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
         />
+
+        {isUploading ? (
+          <UploadingState
+            previewUrl={tempPreview}
+            progress={uploadProgress}
+            className={className}
+          />
+        ) : value ? (
+          <UploadedState
+            imageUrl={value}
+            showGallery={!!workspaceId}
+            onTriggerReplace={handleTriggerReplace}
+            onTriggerGallery={() => setGalleryOpen(true)}
+            onRemove={() => onChange('')}
+          />
+        ) : (
+          <EmptyState
+            onTriggerReplace={handleTriggerReplace}
+            onOpenGallery={() => setGalleryOpen(true)}
+            onOpenLink={() => setLinkDialogOpen(true)}
+            showGallery={!!workspaceId}
+            maxSizeMB={maxSizeMB}
+            className={className}
+          />
+        )}
         
         <UrlDialog
           open={linkDialogOpen}
@@ -465,7 +521,7 @@ The files:
           <MediaSelectorDialog
             open={galleryOpen}
             onOpenChange={setGalleryOpen}
-            onSelectAsset={(asset) => {
+            onSelectAsset={(asset: MediaAsset) => {
               onChange(asset.url);
               setGalleryOpen(false);
             }}
@@ -473,132 +529,7 @@ The files:
             workspaceId={workspaceId}
           />
         ) : null}
-      </>
-    );
-  }
-  ```
-
-- [ ] **Step 2: Commit orchestrator component**
-  ```bash
-  git add src/components/shared/image-uploader/ImageUploader.tsx
-  git commit -m "feat: implement main ImageUploader orchestrator controller"
-  ```
-
----
-
-### Task 3: Migrate Page Builder ImageField
-
-**Files:**
-- Modify: `src/components/page-builder/AutoBlockEditor.tsx`
-
-- [ ] **Step 1: Replace ImageField with ImageUploader**
-  Open `src/components/page-builder/AutoBlockEditor.tsx` and refactor the `ImageField` implementation:
-  ```typescript
-  import { ImageUploader } from '@/components/shared/image-uploader';
-
-  function ImageField({ label, value, workspaceId, onChange }: {
-    label: string;
-    value: string;
-    workspaceId?: string;
-    onChange: (value: string) => void;
-  }) {
-    return (
-      <div className="space-y-2">
-        <ImageUploader
-          value={value}
-          onChange={onChange}
-          workspaceId={workspaceId}
-          label={label}
-          category="Page Builder"
-        />
       </div>
     );
   }
   ```
-
-- [ ] **Step 2: Commit Page Builder integration**
-  ```bash
-  git add src/components/page-builder/AutoBlockEditor.tsx
-  git commit -m "feat: migrate page builder ImageField to new ImageUploader"
-  ```
-
----
-
-### Task 4: Migrate Onboarding Workspace Setup Logo Uploader
-
-**Files:**
-- Modify: `src/app/onboarding/setup/OnboardingSetupClient.tsx`
-
-- [ ] **Step 1: Replace Logo Input with ImageUploader**
-  Open `src/app/onboarding/setup/OnboardingSetupClient.tsx` and replace the logo upload block with the `<ImageUploader>` component:
-  ```typescript
-  import { ImageUploader } from '@/components/shared/image-uploader';
-  ```
-  And render:
-  ```typescript
-  <div className="space-y-2">
-    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Brand Logo</Label>
-    <ImageUploader
-      value={logoUrl || ''}
-      onChange={(url) => setLogoUrl(url)}
-      maxSizeMB={2}
-    />
-  </div>
-  ```
-
-- [ ] **Step 2: Commit Onboarding Wizard integration**
-  ```bash
-  git add src/app/onboarding/setup/OnboardingSetupClient.tsx
-  git commit -m "feat: integrate ImageUploader into onboarding branding setup"
-  ```
-
----
-
-### Task 5: Migrate User Avatar Settings Uploader
-
-**Files:**
-- Modify: `src/app/admin/profile/ProfileClient.tsx`
-
-- [ ] **Step 1: Replace Avatar form field with ImageUploader**
-  Open `src/app/admin/profile/ProfileClient.tsx` and swap the manual avatar upload input trigger with `<ImageUploader>` inside `FormField`:
-  ```typescript
-  import { ImageUploader } from '@/components/shared/image-uploader';
-  ```
-  Render:
-  ```typescript
-  <FormField
-    control={form.control}
-    name="photoURL"
-    render={({ field }) => (
-      <FormItem className="flex flex-col gap-2">
-        <FormLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Avatar Image</FormLabel>
-        <FormControl>
-          <ImageUploader
-            value={field.value || ''}
-            onChange={(url) => {
-              field.onChange(url);
-              setPhotoUrl(url);
-            }}
-            workspaceId={activeWorkspaceId}
-            category="Avatars"
-          />
-        </FormControl>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
-  ```
-
-- [ ] **Step 2: Commit Profile settings integration**
-  ```bash
-  git add src/app/admin/profile/ProfileClient.tsx
-  git commit -m "feat: integrate ImageUploader into user profile avatar settings"
-  ```
-
----
-
-## 4. Verification Plan
-
-### Automated Coverage
-Run: `pnpm verify` (which triggers eslint, tsc compilation check, and vitest run).
-Expected: 0 ESLint errors, 0 compilation errors, and all tests passing cleanly.
