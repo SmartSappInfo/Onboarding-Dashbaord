@@ -4,10 +4,8 @@ import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Send, Loader2, Bot, User, BrainCircuit, X, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2, Bot, User, BrainCircuit, X, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import { modifySurvey } from '@/ai/flows/modify-survey-flow';
 import { createSurveyFromAiAction } from '@/lib/ai-survey-actions';
 import { updateSignalRatingAction } from '@/lib/learning-loop-actions';
@@ -18,20 +16,16 @@ import { addDoc, collection } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button as MovingButton } from '@/components/ui/moving-border';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Paperclip, FileText, FolderPlus } from 'lucide-react';
+import { FileText, FolderPlus } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import * as pdfjs from 'pdfjs-dist';
-import { getDoc, doc } from 'firebase/firestore';
 import AiModelSelector from '@/components/ai/AiModelSelector';
-import type { UserProfile } from '@/lib/types';
 import { createPortal } from 'react-dom';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-import { onSnapshot } from 'firebase/firestore';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { saveImageToMediaLibrary } from '@/lib/media-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -77,7 +71,6 @@ function AiChatPanel() {
         { role: 'assistant', content: "Hello! I'm your AI Design Partner. Describe changes, paste a link, or upload a document to build your survey blueprint." }
     ]);
     const scrollRef = React.useRef<HTMLDivElement>(null);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const surveyId = params?.id as string;
     const isNew = !surveyId;
@@ -190,12 +183,6 @@ function AiChatPanel() {
         } finally {
             setIsUploadingFile(false);
         }
-    };
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        await processFile(file);
     };
 
     const handlePaste = async (event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -600,86 +587,41 @@ function AiChatPanel() {
                                 {/* Footer */}
                                 <CardFooter className="p-3 border-t bg-card/60 backdrop-blur-md shrink-0">
                                     <div className={cn("flex flex-col w-full gap-2 mx-auto", isFullScreen ? "max-w-3xl" : "max-w-full")}>
-                                        {stagedFile && (
-                                            <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20 self-start animate-in fade-in slide-in-from-bottom-1">
-                                                {stagedFile.dataUri?.startsWith('data:image/') || stagedFile.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                                    <img 
-                                                        src={stagedFile.dataUri || stagedFile.url} 
-                                                        alt="Staged Attachment Preview" 
-                                                        className="h-6 w-6 object-cover rounded border border-primary/25 shrink-0" 
-                                                    />
-                                                ) : (
-                                                    <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                                                )}
-                                                <span className="text-[10px] font-bold text-primary truncate max-w-[180px]">{stagedFile.name}</span>
-                                                <Button variant="ghost" size="icon" className="h-4 w-4 text-primary/60 hover:text-primary" onClick={() => setStagedFile(null)}>
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-end gap-2 w-full">
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                onChange={handleFileUpload}
-                                                className="hidden"
-                                                accept=".pdf,.docx,.doc,.txt,image/*"
-                                            />
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            disabled={isLoading || isUploadingFile}
-                                                            onClick={() => fileInputRef.current?.click()}
-                                                            className="h-10 w-10 rounded-xl shrink-0 border border-border/60 hover:bg-accent/10"
-                                                        >
-                                                            {isUploadingFile ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Paperclip className="h-4 w-4 text-muted-foreground" />}
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="top">Attach File (PDF, DOCX, TXT, Image)</TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-
-                                            <div className="flex-1 min-w-0">
-                                                {isFullScreen ? (
-                                                    <Textarea
-                                                        placeholder="Describe your design, paste a link, or send an attachment..."
-                                                        value={input}
-                                                        onChange={(e) => setInput(e.target.value)}
-                                                        onKeyDown={handleKeyDown}
-                                                        onPaste={handlePaste}
-                                                        disabled={isLoading}
-                                                        className="min-h-[80px] max-h-[200px] rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 p-3 leading-relaxed"
-                                                    />
-                                                ) : (
-                                                    <Input
-                                                        placeholder="Ask me to build a survey from..."
-                                                        value={input}
-                                                        onChange={(e) => setInput(e.target.value)}
-                                                        onKeyDown={handleKeyDown}
-                                                        onPaste={handlePaste}
-                                                        disabled={isLoading}
-                                                        className="h-10 rounded-xl bg-background/50 border-border/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30"
-                                                    />
-                                                )}
-                                            </div>
-
-                                            <MovingButton
-                                                type="button"
-                                                onClick={handleSend}
-                                                disabled={(!input.trim() && !stagedFile) || isLoading || isUploadingFile}
-                                                containerClassName="h-10 w-10 rounded-xl shrink-0"
- className="h-full w-full bg-slate-900"
-                                            >
- <span className="sr-only">Send</span>
- <Send className="h-3.5 w-3.5" />
-                                            </MovingButton>
-                                        </div>
+                                        <UnifiedPromptInput
+                                            value={input}
+                                            onChange={setInput}
+                                            onSubmit={handleSend}
+                                            isLoading={isLoading || isUploadingFile}
+                                            stagedFiles={stagedFile ? [{
+                                                name: stagedFile.name,
+                                                url: stagedFile.url,
+                                                type: stagedFile.dataUri?.startsWith('data:image/') || stagedFile.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' as const : 'document' as const,
+                                                dataUri: stagedFile.dataUri,
+                                                content: stagedFile.content
+                                            }] : []}
+                                            onStagedFilesChange={(files) => {
+                                                if (files.length === 0) {
+                                                    setStagedFile(null);
+                                                } else {
+                                                    const file = files[0];
+                                                    setStagedFile({
+                                                        name: file.name,
+                                                        url: file.url,
+                                                        content: file.content,
+                                                        dataUri: file.dataUri
+                                                    });
+                                                }
+                                            }}
+                                            onFileSelect={async (files) => {
+                                                const file = files[0];
+                                                if (file) {
+                                                    await processFile(file);
+                                                }
+                                            }}
+                                            onPaste={handlePaste}
+                                            placeholder={isFullScreen ? "Describe your design, paste a link, or send an attachment..." : "Ask me to build a survey from..."}
+                                            hideModelSelector
+                                        />
                                     </div>
                                 </CardFooter>
                             </Card>

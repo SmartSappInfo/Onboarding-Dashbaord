@@ -112,6 +112,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import AiModelSelector from '@/components/ai/AiModelSelector';
+import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
 
 async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
     if (!file.type.startsWith('image/')) {
@@ -4088,54 +4089,34 @@ export function TemplateWorkshop({
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <AiModelSelector hideLabel className="w-full text-xs" />
-                                                    <textarea
+                                                    <UnifiedPromptInput
                                                         value={architectPrompt}
-                                                        onChange={(e) => setArchitectPrompt(e.target.value)}
-                                                        placeholder="Describe the email sections or layout details..."
-                                                        className="w-full text-xs bg-muted/40 border rounded-lg p-2 min-h-[200px] focus:outline-none focus:ring-1 focus:ring-primary/20 font-medium"
-                                                        rows={10}
+                                                        onChange={setArchitectPrompt}
+                                                        onSubmit={handleArchitectSubmit}
+                                                        isLoading={isArchitecting || isUploadingImage}
+                                                        stagedFiles={architectImageUrl ? [{ name: 'Visual Inspiration', url: architectImageUrl, type: 'image' }] : []}
+                                                        onStagedFilesChange={(files) => {
+                                                            const img = files.find(f => f.type === 'image');
+                                                            setArchitectImageUrl(img?.url || '');
+                                                        }}
+                                                        onFileSelect={async (files) => {
+                                                            const file = files[0];
+                                                            if (file && activeWorkspaceId) {
+                                                                setIsUploadingImage(true);
+                                                                try {
+                                                                    const url = await uploadArchitectImage(file, activeWorkspaceId);
+                                                                    setArchitectImageUrl(url);
+                                                                } catch (err: unknown) {
+                                                                    const msg = err instanceof Error ? err.message : 'Upload error';
+                                                                    toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
+                                                                } finally {
+                                                                    setIsUploadingImage(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        placeholder="Describe layout details or upload inspiration..."
                                                     />
-                                                    <div className="space-y-1.5">
-                                                        <input
-                                                            type="text"
-                                                            value={architectImageUrl}
-                                                            onChange={(e) => setArchitectImageUrl(e.target.value)}
-                                                            placeholder="Paste public image URL..."
-                                                            className="w-full text-[10px] bg-muted/40 border rounded-lg px-2 py-1.5 focus:outline-none"
-                                                        />
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                id="architect-file"
-                                                                className="hidden"
-                                                                onChange={async (e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file && activeWorkspaceId) {
-                                                                        setIsUploadingImage(true);
-                                                                        try {
-                                                                            const url = await uploadArchitectImage(file, activeWorkspaceId);
-                                                                            setArchitectImageUrl(url);
-                                                                            e.target.value = '';
-                                                                        } catch (err: unknown) {
-                                                                            const msg = err instanceof Error ? err.message : 'Upload error';
-                                                                            toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
-                                                                        } finally {
-                                                                            setIsUploadingImage(false);
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <label
-                                                                htmlFor="architect-file"
-                                                                className="flex-1 flex items-center justify-center gap-1 cursor-pointer bg-muted hover:bg-muted-foreground/15 text-[9px] font-semibold py-1.5 px-3 rounded-lg border text-muted-foreground transition-all"
-                                                            >
-                                                                <Upload className="h-3 w-3" /> {isUploadingImage ? 'Uploading...' : 'Upload Image'}
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground">
+                                                    <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground pt-1">
                                                         <label className="flex items-center gap-1.5 cursor-pointer">
                                                             <input
                                                                 type="radio"
@@ -4155,22 +4136,6 @@ export function TemplateWorkshop({
                                                             Insert Image
                                                         </label>
                                                     </div>
-                                                    <Button
-                                                        type="button"
-                                                        className="w-full h-8 text-[10px] font-bold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
-                                                        onClick={handleArchitectSubmit}
-                                                        disabled={isArchitecting || isUploadingImage}
-                                                    >
-                                                        {isArchitecting ? (
-                                                            <>
-                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Designing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Sparkles className="h-3 w-3" /> Architect Email
-                                                            </>
-                                                        )}
-                                                    </Button>
                                                 </div>
                                             </div>
                                         )}

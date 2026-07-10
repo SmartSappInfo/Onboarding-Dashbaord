@@ -28,6 +28,8 @@ interface UnifiedPromptInputProps {
   hideModelSelector?: boolean;
   hideAudio?: boolean;
   className?: string;
+  onFileSelect?: (files: File[]) => void | Promise<void>;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
 }
 
 interface SpeechRecognitionInstance {
@@ -69,7 +71,9 @@ export default function UnifiedPromptInput({
   hideAttachments = false,
   hideModelSelector = false,
   hideAudio = false,
-  className
+  className,
+  onFileSelect,
+  onPaste
 }: UnifiedPromptInputProps) {
   const { modelId } = useLiveAiModel();
   const [isRecording, setIsRecording] = React.useState(false);
@@ -99,7 +103,14 @@ export default function UnifiedPromptInput({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length || !onStagedFilesChange) return;
+    if (!files.length) return;
+
+    if (onFileSelect) {
+      void onFileSelect(files);
+      return;
+    }
+
+    if (!onStagedFilesChange) return;
 
     const newFiles: StagedAttachment[] = files.map(file => {
       const url = URL.createObjectURL(file);
@@ -214,6 +225,7 @@ export default function UnifiedPromptInput({
         value={value}
         onChange={handleTextareaChange}
         onKeyDown={handleKeyDown}
+        onPaste={onPaste}
         placeholder={placeholder}
         className="w-full text-sm bg-transparent resize-none focus:outline-none min-h-[40px] max-h-44 leading-relaxed p-1"
         rows={1}
