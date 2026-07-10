@@ -1441,7 +1441,7 @@ export default function EntitiesClient() {
                           <span>
                             {isAllSelectedInView ? (
                               <>All <span className="font-mono text-primary font-black">{selectedCount}</span> {plural.toLowerCase()} in active view are selected.</>
-                            ) : selectedCount === sortedEntities.length - paginatedEntities.length ? (
+                            ) : selectedCount === filteredEntityIds.length - paginatedEntities.length ? (
                               <>All <span className="font-mono text-primary font-black">{selectedCount}</span> {plural.toLowerCase()} on other pages are selected (excluding current page).</>
                             ) : (
                               <>All <span className="font-mono text-primary font-black">{paginatedEntities.filter(e => selectedEntityIds.includes(e.id)).length}</span> {plural.toLowerCase()} on this page are selected.</>
@@ -1456,16 +1456,16 @@ export default function EntitiesClient() {
                                 onClick={selectAllInView}
                                 className="text-primary hover:underline font-extrabold"
                               >
-                                Select all {sortedEntities.length} {plural.toLowerCase()} in view
+                                Select all {filteredEntityIds.length} {plural.toLowerCase()} in active view
                               </button>
                             )}
-                            {selectedCount === paginatedEntities.length && sortedEntities.length > paginatedEntities.length && (
+                            {selectedCount === paginatedEntities.length && filteredEntityIds.length > paginatedEntities.length && (
                               <button
                                 type="button"
                                 onClick={selectOtherPages}
                                 className="text-violet-600 dark:text-violet-400 hover:underline font-extrabold"
                               >
-                                Select all {sortedEntities.length - paginatedEntities.length} on other pages
+                                Select all {filteredEntityIds.length - paginatedEntities.length} on other pages
                               </button>
                             )}
                           </div>
