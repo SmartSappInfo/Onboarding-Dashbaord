@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { MousePointer2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
 const schema = z.object({
   label: z.string().default('Click Here'),
@@ -104,17 +105,17 @@ registerBlock({
             }
           }}
         >
-          <span
-            contentEditable={ctx.mode === 'edit'}
-            suppressContentEditableWarning
+          <InlineEditable
+            tagName="span"
+            isEdit={ctx.mode === 'edit'}
             data-block-id={block.id}
             data-prop-key="label"
             data-rich="false"
-            onBlur={(e) => ctx.onPropChange?.({ label: e.currentTarget.textContent || '' })}
+            onChange={(val) => ctx.onPropChange?.({ label: val })}
             className="outline-none min-w-[20px] inline-block cursor-text"
-          >
-            {ctx.mode === 'edit' ? props.label : ctx.interpolate(props.label)}
-          </span>
+            value={props.label}
+            html={false}
+          />
           <ArrowRight className="h-4 w-4 shrink-0" />
         </button>
       </div>

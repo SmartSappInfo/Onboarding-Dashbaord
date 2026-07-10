@@ -6,6 +6,7 @@ import { ImageIcon, Edit } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { cn } from '@/lib/utils';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
 const schema = z.object({
   src: z.string().default(''),
@@ -155,18 +156,18 @@ registerBlock({
           />
           {changeButton}
           {props.caption && (
-            <figcaption 
-              contentEditable={ctx.mode === 'edit'}
-              suppressContentEditableWarning
+            <InlineEditable
+              tagName="figcaption"
+              isEdit={ctx.mode === 'edit'}
               data-block-id={_block.id}
               data-prop-key="caption"
               data-rich="false"
-              onBlur={(e) => ctx.onPropChange?.({ caption: e.currentTarget.textContent || '' })}
+              onChange={(val) => ctx.onPropChange?.({ caption: val })}
               className="px-5 py-4 border-t border-slate-100 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 text-xs font-semibold text-center tracking-wide leading-relaxed outline-none"
               style={{ color: props.captionColor }}
-            >
-              {ctx.mode === 'edit' ? props.caption : ctx.interpolate(props.caption)}
-            </figcaption>
+              value={props.caption}
+              html={false}
+            />
           )}
         </figure>
       </div>

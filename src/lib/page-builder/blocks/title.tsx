@@ -4,6 +4,7 @@ import { Heading } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { cn } from '@/lib/utils';
 import { sanitizeHtml } from '../sanitize';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
 const schema = z.object({
   preset: z.enum([
@@ -201,53 +202,12 @@ registerBlock({
     const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
     
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const titleRef = React.useRef<HTMLHeadingElement | HTMLSpanElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const taglineRef = React.useRef<HTMLParagraphElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const subheadingRef = React.useRef<HTMLParagraphElement>(null);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastTitleRef = React.useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastTaglineRef = React.useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastSubheadingRef = React.useRef<string>('');
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [hasMounted, setHasMounted] = React.useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     React.useEffect(() => {
       setHasMounted(true);
     }, []);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useEffect(() => {
-      if (hasMounted) {
-        if (titleRef.current) {
-          const expected = isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title));
-          if (expected !== titleRef.current.innerHTML) {
-            titleRef.current.innerHTML = expected;
-          }
-          lastTitleRef.current = props.title;
-        }
-        if (taglineRef.current) {
-          const expected = isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline));
-          if (expected !== taglineRef.current.innerHTML) {
-            taglineRef.current.innerHTML = expected;
-          }
-          lastTaglineRef.current = props.tagline;
-        }
-        if (subheadingRef.current) {
-          const expected = isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading));
-          if (expected !== subheadingRef.current.innerHTML) {
-            subheadingRef.current.innerHTML = expected;
-          }
-          lastSubheadingRef.current = props.subheading;
-        }
-      }
-    }, [props.title, props.tagline, props.subheading, isEdit, hasMounted, ctx]);
 
     let titleClass = isLight ? 'text-white' : 'text-slate-900 dark:text-white';
     let taglineClass = isLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';
@@ -357,39 +317,27 @@ registerBlock({
       ...(props.customSubheadingColor ? { color: props.customSubheadingColor } : {}),
     };
 
-    const handleTitleBlur = (e: React.FocusEvent<HTMLHeadingElement | HTMLSpanElement>) => {
-      ctx.onPropChange?.({ title: e.currentTarget.innerHTML });
-    };
-
-    const handleTaglineBlur = (e: React.FocusEvent<HTMLParagraphElement>) => {
-      ctx.onPropChange?.({ tagline: e.currentTarget.innerHTML });
-    };
-
-    const handleSubheadingBlur = (e: React.FocusEvent<HTMLParagraphElement>) => {
-      ctx.onPropChange?.({ subheading: e.currentTarget.innerHTML });
-    };
-
     if (preset === 'badge-capsule') {
       const capsuleBgClass = isLight 
         ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
         : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400";
       return (
         <div className={cn("py-2 w-full", alignClass, isEdit ? "select-text" : "select-none")}>
-          <span 
-            ref={titleRef as React.RefObject<HTMLSpanElement>}
+          <InlineEditable
+            tagName="span"
+            isEdit={isEdit}
             className={cn(
               "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border text-xs font-bold tracking-wider uppercase cursor-text outline-none",
               capsuleBgClass,
               focusRingClass
             )}
             style={titleStyles}
-            contentEditable={isEdit}
-            suppressContentEditableWarning
             data-block-id={_block.id}
             data-prop-key="title"
             data-rich="true"
-            onBlur={isEdit ? handleTitleBlur : undefined}
-            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) } : undefined}
+            onChange={(val) => ctx.onPropChange?.({ title: val })}
+            value={isEdit ? props.title : ctx.interpolate(props.title)}
+            html={true}
           />
         </div>
       );
@@ -398,48 +346,48 @@ registerBlock({
     return (
       <div className={cn("py-4 w-full", alignClass, isEdit ? "select-text" : "select-none")}>
         {/* Top Tagline */}
-        {props.tagline && preset !== 'subtitle' && preset !== 'accent-tagline' && (
-          <p
-            ref={taglineRef}
+        {(isEdit || props.tagline) && preset !== 'subtitle' && preset !== 'accent-tagline' && (
+          <InlineEditable
+            tagName="p"
+            isEdit={isEdit}
             className={cn(taglineClass, focusRingClass, "outline-none")}
             style={taglineStyles}
-            contentEditable={isEdit}
-            suppressContentEditableWarning
             data-block-id={_block.id}
             data-prop-key="tagline"
             data-rich="true"
-            onBlur={isEdit ? handleTaglineBlur : undefined}
-            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.tagline : sanitizeHtml(ctx.interpolate(props.tagline)) } : undefined}
+            onChange={(val) => ctx.onPropChange?.({ tagline: val })}
+            value={isEdit ? (props.tagline || 'Tagline') : ctx.interpolate(props.tagline)}
+            html={true}
           />
         )}
 
         {/* Main Headline */}
-        <h2
-          ref={titleRef as React.RefObject<HTMLHeadingElement>}
+        <InlineEditable
+          tagName="h2"
+          isEdit={isEdit}
           className={cn(titleClass, "transition-all duration-300 outline-none", focusRingClass)}
           style={titleStyles}
-          contentEditable={isEdit}
-          suppressContentEditableWarning
           data-block-id={_block.id}
           data-prop-key="title"
           data-rich="true"
-          onBlur={isEdit ? handleTitleBlur : undefined}
-          dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.title : sanitizeHtml(ctx.interpolate(props.title)) } : undefined}
+          onChange={(val) => ctx.onPropChange?.({ title: val })}
+          value={isEdit ? props.title : ctx.interpolate(props.title)}
+          html={true}
         />
 
         {/* Supporting Subheading */}
-        {props.subheading && preset !== 'accent-tagline' && (
-          <p
-            ref={subheadingRef}
+        {(isEdit || props.subheading) && preset !== 'accent-tagline' && (
+          <InlineEditable
+            tagName="p"
+            isEdit={isEdit}
             className={cn(subClass, focusRingClass, "outline-none")}
             style={subheadingStyles}
-            contentEditable={isEdit}
-            suppressContentEditableWarning
             data-block-id={_block.id}
             data-prop-key="subheading"
             data-rich="true"
-            onBlur={isEdit ? handleSubheadingBlur : undefined}
-            dangerouslySetInnerHTML={!hasMounted ? { __html: isEdit ? props.subheading : sanitizeHtml(ctx.interpolate(props.subheading)) } : undefined}
+            onChange={(val) => ctx.onPropChange?.({ subheading: val })}
+            value={isEdit ? (props.subheading || 'Subheading') : ctx.interpolate(props.subheading)}
+            html={true}
           />
         )}
       </div>

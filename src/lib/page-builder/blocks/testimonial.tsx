@@ -8,6 +8,7 @@ import { sanitizeHtml } from '../sanitize';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import VideoEmbed from '@/components/video-embed';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
 const schema = z.object({
   quote: z.string().default(''),
@@ -158,88 +159,12 @@ registerBlock({
     const [logoLibraryOpen, setLogoLibraryOpen] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const quoteRef = useRef<HTMLQuoteElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const authorRef = useRef<HTMLParagraphElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const roleRef = useRef<HTMLParagraphElement>(null);
-
-    // New refs for Sunflower layout
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const schoolNameRef = useRef<HTMLParagraphElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const schoolSubtitleRef = useRef<HTMLParagraphElement>(null);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const videoCaptionRef = useRef<HTMLParagraphElement>(null);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastQuoteRef = useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastAuthorRef = useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastRoleRef = useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastSchoolNameRef = useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastSchoolSubtitleRef = useRef<string>('');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const lastVideoCaptionRef = useRef<string>('');
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [hasMounted, setHasMounted] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
       setHasMounted(true);
     }, []);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      if (hasMounted) {
-        if (quoteRef.current) {
-          const expected = ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote));
-          if (expected !== quoteRef.current.innerHTML) {
-            quoteRef.current.innerHTML = expected;
-          }
-          lastQuoteRef.current = props.quote;
-        }
-        if (authorRef.current) {
-          const expected = props.author || '';
-          if (expected !== authorRef.current.innerText) {
-            authorRef.current.innerText = expected;
-          }
-          lastAuthorRef.current = expected;
-        }
-        if (roleRef.current) {
-          const expected = props.role || '';
-          if (expected !== roleRef.current.innerText) {
-            roleRef.current.innerText = expected;
-          }
-          lastRoleRef.current = expected;
-        }
-        if (schoolNameRef.current) {
-          const expected = props.schoolName || '';
-          if (expected !== schoolNameRef.current.innerText) {
-            schoolNameRef.current.innerText = expected;
-          }
-          lastSchoolNameRef.current = expected;
-        }
-        if (schoolSubtitleRef.current) {
-          const expected = props.schoolSubtitle || '';
-          if (expected !== schoolSubtitleRef.current.innerText) {
-            schoolSubtitleRef.current.innerText = expected;
-          }
-          lastSchoolSubtitleRef.current = expected;
-        }
-        if (videoCaptionRef.current) {
-          const expected = props.videoCaption || '';
-          if (expected !== videoCaptionRef.current.innerText) {
-            videoCaptionRef.current.innerText = expected;
-          }
-          lastVideoCaptionRef.current = expected;
-        }
-      }
-    }, [props.quote, props.author, props.role, props.schoolName, props.schoolSubtitle, props.videoCaption, ctx.mode, hasMounted, ctx]);
 
     const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
       <>
@@ -327,20 +252,16 @@ registerBlock({
           <div className="flex-1 w-full self-stretch flex flex-col justify-between py-1">
             {/* Quote block */}
             <div className="mb-4">
-              <blockquote 
-                ref={quoteRef}
-                contentEditable={ctx.mode === 'edit'}
-                suppressContentEditableWarning
+              <InlineEditable
+                tagName="blockquote"
+                isEdit={ctx.mode === 'edit'}
                 data-block-id={_block.id}
                 data-prop-key="quote"
                 data-rich="true"
-                onBlur={(e) => {
-                  const newHtml = e.currentTarget.innerHTML;
-                  lastQuoteRef.current = newHtml;
-                  ctx.onPropChange?.({ quote: newHtml });
-                }}
+                onChange={(val) => ctx.onPropChange?.({ quote: val })}
                 className="text-base md:text-lg font-medium leading-relaxed text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full"
-                dangerouslySetInnerHTML={!hasMounted ? { __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) } : undefined}
+                value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
+                html={true}
               />
             </div>
 
@@ -350,73 +271,44 @@ registerBlock({
             {/* Author, Role & School Name Info */}
             <div className="text-left space-y-0.5">
               <div className="text-xs md:text-sm text-slate-300 dark:text-slate-400 font-semibold flex items-center gap-1">
-                {ctx.mode === 'edit' ? (
-                  <>
-                    <span 
-                      ref={authorRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      data-block-id={_block.id}
-                      data-prop-key="author"
-                      data-rich="false"
-                      onBlur={(e) => {
-                        const text = e.currentTarget.innerText || '';
-                        lastAuthorRef.current = text;
-                        ctx.onPropChange?.({ author: text });
-                      }}
-                      className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text text-white font-bold"
-                    >
-                      {!hasMounted ? (props.author || 'Author Name') : undefined}
-                    </span>
-                    <span>,</span>
-                    <span 
-                      ref={roleRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      data-block-id={_block.id}
-                      data-prop-key="role"
-                      data-rich="false"
-                      onBlur={(e) => {
-                        const text = e.currentTarget.innerText || '';
-                        lastRoleRef.current = text;
-                        ctx.onPropChange?.({ role: text });
-                      }}
-                      className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal text-slate-350"
-                    >
-                      {!hasMounted ? (props.role || 'Role') : undefined}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-white font-bold">{props.author}</span>
-                    <span>,</span>
-                    <span className="font-normal text-slate-350">{props.role}</span>
-                  </>
-                )}
+                <InlineEditable
+                  tagName="span"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="author"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ author: val })}
+                  className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text text-white font-bold"
+                  value={props.author || 'Author Name'}
+                  html={false}
+                />
+                <span>,</span>
+                <InlineEditable
+                  tagName="span"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="role"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ role: val })}
+                  className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal text-slate-350"
+                  value={props.role || 'Role'}
+                  html={false}
+                />
               </div>
 
               {/* School Name */}
               <div>
-                {ctx.mode === 'edit' ? (
-                  <p 
-                    ref={schoolNameRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-block-id={_block.id}
-                    data-prop-key="schoolName"
-                    data-rich="false"
-                    onBlur={(e) => {
-                      const text = e.currentTarget.innerText || '';
-                      lastSchoolNameRef.current = text;
-                      ctx.onPropChange?.({ schoolName: text });
-                    }}
-                    className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block"
-                  >
-                    {!hasMounted ? (props.schoolName || 'School Name') : undefined}
-                  </p>
-                ) : (
-                  <p className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium">{props.schoolName}</p>
-                )}
+                <InlineEditable
+                  tagName="p"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="schoolName"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
+                  className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block"
+                  value={props.schoolName || 'School Name'}
+                  html={false}
+                />
               </div>
             </div>
 
@@ -435,47 +327,28 @@ registerBlock({
             {/* Header: School Name, Subtitle, and Logo */}
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                {ctx.mode === 'edit' ? (
-                  <>
-                    <p
-                      ref={schoolNameRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      data-block-id={_block.id}
-                      data-prop-key="schoolName"
-                      data-rich="false"
-                      onBlur={(e) => {
-                        const text = e.currentTarget.innerText || '';
-                        lastSchoolNameRef.current = text;
-                        ctx.onPropChange?.({ schoolName: text });
-                      }}
-                      className="text-lg font-extrabold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
-                    >
-                      {!hasMounted ? (props.schoolName || 'Sunflower School') : undefined}
-                    </p>
-                    <p
-                      ref={schoolSubtitleRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      data-block-id={_block.id}
-                      data-prop-key="schoolSubtitle"
-                      data-rich="false"
-                      onBlur={(e) => {
-                        const text = e.currentTarget.innerText || '';
-                        lastSchoolSubtitleRef.current = text;
-                        ctx.onPropChange?.({ schoolSubtitle: text });
-                      }}
-                      className="text-xs text-slate-500 dark:text-slate-400 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5"
-                    >
-                      {!hasMounted ? (props.schoolSubtitle || 'Ghana') : undefined}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-extrabold text-slate-900 dark:text-white">{props.schoolName || 'Sunflower School'}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{props.schoolSubtitle || 'Ghana'}</p>
-                  </>
-                )}
+                <InlineEditable
+                  tagName="p"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="schoolName"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
+                  className="text-lg font-extrabold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
+                  value={props.schoolName || 'Sunflower School'}
+                  html={false}
+                />
+                <InlineEditable
+                  tagName="p"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="schoolSubtitle"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ schoolSubtitle: val })}
+                  className="text-xs text-slate-500 dark:text-slate-400 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5"
+                  value={props.schoolSubtitle || 'Ghana'}
+                  html={false}
+                />
               </div>
 
               {/* School Logo */}
@@ -513,69 +386,45 @@ registerBlock({
 
             {/* Testimonial Quote Statement */}
             <div className="my-6">
-              <blockquote
-                ref={quoteRef}
-                contentEditable={ctx.mode === 'edit'}
-                suppressContentEditableWarning
+              <InlineEditable
+                tagName="blockquote"
+                isEdit={ctx.mode === 'edit'}
                 data-block-id={_block.id}
                 data-prop-key="quote"
                 data-rich="true"
-                onBlur={(e) => {
-                  const newHtml = e.currentTarget.innerHTML;
-                  lastQuoteRef.current = newHtml;
-                  ctx.onPropChange?.({ quote: newHtml });
-                }}
+                onChange={(val) => ctx.onPropChange?.({ quote: val })}
                 className="text-base font-semibold leading-relaxed text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1"
-                dangerouslySetInnerHTML={!hasMounted ? { __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) } : undefined}
+                value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
+                html={true}
               />
             </div>
 
             {/* Quote Author */}
             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
               <span>-</span>
-              {ctx.mode === 'edit' ? (
-                <>
-                  <span
-                    ref={authorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-block-id={_block.id}
-                    data-prop-key="author"
-                    data-rich="false"
-                    onBlur={(e) => {
-                      const text = e.currentTarget.innerText || '';
-                      lastAuthorRef.current = text;
-                      ctx.onPropChange?.({ author: text });
-                    }}
-                    className="font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
-                  >
-                    {!hasMounted ? (props.author || 'Author') : undefined}
-                  </span>
-                  <span>,</span>
-                  <span
-                    ref={roleRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-block-id={_block.id}
-                    data-prop-key="role"
-                    data-rich="false"
-                    onBlur={(e) => {
-                      const text = e.currentTarget.innerText || '';
-                      lastRoleRef.current = text;
-                      ctx.onPropChange?.({ role: text });
-                    }}
-                    className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
-                  >
-                    {!hasMounted ? (props.role || 'Role') : undefined}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">{props.author}</span>
-                  <span>,</span>
-                  <span>{props.role}</span>
-                </>
-              )}
+              <InlineEditable
+                tagName="span"
+                isEdit={ctx.mode === 'edit'}
+                data-block-id={_block.id}
+                data-prop-key="author"
+                data-rich="false"
+                onChange={(val) => ctx.onPropChange?.({ author: val })}
+                className="font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
+                value={props.author || 'Author'}
+                html={false}
+              />
+              <span>,</span>
+              <InlineEditable
+                tagName="span"
+                isEdit={ctx.mode === 'edit'}
+                data-block-id={_block.id}
+                data-prop-key="role"
+                data-rich="false"
+                onChange={(val) => ctx.onPropChange?.({ role: val })}
+                className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
+                value={props.role || 'Role'}
+                html={false}
+              />
             </div>
           </div>
 
@@ -635,23 +484,18 @@ registerBlock({
                     {/* Bottom visual cover caption */}
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10 text-center select-text">
                       {ctx.mode === 'edit' ? (
-                        <p
-                          ref={videoCaptionRef}
-                          contentEditable
-                          suppressContentEditableWarning
+                        <InlineEditable
+                          tagName="p"
+                          isEdit={true}
                           data-block-id={_block.id}
                           data-prop-key="videoCaption"
                           data-rich="false"
                           onClick={(e) => e.stopPropagation()}
-                          onBlur={(e) => {
-                            const text = e.currentTarget.innerText || '';
-                            lastVideoCaptionRef.current = text;
-                            ctx.onPropChange?.({ videoCaption: text });
-                          }}
+                          onChange={(val) => ctx.onPropChange?.({ videoCaption: val })}
                           className="text-xs font-black text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 inline-block cursor-text"
-                        >
-                          {!hasMounted ? videoCaptionText : undefined}
-                        </p>
+                          value={props.videoCaption || 'How Sunflower School cleared their debtors lists without stress'}
+                          html={false}
+                        />
                       ) : (
                         <p className="text-xs font-black text-white">
                           {(() => {
@@ -752,20 +596,16 @@ registerBlock({
           <Quote className="w-8 h-8 mx-auto opacity-45 text-emerald-500" />
         )}
         
-        <blockquote 
-          ref={quoteRef}
-          contentEditable={ctx.mode === 'edit'}
-          suppressContentEditableWarning
+        <InlineEditable
+          tagName="blockquote"
+          isEdit={ctx.mode === 'edit'}
           data-block-id={_block.id}
           data-prop-key="quote"
           data-rich="true"
-          onBlur={(e) => {
-            const newHtml = e.currentTarget.innerHTML;
-            lastQuoteRef.current = newHtml;
-            ctx.onPropChange?.({ quote: newHtml });
-          }}
+          onChange={(val) => ctx.onPropChange?.({ quote: val })}
           className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]"
-          dangerouslySetInnerHTML={!hasMounted ? { __html: ctx.mode === 'edit' ? props.quote : sanitizeHtml(ctx.interpolate(props.quote)) } : undefined}
+          value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
+          html={true}
         />
         
         <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
@@ -800,46 +640,29 @@ registerBlock({
             )}
           </div>
           <div className="text-left leading-tight">
-            {ctx.mode === 'edit' ? (
-              <>
-                <p 
-                  ref={authorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  data-block-id={_block.id}
-                  data-prop-key="author"
-                  data-rich="false"
-                  onBlur={(e) => {
-                    const text = e.currentTarget.innerText || '';
-                    lastAuthorRef.current = text;
-                    ctx.onPropChange?.({ author: text });
-                  }}
-                  className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
-                >
-                  {!hasMounted ? (props.author || 'Author Name') : undefined}
-                </p>
-                <p 
-                  ref={roleRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  data-block-id={_block.id}
-                  data-prop-key="role"
-                  data-rich="false"
-                  onBlur={(e) => {
-                    const text = e.currentTarget.innerText || '';
-                    lastRoleRef.current = text;
-                    ctx.onPropChange?.({ role: text });
-                  }}
-                  className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
-                >
-                  {!hasMounted ? (props.role || 'Role / Company') : undefined}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs font-black text-slate-900 dark:text-slate-100">{props.author || 'Author Name'}</p>
-                {props.role ? <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{props.role}</p> : null}
-              </>
+            <InlineEditable
+              tagName="p"
+              isEdit={ctx.mode === 'edit'}
+              data-block-id={_block.id}
+              data-prop-key="author"
+              data-rich="false"
+              onChange={(val) => ctx.onPropChange?.({ author: val })}
+              className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
+              value={props.author || 'Author Name'}
+              html={false}
+            />
+            {(ctx.mode === 'edit' || props.role) && (
+              <InlineEditable
+                tagName="p"
+                isEdit={ctx.mode === 'edit'}
+                data-block-id={_block.id}
+                data-prop-key="role"
+                data-rich="false"
+                onChange={(val) => ctx.onPropChange?.({ role: val })}
+                className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
+                value={ctx.mode === 'edit' ? (props.role || 'Role / Company') : props.role}
+                html={false}
+              />
             )}
           </div>
         </figcaption>

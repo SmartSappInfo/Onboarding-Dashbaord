@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
 import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 import VideoEmbed from '@/components/video-embed';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
 // Dynamic import for WebGL LightRays to prevent SSR hydration errors
 const LightRays = dynamic(() => import('@/components/LightRays'), { ssr: false });
@@ -264,27 +265,29 @@ registerBlock({
       return (
         <div className="flex flex-col gap-6 py-8 px-4 border border-dashed border-slate-800 rounded-xl relative overflow-hidden bg-slate-950/20 text-center items-center">
           <div className="w-full max-w-3xl space-y-3">
-            <h1
+            <InlineEditable
+              tagName="h1"
               className="w-full font-black tracking-tight text-3xl sm:text-4xl text-center placeholder:opacity-30 outline-none"
               style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="title"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ title: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.title || 'Why do parents choose *other schools* over yours?' }}
+              onChange={(val) => ctx.onPropChange?.({ title: val })}
+              value={props.title || 'Why do parents choose *other schools* over yours?'}
+              html={true}
             />
-            <p
+            <InlineEditable
+              tagName="p"
               className="w-full text-sm text-center placeholder:opacity-30 opacity-70 outline-none"
               style={{ color: textStyle.color }}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="subtitle"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ subtitle: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.subtitle || 'Watch this short video to find out.' }}
+              onChange={(val) => ctx.onPropChange?.({ subtitle: val })}
+              value={props.subtitle || 'Watch this short video to find out.'}
+              html={true}
             />
           </div>
 
@@ -299,27 +302,29 @@ registerBlock({
           </div>
 
           <div className="w-full max-w-3xl space-y-3 mt-4">
-            <h2
+            <InlineEditable
+              tagName="h2"
               className="w-full font-bold text-xl sm:text-2xl text-center placeholder:opacity-30 outline-none"
               style={{ color: textStyle.color, fontFamily: textStyle.fontFamily }}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="secondaryTitle"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ secondaryTitle: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.secondaryTitle || 'Want to make your school the preferred choice for parents in one term?' }}
+              onChange={(val) => ctx.onPropChange?.({ secondaryTitle: val })}
+              value={props.secondaryTitle || 'Want to make your school the preferred choice for parents in one term?'}
+              html={true}
             />
-            <p
+            <InlineEditable
+              tagName="p"
               className="w-full text-xs sm:text-sm text-center placeholder:opacity-30 opacity-70 outline-none min-h-[2.5rem]"
               style={{ color: textStyle.color }}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="secondarySubtitle"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ secondarySubtitle: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.secondarySubtitle || 'Book a FREE 30-minutes consultation to see your roadmap.' }}
+              onChange={(val) => ctx.onPropChange?.({ secondarySubtitle: val })}
+              value={props.secondarySubtitle || 'Book a FREE 30-minutes consultation to see your roadmap.'}
+              html={true}
             />
           </div>
 
@@ -347,27 +352,29 @@ registerBlock({
             </div>
           ) : null}
           <div className="relative z-10 w-full flex flex-col gap-3">
-            <h1
+            <InlineEditable
+              tagName="h1"
               className={cn('w-full font-black tracking-tight placeholder:opacity-30 outline-none', FONT_SIZE[props.fontSize])}
               style={textStyle}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="title"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ title: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.title || 'Hero Title' }}
+              onChange={(val) => ctx.onPropChange?.({ title: val })}
+              value={props.title || 'Hero Title'}
+              html={true}
             />
-            <p
+            <InlineEditable
+              tagName="p"
               className="w-full text-sm placeholder:opacity-30 outline-none min-h-[3rem]"
               style={{ color: textStyle.color, textAlign: props.align, opacity: 0.7 }}
-              contentEditable={isEdit}
-              suppressContentEditableWarning
+              isEdit={isEdit}
               data-block-id={_block.id}
               data-prop-key="subtitle"
               data-rich="true"
-              onBlur={(e) => ctx.onPropChange?.({ subtitle: e.currentTarget.innerHTML })}
-              dangerouslySetInnerHTML={{ __html: props.subtitle || 'Hero subtitle text' }}
+              onChange={(val) => ctx.onPropChange?.({ subtitle: val })}
+              value={props.subtitle || 'Hero subtitle text'}
+              html={true}
             />
             {ctaSectionMarkup}
           </div>

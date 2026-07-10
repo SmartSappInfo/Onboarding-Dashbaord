@@ -306,6 +306,17 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
   );
 }
 
+const HIDE_TEXT_FIELDS_BY_BLOCK: Record<string, string[]> = {
+  title: ['title', 'tagline', 'subheading'],
+  testimonial: ['quote', 'author', 'role', 'schoolName', 'schoolSubtitle', 'videoCaption'],
+  hero: ['title', 'subtitle', 'secondaryTitle', 'secondarySubtitle'],
+  'video-hero': ['headline', 'subheadline'],
+  'step-section': ['heading', 'description'],
+  'app-download': ['heading', 'subtext'],
+  image: ['caption'],
+  cta: ['label'],
+};
+
 interface AutoBlockEditorProps {
   block: PageBlock | null;
   resources: BuilderResources;
@@ -345,7 +356,15 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
         <p className="text-[10px] text-slate-500 italic">This block has no editable properties.</p>
       ) : (
         <div className="space-y-4">
-          {def.fields.map((field) => {
+          {def.fields
+            .filter((field) => {
+              const hiddenFields = HIDE_TEXT_FIELDS_BY_BLOCK[block.type];
+              if (hiddenFields && hiddenFields.includes(field.key)) {
+                return false;
+              }
+              return true;
+            })
+            .map((field) => {
             // Conditional field visibility for CTA Block actions
             if (block.type === 'cta') {
               if (field.key === 'url' && props.actionType !== 'url') return null;

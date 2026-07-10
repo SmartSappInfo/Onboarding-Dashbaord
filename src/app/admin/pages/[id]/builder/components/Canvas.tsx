@@ -89,6 +89,7 @@ import { Input } from '@/components/ui/input';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import '@/lib/page-builder/blocks'; // register all blocks
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo } from '@/components/icons';
@@ -1447,25 +1448,15 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                      <div className="flex justify-end w-full">
                                                          {headerSettings.showCta && (
                                                              <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
-                                                                 {isEditMode ? (
-                                                                     <span
-                                                                         contentEditable
-                                                                         suppressContentEditableWarning
-                                                                         onBlur={(e) => onUpdateHeader?.({ ctaText: e.currentTarget.textContent || '' })}
-                                                                         onKeyDown={(e) => {
-                                                                             if (e.key === 'Enter') {
-                                                                                 e.preventDefault();
-                                                                                 e.currentTarget.blur();
-                                                                             }
-                                                                         }}
-                                                                         className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block"
-                                                                         onClick={(e) => e.stopPropagation()}
-                                                                     >
-                                                                         {headerSettings.ctaText || 'Get Started'}
-                                                                     </span>
-                                                                 ) : (
-                                                                     headerSettings.ctaText || 'Get Started'
-                                                                 )}
+                                                                  <InlineEditable
+                                                                      tagName="span"
+                                                                      isEdit={isEditMode}
+                                                                      onChange={(val) => onUpdateHeader?.({ ctaText: val })}
+                                                                      className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                      onClick={(e) => e.stopPropagation()}
+                                                                      value={headerSettings.ctaText || 'Get Started'}
+                                                                      html={false}
+                                                                  />
                                                              </Button>
                                                          )}
                                                      </div>
@@ -1474,36 +1465,27 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                          <div className="flex items-center gap-6">
                                                              <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
                                                              {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
-                                                                 <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-650 dark:text-slate-300">
+                                                                 <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-655 dark:text-slate-300">
                                                                      {headerSettings.navItems.map((item) => (
                                                                          <span 
                                                                              key={item.id} 
                                                                              className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer pointer-events-auto"
                                                                              onClick={(e) => e.stopPropagation()}
                                                                          >
-                                                                             {isEditMode ? (
-                                                                                 <span
-                                                                                     contentEditable
-                                                                                     suppressContentEditableWarning
-                                                                                     onBlur={(e) => {
-                                                                                         const updatedNavItems = headerSettings.navItems.map(navItem => 
-                                                                                             navItem.id === item.id ? { ...navItem, label: e.currentTarget.textContent || '' } : navItem
-                                                                                         );
-                                                                                         onUpdateHeader?.({ navItems: updatedNavItems });
-                                                                                     }}
-                                                                                     onKeyDown={(e) => {
-                                                                                         if (e.key === 'Enter') {
-                                                                                             e.preventDefault();
-                                                                                             e.currentTarget.blur();
-                                                                                         }
-                                                                                     }}
-                                                                                     className="outline-none border-0 bg-transparent text-slate-650 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center cursor-text min-w-[10px] inline-block"
-                                                                                 >
-                                                                                     {item.label}
-                                                                                 </span>
-                                                                             ) : (
-                                                                                 item.label
-                                                                             )}
+                                                                             <InlineEditable
+                                                                                 tagName="span"
+                                                                                 isEdit={isEditMode}
+                                                                                 onChange={(val) => {
+                                                                                     const updatedNavItems = headerSettings.navItems.map(navItem => 
+                                                                                         navItem.id === item.id ? { ...navItem, label: val } : navItem
+                                                                                     );
+                                                                                     onUpdateHeader?.({ navItems: updatedNavItems });
+                                                                                 }}
+                                                                                 className="outline-none border-0 bg-transparent text-slate-655 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center cursor-text min-w-[10px] inline-block pointer-events-auto"
+                                                                                 onClick={(e) => e.stopPropagation()}
+                                                                                 value={item.label}
+                                                                                 html={false}
+                                                                             />
                                                                          </span>
                                                                      ))}
                                                                  </nav>
@@ -1519,47 +1501,28 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                              {headerSettings.showPhone && headerSettings.phoneNumber && (
                                                                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                      <Phone className="h-3 w-3" />
-                                                                     {isEditMode ? (
-                                                                         <span
-                                                                             contentEditable
-                                                                             suppressContentEditableWarning
-                                                                             onBlur={(e) => onUpdateHeader?.({ phoneNumber: e.currentTarget.textContent || '' })}
-                                                                             onKeyDown={(e) => {
-                                                                                 if (e.key === 'Enter') {
-                                                                                     e.preventDefault();
-                                                                                     e.currentTarget.blur();
-                                                                                 }
-                                                                             }}
-                                                                             className="outline-none border-0 bg-transparent text-slate-500 dark:text-slate-400 font-bold text-xs cursor-text min-w-[20px] inline-block"
-                                                                         >
-                                                                             {headerSettings.phoneNumber}
-                                                                         </span>
-                                                                     ) : (
-                                                                         headerSettings.phoneNumber
-                                                                     )}
+                                                                     <InlineEditable
+                                                                         tagName="span"
+                                                                         isEdit={isEditMode}
+                                                                         onChange={(val) => onUpdateHeader?.({ phoneNumber: val })}
+                                                                         className="outline-none border-0 bg-transparent text-slate-500 dark:text-slate-400 font-bold text-xs cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                         onClick={(e) => e.stopPropagation()}
+                                                                         value={headerSettings.phoneNumber}
+                                                                         html={false}
+                                                                     />
                                                                  </span>
                                                              )}
                                                              {headerSettings.showCta && (
                                                                  <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
-                                                                     {isEditMode ? (
-                                                                         <span
-                                                                             contentEditable
-                                                                             suppressContentEditableWarning
-                                                                             onBlur={(e) => onUpdateHeader?.({ ctaText: e.currentTarget.textContent || '' })}
-                                                                             onKeyDown={(e) => {
-                                                                                 if (e.key === 'Enter') {
-                                                                                     e.preventDefault();
-                                                                                     e.currentTarget.blur();
-                                                                                 }
-                                                                             }}
-                                                                             className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block"
-                                                                             onClick={(e) => e.stopPropagation()}
-                                                                         >
-                                                                             {headerSettings.ctaText || 'Get Started'}
-                                                                         </span>
-                                                                     ) : (
-                                                                         headerSettings.ctaText || 'Get Started'
-                                                                     )}
+                                                                     <InlineEditable
+                                                                         tagName="span"
+                                                                         isEdit={isEditMode}
+                                                                         onChange={(val) => onUpdateHeader?.({ ctaText: val })}
+                                                                         className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                         onClick={(e) => e.stopPropagation()}
+                                                                         value={headerSettings.ctaText || 'Get Started'}
+                                                                         html={false}
+                                                                     />
                                                                  </Button>
                                                              )}
                                                         </div>
@@ -1836,24 +1799,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                 <div className="max-w-4xl mx-auto px-6 py-8 text-center space-y-4">
                                                     <SmartSappLogo className="h-6 mx-auto opacity-70" />
                                                     <p className="text-[10px] text-slate-400 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                                        {isEditMode ? (
-                                                            <span
-                                                                contentEditable
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => onUpdateFooter?.({ copyrightText: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.preventDefault();
-                                                                        e.currentTarget.blur();
-                                                                    }
-                                                                }}
-                                                                className="outline-none border-0 bg-transparent text-slate-400 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                            >
-                                                                {copyright}
-                                                            </span>
-                                                        ) : (
-                                                            copyright
-                                                        )}
+                                                        <InlineEditable
+                                                            tagName="span"
+                                                            isEdit={isEditMode}
+                                                            onChange={(val) => onUpdateFooter?.({ copyrightText: val, overrideOrg: true })}
+                                                            className="outline-none border-0 bg-transparent text-slate-400 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                            value={copyright}
+                                                            html={false}
+                                                        />
                                                     </p>
                                                 </div>
                                             )}
@@ -1863,24 +1816,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     <div className="flex items-center gap-3">
                                                         <SmartSappLogo className="h-6 opacity-70" />
                                                         <p className="text-[10px] text-slate-400 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                                            {isEditMode ? (
-                                                                <span
-                                                                    contentEditable
-                                                                    suppressContentEditableWarning
-                                                                    onBlur={(e) => onUpdateFooter?.({ copyrightText: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            e.currentTarget.blur();
-                                                                        }
-                                                                    }}
-                                                                    className="outline-none border-0 bg-transparent text-slate-400 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                                >
-                                                                    {copyright}
-                                                                </span>
-                                                            ) : (
-                                                                copyright
-                                                            )}
+                                                            <InlineEditable
+                                                                tagName="span"
+                                                                isEdit={isEditMode}
+                                                                onChange={(val) => onUpdateFooter?.({ copyrightText: val, overrideOrg: true })}
+                                                                className="outline-none border-0 bg-transparent text-slate-400 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                value={copyright}
+                                                                html={false}
+                                                            />
                                                         </p>
                                                     </div>
                                                     {hasSocials && (
@@ -1910,24 +1853,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <p className="text-[10px] text-slate-500 italic">No social links configured</p>
                                                     )}
                                                     <p className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                                        {isEditMode ? (
-                                                            <span
-                                                                contentEditable
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => onUpdateFooter?.({ copyrightText: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.preventDefault();
-                                                                        e.currentTarget.blur();
-                                                                    }
-                                                                }}
-                                                                className="outline-none border-0 bg-transparent text-slate-500 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                            >
-                                                                {copyright}
-                                                            </span>
-                                                        ) : (
-                                                            copyright
-                                                        )}
+                                                        <InlineEditable
+                                                            tagName="span"
+                                                            isEdit={isEditMode}
+                                                            onChange={(val) => onUpdateFooter?.({ copyrightText: val, overrideOrg: true })}
+                                                            className="outline-none border-0 bg-transparent text-slate-500 text-center font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                            value={copyright}
+                                                            html={false}
+                                                        />
                                                     </p>
                                                 </div>
                                             )}
@@ -1938,24 +1871,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <div className="space-y-3">
                                                             <SmartSappLogo className="h-7 mx-auto md:mx-0" />
                                                             <p className="text-[10px] text-slate-400 flex justify-center md:justify-start items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                                                {isEditMode ? (
-                                                                    <span
-                                                                        contentEditable
-                                                                        suppressContentEditableWarning
-                                                                        onBlur={(e) => onUpdateFooter?.({ copyrightText: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter') {
-                                                                                e.preventDefault();
-                                                                                e.currentTarget.blur();
-                                                                            }
-                                                                        }}
-                                                                        className="outline-none border-0 bg-transparent text-slate-400 text-center md:text-left font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                                    >
-                                                                        {copyright}
-                                                                    </span>
-                                                                ) : (
-                                                                    copyright
-                                                                )}
+                                                                <InlineEditable
+                                                                    tagName="span"
+                                                                    isEdit={isEditMode}
+                                                                    onChange={(val) => onUpdateFooter?.({ copyrightText: val, overrideOrg: true })}
+                                                                    className="outline-none border-0 bg-transparent text-slate-400 text-center md:text-left font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                    value={copyright}
+                                                                    html={false}
+                                                                />
                                                             </p>
                                                         </div>
                                                         <div className="space-y-3">
@@ -1972,70 +1895,40 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                 {address && (
                                                                     <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                         <MapPin className="h-3 w-3" />
-                                                                        {isEditMode ? (
-                                                                            <span
-                                                                                contentEditable
-                                                                                suppressContentEditableWarning
-                                                                                onBlur={(e) => onUpdateFooter?.({ address: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                                onKeyDown={(e) => {
-                                                                                    if (e.key === 'Enter') {
-                                                                                        e.preventDefault();
-                                                                                        e.currentTarget.blur();
-                                                                                    }
-                                                                                }}
-                                                                                className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                                            >
-                                                                                {address}
-                                                                            </span>
-                                                                        ) : (
-                                                                            address
-                                                                        )}
+                                                                        <InlineEditable
+                                                                            tagName="span"
+                                                                            isEdit={isEditMode}
+                                                                            onChange={(val) => onUpdateFooter?.({ address: val, overrideOrg: true })}
+                                                                            className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                            value={address}
+                                                                            html={false}
+                                                                        />
                                                                     </span>
                                                                 )}
                                                                 {email && (
                                                                     <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                         <Mail className="h-3 w-3" />
-                                                                        {isEditMode ? (
-                                                                            <span
-                                                                                contentEditable
-                                                                                suppressContentEditableWarning
-                                                                                onBlur={(e) => onUpdateFooter?.({ email: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                                onKeyDown={(e) => {
-                                                                                    if (e.key === 'Enter') {
-                                                                                        e.preventDefault();
-                                                                                        e.currentTarget.blur();
-                                                                                    }
-                                                                                }}
-                                                                                className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                                            >
-                                                                                {email}
-                                                                            </span>
-                                                                        ) : (
-                                                                            email
-                                                                        )}
+                                                                        <InlineEditable
+                                                                            tagName="span"
+                                                                            isEdit={isEditMode}
+                                                                            onChange={(val) => onUpdateFooter?.({ email: val, overrideOrg: true })}
+                                                                            className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                            value={email}
+                                                                            html={false}
+                                                                        />
                                                                     </span>
                                                                 )}
                                                                 {phone && (
                                                                     <span className="flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                         <Phone className="h-3 w-3" />
-                                                                        {isEditMode ? (
-                                                                            <span
-                                                                                contentEditable
-                                                                                suppressContentEditableWarning
-                                                                                onBlur={(e) => onUpdateFooter?.({ phone: e.currentTarget.textContent || '', overrideOrg: true })}
-                                                                                onKeyDown={(e) => {
-                                                                                    if (e.key === 'Enter') {
-                                                                                        e.preventDefault();
-                                                                                        e.currentTarget.blur();
-                                                                                    }
-                                                                                }}
-                                                                                className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block"
-                                                                            >
-                                                                                {phone}
-                                                                            </span>
-                                                                        ) : (
-                                                                            phone
-                                                                        )}
+                                                                        <InlineEditable
+                                                                            tagName="span"
+                                                                            isEdit={isEditMode}
+                                                                            onChange={(val) => onUpdateFooter?.({ phone: val, overrideOrg: true })}
+                                                                            className="outline-none border-0 bg-transparent text-slate-400 font-normal text-[10px] cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                            value={phone}
+                                                                            html={false}
+                                                                        />
                                                                     </span>
                                                                 )}
                                                             </div>
