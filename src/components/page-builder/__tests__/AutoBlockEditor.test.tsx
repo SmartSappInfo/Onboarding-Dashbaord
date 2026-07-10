@@ -19,6 +19,10 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {},
   adminAuth: {},
 }));
+vi.mock('@/firebase', () => ({
+  useFirestore: () => ({}),
+  useUser: () => ({ user: { uid: 'test-user-id' } }),
+}));
 
 import { AutoBlockEditor } from '../AutoBlockEditor';
 import '@/lib/page-builder/blocks'; // register blocks
@@ -32,17 +36,17 @@ describe('AutoBlockEditor', () => {
   });
 
   it('renders a labelled control per field of the block', () => {
-    const block: PageBlock = { id: 'h1', type: 'hero', props: { imageUrl: 'https://foo.jpg' } };
+    const block: PageBlock = { id: 'h1', type: 'hero', props: { lightRaysEnabled: false } };
     render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={() => {}} />);
-    expect(screen.getByLabelText('Background Image URL')).toBeInTheDocument();
+    expect(screen.getByText('Enable Light Rays')).toBeInTheDocument();
   });
 
   it('emits a prop patch when a field changes', () => {
     const onUpdateProps = vi.fn();
-    const block: PageBlock = { id: 'h1', type: 'hero', props: { imageUrl: 'https://foo.jpg' } };
+    const block: PageBlock = { id: 'h1', type: 'hero', props: { lightRaysEnabled: false } };
     render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={onUpdateProps} />);
-    fireEvent.change(screen.getByLabelText('Background Image URL'), { target: { value: 'https://bar.jpg' } });
-    expect(onUpdateProps).toHaveBeenCalledWith('h1', { imageUrl: 'https://bar.jpg' });
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable Light Rays' }));
+    expect(onUpdateProps).toHaveBeenCalledWith('h1', { lightRaysEnabled: true });
   });
 
   it('adds an item to a list field', () => {
