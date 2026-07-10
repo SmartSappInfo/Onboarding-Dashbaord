@@ -86,6 +86,18 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+/**
+ * Node action types that represent an outbound message delivery.
+ * Module-scoped so it is allocated once and not on every render.
+ */
+const MESSAGE_ACTION_TYPES = new Set([
+    'SEND_EMAIL',
+    'SEND_MESSAGE',
+    'SEND_SMS',
+    'SEND_WHATSAPP',
+    'SEND_PUSH',
+]);
+
 // Helper component for visual thumb preview of automation steps
 const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => {
     if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
@@ -441,14 +453,17 @@ export default function AutomationsClient() {
         ) : null, 
     [firestore, activeWorkspaceId]);
 
-    // Workspace-Bound Runs Query
-    const runsQuery = useMemoFirebase(() => 
-        firestore ? query(
-            collection(firestore, 'automation_runs'), 
-            orderBy('startedAt', 'desc'), 
-            limit(100)
-        ) : null, 
-    [firestore]);
+    // Workspace-Bound Runs Query — scoped to activeWorkspaceId for accurate per-workspace stats.
+    // Limit 500 to cover historical runs without excessive reads; order by startedAt desc
+    // so the most recent runs are always present in the window.
+    const runsQuery = useMemoFirebase(() =>
+        (firestore && activeWorkspaceId) ? query(
+            collection(firestore, 'automation_runs'),
+            where('workspaceId', '==', activeWorkspaceId),
+            orderBy('startedAt', 'desc'),
+            limit(500)
+        ) : null,
+    [firestore, activeWorkspaceId]);
 
     const { data: rawAutomations, isLoading: isLoadingAuth } = useCollection<Automation>(automationsQuery);
 
@@ -527,18 +542,50 @@ export default function AutomationsClient() {
         });
     }, [automations, searchTerm]);
 
-    const getAutomationStats = React.useCallback((automationId: string) => {
-        const autoRuns = allRuns ? allRuns.filter(r => r.automationId === automationId) : [];
-        const uniqueContacts = new Set(autoRuns.map(r => r.entityId).filter(Boolean)).size;
-        const completedRuns = autoRuns.filter(r => r.status === 'completed');
 
-        // Deterministic hash based on ID to act as robust default values for display/fidelity
-        const baseHash = automationId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const contacts = (baseHash % 34) + 2 + uniqueContacts;
-        const messages = (baseHash % 78) + 5 + completedRuns.length;
-        const completions = (baseHash % 29) + 1 + completedRuns.length;
+    /**
+     * Derives real stats for a given automation from the already-fetched allRuns data.
+     *
+     * - contacts:    unique entity IDs that have entered this automation
+     * - messages:    outbound message steps that executed successfully across all runs
+     * - completions: runs that reached 'completed' status
+     *
+     * Returns zeros when runs data is still loading, so the UI never shows stale fakes.
+     */
+    const getAutomationStats = React.useCallback((automationId: string): {
+        contacts: number;
+        messages: number;
+        completions: number;
+    } => {
+        if (!allRuns) return { contacts: 0, messages: 0, completions: 0 };
 
-        return { contacts, messages, completions };
+        const autoRuns = allRuns.filter((r) => r.automationId === automationId);
+        if (autoRuns.length === 0) return { contacts: 0, messages: 0, completions: 0 };
+
+        // Unique entities enrolled in this automation
+        const uniqueContacts = new Set(
+            autoRuns.map((r) => r.entityId).filter((id): id is string => Boolean(id))
+        ).size;
+
+        // Count successful outbound message steps across all runs
+        let messageCount = 0;
+        for (const run of autoRuns) {
+            if (!run.steps) continue;
+            for (const step of Object.values(run.steps)) {
+                if (
+                    step.status === 'success' &&
+                    step.metadata?.actionType &&
+                    MESSAGE_ACTION_TYPES.has(step.metadata.actionType)
+                ) {
+                    messageCount++;
+                }
+            }
+        }
+
+        // Runs where the contact finished the entire automation
+        const completions = autoRuns.filter((r) => r.status === 'completed').length;
+
+        return { contacts: uniqueContacts, messages: messageCount, completions };
     }, [allRuns]);
 
     const handleToggleStatus = async (id: string, current: boolean) => {
@@ -841,21 +888,35 @@ export default function AutomationsClient() {
                                                         <MiniFlowPreview nodes={auth.nodes} edges={auth.edges} />
                                                     </div>
                                                     
-                                                    {/* Mini stats display on card */}
-                                                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30 text-center">
-                                                        <div>
-                                                            <p className="text-[9px] font-bold text-muted-foreground">Contacts</p>
-                                                            <p className="text-xs font-mono font-bold text-foreground mt-0.5">{getAutomationStats(auth.id).contacts}</p>
+                                                    {/* Mini stats display on card — real data from automation_runs */}
+                                                    {isLoadingRuns ? (
+                                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30 text-center">
+                                                            {[0,1,2].map((i) => (
+                                                                <div key={i} className="flex flex-col items-center gap-1">
+                                                                    <Skeleton className="h-2.5 w-10 rounded" />
+                                                                    <Skeleton className="h-3.5 w-6 rounded" />
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-bold text-muted-foreground">Messages</p>
-                                                            <p className="text-xs font-mono font-bold text-foreground mt-0.5">{getAutomationStats(auth.id).messages}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[9px] font-bold text-muted-foreground">Completions</p>
-                                                            <p className="text-xs font-mono font-bold text-foreground mt-0.5">{getAutomationStats(auth.id).completions}</p>
-                                                        </div>
-                                                    </div>
+                                                    ) : (() => {
+                                                        const stats = getAutomationStats(auth.id);
+                                                        return (
+                                                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30 text-center">
+                                                                <div>
+                                                                    <p className="text-[9px] font-bold text-muted-foreground">Enrolled</p>
+                                                                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{stats.contacts}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[9px] font-bold text-muted-foreground">Sent</p>
+                                                                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{stats.messages}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[9px] font-bold text-muted-foreground">Completed</p>
+                                                                    <p className="text-xs font-mono font-bold text-foreground mt-0.5">{stats.completions}</p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="pt-4 border-t border-border/50 flex items-center justify-between shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <div className="flex items-center gap-2">
@@ -1046,39 +1107,50 @@ export default function AutomationsClient() {
                                                                  <MiniFlowPreview nodes={auth.nodes} edges={auth.edges} />
                                                              </div>
                                                          </TableCell>
-                                                        <TableCell className="py-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-                                                            <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
-                                                                <TooltipProvider delayDuration={100}>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="flex items-center gap-1">
-                                                                                <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                                <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).contacts}</span>
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="text-[9px] font-semibold">Active Contacts</TooltipContent>
-                                                                    </Tooltip>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                                <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                                <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).messages}</span>
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="text-[9px] font-semibold">Outbound Messages</TooltipContent>
-                                                                    </Tooltip>
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                                <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                                <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).completions}</span>
-                                                                            </div>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent className="text-[9px] font-semibold">Goal Completions</TooltipContent>
-                                                                    </Tooltip>
-                                                                </TooltipProvider>
-                                                            </div>
-                                                        </TableCell>
+                                                         <TableCell className="py-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                                                             {isLoadingRuns ? (
+                                                                 <div className="flex items-center justify-center gap-3 px-3">
+                                                                     <Skeleton className="h-4 w-6 rounded" />
+                                                                     <Skeleton className="h-4 w-6 rounded" />
+                                                                     <Skeleton className="h-4 w-6 rounded" />
+                                                                 </div>
+                                                             ) : (() => {
+                                                                 const stats = getAutomationStats(auth.id);
+                                                                 return (
+                                                                     <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
+                                                                         <TooltipProvider delayDuration={100}>
+                                                                             <Tooltip>
+                                                                                 <TooltipTrigger asChild>
+                                                                                     <div className="flex items-center gap-1">
+                                                                                         <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.contacts}</span>
+                                                                                     </div>
+                                                                                 </TooltipTrigger>
+                                                                                 <TooltipContent className="text-[9px] font-semibold">Enrolled Contacts</TooltipContent>
+                                                                             </Tooltip>
+                                                                             <Tooltip>
+                                                                                 <TooltipTrigger asChild>
+                                                                                     <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                                         <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.messages}</span>
+                                                                                     </div>
+                                                                                 </TooltipTrigger>
+                                                                                 <TooltipContent className="text-[9px] font-semibold">Messages Sent</TooltipContent>
+                                                                             </Tooltip>
+                                                                             <Tooltip>
+                                                                                 <TooltipTrigger asChild>
+                                                                                     <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                                         <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.completions}</span>
+                                                                                     </div>
+                                                                                 </TooltipTrigger>
+                                                                                 <TooltipContent className="text-[9px] font-semibold">Completed Runs</TooltipContent>
+                                                                             </Tooltip>
+                                                                         </TooltipProvider>
+                                                                     </div>
+                                                                 );
+                                                             })()}
+                                                         </TableCell>
                                                         <TableCell className="py-6 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center justify-center gap-2">
                                                                 <button onClick={() => handleToggleStatus(auth.id, auth.isActive)} className="focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-full transition-transform active:scale-95">
