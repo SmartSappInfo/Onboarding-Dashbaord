@@ -129,6 +129,17 @@ async function uploadArchitectImage(file: File, workspaceId: string): Promise<st
     return getDownloadURL(snapshot.ref);
 }
 
+function stripHtml(html: string): string {
+    if (!html) return '';
+    return html
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .trim();
+}
+
 interface SortableLayerItemProps {
     id: string;
     block: MessageBlock;
@@ -2255,25 +2266,30 @@ export function TemplateWorkshop({
     const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || initialContext?.templateType || '');
     const [recipientType, setRecipientType] = React.useState<string>(initialTemplate?.recipientType || initialContext?.recipientType || 'external_alert');
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>(initialTemplate?.workspaceIds || [activeWorkspaceId]);
-    const [subject, setSubject] = React.useState(initialTemplate?.subject || '');
-    const [previewText, setPreviewText] = React.useState(initialTemplate?.previewText || '');
-    const [subjectOptions, setSubjectOptions] = React.useState<Array<{ subject: string; previewText: string }>>(
-        initialTemplate?.subjectOptions || []
+    const [subject, setSubject] = React.useState(() => stripHtml(initialTemplate?.subject || ''));
+    const [previewText, setPreviewText] = React.useState(() => stripHtml(initialTemplate?.previewText || ''));
+    const [subjectOptions, setSubjectOptions] = React.useState<Array<{ subject: string; previewText: string }>>(() => 
+        (initialTemplate?.subjectOptions || []).map(opt => ({
+            subject: stripHtml(opt.subject),
+            previewText: stripHtml(opt.previewText)
+        }))
     );
-    const [manualSubject, setManualSubject] = React.useState(initialTemplate?.subject || '');
-    const [manualPreviewText, setManualPreviewText] = React.useState(initialTemplate?.previewText || '');
+    const [manualSubject, setManualSubject] = React.useState(() => stripHtml(initialTemplate?.subject || ''));
+    const [manualPreviewText, setManualPreviewText] = React.useState(() => stripHtml(initialTemplate?.previewText || ''));
     const [activeOptionIndex, setActiveOptionIndex] = React.useState<number | null>(null);
     const [isAlternativesOpen, setIsAlternativesOpen] = React.useState(false);
 
     const handleSubjectChange = React.useCallback((val: string) => {
-        setSubject(val);
-        setManualSubject(val);
+        const cleaned = stripHtml(val);
+        setSubject(cleaned);
+        setManualSubject(cleaned);
         setActiveOptionIndex(null);
     }, []);
 
     const handlePreviewTextChange = React.useCallback((val: string) => {
-        setPreviewText(val);
-        setManualPreviewText(val);
+        const cleaned = stripHtml(val);
+        setPreviewText(cleaned);
+        setManualPreviewText(cleaned);
         setActiveOptionIndex(null);
     }, []);
 
@@ -3251,7 +3267,13 @@ export function TemplateWorkshop({
         // Clear irrelevant data on save (Risk Analysis: Improvement 2)
         const saveData: Partial<MessageTemplate> = {
             name, category, channel, contentMode, target, workspaceIds,
-            subject, previewText, subjectOptions, body, blocks, styleId, templateType,
+            subject: stripHtml(subject),
+            previewText: stripHtml(previewText),
+            subjectOptions: (subjectOptions || []).map(opt => ({
+                subject: stripHtml(opt.subject),
+                previewText: stripHtml(opt.previewText)
+            })),
+            body, blocks, styleId, templateType,
             recipientType: recipientType as RecipientType, status, variableContext
         };
         if (contentMode === 'rich_builder') {
@@ -5065,8 +5087,8 @@ export function TemplateWorkshop({
                             whileHover={{ y: -2, scale: 1.005 }}
                             whileTap={{ scale: 0.995 }}
                             onClick={() => {
-                                setSubject(manualSubject);
-                                setPreviewText(manualPreviewText);
+                                setSubject(stripHtml(manualSubject));
+                                setPreviewText(stripHtml(manualPreviewText));
                                 setActiveOptionIndex(null);
                                 setIsAlternativesOpen(false);
                                 toast({ title: 'Manual Version Applied', description: 'Restored your original manual copy.' });
@@ -5090,10 +5112,10 @@ export function TemplateWorkshop({
                             </div>
                             <div className="space-y-1.5">
                                 <div className="text-sm font-bold text-foreground">
-                                    {manualSubject || <span className="text-muted-foreground/40 italic">Empty Subject Line</span>}
+                                    {stripHtml(manualSubject) || <span className="text-muted-foreground/40 italic">Empty Subject Line</span>}
                                 </div>
                                 <div className="text-xs text-muted-foreground font-medium">
-                                    {manualPreviewText || <span className="text-muted-foreground/30 italic">Empty Preview Text</span>}
+                                    {stripHtml(manualPreviewText) || <span className="text-muted-foreground/30 italic">Empty Preview Text</span>}
                                 </div>
                             </div>
                         </motion.div>
@@ -5104,8 +5126,8 @@ export function TemplateWorkshop({
                                 whileHover={{ y: -2, scale: 1.005 }}
                                 whileTap={{ scale: 0.995 }}
                                 onClick={() => {
-                                    setSubject(subjectOptions[0].subject);
-                                    setPreviewText(subjectOptions[0].previewText);
+                                    setSubject(stripHtml(subjectOptions[0].subject));
+                                    setPreviewText(stripHtml(subjectOptions[0].previewText));
                                     setActiveOptionIndex(0);
                                     setIsAlternativesOpen(false);
                                     toast({ title: 'AI Suggestion 1 Applied', description: 'Subject line and preview text updated.' });
@@ -5135,8 +5157,8 @@ export function TemplateWorkshop({
                                     )}
                                 </div>
                                 <div className="space-y-1.5">
-                                    <div className="text-sm font-bold text-foreground">{subjectOptions[0].subject}</div>
-                                    <div className="text-xs text-muted-foreground font-medium">{subjectOptions[0].previewText}</div>
+                                    <div className="text-sm font-bold text-foreground">{stripHtml(subjectOptions[0].subject)}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">{stripHtml(subjectOptions[0].previewText)}</div>
                                 </div>
                             </motion.div>
                         )}
@@ -5147,8 +5169,8 @@ export function TemplateWorkshop({
                                 whileHover={{ y: -2, scale: 1.005 }}
                                 whileTap={{ scale: 0.995 }}
                                 onClick={() => {
-                                    setSubject(subjectOptions[1].subject);
-                                    setPreviewText(subjectOptions[1].previewText);
+                                    setSubject(stripHtml(subjectOptions[1].subject));
+                                    setPreviewText(stripHtml(subjectOptions[1].previewText));
                                     setActiveOptionIndex(1);
                                     setIsAlternativesOpen(false);
                                     toast({ title: 'AI Suggestion 2 Applied', description: 'Subject line and preview text updated.' });
@@ -5178,8 +5200,8 @@ export function TemplateWorkshop({
                                     )}
                                 </div>
                                 <div className="space-y-1.5">
-                                    <div className="text-sm font-bold text-foreground">{subjectOptions[1].subject}</div>
-                                    <div className="text-xs text-muted-foreground font-medium">{subjectOptions[1].previewText}</div>
+                                    <div className="text-sm font-bold text-foreground">{stripHtml(subjectOptions[1].subject)}</div>
+                                    <div className="text-xs text-muted-foreground font-medium">{stripHtml(subjectOptions[1].previewText)}</div>
                                 </div>
                             </motion.div>
                         )}

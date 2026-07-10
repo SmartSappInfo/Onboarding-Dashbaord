@@ -49,7 +49,7 @@ export function convertToVisualHtml(text: string): string {
   return parsed;
 }
 
-export function convertToCleanHtml(element: HTMLElement): string {
+export function convertToCleanHtml(element: HTMLElement, enableFormatting = true): string {
   const clone = element.cloneNode(true) as HTMLElement;
   
   // Convert visual spans back to {{variable}} tokens
@@ -59,6 +59,10 @@ export function convertToCleanHtml(element: HTMLElement): string {
     const textNode = clone.ownerDocument.createTextNode(`{{${varName}}}`);
     pill.parentNode?.replaceChild(textNode, pill);
   });
+
+  if (!enableFormatting) {
+    return clone.textContent || '';
+  }
 
   return clone.innerHTML;
 }
@@ -278,7 +282,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     React.useEffect(() => {
       const el = localRef.current;
       if (!el) return;
-      const cleanVal = convertToCleanHtml(el);
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
       if (cleanVal !== value) {
         lastValueRef.current = value;
         el.innerHTML = convertToVisualHtml(value);
@@ -299,7 +303,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
-      const cleanVal = convertToCleanHtml(el);
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
