@@ -722,10 +722,18 @@ service cloud.firestore {
 
     // --- System / Analytics ---
     match /automation_runs/{runId} {
-      allow read, list: if isAuthorized();
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId == null ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
     }
     match /automation_jobs/{jobId} {
-      allow read, list: if isAuthorized();
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId == null ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
     }
     match /survey_sessions/{sId} {
       allow create, update: if true;

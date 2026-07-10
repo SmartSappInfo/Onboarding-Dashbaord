@@ -501,6 +501,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "automation_runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "automationId",
           "order": "ASCENDING"
         },
