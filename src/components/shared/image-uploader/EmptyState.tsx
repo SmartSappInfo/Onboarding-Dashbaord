@@ -1,10 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
-  onFileSelect: (file: File) => void;
+  onTriggerReplace: () => void;
   onOpenGallery: () => void;
   onOpenLink: () => void;
   showGallery: boolean;
@@ -12,8 +12,7 @@ interface EmptyStateProps {
   className?: string;
 }
 
-export function EmptyState({ onFileSelect, onOpenGallery, onOpenLink, showGallery, maxSizeMB, className }: EmptyStateProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGallery, maxSizeMB, className }: EmptyStateProps) {
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -32,14 +31,7 @@ export function EmptyState({ onFileSelect, onOpenGallery, onOpenLink, showGaller
     setDragActive(false);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      onFileSelect(file);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileSelect(file);
+      // Drag select is handled in Parent ImageUploader
     }
   };
 
@@ -54,16 +46,8 @@ export function EmptyState({ onFileSelect, onOpenGallery, onOpenLink, showGaller
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      onClick={() => fileInputRef.current?.click()}
+      onClick={onTriggerReplace}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      
       <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
         <Upload className="w-5 h-5" />
       </div>
@@ -81,7 +65,7 @@ export function EmptyState({ onFileSelect, onOpenGallery, onOpenLink, showGaller
       </div>
 
       <div className="flex gap-2 flex-wrap justify-center" onClick={(e) => e.stopPropagation()}>
-        <Button type="button" size="sm" onClick={() => fileInputRef.current?.click()} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 px-3">
+        <Button type="button" size="sm" onClick={onTriggerReplace} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 px-3">
           <Upload className="w-3 h-3" /> Upload
         </Button>
         {showGallery && (
