@@ -1532,6 +1532,11 @@ export default function EntitiesClient() {
                                             Assigned To <ArrowUpDown className="ml-2 h-3 w-3" />
                                         </Button>
                                     </TableHead>
+                                    <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center hidden md:table-cell">
+                                        <Button variant="ghost" onClick={() => handleSort('leadScore')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto hover:bg-transparent mx-auto">
+                                            Lead Score <ArrowUpDown className="ml-2 h-3 w-3" />
+                                        </Button>
+                                    </TableHead>
                                     <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-right pr-6">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -1583,6 +1588,30 @@ export default function EntitiesClient() {
                                             </TableCell>
                                             <TableCell className="text-xs font-medium text-muted-foreground">
                                                 {entity.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
+                                            </TableCell>
+                                            <TableCell className="text-center hidden md:table-cell">
+                                                {(() => {
+                                                    const score = entity.leadScore || 0;
+                                                    if (score >= 80) {
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-500 font-extrabold text-xs tracking-tight">
+                                                                🔥 {score} <span className="text-[8px] font-black uppercase opacity-60 tracking-wider">HOT</span>
+                                                            </span>
+                                                        );
+                                                    } else if (score >= 15) {
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 font-extrabold text-xs tracking-tight">
+                                                                ⚡ {score} <span className="text-[8px] font-black uppercase opacity-60 tracking-wider">WARM</span>
+                                                            </span>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-500/10 border border-slate-500/25 text-slate-500 font-extrabold text-xs tracking-tight">
+                                                                ❄️ {score} <span className="text-[8px] font-black uppercase opacity-60 tracking-wider">COLD</span>
+                                                            </span>
+                                                        );
+                                                    }
+                                                })()}
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
                                                 <div className="flex items-center justify-end gap-1 transition-opacity">

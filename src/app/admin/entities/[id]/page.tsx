@@ -375,6 +375,22 @@ export default function EntityDetailPage() {
                                         <span className="text-[10px] font-semibold text-primary/60">Capacity</span>
                                     </div>
                                 )}
+                                {weData.leadScore !== undefined && (
+                                    <div className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 border rounded-xl",
+                                        weData.leadScore >= 80 
+                                            ? "bg-rose-500/5 border-rose-500/20 text-rose-500" 
+                                            : weData.leadScore >= 15 
+                                                ? "bg-amber-500/5 border-amber-500/20 text-amber-500" 
+                                                : "bg-slate-500/5 border-slate-500/20 text-slate-500"
+                                    )}>
+                                        <span className="text-sm">
+                                            {weData.leadScore >= 80 ? '🔥' : weData.leadScore >= 15 ? '⚡' : '❄️'}
+                                        </span>
+                                        <span className="text-xs font-black tabular-nums">{weData.leadScore}</span>
+                                        <span className="text-[10px] font-bold uppercase opacity-75">Lead Score</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

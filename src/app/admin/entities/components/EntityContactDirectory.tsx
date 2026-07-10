@@ -438,6 +438,11 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
                                 Signatory
                             </Badge>
                         )}
+                        {contact.score !== undefined && (
+                            <Badge variant="outline" className="text-[7px] font-black uppercase bg-primary/5 text-primary border-primary/20 py-0.5 px-2">
+                                Score: {contact.score}
+                            </Badge>
+                        )}
                         <ShieldCheck className={cn("h-3.5 w-3.5", contact.isSignatory ? "text-amber-500" : "text-muted-foreground/20")} />
                     </div>
                     {(contact.email || contact.phone) && (
