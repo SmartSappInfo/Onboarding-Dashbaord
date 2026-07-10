@@ -107,6 +107,7 @@ const SettingsPanel = React.memo(function SettingsPanel({
             </div>
 
             {/* 4. SEO & Social Sharing */}
+            <div className="rounded-xl border border-slate-700/50 overflow-hidden">
                 <button
                     type="button"
                     onClick={() => toggleAccordion('seo')}

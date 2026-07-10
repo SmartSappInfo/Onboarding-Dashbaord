@@ -70,7 +70,8 @@ import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Layers, Database, Sparkles, ChevronLeft, ChevronRight, Compass } from 'lucide-react';
+import { HeaderSettingsControl, FooterSettingsControl } from './components/HeaderFooterSettings';
 import './designer-theme.css';
 
 // ─── Inline Editable Metadata Components ─────────────────────────────────
@@ -249,8 +250,30 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
     const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(true);
     const [isRightSidebarExpanded, setIsRightSidebarExpanded] = useState(true);
+    const [editingHeader, setEditingHeader] = useState(false);
+    const [editingFooter, setEditingFooter] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const { resolvedTheme } = useTheme();
     const sidebar = useSidebar();
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    useEffect(() => {
+        if (isMobile && isLeftSidebarExpanded && isRightSidebarExpanded) {
+            setIsRightSidebarExpanded(false);
+        }
+    }, [isLeftSidebarExpanded, isMobile]);
+
+    useEffect(() => {
+        if (isMobile && isRightSidebarExpanded && isLeftSidebarExpanded) {
+            setIsLeftSidebarExpanded(false);
+        }
+    }, [isRightSidebarExpanded, isMobile]);
 
     // Collapse dashboard sidebar on mount, restore on unmount
     useEffect(() => {
@@ -264,9 +287,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
     // Expand corresponding sidebar when tab is changed programmatically
     useEffect(() => {
-        if (builder.activeTab === 'edit') {
-            setIsRightSidebarExpanded(true);
-        } else {
+        if (builder.activeTab !== 'edit') {
             setIsLeftSidebarExpanded(true);
         }
     }, [builder.activeTab]);
@@ -548,6 +569,20 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         return null;
     };
 
+    const getLeftSidebarTitle = () => {
+        switch (builder.activeTab) {
+            case 'add': return 'Add Elements';
+            case 'layers': return 'Layers Panel';
+            case 'variables': return 'Variables';
+            case 'triggers': return 'Triggers & Events';
+            case 'theme': return 'Page Theme';
+            case 'settings': return 'Settings & SEO';
+            case 'history': return 'Version History';
+            case 'ai': return 'AI Assistant';
+            default: return 'Sidebar';
+        }
+    };
+
     if (builder.loading) {
         return (
             <div className="h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
@@ -575,12 +610,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const selectedSection = builder.selectedSectionId
         ? version.structureJson.sections.find(s => s.id === builder.selectedSectionId) ?? null
         : null;
-    // ─── Tab Definitions ─────────────────────────────────────────────
     const tabs: { id: BuilderTab; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
         { id: 'add', icon: PlusSquare, label: 'Add' },
         { id: 'layers', icon: Layers, label: 'Layers' },
         { id: 'variables', icon: Database, label: 'Variables' },
-        { id: 'edit', icon: Settings2, label: 'Edit' },
         { id: 'triggers', icon: MousePointerClick, label: 'Triggers' },
         { id: 'theme', icon: Palette, label: 'Theme' },
         { id: 'settings', icon: Settings2, label: 'Settings' },
@@ -829,31 +862,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         <div className="flex flex-col gap-2.5 w-full px-1.5">
                             {tabs.map(tab => {
                                 const isActive = builder.activeTab === tab.id;
-                                const isExpanded = tab.id === 'edit' ? isRightSidebarExpanded : isLeftSidebarExpanded;
                                 return (
                                     <button
                                         key={tab.id}
                                         type="button"
                                         onClick={() => {
-                                            if (tab.id === 'edit') {
-                                                if (builder.activeTab === 'edit' && isRightSidebarExpanded) {
-                                                    setIsRightSidebarExpanded(false);
-                                                } else {
-                                                    builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
-                                                    setIsRightSidebarExpanded(true);
-                                                }
+                                            if (builder.activeTab === tab.id && isLeftSidebarExpanded) {
+                                                setIsLeftSidebarExpanded(false);
                                             } else {
-                                                if (builder.activeTab === tab.id && isLeftSidebarExpanded) {
-                                                    setIsLeftSidebarExpanded(false);
-                                                } else {
-                                                    builder.dispatch({ type: 'SET_TAB', payload: tab.id });
-                                                    setIsLeftSidebarExpanded(true);
-                                                }
+                                                builder.dispatch({ type: 'SET_TAB', payload: tab.id });
+                                                setIsLeftSidebarExpanded(true);
                                             }
                                         }}
                                         className={cn(
                                             "flex flex-col items-center gap-1 py-2 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all duration-200 w-full border border-transparent",
-                                            isActive && isExpanded
+                                            isActive && isLeftSidebarExpanded
                                                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                 : "text-slate-500 hover:text-slate-355 hover:bg-slate-900/50"
                                         )}
@@ -866,19 +889,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </div>
                         <button
                             type="button"
-                            onClick={() => {
-                                if (builder.activeTab === 'edit') {
-                                    setIsRightSidebarExpanded(prev => !prev);
-                                } else {
-                                    setIsLeftSidebarExpanded(prev => !prev);
-                                }
-                            }}
+                            onClick={() => setIsLeftSidebarExpanded(prev => !prev)}
                             className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
                         >
-                            {builder.activeTab === 'edit'
-                                ? (isRightSidebarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />)
-                                : (isLeftSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)
-                            }
+                            {isLeftSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                         </button>
                     </div>
 
@@ -886,12 +900,25 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <div
                         className={cn(
                             "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
-                            isLeftSidebarExpanded && builder.activeTab !== 'edit' ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
+                            isLeftSidebarExpanded ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
                         )}
                     >
+                        <div className="flex items-center justify-between border-b border-slate-850 pb-3 p-4 select-none shrink-0">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-450">
+                                {getLeftSidebarTitle()}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setIsLeftSidebarExpanded(false)}
+                                className="w-6 h-6 rounded-md flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
+                                title="Collapse Panel"
+                            >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                         <div className={cn(
                             "flex-1 text-left min-w-[288px] flex flex-col",
-                            builder.activeTab === 'variables' ? "overflow-hidden h-full" : "overflow-y-auto p-4 custom-scrollbar"
+                            builder.activeTab === 'variables' ? "overflow-hidden h-full" : "overflow-y-auto p-4 pt-2 custom-scrollbar"
                         )}>
                         {/* ─── Performance/Stats Tab ─── */}
                         {builder.activeTab === 'add' && (
@@ -1014,7 +1041,9 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onEditSection={(id, colIdx) => {
                         builder.dispatch({ type: 'SELECT_SECTION', payload: id, columnIndex: colIdx });
                         builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
-                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                        setEditingHeader(false);
+                        setEditingFooter(false);
+                        setIsRightSidebarExpanded(true);
                     }}
                     onSaveSectionAsTemplate={handleSaveSectionAsTemplate}
                     onReorderSections={builder.reorderSections}
@@ -1026,10 +1055,18 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     onSetEditMode={builder.setEditMode}
                     onSetViewport={(v) => builder.dispatch({ type: 'SET_VIEWPORT', payload: v })}
                     onClickHeader={() => {
-                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                        setEditingHeader(true);
+                        setEditingFooter(false);
+                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                        builder.dispatch({ type: 'SELECT_SECTION', payload: null });
+                        setIsRightSidebarExpanded(true);
                     }}
                     onClickFooter={() => {
-                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                        setEditingFooter(true);
+                        setEditingHeader(false);
+                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                        builder.dispatch({ type: 'SELECT_SECTION', payload: null });
+                        setIsRightSidebarExpanded(true);
                     }}
                     onUpdateHeader={handleUpdateHeader}
                     onUpdateFooter={handleUpdateFooter}
@@ -1049,12 +1086,14 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 <div
                     className={cn(
                         "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
-                        isRightSidebarExpanded && builder.activeTab === 'edit' ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
+                        isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
                     )}
                 >
                     <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2 select-none">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Properties</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                {editingHeader ? "Header Settings" : editingFooter ? "Footer Settings" : "Properties"}
+                            </span>
                             <button
                                 type="button"
                                 onClick={() => setIsRightSidebarExpanded(false)}
@@ -1065,28 +1104,81 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             </button>
                         </div>
                         <div className="space-y-4">
-                            {getSelectedPathLabel() && (
-                                <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
-                                    {getSelectedPathLabel()}
-                                </div>
-                            )}
-                            {builder.selectedBlockId && builder.findBlock(builder.selectedBlockId)?.block ? (
-                                <PropertiesPanel
-                                    block={builder.findBlock(builder.selectedBlockId)!.block}
-                                    resources={builderResources}
-                                    theme={editorTheme}
-                                    workspaceId={activeWorkspaceId ?? undefined}
-                                    onUpdate={(patch) => builder.updateBlockProps(builder.selectedBlockId!, patch)}
+                            {editingHeader ? (
+                                <HeaderSettingsControl
+                                    page={page}
+                                    structure={version.structureJson}
+                                    onUpdateHeader={handleUpdateHeader}
+                                    onUpdateSettings={handleUpdateSettings}
                                 />
+                            ) : editingFooter ? (
+                                <FooterSettingsControl
+                                    page={page}
+                                    structure={version.structureJson}
+                                    onUpdateFooter={handleUpdateFooter}
+                                    onUpdateSettings={handleUpdateSettings}
+                                />
+                            ) : builder.selectedBlockId && builder.findBlock(builder.selectedBlockId)?.block ? (
+                                <>
+                                    {getSelectedPathLabel() && (
+                                        <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
+                                            {getSelectedPathLabel()}
+                                        </div>
+                                    )}
+                                    <PropertiesPanel
+                                        block={builder.findBlock(builder.selectedBlockId)!.block}
+                                        resources={builderResources}
+                                        theme={editorTheme}
+                                        workspaceId={activeWorkspaceId ?? undefined}
+                                        onUpdate={(patch) => builder.updateBlockProps(builder.selectedBlockId!, patch)}
+                                    />
+                                </>
                             ) : selectedSection ? (
-                                <SectionSettings
-                                    section={selectedSection}
-                                    workspaceId={activeWorkspaceId ?? undefined}
-                                    onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
-                                />
+                                <>
+                                    {getSelectedPathLabel() && (
+                                        <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
+                                            {getSelectedPathLabel()}
+                                        </div>
+                                    )}
+                                    <SectionSettings
+                                        section={selectedSection}
+                                        workspaceId={activeWorkspaceId ?? undefined}
+                                        onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
+                                    />
+                                </>
                             ) : (
-                                <div className="text-center py-8 text-xs text-slate-500 font-semibold leading-relaxed">
-                                    Select a section or block on the canvas to configure properties.
+                                <div className="space-y-4 pt-4">
+                                    <div className="text-center py-6 text-xs text-slate-500 font-semibold leading-relaxed">
+                                        Select a component on the canvas to configure properties.
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            className="w-full text-xs font-semibold justify-start border-slate-800 bg-slate-900/30 hover:bg-slate-900/60"
+                                            onClick={() => {
+                                                setEditingHeader(true);
+                                                setEditingFooter(false);
+                                                builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                                                builder.dispatch({ type: 'SELECT_SECTION', payload: null });
+                                            }}
+                                        >
+                                            <Compass className="w-4 h-4 mr-2 text-blue-400" />
+                                            Configure Navigation Header
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="w-full text-xs font-semibold justify-start border-slate-800 bg-slate-900/30 hover:bg-slate-900/60"
+                                            onClick={() => {
+                                                setEditingFooter(true);
+                                                setEditingHeader(false);
+                                                builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                                                builder.dispatch({ type: 'SELECT_SECTION', payload: null });
+                                            }}
+                                        >
+                                            <Settings2 className="w-4 h-4 mr-2 text-amber-500" />
+                                            Configure Page Footer
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>
