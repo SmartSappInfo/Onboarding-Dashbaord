@@ -80,16 +80,6 @@ export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTrigg
         {/* 1. Main Action Overlay (Change, Preview, Delete) */}
         {!isChanging ? (
           <div className="absolute inset-0 bg-black/60 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-            {showGallery && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onTriggerGallery(); }}
-                title="Select from Media"
-                className="w-10 h-10 rounded-full bg-background/90 border border-border flex items-center justify-center text-foreground hover:text-emerald-500 hover:bg-accent hover:scale-110 active:scale-95 transition-all shadow-lg outline-none"
-              >
-                <FolderHeart className="w-4.5 h-4.5" />
-              </button>
-            )}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setIsChanging(true); }}
@@ -116,9 +106,9 @@ export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTrigg
             </button>
           </div>
         ) : (
-          /* 2. Change Source Selection Overlay in sync with the theme */
+          /* 2. Change Source Selection Overlay with enhanced contrast */
           <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 gap-4 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Change image using...</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest shadow-sm">Change image using...</p>
             
             <div className="flex flex-row items-center justify-center gap-1.5 w-full max-w-full overflow-x-auto scrollbar-none">
               <button
