@@ -123,7 +123,7 @@ export function resolveOrgFooter(
  * - The {{org_footer}} token  (style wrapper with explicit footer slot)
  */
 export function htmlContainsFooter(html: string): boolean {
-  return html.includes(ORG_FOOTER_SENTINEL) || html.includes('{{org_footer}}');
+  return html.includes(ORG_FOOTER_SENTINEL) || html.includes('{{org_footer}}') || html.includes('data-block-type="footer"');
 }
 
 /**

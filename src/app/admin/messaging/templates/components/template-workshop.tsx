@@ -3605,10 +3605,12 @@ export function TemplateWorkshop({
             previewText,
             body,
             blocks,
+            styleId,
+            channel: channel as MessageTemplate['channel'],
             category: category as MessageTemplate['category']
         };
         return validateTemplateVariables(tmpl, filteredVars);
-    }, [subject, previewText, body, blocks, category, filteredVars]);
+    }, [subject, previewText, body, blocks, category, filteredVars, styleId, channel]);
 
     const errorCount = React.useMemo(() => validationErrors.filter(e => e.type === 'error').length, [validationErrors]);
     const warningCount = React.useMemo(() => validationErrors.filter(e => e.type === 'warning').length, [validationErrors]);

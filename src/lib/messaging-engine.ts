@@ -656,7 +656,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // Phase 8: Org Footer Injection (email channel only)
     // org_footer_html and org_footer_enabled are already in finalVariables from
     // resolveOrgBrandingVars() — no additional Firestore read needed here.
-    if (template.channel === 'email') {
+    if (template.channel === 'email' && template.styleId !== 'none' && styleWrapper) {
         const { resolveOrgFooter, htmlContainsFooter, buildOrgFooterVars } =
             await import('./services/org-footer-service');
         const footerEnabled = finalVariables.org_footer_enabled !== 'false';

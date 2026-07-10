@@ -625,7 +625,7 @@ export function renderBlocksToHtml(
         const fAddr = resolveVariables('{{org_address}}', variables);
         const fYear = resolveVariables('{{current_year}}', variables) || new Date().getFullYear().toString();
         blockHtml = `
-          <div style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
+          <div data-block-type="footer" style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
             <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
             <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fAddr}</p>
             <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fEmail} | ${fPhone}</p>
