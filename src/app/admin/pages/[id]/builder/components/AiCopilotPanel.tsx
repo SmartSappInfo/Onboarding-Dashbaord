@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Bot, Check, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { CampaignPageVersion } from '@/lib/types';
+import type { CampaignPageVersion, PageBlock } from '@/lib/types';
 import UnifiedPromptInput, { StagedAttachment } from '@/components/shared/UnifiedPromptInput';
+import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import { modifyPageStructure } from '@/ai/flows/modify-page-flow';
+import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
 
 interface AiCopilotPanelProps {
   readonly version: CampaignPageVersion;
-  readonly onAppendSection: (sectionProps: Record<string, unknown>, blocks: any[]) => void;
+  readonly onAppendSection: (sectionProps: Record<string, unknown>, blocks: PageBlock[]) => void;
   readonly onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
   readonly selectedBlockId: string | null;
 }
@@ -21,7 +24,12 @@ interface Message {
   suggestedAction?: {
     type: 'add_section' | 'update_text';
     label: string;
-    payload: any;
+    payload?: {
+      blockId?: string;
+      props?: Record<string, unknown>;
+      sectionProps?: Record<string, unknown>;
+      blocks?: PageBlock[];
+    };
   };
 }
 
@@ -32,6 +40,8 @@ export function AiCopilotPanel({
   selectedBlockId,
 }: AiCopilotPanelProps) {
   const { toast } = useToast();
+  const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
+  const { organizationId } = useContext(WorkspaceContext);
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
@@ -53,114 +63,84 @@ export function AiCopilotPanel({
     if (!text.trim()) return;
     setIsGenerating(true);
     setPrompt('');
+
+    // Capture staged attachment info and clear state immediately
+    const firstFile = stagedFiles[0];
+    const docContent = firstFile?.content;
+    const docDataUri = firstFile?.dataUri;
     setStagedFiles([]);
 
     // Add user message
     const userMsg: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
 
-    // Simulate AI generation delay
-    setTimeout(() => {
-      let assistantMsg: Message;
-      const lower = text.toLowerCase();
+    try {
+      const response = await modifyPageStructure({
+        userMessage: text,
+        selectedBlockId,
+        currentStructure: {
+          sections: version.structureJson.sections
+        },
+        docContent,
+        docDataUri,
+        organizationId,
+        provider: liveProvider,
+        modelId: liveModelId,
+      });
 
-      if (lower.includes('hero') || lower.includes('section') || lower.includes('sunset')) {
-        assistantMsg = {
-          role: 'assistant',
-          content: "I have generated a responsive 'SmartSapp Sunset Hero' section with a dual-column layout, sunset gradient theme background, pre-configured CTA action link buttons, and Ghana-focused copy.",
-          suggestedAction: {
-            type: 'add_section',
-            label: 'Insert Sunset Hero Section',
-            payload: {
-              sectionProps: {
-                backgroundType: 'gradient',
-                gradientAngle: 135,
-                gradientFrom: '#f97316', // Orange
-                gradientTo: '#7c3aed',   // Purple
-                paddingTop: '4rem',
-                paddingBottom: '4rem',
-              },
-              blocks: [
-                {
-                  id: `hero-${Date.now()}`,
-                  type: 'hero',
-                  props: {
-                    heading: 'Secure Admissions Online in Ghana',
-                    subheading: 'Register your child, track requirements, and connect with administrators instantly.',
-                    ctaText: 'Apply Now',
-                    ctaHref: '#register',
-                    secondaryCtaText: 'View Fees structure',
-                    secondaryCtaHref: '#pricing'
-                  }
-                }
-              ]
-            }
-          }
-        };
-      } else if (selectedBlockId) {
-        assistantMsg = {
-          role: 'assistant',
-          content: "I reviewed your active block and drafted high-converting Ghanaian parent copy tailored for the enrollment call-to-action.",
-          suggestedAction: {
-            type: 'update_text',
-            label: 'Apply Parent Enrollment Copy',
-            payload: {
-              blockId: selectedBlockId,
-              props: {
-                heading: 'Join Kwame & Ama at SmartSapp Academy',
-                subheading: 'Enrolling your children has never been this smooth. Sign up to secure their seat today.'
-              }
-            }
-          }
-        };
-      } else {
-        assistantMsg = {
-          role: 'assistant',
-          content: "I analyzed the workspace context. To improve conversion rates for Ghanaian parents: add an 'Onboarding Countdown' section to build urgency for the enrollment registration window.",
-          suggestedAction: {
-            type: 'add_section',
-            label: 'Add Countdown Timer Section',
-            payload: {
-              sectionProps: {
-                backgroundType: 'color',
-                backgroundColor: '#0f172a',
-                paddingTop: '3rem',
-                paddingBottom: '3rem',
-              },
-              blocks: [
-                {
-                  id: `countdown-${Date.now()}`,
-                  type: 'countdown',
-                  props: {
-                    targetDate: '2026-12-31T23:59:59Z',
-                    heading: 'Enrollment Window Closes Soon',
-                    subtext: 'Complete your parent profile register submission today.'
-                  }
-                }
-              ]
-            }
-          }
+      const assistantMsg: Message = {
+        role: 'assistant',
+        content: response.aiSummary,
+      };
+
+      if (response.suggestedAction && response.suggestedAction.type !== 'none') {
+        const payloadBlocks = response.suggestedAction.payload?.blocks?.map(b => ({
+          id: b.id,
+          type: b.type as import('@/lib/types').PageBlockType,
+          props: b.props as Record<string, unknown>,
+        }));
+
+        assistantMsg.suggestedAction = {
+          type: response.suggestedAction.type as 'add_section' | 'update_text',
+          label: response.suggestedAction.label,
+          payload: {
+            blockId: response.suggestedAction.payload?.blockId,
+            props: response.suggestedAction.payload?.props as Record<string, unknown> | undefined,
+            sectionProps: response.suggestedAction.payload?.sectionProps as Record<string, unknown> | undefined,
+            blocks: payloadBlocks,
+          },
         };
       }
 
       setMessages(prev => [...prev, assistantMsg]);
+    } catch (err: unknown) {
+      console.error('Page modifier error:', err);
+      const errMsg = err instanceof Error ? err.message : "Failed to process request. Please check model preferences or API keys.";
+      toast({
+        title: "Copilot Error",
+        description: errMsg,
+        variant: "destructive",
+      });
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
   const handleApplyAction = (action: Exclude<Message['suggestedAction'], undefined>) => {
     if (action.type === 'add_section') {
-      onAppendSection(action.payload.sectionProps, action.payload.blocks);
+      onAppendSection(action.payload?.sectionProps || {}, action.payload?.blocks || []);
       toast({
         title: "Section Inserted",
         description: "AI-generated layout appended to active workspace canvas.",
       });
     } else if (action.type === 'update_text') {
-      onUpdateBlockProps(action.payload.blockId, action.payload.props);
-      toast({
-        title: "Copy Updated",
-        description: "Injected dynamic parent admissions copy into active block props.",
-      });
+      if (action.payload?.blockId) {
+        onUpdateBlockProps(action.payload.blockId, action.payload.props || {});
+        toast({
+          title: "Copy Updated",
+          description: "Injected dynamic parent admissions copy into active block props.",
+        });
+      }
     }
   };
 
