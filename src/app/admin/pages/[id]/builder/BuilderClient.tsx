@@ -70,7 +70,6 @@ import ThemePanel from './components/ThemePanel';
 import HistoryPanel from './components/HistoryPanel';
 import { BlockVariantPicker } from './components/BlockVariantPicker';
 import { PropertiesPanel } from './components/PropertiesPanel';
-import { AiCopilotPanel } from './components/AiCopilotPanel';
 import { Layers, Database, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import './designer-theme.css';
 
@@ -948,26 +947,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             />
                         )}
 
-                        {builder.activeTab === 'ai' && (
-                            <AiCopilotPanel
-                                version={version}
-                                onAppendSection={(sectionProps, blocks) => {
-                                    builder.addSection({
-                                        structure: {
-                                            id: `sec-${Date.now()}`,
-                                            type: 'section',
-                                            props: sectionProps,
-                                            blocks: blocks,
-                                        }
-                                    });
-                                }}
-                                onUpdateBlockProps={(blockId, props) => {
-                                    builder.updateBlockProps(blockId, props);
-                                }}
-                                selectedBlockId={builder.selectedBlockId}
-                            />
-                        )}
-
                         </div>
                     </div>
                 </div>
@@ -1017,6 +996,16 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     }}
                     onUpdateHeader={handleUpdateHeader}
                     onUpdateFooter={handleUpdateFooter}
+                    onAppendSection={(sectionProps, blocks) => {
+                        builder.addSection({
+                            structure: {
+                                id: `sec-${Date.now()}`,
+                                type: 'section',
+                                props: sectionProps,
+                                blocks: blocks,
+                            }
+                        });
+                    }}
                 />
 
                 {/* ─── PROPERTIES PANEL ON THE RIGHT ─── */}

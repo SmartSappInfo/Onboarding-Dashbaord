@@ -70,7 +70,8 @@ import {
     ChevronDown,
     CaseSensitive,
     Check,
-    X
+    X,
+    Sparkles
 } from 'lucide-react';
 import {
     Select,
@@ -98,6 +99,7 @@ import '@/lib/page-builder/blocks'; // register all blocks
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo } from '@/components/icons';
 import Footer from '@/components/footer';
+import { AiCopilotPanel } from './AiCopilotPanel';
 
 interface CanvasProps {
     version: CampaignPageVersion;
@@ -136,6 +138,7 @@ interface CanvasProps {
     onUpdateHeader?: (updates: Partial<PageHeaderSettings>) => void;
     onUpdateFooter?: (updates: Partial<PageFooterSettings>) => void;
     onSetViewport?: (viewport: 'desktop' | 'tablet' | 'mobile') => void;
+    onAppendSection?: (sectionProps: Record<string, unknown>, blocks: any[]) => void;
 }
 
 // Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
@@ -619,6 +622,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onUpdateHeader,
     onUpdateFooter,
     onSetViewport,
+    onAppendSection,
 }, ref) => {
     // Canvas Viewport Panning & Zooming Engine States
     const [zoom, setZoom] = useState(1.0);
@@ -626,6 +630,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [isPanning, setIsPanning] = useState(false);
     const [panToolActive, setPanToolActive] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
     // Ghana Profile Simulation States
     const [simulatedProfile, setSimulatedProfile] = useState<'none' | 'parent' | 'student'>('none');
@@ -2200,6 +2205,23 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 <div className="h-4 w-[1px] bg-slate-850" />
 
                 <Button
+                    onClick={() => setIsAiChatOpen(prev => !prev)}
+                    className={cn(
+                        "h-8 w-8 p-0 rounded-lg transition-colors border-0",
+                        isAiChatOpen 
+                            ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                            : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    )}
+                    variant="ghost"
+                    title="Experience Copilot (AI)"
+                >
+                    <Sparkles className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {/* Vertical Workspace Floating Navigation Toolbar (Right Edge) */}
+            <div className="absolute bottom-24 right-6 flex flex-col items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
+                <Button
                     onClick={() => setPanToolActive(prev => !prev)}
                     className={cn(
                         "h-8 w-8 p-0 rounded-lg transition-colors border-0",
@@ -2234,7 +2256,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 >
                     <MessageSquare className="h-4 w-4" />
                 </Button>
-                <div className="h-4 w-[1px] bg-slate-800" />
+
+                <div className="w-4 h-[1px] bg-slate-800" />
 
                 <Button
                     onClick={() => setZoom(prev => Math.max(0.3, prev - 0.1))}
@@ -2247,7 +2270,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
                 <button
                     onDoubleClick={resetZoomAndPan}
-                    className="px-2 text-[10px] font-bold text-slate-400 hover:text-slate-200 transition-colors font-mono select-none"
+                    className="py-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 transition-colors font-mono select-none text-center"
                     title="Double click to reset canvas"
                 >
                     {Math.round(zoom * 100)}%
@@ -2262,7 +2285,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <ZoomIn className="h-4 w-4" />
                 </Button>
 
-                <div className="h-4 w-[1px] bg-slate-800" />
+                <div className="w-4 h-[1px] bg-slate-800" />
 
                 <Button
                     onClick={resetZoomAndPan}
@@ -2273,6 +2296,18 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <RotateCcw className="h-4 w-4" />
                 </Button>
             </div>
+
+            {/* Floating AI Chat Widget / Experience Copilot Panel */}
+            {isAiChatOpen && (
+                <div className="absolute bottom-24 right-20 w-80 h-[500px] bg-slate-950/95 border border-slate-850/85 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-300">
+                    <AiCopilotPanel
+                        version={version}
+                        onAppendSection={onAppendSection || (() => {})}
+                        onUpdateBlockProps={onUpdateBlockProps}
+                        selectedBlockId={selectedBlockId}
+                    />
+                </div>
+            )}
 
             {/* Floating minimap navigation stack */}
             {!isPreview && version.structureJson.sections.length > 0 && (
