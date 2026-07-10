@@ -34,12 +34,22 @@ import {
   Users, 
   ExternalLink,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  TrendingUp,
+  AlertTriangle,
+  ArrowUpRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getMessageNodeLogsAction } from '@/lib/automation-actions';
 import type { MessageLog } from '@/lib/types';
-import { MessageContactDisplay } from '@/components/messaging/MessageContactDisplay';
+import { 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  Tooltip as ChartTooltip 
+} from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MessageNodeLogsDialogProps {
   isOpen: boolean;
@@ -49,6 +59,77 @@ interface MessageNodeLogsDialogProps {
   nodeLabel: string;
   channel: 'email' | 'sms' | 'whatsapp';
   initialTab?: string;
+}
+
+// Separate component to asynchronously resolve and render Entity Name + Contact Person details per row
+interface MessageContactRowDetailsProps {
+  log: MessageLog;
+  workspaceId: string;
+}
+
+function MessageContactRowDetails({ log, workspaceId }: MessageContactRowDetailsProps) {
+  const [entityName, setEntityName] = React.useState<string>('-');
+  const [contactPerson, setContactPerson] = React.useState<string>('-');
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function resolve() {
+      try {
+        const identifier = log.entityId;
+        if (!identifier) {
+          setEntityName(log.entityName || log.displayName || '-');
+          setContactPerson(log.displayName || '-');
+          setIsLoading(false);
+          return;
+        }
+
+        const { resolveContact } = await import('@/lib/contact-adapter');
+        const contact = await resolveContact(identifier, workspaceId);
+
+        if (contact) {
+          setEntityName(contact.name || '-');
+          
+          // Match recipient to contacts list
+          const cleanRecipient = log.recipient.toLowerCase().trim();
+          const matchedContact = contact.contacts?.find(
+            c => c.email?.toLowerCase().trim() === cleanRecipient ||
+                 c.phone?.replace(/[+\s-]/g, '') === cleanRecipient.replace(/[+\s-]/g, '')
+          );
+          
+          setContactPerson(matchedContact?.name || contact.primaryContactName || '-');
+        } else {
+          setEntityName(log.entityName || log.displayName || '-');
+          setContactPerson(log.displayName || '-');
+        }
+      } catch (error) {
+        setEntityName(log.entityName || log.displayName || '-');
+        setContactPerson(log.displayName || '-');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    void resolve();
+  }, [log, workspaceId]);
+
+  if (isLoading) {
+    return (
+      <>
+        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <TableCell className="font-semibold text-foreground truncate max-w-[200px]" title={entityName}>
+        {entityName}
+      </TableCell>
+      <TableCell className="text-xs text-muted-foreground truncate max-w-[180px]" title={contactPerson}>
+        {contactPerson}
+      </TableCell>
+    </>
+  );
 }
 
 export function MessageNodeLogsDialog({
@@ -93,8 +174,8 @@ export function MessageNodeLogsDialog({
     }
   }, [isOpen, initialTab]);
 
-  // Tab counts
-  const counts = React.useMemo(() => {
+  // Counts and metrics
+  const stats = React.useMemo(() => {
     const res = {
       sent: logs.length,
       delivered: 0,
@@ -102,20 +183,50 @@ export function MessageNodeLogsDialog({
       clicked: 0,
       bounced: 0,
       unsubscribed: 0,
-      replied: 0
+      replied: 0,
+      pending: 0
     };
 
     logs.forEach(log => {
-      if (log.deliveredAt || log.providerStatus === 'delivered') res.delivered++;
-      if (log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened') res.opened++;
-      if (log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked') res.clicked++;
-      if (log.bouncedAt || log.status === 'failed' || log.providerStatus === 'bounced') res.bounced++;
+      const isClicked = !!log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
+      const isOpened = !!log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
+      const isDelivered = !!log.deliveredAt || log.providerStatus === 'delivered';
+      const isFailed = log.status === 'failed' || log.providerStatus === 'bounced';
+
+      if (isClicked) res.clicked++;
+      if (isOpened || isClicked) res.opened++; // Opened includes clicked
+      if (isDelivered || isOpened || isClicked) res.delivered++; // Delivered includes opened/clicked
+      if (isFailed) res.bounced++;
       if (log.providerStatus === 'unsubscribed') res.unsubscribed++;
       if (log.direction === 'inbound' || log.providerStatus === 'replied') res.replied++;
+
+      // Sent but pending delivery
+      if (!isDelivered && !isOpened && !isClicked && !isFailed) {
+        res.pending++;
+      }
     });
 
     return res;
   }, [logs]);
+
+  // Chart data distribution (mutually exclusive slices)
+  const chartData = React.useMemo(() => {
+    const distribution = {
+      clicked: stats.clicked,
+      opened: Math.max(0, stats.opened - stats.clicked), // Opened but not clicked
+      delivered: Math.max(0, stats.delivered - stats.opened), // Delivered but not opened
+      failed: stats.bounced,
+      pending: stats.pending
+    };
+
+    return [
+      { name: 'Clicked', value: distribution.clicked, color: '#6366f1' }, // Indigo
+      { name: channel === 'email' ? 'Opened' : 'Read', value: distribution.opened, color: '#10b981' }, // Emerald
+      { name: 'Delivered', value: distribution.delivered, color: '#3b82f6' }, // Blue
+      { name: 'Sent / Pending', value: distribution.pending, color: '#64748b' }, // Slate
+      { name: 'Failed', value: distribution.failed, color: '#ef4444' }, // Red
+    ].filter(item => item.value > 0);
+  }, [stats, channel]);
 
   // Filter logs based on active tab and search query
   const filteredLogs = React.useMemo(() => {
@@ -125,7 +236,7 @@ export function MessageNodeLogsDialog({
       const matchesSearch = !term || 
         log.recipient.toLowerCase().includes(term) ||
         (log.displayName || '').toLowerCase().includes(term) ||
-        (log.subject || '').toLowerCase().includes(term);
+        (log.entityName || '').toLowerCase().includes(term);
 
       if (!matchesSearch) return false;
 
@@ -151,18 +262,25 @@ export function MessageNodeLogsDialog({
     });
   }, [logs, activeTab, search]);
 
+  // Metrics helper
+  const sentCount = stats.sent;
+  const openRate = sentCount > 0 ? Math.round((stats.opened / sentCount) * 100) : 0;
+  const clickRate = sentCount > 0 ? Math.round((stats.clicked / sentCount) * 100) : 0;
+  const bounceRate = sentCount > 0 ? Math.round((stats.bounced / sentCount) * 100) : 0;
+  const replyRate = sentCount > 0 ? Math.round((stats.replied / sentCount) * 100) : 0;
+
   const ChannelIcon = channel === 'email' ? Mail : Smartphone;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-6 overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 overflow-hidden bg-background border border-border/80 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
             <ChannelIcon className="h-5 w-5 text-primary" />
-            <span>Delivery Logs: &quot;{nodeLabel}&quot;</span>
+            <span>Delivery Analytics: &quot;{nodeLabel}&quot;</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Drill down into individual status events and track recipient engagement.
+            Drill down into recipient engagement, delivery distribution, and contact logs.
           </DialogDescription>
         </DialogHeader>
 
@@ -173,39 +291,153 @@ export function MessageNodeLogsDialog({
           </div>
         )}
 
+        {/* Statistics & Chart Section */}
+        {!isLoading && logs.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-4 rounded-xl border border-border/50 bg-muted/20 my-2 shrink-0">
+            {/* Summary Cards */}
+            <div className="md:col-span-7 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total Dispatched</p>
+                <div className="flex items-baseline gap-1.5 mt-1.5">
+                  <p className="text-2xl font-extrabold tracking-tight text-foreground">{stats.sent}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">messages</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                  {channel === 'email' ? 'Engagement Rate' : 'Read Rate'}
+                </p>
+                <div className="flex items-baseline gap-1.5 mt-1.5">
+                  <p className="text-2xl font-extrabold tracking-tight text-emerald-500">{openRate}%</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">({stats.opened} read)</p>
+                </div>
+              </div>
+
+              {channel === 'email' ? (
+                <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Click Rate (CTR)</p>
+                  <div className="flex items-baseline gap-1.5 mt-1.5">
+                    <p className="text-2xl font-extrabold tracking-tight text-indigo-500">{clickRate}%</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">({stats.clicked} clicked)</p>
+                  </div>
+                </div>
+              ) : channel === 'whatsapp' ? (
+                <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Reply Rate</p>
+                  <div className="flex items-baseline gap-1.5 mt-1.5">
+                    <p className="text-2xl font-extrabold tracking-tight text-indigo-500">{replyRate}%</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">({stats.replied} replied)</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Delivered</p>
+                  <div className="flex items-baseline gap-1.5 mt-1.5">
+                    <p className="text-2xl font-extrabold tracking-tight text-blue-500">
+                      {stats.sent > 0 ? Math.round((stats.delivered / stats.sent) * 100) : 0}%
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-medium">({stats.delivered} delivered)</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border/50 bg-card p-3.5 shadow-sm">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bounce / Failed</p>
+                <div className="flex items-baseline gap-1.5 mt-1.5">
+                  <p className="text-2xl font-extrabold tracking-tight text-rose-500">{bounceRate}%</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">({stats.bounced} failed)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Distribution Donut Chart */}
+            <div className="md:col-span-5 flex flex-row items-center gap-4 border-l border-border/50 pl-6">
+              <div className="h-[120px] w-[120px] shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={55}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-popover border border-border rounded-lg p-2 shadow-md text-[10px] font-semibold">
+                              {data.name}: {data.value}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Chart Legend */}
+              <div className="flex-1 space-y-1.5 min-w-0">
+                {chartData.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-[10px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="font-semibold text-muted-foreground truncate">{item.name}</span>
+                    </div>
+                    <span className="font-mono font-bold text-foreground pl-2 shrink-0">
+                      {item.value} ({stats.sent > 0 ? Math.round((item.value / stats.sent) * 100) : 0}%)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tabs and search bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2 mb-4 shrink-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-            <TabsList className="bg-muted/80 p-0.5 rounded-lg">
+            <TabsList className="bg-muted/80 p-0.5 rounded-lg border border-border/40">
               <TabsTrigger value="sent" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                Sent ({counts.sent})
+                Sent ({stats.sent})
               </TabsTrigger>
               <TabsTrigger value="delivered" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                {channel === 'email' ? 'Delivered' : 'Delivered'} ({counts.delivered})
+                Delivered ({stats.delivered})
               </TabsTrigger>
               {channel === 'email' ? (
                 <>
                   <TabsTrigger value="opened" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                    Opened ({counts.opened})
+                    Opened ({stats.opened})
                   </TabsTrigger>
                   <TabsTrigger value="clicked" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                    Clicked ({counts.clicked})
+                    Clicked ({stats.clicked})
                   </TabsTrigger>
                   <TabsTrigger value="unsubscribed" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                    Unsub ({counts.unsubscribed})
+                    Unsub ({stats.unsubscribed})
                   </TabsTrigger>
                 </>
               ) : channel === 'whatsapp' ? (
                 <>
                   <TabsTrigger value="opened" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                    Read ({counts.opened})
+                    Read ({stats.opened})
                   </TabsTrigger>
                   <TabsTrigger value="replied" className="text-xs font-semibold px-3 py-1.5 rounded-md">
-                    Replied ({counts.replied})
+                    Replied ({stats.replied})
                   </TabsTrigger>
                 </>
               ) : null}
               <TabsTrigger value="bounced" className="text-xs font-semibold px-3 py-1.5 rounded-md text-red-500 data-[state=active]:text-red-600">
-                Failed ({counts.bounced})
+                Failed ({stats.bounced})
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -215,13 +447,14 @@ export function MessageNodeLogsDialog({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search recipient..."
-              className="pl-9 h-9 rounded-lg text-xs"
+              placeholder="Search by recipient, entity or contact..."
+              className="pl-9 h-9 rounded-lg text-xs border border-border/80 bg-background"
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto border border-border/60 rounded-xl bg-card">
+        {/* Drill-down Table view */}
+        <div className="flex-1 overflow-auto border border-border/60 rounded-xl bg-card shadow-inner">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -237,11 +470,11 @@ export function MessageNodeLogsDialog({
             </div>
           ) : (
             <Table>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10">
+              <TableHeader className="bg-muted/50 sticky top-0 z-10 border-b border-border/50">
                 <TableRow>
-                  <TableHead className="w-[200px] text-xs">Recipient</TableHead>
-                  <TableHead className="w-[180px] text-xs">Contact Name</TableHead>
-                  <TableHead className="text-xs">Subject / Title</TableHead>
+                  <TableHead className="w-[180px] text-xs">Recipient</TableHead>
+                  <TableHead className="w-[200px] text-xs">Entity Name</TableHead>
+                  <TableHead className="w-[160px] text-xs">Contact Person</TableHead>
                   <TableHead className="w-[140px] text-xs">Sent At</TableHead>
                   <TableHead className="w-[110px] text-xs text-center">Status</TableHead>
                   <TableHead className="w-[50px] text-xs text-right"></TableHead>
@@ -289,15 +522,13 @@ export function MessageNodeLogsDialog({
 
                   return (
                     <TableRow key={log.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-[11px] truncate max-w-[200px]" title={log.recipient}>
+                      <TableCell className="font-mono text-[11px] truncate max-w-[180px]" title={log.recipient}>
                         {log.recipient}
                       </TableCell>
-                      <TableCell className="align-middle">
-                        <MessageContactDisplay log={log} workspaceId={log.workspaceId || 'global'} />
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[220px] truncate" title={log.subject || log.title || ''}>
-                        {log.subject || log.title || <span className="text-muted-foreground/50 italic">No subject</span>}
-                      </TableCell>
+                      
+                      {/* Async Entity details */}
+                      <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
+
                       <TableCell className="text-[11px] text-muted-foreground">
                         {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
                       </TableCell>
