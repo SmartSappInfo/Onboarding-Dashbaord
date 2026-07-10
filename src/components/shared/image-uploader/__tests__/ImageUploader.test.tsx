@@ -8,16 +8,7 @@ vi.mock('@/firebase', () => ({
   useUser: () => ({ user: { uid: 'test-user' } }),
 }));
 
-vi.mock('@/components/ui/dropdown-menu', () => {
-  return {
-    DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-      <div onClick={onClick}>{children}</div>
-    ),
-  };
-});
+// Dropdown menu mock removed as layout migrated to hover buttons overlay
 
 import { ImageUploader } from '../ImageUploader';
 
@@ -37,8 +28,7 @@ describe('ImageUploader', () => {
   it('triggers remove callback when remove button is clicked', () => {
     const onChange = vi.fn();
     render(<ImageUploader value="https://example.com/asset.png" onChange={onChange} />);
-    fireEvent.click(screen.getByLabelText('Image actions'));
-    fireEvent.click(screen.getByText('Delete Image'));
+    fireEvent.click(screen.getByTitle('Delete Image'));
     expect(onChange).toHaveBeenCalledWith('');
   });
 });

@@ -64,17 +64,17 @@ export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGa
         </p>
       </div>
 
-      <div className="flex gap-2 flex-wrap justify-center" onClick={(e) => e.stopPropagation()}>
-        <Button type="button" size="sm" onClick={onTriggerReplace} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 px-3">
-          <Upload className="w-3 h-3" /> Upload
+      <div className="flex flex-row items-center justify-center gap-1.5 w-full max-w-full overflow-x-auto scrollbar-none" onClick={(e) => e.stopPropagation()}>
+        <Button type="button" size="sm" onClick={onTriggerReplace} className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 shrink-0">
+          <Upload className="w-3.5 h-3.5" /> Upload
         </Button>
         {showGallery && (
-          <Button type="button" variant="outline" size="sm" onClick={onOpenGallery} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1.5 px-3">
-            <FolderHeart className="w-3 h-3" /> Gallery
+          <Button type="button" variant="outline" size="sm" onClick={onOpenGallery} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1 px-2.5 shrink-0">
+            <FolderHeart className="w-3.5 h-3.5" /> Media
           </Button>
         )}
-        <Button type="button" variant="outline" size="sm" onClick={onOpenLink} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1.5 px-3">
-          <LinkIcon className="w-3 h-3" /> Link
+        <Button type="button" variant="outline" size="sm" onClick={onOpenLink} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1 px-2.5 shrink-0">
+          <LinkIcon className="w-3.5 h-3.5" /> Link
         </Button>
       </div>
     </div>

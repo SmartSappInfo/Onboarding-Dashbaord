@@ -97,7 +97,7 @@ export function ImageUploader({
       onChange(downloadUrl);
       toast({
         title: 'Image uploaded successfully',
-        description: workspaceId ? 'Registered in your Media Gallery.' : 'Applied successfully.'
+        description: workspaceId ? 'Registered in your Media.' : 'Applied successfully.'
       });
     } catch (error) {
       console.error('Image uploader failed:', error);
@@ -144,6 +144,7 @@ export function ImageUploader({
           showGallery={!!workspaceId}
           onTriggerReplace={handleTriggerReplace}
           onTriggerGallery={() => setGalleryOpen(true)}
+          onOpenLink={() => setLinkDialogOpen(true)}
           onRemove={() => onChange('')}
         />
       ) : (
