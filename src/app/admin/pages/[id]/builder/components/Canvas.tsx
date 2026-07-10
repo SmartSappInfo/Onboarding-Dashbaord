@@ -138,7 +138,7 @@ interface CanvasProps {
     onUpdateHeader?: (updates: Partial<PageHeaderSettings>) => void;
     onUpdateFooter?: (updates: Partial<PageFooterSettings>) => void;
     onSetViewport?: (viewport: 'desktop' | 'tablet' | 'mobile') => void;
-    onAppendSection?: (sectionProps: Record<string, unknown>, blocks: any[]) => void;
+    onAppendSection?: (sectionProps: Record<string, unknown>, blocks: PageBlock[]) => void;
 }
 
 // Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
