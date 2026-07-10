@@ -43,9 +43,6 @@ import {
     AlertTriangle,
     MessageSquare,
     Phone,
-    MonitorPlay,
-    Tablet,
-    Smartphone,
     Search,
     Facebook,
     Twitter,
@@ -2170,57 +2167,17 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
             {/* Figma-style Workspace Floating Navigation Toolbar (Bottom-Right) */}
             <div className="absolute bottom-6 right-6 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-2xl z-40 backdrop-blur-md">
-                {/* Viewport Toggle */}
-                <div className="flex items-center gap-0.5 bg-slate-950/40 p-0.5 rounded-lg border border-slate-850/50 mr-1">
-                    <Button
-                        variant="ghost"
-                        onClick={() => onSetViewport?.('desktop')}
-                        className={cn(
-                            "h-7 w-7 p-0 rounded-md transition-all border-0",
-                            viewport === 'desktop' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
-                        )}
-                        title="Desktop View"
-                    >
-                        <MonitorPlay className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => onSetViewport?.('tablet')}
-                        className={cn(
-                            "h-7 w-7 p-0 rounded-md transition-all border-0",
-                            viewport === 'tablet' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
-                        )}
-                        title="Tablet View"
-                    >
-                        <Tablet className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        onClick={() => onSetViewport?.('mobile')}
-                        className={cn(
-                            "h-7 w-7 p-0 rounded-md transition-all border-0",
-                            viewport === 'mobile' ? "bg-slate-850 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-350"
-                        )}
-                        title="Mobile View"
-                    >
-                        <Smartphone className="w-3.5 h-3.5" />
-                    </Button>
-                </div>
-                
-                <div className="h-4 w-[1px] bg-slate-850" />
-
                 <Button
                     onClick={() => setIsAiChatOpen(prev => !prev)}
                     className={cn(
-                        "h-8 w-8 p-0 rounded-lg transition-colors border-0",
-                        isAiChatOpen 
-                            ? "bg-emerald-500 text-white hover:bg-emerald-600" 
-                            : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                        "h-8 px-3 rounded-lg transition-all border-0 font-bold text-xs flex items-center gap-1.5 text-white bg-gradient-to-r from-violet-600 via-indigo-600 to-emerald-500 shadow-[0_0_15px_rgba(124,58,237,0.3)] hover:shadow-[0_0_22px_rgba(124,58,237,0.5)] hover:scale-[1.03] active:scale-[0.97] duration-200 cursor-pointer select-none",
+                        isAiChatOpen && "ring-2 ring-violet-400 ring-offset-2 ring-offset-slate-900"
                     )}
                     variant="ghost"
                     title="Experience Copilot (AI)"
                 >
-                    <Sparkles className="h-4 w-4" />
+                    <Sparkles className="h-3.5 h-3.5 animate-pulse" />
+                    <span>Ask AI</span>
                 </Button>
             </div>
 

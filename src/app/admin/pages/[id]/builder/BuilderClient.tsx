@@ -640,6 +640,43 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
+                    {/* Viewport/Device Switcher */}
+                    <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
+                        <Button
+                            variant="ghost" size="icon"
+                            onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'desktop' })}
+                            className={cn(
+                                "h-7 w-7 p-0 rounded-lg transition-all border-0",
+                                builder.viewport === 'desktop' ? "bg-slate-750 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-355"
+                            )}
+                            title="Desktop View"
+                        >
+                            <MonitorPlay className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                            variant="ghost" size="icon"
+                            onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'tablet' })}
+                            className={cn(
+                                "h-7 w-7 p-0 rounded-lg transition-all border-0",
+                                builder.viewport === 'tablet' ? "bg-slate-750 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-355"
+                            )}
+                            title="Tablet View"
+                        >
+                            <Tablet className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                            variant="ghost" size="icon"
+                            onClick={() => builder.dispatch({ type: 'SET_VIEWPORT', payload: 'mobile' })}
+                            className={cn(
+                                "h-7 w-7 p-0 rounded-lg transition-all border-0",
+                                builder.viewport === 'mobile' ? "bg-slate-750 shadow-sm text-blue-400 hover:text-blue-400" : "bg-transparent text-slate-500 hover:text-slate-355"
+                            )}
+                            title="Mobile View"
+                        >
+                            <Smartphone className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+
                     {/* Components / Columns Switcher (only in Edit mode) */}
                     {builder.canvasMode === 'edit' && (
                         <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
