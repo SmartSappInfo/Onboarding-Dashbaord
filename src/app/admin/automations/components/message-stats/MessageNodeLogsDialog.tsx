@@ -262,6 +262,22 @@ export function MessageNodeLogsDialog({
     });
   }, [logs, activeTab, search]);
 
+  // Paginated Rendering
+  const [visibleCount, setVisibleCount] = React.useState(20);
+
+  // Reset pagination limit on tab or search query changes
+  React.useEffect(() => {
+    setVisibleCount(20);
+  }, [activeTab, search]);
+
+  const visibleLogs = React.useMemo(() => {
+    return filteredLogs.slice(0, visibleCount);
+  }, [filteredLogs, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 20);
+  };
+
   // Metrics helper
   const sentCount = stats.sent;
   const openRate = sentCount > 0 ? Math.round((stats.opened / sentCount) * 100) : 0;
@@ -481,7 +497,7 @@ export function MessageNodeLogsDialog({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.map((log) => {
+                {visibleLogs.map((log) => {
                   const hasOpened = log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
                   const hasClicked = log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
                   const hasFailed = log.status === 'failed' || log.providerStatus === 'bounced';
@@ -559,6 +575,24 @@ export function MessageNodeLogsDialog({
                 })}
               </TableBody>
             </Table>
+          )}
+
+          {filteredLogs.length > visibleCount && (
+            <div className="p-4 flex items-center justify-between border-t border-border/50 bg-muted/5 sticky bottom-0 z-10 backdrop-blur">
+              <span className="text-[10px] text-muted-foreground font-semibold">
+                Showing {visibleCount} of {filteredLogs.length} logs
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-[10px] font-bold px-3.5 h-7 rounded-lg border-border/80 shadow-sm transition-all hover:bg-muted active:scale-95 flex items-center gap-1"
+                onClick={handleLoadMore}
+              >
+                <span>Load More</span>
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>
