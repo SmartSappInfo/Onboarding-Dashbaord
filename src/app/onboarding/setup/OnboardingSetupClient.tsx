@@ -12,10 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building2, Palette, Sparkles, Languages, Globe, Wallet, 
-  Upload, CheckCircle2, Loader2, ArrowRight, ArrowLeft, LogOut, Check
+  CheckCircle2, Loader2, ArrowRight, ArrowLeft, LogOut, Check
 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { ImageUploader } from '@/components/shared/image-uploader';
 
 const PRESET_COLORS = [
   { name: 'Emerald', hex: '#10b981' },
@@ -91,9 +92,10 @@ export default function OnboardingSetupClient() {
           // Set default workspace name based on org name
           setWorkspaceName(`${res.org.name} Workspace`);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to initialize onboarding setup:', err);
-        toast({ variant: 'destructive', title: 'Setup Error', description: err.message || 'Initialization failed.' });
+        const errorMessage = err instanceof Error ? err.message : 'Initialization failed.';
+        toast({ variant: 'destructive', title: 'Setup Error', description: errorMessage });
       } finally {
         setIsInitializing(false);
       }
@@ -159,25 +161,7 @@ export default function OnboardingSetupClient() {
     });
   };
 
-  // Handle Logo Upload (Base64)
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'File size too large', description: 'Logo size must be less than 2MB.' });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        setLogoUrl(reader.result);
-        toast({ title: 'Logo Uploaded', description: 'Your brand logo has been updated successfully.' });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleNextStep = () => {
     if (step === 4) {
@@ -242,11 +226,12 @@ export default function OnboardingSetupClient() {
           description: result.error || 'Failed to complete organization onboarding.',
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during onboarding completion.';
       toast({
         variant: 'destructive',
         title: 'System Error',
-        description: err.message || 'An error occurred during onboarding completion.',
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
@@ -380,35 +365,11 @@ export default function OnboardingSetupClient() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Brand Logo</Label>
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-14 h-14 rounded-xl border border-white/10 flex items-center justify-center text-xl font-bold bg-white/5 overflow-hidden shrink-0 relative"
-                        style={{ borderColor: primaryColor }}
-                      >
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                        ) : (
-                          <span style={{ color: primaryColor }}>{monogram}</span>
-                        )}
-                      </div>
-                      <div className="relative flex-1">
-                        <input
-                          type="file"
-                          id="logo-upload-input"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => document.getElementById('logo-upload-input')?.click()}
-                          variant="outline"
-                          className="w-full rounded-xl border-white/10 bg-transparent text-white hover:bg-white/5 text-xs h-10 gap-1.5"
-                        >
-                          <Upload className="h-3.5 w-3.5" /> Upload Image
-                        </Button>
-                      </div>
-                    </div>
+                    <ImageUploader
+                      value={logoUrl || ''}
+                      onChange={(url) => setLogoUrl(url)}
+                      maxSizeMB={2}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -532,7 +493,7 @@ export default function OnboardingSetupClient() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Contact Scope Policy</Label>
-                    <Select value={contactScope} onValueChange={(val: any) => setContactScope(val)}>
+                    <Select value={contactScope} onValueChange={(val) => setContactScope(val as 'institution' | 'family' | 'person')}>
                       <SelectTrigger className="rounded-xl border-white/10 bg-white/5 text-white h-11 text-xs">
                         <SelectValue placeholder="Select Contact Scope" />
                       </SelectTrigger>
@@ -549,7 +510,7 @@ export default function OnboardingSetupClient() {
 
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Industry Vertical</Label>
-                    <Select value={industry} onValueChange={(val: any) => setIndustry(val)}>
+                    <Select value={industry} onValueChange={(val) => setIndustry(val as 'SaaS' | 'SchoolEnrollment' | 'Law' | 'Marketing' | 'RealEstate' | 'Consultancy')}>
                       <SelectTrigger className="rounded-xl border-white/10 bg-white/5 text-white h-11 text-xs">
                         <SelectValue placeholder="Select Industry" />
                       </SelectTrigger>
