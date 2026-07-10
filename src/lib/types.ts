@@ -581,6 +581,8 @@ export interface LeadScoringSettings {
   emailVerificationRules: EmailVerificationRule[];
   phoneVerificationRules?: PhoneVerificationRule[];
   engagementRules: Record<string, number>;
+  callCampaignPositiveOutcomes?: string[];
+  callCampaignDefaultPoints?: number;
 }
 
 export interface WorkspaceStatus {
