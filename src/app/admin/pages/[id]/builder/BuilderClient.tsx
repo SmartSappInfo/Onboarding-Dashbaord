@@ -776,61 +776,55 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             {/* ═══════════════ BODY ═══════════════ */}
             <div className="flex flex-1 overflow-hidden">
 
-                {/* ─── CANVAS ─── */}
-                <Canvas
-                    version={version}
-                    viewport={builder.viewport}
-                    theme={editorTheme}
-                    themeMode={page?.settings?.themeOverrides?.themeMode || 'light'}
-                    resources={builderResources}
-                    selectedBlockId={builder.selectedBlockId}
-                    page={page ? { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' } : undefined}
-                    selectedSectionId={builder.selectedSectionId}
-                    selectedColumnIndex={builder.selectedColumnIndex}
-                    onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
-                    showHeader={page?.settings?.showHeader}
-                    showFooter={page?.settings?.showFooter}
-
-                    onSetTab={(tab) => builder.dispatch({ type: 'SET_TAB', payload: tab as BuilderTab })}
-                    onUpdateBlockProps={builder.updateBlockProps}
-                    onRemoveBlock={builder.removeBlock}
-                    onMoveBlock={builder.moveBlock}
-                    onDuplicateBlock={builder.duplicateBlock}
-                    onRemoveSection={builder.removeSection}
-                    onMoveSection={builder.moveSection}
-                    onInsertSection={builder.insertSection}
-                    onEditSection={(id, colIdx) => {
-                        builder.dispatch({ type: 'SELECT_SECTION', payload: id, columnIndex: colIdx });
-                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
-                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
-                    }}
-                    onSaveSectionAsTemplate={handleSaveSectionAsTemplate}
-                    onReorderSections={builder.reorderSections}
-                    onReorderBlocks={builder.reorderBlocks}
-                    onMoveBlockToColumn={builder.moveBlockToColumn}
-                    onSwapColumns={builder.swapColumns}
-                    canvasMode={builder.canvasMode}
-                    editMode={builder.editMode}
-                    onSetEditMode={builder.setEditMode}
-                    onSetViewport={(v) => builder.dispatch({ type: 'SET_VIEWPORT', payload: v })}
-                    onClickHeader={() => {
-                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
-                    }}
-                    onClickFooter={() => {
-                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
-                    }}
-                    onUpdateHeader={handleUpdateHeader}
-                    onUpdateFooter={handleUpdateFooter}
-                />
-
                 {/* ─── SIDEBAR ─── */}
                 <div className="flex shrink-0 z-10 select-none">
-                    {/* 2. Slide-out panel drawer */}
+                    {/* 1. Thin vertical tab bar (56px) */}
+                    <div className="w-14 bg-slate-950 border-r border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
+                        <div className="flex flex-col gap-2.5 w-full px-1.5">
+                            {tabs.map(tab => {
+                                const isActive = builder.activeTab === tab.id && isSidebarExpanded;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (builder.activeTab === tab.id && isSidebarExpanded) {
+                                                setIsSidebarExpanded(false);
+                                            } else {
+                                                builder.dispatch({ type: 'SET_TAB', payload: tab.id });
+                                                setIsSidebarExpanded(true);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "flex flex-col items-center gap-1 py-2 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all duration-200 w-full border border-transparent",
+                                            isActive
+                                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                : "text-slate-500 hover:text-slate-355 hover:bg-slate-900/50"
+                                        )}
+                                        title={tab.label}
+                                    >
+                                        <tab.icon className="w-4 h-4 shrink-0" />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsSidebarExpanded(prev => !prev)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
+                        >
+                            {builder.activeTab === 'edit'
+                                ? (isSidebarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />)
+                                : (isSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)
+                            }
+                        </button>
+                    </div>
+
                     {/* 2. Slide-out panel drawer */}
                     <div
                         className={cn(
-                            "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
-                            isSidebarExpanded ? "w-72 opacity-100" : "w-0 opacity-0 border-l-0"
+                            "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
+                            isSidebarExpanded && builder.activeTab !== 'edit' ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
                         )}
                     >
                         <div className={cn(
@@ -872,34 +866,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             />
                         )}
 
-                        {builder.activeTab === 'edit' && (
-                            <div className="space-y-4">
-                                {getSelectedPathLabel() && (
-                                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
-                                        {getSelectedPathLabel()}
-                                    </div>
-                                )}
-                                {builder.selectedBlockId && builder.findBlock(builder.selectedBlockId)?.block ? (
-                                    <PropertiesPanel
-                                        block={builder.findBlock(builder.selectedBlockId)!.block}
-                                        resources={builderResources}
-                                        theme={editorTheme}
-                                        workspaceId={activeWorkspaceId ?? undefined}
-                                        onUpdate={(patch) => builder.updateBlockProps(builder.selectedBlockId!, patch)}
-                                    />
-                                ) : selectedSection ? (
-                                    <SectionSettings
-                                        section={selectedSection}
-                                        workspaceId={activeWorkspaceId ?? undefined}
-                                        onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
-                                    />
-                                ) : (
-                                    <div className="text-center py-8 text-xs text-slate-500 font-semibold leading-relaxed">
-                                        Select a section or block on the canvas to configure properties.
-                                    </div>
-                                )}
-                            </div>
-                        )}
+
 
                         {builder.activeTab === 'triggers' && (
                             <TriggerPanel
@@ -977,45 +944,89 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
                         </div>
                     </div>
+                </div>
 
-                    {/* 1. Thin vertical tab bar (56px) */}
-                    {/* 1. Thin vertical tab bar (56px) */}
-                    <div className="w-14 bg-slate-950 border-l border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
-                        <div className="flex flex-col gap-2.5 w-full px-1.5">
-                            {tabs.map(tab => {
-                                const isActive = builder.activeTab === tab.id && isSidebarExpanded;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => {
-                                            if (builder.activeTab === tab.id && isSidebarExpanded) {
-                                                setIsSidebarExpanded(false);
-                                            } else {
-                                                builder.dispatch({ type: 'SET_TAB', payload: tab.id });
-                                                setIsSidebarExpanded(true);
-                                            }
-                                        }}
-                                        className={cn(
-                                            "flex flex-col items-center gap-1 py-2 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all duration-200 w-full border border-transparent",
-                                            isActive
-                                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                : "text-slate-500 hover:text-slate-355 hover:bg-slate-900/50"
-                                        )}
-                                        title={tab.label}
-                                    >
-                                        <tab.icon className="w-4 h-4 shrink-0" />
-                                    </button>
-                                );
-                            })}
+                {/* ─── CANVAS ─── */}
+                <Canvas
+                    version={version}
+                    viewport={builder.viewport}
+                    theme={editorTheme}
+                    themeMode={page?.settings?.themeOverrides?.themeMode || 'light'}
+                    resources={builderResources}
+                    selectedBlockId={builder.selectedBlockId}
+                    page={page ? { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' } : undefined}
+                    selectedSectionId={builder.selectedSectionId}
+                    selectedColumnIndex={builder.selectedColumnIndex}
+                    onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
+                    showHeader={page?.settings?.showHeader}
+                    showFooter={page?.settings?.showFooter}
+
+                    onSetTab={(tab) => builder.dispatch({ type: 'SET_TAB', payload: tab as BuilderTab })}
+                    onUpdateBlockProps={builder.updateBlockProps}
+                    onRemoveBlock={builder.removeBlock}
+                    onMoveBlock={builder.moveBlock}
+                    onDuplicateBlock={builder.duplicateBlock}
+                    onRemoveSection={builder.removeSection}
+                    onMoveSection={builder.moveSection}
+                    onInsertSection={builder.insertSection}
+                    onEditSection={(id, colIdx) => {
+                        builder.dispatch({ type: 'SELECT_SECTION', payload: id, columnIndex: colIdx });
+                        builder.dispatch({ type: 'SELECT_BLOCK', payload: null });
+                        builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                    }}
+                    onSaveSectionAsTemplate={handleSaveSectionAsTemplate}
+                    onReorderSections={builder.reorderSections}
+                    onReorderBlocks={builder.reorderBlocks}
+                    onMoveBlockToColumn={builder.moveBlockToColumn}
+                    onSwapColumns={builder.swapColumns}
+                    canvasMode={builder.canvasMode}
+                    editMode={builder.editMode}
+                    onSetEditMode={builder.setEditMode}
+                    onSetViewport={(v) => builder.dispatch({ type: 'SET_VIEWPORT', payload: v })}
+                    onClickHeader={() => {
+                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                    }}
+                    onClickFooter={() => {
+                        builder.dispatch({ type: 'SET_TAB', payload: 'settings' });
+                    }}
+                    onUpdateHeader={handleUpdateHeader}
+                    onUpdateFooter={handleUpdateFooter}
+                />
+
+                {/* ─── PROPERTIES PANEL ON THE RIGHT ─── */}
+                <div
+                    className={cn(
+                        "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
+                        isSidebarExpanded && builder.activeTab === 'edit' ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
+                    )}
+                >
+                    <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
+                        <div className="space-y-4">
+                            {getSelectedPathLabel() && (
+                                <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
+                                    {getSelectedPathLabel()}
+                                </div>
+                            )}
+                            {builder.selectedBlockId && builder.findBlock(builder.selectedBlockId)?.block ? (
+                                <PropertiesPanel
+                                    block={builder.findBlock(builder.selectedBlockId)!.block}
+                                    resources={builderResources}
+                                    theme={editorTheme}
+                                    workspaceId={activeWorkspaceId ?? undefined}
+                                    onUpdate={(patch) => builder.updateBlockProps(builder.selectedBlockId!, patch)}
+                                />
+                            ) : selectedSection ? (
+                                <SectionSettings
+                                    section={selectedSection}
+                                    workspaceId={activeWorkspaceId ?? undefined}
+                                    onUpdate={(patch) => builder.updateSectionProps(selectedSection.id, patch)}
+                                />
+                            ) : (
+                                <div className="text-center py-8 text-xs text-slate-500 font-semibold leading-relaxed">
+                                    Select a section or block on the canvas to configure properties.
+                                </div>
+                            )}
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsSidebarExpanded(prev => !prev)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
-                        >
-                            {isSidebarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-                        </button>
                     </div>
                 </div>
             </div>
