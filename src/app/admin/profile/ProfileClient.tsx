@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -14,12 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, User as UserIcon, Camera, Settings2, Bell } from 'lucide-react';
+import { Loader2, User as UserIcon, Settings2, Bell } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ImageUploader } from '@/components/shared/image-uploader';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -41,10 +41,8 @@ export default function ProfileClient() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
-  const { accessibleWorkspaces } = useWorkspace();
+  const { accessibleWorkspaces, activeWorkspaceId } = useWorkspace();
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -88,34 +86,6 @@ export default function ProfileClient() {
     }
   }, [user, firestore, form, isUserLoading]);
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-  
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || event.target.files.length === 0 || !user) {
-      return;
-    }
-    const file = event.target.files[0];
-    setIsUploading(true);
-
-    try {
-      const storage = getStorage();
-      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-      
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-
-      form.setValue('photoURL', downloadURL, { shouldDirty: true });
-      toast({ title: 'Profile picture updated!' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Upload failed', description: 'Could not upload your profile picture.' });
-      console.error(error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || !firestore || !auth.currentUser) return;
     
@@ -142,10 +112,6 @@ export default function ProfileClient() {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update your profile.' });
     }
   };
-  
-  const photoUrl = form.watch('photoURL');
-  const name = form.watch('name');
-  const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={24} />;
 
     if (isUserLoading || isLoadingProfile) {
         return (
@@ -191,29 +157,20 @@ export default function ProfileClient() {
                     control={form.control}
                     name="photoURL"
                     render={({ field }) => (
- <FormItem className="flex flex-col items-center">
+                      <FormItem className="flex flex-col gap-2">
+                        <FormLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Avatar Image</FormLabel>
                         <FormControl>
- <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
- <Avatar className="w-32 h-32 text-4xl ring-4 ring-primary/5">
-                                <AvatarImage src={photoUrl || ''} alt={name} />
- <AvatarFallback className="bg-muted">
- {isUploading ? <Loader2 className="animate-spin" /> : getInitials(name)}
-                                </AvatarFallback>
-                            </Avatar>
- <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
- <Camera className="w-8 h-8 text-white" />
-                            </div>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
- className="hidden"
-                                accept="image/png, image/jpeg, image/gif"
-                            />
-                            </div>
+                          <ImageUploader
+                            value={field.value || ''}
+                            onChange={(url) => {
+                              field.onChange(url);
+                            }}
+                            workspaceId={activeWorkspaceId}
+                            category="Avatars"
+                          />
                         </FormControl>
                         <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
                     />
 
@@ -356,7 +313,7 @@ export default function ProfileClient() {
                     </div>
                     
  <div className="flex justify-end pt-4">
- <Button type="submit" disabled={form.formState.isSubmitting || isUploading} className="rounded-xl font-bold h-11 px-10 shadow-lg">
+ <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold h-11 px-10 shadow-lg">
  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
                     </Button>
