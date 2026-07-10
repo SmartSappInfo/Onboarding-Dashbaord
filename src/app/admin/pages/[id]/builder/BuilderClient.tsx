@@ -248,7 +248,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [isLoadingLeads, setIsLoadingLeads] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+    const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(true);
+    const [isRightSidebarExpanded, setIsRightSidebarExpanded] = useState(true);
     const { resolvedTheme } = useTheme();
     const sidebar = useSidebar();
 
@@ -261,6 +262,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Expand corresponding sidebar when tab is changed programmatically
+    useEffect(() => {
+        if (builder.activeTab === 'edit') {
+            setIsRightSidebarExpanded(true);
+        } else {
+            setIsLeftSidebarExpanded(true);
+        }
+    }, [builder.activeTab]);
 
     const activeDesignerTheme = resolvedTheme === 'light' ? 'light' : 'blue';
     useEffect(() => {
@@ -782,22 +792,32 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <div className="w-14 bg-slate-950 border-r border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
                         <div className="flex flex-col gap-2.5 w-full px-1.5">
                             {tabs.map(tab => {
-                                const isActive = builder.activeTab === tab.id && isSidebarExpanded;
+                                const isActive = builder.activeTab === tab.id;
+                                const isExpanded = tab.id === 'edit' ? isRightSidebarExpanded : isLeftSidebarExpanded;
                                 return (
                                     <button
                                         key={tab.id}
                                         type="button"
                                         onClick={() => {
-                                            if (builder.activeTab === tab.id && isSidebarExpanded) {
-                                                setIsSidebarExpanded(false);
+                                            if (tab.id === 'edit') {
+                                                if (builder.activeTab === 'edit' && isRightSidebarExpanded) {
+                                                    setIsRightSidebarExpanded(false);
+                                                } else {
+                                                    builder.dispatch({ type: 'SET_TAB', payload: 'edit' });
+                                                    setIsRightSidebarExpanded(true);
+                                                }
                                             } else {
-                                                builder.dispatch({ type: 'SET_TAB', payload: tab.id });
-                                                setIsSidebarExpanded(true);
+                                                if (builder.activeTab === tab.id && isLeftSidebarExpanded) {
+                                                    setIsLeftSidebarExpanded(false);
+                                                } else {
+                                                    builder.dispatch({ type: 'SET_TAB', payload: tab.id });
+                                                    setIsLeftSidebarExpanded(true);
+                                                }
                                             }
                                         }}
                                         className={cn(
                                             "flex flex-col items-center gap-1 py-2 rounded-xl text-[7px] font-black uppercase tracking-wider transition-all duration-200 w-full border border-transparent",
-                                            isActive
+                                            isActive && isExpanded
                                                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                 : "text-slate-500 hover:text-slate-355 hover:bg-slate-900/50"
                                         )}
@@ -810,12 +830,18 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </div>
                         <button
                             type="button"
-                            onClick={() => setIsSidebarExpanded(prev => !prev)}
+                            onClick={() => {
+                                if (builder.activeTab === 'edit') {
+                                    setIsRightSidebarExpanded(prev => !prev);
+                                } else {
+                                    setIsLeftSidebarExpanded(prev => !prev);
+                                }
+                            }}
                             className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
                         >
                             {builder.activeTab === 'edit'
-                                ? (isSidebarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />)
-                                : (isSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)
+                                ? (isRightSidebarExpanded ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />)
+                                : (isLeftSidebarExpanded ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)
                             }
                         </button>
                     </div>
@@ -824,7 +850,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     <div
                         className={cn(
                             "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
-                            isSidebarExpanded && builder.activeTab !== 'edit' ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
+                            isLeftSidebarExpanded && builder.activeTab !== 'edit' ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
                         )}
                     >
                         <div className={cn(
@@ -997,10 +1023,21 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 <div
                     className={cn(
                         "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
-                        isSidebarExpanded && builder.activeTab === 'edit' ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
+                        isRightSidebarExpanded && builder.activeTab === 'edit' ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
                     )}
                 >
                     <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2 select-none">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Properties</span>
+                            <button
+                                type="button"
+                                onClick={() => setIsRightSidebarExpanded(false)}
+                                className="w-6 h-6 rounded-md flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
+                                title="Collapse Panel"
+                            >
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                         <div className="space-y-4">
                             {getSelectedPathLabel() && (
                                 <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-900/50 border border-slate-800 rounded-lg px-2.5 py-1.5 mb-2 select-none text-center">
