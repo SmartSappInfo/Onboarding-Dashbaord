@@ -327,6 +327,8 @@ export default async function PublicSurveyPage({
                 orgBranding={orgBranding}
                 resolvedWorkspaceId={resolvedWorkspaceId}
                 preloadedVariables={preloadedVariables}
+                resolvedEntityId={resolvedEntityId}
+                resolvedRecipientContact={resolvedRecipientContact}
             />
         </>
     );

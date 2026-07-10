@@ -12,7 +12,7 @@ import SurveyLoader from '../../components/survey-loader';
 import { useTheme } from 'next-themes';
 import Footer from '@/components/footer';
 import { useToast } from '@/hooks/use-toast';
-import { submitPublicSurveyLead, finalizeSurveySubmission, getWorkspaceEntitiesForSimulationAction } from '@/lib/survey-actions';
+import { submitPublicSurveyLead, finalizeSurveySubmission, getWorkspaceEntitiesForSimulationAction, logSurveyStartedAction } from '@/lib/survey-actions';
 import { getVariableValuesMapAction } from '@/lib/services/fields-variables-service';
 import { 
     Select, 
@@ -35,6 +35,8 @@ interface SurveyDisplayProps {
     orgBranding?: OrgBranding | null;
     resolvedWorkspaceId?: string;
     preloadedVariables?: Record<string, string>;
+    resolvedEntityId?: string | null;
+    resolvedRecipientContact?: string | null;
 }
 
 export default function SurveyDisplay({ 
@@ -45,7 +47,9 @@ export default function SurveyDisplay({
     entityLogoUrl,
     orgBranding,
     resolvedWorkspaceId = '',
-    preloadedVariables = {}
+    preloadedVariables = {},
+    resolvedEntityId = null,
+    resolvedRecipientContact = null
 }: SurveyDisplayProps) {
     useIframeHeightReporter(survey.slug);
 
@@ -148,7 +152,19 @@ export default function SurveyDisplay({
     React.useEffect(() => {
         initialUrl.current = window.location.href;
         setIsMounted(true);
-    }, []);
+
+        if (!isPreviewMode && resolvedWorkspaceId && resolvedEntityId && resolvedRecipientContact) {
+            logSurveyStartedAction({
+                surveyId: survey.id,
+                entityId: resolvedEntityId,
+                contactEmail: resolvedRecipientContact,
+                workspaceId: resolvedWorkspaceId,
+                organizationId: survey.organizationId || 'default'
+            }).catch((err: unknown) => {
+                console.error('[SurveyDisplay] Failed to log survey_started action:', err);
+            });
+        }
+    }, [isPreviewMode, resolvedWorkspaceId, resolvedEntityId, resolvedRecipientContact, survey.id, survey.organizationId]);
 
     React.useEffect(() => {
         if (isSubmitted) {

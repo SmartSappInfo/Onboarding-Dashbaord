@@ -441,6 +441,45 @@ export async function evaluateEffortEvent(event: ScoringEvent): Promise<void> {
 }
 
 /**
+ * Translates raw activity type and metadata into lead-scoring mapping keys.
+ */
+export function resolveEngagementRuleKey(
+  eventType: string,
+  metadata?: Record<string, string | number | boolean>
+): string {
+  if (eventType === 'campaign_event' && metadata) {
+    const channel = String(metadata.channel || '').toLowerCase();
+    const event = String(metadata.event || '').toLowerCase();
+    if (channel === 'email') {
+      if (event === 'opened') return 'email_opened';
+      if (event === 'clicked') return 'email_clicked';
+      if (event === 'failed') return 'email_bounced';
+    } else if (channel === 'sms') {
+      if (event === 'clicked') return 'sms_link_clicked';
+      if (event === 'failed') return 'sms_failed';
+    }
+  }
+
+  if (eventType === 'webpage_visited') {
+    return 'page_visited';
+  }
+  if (eventType === 'button_clicked') {
+    return 'button_clicked';
+  }
+  if (eventType === 'survey_started') {
+    return 'survey_started';
+  }
+  if (eventType === 'form_submission') {
+    return 'survey_completed';
+  }
+  if (eventType === 'pdf_form_submitted' || eventType === 'form_submitted') {
+    return 'document_signed';
+  }
+
+  return eventType;
+}
+
+/**
  * Coordinator mapping event types to scores. Called by activity log bus.
  */
 export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
@@ -454,7 +493,25 @@ export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
     const wsData = wsSnap.data();
     const rules = wsData?.leadScoringSettings?.engagementRules || {};
-    const pointsIncrement = rules[eventType];
+    
+    let pointsIncrement = 0;
+    const resolvedKey = resolveEngagementRuleKey(eventType, metadata);
+    
+    if (eventType === 'call_completed' && metadata?.outcome) {
+      const outcomeValue = String(metadata.outcome);
+      const explicitOutcomeKey = `call_outcome:${outcomeValue}`;
+      
+      if (rules[explicitOutcomeKey] !== undefined) {
+        pointsIncrement = rules[explicitOutcomeKey];
+      } else {
+        const positiveOutcomes = wsData?.leadScoringSettings?.callCampaignPositiveOutcomes || [];
+        if (positiveOutcomes.includes(outcomeValue)) {
+          pointsIncrement = wsData?.leadScoringSettings?.callCampaignDefaultPoints || 0;
+        }
+      }
+    } else {
+      pointsIncrement = rules[resolvedKey] || 0;
+    }
 
     if (pointsIncrement && pointsIncrement !== 0) {
       await adjustLeadScoreAction({
@@ -464,7 +521,7 @@ export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
         contactEmailOrId: contactId || (metadata?.email as string) || (metadata?.contactId as string),
         value: Math.abs(pointsIncrement),
         operation: pointsIncrement < 0 ? 'subtract' : 'add',
-        reason: `Engagement triggered: ${eventType}`,
+        reason: `Engagement triggered: ${resolvedKey}`,
         source: actorType === 'Automation' ? 'automation' : actorType === 'System' ? 'system' : 'user',
         actorId,
         actorType

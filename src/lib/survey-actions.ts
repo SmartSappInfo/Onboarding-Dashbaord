@@ -1614,3 +1614,41 @@ export async function getWorkspaceEntitiesForSimulationAction(workspaceId: strin
     return [];
   }
 }
+
+export async function logSurveyStartedAction(params: {
+  surveyId: string;
+  entityId: string;
+  contactEmail?: string | null;
+  workspaceId: string;
+  organizationId: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { surveyId, entityId, contactEmail, workspaceId, organizationId } = params;
+  try {
+    const surveySnap = await adminDb.collection('surveys').doc(surveyId).get();
+    if (!surveySnap.exists) {
+      return { success: false, error: 'Survey not found' };
+    }
+    const surveyData = surveySnap.data() as Survey;
+
+    await logActivity({
+      entityId: entityId || undefined,
+      organizationId,
+      workspaceId,
+      userId: 'anonymous',
+      type: 'survey_started',
+      source: 'public_survey',
+      description: `Survey "${surveyData.title}" started`,
+      metadata: {
+        surveyId,
+        surveyTitle: surveyData.title,
+        contactEmail: contactEmail || null
+      }
+    });
+    
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown survey start log failure';
+    console.error('[logSurveyStartedAction] Error:', errorMsg);
+    return { success: false, error: errorMsg };
+  }
+}

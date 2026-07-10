@@ -57,6 +57,30 @@ export async function logCampaignEventToTimeline(params: {
         isAutomation: true
       }
     }, { merge: true });
+
+    // Trigger lead scoring calculation for this campaign event
+    try {
+      const { emitScoringEvent } = await import('./scoring-performance-engine');
+      await emitScoringEvent({
+        organizationId,
+        workspaceId,
+        eventType: 'campaign_event',
+        entityId,
+        contactId: undefined,
+        actorId: 'system-campaign-engine',
+        actorType: 'System',
+        metadata: {
+          campaignId,
+          event,
+          channel,
+          details: details || '',
+          error: error || ''
+        }
+      });
+    } catch (scoringErr: unknown) {
+      const msg = scoringErr instanceof Error ? scoringErr.message : 'Unknown scoring trigger failure';
+      console.error(`[logCampaignEventToTimeline] Failed to trigger scoring for ${entityId}:`, msg);
+    }
   } catch (err: any) {
     console.error(`[logCampaignEventToTimeline] Failed for entity ${entityId}:`, err.message);
   }
