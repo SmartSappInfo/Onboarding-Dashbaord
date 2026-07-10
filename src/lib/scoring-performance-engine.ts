@@ -443,10 +443,10 @@ export async function evaluateEffortEvent(event: ScoringEvent): Promise<void> {
 /**
  * Translates raw activity type and metadata into lead-scoring mapping keys.
  */
-export function resolveEngagementRuleKey(
+export async function resolveEngagementRuleKey(
   eventType: string,
   metadata?: Record<string, string | number | boolean>
-): string {
+): Promise<string> {
   if (eventType === 'campaign_event' && metadata) {
     const channel = String(metadata.channel || '').toLowerCase();
     const event = String(metadata.event || '').toLowerCase();
@@ -495,7 +495,7 @@ export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
     const rules = wsData?.leadScoringSettings?.engagementRules || {};
     
     let pointsIncrement = 0;
-    const resolvedKey = resolveEngagementRuleKey(eventType, metadata);
+    const resolvedKey = await resolveEngagementRuleKey(eventType, metadata);
     
     if (eventType === 'call_completed' && metadata?.outcome) {
       const outcomeValue = String(metadata.outcome);
