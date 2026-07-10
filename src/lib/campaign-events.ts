@@ -66,6 +66,7 @@ export async function logCampaignEventToTimeline(params: {
         workspaceId,
         eventType: 'campaign_event',
         entityId,
+        entityType,
         contactId: undefined,
         actorId: 'system-campaign-engine',
         actorType: 'System',

@@ -60,6 +60,7 @@ import {
   bulkAssignEntitiesAction,
   LeadScoreHistoryDoc
 } from '@/lib/scoring-performance-engine';
+import { cn } from '@/lib/utils';
 import { BentoPagination } from '../components/BentoPagination';
 
 const DEFAULT_SCORING_SETTINGS: LeadScoringSettings = {
@@ -86,7 +87,15 @@ const COMMON_ENGAGEMENTS = [
   { value: 'email_clicked', label: 'Email Clicked' },
   { value: 'meeting_attended', label: 'Meeting Attended' },
   { value: 'reply_received', label: 'Reply Received' },
-  { value: 'outbound_call', label: 'Outbound Call Made' }
+  { value: 'outbound_call', label: 'Outbound Call Made' },
+  { value: 'email_bounced', label: 'Email Bounced' },
+  { value: 'sms_failed', label: 'SMS Delivery Failed' },
+  { value: 'page_visited', label: 'Viewed Page' },
+  { value: 'button_clicked', label: 'Clicked Button on Page' },
+  { value: 'survey_started', label: 'Started Survey' },
+  { value: 'sms_link_clicked', label: 'Link Clicked from SMS' },
+  { value: 'document_signed', label: 'Document Signed' },
+  { value: 'call_outcome_positive', label: 'Positive Call Outcome' }
 ];
 
 interface ContactScoringRow {
@@ -195,6 +204,8 @@ export default function LeadScoringCleanupPage() {
   const [localVerificationRules, setLocalVerificationRules] = useState<EmailVerificationRule[]>([]);
   const [localPhoneVerificationRules, setLocalPhoneVerificationRules] = useState<PhoneVerificationRule[]>([]);
   const [localEngagementRules, setLocalEngagementRules] = useState<Record<string, number>>({});
+  const [localPositiveOutcomes, setLocalPositiveOutcomes] = useState<string[]>([]);
+  const [localDefaultPoints, setLocalDefaultPoints] = useState<number>(0);
 
   // Sync settings local state on load
   React.useEffect(() => {
@@ -204,6 +215,8 @@ export default function LeadScoringCleanupPage() {
         ...(settings.phoneVerificationRules || DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])
       ]);
       setLocalEngagementRules({ ...(settings.engagementRules || {}) });
+      setLocalPositiveOutcomes([...(settings.callCampaignPositiveOutcomes || [])]);
+      setLocalDefaultPoints(settings.callCampaignDefaultPoints || 0);
     }
   }, [settings]);
 
@@ -650,6 +663,8 @@ export default function LeadScoringCleanupPage() {
     setLocalVerificationRules([...DEFAULT_SCORING_SETTINGS.emailVerificationRules]);
     setLocalPhoneVerificationRules([...(DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])]);
     setLocalEngagementRules({ ...DEFAULT_SCORING_SETTINGS.engagementRules });
+    setLocalPositiveOutcomes([]);
+    setLocalDefaultPoints(0);
     toast({
       title: 'Settings Reset Locally',
       description: 'Click "Save Settings" to apply defaults.'
@@ -668,7 +683,9 @@ export default function LeadScoringCleanupPage() {
         leadScoringSettings: {
           emailVerificationRules: sortedRules,
           phoneVerificationRules: sortedPhoneRules,
-          engagementRules: localEngagementRules
+          engagementRules: localEngagementRules,
+          callCampaignPositiveOutcomes: localPositiveOutcomes,
+          callCampaignDefaultPoints: localDefaultPoints
         }
       });
       toast({
@@ -1519,11 +1536,18 @@ export default function LeadScoringCleanupPage() {
                   <div className="space-y-3">
                     {Object.entries(localEngagementRules).map(([key, val]) => {
                       const isCommon = COMMON_ENGAGEMENTS.some(c => c.value === key);
+                      const isNegative = val < 0;
+                      const isPositive = val > 0;
+                      const cardStyleClass = isNegative
+                        ? "border-rose-500/20 bg-rose-500/[0.01] hover:border-rose-500/40"
+                        : isPositive
+                          ? "border-emerald-500/20 bg-emerald-500/[0.01] hover:border-emerald-500/40"
+                          : "border-border bg-muted/10";
                       
                       return (
                         <div 
                           key={key}
-                          className="flex items-center justify-between gap-4 p-4 rounded-xl border bg-muted/10"
+                          className={cn("flex items-center justify-between gap-4 p-4 rounded-xl border transition-all", cardStyleClass)}
                         >
                           <div className="flex items-center gap-4 flex-1">
                             <div className="flex flex-col gap-1.5 flex-1 max-w-sm">
@@ -1563,7 +1587,14 @@ export default function LeadScoringCleanupPage() {
                                 type="number"
                                 value={val}
                                 onChange={(e) => updateEngagementRule(key, parseInt(e.target.value) || 0)}
-                                className="h-9 rounded-lg font-mono text-xs text-center font-bold"
+                                className={cn(
+                                  "h-9 rounded-lg font-mono text-xs text-center font-bold",
+                                  isNegative 
+                                    ? "text-rose-500 border-rose-500/20 bg-rose-500/5 focus-visible:ring-rose-500" 
+                                    : isPositive 
+                                      ? "text-emerald-500 border-emerald-500/20 bg-emerald-500/5 focus-visible:ring-emerald-500" 
+                                      : ""
+                                )}
                               />
                             </div>
                           </div>
@@ -1579,6 +1610,62 @@ export default function LeadScoringCleanupPage() {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Call Campaign Outcomes section */}
+                  <div className="space-y-4 border-t border-border/40 pt-6 mt-6">
+                    <div className="space-y-0.5 text-left">
+                      <Label className="text-xs font-black uppercase tracking-wider text-foreground">Call Campaign Outcomes Scoring</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Configure global defaults for call campaign outcomes. You can also override these by mapping specific outcomes above (e.g. <code>call_outcome:Agreed</code>).
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Positive Outcomes select/pills */}
+                      <div className="md:col-span-2 space-y-1.5 text-left">
+                        <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Global Positive Outcomes</Label>
+                        <div className="flex flex-wrap gap-2 p-3 min-h-[42px] rounded-xl bg-background border border-input">
+                          {localPositiveOutcomes.map(outcome => (
+                            <span key={outcome} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/25 text-[10px] font-bold text-primary transition-all">
+                              {outcome}
+                              <button 
+                                type="button"
+                                onClick={() => setLocalPositiveOutcomes(localPositiveOutcomes.filter(o => o !== outcome))}
+                                className="text-muted-foreground hover:text-foreground font-black ml-1 text-xs"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                          <input
+                            placeholder="Type outcome (e.g. Interested) and press Enter"
+                            className="flex-1 border-none h-6 text-xs bg-transparent focus-visible:outline-none p-0 w-full text-foreground placeholder:text-muted-foreground"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = e.currentTarget.value.trim();
+                                if (val && !localPositiveOutcomes.includes(val)) {
+                                  setLocalPositiveOutcomes([...localPositiveOutcomes, val]);
+                                  e.currentTarget.value = '';
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Default Points */}
+                      <div className="flex flex-col gap-1.5 text-left">
+                        <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">Default Points (Positive)</Label>
+                        <Input
+                          type="number"
+                          value={localDefaultPoints}
+                          onChange={(e) => setLocalDefaultPoints(parseInt(e.target.value) || 0)}
+                          className="h-10 rounded-xl font-mono text-xs text-center font-bold"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
