@@ -32,10 +32,11 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
 
   // Slash commands inline popover states
   const [showMenu, setShowMenu] = useState(false);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [menuIndex, setMenuIndex] = useState(0);
   const [variables, setVariables] = useState<UnifiedVariable[]>([]);
-  const { workspaceId } = useContext(WorkspaceContext);
+  const { workspaceId, organizationId } = useContext(WorkspaceContext);
 
   useEffect(() => {
     setHasMounted(true);
@@ -44,10 +45,10 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
   // Sync variables dynamically for search dropdown when in edit mode
   useEffect(() => {
     if (!workspaceId || !isEdit) return;
-    getVariablesAction({ workspaceId, featureContext: 'all' })
+    getVariablesAction({ workspaceId, organizationId, featureContext: 'all' })
       .then(setVariables)
       .catch((err) => console.warn('[InlineEditable] Failed to fetch variables:', err));
-  }, [workspaceId, isEdit]);
+  }, [workspaceId, organizationId, isEdit]);
 
   // Sync value from parent prop
   useEffect(() => {
@@ -111,6 +112,24 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       if (slashIdx !== -1) {
         const query = textBeforeCursor.substring(slashIdx + 1);
         if (!query.includes(' ')) {
+          try {
+            const rangeClone = range.cloneRange();
+            rangeClone.setStart(textNode, slashIdx);
+            rangeClone.setEnd(textNode, Math.min(slashIdx + 1, textVal.length));
+            const rect = rangeClone.getBoundingClientRect();
+            
+            if (elementRef.current) {
+              const parentRect = elementRef.current.parentElement?.getBoundingClientRect();
+              if (parentRect) {
+                setMenuCoords({
+                  top: rect.bottom - parentRect.top,
+                  left: rect.left - parentRect.left,
+                });
+              }
+            }
+          } catch (e) {
+            setMenuCoords({ top: 24, left: 0 });
+          }
           setShowMenu(true);
           setSearchQuery(query);
           return;
@@ -201,7 +220,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
     }
   };
 
-  const Tag = tagName as any;
+  const Tag = tagName as React.ElementType;
 
   if (!isEdit) {
     if (html) {
@@ -241,6 +260,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       {showMenu && filteredVars.length > 0 && (
         <div 
           className="absolute left-0 z-[9999] mt-1 max-h-40 w-64 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-1 shadow-2xl custom-scrollbar text-[11px] text-left"
+          style={{ top: `${menuCoords.top}px`, left: `${menuCoords.left}px` }}
           onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
         >
           {filteredVars.map((v, idx) => (
