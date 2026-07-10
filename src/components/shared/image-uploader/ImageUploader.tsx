@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -34,12 +34,25 @@ export function ImageUploader({
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [tempPreview, setTempPreview] = useState<string>('');
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+
+  const handleTriggerReplace = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void handleFileSelect(file);
+    }
+    e.target.value = '';
+  };
 
   const handleFileSelect = async (file: File) => {
     if (file.size > maxSizeMB * 1024 * 1024) {
@@ -108,41 +121,41 @@ export function ImageUploader({
     });
   };
 
-  if (isUploading) {
-    return (
-      <UploadingState
-        previewUrl={tempPreview}
-        progress={uploadProgress}
-        className={className}
-      />
-    );
-  }
-
-  if (value) {
-    return (
-      <UploadedState
-        imageUrl={value}
-        showGallery={!!workspaceId}
-        onTriggerReplace={() => {
-          const el = document.querySelector('input[type="file"]') as HTMLInputElement;
-          if (el) el.click();
-        }}
-        onTriggerGallery={() => setGalleryOpen(true)}
-        onRemove={() => onChange('')}
-      />
-    );
-  }
-
   return (
-    <>
-      <EmptyState
-        onFileSelect={handleFileSelect}
-        onOpenGallery={() => setGalleryOpen(true)}
-        onOpenLink={() => setLinkDialogOpen(true)}
-        showGallery={!!workspaceId}
-        maxSizeMB={maxSizeMB}
-        className={className}
+    <div className="w-full">
+      {/* Isolated hidden file input managed at parent root */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
       />
+
+      {isUploading ? (
+        <UploadingState
+          previewUrl={tempPreview}
+          progress={uploadProgress}
+          className={className}
+        />
+      ) : value ? (
+        <UploadedState
+          imageUrl={value}
+          showGallery={!!workspaceId}
+          onTriggerReplace={handleTriggerReplace}
+          onTriggerGallery={() => setGalleryOpen(true)}
+          onRemove={() => onChange('')}
+        />
+      ) : (
+        <EmptyState
+          onTriggerReplace={handleTriggerReplace}
+          onOpenGallery={() => setGalleryOpen(true)}
+          onOpenLink={() => setLinkDialogOpen(true)}
+          showGallery={!!workspaceId}
+          maxSizeMB={maxSizeMB}
+          className={className}
+        />
+      )}
       
       <UrlDialog
         open={linkDialogOpen}
@@ -162,6 +175,7 @@ export function ImageUploader({
           workspaceId={workspaceId}
         />
       ) : null}
-    </>
+    </div>
   );
 }
+
