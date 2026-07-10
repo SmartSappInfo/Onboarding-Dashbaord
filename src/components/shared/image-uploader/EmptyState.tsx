@@ -39,7 +39,7 @@ export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGa
     <div
       className={cn(
         "w-full rounded-2xl border-2 border-dashed transition-all duration-300 p-6 flex flex-col items-center justify-center gap-4 text-center cursor-pointer min-h-[220px]",
-        dragActive ? "border-emerald-500 bg-emerald-500/5 scale-[1.01]" : "border-slate-800 bg-slate-900/10 hover:border-slate-700",
+        dragActive ? "border-emerald-500 bg-emerald-500/5 scale-[1.01]" : "border-border bg-muted/20 hover:border-muted-foreground/30",
         className
       )}
       onDragEnter={handleDrag}
@@ -48,18 +48,18 @@ export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGa
       onDrop={handleDrop}
       onClick={onTriggerReplace}
     >
-      <div className="w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
+      <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground">
         <Upload className="w-5 h-5" />
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-bold text-slate-300 hidden md:block">
+        <p className="text-xs font-bold text-foreground hidden md:block">
           Drag & drop image here or click to browse
         </p>
-        <p className="text-xs font-bold text-slate-300 block md:hidden">
+        <p className="text-xs font-bold text-foreground block md:hidden">
           Tap to upload image or browse
         </p>
-        <p className="text-[10px] font-medium text-slate-500">
+        <p className="text-[10px] font-medium text-muted-foreground">
           PNG • JPG • WEBP • Max {maxSizeMB}MB
         </p>
       </div>
@@ -69,11 +69,11 @@ export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGa
           <Upload className="w-3.5 h-3.5" /> Upload
         </Button>
         {showGallery && (
-          <Button type="button" variant="outline" size="sm" onClick={onOpenGallery} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1 px-2.5 shrink-0">
+          <Button type="button" variant="outline" size="sm" onClick={onOpenGallery} className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0">
             <FolderHeart className="w-3.5 h-3.5" /> Media
           </Button>
         )}
-        <Button type="button" variant="outline" size="sm" onClick={onOpenLink} className="h-8 rounded-xl text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400 gap-1 px-2.5 shrink-0">
+        <Button type="button" variant="outline" size="sm" onClick={onOpenLink} className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0">
           <LinkIcon className="w-3.5 h-3.5" /> Link
         </Button>
       </div>
