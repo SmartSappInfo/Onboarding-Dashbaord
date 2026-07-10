@@ -1026,7 +1026,7 @@ export async function bulkApplyTagsAction(
     // Using after() runs this outside the HTTP response window, preventing timeouts
     // and ensuring every contact's automation is triggered even for 10k+ bulk ops.
     if (allContactNewTags.length > 0) {
-      after(async () => {
+      const runActivityLogs = async () => {
         for (const item of allContactNewTags) {
           const resolvedEntityId =
             contactType === 'workspace_entity'
@@ -1101,7 +1101,17 @@ export async function bulkApplyTagsAction(
             }
           }
         }
-      });
+      };
+
+      try {
+        after(runActivityLogs);
+      } catch (err) {
+        // Fallback for non-request context (e.g. testing)
+        console.warn('[BULK_TAG_ADDED] after() called outside Next.js request context. Executing in background promise.');
+        runActivityLogs().catch(err => {
+          console.error('[BULK_TAG_ADDED] Fallback runActivityLogs failed:', err);
+        });
+      }
     }
 
     // Re-project contacts for the re-tagged workspace_entities (Phase 6.1/6.3).

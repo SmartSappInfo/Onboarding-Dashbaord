@@ -1,4 +1,5 @@
 import { adminDb } from '../firebase-admin';
+import { cancelDelayTask, rescheduleDelayTask } from '../gcp-tasks-client';
 
 /**
  * Converts value and unit into milliseconds.
@@ -100,6 +101,13 @@ export async function reschedulePendingJobs(
           executeAt: newExecuteAt.toISOString(),
         } as any;
 
+        // Cancel the scheduled remote task since we execute immediately
+        try {
+          await cancelDelayTask(data.runId, nodeId, data.payload?.channel as any);
+        } catch (err) {
+          console.error(`[RESCHEDULE] Failed to cancel task for run ${data.runId}:`, err);
+        }
+
         const success = await resumeAutomationRun(claimedJob);
         batch.update(doc.ref, {
           status: success ? 'completed' : 'failed',
@@ -108,6 +116,20 @@ export async function reschedulePendingJobs(
           updatedAt: new Date().toISOString(),
         });
       } else {
+        // Reschedule task in GCP Cloud Tasks
+        try {
+          await rescheduleDelayTask({
+            runId: data.runId,
+            nodeId,
+            automationId,
+            executeAt: newExecuteAt.toISOString(),
+            channel: data.payload?.channel as any,
+            payload: data.payload,
+          });
+        } catch (err) {
+          console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
+        }
+
         batch.update(doc.ref, {
           executeAt: newExecuteAt.toISOString(),
           updatedAt: new Date().toISOString(),
@@ -143,6 +165,12 @@ export async function purgePendingJobsForNode(
     const batch = adminDb.batch();
     for (const doc of chunk) {
       batch.delete(doc.ref);
+      const data = doc.data();
+      try {
+        await cancelDelayTask(data.runId, nodeId, data.payload?.channel as any);
+      } catch (err) {
+        console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
+      }
     }
     await batch.commit();
   }
@@ -170,6 +198,14 @@ export async function purgeAllPendingJobsForAutomation(
     const batch = adminDb.batch();
     for (const doc of chunk) {
       batch.delete(doc.ref);
+      const data = doc.data();
+      if (data.targetNodeId) {
+        try {
+          await cancelDelayTask(data.runId, data.targetNodeId, data.payload?.channel as any);
+        } catch (err) {
+          console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
+        }
+      }
     }
     await batch.commit();
   }

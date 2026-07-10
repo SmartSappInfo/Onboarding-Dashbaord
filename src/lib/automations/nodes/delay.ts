@@ -28,13 +28,12 @@ export async function handleDelayNode(
     ...(context.entityType ? { entityType: context.entityType } : {}),
   };
 
-  await adminDb.collection('automation_jobs').add({
-    automationId: context.automationId,
+  const { scheduleDelayTask } = await import('../../gcp-tasks-client');
+  await scheduleDelayTask({
     runId: context.runId,
-    targetNodeId: node.id,
-    payload: persistedPayload,
+    nodeId: node.id,
+    automationId: context.automationId,
     executeAt: executeAt.toISOString(),
-    status: 'pending',
-    createdAt: now.toISOString(),
+    payload: persistedPayload,
   });
 }

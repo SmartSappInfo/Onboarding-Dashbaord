@@ -2668,6 +2668,27 @@ describe('Property 9: Bulk Operation Accuracy', () => {
     const mockCollection = vi.fn((collectionName: string) => {
       if (collectionName === 'tag_audit_logs') return { doc: mockAuditDoc };
       if (collectionName === 'tags') return { doc: mockTagDoc };
+      if (collectionName === 'workspace_entities') {
+        const mockGet = vi.fn().mockResolvedValue({
+          empty: false,
+          docs: [
+            {
+              id: 'we-id',
+              data: () => ({
+                workspaceId: 'test-workspace',
+                organizationId: 'test-org',
+                entityId: 'entity-id',
+              }),
+            },
+          ],
+        });
+        const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
+        const mockWhere = vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({ limit: mockLimit }),
+          limit: mockLimit
+        });
+        return { where: mockWhere };
+      }
       // schools / prospects
       return { doc: mockContactDoc };
     });

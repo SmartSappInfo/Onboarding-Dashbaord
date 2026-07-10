@@ -4,6 +4,7 @@ import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logAutomationEvent } from '../automation-log';
 import type { Automation, AutomationRun } from '../types';
+import { cancelDelayTask, scheduleDelayTask } from '../gcp-tasks-client';
 
 interface RunManagementResult {
   success: boolean;
@@ -29,13 +30,23 @@ async function purgeRunPendingJobs(runId: string): Promise<number> {
   const jobsSnap = await adminDb
     .collection('automation_jobs')
     .where('runId', '==', runId)
-    .where('status', '==', 'pending')
+    .where('status', 'in', ['pending', 'paused'])
     .get();
 
   if (jobsSnap.empty) return 0;
 
   const batch = adminDb.batch();
-  jobsSnap.docs.forEach((doc) => batch.delete(doc.ref));
+  for (const doc of jobsSnap.docs) {
+    batch.delete(doc.ref);
+    const jobData = doc.data();
+    if (jobData.targetNodeId) {
+      try {
+        await cancelDelayTask(runId, jobData.targetNodeId, jobData.payload?.channel as any);
+      } catch (err) {
+        console.error(`[PURGE] Failed to cancel task for run ${runId}:`, err);
+      }
+    }
+  }
   await batch.commit();
   return jobsSnap.size;
 }
@@ -253,11 +264,19 @@ export async function forceAdvanceRun(
     const jobDoc = pendingJobSnap.docs[0];
     const jobData = { id: jobDoc.id, ...jobDoc.data() } as Record<string, unknown>;
 
-    // Claim the job
+    // Claim the job and cancel the remote Cloud Task
     await jobDoc.ref.update({
       status: 'processing',
       claimedAt: new Date().toISOString(),
     });
+
+    if (jobData.targetNodeId) {
+      try {
+        await cancelDelayTask(runId, jobData.targetNodeId as string, (jobData.payload as any)?.channel);
+      } catch (err) {
+        console.error(`[ADVANCE] Failed to cancel task for run ${runId}:`, err);
+      }
+    }
 
     // If run was paused, resume it
     if (run.status === 'paused') {
@@ -325,9 +344,17 @@ export async function pauseRun(
 
     if (!pendingJobs.empty) {
       const batch = adminDb.batch();
-      pendingJobs.docs.forEach((doc) => {
+      for (const doc of pendingJobs.docs) {
         batch.update(doc.ref, { status: 'paused' });
-      });
+        const jobData = doc.data();
+        if (jobData.targetNodeId) {
+          try {
+            await cancelDelayTask(runId, jobData.targetNodeId, jobData.payload?.channel as any);
+          } catch (err) {
+            console.error(`[PAUSE] Failed to cancel task for run ${runId}:`, err);
+          }
+        }
+      }
       await batch.commit();
     }
 
@@ -350,7 +377,7 @@ export async function pauseRun(
 
 /**
  * Resumes a paused run, restoring all paused jobs back to 'pending'
- * so the heartbeat processor picks them up again.
+ * so the heartbeat processor/tasks engine picks them up again.
  */
 export async function resumePausedRun(
   runId: string,
@@ -379,9 +406,24 @@ export async function resumePausedRun(
 
     if (!pausedJobs.empty) {
       const batch = adminDb.batch();
-      pausedJobs.docs.forEach((doc) => {
+      for (const doc of pausedJobs.docs) {
         batch.update(doc.ref, { status: 'pending' });
-      });
+        const jobData = doc.data();
+        if (jobData.targetNodeId) {
+          try {
+            await scheduleDelayTask({
+              runId,
+              nodeId: jobData.targetNodeId,
+              automationId: run.automationId,
+              executeAt: jobData.executeAt,
+              channel: jobData.payload?.channel as any,
+              payload: jobData.payload,
+            });
+          } catch (err) {
+            console.error(`[RESUME] Failed to schedule task for run ${runId}:`, err);
+          }
+        }
+      }
       await batch.commit();
     }
 
