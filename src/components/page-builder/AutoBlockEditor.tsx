@@ -5,21 +5,21 @@
  * hand-written per-type switch in the old `BlockEditor` — adding a block no
  * longer means editing the panel. Each `BlockField.kind` maps to a control.
  */
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, X, Settings2, Upload, Loader2, FolderHeart } from 'lucide-react';
+import { PlusCircle, X, Settings2, FolderHeart } from 'lucide-react';
 import { getBlock } from '@/lib/page-builder/registry';
 import type { BlockField } from '@/lib/page-builder/fields';
 import { genId } from '@/lib/page-builder/tree-operations';
-import { uploadPageImage } from '@/lib/page-builder/upload';
 import type { BuilderResources, PageBlock } from '@/lib/types';
 import TipTapEditor from '@/app/admin/pages/[id]/builder/components/TipTapEditor';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import { ImageUploader } from '@/components/shared/image-uploader';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
@@ -39,62 +39,15 @@ function ImageField({ label, value, workspaceId, onChange }: {
   workspaceId?: string;
   onChange: (value: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
-
-  const handleFile = async (file: File) => {
-    if (!workspaceId) return;
-    setUploading(true);
-    try {
-      onChange(await uploadPageImage(file, workspaceId));
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 items-center">
-        <Input aria-label={label} value={value} placeholder="https://..." onChange={(e) => onChange(e.target.value)} className={`${INPUT_CLASS} flex-1`} />
-        {value ? (
-          <div className="h-10 w-10 rounded-lg border border-slate-700 overflow-hidden bg-slate-800 flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={value} alt="preview" className="w-full h-full object-cover" />
-          </div>
-        ) : null}
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {workspaceId ? (
-          <>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
-            />
-            <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => inputRef.current?.click()} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
-              {uploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
-              {uploading ? 'Uploading…' : 'Upload image'}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
-              <FolderHeart className="w-3 h-3 mr-1" />
-              Select from Gallery
-            </Button>
-            <MediaSelectorDialog
-              open={libraryOpen}
-              onOpenChange={setLibraryOpen}
-              onSelectAsset={(asset) => {
-                onChange(asset.url);
-                setLibraryOpen(false);
-              }}
-              filterType="image"
-              workspaceId={workspaceId}
-            />
-          </>
-        ) : null}
-      </div>
+      <ImageUploader
+        value={value}
+        onChange={onChange}
+        workspaceId={workspaceId}
+        label={label}
+        category="Page Builder"
+      />
     </div>
   );
 }
