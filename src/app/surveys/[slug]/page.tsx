@@ -117,18 +117,34 @@ export default async function PublicSurveyPage({
     let resolvedEntityId = survey.entityId || null;
     let resolvedRecipientContact: string | null = null;
 
-    if (ref) {
-        const isEncrypted = ref.split(':').length === 3;
-        if (isEncrypted) {
-            try {
-                const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
-                const decryptRes = await decryptRecipientAction(ref);
-                if (decryptRes.success && decryptRes.contactId) {
-                    resolvedRecipientContact = decryptRes.contactEmail || null;
+    const isEncrypted = ref ? ref.split(':').length === 3 : false;
+
+    if (ref && isEncrypted) {
+        try {
+            const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
+            const decryptRes = await decryptRecipientAction(ref);
+            if (decryptRes.success && decryptRes.contactId) {
+                resolvedRecipientContact = decryptRes.contactEmail || null;
+            } else {
+                // telemetry diagnostic logging for tracking broken or tampered campaign links
+                try {
+                    const { headers } = await import('next/headers');
+                    const reqHeaders = await headers();
+                    await adminDb.collection('telemetry_link_errors').add({
+                        surveyId: survey.id,
+                        surveySlug: survey.slug,
+                        token: ref,
+                        error: decryptRes.error || 'Decryption yielded empty contact ID.',
+                        userAgent: reqHeaders.get('user-agent') || 'Unknown',
+                        referer: reqHeaders.get('referer') || 'Unknown',
+                        timestamp: new Date()
+                    });
+                } catch (telemetryErr) {
+                    console.error('[PublicSurveyPage] Failed to write telemetry link error:', telemetryErr);
                 }
-            } catch (err) {
-                console.warn('[PublicSurveyPage] Failed to decrypt ref token:', err);
             }
+        } catch (err) {
+            console.warn('[PublicSurveyPage] Failed to decrypt ref token:', err);
         }
     }
 
@@ -141,7 +157,8 @@ export default async function PublicSurveyPage({
                     paramsRecord[k] = v;
                 }
             });
-            if (ref) {
+            // Fallback: Only pass plain (unencrypted) ref values as direct entityIds
+            if (ref && !isEncrypted) {
                 paramsRecord.entityId = ref;
             }
             if (resolvedRecipientContact) {
