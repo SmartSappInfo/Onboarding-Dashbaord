@@ -5,6 +5,7 @@ import { RefreshCw, BarChart3, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useMessageNodeStats } from './useMessageNodeStats';
+import { MessageNodeLogsDialog } from './MessageNodeLogsDialog';
 
 interface MessageNodeStatsPanelProps {
   automationId: string | undefined;
@@ -25,10 +26,18 @@ export function MessageNodeStatsPanel({
 }: MessageNodeStatsPanelProps): React.ReactElement {
   const { stats, isLoading, isRefreshing, error, refresh } = useMessageNodeStats(automationId, nodeId);
 
+  const [isLogsOpen, setIsLogsOpen] = React.useState(false);
+  const [selectedMetric, setSelectedMetric] = React.useState('sent');
+
   const isUnsaved = !automationId || automationId === 'new';
   const resolvedChannel = stats?.channel ?? channel ?? 'email';
   const sent = stats?.sent ?? 0;
   const pct = (n: number) => (sent > 0 ? Math.round((n / sent) * 100) : 0);
+
+  const openLogs = (metric: string) => {
+    setSelectedMetric(metric);
+    setIsLogsOpen(true);
+  };
 
   return (
     <div className="space-y-3 p-1">
@@ -38,6 +47,7 @@ export function MessageNodeStatsPanel({
           Delivery Statistics
         </div>
         <Button
+          type="button"
           size="sm"
           variant="ghost"
           className="h-7 gap-1.5 px-2 text-[10px] transition-all duration-150 ease-out active:scale-95"
@@ -67,37 +77,38 @@ export function MessageNodeStatsPanel({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <StatCard label="Sent" value={sent} />
+            <StatCard label="Sent" value={sent} onClick={() => openLogs('sent')} />
 
             {resolvedChannel === 'email' ? (
               <>
-                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
-                <StatCard label="Opened" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" />
-                <StatCard label="Clicked" value={stats.clicked} sub={`${pct(stats.clicked)}%`} tone="success" />
-                <StatCard label="Bounced" value={stats.bounced} sub={`${pct(stats.bounced)}%`} tone="danger" />
-                <StatCard label="Complaints" value={stats.complained} sub={`${pct(stats.complained)}%`} tone="danger" />
-                <StatCard label="Unsubscribed" value={stats.unsubscribed} sub={`${pct(stats.unsubscribed)}%`} tone="danger" />
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" onClick={() => openLogs('delivered')} />
+                <StatCard label="Opened" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" onClick={() => openLogs('opened')} />
+                <StatCard label="Clicked" value={stats.clicked} sub={`${pct(stats.clicked)}%`} tone="success" onClick={() => openLogs('clicked')} />
+                <StatCard label="Bounced" value={stats.bounced} sub={`${pct(stats.bounced)}%`} tone="danger" onClick={() => openLogs('bounced')} />
+                <StatCard label="Complaints" value={stats.complained} sub={`${pct(stats.complained)}%`} tone="danger" onClick={() => openLogs('bounced')} />
+                <StatCard label="Unsubscribed" value={stats.unsubscribed} sub={`${pct(stats.unsubscribed)}%`} tone="danger" onClick={() => openLogs('unsubscribed')} />
               </>
             ) : resolvedChannel === 'sms' ? (
               <>
-                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" onClick={() => openLogs('delivered')} />
                 <Stat
                   label="Not Delivered / Rejected / Submitted"
                   value={sent - stats.delivered}
                   sub={`${pct(sent - stats.delivered)}%`}
                   tone="warning"
+                  onClick={() => openLogs('bounced')}
                 />
               </>
             ) : (
               <>
-                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" />
-                <StatCard label="Read" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" />
-                <StatCard label="Failed" value={stats.failed} sub={`${pct(stats.failed)}%`} tone="danger" />
+                <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" onClick={() => openLogs('delivered')} />
+                <StatCard label="Read" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" onClick={() => openLogs('opened')} />
+                <StatCard label="Failed" value={stats.failed} sub={`${pct(stats.failed)}%`} tone="danger" onClick={() => openLogs('bounced')} />
               </>
             )}
 
             {stats.resent > 0 ? (
-              <StatCard label="Resent" value={stats.resent} tone="warning" />
+              <StatCard label="Resent" value={stats.resent} tone="warning" onClick={() => openLogs('sent')} />
             ) : null}
           </div>
 
@@ -108,6 +119,18 @@ export function MessageNodeStatsPanel({
           ) : null}
         </>
       )}
+
+      {automationId && (
+        <MessageNodeLogsDialog
+          isOpen={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
+          automationId={automationId}
+          nodeId={nodeId}
+          nodeLabel="Message Action"
+          channel={resolvedChannel}
+          initialTab={selectedMetric}
+        />
+      )}
     </div>
   );
 }
@@ -115,11 +138,11 @@ export function MessageNodeStatsPanel({
 type StatTone = 'default' | 'info' | 'success' | 'danger' | 'warning';
 
 const TONE_CLASS: Record<StatTone, string> = {
-  default: 'border-border/60 bg-card',
-  info: 'border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/20',
-  success: 'border-green-200 bg-green-50/60 dark:border-green-900/50 dark:bg-green-950/20',
-  danger: 'border-red-200 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20',
-  warning: 'border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20',
+  default: 'border-border/60 bg-card hover:bg-muted/10',
+  info: 'border-blue-200 bg-blue-50/60 hover:bg-blue-100/50 dark:border-blue-900/50 dark:bg-blue-950/20 dark:hover:bg-blue-950/40',
+  success: 'border-green-200 bg-green-50/60 hover:bg-green-100/50 dark:border-green-900/50 dark:bg-green-950/20 dark:hover:bg-green-950/40',
+  danger: 'border-red-200 bg-red-50/60 hover:bg-red-100/50 dark:border-red-900/50 dark:bg-red-950/20 dark:hover:bg-red-950/40',
+  warning: 'border-amber-200 bg-amber-50/60 hover:bg-amber-100/50 dark:border-amber-900/50 dark:bg-amber-950/20 dark:hover:bg-amber-950/40',
 };
 
 function StatCard({
@@ -127,15 +150,24 @@ function StatCard({
   value,
   sub,
   tone = 'default',
+  onClick,
 }: {
   label: string;
   value: number;
   sub?: string;
   tone?: StatTone;
+  onClick?: () => void;
 }): React.ReactElement {
   return (
-    <div className={cn('rounded-lg border p-2.5', TONE_CLASS[tone])}>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
+    <div 
+      className={cn(
+        'rounded-lg border p-2.5 transition-all duration-150', 
+        TONE_CLASS[tone],
+        onClick && 'cursor-pointer hover:border-primary/45 hover:shadow-sm active:scale-[0.98]'
+      )}
+      onClick={onClick}
+    >
+      <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
       <p className="text-base font-semibold leading-tight text-foreground mt-0.5">
         {value}
         {sub ? (
@@ -152,15 +184,24 @@ function Stat({
   value,
   sub,
   tone = 'default',
+  onClick,
 }: {
   label: string;
   value: number;
   sub?: string;
   tone?: StatTone;
+  onClick?: () => void;
 }): React.ReactElement {
   return (
-    <div className={cn('rounded-lg border p-2.5 col-span-2', TONE_CLASS[tone])}>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
+    <div 
+      className={cn(
+        'rounded-lg border p-2.5 col-span-2 transition-all duration-150', 
+        TONE_CLASS[tone],
+        onClick && 'cursor-pointer hover:border-primary/45 hover:shadow-sm active:scale-[0.98]'
+      )}
+      onClick={onClick}
+    >
+      <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
       <p className="text-base font-semibold leading-tight text-foreground mt-0.5">
         {value}
         {sub ? (

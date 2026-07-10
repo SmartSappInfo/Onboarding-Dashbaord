@@ -1,6 +1,6 @@
 'use server';
 
-import type { Automation } from './types';
+import type { Automation, MessageLog } from './types';
 import type { AutomationExportEnvelope, ImportMappings } from './automations/portability';
 import {
   removeAutomation,
@@ -130,6 +130,32 @@ export async function getMessageNodeStatsAction(automationId: string, nodeId: st
   const { readMessageNodeStats } = await import('./messaging/message-node-stats');
   return readMessageNodeStats(automationId, nodeId);
 }
+
+/**
+ * Returns all message logs associated with a specific message node in an automation.
+ * Fetches via equality constraints and sorts on the client to avoid composite index overhead.
+ */
+export async function getMessageNodeLogsAction(automationId: string, nodeId: string): Promise<MessageLog[]> {
+  const { adminDb } = await import('./firebase-admin');
+  const snap = await adminDb.collection('message_logs')
+    .where('automationId', '==', automationId)
+    .where('nodeId', '==', nodeId)
+    .limit(1000)
+    .get();
+
+  const logs = snap.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as MessageLog[];
+
+  // Sort by sentAt descending on client
+  return logs.sort((a, b) => {
+    const timeA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+    const timeB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+    return timeB - timeA;
+  });
+}
+
 
 // ── Portability Export / Import Actions ──────────────────────────────────────────
 
