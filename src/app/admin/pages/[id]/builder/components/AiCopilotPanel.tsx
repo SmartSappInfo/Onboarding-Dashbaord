@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Sparkles, Send, Bot, Check, ArrowRight, RefreshCw, Wand2 } from 'lucide-react';
+import { Sparkles, Bot, Check, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { CampaignPageVersion } from '@/lib/types';
+import UnifiedPromptInput, { StagedAttachment } from '@/components/shared/UnifiedPromptInput';
 
 interface AiCopilotPanelProps {
   readonly version: CampaignPageVersion;
@@ -35,6 +34,7 @@ export function AiCopilotPanel({
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [stagedFiles, setStagedFiles] = useState<StagedAttachment[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -53,6 +53,7 @@ export function AiCopilotPanel({
     if (!text.trim()) return;
     setIsGenerating(true);
     setPrompt('');
+    setStagedFiles([]);
 
     // Add user message
     const userMsg: Message = { role: 'user', content: text };
@@ -240,28 +241,15 @@ export function AiCopilotPanel({
 
       {/* Prompt input form bar */}
       <div className="p-4 border-t border-slate-850 bg-slate-950/40">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendPrompt(prompt);
-          }}
-          className="flex gap-2 items-center"
-        >
-          <Input
-            placeholder="Ask Copilot to build page elements..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={isGenerating}
-            className="h-9 text-[10px] font-medium bg-slate-900 border-slate-800 text-slate-200 focus:border-emerald-500/50 rounded-xl"
-          />
-          <Button
-            type="submit"
-            disabled={isGenerating || !prompt.trim()}
-            className="h-9 w-9 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center justify-center shrink-0 p-0"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </Button>
-        </form>
+        <UnifiedPromptInput
+          value={prompt}
+          onChange={setPrompt}
+          onSubmit={() => handleSendPrompt(prompt)}
+          isLoading={isGenerating}
+          stagedFiles={stagedFiles}
+          onStagedFilesChange={setStagedFiles}
+          placeholder="Ask Copilot to build page elements..."
+        />
       </div>
     </div>
   );
