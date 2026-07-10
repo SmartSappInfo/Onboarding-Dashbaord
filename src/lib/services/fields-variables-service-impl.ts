@@ -900,8 +900,31 @@ export class FieldsVariablesService {
     const entityIdParam = searchParams.entityId || searchParams.entity;
     const emailParam = searchParams.email || searchParams.contactEmail;
     const phoneParam = searchParams.phone || searchParams.contactPhone;
+    const contactIdParam = searchParams.contactId || searchParams.contact;
 
-    // 1. Direct ID lookup
+    // 1. Direct Contact ID lookup
+    if (contactIdParam) {
+      try {
+        const allSnaps = await adminDb.collection('workspace_entities')
+          .where('workspaceId', 'in', workspaceIds)
+          .get();
+        for (const doc of allSnaps.docs) {
+          const data = doc.data();
+          const contacts = (data.entityContacts || []) as EntityContact[];
+          const found = contacts.find(c => c.id === contactIdParam);
+          if (found) {
+            return { 
+              entityId: (data.entityId as string) || null, 
+              recipientContact: found.email || found.phone || null 
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[FieldsVariablesService] Error resolving entityId by contactId parameter:', err);
+      }
+    }
+
+    // 2. Direct ID lookup
     if (entityIdParam) {
       try {
         const snap = await adminDb.collection('workspace_entities')

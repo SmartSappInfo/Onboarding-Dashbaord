@@ -84,7 +84,13 @@ export default function SurveyDisplay({
     }, [resolvedWorkspaceId, isPreviewMode]);
 
     React.useEffect(() => {
+        console.log('[SurveyDisplay] Mount/Update. preloadedVariables:', preloadedVariables);
+        console.log('[SurveyDisplay] isPreviewMode:', isPreviewMode, 'resolvedWorkspaceId:', resolvedWorkspaceId);
+    }, [preloadedVariables, isPreviewMode, resolvedWorkspaceId]);
+
+    React.useEffect(() => {
         if (isPreviewMode && resolvedWorkspaceId && selectedEntityId && selectedEntityId !== 'none') {
+            console.log('[SurveyDisplay] Loading simulation values for entity:', selectedEntityId);
             setIsLoadingSimulation(true);
             getVariableValuesMapAction({
                 workspaceId: resolvedWorkspaceId,
@@ -92,13 +98,15 @@ export default function SurveyDisplay({
                 recipientContact: selectedContactEmail && selectedContactEmail !== 'none' ? selectedContactEmail : undefined,
                 surveyId: survey.id
             }).then((values) => {
+                console.log('[SurveyDisplay] Loaded simulation values:', values);
                 setSimulatedValues(values);
                 setIsLoadingSimulation(false);
             }).catch(err => {
-                console.error("Failed to fetch simulated variable values:", err);
+                console.error("[SurveyDisplay] Failed to fetch simulated variable values:", err);
                 setIsLoadingSimulation(false);
             });
-        } else {
+        } else if (isPreviewMode) {
+            console.log('[SurveyDisplay] Clearing simulation values (preview mode else-branch).');
             setSimulatedValues({});
         }
     }, [selectedEntityId, selectedContactEmail, resolvedWorkspaceId, survey.id, isPreviewMode]);
@@ -517,6 +525,8 @@ function LeadCaptureFormView({
         const resolvedPhone = phone || simulatedValues.contact_phone || simulatedValues.phone || '';
         const resolvedCompany = company || simulatedValues.entity_name || simulatedValues.company || simulatedValues.school_name || '';
 
+        console.log('[LeadCaptureFormView] Values check: name:', resolvedName, 'email:', resolvedEmail, 'phone:', resolvedPhone, 'company:', resolvedCompany);
+
         if (resolvedName && resolvedName !== name) setName(resolvedName);
         if (resolvedEmail && resolvedEmail !== email) setEmail(resolvedEmail);
         if (resolvedPhone && resolvedPhone !== phone) setPhone(resolvedPhone);
@@ -534,6 +544,7 @@ function LeadCaptureFormView({
             }
         });
         if (hasCustomUpdate) {
+            console.log('[LeadCaptureFormView] Custom fields pre-populated:', nextCustom);
             setCustomValues(nextCustom);
         }
 
@@ -553,6 +564,16 @@ function LeadCaptureFormView({
             }
         });
 
+        console.log('[LeadCaptureFormView] Auto-submit flags:', {
+            isNameValid,
+            isEmailValid,
+            isPhoneValid,
+            isCompanyValid,
+            isCustomValid,
+            hasAutoSubmitted: hasAutoSubmitted.current,
+            isPreview: searchParams?.get('preview') === 'true'
+        });
+
         if (
             isNameValid &&
             isEmailValid &&
@@ -562,6 +583,7 @@ function LeadCaptureFormView({
             !hasAutoSubmitted.current &&
             searchParams?.get('preview') !== 'true'
         ) {
+            console.log('[LeadCaptureFormView] All checks passed! Launching auto-submit flow.');
             hasAutoSubmitted.current = true;
             
             const triggerAutoSubmit = async () => {
@@ -575,6 +597,7 @@ function LeadCaptureFormView({
                         ...nextCustom
                     }, outcomeId);
 
+                    console.log('[LeadCaptureFormView] submitPublicSurveyLead response:', res);
                     if (res.success) {
                         const searchParamsObj = new URLSearchParams(window.location.search);
                         const queryStr = searchParamsObj.toString() ? `?${searchParamsObj.toString()}` : '';

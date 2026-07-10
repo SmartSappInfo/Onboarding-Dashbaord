@@ -116,16 +116,21 @@ export default async function PublicSurveyPage({
     let preloadedVariables: Record<string, string> = {};
     let resolvedEntityId = survey.entityId || null;
     let resolvedRecipientContact: string | null = null;
+    let resolvedContactId: string | null = null;
 
     const isEncrypted = ref ? ref.split(':').length === 3 : false;
+    console.log('[PublicSurveyPage] Incoming ref:', ref, 'isEncrypted:', isEncrypted);
 
     if (ref && isEncrypted) {
         try {
             const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
             const decryptRes = await decryptRecipientAction(ref);
+            console.log('[PublicSurveyPage] Decryption result:', decryptRes);
             if (decryptRes.success && decryptRes.contactId) {
+                resolvedContactId = decryptRes.contactId;
                 resolvedRecipientContact = decryptRes.contactEmail || null;
             } else {
+                console.warn('[PublicSurveyPage] Decryption failed or yielded empty contactId:', decryptRes.error);
                 // telemetry diagnostic logging for tracking broken or tampered campaign links
                 try {
                     const { headers } = await import('next/headers');
@@ -144,7 +149,7 @@ export default async function PublicSurveyPage({
                 }
             }
         } catch (err) {
-            console.warn('[PublicSurveyPage] Failed to decrypt ref token:', err);
+            console.error('[PublicSurveyPage] Error executing decryptRecipientAction:', err);
         }
     }
 
@@ -161,18 +166,25 @@ export default async function PublicSurveyPage({
             if (ref && !isEncrypted) {
                 paramsRecord.entityId = ref;
             }
+            if (resolvedContactId) {
+                paramsRecord.contactId = resolvedContactId;
+            }
             if (resolvedRecipientContact) {
                 paramsRecord.email = resolvedRecipientContact;
             }
 
+            console.log('[PublicSurveyPage] Params compile for resolveEntityContextFromParams:', paramsRecord);
             const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
                 survey.workspaceIds,
                 paramsRecord
             );
+            console.log('[PublicSurveyPage] resolveEntityContextFromParams output:', entityCtx);
+
             if (entityCtx.entityId || entityCtx.recipientContact) {
                 resolvedEntityId = entityCtx.entityId;
                 resolvedRecipientContact = entityCtx.recipientContact;
 
+                console.log('[PublicSurveyPage] Fetching preloaded variables for workspace:', resolvedWorkspaceId, 'entity:', resolvedEntityId, 'contact:', resolvedRecipientContact);
                 const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
                 preloadedVariables = await getVariableValuesMapAction({
                     workspaceId: resolvedWorkspaceId,
@@ -180,9 +192,12 @@ export default async function PublicSurveyPage({
                     recipientContact: entityCtx.recipientContact || undefined,
                     surveyId: survey.id
                 });
+                console.log('[PublicSurveyPage] Preloaded variables loaded successfully:', preloadedVariables);
+            } else {
+                console.log('[PublicSurveyPage] No entity context resolved from params.');
             }
         } catch (err) {
-            console.warn('[PublicSurveyPage] Failed to preload variables:', err);
+            console.error('[PublicSurveyPage] Failed to resolve entity context or preload variables:', err);
         }
     }
 
