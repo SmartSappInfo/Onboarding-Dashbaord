@@ -9,14 +9,63 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import VideoEmbed from '@/components/video-embed';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
+import { cn } from '@/lib/utils';
+
+const getCardStyle = (props: {
+  cardBgType?: 'default' | 'color' | 'gradient' | 'image';
+  cardBgColor?: string;
+  cardBgGradientFrom?: string;
+  cardBgGradientTo?: string;
+  cardBgImage?: string;
+  cardBgImageOpacity?: number;
+  cardTextColor?: string;
+  cardBorderColor?: string;
+}) => {
+  const style: React.CSSProperties = {};
+  if (props.cardTextColor) {
+    style.color = props.cardTextColor;
+  }
+  if (props.cardBorderColor) {
+    style.borderColor = props.cardBorderColor;
+    style.borderStyle = 'solid';
+    style.borderWidth = '1px';
+  }
+  if (props.cardBgType === 'color' && props.cardBgColor) {
+    style.backgroundColor = props.cardBgColor;
+    style.backgroundImage = 'none';
+  } else if (props.cardBgType === 'gradient') {
+    style.backgroundImage = `linear-gradient(135deg, ${props.cardBgGradientFrom || '#3b82f6'}, ${props.cardBgGradientTo || '#8b5cf6'})`;
+    style.backgroundColor = 'transparent';
+  } else if (props.cardBgType === 'image' && props.cardBgImage) {
+    const tint = props.cardBgColor || '#0f172a';
+    let rgbaTint = 'rgba(15, 23, 42, 0.5)';
+    if (tint.startsWith('#')) {
+      const r = parseInt(tint.slice(1, 3), 16);
+      const g = parseInt(tint.slice(3, 5), 16);
+      const b = parseInt(tint.slice(5, 7), 16);
+      const opacity = (props.cardBgImageOpacity ?? 50) / 100;
+      rgbaTint = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    style.backgroundImage = `linear-gradient(${rgbaTint}, ${rgbaTint}), url(${props.cardBgImage})`;
+    style.backgroundSize = 'cover';
+    style.backgroundPosition = 'center';
+  }
+  return style;
+};
 
 const schema = z.object({
   quote: z.string().default(''),
   author: z.string().default(''),
   role: z.string().default(''),
   avatarUrl: z.string().default(''),
-  videoUrl: z.string().default(''),
-  thumbnailUrl: z.string().default(''),
+  videoUrl: z.string().optional(),
+  thumbnailUrl: z.string().optional(),
+  videoData: z.object({
+    videoUrl: z.string().default(''),
+    thumbnailUrl: z.string().default(''),
+    title: z.string().default(''),
+    description: z.string().default(''),
+  }).default({}),
   playMode: z.enum(['inline', 'modal']).default('inline'),
   // New fields for the split-video layout
   preset: z.enum(['standard', 'split-video', 'horizontal-dark']).default('standard'),
@@ -24,6 +73,14 @@ const schema = z.object({
   schoolSubtitle: z.string().default(''),
   logoUrl: z.string().default(''),
   videoCaption: z.string().default(''),
+  cardBgType: z.enum(['default', 'color', 'gradient', 'image']).default('default'),
+  cardBgColor: z.string().default('#0f172a'),
+  cardBgGradientFrom: z.string().default('#3b82f6'),
+  cardBgGradientTo: z.string().default('#8b5cf6'),
+  cardBgImage: z.string().default(''),
+  cardBgImageOpacity: z.number().min(0).max(100).default(50),
+  cardTextColor: z.string().default(''),
+  cardBorderColor: z.string().default(''),
 });
 type TestimonialProps = z.infer<typeof schema>;
 
@@ -88,8 +145,7 @@ registerBlock({
     { kind: 'text', key: 'author', label: 'Author Name' },
     { kind: 'text', key: 'role', label: 'Role / Company' },
     { kind: 'image', key: 'avatarUrl', label: 'Avatar Image Source' },
-    { kind: 'url', key: 'videoUrl', label: 'Video Visual Link', filterType: 'video' },
-    { kind: 'image', key: 'thumbnailUrl', label: 'Video Thumbnail Image' },
+    { kind: 'video', key: 'videoData', label: 'Video & Cover Settings' },
     { 
       kind: 'select', 
       key: 'playMode', 
@@ -103,6 +159,24 @@ registerBlock({
     { kind: 'text', key: 'schoolSubtitle', label: 'School Subtitle (e.g. Country)' },
     { kind: 'image', key: 'logoUrl', label: 'School Logo' },
     { kind: 'text', key: 'videoCaption', label: 'Video Cover Caption Text' },
+    {
+      kind: 'select',
+      key: 'cardBgType',
+      label: 'Card Background Style',
+      options: [
+        { value: 'default', label: 'Default Theme' },
+        { value: 'color', label: 'Solid Color' },
+        { value: 'gradient', label: 'Gradient' },
+        { value: 'image', label: 'Background Image' },
+      ],
+    },
+    { kind: 'color', key: 'cardBgColor', label: 'Solid Color / Image Overlay Color' },
+    { kind: 'color', key: 'cardBgGradientFrom', label: 'Gradient Color From' },
+    { kind: 'color', key: 'cardBgGradientTo', label: 'Gradient Color To' },
+    { kind: 'image', key: 'cardBgImage', label: 'Background Image Selector' },
+    { kind: 'slider', key: 'cardBgImageOpacity', label: 'Image Overlay Opacity (%)', min: 0, max: 100, step: 5 },
+    { kind: 'color', key: 'cardTextColor', label: 'Custom Text Color' },
+    { kind: 'color', key: 'cardBorderColor', label: 'Custom Border Color' },
   ],
   defaults: schema.parse({}),
   schema,
@@ -145,7 +219,9 @@ registerBlock({
     }
   ],
   render: (props: TestimonialProps, _block, ctx) => {
-    const hasVideo = props.videoUrl;
+    const finalVideoUrl = props.videoData?.videoUrl || props.videoUrl || '';
+    const finalThumbnailUrl = props.videoData?.thumbnailUrl || props.thumbnailUrl || '';
+    const hasVideo = finalVideoUrl;
     const playInline = props.playMode === 'inline';
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [modalOpen, setModalOpen] = useState(false);
@@ -189,7 +265,14 @@ registerBlock({
           open={videoLibraryOpen}
           onOpenChange={setVideoLibraryOpen}
           onSelectAsset={(asset) => {
-            ctx.onPropChange?.({ videoUrl: asset.url });
+            ctx.onPropChange?.({
+              videoData: {
+                videoUrl: asset.url,
+                thumbnailUrl: props.videoData?.thumbnailUrl || props.thumbnailUrl || '',
+                title: props.videoData?.title || '',
+                description: props.videoData?.description || '',
+              }
+            });
             setVideoLibraryOpen(false);
           }}
           filterType="video"
@@ -199,7 +282,14 @@ registerBlock({
           open={thumbnailLibraryOpen}
           onOpenChange={setThumbnailLibraryOpen}
           onSelectAsset={(asset) => {
-            ctx.onPropChange?.({ thumbnailUrl: asset.url });
+            ctx.onPropChange?.({
+              videoData: {
+                videoUrl: props.videoData?.videoUrl || props.videoUrl || '',
+                thumbnailUrl: asset.url,
+                title: props.videoData?.title || '',
+                description: props.videoData?.description || '',
+              }
+            });
             setThumbnailLibraryOpen(false);
           }}
           filterType="image"
@@ -208,9 +298,18 @@ registerBlock({
       </>
     );
 
+    const isCustomBg = props.cardBgType && props.cardBgType !== 'default';
+
     if (props.preset === 'horizontal-dark') {
       return (
-        <div className="max-w-5xl mx-auto p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#0F172A] to-[#1E293B] dark:from-[#080C14] dark:to-[#0D1321] text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative border border-slate-800/40 group/card">
+        <div 
+          className={cn(
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card",
+            isCustomBg ? "" : "bg-gradient-to-br from-[#0F172A] to-[#1E293B] dark:from-[#080C14] dark:to-[#0D1321]",
+            props.cardBorderColor ? "" : "border border-slate-800/40"
+          )}
+          style={getCardStyle(props)}
+        >
           
           {/* Rounded Squircle Avatar/Image on the left */}
           <div className="relative group/avatar cursor-pointer shrink-0">
@@ -259,7 +358,7 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className="text-base md:text-lg font-medium leading-relaxed text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full"
+                className={cn("text-base md:text-lg font-medium leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full", props.cardTextColor ? "" : "text-white")}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
@@ -270,7 +369,7 @@ registerBlock({
 
             {/* Author, Role & School Name Info */}
             <div className="text-left space-y-0.5">
-              <div className="text-xs md:text-sm text-slate-300 dark:text-slate-400 font-semibold flex items-center gap-1">
+              <div className={cn("text-xs md:text-sm font-semibold flex items-center gap-1", props.cardTextColor ? "" : "text-slate-300 dark:text-slate-400")}>
                 <InlineEditable
                   tagName="span"
                   isEdit={ctx.mode === 'edit'}
@@ -278,7 +377,7 @@ registerBlock({
                   data-prop-key="author"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ author: val })}
-                  className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text text-white font-bold"
+                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-bold", props.cardTextColor ? "" : "text-white")}
                   value={props.author || 'Author Name'}
                   html={false}
                 />
@@ -290,7 +389,7 @@ registerBlock({
                   data-prop-key="role"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ role: val })}
-                  className="outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal text-slate-350"
+                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal", props.cardTextColor ? "" : "text-slate-355")}
                   value={props.role || 'Role'}
                   html={false}
                 />
@@ -305,7 +404,7 @@ registerBlock({
                   data-prop-key="schoolName"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block"
+                  className={cn("text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
                   value={props.schoolName || 'School Name'}
                   html={false}
                 />
@@ -321,7 +420,14 @@ registerBlock({
     if (props.preset === 'split-video') {
       const videoCaptionText = props.videoCaption || 'How Sunflower School cleared their debtors lists without stress';
       return (
-        <div className="max-w-5xl mx-auto p-6 md:p-8 rounded-3xl border border-slate-200/60 dark:border-slate-850 bg-white dark:bg-slate-950 text-left flex flex-col md:flex-row gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card">
+        <div 
+          className={cn(
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col md:flex-row gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card",
+            isCustomBg ? "" : "bg-white dark:bg-slate-950",
+            props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
+          )}
+          style={getCardStyle(props)}
+        >
           {/* Left-hand side: Content Column */}
           <div className="flex-1 flex flex-col justify-between self-stretch py-1">
             {/* Header: School Name, Subtitle, and Logo */}
@@ -334,7 +440,7 @@ registerBlock({
                   data-prop-key="schoolName"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className="text-lg font-extrabold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
+                  className={cn("text-lg font-extrabold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text", props.cardTextColor ? "" : "text-slate-900 dark:text-white")}
                   value={props.schoolName || 'Sunflower School'}
                   html={false}
                 />
@@ -345,7 +451,7 @@ registerBlock({
                   data-prop-key="schoolSubtitle"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolSubtitle: val })}
-                  className="text-xs text-slate-500 dark:text-slate-400 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5"
+                  className={cn("text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
                   value={props.schoolSubtitle || 'Ghana'}
                   html={false}
                 />
@@ -393,14 +499,14 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className="text-base font-semibold leading-relaxed text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1"
+                className={cn("text-base font-semibold leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
             </div>
 
             {/* Quote Author */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <div className={cn("flex items-center gap-1.5 text-xs font-medium", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}>
               <span>-</span>
               <InlineEditable
                 tagName="span"
@@ -409,7 +515,7 @@ registerBlock({
                 data-prop-key="author"
                 data-rich="false"
                 onChange={(val) => ctx.onPropChange?.({ author: val })}
-                className="font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text"
+                className={cn("font-bold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text", props.cardTextColor ? "" : "text-slate-700 dark:text-slate-300")}
                 value={props.author || 'Author'}
                 html={false}
               />
@@ -434,8 +540,8 @@ registerBlock({
               playInline ? (
                 <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 group">
                   <VideoEmbed
-                    url={props.videoUrl}
-                    thumbnailUrl={props.thumbnailUrl || undefined}
+                    url={finalVideoUrl}
+                    thumbnailUrl={finalThumbnailUrl || undefined}
                     disabled={ctx.mode === 'edit' || ctx.isThumbnail}
                   />
                   {changeControls}
@@ -446,10 +552,10 @@ registerBlock({
                     onClick={() => setModalOpen(true)}
                     className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-pointer group shadow-sm transition-all"
                   >
-                    {props.thumbnailUrl ? (
+                    {finalThumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={props.thumbnailUrl}
+                        src={finalThumbnailUrl}
                         alt="Testimonial thumbnail preview"
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
@@ -519,7 +625,7 @@ registerBlock({
                     <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
                       <DialogTitle className="sr-only">Video Testimonial Player</DialogTitle>
                       <iframe
-                        src={props.videoUrl}
+                        src={finalVideoUrl}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -540,13 +646,20 @@ registerBlock({
     }
 
     return (
-      <figure className="max-w-lg mx-auto p-6 rounded-2xl border border-slate-200/60 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/40 text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card">
+      <figure 
+        className={cn(
+          "max-w-lg mx-auto p-6 rounded-2xl text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card",
+          isCustomBg ? "" : "bg-slate-50/70 dark:bg-slate-950/40",
+          props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
+        )}
+        style={getCardStyle(props)}
+      >
         {hasVideo ? (
           playInline ? (
             <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 group">
               <VideoEmbed
-                url={props.videoUrl}
-                thumbnailUrl={props.thumbnailUrl || undefined}
+                url={finalVideoUrl}
+                thumbnailUrl={finalThumbnailUrl || undefined}
                 disabled={ctx.mode === 'edit' || ctx.isThumbnail}
               />
               {changeControls}
@@ -557,10 +670,10 @@ registerBlock({
                 onClick={() => setModalOpen(true)}
                 className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 cursor-pointer group shadow-sm transition-all"
               >
-                {props.thumbnailUrl ? (
+                {finalThumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img 
-                    src={props.thumbnailUrl} 
+                    src={finalThumbnailUrl} 
                     alt="Testimonial thumbnail preview" 
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                   />
@@ -582,7 +695,7 @@ registerBlock({
                 <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
                   <DialogTitle className="sr-only">Video Testimonial Player</DialogTitle>
                   <iframe
-                    src={props.videoUrl}
+                    src={finalVideoUrl}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -603,7 +716,7 @@ registerBlock({
           data-prop-key="quote"
           data-rich="true"
           onChange={(val) => ctx.onPropChange?.({ quote: val })}
-          className="text-sm italic leading-relaxed font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]"
+          className={cn("text-sm italic leading-relaxed font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
           value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
           html={true}
         />
@@ -647,7 +760,7 @@ registerBlock({
               data-prop-key="author"
               data-rich="false"
               onChange={(val) => ctx.onPropChange?.({ author: val })}
-              className="text-xs font-black text-slate-900 dark:text-slate-100 outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text"
+              className={cn("text-xs font-black outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text", props.cardTextColor ? "" : "text-slate-900 dark:text-slate-100")}
               value={props.author || 'Author Name'}
               html={false}
             />
@@ -659,7 +772,7 @@ registerBlock({
                 data-prop-key="role"
                 data-rich="false"
                 onChange={(val) => ctx.onPropChange?.({ role: val })}
-                className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5"
+                className={cn("text-[10px] font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
                 value={ctx.mode === 'edit' ? (props.role || 'Role / Company') : props.role}
                 html={false}
               />

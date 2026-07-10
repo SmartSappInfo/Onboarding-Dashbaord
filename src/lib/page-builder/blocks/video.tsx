@@ -9,9 +9,15 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
 const schema = z.object({
-  url: z.string().default(''),
+  url: z.string().optional(),
+  thumbnailUrl: z.string().optional(),
+  videoData: z.object({
+    videoUrl: z.string().default(''),
+    thumbnailUrl: z.string().default(''),
+    title: z.string().default(''),
+    description: z.string().default(''),
+  }).default({}),
   provider: z.enum(['youtube', 'vimeo', 'loom']).default('youtube'),
-  thumbnailUrl: z.string().default(''),
   playMode: z.enum(['inline', 'modal']).default('inline'),
 });
 type VideoProps = z.infer<typeof schema>;
@@ -22,13 +28,7 @@ registerBlock({
   category: 'content',
   icon: Film,
   fields: [
-    { kind: 'url', key: 'url', label: 'Video URL', placeholder: 'https://youtube.com/watch?v=…' },
-    { kind: 'select', key: 'provider', label: 'Provider', options: [
-      { value: 'youtube', label: 'YouTube' },
-      { value: 'vimeo', label: 'Vimeo' },
-      { value: 'loom', label: 'Loom' },
-    ] },
-    { kind: 'image', key: 'thumbnailUrl', label: 'Thumbnail URL' },
+    { kind: 'video', key: 'videoData', label: 'Video & Cover Settings' },
     {
       kind: 'select',
       key: 'playMode',
@@ -45,9 +45,10 @@ registerBlock({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [videoLibraryOpen, setVideoLibraryOpen] = useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [thumbnailLibraryOpen, setThumbnailLibraryOpen] = useState(false);
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const [modalOpen, setModalOpen] = useState(false);
+
+    const finalVideoUrl = props.videoData?.videoUrl || props.url || '';
+    const finalThumbnailUrl = props.videoData?.thumbnailUrl || props.thumbnailUrl || '';
 
     const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
       <>
@@ -55,57 +56,53 @@ registerBlock({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setVideoLibraryOpen(true); }}
-            className="px-2 py-1 text-[9px] font-bold text-white hover:text-emerald-450 transition-colors"
+            className="px-2 py-1 text-[9px] font-bold text-white hover:text-emerald-455 transition-colors"
           >
             Change Video
-          </button>
-          <span className="h-3 w-px bg-slate-700" />
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setThumbnailLibraryOpen(true); }}
-            className="px-2 py-1 text-[9px] font-bold text-white hover:text-emerald-450 transition-colors"
-          >
-            Change Cover
           </button>
         </div>
         <MediaSelectorDialog
           open={videoLibraryOpen}
           onOpenChange={setVideoLibraryOpen}
           onSelectAsset={(asset) => {
-            ctx.onPropChange?.({ url: asset.url });
+            ctx.onPropChange?.({
+              videoData: {
+                videoUrl: asset.url,
+                thumbnailUrl: props.videoData?.thumbnailUrl || '',
+                title: props.videoData?.title || '',
+                description: props.videoData?.description || '',
+              }
+            });
             setVideoLibraryOpen(false);
           }}
           filterType="video"
           workspaceId={ctx.page.workspaceId}
         />
-        <MediaSelectorDialog
-          open={thumbnailLibraryOpen}
-          onOpenChange={setThumbnailLibraryOpen}
-          onSelectAsset={(asset) => {
-            ctx.onPropChange?.({ thumbnailUrl: asset.url });
-            setThumbnailLibraryOpen(false);
-          }}
-          filterType="image"
-          workspaceId={ctx.page.workspaceId}
-        />
       </>
     );
 
-    if (!props.url) {
+    if (!finalVideoUrl) {
       if (ctx.mode !== 'edit') return <></>;
       return (
         <div 
           onClick={() => setVideoLibraryOpen(true)}
           className="h-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-850 transition-colors"
         >
-          <Film className="w-8 h-8 text-slate-600" />
+          <Film className="w-8 h-8 text-slate-600 animate-pulse" />
           <span className="text-xs text-slate-500 font-medium">Click to select video from media library</span>
           {ctx.page?.workspaceId && (
             <MediaSelectorDialog
               open={videoLibraryOpen}
               onOpenChange={setVideoLibraryOpen}
               onSelectAsset={(asset) => {
-                ctx.onPropChange?.({ url: asset.url });
+                ctx.onPropChange?.({
+                  videoData: {
+                    videoUrl: asset.url,
+                    thumbnailUrl: props.videoData?.thumbnailUrl || '',
+                    title: props.videoData?.title || '',
+                    description: props.videoData?.description || '',
+                  }
+                });
                 setVideoLibraryOpen(false);
               }}
               filterType="video"
@@ -122,8 +119,8 @@ registerBlock({
       <div className="group rounded-2xl overflow-hidden border border-black/10 shadow-sm aspect-video bg-black relative">
         {playInline ? (
           <VideoEmbed
-            url={props.url}
-            thumbnailUrl={props.thumbnailUrl || undefined}
+            url={finalVideoUrl}
+            thumbnailUrl={finalThumbnailUrl || undefined}
             disabled={ctx.mode === 'edit' || ctx.isThumbnail}
           />
         ) : (
@@ -135,10 +132,10 @@ registerBlock({
               }}
               className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
             >
-              {props.thumbnailUrl ? (
+              {finalThumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img 
-                  src={props.thumbnailUrl} 
+                  src={finalThumbnailUrl} 
                   alt="Video thumbnail preview" 
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                 />
@@ -159,7 +156,7 @@ registerBlock({
               <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
                 <DialogTitle className="sr-only">Video Player</DialogTitle>
                 <iframe
-                  src={props.url}
+                  src={finalVideoUrl}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
