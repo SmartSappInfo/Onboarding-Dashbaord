@@ -77,4 +77,47 @@ describe('representative block output (view mode)', () => {
     expect(getByText('Left')).toBeInTheDocument();
     expect(getByText('Right')).toBeInTheDocument();
   });
+
+  it('testimonial block renders with custom background styling', () => {
+    const block: PageBlock = {
+      id: 'test-card',
+      type: 'testimonial',
+      props: {
+        cardBgType: 'color',
+        cardBgColor: '#ff0000',
+        cardTextColor: '#00ff00',
+        cardBorderColor: '#0000ff'
+      }
+    };
+    const { container } = render(<BlockRenderer block={block} ctx={ctx('view')} />);
+    const figure = container.querySelector('figure');
+    expect(figure).toBeInTheDocument();
+    expect(figure?.style.backgroundColor).toBe('rgb(255, 0, 0)');
+    expect(figure?.style.color).toBe('rgb(0, 255, 0)');
+    expect(figure?.style.borderColor).toBe('rgb(0, 0, 255)');
+  });
+
+  it('testimonial_grid block renders with custom background styling on cards', () => {
+    const block: PageBlock = {
+      id: 'test-grid',
+      type: 'testimonial_grid',
+      props: {
+        cardBgType: 'gradient',
+        cardBgGradientFrom: '#ff0000',
+        cardBgGradientTo: '#0000ff',
+        cardTextColor: '#ffff00',
+        cardBorderColor: '#00ff00',
+        items: [
+          { id: 'item1', author: 'User A', role: 'Role A', quote: 'Great!', videoUrl: '', thumbnailUrl: '', badgeText: '', avatarUrl: '' }
+        ]
+      }
+    };
+    const { container } = render(<BlockRenderer block={block} ctx={ctx('view')} />);
+    const card = container.querySelector('.grid > div');
+    expect(card).toBeInTheDocument();
+    const style = (card as HTMLElement).style;
+    expect(style.backgroundImage).toContain('linear-gradient');
+    expect(style.color).toBe('rgb(255, 255, 0)');
+    expect(style.borderColor).toBe('rgb(0, 255, 0)');
+  });
 });
