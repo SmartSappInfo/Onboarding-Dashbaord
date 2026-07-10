@@ -20,6 +20,7 @@ import type { BuilderResources, PageBlock } from '@/lib/types';
 import TipTapEditor from '@/app/admin/pages/[id]/builder/components/TipTapEditor';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import { ImageUploader } from '@/components/shared/image-uploader';
+import { VideoUploader, VideoUploaderValue } from '@/components/shared/video-uploader';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
@@ -47,6 +48,30 @@ function ImageField({ label, value, workspaceId, onChange }: {
         workspaceId={workspaceId}
         label={label}
         category="Page Builder"
+      />
+    </div>
+  );
+}
+
+function VideoField({ label, value, workspaceId, onChange }: {
+  label: string;
+  value: unknown;
+  workspaceId?: string;
+  onChange: (value: VideoUploaderValue) => void;
+}) {
+  const normalizedValue: VideoUploaderValue = typeof value === 'string'
+    ? { videoUrl: value, thumbnailUrl: '', title: '', description: '' }
+    : (value && typeof value === 'object')
+      ? (value as unknown as VideoUploaderValue)
+      : { videoUrl: '', thumbnailUrl: '', title: '', description: '' };
+
+  return (
+    <div className="space-y-2 animate-in fade-in duration-200">
+      <VideoUploader
+        value={normalizedValue}
+        onChange={onChange}
+        workspaceId={workspaceId}
+        label={label}
       />
     </div>
   );
@@ -113,6 +138,8 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return <TipTapEditor content={asString(value)} onChange={(html) => onChange(html)} />;
     case 'image':
       return <ImageField label={field.label} value={asString(value)} workspaceId={workspaceId} onChange={(v) => onChange(v)} />;
+    case 'video':
+      return <VideoField label={field.label} value={value} workspaceId={workspaceId} onChange={(v) => onChange(v)} />;
     case 'number':
       return (
         <Input aria-label={field.label} type="number" min={field.min} max={field.max} step={field.step} value={typeof value === 'number' ? value : ''} onChange={(e) => onChange(Number(e.target.value))} className={INPUT_CLASS} />
@@ -331,6 +358,17 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             // Conditional field visibility for Hero Block sales elements
             if (block.type === 'hero') {
               if (['secondaryTitle', 'secondarySubtitle', 'bulletList'].includes(field.key) && !props.isVideoSales) return null;
+            }
+
+            // Conditional field visibility for Testimonial / Testimonial Grid custom background elements
+            if (block.type === 'testimonial' || block.type === 'testimonial_grid') {
+              if (field.key === 'cardBgColor' && props.cardBgType !== 'color' && props.cardBgType !== 'image') return null;
+              if (field.key === 'cardBgGradientFrom' && props.cardBgType !== 'gradient') return null;
+              if (field.key === 'cardBgGradientTo' && props.cardBgType !== 'gradient') return null;
+              if (field.key === 'cardBgImage' && props.cardBgType !== 'image') return null;
+              if (field.key === 'cardBgImageOpacity' && props.cardBgType !== 'image') return null;
+              if (field.key === 'cardTextColor' && props.cardBgType === 'default') return null;
+              if (field.key === 'cardBorderColor' && props.cardBgType === 'default') return null;
             }
 
             return (

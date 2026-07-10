@@ -10,6 +10,7 @@ export type BlockField =
   | { kind: 'richtext'; key: string; label: string }
   | { kind: 'url'; key: string; label: string; placeholder?: string; filterType?: 'image' | 'video' | 'audio' | 'document' | 'link' }
   | { kind: 'image'; key: string; label: string }
+  | { kind: 'video'; key: string; label: string }
   | { kind: 'number'; key: string; label: string; min?: number; max?: number; step?: number }
   | { kind: 'slider'; key: string; label: string; min: number; max: number; step: number }
   | { kind: 'color'; key: string; label: string }
