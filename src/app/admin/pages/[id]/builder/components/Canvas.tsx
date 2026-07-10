@@ -88,6 +88,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
+import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import type { UnifiedVariable } from '@/lib/types/variables';
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import '@/lib/page-builder/blocks'; // register all blocks
@@ -626,6 +630,15 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     // Ghana Profile Simulation States
     const [simulatedProfile, setSimulatedProfile] = useState<'none' | 'parent' | 'student'>('none');
 
+    const [variables, setVariables] = useState<UnifiedVariable[]>([]);
+
+    useEffect(() => {
+        if (!page?.workspaceId) return;
+        getVariablesAction({ workspaceId: page.workspaceId, featureContext: 'all' })
+            .then(setVariables)
+            .catch(err => console.warn('[Canvas] Failed to fetch workspace variables:', err));
+    }, [page?.workspaceId]);
+
     // Collaborative Comments Mode States
     const [commentsMode, setCommentsMode] = useState(false);
     const [comments, setComments] = useState<{ id: string; x: number; y: number; text: string }[]>([]);
@@ -638,6 +651,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const [linkNewTab, setLinkNewTab] = useState(false);
 
     const toolbarRef = useRef<HTMLDivElement>(null);
+    const activeContentEditableRef = useRef<HTMLElement | null>(null);
 
     const activeBlockType = React.useMemo(() => {
         if (!selectedBlockId) return null;
@@ -725,18 +739,38 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             const workspace = workspaceRef.current;
             const tb = toolbarRef.current;
             
-            if (
-                !activeEl || 
-                !workspace || 
-                !tb || 
-                activeEl.getAttribute('contenteditable') !== 'true' ||
-                !workspace.contains(activeEl)
-            ) {
-                if (tb) tb.style.display = 'none';
+            if (!workspace || !tb) return;
+
+            const isEditing = activeEl && activeEl.getAttribute('contenteditable') === 'true' && workspace.contains(activeEl);
+            if (isEditing) {
+                activeContentEditableRef.current = activeEl as HTMLElement;
+            }
+
+            const isFocusInToolbar = tb && (tb === activeEl || tb.contains(activeEl));
+            const isFocusInPortal = activeEl && (
+                activeEl.closest('[data-radix-popper-content-wrapper]') !== null ||
+                activeEl.closest('[role="dialog"]') !== null ||
+                activeEl.closest('[data-radix-portal]') !== null ||
+                (typeof activeEl.className === 'string' && activeEl.className.includes('popover')) ||
+                activeEl.closest('.radix-themes') !== null
+            );
+            const hasActivePortalInDom = document.querySelector('[data-radix-popper-content-wrapper]') !== null;
+
+            const shouldKeepVisible = isEditing || isFocusInToolbar || isFocusInPortal || hasActivePortalInDom;
+
+            if (!shouldKeepVisible) {
+                tb.style.display = 'none';
+                activeContentEditableRef.current = null;
                 return;
             }
 
-            const rect = activeEl.getBoundingClientRect();
+            const targetEl = isEditing ? activeEl : activeContentEditableRef.current;
+            if (!targetEl) {
+                tb.style.display = 'none';
+                return;
+            }
+
+            const rect = targetEl.getBoundingClientRect();
             const workspaceRect = workspace.getBoundingClientRect();
             
             const toolbarW = 730;
@@ -951,44 +985,82 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
 
 
     // Simulated data context variables replacement mapping
-    const simulatedData: Record<string, Record<string, string>> = {
-        parent: {
-            name: 'Kwame Mensah',
-            phone: '+233 24 412 3456',
-            email: 'kwame@mensah.gh'
-        },
-        student: {
-            name: 'Ama Serwaa',
-            id: 'STU-2026-092',
-            class: 'Primary 5 B'
-        },
-        invoice: {
-            amount: 'GH₵ 1,200.00',
-            dueDate: 'June 30, 2026',
-            number: 'INV-7731-2026'
-        },
-        current: {
-            date: 'July 3, 2026',
-            time: '14:30 GMT'
-        },
-        tenant: {
-            name: 'SmartSapp Admissions'
+    const getSimulatedValuesMap = (): Map<string, unknown> => {
+        const map = new Map<string, unknown>();
+
+        // 1. Common system/globals
+        map.set('current_date', 'July 3, 2026');
+        map.set('current_time', '14:30 GMT');
+        map.set('current_year', '2026');
+        map.set('workspace_name', 'Onboarding Portal');
+        map.set('org_name', 'SmartSapp Admissions');
+        map.set('organization_name', 'SmartSapp Admissions');
+        map.set('entity_name', 'SmartSapp Admissions');
+        map.set('tenant.name', 'SmartSapp Admissions');
+        map.set('current.date', 'July 3, 2026');
+        map.set('current.time', '14:30 GMT');
+
+        // 2. Invoice details
+        map.set('invoice_amount', 'GH₵ 1,200.00');
+        map.set('invoice_dueDate', 'June 30, 2026');
+        map.set('invoice_number', 'INV-7731-2026');
+        map.set('invoice.amount', 'GH₵ 1,200.00');
+        map.set('invoice.dueDate', 'June 30, 2026');
+        map.set('invoice.number', 'INV-7731-2026');
+
+        // 3. Profiles
+        if (simulatedProfile === 'student') {
+            map.set('contact_name', 'Ama Serwaa');
+            map.set('contact_email', 'ama.serwaa@student.gh');
+            map.set('contact_phone', '+233 20 000 0000');
+            map.set('contact_role', 'Student');
+            map.set('contact_name_primary', 'Ama Serwaa');
+            map.set('contact_email_primary', 'ama.serwaa@student.gh');
+            map.set('contact_phone_primary', '+233 20 000 0000');
+        } else if (simulatedProfile === 'parent') {
+            map.set('contact_name', 'Kwame Mensah');
+            map.set('contact_email', 'kwame@mensah.gh');
+            map.set('contact_phone', '+233 24 412 3456');
+            map.set('contact_role', 'Parent');
+            map.set('contact_name_primary', 'Kwame Mensah');
+            map.set('contact_email_primary', 'kwame@mensah.gh');
+            map.set('contact_phone_primary', '+233 24 412 3456');
         }
+
+        // Specific contact profiles (always available)
+        map.set('contact_name_student', 'Ama Serwaa');
+        map.set('contact_email_student', 'ama.serwaa@student.gh');
+        map.set('contact_phone_student', '+233 20 000 0000');
+        map.set('contact_role_student', 'Student');
+
+        map.set('contact_name_parent', 'Kwame Mensah');
+        map.set('contact_email_parent', 'kwame@mensah.gh');
+        map.set('contact_phone_parent', '+233 24 412 3456');
+        map.set('contact_role_parent', 'Parent');
+
+        // Backwards compatibility dot notation
+        map.set('student.name', 'Ama Serwaa');
+        map.set('student.id', 'STU-2026-092');
+        map.set('student.class', 'Primary 5 B');
+        map.set('parent.name', 'Kwame Mensah');
+        map.set('parent.phone', '+233 24 412 3456');
+        map.set('parent.email', 'kwame@mensah.gh');
+
+        // 4. Dynamic custom fields and loaded variables registry
+        variables.forEach((v) => {
+            if (!map.has(v.key)) {
+                map.set(v.key, v.exampleValue || `[${v.label}]`);
+            }
+        });
+
+        return map;
     };
 
     const interpolate = (text: string): string => {
         if (!text) return '';
-        let result = text;
-        
-        // Match token identifiers like {{category.key}} and replace with local simulated values
-        result = result.replace(/\{\{\s*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*\}\}/g, (match, cat, key) => {
-            if (simulatedProfile !== 'none') {
-                return simulatedData[cat]?.[key] || match;
-            }
-            return match;
-        });
-        
-        return result;
+        if (simulatedProfile === 'none') return text;
+        const map = getSimulatedValuesMap();
+        return resolveTextWithMap(text, map, true);
     };
 
     // WCAG Accessibility and Image size scanner
@@ -1336,7 +1408,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const isPreview = canvasMode === 'preview';
 
     return (
-        <main 
+        <WorkspaceContext.Provider value={{ workspaceId: page?.workspaceId, organizationId: page?.organizationId }}>
+            <main 
             ref={workspaceRef}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -2645,6 +2718,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 </div>
             )}
         </main>
+        </WorkspaceContext.Provider>
     );
 });
 

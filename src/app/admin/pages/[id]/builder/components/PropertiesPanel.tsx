@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +11,8 @@ import type { PageBlock, BuilderResources, ResolvedTheme } from '@/lib/types';
 import { Settings, Type, Layout, Activity, ShieldAlert, Sparkles, Sliders } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import type { UnifiedVariable } from '@/lib/types/variables';
 
 interface PropertiesPanelProps {
   readonly block: PageBlock;
@@ -41,6 +41,20 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
   // Data binding form states
   const [bindField, setBindField] = useState('title');
   const [bindVar, setBindVar] = useState('{{student.name}}');
+
+  const [variables, setVariables] = useState<UnifiedVariable[]>([]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    getVariablesAction({ workspaceId, featureContext: 'all' })
+      .then((data) => {
+        setVariables(data);
+        if (data.length > 0) {
+          setBindVar(`{{${data[0].key}}}`);
+        }
+      })
+      .catch((err) => console.error('[PropertiesPanel] Failed to fetch variables:', err));
+  }, [workspaceId]);
 
   const getPrefixedKey = (key: string) => {
     if (activeState === 'default') return key;
@@ -467,10 +481,17 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                     <SelectValue placeholder="Select variable..." />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <SelectItem value="{{student.name}}">Student Name (Ama Serwaa)</SelectItem>
-                    <SelectItem value="{{student.id}}">Student ID (STU-2026-092)</SelectItem>
-                    <SelectItem value="{{parent.name}}">Parent Name (Kwame Mensah)</SelectItem>
-                    <SelectItem value="{{invoice.amount}}">Invoice Amount (GH₵ 1,200)</SelectItem>
+                    {variables.length > 0 ? (
+                      variables.map((v) => (
+                        <SelectItem key={v.key} value={`{{${v.key}}}`}>
+                          {v.label} {v.exampleValue ? `(${v.exampleValue})` : ''}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No variables available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

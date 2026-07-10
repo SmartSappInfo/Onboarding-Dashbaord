@@ -272,7 +272,12 @@ export function VariablesPanel({
     return (
       <div 
         key={v.key}
-        className="group relative flex flex-col p-2.5 rounded-lg border border-border bg-card/30 hover:bg-accent/85 hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-pointer select-none active:scale-[0.98]"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/plain', `{{${v.key}}}`);
+          e.dataTransfer.effectAllowed = 'copy';
+        }}
+        className="group relative flex flex-col p-2.5 rounded-lg border border-border bg-card/30 hover:bg-accent/85 hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-grab active:cursor-grabbing select-none active:scale-[0.98]"
         onClick={() => handleSelect(v.key)}
       >
         <div className="flex items-center justify-between">

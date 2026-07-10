@@ -29,6 +29,7 @@ import VideoEmbed from '@/components/video-embed';
 import Image from 'next/image';
 import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
 import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 import { PageRenderer } from '@/components/page-builder/PageRenderer';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
@@ -395,16 +396,19 @@ export default function PublicPageClient({
 
     const interpolate = (text: string) => {
         if (!text) return '';
-        let result = text;
-        // 1. Resolve from database entity variables mapping
-        Object.entries(variablesMap).forEach(([key, val]) => {
-            result = result.replace(new RegExp(`{{${key}}}`, 'g'), val);
-        });
-        // 2. Fall back to raw url search parameters
+        const map = new Map<string, unknown>();
+        
+        // 1. Add raw url search parameters (lower priority)
         searchParams.forEach((value, key) => {
-            result = result.replace(new RegExp(`{{${key}}}`, 'g'), value);
+            map.set(key, value);
         });
-        return result;
+        
+        // 2. Add database variables (higher priority, overrides URL params)
+        Object.entries(variablesMap).forEach(([key, val]) => {
+            map.set(key, val);
+        });
+        
+        return resolveTextWithMap(text, map, true);
     };
 
     const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';

@@ -60,7 +60,7 @@ import { useBuilderState, type BuilderTab } from './hooks/useBuilderState';
 import { useBuilderResources } from './hooks/useBuilderResources';
 import BlockPalette from './components/BlockPalette';
 import LayersPanel from './components/LayersPanel';
-import VariablesPanel from './components/VariablesPanel';
+import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import { SectionSettings } from '@/components/page-builder/SectionSettings';
 import { useAutosave } from '@/components/page-builder/useAutosave';
 import Canvas from './components/Canvas';
@@ -824,7 +824,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             isSidebarExpanded ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
                         )}
                     >
-                        <div className="flex-1 overflow-y-auto p-4 text-left custom-scrollbar min-w-[288px]">
+                        <div className={cn(
+                            "flex-1 text-left min-w-[288px] flex flex-col",
+                            builder.activeTab === 'variables' ? "overflow-hidden h-full" : "overflow-y-auto p-4 custom-scrollbar"
+                        )}>
                         {/* ─── Performance/Stats Tab ─── */}
                         {builder.activeTab === 'add' && (
                             <BlockPalette
@@ -852,7 +855,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         )}
 
                         {builder.activeTab === 'variables' && (
-                            <VariablesPanel />
+                            <VariablesPanel
+                                workspaceId={activeWorkspaceId || ''}
+                                organizationId={organizationId || undefined}
+                                featureContext="all"
+                                className="border-0 bg-transparent shadow-none"
+                            />
                         )}
 
                         {builder.activeTab === 'edit' && (
