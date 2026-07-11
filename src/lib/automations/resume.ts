@@ -60,6 +60,28 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
     };
 
     await traverseNodes(job.targetNodeId, automation, context);
+
+    const pendingJobs = await adminDb
+      .collection('automation_jobs')
+      .where('runId', '==', job.runId)
+      .where('status', '==', 'pending')
+      .get();
+
+    if (pendingJobs.empty) {
+      await adminDb.collection('automation_runs').doc(job.runId).update({
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+      });
+      // Fire aggregated completed notification (fire-and-forget)
+      const autoData = autoSnap.data();
+      const { notifyAutomationCompleted } = await import('./automation-lifecycle-notify');
+      notifyAutomationCompleted({
+        automationId: job.automationId,
+        automationName: autoData?.name ?? job.automationId,
+        workspaceId: (job.payload.workspaceId as string | undefined) ?? '',
+      }).catch(() => { /* non-fatal */ });
+    }
+
     return true;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

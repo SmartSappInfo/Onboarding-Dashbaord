@@ -44,6 +44,7 @@ import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import {
   restartRunAction,
   retryFailedStepAction,
@@ -136,6 +137,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const { user } = useUser();
   const { toast } = useToast();
   const confirm = useConfirm();
+  const { activeWorkspaceId } = useWorkspace();
 
   const [entityNames, setEntityNames] = React.useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('ALL');
@@ -167,10 +169,11 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
   // Real-time runs query with filters pushed to Firestore where possible
   const runsQuery = useMemoFirebase(() => {
-    if (!firestore || !automationId) return null;
+    if (!firestore || !automationId || !activeWorkspaceId) return null;
     let q = query(
       collection(firestore, 'automation_runs'),
-      where('automationId', '==', automationId)
+      where('automationId', '==', automationId),
+      where('workspaceId', '==', activeWorkspaceId)
     );
 
     if (statusFilter !== 'ALL') {
@@ -184,13 +187,13 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
     q = query(q, orderBy('startedAt', 'desc'), limit(limitAmount));
     return q;
-  }, [firestore, automationId, statusFilter, stepFilter, limitAmount]);
+  }, [firestore, automationId, activeWorkspaceId, statusFilter, stepFilter, limitAmount]);
 
   const { data: runs, isLoading } = useCollection<AutomationRun>(runsQuery);
 
   // Background fetch for true statistics from Firestore counts
   React.useEffect(() => {
-    if (!firestore || !automationId) return;
+    if (!firestore || !automationId || !activeWorkspaceId) return;
 
     let isSubscribed = true;
 
@@ -199,11 +202,11 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         const runsCol = collection(firestore!, 'automation_runs');
         const jobsCol = collection(firestore!, 'automation_jobs');
 
-        const totalQuery = query(runsCol, where('automationId', '==', automationId));
-        const runningQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'running'));
-        const pausedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'paused'));
-        const failedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'failed'));
-        const completedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'completed'));
+        const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
+        const runningQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'running'));
+        const pausedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'paused'));
+        const failedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'failed'));
+        const completedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'completed'));
         const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('status', '==', 'pending'));
 
         const [
@@ -251,7 +254,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     return () => {
       isSubscribed = false;
     };
-  }, [firestore, automationId, runs]);
+  }, [firestore, automationId, activeWorkspaceId, runs]);
 
   // Sync selected run with real-time data
   React.useEffect(() => {
