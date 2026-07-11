@@ -1,20 +1,25 @@
 import { adminDb } from '../firebase-admin';
-import { evaluateConditionNode } from '../automation-condition';
+import { evaluateConditionNode, type ConditionGroup } from '../automation-condition';
 import { loadAutomationForAuth } from '../automation-permissions';
 import { traverseNodes } from './nodes/traverse';
 import { logStepExecution } from './step-logger';
 import { cancelDelayTask } from '../gcp-tasks-client';
 import type { EntityType } from '../types';
-import { fetchLiveEntityTags, nodeChecksTags } from './tag-enrichment';
+import { enrichPayloadWithLiveBehavioralData } from './payload-enricher';
 
-interface GoalConditionNode {
+export interface GoalConditionNode {
   id: string;
   type: 'jumpToNode' | string;
   data: {
     label?: string;
     config?: {
-      groups?: Record<string, unknown>[];
-      relation?: 'and' | 'or';
+      field?: string;
+      operator?: string;
+      value?: unknown;
+      emailTemplateId?: string;
+      linkUrl?: string;
+      relation?: 'and' | 'or' | 'AND' | 'OR';
+      groups?: ConditionGroup[];
       jumpFromAnywhere?: boolean;
       sequentialBehavior?: 'wait' | 'proceed' | 'exit';
     };
@@ -70,9 +75,8 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
 
       // 3. Evaluate the goal conditions for the contact using live tags/fields payload
       let payload = (runData.payload as Record<string, unknown>) || {};
-      if (entityId && workspaceId && nodeChecksTags(jumpNode)) {
-        const liveTags = await fetchLiveEntityTags(entityId, workspaceId);
-        payload = { ...payload, __liveTags: liveTags };
+      if (entityId && workspaceId) {
+        payload = await enrichPayloadWithLiveBehavioralData(entityId, workspaceId, jumpNode, payload);
       }
 
       const isTrue = await evaluateConditionNode(

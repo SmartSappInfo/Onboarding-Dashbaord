@@ -16,7 +16,6 @@ import {
   Clock,
   ChevronRight,
   MoreHorizontal,
-  X,
   Loader2,
   Globe,
   ArrowLeft,
@@ -27,7 +26,6 @@ import {
   Database,
   Filter,
 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +39,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy, limit, getDoc, doc } from 'firebase/firestore';
-import type { AutomationRun, StepExecution } from '@/lib/types';
+import { collection, query, where, orderBy, limit, getDoc, doc, getCountFromServer } from 'firebase/firestore';
+import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -55,7 +53,7 @@ import {
   resumeRunAction,
 } from '@/lib/automation-actions';
 import { StepTimeline } from './StepTimeline';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -152,18 +150,108 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     phone: string;
   } | null>(null);
 
-  // Real-time runs query
+  const [limitAmount, setLimitAmount] = React.useState(100);
+  const [dbStats, setDbStats] = React.useState<{
+    total: number;
+    running: number;
+    waiting: number;
+    paused: number;
+    failed: number;
+    completed: number;
+  }>({ total: 0, running: 0, waiting: 0, paused: 0, failed: 0, completed: 0 });
+
+  // Reset limit when filters change
+  React.useEffect(() => {
+    setLimitAmount(100);
+  }, [statusFilter, stepFilter]);
+
+  // Real-time runs query with filters pushed to Firestore where possible
   const runsQuery = useMemoFirebase(() => {
     if (!firestore || !automationId) return null;
-    return query(
+    let q = query(
       collection(firestore, 'automation_runs'),
-      where('automationId', '==', automationId),
-      orderBy('startedAt', 'desc'),
-      limit(100)
+      where('automationId', '==', automationId)
     );
-  }, [firestore, automationId]);
+
+    if (statusFilter !== 'ALL') {
+      const queryStatus = statusFilter === 'waiting' ? 'running' : statusFilter;
+      q = query(q, where('status', '==', queryStatus));
+    }
+
+    if (stepFilter !== 'ALL') {
+      q = query(q, where('currentNodeId', '==', stepFilter));
+    }
+
+    q = query(q, orderBy('startedAt', 'desc'), limit(limitAmount));
+    return q;
+  }, [firestore, automationId, statusFilter, stepFilter, limitAmount]);
 
   const { data: runs, isLoading } = useCollection<AutomationRun>(runsQuery);
+
+  // Background fetch for true statistics from Firestore counts
+  React.useEffect(() => {
+    if (!firestore || !automationId) return;
+
+    let isSubscribed = true;
+
+    async function fetchCounts() {
+      try {
+        const runsCol = collection(firestore!, 'automation_runs');
+        const jobsCol = collection(firestore!, 'automation_jobs');
+
+        const totalQuery = query(runsCol, where('automationId', '==', automationId));
+        const runningQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'running'));
+        const pausedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'paused'));
+        const failedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'failed'));
+        const completedQuery = query(runsCol, where('automationId', '==', automationId), where('status', '==', 'completed'));
+        const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('status', '==', 'pending'));
+
+        const [
+          totalSnap,
+          runningSnap,
+          pausedSnap,
+          failedSnap,
+          completedSnap,
+          waitingSnap,
+        ] = await Promise.all([
+          getCountFromServer(totalQuery),
+          getCountFromServer(runningQuery),
+          getCountFromServer(pausedQuery),
+          getCountFromServer(failedQuery),
+          getCountFromServer(completedQuery),
+          getCountFromServer(waitingQuery),
+        ]);
+
+        if (isSubscribed) {
+          const totalVal = totalSnap.data().count;
+          const runningVal = runningSnap.data().count;
+          const pausedVal = pausedSnap.data().count;
+          const failedVal = failedSnap.data().count;
+          const completedVal = completedSnap.data().count;
+          const waitingVal = waitingSnap.data().count;
+
+          const activeVal = Math.max(0, runningVal - waitingVal);
+
+          setDbStats({
+            total: totalVal,
+            running: activeVal,
+            waiting: waitingVal,
+            paused: pausedVal,
+            failed: failedVal,
+            completed: completedVal,
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching count statistics:', err);
+      }
+    }
+
+    fetchCounts();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [firestore, automationId, runs]);
 
   // Sync selected run with real-time data
   React.useEffect(() => {
@@ -325,15 +413,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   }, [runs, statusFilter, stepFilter, searchQuery, entityNames]);
 
   // Stats
-  const stats = React.useMemo(() => {
-    if (!runs) return { total: 0, running: 0, waiting: 0, paused: 0, failed: 0, completed: 0 };
-    const result = { total: runs.length, running: 0, waiting: 0, paused: 0, failed: 0, completed: 0 };
-    for (const run of runs) {
-      const s = getEffectiveStatus(run);
-      if (s in result) (result as Record<string, number>)[s]++;
-    }
-    return result;
-  }, [runs]);
+  const stats = dbStats;
 
   // ── Action Handlers ─────────────────────────────────────────────────────────
 
@@ -734,7 +814,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         </div>
 
         <p className="text-[10px] text-muted-foreground font-medium ml-auto">
-          {filteredRuns.length} of {runs?.length || 0} runs
+          {filteredRuns.length} of {stats.total} runs
         </p>
       </div>
 
@@ -868,6 +948,18 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
               )}
             </tbody>
           </table>
+          {runs && runs.length >= limitAmount && (
+            <div className="flex justify-center py-4 border-t border-border/10">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLimitAmount((prev) => prev + 250)}
+                className="h-8 rounded-xl text-xs px-4"
+              >
+                Load More Contacts...
+              </Button>
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>

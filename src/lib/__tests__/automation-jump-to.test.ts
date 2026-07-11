@@ -4,10 +4,22 @@ import { evaluateContactJumps } from '../automations/jump-engine';
 import { adminDb } from '../firebase-admin';
 import { logStepExecution } from '../automations/step-logger';
 
-// Mock Tag Enrichment
-vi.mock('../automations/tag-enrichment', () => ({
-  fetchLiveEntityTags: vi.fn().mockResolvedValue(['tag_hot']),
-  nodeChecksTags: vi.fn().mockReturnValue(true),
+// Mock Payload Enricher
+vi.mock('../automations/payload-enricher', () => ({
+  enrichPayloadWithLiveBehavioralData: vi.fn().mockImplementation(
+    async (entityId: string, workspaceId: string, node: any, payload: Record<string, unknown>) => {
+      return {
+        ...payload,
+        __liveTags: ['tag_hot'],
+        openedEmails: ['tmpl_welcome'],
+        surveyResponses: {
+          survey_1: {
+            q_satisfaction: 'highly_satisfied',
+          },
+        },
+      };
+    }
+  ),
 }));
 
 // Mock Dependencies
@@ -241,6 +253,192 @@ describe('Automation Jump To Milestone Engine', () => {
       status: 'waiting',
     }));
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      currentNodeId: 'node_goal',
+    }));
+  });
+
+  it('teleports contact to goal when email opened condition is met', async () => {
+    const mockUpdate = vi.fn();
+    const mockCommit = vi.fn().mockResolvedValue(true);
+    
+    vi.mocked(adminDb.batch).mockReturnValue({
+      update: mockUpdate,
+      commit: mockCommit,
+    } as any);
+
+    vi.mocked(adminDb.collection).mockImplementation((collectionName: string) => {
+      if (collectionName === 'automation_runs') {
+        return {
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: 'run_email_123',
+                ref: { id: 'run_email_123' },
+                data: () => ({
+                  status: 'running',
+                  automationId: 'auto_email_123',
+                  entityId: 'ent_123',
+                  entityType: 'institution',
+                  currentNodeId: 'node_1',
+                  payload: {},
+                }),
+              },
+            ],
+          }),
+        } as any;
+      }
+      if (collectionName === 'automation_jobs') {
+        return {
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({
+            empty: true,
+            docs: [],
+          }),
+        } as any;
+      }
+      return {
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({ exists: false }),
+        }),
+      } as any;
+    });
+
+    const { loadAutomationForAuth } = await import('../automation-permissions');
+    vi.mocked(loadAutomationForAuth).mockResolvedValueOnce({
+      id: 'auto_email_123',
+      isActive: true,
+      nodes: [
+        { id: 'node_1', type: 'triggerNode', data: { label: 'Trigger' } },
+        {
+          id: 'node_goal',
+          type: 'jumpToNode',
+          data: {
+            label: 'Email Opened Goal',
+            config: {
+              relation: 'and',
+              groups: [
+                {
+                  id: 'grp_1',
+                  relation: 'and',
+                  conditions: [
+                    {
+                      id: 'c_1',
+                      field: 'campaign_action',
+                      operator: 'opened',
+                      emailTemplateId: 'tmpl_welcome',
+                    },
+                  ],
+                },
+              ],
+              jumpFromAnywhere: true,
+              sequentialBehavior: 'wait',
+            },
+          },
+        },
+      ],
+      edges: [],
+    } as any);
+
+    await evaluateContactJumps('ent_123', 'ws_123');
+
+    // Should detect the email open via payload enrichment and execute the teleport
+    expect(mockUpdate).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({
+      currentNodeId: 'node_goal',
+    }));
+  });
+
+  it('teleports contact to goal when survey response condition is met', async () => {
+    const mockUpdate = vi.fn();
+    const mockCommit = vi.fn().mockResolvedValue(true);
+    
+    vi.mocked(adminDb.batch).mockReturnValue({
+      update: mockUpdate,
+      commit: mockCommit,
+    } as any);
+
+    vi.mocked(adminDb.collection).mockImplementation((collectionName: string) => {
+      if (collectionName === 'automation_runs') {
+        return {
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: 'run_survey_123',
+                ref: { id: 'run_survey_123' },
+                data: () => ({
+                  status: 'running',
+                  automationId: 'auto_survey_123',
+                  entityId: 'ent_123',
+                  entityType: 'institution',
+                  currentNodeId: 'node_1',
+                  payload: {},
+                }),
+              },
+            ],
+          }),
+        } as any;
+      }
+      if (collectionName === 'automation_jobs') {
+        return {
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({
+            empty: true,
+            docs: [],
+          }),
+        } as any;
+      }
+      return {
+        doc: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({ exists: false }),
+        }),
+      } as any;
+    });
+
+    const { loadAutomationForAuth } = await import('../automation-permissions');
+    vi.mocked(loadAutomationForAuth).mockResolvedValueOnce({
+      id: 'auto_survey_123',
+      isActive: true,
+      nodes: [
+        { id: 'node_1', type: 'triggerNode', data: { label: 'Trigger' } },
+        {
+          id: 'node_goal',
+          type: 'jumpToNode',
+          data: {
+            label: 'Survey Met Goal',
+            config: {
+              relation: 'and',
+              groups: [
+                {
+                  id: 'grp_1',
+                  relation: 'and',
+                  conditions: [
+                    {
+                      id: 'c_1',
+                      field: 'survey_field',
+                      operator: 'equals',
+                      surveyId: 'survey_1',
+                      surveyFieldId: 'q_satisfaction',
+                      value: 'highly_satisfied',
+                    },
+                  ],
+                },
+              ],
+              jumpFromAnywhere: true,
+              sequentialBehavior: 'wait',
+            },
+          },
+        },
+      ],
+      edges: [],
+    } as any);
+
+    await evaluateContactJumps('ent_123', 'ws_123');
+
+    // Should detect the survey response via payload enrichment and execute the teleport
+    expect(mockUpdate).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({
       currentNodeId: 'node_goal',
     }));
   });
