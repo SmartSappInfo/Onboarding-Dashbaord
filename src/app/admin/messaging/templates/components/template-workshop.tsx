@@ -2037,6 +2037,7 @@ export function TemplateWorkshop({
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
+    const activeWorkspace = allowedWorkspaces?.find(w => w.id === activeWorkspaceId);
     const { singular: entityTerminology } = useTerminology();
     const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
 
@@ -4429,7 +4430,7 @@ export function TemplateWorkshop({
                                                                 onChange={handleSubjectChange}
                                                                 onPreviewChange={handlePreviewTextChange}
                                                                 emailContext={body}
-                                                                organizationId={organizationId}
+                                                                organizationId={activeOrganizationId || undefined}
                                                                 frameworkDefault={activeWorkspace?.defaultCopywritingFramework || 'aida'}
                                                                 align="end"
                                                             />

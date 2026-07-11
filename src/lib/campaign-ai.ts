@@ -668,18 +668,19 @@ Original Preview Text: "${params.currentPreviewText || ''}"
 Email Context: "${params.emailContext || 'General notifications and updates'}"
 
 Copywriting Framework Rules:
-\${params.framework === 'aida' ? \`
-- AIDA (Attention, Interest, Desire, Action):
+${
+  params.framework === 'aida'
+    ? `- AIDA (Attention, Interest, Desire, Action):
   - Title/Subject: Grab Attention immediately and build Interest in opening.
-  - Preview Text: Focus on creating Desire (stating key benefit or value) and driving Action (clever call to action).\` : ''}
-\${params.framework === 'pas' ? \`
-- PAS (Problem, Agitation, Solution):
+  - Preview Text: Focus on creating Desire (stating key benefit or value) and driving Action (clever call to action).`
+    : params.framework === 'pas'
+    ? `- PAS (Problem, Agitation, Solution):
   - Title/Subject: Highlight the main Problem or Agitate the pain point/consequence.
-  - Preview Text: Position this communication as the clear path to the Solution.\` : ''}
-\${params.framework === '4us' ? \`
-- 4 U's (Urgency, Uniqueness, Specificity, Usefulness):
+  - Preview Text: Position this communication as the clear path to the Solution.`
+    : `- 4 U's (Urgency, Uniqueness, Specificity, Usefulness):
   - Title/Subject: Create Uniqueness and Ultra-specificity (what exactly they will get).
-  - Preview Text: Highlight the Usefulness (benefit) and create subtle Urgency.\` : ''}
+  - Preview Text: Highlight the Usefulness (benefit) and create subtle Urgency.`
+}
 
 CRITICAL RULES:
 1. Preserve all template variables (such as {{contact_name}}, {{entity_name}}, {{org_name}}, {{unsubscribe_url}} etc.) exactly as they appear in the original headline or preview text. Do NOT modify the spelling, spacing, or capitalization inside double-braces (e.g. do NOT change {{contact_name}} to {{ContactName}}).
@@ -706,7 +707,7 @@ CRITICAL RULES:
       // Ensure all original tags are preserved
       originalTags.forEach(tag => {
         if (!cleanTitle.includes(tag) && !(variation.previewText || '').includes(tag)) {
-          cleanTitle += \` \${tag}\`;
+          cleanTitle += ` ${tag}`;
         }
       });
 

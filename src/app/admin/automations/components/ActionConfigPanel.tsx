@@ -778,7 +778,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
     if (config.templateId && firestore) {
       const getTemplate = async () => {
         try {
-          const docRef = doc(firestore, 'message_templates', config.templateId);
+          const docRef = doc(firestore, 'message_templates', config.templateId as string);
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             setSelectedTemplate({ id: snap.id, ...snap.data() } as MessageTemplate);
