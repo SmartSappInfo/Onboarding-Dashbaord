@@ -69,72 +69,51 @@ export async function reschedulePendingJobs(
   const BATCH_LIMIT = 500;
   const docs = snap.docs;
 
+  // Process rescheduling concurrently in batches of 50 tasks to optimize performance
+  const CONCURRENCY_LIMIT = 50;
+
   for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
     const chunk = docs.slice(i, i + BATCH_LIMIT);
     const batch = adminDb.batch();
 
-    for (const doc of chunk) {
-      const data = doc.data();
-      let startedAt: Date;
+    for (let j = 0; j < chunk.length; j += CONCURRENCY_LIMIT) {
+      const taskSlice = chunk.slice(j, j + CONCURRENCY_LIMIT);
+      await Promise.all(
+        taskSlice.map(async (doc) => {
+          const data = doc.data();
+          let startedAt: Date;
 
-      if (data.createdAt) {
-        startedAt = new Date(data.createdAt);
-      } else {
-        startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
-      }
+          if (data.createdAt) {
+            startedAt = new Date(data.createdAt);
+          } else {
+            startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
+          }
 
-      const newExecuteAt = calculateNewExecuteAt(
-        startedAt.toISOString(),
-        newVal,
-        newUnit
-      );
+          const newExecuteAt = calculateNewExecuteAt(
+            startedAt.toISOString(),
+            newVal,
+            newUnit
+          );
 
-      const now = new Date();
-      if (newExecuteAt.getTime() <= now.getTime()) {
-        // Job is due immediately. Claim and execute it now to avoid cron latency.
-        const { resumeAutomationRun } = await import('./resume');
-        const claimedJob = {
-          ...data,
-          id: doc.id,
-          status: 'processing',
-          claimedAt: now.toISOString(),
-          executeAt: newExecuteAt.toISOString(),
-        } as unknown as import('../types').AutomationJob;
-
-        // Cancel the scheduled remote task since we execute immediately
-        try {
-          await cancelDelayTask(data.runId, nodeId, parseQueueChannel(data.payload?.channel));
-        } catch (err) {
-          console.error(`[RESCHEDULE] Failed to cancel task for run ${data.runId}:`, err);
-        }
-
-        const success = await resumeAutomationRun(claimedJob);
-        batch.update(doc.ref, {
-          status: success ? 'completed' : 'failed',
-          executeAt: newExecuteAt.toISOString(),
-          finishedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      } else {
-        // Reschedule task in GCP Cloud Tasks
-        try {
-          await rescheduleDelayTask({
-            runId: data.runId,
-            nodeId,
-            automationId,
+          batch.update(doc.ref, {
             executeAt: newExecuteAt.toISOString(),
-            channel: parseQueueChannel(data.payload?.channel),
-            payload: data.payload,
+            updatedAt: new Date().toISOString(),
           });
-        } catch (err) {
-          console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
-        }
 
-        batch.update(doc.ref, {
-          executeAt: newExecuteAt.toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
+          try {
+            await rescheduleDelayTask({
+              runId: data.runId,
+              nodeId,
+              automationId,
+              executeAt: newExecuteAt.toISOString(),
+              channel: parseQueueChannel(data.payload?.channel),
+              payload: data.payload,
+            });
+          } catch (err) {
+            console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
+          }
+        })
+      );
     }
 
     await batch.commit();

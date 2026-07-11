@@ -1,4 +1,5 @@
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import type { Automation } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';
 import { validateAutomationBlueprint } from '../automation-validation';
@@ -26,6 +27,16 @@ export interface AutomationActionResult {
   message?: string;
   error?: string;
 }
+
+const runAfter = (fn: () => void | Promise<void>) => {
+  try {
+    after(fn);
+  } catch {
+    Promise.resolve().then(fn).catch((err) => {
+      console.error('runAfter fallback execution failed:', err);
+    });
+  }
+};
 
 function revalidateAutomationsHub(): void {
   try {
@@ -103,7 +114,7 @@ export async function saveAutomation(
             newConfig.value !== oldConfig.value || newConfig.unit !== oldConfig.unit;
 
           if (newHasChanged) {
-            await reschedulePendingJobs(id, newNode.id, newConfig, oldConfig);
+            runAfter(() => reschedulePendingJobs(id, newNode.id, newConfig, oldConfig));
           }
         }
       }
@@ -111,7 +122,7 @@ export async function saveAutomation(
       // Clean up deleted delay nodes
       for (const oldNode of oldDelayNodes) {
         if (!newNodesMap.has(oldNode.id)) {
-          await purgePendingJobsForNode(id, oldNode.id);
+          runAfter(() => purgePendingJobsForNode(id, oldNode.id));
         }
       }
     }
