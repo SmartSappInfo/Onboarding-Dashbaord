@@ -7,7 +7,7 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
-import type { MessageBlock } from '@/lib/types';
+import type { MessageBlock, HeadlineVariation } from '@/lib/types';
 
 export interface TextPart {
   text: string;
@@ -638,6 +638,92 @@ AESTHETIC RULES:
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[CAMPAIGN-AI] Generate email blocks failed:', message);
+    return { success: false, error: message };
+  }
+}
+
+const HeadlineVariationSchema = z.object({
+  title: z.string().describe('The generated variation subject line or title under 60 characters, retaining personalization variables.'),
+  previewText: z.string().describe('The generated preview text under 100 characters.'),
+  explanation: z.string().describe('A brief explanation of how the copywriting framework was applied.'),
+});
+
+const HeadlineVariationsResultSchema = z.object({
+  variations: z.array(HeadlineVariationSchema),
+});
+
+export async function generateHeadlineVariations(params: {
+  currentTitle: string;
+  currentPreviewText?: string;
+  framework: 'aida' | '4us' | 'pas';
+  emailContext?: string;
+  organizationId?: string;
+}): Promise<{ success: boolean; result?: HeadlineVariation[]; error?: string }> {
+  try {
+    const prompt = `You are a world-class copywriter specializing in conversion rate optimization (CRO).
+Your task is to generate exactly 3 high-converting variations of an email/message title and preview text based on the selected marketing framework: "${params.framework.toUpperCase()}".
+
+Original Headline: "${params.currentTitle}"
+Original Preview Text: "${params.currentPreviewText || ''}"
+Email Context: "${params.emailContext || 'General notifications and updates'}"
+
+Copywriting Framework Rules:
+\${params.framework === 'aida' ? \`
+- AIDA (Attention, Interest, Desire, Action):
+  - Title/Subject: Grab Attention immediately and build Interest in opening.
+  - Preview Text: Focus on creating Desire (stating key benefit or value) and driving Action (clever call to action).\` : ''}
+\${params.framework === 'pas' ? \`
+- PAS (Problem, Agitation, Solution):
+  - Title/Subject: Highlight the main Problem or Agitate the pain point/consequence.
+  - Preview Text: Position this communication as the clear path to the Solution.\` : ''}
+\${params.framework === '4us' ? \`
+- 4 U's (Urgency, Uniqueness, Specificity, Usefulness):
+  - Title/Subject: Create Uniqueness and Ultra-specificity (what exactly they will get).
+  - Preview Text: Highlight the Usefulness (benefit) and create subtle Urgency.\` : ''}
+
+CRITICAL RULES:
+1. Preserve all template variables (such as {{contact_name}}, {{entity_name}}, {{org_name}}, {{unsubscribe_url}} etc.) exactly as they appear in the original headline or preview text. Do NOT modify the spelling, spacing, or capitalization inside double-braces (e.g. do NOT change {{contact_name}} to {{ContactName}}).
+2. Keep all generated variation titles strictly under 60 characters.
+3. Keep preview texts strictly under 100 characters.
+4. Output must be plain text. Do NOT use HTML tags or markdown formatting.`;
+
+    const text = await callGenkit({
+      prompt,
+      organizationId: params.organizationId,
+      jsonMode: true,
+      schema: HeadlineVariationsResultSchema,
+    });
+
+    const parsed = JSON.parse(text) as { variations: HeadlineVariation[] };
+    const originalTags = params.currentTitle.match(/\{\{.*?\}\}/g) || [];
+
+    const validatedVariations = parsed.variations.map(variation => {
+      let cleanTitle = (variation.title || '').trim();
+      if (cleanTitle.length > 60) {
+        cleanTitle = cleanTitle.substring(0, 57) + '...';
+      }
+
+      // Ensure all original tags are preserved
+      originalTags.forEach(tag => {
+        if (!cleanTitle.includes(tag) && !(variation.previewText || '').includes(tag)) {
+          cleanTitle += \` \${tag}\`;
+        }
+      });
+
+      return {
+        title: cleanTitle,
+        previewText: (variation.previewText || '').trim(),
+        explanation: (variation.explanation || '').trim(),
+      };
+    });
+
+    return {
+      success: true,
+      result: validatedVariations,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[CAMPAIGN-AI] Generate headline variations failed:', message);
     return { success: false, error: message };
   }
 }
