@@ -1,5 +1,6 @@
 import { adminDb } from '../firebase-admin';
 import { cancelDelayTask, rescheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
+import { calculateExecuteAt } from './nodes/delay';
 
 /**
  * Converts value and unit into milliseconds.
@@ -48,12 +49,9 @@ export function calculateNewExecuteAt(
 export async function reschedulePendingJobs(
   automationId: string,
   nodeId: string,
-  newConfig: { value?: number; unit?: string },
-  oldConfig: { value?: number; unit?: string }
+  newConfig: Record<string, any>,
+  oldConfig: Record<string, any>
 ): Promise<void> {
-  const newVal = newConfig.value ?? 5;
-  const newUnit = newConfig.unit ?? 'Minutes';
-
   const oldVal = oldConfig.value ?? 5;
   const oldUnit = oldConfig.unit ?? 'Minutes';
 
@@ -89,10 +87,20 @@ export async function reschedulePendingJobs(
             startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
           }
 
-          const newExecuteAt = calculateNewExecuteAt(
-            startedAt.toISOString(),
-            newVal,
-            newUnit
+          const context = {
+            runId: data.runId,
+            automationId,
+            workspaceId: data.payload?.workspaceId || 'onboarding',
+            organizationId: data.payload?.organizationId,
+            entityId: data.payload?.entityId,
+            entityType: data.payload?.entityType || 'contacts',
+            payload: data.payload || {},
+          };
+
+          const newExecuteAt = await calculateExecuteAt(
+            newConfig,
+            context,
+            startedAt
           );
 
           batch.update(doc.ref, {
