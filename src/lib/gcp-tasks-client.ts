@@ -6,9 +6,14 @@ const PROJECT = process.env.GCP_PROJECT || '';
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 const BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
+const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
-// Global cache for local mock timers in emulator mode
-const localTimers = new Map<string, NodeJS.Timeout>();
+// Global cache for local mock timers in emulator mode (Next.js HMR-resilient)
+const globalRef = globalThis as unknown as { localTimers?: Map<string, NodeJS.Timeout> };
+if (!globalRef.localTimers) {
+  globalRef.localTimers = new Map<string, NodeJS.Timeout>();
+}
+const localTimers = globalRef.localTimers;
 
 // Instantiate Cloud Tasks Client safely
 let client: CloudTasksClient | null = null;
@@ -24,23 +29,43 @@ if (!isEmulator) {
   console.info('[GCP-TASKS] Running in EMULATOR mode (Local development). Tasks will execute using local timers.');
 }
 
+export type QueueChannel = 'email' | 'sms' | 'whatsapp';
+
 export interface ScheduleTaskOptions {
   runId: string;
   nodeId: string;
   automationId: string;
   executeAt: string;
-  channel?: 'email' | 'sms' | 'whatsapp';
+  channel?: QueueChannel;
   payload?: Record<string, unknown>;
 }
 
 /**
- * Resolves the queue name based on the delivery channel to apply rate-limiting/traffic shaping.
+ * Strictly maps untyped inputs to valid QueueChannel options.
  */
-function getQueueName(channel?: 'email' | 'sms' | 'whatsapp'): string {
-  if (channel === 'email') return 'email-delivery-queue';
-  if (channel === 'sms') return 'sms-delivery-queue';
-  if (channel === 'whatsapp') return 'whatsapp-delivery-queue';
-  return 'default-delivery-queue';
+export function parseQueueChannel(channel: unknown): QueueChannel | undefined {
+  if (channel === 'email' || channel === 'sms' || channel === 'whatsapp') {
+    return channel;
+  }
+  return undefined;
+}
+
+/**
+ * Resolves the queue name based on the delivery channel and environment prefix.
+ */
+function getQueueName(channel?: QueueChannel): string {
+  const suffix = channel === 'email' ? 'email-delivery-queue' :
+                 channel === 'sms' ? 'sms-delivery-queue' :
+                 channel === 'whatsapp' ? 'whatsapp-delivery-queue' :
+                 'default-delivery-queue';
+  return `${QUEUE_PREFIX}${suffix}`;
+}
+
+/**
+ * Generates a sanitized task identifier matching GCP Regex requirements ^[a-zA-Z0-9_-]+$
+ */
+function getTaskKey(runId: string, nodeId: string): string {
+  return `task_${runId}_${nodeId}`.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
 /**
@@ -54,7 +79,7 @@ export async function scheduleDelayTask({
   channel,
   payload = {},
 }: ScheduleTaskOptions): Promise<string> {
-  const taskKey = `task_${runId}_${nodeId}`;
+  const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
 
   if (isEmulator || !client) {
@@ -62,8 +87,9 @@ export async function scheduleDelayTask({
     console.info(`[GCP-TASKS-EMULATOR] Scheduling task ${taskKey} on queue "${queue}" for ${executeAt}`);
     
     // Cancel existing timer if any
-    if (localTimers.has(taskKey)) {
-      clearTimeout(localTimers.get(taskKey));
+    const existingTimer = localTimers.get(taskKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
 
     const delayMs = new Date(executeAt).getTime() - Date.now();
@@ -172,18 +198,19 @@ export async function scheduleDelayTask({
 export async function cancelDelayTask(
   runId: string,
   nodeId: string,
-  channel?: 'email' | 'sms' | 'whatsapp'
+  channel?: QueueChannel
 ): Promise<void> {
-  const taskKey = `task_${runId}_${nodeId}`;
+  const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
 
+  const existingTimer = localTimers.get(taskKey);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    localTimers.delete(taskKey);
+    console.info(`[GCP-TASKS-EMULATOR] Cancelled local task: ${taskKey}`);
+  }
+
   if (isEmulator || !client) {
-    if (localTimers.has(taskKey)) {
-      clearTimeout(localTimers.get(taskKey));
-      localTimers.delete(taskKey);
-      console.info(`[GCP-TASKS-EMULATOR] Cancelled local task: ${taskKey}`);
-    }
-    
     // Update audit state
     await adminDb.collection('automation_jobs').doc(taskKey).update({
       status: 'cancelled',

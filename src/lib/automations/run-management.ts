@@ -4,7 +4,7 @@ import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logAutomationEvent } from '../automation-log';
 import type { Automation, AutomationRun } from '../types';
-import { cancelDelayTask, scheduleDelayTask } from '../gcp-tasks-client';
+import { cancelDelayTask, scheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 
 interface RunManagementResult {
   success: boolean;
@@ -41,7 +41,7 @@ async function purgeRunPendingJobs(runId: string): Promise<number> {
     const jobData = doc.data();
     if (jobData.targetNodeId) {
       try {
-        await cancelDelayTask(runId, jobData.targetNodeId, jobData.payload?.channel as any);
+        await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel));
       } catch (err) {
         console.error(`[PURGE] Failed to cancel task for run ${runId}:`, err);
       }
@@ -272,7 +272,8 @@ export async function forceAdvanceRun(
 
     if (jobData.targetNodeId) {
       try {
-        await cancelDelayTask(runId, jobData.targetNodeId as string, (jobData.payload as any)?.channel);
+        const payloadObj = jobData.payload as Record<string, unknown> | undefined;
+        await cancelDelayTask(runId, jobData.targetNodeId as string, parseQueueChannel(payloadObj?.channel));
       } catch (err) {
         console.error(`[ADVANCE] Failed to cancel task for run ${runId}:`, err);
       }
@@ -349,7 +350,7 @@ export async function pauseRun(
         const jobData = doc.data();
         if (jobData.targetNodeId) {
           try {
-            await cancelDelayTask(runId, jobData.targetNodeId, jobData.payload?.channel as any);
+            await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel));
           } catch (err) {
             console.error(`[PAUSE] Failed to cancel task for run ${runId}:`, err);
           }
@@ -416,7 +417,7 @@ export async function resumePausedRun(
               nodeId: jobData.targetNodeId,
               automationId: run.automationId,
               executeAt: jobData.executeAt,
-              channel: jobData.payload?.channel as any,
+              channel: parseQueueChannel(jobData.payload?.channel),
               payload: jobData.payload,
             });
           } catch (err) {

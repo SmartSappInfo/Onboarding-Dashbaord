@@ -177,6 +177,14 @@ describe('Automation Jump To Milestone Engine', () => {
     const automation = {
       id: 'auto_123',
       isActive: true,
+      name: 'Test Automation',
+      triggers: [],
+      triggerTypes: [],
+      workspaceIds: ['ws_123'],
+      organizationId: 'org_123',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: 'user_123',
       nodes: [
         { id: 'node_1', type: 'triggerNode', data: { label: 'Trigger' } },
         {

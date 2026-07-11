@@ -1,5 +1,5 @@
 import { adminDb } from '../firebase-admin';
-import { cancelDelayTask, rescheduleDelayTask } from '../gcp-tasks-client';
+import { cancelDelayTask, rescheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 
 /**
  * Converts value and unit into milliseconds.
@@ -99,11 +99,11 @@ export async function reschedulePendingJobs(
           status: 'processing',
           claimedAt: now.toISOString(),
           executeAt: newExecuteAt.toISOString(),
-        } as any;
+        } as unknown as import('../types').AutomationJob;
 
         // Cancel the scheduled remote task since we execute immediately
         try {
-          await cancelDelayTask(data.runId, nodeId, data.payload?.channel as any);
+          await cancelDelayTask(data.runId, nodeId, parseQueueChannel(data.payload?.channel));
         } catch (err) {
           console.error(`[RESCHEDULE] Failed to cancel task for run ${data.runId}:`, err);
         }
@@ -123,7 +123,7 @@ export async function reschedulePendingJobs(
             nodeId,
             automationId,
             executeAt: newExecuteAt.toISOString(),
-            channel: data.payload?.channel as any,
+            channel: parseQueueChannel(data.payload?.channel),
             payload: data.payload,
           });
         } catch (err) {
@@ -167,7 +167,7 @@ export async function purgePendingJobsForNode(
       batch.delete(doc.ref);
       const data = doc.data();
       try {
-        await cancelDelayTask(data.runId, nodeId, data.payload?.channel as any);
+        await cancelDelayTask(data.runId, nodeId, parseQueueChannel(data.payload?.channel));
       } catch (err) {
         console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
       }
@@ -201,7 +201,7 @@ export async function purgeAllPendingJobsForAutomation(
       const data = doc.data();
       if (data.targetNodeId) {
         try {
-          await cancelDelayTask(data.runId, data.targetNodeId, data.payload?.channel as any);
+          await cancelDelayTask(data.runId, data.targetNodeId, parseQueueChannel(data.payload?.channel));
         } catch (err) {
           console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
         }
