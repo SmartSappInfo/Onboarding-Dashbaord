@@ -1,11 +1,32 @@
 import { adminDb } from '../firebase-admin';
-import { CloudTasksClient } from '@google-cloud/tasks';
-import { ResendJob, ResendJobStatus, ResendConfiguration, ResendTrigger } from '../types/tracking';
+import type { CloudTasksClient } from '@google-cloud/tasks';
+import { ResendJob, ResendJobStatus, ResendConfiguration } from '../types/tracking';
 
-const cloudTasksClient = new CloudTasksClient();
 const QUEUE = process.env.GOOGLE_CLOUD_TASKS_QUEUE || '';
 const PROJECT = process.env.GOOGLE_CLOUD_PROJECT_ID || '';
 const LOCATION = 'us-central1';
+
+// Dynamic client lazy-loading cache
+let cloudTasksClientInstance: CloudTasksClient | null = null;
+let isInitialized = false;
+
+async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
+  if (isInitialized) {
+    return cloudTasksClientInstance;
+  }
+
+  if (PROJECT && QUEUE) {
+    try {
+      const { CloudTasksClient: Constructor } = await import('@google-cloud/tasks');
+      cloudTasksClientInstance = new Constructor();
+    } catch (err) {
+      console.error('[CLOUD_TASKS] Failed to dynamically initialize CloudTasksClient:', err);
+    }
+  }
+
+  isInitialized = true;
+  return cloudTasksClientInstance;
+}
 
 export class ResendJobService {
   async scheduleResendJob(params: {
@@ -63,7 +84,13 @@ export class ResendJobService {
       return;
     }
 
-    const parent = cloudTasksClient.queuePath(PROJECT, LOCATION, QUEUE);
+    const client = await getCloudTasksClient();
+    if (!client) {
+      console.warn('[CLOUD_TASKS] Could not retrieve dynamically loaded CloudTasksClient. Skipping enqueue.');
+      return;
+    }
+
+    const parent = client.queuePath(PROJECT, LOCATION, QUEUE);
     const task = {
       httpRequest: {
         httpMethod: 'POST' as const,
@@ -80,7 +107,7 @@ export class ResendJobService {
     };
 
     try {
-      await cloudTasksClient.createTask({ parent, task });
+      await client.createTask({ parent, task });
     } catch (err) {
       console.error('[CLOUD_TASKS] Failed to create task:', err);
     }

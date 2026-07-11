@@ -1,4 +1,4 @@
-import { CloudTasksClient } from '@google-cloud/tasks';
+import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
 
 // Configurations
@@ -15,18 +15,29 @@ if (!globalRef.localTimers) {
 }
 const localTimers = globalRef.localTimers;
 
-// Instantiate Cloud Tasks Client safely
-let client: CloudTasksClient | null = null;
+// Instantiate Cloud Tasks Client safely and dynamically to prevent bundler errors
+let clientInstance: CloudTasksClient | null = null;
+let isInitialized = false;
 const isEmulator = !PROJECT || !process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-if (!isEmulator) {
-  try {
-    client = new CloudTasksClient();
-  } catch (err) {
-    console.warn('[GCP-TASKS] Failed to initialize Google Cloud Tasks client. Falling back to EMULATOR mode.', err);
+async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
+  if (isInitialized) {
+    return clientInstance;
   }
-} else {
-  console.info('[GCP-TASKS] Running in EMULATOR mode (Local development). Tasks will execute using local timers.');
+
+  if (!isEmulator) {
+    try {
+      const { CloudTasksClient: Constructor } = await import('@google-cloud/tasks');
+      clientInstance = new Constructor();
+    } catch (err) {
+      console.warn('[GCP-TASKS] Failed to initialize Google Cloud Tasks client. Falling back to EMULATOR mode.', err);
+    }
+  } else {
+    console.info('[GCP-TASKS] Running in EMULATOR mode (Local development). Tasks will execute using local timers.');
+  }
+
+  isInitialized = true;
+  return clientInstance;
 }
 
 export type QueueChannel = 'email' | 'sms' | 'whatsapp';
@@ -81,6 +92,7 @@ export async function scheduleDelayTask({
 }: ScheduleTaskOptions): Promise<string> {
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
+  const client = await getCloudTasksClient();
 
   if (isEmulator || !client) {
     // Emulator mode: Schedule using Node setTimeout
@@ -167,7 +179,7 @@ export async function scheduleDelayTask({
   try {
     // Delete existing task if present to enforce reschedule idempotence
     await cancelDelayTask(runId, nodeId, channel);
-  } catch (err) {
+  } catch {
     // Non-fatal if the task did not exist
   }
 
@@ -202,6 +214,7 @@ export async function cancelDelayTask(
 ): Promise<void> {
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
+  const client = await getCloudTasksClient();
 
   const existingTimer = localTimers.get(taskKey);
   if (existingTimer) {

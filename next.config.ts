@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  serverExternalPackages: ['@google-cloud/tasks'],
   experimental: {
     optimizePackageImports: ['lucide-react'],
     serverActions: {
