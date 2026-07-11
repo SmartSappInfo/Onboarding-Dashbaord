@@ -11,6 +11,7 @@ import type {
   MessageResendVariant,
   ResendTriggerCondition,
 } from '@/lib/types';
+import { HeadlineIQOptimizer } from '@/components/shared/HeadlineIQOptimizer';
 
 const MAX_RESENDS = 5;
 
@@ -18,6 +19,10 @@ interface ResendConfigSectionProps {
   value: MessageResendConfig | undefined;
   channel: string | undefined;
   onChange: (next: MessageResendConfig) => void;
+  templateSubject?: string;
+  templatePreviewText?: string;
+  workspaceFramework?: 'aida' | '4us' | 'pas';
+  organizationId?: string;
 }
 
 function defaultResendConfig(): MessageResendConfig {
@@ -49,6 +54,10 @@ export function ResendConfigSection({
   value,
   channel,
   onChange,
+  templateSubject = '',
+  templatePreviewText = '',
+  workspaceFramework = 'aida',
+  organizationId,
 }: ResendConfigSectionProps): React.ReactElement {
   const isEmail = (channel || 'email') === 'email';
 
@@ -62,6 +71,22 @@ export function ResendConfigSection({
 
   const cfg = value ?? defaultResendConfig();
   const enabled = !!value?.enabled;
+
+  // Auto-populate when template changes if inputs are empty
+  React.useEffect(() => {
+    if (enabled && templateSubject && cfg.variants.length > 0) {
+      const allEmpty = cfg.variants.every(v => !v.title.trim() && !(v.previewText || '').trim());
+      if (allEmpty) {
+        onChange({
+          ...cfg,
+          variants: cfg.variants.map(() => ({
+            title: templateSubject,
+            previewText: templatePreviewText
+          }))
+        });
+      }
+    }
+  }, [templateSubject, templatePreviewText, enabled]);
 
   const update = (patch: Partial<MessageResendConfig>) => {
     const merged: MessageResendConfig = { ...cfg, ...patch };
@@ -92,7 +117,16 @@ export function ResendConfigSection({
         </div>
         <Switch
           checked={enabled}
-          onCheckedChange={(on) => onChange(on ? defaultResendConfig() : { ...cfg, enabled: false })}
+          onCheckedChange={(on) => onChange(on ? {
+            enabled: true,
+            maxResends: 1,
+            resendDelayHours: 24,
+            triggerCondition: 'no_open',
+            variants: [{
+              title: templateSubject || '',
+              previewText: templatePreviewText || ''
+            }],
+          } : { ...cfg, enabled: false })}
         />
       </div>
 
@@ -144,7 +178,18 @@ export function ResendConfigSection({
             </Label>
             {cfg.variants.map((variant, i) => (
               <div key={i} className="rounded-xl border border-border/50 p-2 space-y-1.5">
-                <p className="text-[9px] font-semibold text-muted-foreground">Resend #{i + 1}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9px] font-semibold text-muted-foreground">Resend #{i + 1}</p>
+                  <HeadlineIQOptimizer
+                    value={variant.title}
+                    previewValue={variant.previewText || ''}
+                    onChange={(newVal) => updateVariant(i, { title: newVal })}
+                    onPreviewChange={(newPreview) => updateVariant(i, { previewText: newPreview })}
+                    frameworkDefault={workspaceFramework}
+                    organizationId={organizationId}
+                    align="end"
+                  />
+                </div>
                 <Input
                   placeholder="Subject"
                   value={variant.title}

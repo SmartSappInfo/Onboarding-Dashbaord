@@ -110,6 +110,7 @@ import { validateTemplateVariables } from '@/lib/template-validator';
 import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
+import { HeadlineIQOptimizer } from '@/components/shared/HeadlineIQOptimizer';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import AiModelSelector from '@/components/ai/AiModelSelector';
 import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
@@ -4416,29 +4417,29 @@ export function TemplateWorkshop({
                                                         <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
                                                         <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Email Header</span>
                                                     </div>
-                                                    {subjectOptions && subjectOptions.length > 0 && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => setIsAlternativesOpen(true)}
-                                                            className="h-6 rounded-lg text-[10px] font-bold gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 active:scale-95 transition-all"
-                                                        >
-                                                            <Sparkles className="h-3 w-3 animate-pulse text-blue-500" />
-                                                            View AI Suggestions
-                                                        </Button>
-                                                    )}
                                                 </div>
                                                 {/* Subject Line */}
                                                 <div className="space-y-1.5 text-left">
                                                     <div className="flex items-center justify-between">
                                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-0.5">Subject Line</Label>
-                                                        <span className={cn(
-                                                            "text-[9px] font-semibold transition-colors",
-                                                            subject.length > 50 ? "text-amber-500" : "text-muted-foreground/50"
-                                                        )}>
-                                                            {subject.length} / 50 characters
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <HeadlineIQOptimizer
+                                                                value={subject}
+                                                                previewValue={previewText}
+                                                                onChange={handleSubjectChange}
+                                                                onPreviewChange={handlePreviewTextChange}
+                                                                emailContext={body}
+                                                                organizationId={organizationId}
+                                                                frameworkDefault={activeWorkspace?.defaultCopywritingFramework || 'aida'}
+                                                                align="end"
+                                                            />
+                                                            <span className={cn(
+                                                                "text-[9px] font-semibold transition-colors",
+                                                                subject.length > 60 ? "text-rose-500 font-bold" : subject.length > 50 ? "text-amber-500" : "text-muted-foreground/50"
+                                                            )}>
+                                                                {subject.length} / 60 characters
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div className="relative group">
                                                         <SlashInput

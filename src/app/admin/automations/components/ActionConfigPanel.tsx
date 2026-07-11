@@ -25,11 +25,11 @@ import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile, MessageResendConfig } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile, MessageResendConfig, MessageTemplate } from '@/lib/types';
 import { ResendConfigSection } from './ResendConfigSection';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc } from 'firebase/firestore';
 import { useCallCampaigns } from '@/lib/call-centre-hooks';
 
 const NATIVE_ENTITY_FIELDS = [
@@ -772,6 +772,27 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
   const { data: senderProfiles } = useCollection<SenderProfile>(profilesQuery);
 
+  const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
+
+  React.useEffect(() => {
+    if (config.templateId && firestore) {
+      const getTemplate = async () => {
+        try {
+          const docRef = doc(firestore, 'message_templates', config.templateId);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            setSelectedTemplate({ id: snap.id, ...snap.data() } as MessageTemplate);
+          }
+        } catch (e) {
+          console.error('[ActionConfigPanel] Error fetching template:', e);
+        }
+      };
+      getTemplate();
+    } else {
+      setSelectedTemplate(null);
+    }
+  }, [config.templateId, firestore]);
+
   React.useEffect(() => {
     if (
       (actionType === 'SEND_MESSAGE' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS') &&
@@ -921,6 +942,10 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <ResendConfigSection
             value={config.resendConfig}
             channel={config.channel}
+            templateSubject={selectedTemplate?.subject || ''}
+            templatePreviewText={selectedTemplate?.previewText || ''}
+            workspaceFramework={activeWorkspace?.defaultCopywritingFramework || 'aida'}
+            organizationId={activeWorkspace?.organizationId}
             onChange={(next) => updateConfig({ resendConfig: next })}
           />
         </div>
