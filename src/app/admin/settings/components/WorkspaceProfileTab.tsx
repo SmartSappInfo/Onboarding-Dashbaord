@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { saveWorkspaceAction } from '@/lib/workspace-actions';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
@@ -64,6 +65,9 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
       tasks: true
     }
   );
+  const [defaultCopywritingFramework, setDefaultCopywritingFramework] = React.useState<'aida' | '4us' | 'pas'>(
+    workspace.defaultCopywritingFramework || 'aida'
+  );
 
   React.useEffect(() => {
     setName(workspace.name);
@@ -82,6 +86,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
         tasks: true
       }
     );
+    setDefaultCopywritingFramework(workspace.defaultCopywritingFramework || 'aida');
   }, [workspace.id]);
 
   // Helper function to get industry icon
@@ -141,6 +146,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
             singular: singularTerm.trim(),
             plural: pluralTerm.trim()
           } : undefined,
+          defaultCopywritingFramework,
         },
         user.uid
       );
@@ -379,6 +385,38 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
                   className="h-11 rounded-xl bg-background border-none font-bold text-sm px-4" 
                 />
               </div>
+            </div>
+          </div>
+
+          <Separator className="opacity-50" />
+
+          {/* Section 4.5: HeadlineIQ Copywriting Default */}
+          <div className="space-y-6 text-left animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="flex items-center gap-2 px-1">
+              <Settings2 className="h-4 w-4 text-primary" />
+              <h4 className="text-xs font-semibold">HeadlineIQ Copywriting Defaults</h4>
+              <Badge variant="outline" className="text-[8px] font-semibold uppercase px-1.5 h-4 ml-auto">AI Settings</Badge>
+            </div>
+
+            <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
+              Define the default copywriting framework to analyze subject lines, titles, and generate AI caption variations inside this workspace.
+            </p>
+
+            <div className="space-y-2 max-w-md pt-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Copywriting Framework</Label>
+              <Select
+                value={defaultCopywritingFramework}
+                onValueChange={(v) => setDefaultCopywritingFramework(v as 'aida' | '4us' | 'pas')}
+              >
+                <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold text-sm px-4">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="aida">AIDA (Attention, Interest, Desire, Action)</SelectItem>
+                  <SelectItem value="pas">PAS (Problem, Agitation, Solution)</SelectItem>
+                  <SelectItem value="4us">4 U's (Urgency, Uniqueness, Specificity, Usefulness)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
