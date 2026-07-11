@@ -4,6 +4,12 @@ import { evaluateContactJumps } from '../automations/jump-engine';
 import { adminDb } from '../firebase-admin';
 import { logStepExecution } from '../automations/step-logger';
 
+// Mock Tag Enrichment
+vi.mock('../automations/tag-enrichment', () => ({
+  fetchLiveEntityTags: vi.fn().mockResolvedValue(['tag_hot']),
+  nodeChecksTags: vi.fn().mockReturnValue(true),
+}));
+
 // Mock Dependencies
 vi.mock('../firebase-admin', () => {
   const mockBatch = {

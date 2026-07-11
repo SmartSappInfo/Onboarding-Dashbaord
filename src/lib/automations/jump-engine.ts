@@ -5,6 +5,7 @@ import { traverseNodes } from './nodes/traverse';
 import { logStepExecution } from './step-logger';
 import { cancelDelayTask } from '../gcp-tasks-client';
 import type { EntityType } from '../types';
+import { fetchLiveEntityTags, nodeChecksTags } from './tag-enrichment';
 
 interface GoalConditionNode {
   id: string;
@@ -68,7 +69,11 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
       if (jumpNode.data?.config?.jumpFromAnywhere === false) continue;
 
       // 3. Evaluate the goal conditions for the contact using live tags/fields payload
-      const payload = (runData.payload as Record<string, unknown>) || {};
+      let payload = (runData.payload as Record<string, unknown>) || {};
+      if (entityId && workspaceId && nodeChecksTags(jumpNode)) {
+        const liveTags = await fetchLiveEntityTags(entityId, workspaceId);
+        payload = { ...payload, __liveTags: liveTags };
+      }
 
       const isTrue = await evaluateConditionNode(
         jumpNode as unknown as Parameters<typeof evaluateConditionNode>[0],
