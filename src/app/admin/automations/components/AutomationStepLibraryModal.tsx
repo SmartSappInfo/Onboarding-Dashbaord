@@ -490,24 +490,30 @@ export default function AutomationStepLibraryModal({
   const filteredItems = React.useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return localizedLibraryItems.filter((item) => {
+      if (hasParentSelected && activeCategory === 'all' && item.category === 'start_triggers') {
+        return false;
+      }
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesQuery = !query || 
         item.title.toLowerCase().includes(query) || 
         item.description.toLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     });
-  }, [searchQuery, activeCategory, localizedLibraryItems]);
+  }, [searchQuery, activeCategory, localizedLibraryItems, hasParentSelected]);
 
   const getCategoryCount = React.useCallback((catId: string) => {
     const query = searchQuery.trim().toLowerCase();
     return localizedLibraryItems.filter((item) => {
+      if (hasParentSelected && catId === 'all' && item.category === 'start_triggers') {
+        return false;
+      }
       const matchesCategory = catId === 'all' || item.category === catId;
       const matchesQuery = !query || 
         item.title.toLowerCase().includes(query) || 
         item.description.toLowerCase().includes(query);
       return matchesCategory && matchesQuery;
     }).length;
-  }, [searchQuery, localizedLibraryItems]);
+  }, [searchQuery, localizedLibraryItems, hasParentSelected]);
 
   const isTriggerCategoryDisabled = React.useCallback((catId: string) => {
     return hasParentSelected && catId === 'start_triggers';
