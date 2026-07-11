@@ -17,6 +17,8 @@ import {
   setAutomationActive,
 } from './repository';
 import { adminDb } from '../firebase-admin';
+import { reschedulePendingJobs, purgePendingJobsForNode, purgeAllPendingJobsForAutomation } from './reschedule';
+import { resumeAutomationRun } from './resume';
 
 export interface AutomationActionResult {
   success: boolean;
@@ -91,8 +93,6 @@ export async function saveAutomation(
       const newNodesMap = new Map<string, any>(newDelayNodes.map((n: any) => [n.id, n]));
       const oldNodesMap = new Map<string, any>(oldDelayNodes.map((n: any) => [n.id, n]));
 
-      const { reschedulePendingJobs, purgePendingJobsForNode } = await import('./reschedule');
-
       // Reschedule changed nodes
       for (const newNode of newDelayNodes) {
         const oldNode = oldNodesMap.get(newNode.id);
@@ -143,7 +143,6 @@ export async function removeAutomation(
     }
 
     // Clean up all pending scheduled jobs for the deleted automation
-    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
     await purgeAllPendingJobsForAutomation(id);
 
     await deleteAutomation(id);
@@ -294,7 +293,6 @@ export async function manuallyReleaseWaitJob(
 
     if (!claimedJob) throw new Error('Job could not be claimed (already running).');
 
-    const { resumeAutomationRun } = await import('./resume');
     const success = await resumeAutomationRun(claimedJob);
 
     await adminDb.collection('automation_jobs').doc(jobId).update({
@@ -374,7 +372,6 @@ export async function archiveAutomation(
     });
 
     // Clean up all pending scheduled jobs for the archived automation
-    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
     await purgeAllPendingJobsForAutomation(id);
 
     revalidateAutomationsHub();
@@ -428,8 +425,6 @@ export async function deleteAllArchivedAutomations(
     if (archivedDocs.length === 0) {
       return { success: true };
     }
-
-    const { purgeAllPendingJobsForAutomation } = await import('./reschedule');
 
     // Perform deletions and purge pending scheduled jobs
     for (const doc of archivedDocs) {
