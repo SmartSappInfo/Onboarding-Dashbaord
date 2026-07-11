@@ -9,6 +9,8 @@ const mockEvaluateCondition = vi.fn();
 const mockEvaluateTagCondition = vi.fn();
 const mockHandleDelay = vi.fn();
 
+const mockCalculateExecuteAt = vi.fn();
+
 vi.mock('../automations/step-logger', () => ({
   logStepExecution: (...args: any[]) => mockLogStep(...args),
 }));
@@ -28,21 +30,37 @@ vi.mock('../automation-condition', () => ({
 
 vi.mock('../automations/nodes/delay', () => ({
   handleDelayNode: (...args: any[]) => mockHandleDelay(...args),
+  calculateExecuteAt: (...args: any[]) => mockCalculateExecuteAt(...args),
 }));
 
-vi.mock('../firebase-admin', () => ({
-  adminDb: {
-    collection: vi.fn(() => ({
-      doc: vi.fn(() => ({
-        get: vi.fn().mockResolvedValue({ exists: false }),
-      })),
+vi.mock('../firebase-admin', () => {
+  const mockCollection = vi.fn().mockImplementation(() => ({
+    doc: vi.fn().mockImplementation(() => ({
+      get: vi.fn().mockResolvedValue({
+        exists: false,
+        data: () => undefined,
+      }),
+      update: vi.fn().mockResolvedValue(true),
     })),
-  },
-}));
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    get: vi.fn().mockResolvedValue({
+      empty: true,
+      docs: [],
+    }),
+  }));
+
+  return {
+    adminDb: {
+      collection: mockCollection,
+    },
+  };
+});
 
 describe('Traverse Step Logging', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalculateExecuteAt.mockResolvedValue(new Date());
   });
 
   it('logs triggerNode execution and actionNode execution success', async () => {

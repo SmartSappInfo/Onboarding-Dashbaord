@@ -193,10 +193,49 @@ async function sendResend(job: AutomationJob, meta: ResendJobMeta): Promise<void
   const context = contextFromMeta(job, meta);
   const config = (node.data?.config ?? {}) as Record<string, unknown>;
 
+  // Resolve template variables in the resend variant's title (subject) and previewText
+  let resolvedSubject = variant?.title;
+  let resolvedPreviewText = variant?.previewText;
+
+  if (resolvedSubject || resolvedPreviewText) {
+    const { FieldsVariablesService } = await import('../services/fields-variables-service-impl');
+    const varContext = {
+      workspaceId: meta.workspaceId,
+      entityId: meta.entityId || undefined,
+      recipientContact: (job.payload?.recipient || job.payload?.email || job.payload?.phone) as string | undefined,
+      extraVars: job.payload as Record<string, unknown>,
+      meetingId: (job.payload.meetingId || job.payload.meeting_id || job.payload.id) as string | undefined,
+      formId: (job.payload.formId || job.payload.form_id || job.payload.pdfId) as string | undefined,
+      surveyId: (job.payload.surveyId || job.payload.survey_id) as string | undefined,
+      agreementId: (job.payload.agreementId || job.payload.agreement_id || job.payload.contractId) as string | undefined,
+      responseId: (job.payload.responseId || job.payload.response_id) as string | undefined,
+      submissionId: (job.payload.submissionId || job.payload.submission_id) as string | undefined,
+      userId: (job.payload.userId || job.payload.user_id) as string | undefined,
+    };
+
+    if (resolvedSubject && resolvedSubject.includes('{{')) {
+      resolvedSubject = await FieldsVariablesService.resolveTemplateVariables(resolvedSubject, varContext);
+    }
+    if (resolvedPreviewText && resolvedPreviewText.includes('{{')) {
+      resolvedPreviewText = await FieldsVariablesService.resolveTemplateVariables(resolvedPreviewText, varContext);
+    }
+  }
+
+  // Resolve target resend channel (failover)
+  const baseChannel = (config.channel as 'email' | 'sms' | 'whatsapp') || 'email';
+  const targetChannel = meta.config.resendChannel && meta.config.resendChannel !== 'same'
+    ? meta.config.resendChannel
+    : baseChannel;
+
+  const sendConfig = {
+    ...config,
+    channel: targetChannel,
+  };
+
   const { handleSendMessage } = await import('./actions/message-actions');
-  await handleSendMessage(config, context, node.id, {
-    subject: variant?.title,
-    previewText: variant?.previewText,
+  await handleSendMessage(sendConfig, context, node.id, {
+    subject: resolvedSubject,
+    previewText: resolvedPreviewText,
     isResend: true,
     resendNumber: meta.attempt,
   });

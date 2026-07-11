@@ -32,6 +32,8 @@ interface IncrementMessageNodeStatInput {
   count?: number;
   /** When true, also stamps `lastMessageAt` with the current time. */
   touchLastMessageAt?: boolean;
+  /** Optional resend attempt index (1-based) to track specific resend metrics. */
+  resendNumber?: number;
 }
 
 /**
@@ -53,6 +55,7 @@ export async function incrementMessageNodeStat(
     counter,
     count = 1,
     touchLastMessageAt = false,
+    resendNumber,
   } = input;
 
   const now = new Date().toISOString();
@@ -71,6 +74,10 @@ export async function incrementMessageNodeStat(
   };
   if (organizationId) update.organizationId = organizationId;
   if (touchLastMessageAt) update.lastMessageAt = now;
+
+  if (resendNumber && typeof resendNumber === 'number') {
+    update[`resendStats.${resendNumber}.${counter}`] = FieldValue.increment(count);
+  }
 
   await ref.set(update, { merge: true });
 }

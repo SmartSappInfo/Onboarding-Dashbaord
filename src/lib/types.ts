@@ -3309,6 +3309,16 @@ export interface MessageNodeStats {
   /** Total resend messages dispatched across all contacts at this node. */
   resent: number;
 
+  /** Attempt-specific resend statistics (e.g. resend number 1, 2, etc.) */
+  resendStats?: Record<string, {
+    sent: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    delivered?: number;
+    failed?: number;
+  }>;
+
   /** ISO timestamp of the most recent send at this node. */
   lastMessageAt?: string;
   updatedAt: string;
@@ -3361,6 +3371,8 @@ export interface MessageResendConfig {
    * If fewer variants than `maxResends` are provided, the last variant is reused.
    */
   variants: MessageResendVariant[];
+  /** Optional channel to use for resends (defaults to 'same' to reuse native channel) */
+  resendChannel?: 'email' | 'sms' | 'whatsapp' | 'same';
 }
 
 

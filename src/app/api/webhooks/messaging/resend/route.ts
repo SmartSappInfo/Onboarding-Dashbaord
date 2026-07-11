@@ -112,6 +112,7 @@ async function handleAutomationMessageEvent(
       organizationId: log.organizationId,
       channel,
       counter,
+      resendNumber: log.resendNumber,
     }).catch((e: unknown) =>
       console.warn('>>> [WEBHOOK] node stat increment failed (non-fatal):', e)
     );

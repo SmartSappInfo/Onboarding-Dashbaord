@@ -112,8 +112,72 @@ export function MessageNodeStatsPanel({
             ) : null}
           </div>
 
+          {stats.resent > 0 && stats.resendStats && Object.keys(stats.resendStats).length > 0 ? (
+            <div className="mt-4 pt-3 border-t border-border/50 space-y-2">
+              <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
+                Resend Attempts Breakdown
+              </p>
+              <div className="space-y-2.5">
+                {Object.entries(stats.resendStats)
+                  .sort((a, b) => Number(a[0]) - Number(b[0]))
+                  .map(([attemptNum, attemptStats]) => {
+                    const rSent = attemptStats.sent ?? 0;
+                    const rDelivered = attemptStats.delivered ?? 0;
+                    const rOpened = attemptStats.opened ?? 0;
+                    const rClicked = attemptStats.clicked ?? 0;
+                    const rBounced = attemptStats.bounced ?? 0;
+                    
+                    const pctOfResent = (n: number) => (rSent > 0 ? Math.round((n / rSent) * 100) : 0);
+
+                    return (
+                      <div 
+                        key={attemptNum} 
+                        className="rounded-lg border border-border/50 bg-muted/10 p-2.5 space-y-1.5"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-foreground">
+                            Resend #{attemptNum}
+                          </span>
+                          <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold">
+                            {rSent} Sent
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                          <div className="bg-background/40 p-1.5 rounded border border-border/30">
+                            <p className="text-[8px] text-muted-foreground font-medium">Delivered</p>
+                            <p className="text-xs font-bold text-foreground">
+                              {rDelivered} <span className="text-[9px] font-normal text-muted-foreground">({pctOfResent(rDelivered)}%)</span>
+                            </p>
+                          </div>
+                          <div className="bg-background/40 p-1.5 rounded border border-border/30">
+                            <p className="text-[8px] text-muted-foreground font-medium">Opened</p>
+                            <p className="text-xs font-bold text-green-600 dark:text-green-400">
+                              {rOpened} <span className="text-[9px] font-normal text-muted-foreground">({pctOfResent(rOpened)}%)</span>
+                            </p>
+                          </div>
+                          <div className="bg-background/40 p-1.5 rounded border border-border/30">
+                            <p className="text-[8px] text-muted-foreground font-medium">Clicked</p>
+                            <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                              {rClicked} <span className="text-[9px] font-normal text-muted-foreground">({pctOfResent(rClicked)}%)</span>
+                            </p>
+                          </div>
+                          <div className="bg-background/40 p-1.5 rounded border border-border/30">
+                            <p className="text-[8px] text-muted-foreground font-medium">Bounced</p>
+                            <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                              {rBounced} <span className="text-[9px] font-normal text-muted-foreground">({pctOfResent(rBounced)}%)</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : null}
+
           {stats.lastMessageAt ? (
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground mt-1.5">
               Last message {new Date(stats.lastMessageAt).toLocaleString()}
             </p>
           ) : null}
