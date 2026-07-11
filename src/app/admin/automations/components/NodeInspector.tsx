@@ -15,6 +15,7 @@ import {
     SplitSquareVertical,
     CalendarDays,
     StickyNote,
+    Milestone,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { useParams } from 'next/navigation';
 import { ConditionsBuilder } from './ConditionsBuilder';
 import { useTerminology } from '@/hooks/use-terminology';
+import type { ConditionGroup } from '@/lib/automation-condition';
 import type { AutomationTrigger, Tag as TagType } from '@/lib/types';
 import { useWorkspaceScopedQueries } from '../hooks/useWorkspaceScopedQueries';
 import { TriggerConfigPanel } from './TriggerConfigPanel';
@@ -965,6 +967,93 @@ export function NodeInspector({
                                 }}
                                 accentColor="amber"
                             />
+                        </div>
+                    ) : null}
+
+                    {node.type === 'jumpToNode' ? (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 bg-fuchsia-500/5 p-6 rounded-[2rem] border border-fuchsia-500/20 shadow-inner">
+                            <Label className="text-[10px] font-semibold text-fuchsia-600 flex items-center gap-2">
+                                <Milestone className="h-3 w-3" /> Goal Milestone Settings
+                            </Label>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Goal / Milestone Name</Label>
+                                <Input
+                                    type="text"
+                                    value={draftData.label || ''}
+                                    onChange={(e) => setDraftData((prev: any) => ({
+                                        ...prev,
+                                        label: e.target.value
+                                    }))}
+                                    placeholder="e.g. Lead Upgraded to Premium"
+                                    className="h-11 rounded-xl bg-background border-none font-semibold px-4 shadow-inner text-xs"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Goal Target Conditions</Label>
+                                <ConditionsBuilder
+                                    groups={(config.groups as ConditionGroup[]) || []}
+                                    relation={(config.relation as 'and' | 'or') || 'and'}
+                                    onChange={(rel: 'and' | 'or', grps: ConditionGroup[]) => {
+                                        setDraftData((prev: any) => ({
+                                            ...prev,
+                                            config: {
+                                                ...(prev?.config || {}),
+                                                relation: rel,
+                                                groups: grps
+                                            }
+                                        }));
+                                    }}
+                                    accentColor="purple"
+                                />
+                            </div>
+
+                            <Separator className="bg-fuchsia-500/10" />
+
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 px-1">
+                                    <input
+                                        type="checkbox"
+                                        id="jumpFromAnywhere"
+                                        checked={config.jumpFromAnywhere !== false}
+                                        onChange={(e) => setDraftData((prev: any) => ({
+                                            ...prev,
+                                            config: {
+                                                ...(prev?.config || {}),
+                                                jumpFromAnywhere: e.target.checked
+                                            }
+                                        }))}
+                                        className="h-4 w-4 rounded border-border text-fuchsia-600 focus:ring-fuchsia-500 cursor-pointer"
+                                    />
+                                    <Label htmlFor="jumpFromAnywhere" className="text-[10px] font-semibold cursor-pointer text-foreground/80">
+                                        Trigger goal jump from anywhere in this automation
+                                    </Label>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sequential Entry Behavior</Label>
+                                    <Select
+                                        value={config.sequentialBehavior || 'wait'}
+                                        onValueChange={(v) => setDraftData((prev: any) => ({
+                                            ...prev,
+                                            config: {
+                                                ...(prev?.config || {}),
+                                                sequentialBehavior: v
+                                            }
+                                        }))}
+                                    >
+                                        <SelectTrigger className="h-11 rounded-xl bg-background border-none font-bold shadow-inner px-4 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl animate-fade-in">
+                                            <SelectItem value="wait">Wait at this step until conditions are met</SelectItem>
+                                            <SelectItem value="proceed">Proceed to next step immediately</SelectItem>
+                                            <SelectItem value="exit">End this automation sequence</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
                         </div>
                     ) : null}
 

@@ -367,6 +367,118 @@ export async function traverseNodes(
 
         await handleDelayNode(nextNode, context);
         return;
+      } else if (nextNode.type === 'jumpToNode') {
+        const isTrue = await evaluateConditionNode(
+          nextNode,
+          context.payload,
+          async (audienceId) => {
+            const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+            return snap.exists ? snap.data() : null;
+          },
+          async (entityId, automationId, operator) => {
+            if (operator === 'currently_in') {
+              const snap = await adminDb.collection('automation_runs')
+                .where('entityId', '==', entityId)
+                .where('automationId', '==', automationId)
+                .where('status', '==', 'running')
+                .limit(1)
+                .get();
+              return !snap.empty;
+            }
+            if (operator === 'has_entered') {
+              const snap = await adminDb.collection('automation_runs')
+                .where('entityId', '==', entityId)
+                .where('automationId', '==', automationId)
+                .limit(1)
+                .get();
+              return !snap.empty;
+            }
+            if (operator === 'has_completed') {
+              const snap = await adminDb.collection('automation_runs')
+                .where('entityId', '==', entityId)
+                .where('automationId', '==', automationId)
+                .where('status', '==', 'completed')
+                .limit(1)
+                .get();
+              return !snap.empty;
+            }
+            if (operator === 'not_entered') {
+              const snap = await adminDb.collection('automation_runs')
+                .where('entityId', '==', entityId)
+                .where('automationId', '==', automationId)
+                .limit(1)
+                .get();
+              return snap.empty;
+            }
+            return false;
+          }
+        );
+
+        if (isTrue) {
+          logStepExecution(context.runId, {
+            nodeId: nextNode.id,
+            nodeType: 'jumpToNode',
+            nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+            status: 'success',
+            executedAt: new Date().toISOString(),
+            durationMs: Date.now() - stepStart,
+            metadata: { reachedSequentially: true, conditionMet: true },
+          });
+          await traverseNodes(nextNode.id, automation, context);
+        } else {
+          const behavior = nextNode.data?.config?.sequentialBehavior || 'wait';
+          if (behavior === 'wait') {
+            logStepExecution(context.runId, {
+              nodeId: nextNode.id,
+              nodeType: 'jumpToNode',
+              nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+              status: 'waiting',
+              executedAt: new Date().toISOString(),
+              durationMs: Date.now() - stepStart,
+              metadata: { reachedSequentially: true, conditionMet: false, sequentialBehavior: 'wait' },
+            });
+            if (context.runId) {
+              await adminDb.collection('automation_runs').doc(context.runId).update({
+                currentNodeId: nextNode.id,
+                currentNodeLabel: nextNode.data?.label || 'Jump To Milestone',
+                updatedAt: new Date().toISOString(),
+              });
+            }
+            return;
+          } else if (behavior === 'exit') {
+            logStepExecution(context.runId, {
+              nodeId: nextNode.id,
+              nodeType: 'jumpToNode',
+              nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+              status: 'success',
+              executedAt: new Date().toISOString(),
+              durationMs: Date.now() - stepStart,
+              metadata: { reachedSequentially: true, conditionMet: false, sequentialBehavior: 'exit' },
+            });
+            if (context.runId) {
+              await adminDb.collection('automation_runs').doc(context.runId).update({
+                status: 'completed',
+                finishedAt: new Date().toISOString(),
+                currentNodeId: nextNode.id,
+                currentNodeLabel: nextNode.data?.label || 'Jump To Milestone',
+                updatedAt: new Date().toISOString(),
+              });
+            }
+            return;
+          } else {
+            logStepExecution(context.runId, {
+              nodeId: nextNode.id,
+              nodeType: 'jumpToNode',
+              nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+              status: 'success',
+              executedAt: new Date().toISOString(),
+              durationMs: Date.now() - stepStart,
+              metadata: { reachedSequentially: true, conditionMet: false, sequentialBehavior: 'proceed' },
+            });
+            await traverseNodes(nextNode.id, automation, context);
+          }
+        }
+        return;
       }
 
       await traverseNodes(nextNode.id, automation, context);

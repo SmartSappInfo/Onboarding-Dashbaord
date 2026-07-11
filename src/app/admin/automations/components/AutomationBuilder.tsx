@@ -25,6 +25,7 @@ import { DelayNode } from '../[id]/edit/components/nodes/DelayNode';
 import { TagConditionNode } from '../[id]/edit/components/nodes/TagConditionNode';
 import { TagActionNode } from '../[id]/edit/components/nodes/TagActionNode';
 import { ABSplitNode } from '../[id]/edit/components/nodes/ABSplitNode';
+import { JumpToNode } from '../[id]/edit/components/nodes/JumpToNode';
 import {
     Dialog,
     DialogContent,
@@ -89,6 +90,7 @@ const nodeTypes = {
     tagConditionNode: TagConditionNode,
     tagActionNode: TagActionNode,
     abSplitNode: ABSplitNode,
+    jumpToNode: JumpToNode,
 };
 
 const edgeTypes = {
@@ -944,6 +946,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             case 'tagConditionNode': label = 'Tag Condition'; break;
             case 'tagActionNode': label = 'Tag Action'; break;
             case 'abSplitNode': label = 'A/B Split'; break;
+            case 'jumpToNode': label = 'Jump To Milestone'; break;
         }
 
         const newNode = {
@@ -952,7 +955,11 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             position: { x: 400 + Math.random() * 50, y: 300 + Math.random() * 50 },
             data: { 
                 label,
-                config: type === 'delayNode' ? { value: 5, unit: 'Minutes' } : {}
+                config: type === 'delayNode' 
+                    ? { value: 5, unit: 'Minutes' } 
+                    : type === 'jumpToNode' 
+                    ? { groups: [], relation: 'and', jumpFromAnywhere: true, sequentialBehavior: 'wait' } 
+                    : {}
             },
         };
         setNodes(nds => [...nds, newNode]);

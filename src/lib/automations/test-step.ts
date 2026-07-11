@@ -174,6 +174,53 @@ export async function testAutomationStep(
         message: 'Delay step simulated.',
         delay: `${config.value || 5} ${config.unit || 'Minutes'}`,
       };
+    } else if (testNode.type === 'jumpToNode') {
+      evaluation = await evaluateConditionNode(
+        testNode as unknown as Parameters<typeof evaluateConditionNode>[0],
+        payload,
+        async (audienceId) => {
+          const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+          return snap.exists ? snap.data() : null;
+        },
+        async (eId, aId, operator) => {
+          if (operator === 'currently_in') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .where('status', '==', 'running')
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'has_entered') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'has_completed') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .where('status', '==', 'completed')
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'not_entered') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .limit(1)
+              .get();
+            return snap.empty;
+          }
+          return false;
+        }
+      );
+      executionResult = { message: `Goal conditions evaluated to ${evaluation ? 'TRUE' : 'FALSE'}.` };
     } else if (testNode.type === 'triggerNode') {
       executionResult = { message: 'Trigger node check completed (entry point).' };
     } else {

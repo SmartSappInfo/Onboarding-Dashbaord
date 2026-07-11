@@ -32,7 +32,8 @@ import {
   Bell,
   SplitSquareVertical,
   Sparkles,
-  UserCog
+  UserCog,
+  Milestone
 } from 'lucide-react';
 
 interface AutomationStepLibraryModalProps {
@@ -228,6 +229,19 @@ const LIBRARY_ITEMS = [
     icon: SplitSquareVertical,
     nodeType: 'abSplitNode',
     payload: { type: 'abSplitNode', label: 'A/B Split (50/50)', config: { splitRatio: 50 } }
+  },
+  {
+    id: 'jump_to',
+    title: 'Jump To (Goal)',
+    description: 'Jump contacts to this step from other parts of the automation when they meet specific milestone conditions.',
+    category: 'conditions_flow',
+    icon: Milestone,
+    nodeType: 'jumpToNode',
+    payload: { 
+      type: 'jumpToNode', 
+      label: 'Jump To Milestone', 
+      config: { groups: [], relation: 'and', jumpFromAnywhere: true, sequentialBehavior: 'wait' } 
+    }
   },
 
   // Contacts & Data

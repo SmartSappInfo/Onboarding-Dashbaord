@@ -16,6 +16,7 @@ import {
   AlertCircle,
   RefreshCw,
   Loader2,
+  Milestone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StepExecution } from '@/lib/types';
@@ -42,6 +43,8 @@ const getNodeIcon = (nodeType: string) => {
       return Tag;
     case 'delayNode':
       return Clock;
+    case 'jumpToNode':
+      return Milestone;
     default:
       return Activity;
   }

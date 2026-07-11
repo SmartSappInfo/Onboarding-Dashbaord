@@ -149,6 +149,14 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                     console.error(`>>> [Scoring Engine] Recalculation failed on activity log:`, errorMsg);
                 }
 
+                try {
+                    const { evaluateContactJumps } = await import('./automations/jump-engine');
+                    await evaluateContactJumps(finalData.entityId!, finalData.workspaceId!);
+                } catch (err: unknown) {
+                    const errorMsg = err instanceof Error ? err.message : 'Unknown jump evaluation error';
+                    console.error(`>>> [JUMP:ENGINE] Goal/Jump evaluation failed on activity log:`, errorMsg);
+                }
+
                 // CENTRAL SCORING & PERFORMANCE ENGINE INTEGRATION:
                 // Offload event evaluation to emitScoringEvent (runs after request matches)
                 if (!activityData.metadata?.isAutomation && !activityData.metadata?.isRetry) {
