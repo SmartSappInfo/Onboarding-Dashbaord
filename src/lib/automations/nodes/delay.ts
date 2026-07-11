@@ -1,20 +1,139 @@
-import { adminDb } from '../../firebase-admin';
 import type { ExecutionContext } from '../execution-types';
 import { scheduleDelayTask } from '../../gcp-tasks-client';
 
+/**
+ * Calculates the exact execution date/time for a delay node based on its configuration.
+ */
+export async function calculateExecuteAt(
+  config: Record<string, any>,
+  context: ExecutionContext,
+  now: Date = new Date()
+): Promise<Date> {
+  const waitType = config.waitType || 'period';
+
+  // 1. Until a Specific Day and/or Time
+  if (waitType === 'specific_date' && config.specificDate) {
+    const [year, month, day] = String(config.specificDate).split('-').map(Number);
+    const [hour, minute] = String(config.specificTime || '09:00').split(':').map(Number);
+    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  }
+
+  // 2. On a Specific Day of Week
+  if (waitType === 'scheduled_day' && config.scheduledDay) {
+    const dayOfWeekMap: Record<string, number> = {
+      sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
+    };
+    const targetDay = dayOfWeekMap[String(config.scheduledDay).toLowerCase()] ?? Number(config.scheduledDay);
+    const [hour, minute] = String(config.scheduledTime || '09:00').split(':').map(Number);
+
+    const executeAt = new Date(now);
+    executeAt.setHours(hour, minute, 0, 0);
+
+    const currentDay = now.getDay();
+    let daysToAdd = (targetDay - currentDay + 7) % 7;
+    if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
+      daysToAdd = 7;
+    }
+    executeAt.setDate(executeAt.getDate() + daysToAdd);
+    return executeAt;
+  }
+
+  // 3. On a Specific Month / Day of Month (with optional Year)
+  if (waitType === 'scheduled_month') {
+    const [hour, minute] = String(config.scheduledTime || '09:00').split(':').map(Number);
+    const executeAt = new Date(now);
+    executeAt.setHours(hour, minute, 0, 0);
+
+    let targetYear = now.getFullYear();
+    if (config.scheduledYear && config.scheduledYear !== 'any') {
+      targetYear = Number(config.scheduledYear);
+    }
+
+    let targetMonth = now.getMonth();
+    if (config.scheduledMonth && config.scheduledMonth !== 'any') {
+      targetMonth = Number(config.scheduledMonth) - 1;
+    }
+
+    let targetDay = now.getDate();
+    if (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any') {
+      if (config.scheduledDayOfMonth === 'last') {
+        targetDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+      } else {
+        targetDay = Number(config.scheduledDayOfMonth);
+      }
+    }
+
+    executeAt.setFullYear(targetYear, targetMonth, targetDay);
+
+    if (executeAt.getTime() <= now.getTime()) {
+      if (!config.scheduledYear || config.scheduledYear === 'any') {
+        if (!config.scheduledMonth || config.scheduledMonth === 'any') {
+          executeAt.setMonth(executeAt.getMonth() + 1);
+          if (config.scheduledDayOfMonth === 'last') {
+            const lastDay = new Date(executeAt.getFullYear(), executeAt.getMonth() + 1, 0).getDate();
+            executeAt.setDate(lastDay);
+          }
+        } else {
+          executeAt.setFullYear(executeAt.getFullYear() + 1);
+        }
+      }
+    }
+    return executeAt;
+  }
+
+  // 4. Until a Custom Date Field Matches
+  if (waitType === 'date_field') {
+    const dateFieldKey = String(config.dateField || 'onboarding_date');
+    let baseDate = new Date(now);
+
+    // Try resolving from payload
+    let dateVal = context.payload?.[dateFieldKey] || (context.payload?.customFields as Record<string, unknown>)?.[dateFieldKey];
+
+    if (!dateVal && context.entityId && context.workspaceId) {
+      const { resolveContact } = await import('../../contact-adapter');
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      if (contact) {
+        const contactObj = contact as unknown as Record<string, unknown>;
+        dateVal = contactObj[dateFieldKey] || (contactObj.customData as Record<string, unknown>)?.[dateFieldKey];
+      }
+    }
+
+    if (dateVal) {
+      baseDate = new Date(String(dateVal));
+    }
+
+    const offsetDays = Number(config.offsetDays) || 0;
+    const direction = String(config.offsetDirection || 'current_date');
+    const executeAt = new Date(baseDate);
+
+    if (direction === 'before') {
+      executeAt.setDate(executeAt.getDate() - offsetDays);
+    } else if (direction === 'after') {
+      executeAt.setDate(executeAt.getDate() + offsetDays);
+    }
+    return executeAt;
+  }
+
+  // Fallback: 5. Period (relative duration) Wait
+  const newVal = Number(config.value) || 5;
+  const newUnit = String(config.unit || 'Minutes');
+  const executeAt = new Date(now);
+
+  if (newUnit === 'Minutes') executeAt.setMinutes(executeAt.getMinutes() + newVal);
+  else if (newUnit === 'Hours') executeAt.setHours(executeAt.getHours() + newVal);
+  else if (newUnit === 'Days') executeAt.setDate(executeAt.getDate() + newVal);
+  else if (newUnit === 'Weeks') executeAt.setDate(executeAt.getDate() + newVal * 7);
+
+  return executeAt;
+}
+
 export async function handleDelayNode(
-  node: { id: string; data?: { config?: { value?: number; unit?: string } } },
+  node: { id: string; data?: { config?: any } },
   context: ExecutionContext
 ): Promise<void> {
   console.log('[REAL handleDelayNode] called for node:', node.id);
-  const { value, unit } = node.data?.config || { value: 5, unit: 'Minutes' };
-
-  const now = new Date();
-  const executeAt = new Date(now);
-  if (unit === 'Minutes') executeAt.setMinutes(executeAt.getMinutes() + (value || 5));
-  else if (unit === 'Hours') executeAt.setHours(executeAt.getHours() + (value || 1));
-  else if (unit === 'Days') executeAt.setDate(executeAt.getDate() + (value || 1));
-  else if (unit === 'Weeks') executeAt.setDate(executeAt.getDate() + (value || 1) * 7);
+  const config = node.data?.config || {};
+  const executeAt = await calculateExecuteAt(config, context);
 
   // Persist the context-only fields (organizationId, entityType, workspaceId,
   // entityId) INTO the payload. These live on the ExecutionContext, not in

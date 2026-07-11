@@ -1361,14 +1361,33 @@ export function NodeInspector({
                              {/* 6. On a Specific Month / Day of Month */}
                              {config.waitType === 'scheduled_month' ? (
                                  <div className="space-y-4 pt-2">
-                                     <div className="grid grid-cols-2 gap-3">
+                                     <div className="grid grid-cols-3 gap-3">
+                                         <div className="space-y-2">
+                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Year</Label>
+                                             <Select
+                                                 value={config.scheduledYear || 'any'}
+                                                 onValueChange={(v) => updateConfig({ scheduledYear: v })}
+                                             >
+                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
+                                                     <SelectValue />
+                                                 </SelectTrigger>
+                                                 <SelectContent className="rounded-xl">
+                                                     <SelectItem value="any">Any year</SelectItem>
+                                                     <SelectItem value="2026">2026</SelectItem>
+                                                     <SelectItem value="2027">2027</SelectItem>
+                                                     <SelectItem value="2028">2028</SelectItem>
+                                                     <SelectItem value="2029">2029</SelectItem>
+                                                     <SelectItem value="2030">2030</SelectItem>
+                                                 </SelectContent>
+                                             </Select>
+                                         </div>
                                          <div className="space-y-2">
                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Month</Label>
                                              <Select
                                                  value={config.scheduledMonth || 'any'}
                                                  onValueChange={(v) => updateConfig({ scheduledMonth: v })}
                                              >
-                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
                                                      <SelectValue />
                                                  </SelectTrigger>
                                                  <SelectContent className="rounded-xl">
@@ -1394,7 +1413,7 @@ export function NodeInspector({
                                                  value={config.scheduledDayOfMonth || 'any'}
                                                  onValueChange={(v) => updateConfig({ scheduledDayOfMonth: v })}
                                              >
-                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
                                                      <SelectValue />
                                                  </SelectTrigger>
                                                  <SelectContent className="rounded-xl max-h-60">
@@ -1448,7 +1467,7 @@ export function NodeInspector({
                                      </div>
 
                                      {/* Summary preview */}
-                                     {((config.scheduledMonth && config.scheduledMonth !== 'any') || (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any')) ? (
+                                     {((config.scheduledMonth && config.scheduledMonth !== 'any') || (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any') || (config.scheduledYear && config.scheduledYear !== 'any')) ? (
                                          <div className="rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                              <p className="text-[10px] font-bold text-purple-700 dark:text-purple-300 mb-0.5">Schedule Preview</p>
                                              <p className="text-[10px] text-purple-600 dark:text-purple-400">
@@ -1458,6 +1477,9 @@ export function NodeInspector({
                                                          '1': 'January', '2': 'February', '3': 'March', '4': 'April', '5': 'May', '6': 'June',
                                                          '7': 'July', '8': 'August', '9': 'September', '10': 'October', '11': 'November', '12': 'December'
                                                      };
+                                                     if (config.scheduledYear && config.scheduledYear !== 'any') {
+                                                         parts.push(config.scheduledYear);
+                                                     }
                                                      if (config.scheduledMonth && config.scheduledMonth !== 'any') {
                                                          parts.push(monthNames[config.scheduledMonth] || config.scheduledMonth);
                                                      } else {

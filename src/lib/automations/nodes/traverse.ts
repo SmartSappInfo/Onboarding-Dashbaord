@@ -2,7 +2,7 @@ import type { Automation, MessageResendConfig } from '../../types';
 import { evaluateConditionNode } from '../../automation-condition';
 import { processActionNode } from '../actions';
 import type { ExecutionContext } from '../execution-types';
-import { handleDelayNode } from './delay';
+import { handleDelayNode, calculateExecuteAt } from './delay';
 import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
 import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
@@ -348,13 +348,9 @@ export async function traverseNodes(
           metadata: { actionType: nextNode.data?.action },
         });
       } else if (nextNode.type === 'delayNode') {
-        const { value, unit } = nextNode.data?.config || { value: 5, unit: 'Minutes' };
+        const config = nextNode.data?.config || {};
         const now = new Date();
-        const executeAt = new Date(now);
-        if (unit === 'Minutes') executeAt.setMinutes(executeAt.getMinutes() + (value || 5));
-        else if (unit === 'Hours') executeAt.setHours(executeAt.getHours() + (value || 1));
-        else if (unit === 'Days') executeAt.setDate(executeAt.getDate() + (value || 1));
-        else if (unit === 'Weeks') executeAt.setDate(executeAt.getDate() + (value || 1) * 7);
+        const executeAt = await calculateExecuteAt(config, context, now);
 
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
