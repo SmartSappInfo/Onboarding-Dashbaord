@@ -91,4 +91,14 @@ describe('GCP Tasks Client & Emulator (P5-4, Strategy C)', () => {
     // Verify fetch was NOT triggered
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('should load service, delay executor, and jump engine modules successfully with zero dynamic import resolution errors', async () => {
+    const service = await import('../automations/service');
+    const delay = await import('../automations/nodes/delay');
+    const jump = await import('../automations/jump-engine');
+
+    expect(service.saveAutomation).toBeDefined();
+    expect(delay.handleDelayNode).toBeDefined();
+    expect(jump.evaluateContactJumps).toBeDefined();
+  });
 });

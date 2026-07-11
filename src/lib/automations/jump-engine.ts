@@ -3,6 +3,7 @@ import { evaluateConditionNode } from '../automation-condition';
 import { loadAutomationForAuth } from '../automation-permissions';
 import { traverseNodes } from './nodes/traverse';
 import { logStepExecution } from './step-logger';
+import { cancelDelayTask } from '../gcp-tasks-client';
 import type { EntityType } from '../types';
 
 interface GoalConditionNode {
@@ -126,7 +127,6 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
           .get();
 
         const batch = adminDb.batch();
-        const { cancelDelayTask } = await import('../gcp-tasks-client');
 
         for (const doc of pendingJobsSnap.docs) {
           const jobData = doc.data();

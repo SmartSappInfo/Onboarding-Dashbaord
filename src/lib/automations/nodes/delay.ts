@@ -1,5 +1,6 @@
 import { adminDb } from '../../firebase-admin';
 import type { ExecutionContext } from '../execution-types';
+import { scheduleDelayTask } from '../../gcp-tasks-client';
 
 export async function handleDelayNode(
   node: { id: string; data?: { config?: { value?: number; unit?: string } } },
@@ -28,7 +29,6 @@ export async function handleDelayNode(
     ...(context.entityType ? { entityType: context.entityType } : {}),
   };
 
-  const { scheduleDelayTask } = await import('../../gcp-tasks-client');
   await scheduleDelayTask({
     runId: context.runId,
     nodeId: node.id,
