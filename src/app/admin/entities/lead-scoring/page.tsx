@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useMemo } from 'react';
 import { doc, updateDoc, writeBatch, runTransaction, collection, query, where, limit, orderBy } from 'firebase/firestore';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -136,6 +136,13 @@ export default function LeadScoringCleanupPage() {
   }, [firestore, activeWorkspaceId]);
   const { data: workspaceEntities, isLoading } = useCollection<WorkspaceEntity>(weQuery);
 
+  // Fetch global default lead scoring settings
+  const systemDefaultsRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'system_settings', 'lead_scoring');
+  }, [firestore]);
+  const { data: systemDefaults } = useDoc<LeadScoringSettings>(systemDefaultsRef);
+
   // 2. Fetch history for score change updates
   const historyQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -198,8 +205,8 @@ export default function LeadScoringCleanupPage() {
   // Settings tab local states
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const settings = useMemo<LeadScoringSettings>(() => {
-    return activeWorkspace?.leadScoringSettings || DEFAULT_SCORING_SETTINGS;
-  }, [activeWorkspace?.leadScoringSettings]);
+    return activeWorkspace?.leadScoringSettings || systemDefaults || DEFAULT_SCORING_SETTINGS;
+  }, [activeWorkspace?.leadScoringSettings, systemDefaults]);
 
   const [localVerificationRules, setLocalVerificationRules] = useState<EmailVerificationRule[]>([]);
   const [localPhoneVerificationRules, setLocalPhoneVerificationRules] = useState<PhoneVerificationRule[]>([]);
@@ -660,11 +667,12 @@ export default function LeadScoringCleanupPage() {
   };
 
   const handleResetSettings = () => {
-    setLocalVerificationRules([...DEFAULT_SCORING_SETTINGS.emailVerificationRules]);
-    setLocalPhoneVerificationRules([...(DEFAULT_SCORING_SETTINGS.phoneVerificationRules || [])]);
-    setLocalEngagementRules({ ...DEFAULT_SCORING_SETTINGS.engagementRules });
-    setLocalPositiveOutcomes([]);
-    setLocalDefaultPoints(0);
+    const baseSettings = systemDefaults || DEFAULT_SCORING_SETTINGS;
+    setLocalVerificationRules([...(baseSettings.emailVerificationRules || [])]);
+    setLocalPhoneVerificationRules([...(baseSettings.phoneVerificationRules || [])]);
+    setLocalEngagementRules({ ...(baseSettings.engagementRules || {}) });
+    setLocalPositiveOutcomes([...(baseSettings.callCampaignPositiveOutcomes || [])]);
+    setLocalDefaultPoints(baseSettings.callCampaignDefaultPoints || 0);
     toast({
       title: 'Settings Reset Locally',
       description: 'Click "Save Settings" to apply defaults.'

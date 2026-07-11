@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
@@ -29,11 +29,28 @@ import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig, rotateAllSecretsAction } from '@/lib/backoffice/backoffice-ai-actions';
-import type { WorkspaceStatus, IndustryVertical } from '@/lib/types';
+import type { WorkspaceStatus, IndustryVertical, LeadScoringSettings, EmailVerificationRule, PhoneVerificationRule } from '@/lib/types';
 import { INDUSTRY_STATUS_DEFAULTS } from '@/lib/industry-defaults';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
+
+const ENGAGEMENT_TRIGGER_LABELS: Record<string, string> = {
+  'survey_completed': 'Survey Completed',
+  'email_opened': 'Email Opened',
+  'email_clicked': 'Email Clicked',
+  'meeting_attended': 'Meeting Attended',
+  'reply_received': 'Reply Received',
+  'outbound_call': 'Outbound Call Made',
+  'email_bounced': 'Email Bounced',
+  'sms_failed': 'SMS Delivery Failed',
+  'page_visited': 'Viewed Page',
+  'button_clicked': 'Clicked Button on Page',
+  'survey_started': 'Started Survey',
+  'sms_link_clicked': 'Link Clicked from SMS',
+  'document_signed': 'Document Signed',
+  'call_outcome_positive': 'Positive Call Outcome'
+};
 
 export default function SystemDefaultsClient() {
     const firestore = useFirestore();
@@ -64,6 +81,96 @@ export default function SystemDefaultsClient() {
         openRouterApiKeyExists: false,
     });
     const [isRotating, setIsRotating] = React.useState(false);
+
+    // Lead Scoring Defaults States & Helpers
+    const [leadScoring, setLeadScoring] = React.useState<LeadScoringSettings>({
+        emailVerificationRules: [],
+        phoneVerificationRules: [],
+        engagementRules: {},
+        callCampaignPositiveOutcomes: [],
+        callCampaignDefaultPoints: 0
+    });
+    const [newOutcome, setNewOutcome] = React.useState('');
+
+    const handleAddEmailRule = () => {
+        setLeadScoring(prev => {
+            const rules = [...(prev.emailVerificationRules || [])];
+            return {
+                ...prev,
+                emailVerificationRules: [...rules, { minScore: 50, scoreValue: 5 }]
+            };
+        });
+    };
+
+    const handleUpdateEmailRule = (idx: number, updates: Partial<EmailVerificationRule>) => {
+        setLeadScoring(prev => {
+            const rules = [...(prev.emailVerificationRules || [])];
+            if (rules[idx]) {
+                rules[idx] = { ...rules[idx], ...updates };
+            }
+            return {
+                ...prev,
+                emailVerificationRules: rules
+            };
+        });
+    };
+
+    const handleRemoveEmailRule = (idx: number) => {
+        setLeadScoring(prev => ({
+            ...prev,
+            emailVerificationRules: (prev.emailVerificationRules || []).filter((_, i) => i !== idx)
+        }));
+    };
+
+    const handleAddPhoneRule = () => {
+        setLeadScoring(prev => {
+            const rules = [...(prev.phoneVerificationRules || [])];
+            return {
+                ...prev,
+                phoneVerificationRules: [...rules, { minScore: 50, scoreValue: 5 }]
+            };
+        });
+    };
+
+    const handleUpdatePhoneRule = (idx: number, updates: Partial<PhoneVerificationRule>) => {
+        setLeadScoring(prev => {
+            const rules = [...(prev.phoneVerificationRules || [])];
+            if (rules[idx]) {
+                rules[idx] = { ...rules[idx], ...updates };
+            }
+            return {
+                ...prev,
+                phoneVerificationRules: rules
+            };
+        });
+    };
+
+    const handleRemovePhoneRule = (idx: number) => {
+        setLeadScoring(prev => ({
+            ...prev,
+            phoneVerificationRules: (prev.phoneVerificationRules || []).filter((_, i) => i !== idx)
+        }));
+    };
+
+    const handleAddOutcome = () => {
+        if (!newOutcome.trim()) return;
+        setLeadScoring(prev => {
+            const outcomes = [...(prev.callCampaignPositiveOutcomes || [])];
+            if (outcomes.includes(newOutcome.trim())) return prev;
+            return {
+                ...prev,
+                callCampaignPositiveOutcomes: [...outcomes, newOutcome.trim()]
+            };
+        });
+        setNewOutcome('');
+    };
+
+    const handleRemoveOutcome = (outcome: string) => {
+        setLeadScoring(prev => ({
+            ...prev,
+            callCampaignPositiveOutcomes: (prev.callCampaignPositiveOutcomes || []).filter(o => o !== outcome)
+        }));
+    };
 
     const handleRotateSecrets = async () => {
         const token = await getToken();
@@ -169,6 +276,12 @@ export default function SystemDefaultsClient() {
                     setIndustryLifecycles(INDUSTRY_STATUS_DEFAULTS);
                 }
 
+                // Fetch global lead scoring defaults
+                const leadScoringSnap = await getDoc(doc(firestore, 'system_settings', 'lead_scoring'));
+                if (leadScoringSnap.exists()) {
+                    setLeadScoring(leadScoringSnap.data() as LeadScoringSettings);
+                }
+
                 // Fetch AI keys existence
                 const keysRes = await getGlobalAiKeys(idToken);
                 if (keysRes.success && keysRes.data) {
@@ -237,7 +350,13 @@ export default function SystemDefaultsClient() {
                 });
             }
 
-            toast({ title: 'Settings Saved', description: 'System-wide templates, AI API keys, and industry lifecycles have been updated.' });
+            // Save global lead scoring defaults
+            await setDoc(doc(firestore, 'system_settings', 'lead_scoring'), {
+                ...leadScoring,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            toast({ title: 'Settings Saved', description: 'System-wide templates, AI API keys, industry lifecycles, and global lead scoring defaults have been updated.' });
         } catch (error: unknown) {
             toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(error) });
         } finally {
@@ -648,6 +767,187 @@ export default function SystemDefaultsClient() {
                                 </p>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Global Lead Scoring Defaults */}
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b p-8">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+                                    <Sparkles className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-xl font-bold">Global Lead Scoring Defaults</CardTitle>
+                                    <CardDescription>Configure baseline defaults for verification thresholds, negative scoring delta rules, and engagement points.</CardDescription>
+                                </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-none">Scoring Defaults</Badge>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-8 space-y-8">
+                        
+                        {/* Email Verification Rules */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Email Verification Score Mapping</h3>
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddEmailRule} className="rounded-lg text-xs gap-1.5 h-8 font-bold">
+                                    <PlusCircle size={14} /> Add Threshold Rule
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {(leadScoring.emailVerificationRules || []).map((rule, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 bg-card p-3 rounded-xl border border-border/50">
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Min Validation Score (%)</label>
+                                                <Input 
+                                                    type="number"
+                                                    value={rule.minScore}
+                                                    onChange={e => handleUpdateEmailRule(idx, { minScore: Number(e.target.value) })}
+                                                    className="h-9 rounded-lg"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score Points Delta (+/-)</label>
+                                                <Input 
+                                                    type="number"
+                                                    value={rule.scoreValue}
+                                                    onChange={e => handleUpdateEmailRule(idx, { scoreValue: Number(e.target.value) })}
+                                                    className="h-9 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveEmailRule(idx)} className="h-9 w-9 text-destructive rounded-xl shrink-0 mt-4">
+                                            <X size={16} />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Phone Verification Rules */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Phone Verification Score Mapping</h3>
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddPhoneRule} className="rounded-lg text-xs gap-1.5 h-8 font-bold">
+                                    <PlusCircle size={14} /> Add Threshold Rule
+                                </Button>
+                            </div>
+                            <div className="space-y-3">
+                                {(leadScoring.phoneVerificationRules || []).map((rule, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 bg-card p-3 rounded-xl border border-border/50">
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Min Validation Score (%)</label>
+                                                <Input 
+                                                    type="number"
+                                                    value={rule.minScore}
+                                                    onChange={e => handleUpdatePhoneRule(idx, { minScore: Number(e.target.value) })}
+                                                    className="h-9 rounded-lg"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Score Points Delta (+/-)</label>
+                                                <Input 
+                                                    type="number"
+                                                    value={rule.scoreValue}
+                                                    onChange={e => handleUpdatePhoneRule(idx, { scoreValue: Number(e.target.value) })}
+                                                    className="h-9 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => handleRemovePhoneRule(idx)} className="h-9 w-9 text-destructive rounded-xl shrink-0 mt-4">
+                                            <X size={16} />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Engagement Triggers Score Mapping */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Engagement Activities Defaults</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.keys(ENGAGEMENT_TRIGGER_LABELS).map((triggerKey) => (
+                                    <div key={triggerKey} className="flex flex-col gap-1.5 p-3.5 rounded-2xl border border-border/50 bg-card">
+                                        <label className="text-xs font-semibold text-muted-foreground">
+                                            {ENGAGEMENT_TRIGGER_LABELS[triggerKey]}
+                                        </label>
+                                        <Input 
+                                            type="number"
+                                            value={leadScoring.engagementRules?.[triggerKey] ?? 0}
+                                            onChange={e => {
+                                                const val = Number(e.target.value);
+                                                setLeadScoring(prev => ({
+                                                    ...prev,
+                                                    engagementRules: {
+                                                        ...(prev.engagementRules || {}),
+                                                        [triggerKey]: val
+                                                    }
+                                                }));
+                                            }}
+                                            className="h-9 rounded-lg"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Call Campaign Outcomes Defaults */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Call Campaign Outcomes Defaults</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Positive Call Outcomes</label>
+                                    <div className="flex gap-2 mb-3">
+                                        <Input 
+                                            value={newOutcome}
+                                            onChange={e => setNewOutcome(e.target.value)}
+                                            placeholder="e.g. Agreed"
+                                            className="h-9 rounded-lg"
+                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddOutcome(); } }}
+                                        />
+                                        <Button type="button" onClick={handleAddOutcome} className="h-9 rounded-lg px-4 font-bold text-xs bg-primary text-primary-foreground hover:bg-primary/90">
+                                            Add
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(leadScoring.callCampaignPositiveOutcomes || []).length === 0 ? (
+                                            <span className="text-[10px] text-muted-foreground italic">No default positive outcomes defined.</span>
+                                        ) : (
+                                            (leadScoring.callCampaignPositiveOutcomes || []).map(o => (
+                                                <Badge key={o} variant="secondary" className="gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-muted text-muted-foreground">
+                                                    {o}
+                                                    <button type="button" onClick={() => handleRemoveOutcome(o)} className="text-muted-foreground hover:text-foreground">
+                                                        <X size={10} />
+                                                    </button>
+                                                </Badge>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default Positive Points</label>
+                                    <Input 
+                                        type="number"
+                                        value={leadScoring.callCampaignDefaultPoints ?? 0}
+                                        onChange={e => setLeadScoring(prev => ({ ...prev, callCampaignDefaultPoints: Number(e.target.value) }))}
+                                        className="h-9 rounded-lg"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground leading-normal">Points awarded automatically when a call outcome matches one of the positive outcomes listed.</p>
+                                </div>
+                            </div>
+                        </div>
+
                     </CardContent>
                 </Card>
 
