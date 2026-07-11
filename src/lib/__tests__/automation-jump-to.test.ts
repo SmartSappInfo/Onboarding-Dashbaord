@@ -142,6 +142,7 @@ describe('Automation Jump To Milestone Engine', () => {
               {
                 id: 'job_123',
                 ref: { id: 'job_123' },
+                data: () => ({ targetNodeId: 'node_goal' }),
               },
             ],
           }),

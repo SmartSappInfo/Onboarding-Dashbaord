@@ -980,9 +980,9 @@ export function NodeInspector({
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Goal / Milestone Name</Label>
                                 <Input
                                     type="text"
-                                    value={draftData.label || ''}
-                                    onChange={(e) => setDraftData((prev: any) => ({
-                                        ...prev,
+                                    value={data.label || ''}
+                                    onChange={(e) => setDraftData((prev: Record<string, unknown> | null) => ({
+                                        ...(prev || {}),
                                         label: e.target.value
                                     }))}
                                     placeholder="e.g. Lead Upgraded to Premium"

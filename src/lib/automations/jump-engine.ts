@@ -47,6 +47,13 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
     const automation = await loadAutomationForAuth(automationId);
     if (!automation || !automation.isActive || !automation.nodes) continue;
 
+    // Enforce recursion cap to prevent infinite loop of jumps
+    const currentChainDepth = (runData.chainDepth as number) || 0;
+    if (currentChainDepth >= 5) {
+      console.warn(`>>> [JUMP:ENGINE] Recursion depth limit reached (>= 5) for run ${runId}. Halting teleportation.`);
+      continue;
+    }
+
     // Find all Jump To nodes in the flow
     const jumpNodes = (automation.nodes as unknown as GoalConditionNode[]).filter(
       (n) => n.type === 'jumpToNode'
@@ -119,19 +126,33 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
           .get();
 
         const batch = adminDb.batch();
-        pendingJobsSnap.docs.forEach((doc) => {
+        const { cancelDelayTask } = await import('../gcp-tasks-client');
+
+        for (const doc of pendingJobsSnap.docs) {
+          const jobData = doc.data();
+          const targetNodeId = jobData.targetNodeId as string;
+
           batch.update(doc.ref, { 
             status: 'cancelled', 
             cancelledAt: new Date().toISOString(),
             reason: `Teleported to goal milestone node: ${jumpNode.id}` 
           });
-        });
+
+          if (targetNodeId) {
+            // Actively cancel task in GCP Queue / local mock queue
+            await cancelDelayTask(runId, targetNodeId).catch((err: unknown) => {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.warn(`[JUMP:ENGINE] Non-fatal failure cancelling GCP task for run ${runId} node ${targetNodeId}:`, msg);
+            });
+          }
+        }
 
         // B. Update the run document's current step pointer
         const jumpLabel = jumpNode.data?.label || 'Jump To Milestone';
         batch.update(runDoc.ref, {
           currentNodeId: jumpNode.id,
           currentNodeLabel: jumpLabel,
+          chainDepth: currentChainDepth + 1,
           updatedAt: new Date().toISOString()
         });
 
