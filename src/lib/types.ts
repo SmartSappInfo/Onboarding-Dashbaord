@@ -565,8 +565,24 @@ export interface Workspace {
   /** Custom lead sources created by the user during bulk import or elsewhere */
   customLeadSources?: string[];
   leadScoringSettings?: LeadScoringSettings;
+  /** Default copywriting framework for HeadlineIQ scoring and suggestions */
+  defaultCopywritingFramework?: 'aida' | '4us' | 'pas';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface HeadlineIQAnalysis {
+  score: number;
+  urgencyMeter: number;
+  curiosityMeter: number;
+  clarityMeter: number;
+  checklist: { type: 'success' | 'warning' | 'error'; message: string }[];
+}
+
+export interface HeadlineVariation {
+  title: string;
+  previewText: string;
+  explanation: string;
 }
 
 export interface EmailVerificationRule {
