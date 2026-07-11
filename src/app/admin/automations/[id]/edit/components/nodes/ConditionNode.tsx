@@ -12,6 +12,7 @@ import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview High-fidelity Condition Node for Automation Canvas.
@@ -24,16 +25,18 @@ export function ConditionNode({ id, data, selected }: any) {
     const automationId = params?.id as string;
     const firestore = useFirestore();
     const { allTags } = useWorkspaceScopedQueries();
+    const { activeWorkspaceId } = useWorkspace();
 
     const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id) return null;
+        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'automation_jobs'),
             where('automationId', '==', automationId),
             where('targetNodeId', '==', id),
-            where('status', '==', 'pending')
+            where('status', '==', 'pending'),
+            where('workspaceId', '==', activeWorkspaceId)
         );
-    }, [firestore, automationId, id]);
+    }, [firestore, automationId, id, activeWorkspaceId]);
 
     const { data: jobs } = useCollection<any>(jobsQuery);
     const waitingCount = jobs?.length || 0;

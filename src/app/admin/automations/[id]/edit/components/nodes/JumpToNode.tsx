@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge, type ExecutionStatus } from './ExecutionOverlay';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface JumpToNodeConfig {
     groups?: Record<string, unknown>[];
@@ -54,16 +55,18 @@ export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
     const params = useParams();
     const automationId = params?.id as string;
     const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace();
 
     const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id) return null;
+        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'automation_jobs'),
             where('automationId', '==', automationId),
             where('targetNodeId', '==', id),
-            where('status', '==', 'pending')
+            where('status', '==', 'pending'),
+            where('workspaceId', '==', activeWorkspaceId)
         );
-    }, [firestore, automationId, id]);
+    }, [firestore, automationId, id, activeWorkspaceId]);
 
     const { data: jobs } = useCollection<Record<string, unknown>>(jobsQuery);
     const waitingCount = jobs?.length || 0;

@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Temporal Delay Node for Automation Canvas.
@@ -22,16 +23,18 @@ export function DelayNode({ id, data, selected }: any) {
     const params = useParams();
     const automationId = params?.id as string;
     const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace();
 
     const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id) return null;
+        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'automation_jobs'),
             where('automationId', '==', automationId),
             where('targetNodeId', '==', id),
-            where('status', '==', 'pending')
+            where('status', '==', 'pending'),
+            where('workspaceId', '==', activeWorkspaceId)
         );
-    }, [firestore, automationId, id]);
+    }, [firestore, automationId, id, activeWorkspaceId]);
 
     const { data: jobs } = useCollection<any>(jobsQuery);
     const waitingCount = jobs?.length || 0;

@@ -247,13 +247,10 @@ describe('Automation Jump To Milestone Engine', () => {
 
     await traverseNodes('node_1', automation, context);
 
-    // Step should be logged as waiting, and run document current node updated
+    // Step should be logged as success immediately since Jump To is a pass-through node sequentially
     expect(logStepExecution).toHaveBeenCalledWith('run_123', expect.objectContaining({
       nodeId: 'node_goal',
-      status: 'waiting',
-    }));
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      currentNodeId: 'node_goal',
+      status: 'success',
     }));
   });
 
@@ -270,6 +267,9 @@ describe('Automation Jump To Milestone Engine', () => {
       if (collectionName === 'automation_runs') {
         return {
           where: vi.fn().mockReturnThis(),
+          doc: vi.fn().mockReturnValue({
+            update: vi.fn(),
+          }),
           get: vi.fn().mockResolvedValue({
             empty: false,
             docs: [
@@ -362,6 +362,9 @@ describe('Automation Jump To Milestone Engine', () => {
       if (collectionName === 'automation_runs') {
         return {
           where: vi.fn().mockReturnThis(),
+          doc: vi.fn().mockReturnValue({
+            update: vi.fn(),
+          }),
           get: vi.fn().mockResolvedValue({
             empty: false,
             docs: [

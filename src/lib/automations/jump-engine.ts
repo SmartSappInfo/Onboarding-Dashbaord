@@ -190,6 +190,31 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
 
         await traverseNodes(jumpNode.id, automation, context);
 
+        // E. After jump traversal finishes, check if the run has completed (no pending jobs remaining)
+        const pendingJobs = await adminDb
+          .collection('automation_jobs')
+          .where('runId', '==', runId)
+          .where('status', '==', 'pending')
+          .get();
+
+        if (pendingJobs.empty) {
+          await adminDb.collection('automation_runs').doc(runId).update({
+            status: 'completed',
+            finishedAt: new Date().toISOString(),
+          });
+          // Fire completion notification
+          try {
+            const { notifyAutomationCompleted } = await import('./automation-lifecycle-notify');
+            await notifyAutomationCompleted({
+              automationId,
+              automationName: automation.name ?? automationId,
+              workspaceId: workspaceId ?? '',
+            }).catch(() => {});
+          } catch (e) {
+            console.error('[JUMP:ENGINE] Failed to notify automation completed:', e);
+          }
+        }
+
         // Terminate after first jump match in the loop to avoid multiple concurrent teleportations
         break;
       }
