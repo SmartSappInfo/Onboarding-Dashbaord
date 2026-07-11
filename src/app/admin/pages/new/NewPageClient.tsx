@@ -192,7 +192,7 @@ export default function NewPageClient() {
             
             // If an industry filter is active, filter strictly. Otherwise, show everything.
             if (industryFilter && industryFilter !== 'all') {
-                if (t.industry && t.industry !== industryFilter) return false;
+                if (t.industry && t.industry !== 'all' && t.industry !== industryFilter) return false;
             }
             return true;
         });
