@@ -4429,7 +4429,7 @@ export function TemplateWorkshop({
                                                                 previewValue={previewText}
                                                                 onChange={handleSubjectChange}
                                                                 onPreviewChange={handlePreviewTextChange}
-                                                                emailContext={body}
+                                                                emailContext={stripHtml(body)}
                                                                 organizationId={activeOrganizationId || undefined}
                                                                 frameworkDefault={activeWorkspace?.defaultCopywritingFramework || 'aida'}
                                                                 align="end"

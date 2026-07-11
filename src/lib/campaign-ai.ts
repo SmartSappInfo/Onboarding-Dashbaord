@@ -123,23 +123,29 @@ const CopyResultSchema = z.object({
   subjectVariants: z.array(z.string()).describe('Alternative subject lines'),
 });
 
-function zodToSchemaDescription(schema: unknown): unknown {
+function zodToSchemaDescription(schema: unknown, depth = 0): unknown {
+  if (depth > 6) return 'recursive_reference';
   if (!schema || typeof schema !== 'object') return 'any';
   
+  const def = (schema as { _def?: { typeName?: string; type?: unknown; values?: unknown[]; innerType?: unknown; getter?: () => unknown } })._def;
+
+  if (def && def.typeName === 'ZodLazy' && typeof def.getter === 'function') {
+    return zodToSchemaDescription(def.getter(), depth + 1);
+  }
+
   if ('shape' in schema && typeof (schema as { shape: unknown }).shape === 'object') {
     const shape = (schema as { shape: Record<string, unknown> }).shape;
     const obj: Record<string, unknown> = {};
     if (shape) {
       for (const [key, val] of Object.entries(shape)) {
-        obj[key] = zodToSchemaDescription(val);
+        obj[key] = zodToSchemaDescription(val, depth + 1);
       }
     }
     return obj;
   }
   
-  const def = (schema as { _def?: { typeName?: string; type?: unknown; values?: unknown[]; innerType?: unknown } })._def;
   if (def && def.typeName === 'ZodArray') {
-    return [zodToSchemaDescription(def.type)];
+    return [zodToSchemaDescription(def.type, depth + 1)];
   }
 
   if (def && def.typeName === 'ZodEnum' && Array.isArray(def.values)) {
@@ -147,7 +153,7 @@ function zodToSchemaDescription(schema: unknown): unknown {
   }
 
   if (def && (def.typeName === 'ZodOptional' || def.typeName === 'ZodNullable')) {
-    return zodToSchemaDescription(def.innerType);
+    return zodToSchemaDescription(def.innerType, depth + 1);
   }
 
   if (def && def.typeName === 'ZodBoolean') {
@@ -215,7 +221,7 @@ Rules:
     });
   };
 
-  let output: any;
+  let output: unknown;
   let text: string | undefined;
   let usedIsAnthropic = isAnthropic;
 
@@ -320,7 +326,21 @@ Available template variables (use double curly braces): entity_name, entity_emai
       jsonMode: true,
       schema: CopyResultSchema,
     });
-    const parsed = JSON.parse(text) as CopyResult;
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(text);
+    } catch (e) {
+      console.error('[CAMPAIGN-AI] Failed to parse campaign copy JSON:', text);
+      return { success: false, error: 'AI output was not valid JSON' };
+    }
+
+    const validation = CopyResultSchema.safeParse(parsedJson);
+    if (!validation.success) {
+      console.error('[CAMPAIGN-AI] Campaign copy validation failed:', validation.error);
+      return { success: false, error: 'AI output failed validation against expected structure' };
+    }
+
+    const parsed = validation.data;
 
     return {
       success: true,
@@ -399,12 +419,12 @@ ${params.customGuidelines ? `- Custom Guidelines: ${params.customGuidelines}` : 
 Calling Script Rules:
 1. Provide a logical flow: Introduction, Main Hook/Value Proposition, Handling common objections, and Call to Action/Next Steps.
 2. Use double curly brace placeholders for dynamic contact token replacement where appropriate.
-   Available variables:
-   - {{FIRST_NAME}} (Contact's name)
-   - {{AGENT_NAME}} (Caller's name)
-   - {{SCHOOL_NAME}} (Organization / School name)
-   - {{EMAIL}} (Contact's email)
-   - {{PHONE}} (Contact's phone number)
+    Available variables:
+    - {{contact_name}} (Contact's name)
+    - {{agent_name}} (Caller's name)
+    - {{org_name}} (Organization name)
+    - {{contact_email}} (Contact's email)
+    - {{contact_phone}} (Contact's phone number)
 3. Keep the script conversational, professional, and easy to read/speak aloud.
 4. Output ONLY the script body text. No introductions like "Here is your script", no quotes, no conversational filler. Start directly with the script.`;
 
@@ -449,7 +469,7 @@ Instruction: ${params.instruction}
 
 Rules for JSON graph refinement:
 1. Parse the JSON and locate the text properties (e.g., 'text', 'label') inside each node's 'data' object.
-2. Refine these text properties according to the instruction while maintaining all dynamic placeholders (e.g., {{FIRST_NAME}}, {{AGENT_NAME}}).
+2. Refine these text properties according to the instruction while maintaining all dynamic placeholders (e.g., {{contact_name}}, {{agent_name}}).
 3. CRITICAL: You must preserve and copy over all other custom configurations and metadata inside the node 'data' block exactly as they are. This includes properties such as:
    - 'startConfig' (checkDnc, checkTimezone, allowedHoursStart, allowedHoursEnd)
    - 'sayConfig' (complianceVerify, complianceText)
@@ -472,7 +492,7 @@ ${params.original}
 Instruction: ${params.instruction}
 
 Rules:
-- Keep the overall intent, dynamic placeholders (e.g., {{FIRST_NAME}}, {{AGENT_NAME}}), and flow.
+- Keep the overall intent, dynamic placeholders (e.g., {{contact_name}}, {{agent_name}}), and flow.
 - Apply the requested refinement changes precisely.
 - Return ONLY the refined calling script text. Do not wrap in quotes, do not add comments, explanations, or introductory text.`;
     }
@@ -596,13 +616,21 @@ AESTHETIC RULES:
       modelId: params.modelId,
     });
 
-    const parsed = JSON.parse(text) as {
-      blocks: MessageBlock[];
-      name?: string;
-      subject?: string;
-      previewText?: string;
-      subjectOptions?: Array<{ subject: string; previewText: string }>;
-    };
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(text);
+    } catch (e) {
+      console.error('[CAMPAIGN-AI] Failed to parse email blocks result JSON:', text);
+      return { success: false, error: 'AI output was not valid JSON' };
+    }
+
+    const validation = ArchitectResultSchema.safeParse(parsedJson);
+    if (!validation.success) {
+      console.error('[CAMPAIGN-AI] Email blocks validation failed:', validation.error);
+      return { success: false, error: 'AI output failed validation against expected structure' };
+    }
+
+    const parsed = validation.data;
 
     const sanitizeBlocks = (blocks: MessageBlock[]): MessageBlock[] => {
       return (blocks || []).map(block => {
@@ -695,10 +723,24 @@ CRITICAL RULES:
       schema: HeadlineVariationsResultSchema,
     });
 
-    const parsed = JSON.parse(text) as { variations: HeadlineVariation[] };
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(text);
+    } catch (e) {
+      console.error('[CAMPAIGN-AI] Failed to parse HeadlineIQ result JSON:', text);
+      return { success: false, error: 'AI output was not valid JSON' };
+    }
+
+    const validation = HeadlineVariationsResultSchema.safeParse(parsedJson);
+    if (!validation.success) {
+      console.error('[CAMPAIGN-AI] HeadlineIQ validation failed:', validation.error);
+      return { success: false, error: 'AI output failed validation against expected structure' };
+    }
+
+    const variationsList = validation.data.variations || [];
     const originalTags = params.currentTitle.match(/\{\{.*?\}\}/g) || [];
 
-    const validatedVariations = parsed.variations.map(variation => {
+    const validatedVariations = variationsList.map(variation => {
       let cleanTitle = (variation.title || '').trim();
       if (cleanTitle.length > 60) {
         cleanTitle = cleanTitle.substring(0, 57) + '...';

@@ -54,6 +54,17 @@ export function HeadlineIQOptimizer({
     setFramework(frameworkDefault);
   }, [frameworkDefault]);
 
+  // Sync contextText when emailContext prop changes
+  React.useEffect(() => {
+    setContextText(emailContext);
+  }, [emailContext]);
+
+  // Clear suggestions when the baseline value changes
+  React.useEffect(() => {
+    setVariations([]);
+    setErrorMsg(null);
+  }, [value]);
+
   // Real-time static score calculation
   const analysis = React.useMemo(() => analyzeHeadline(value), [value]);
 
