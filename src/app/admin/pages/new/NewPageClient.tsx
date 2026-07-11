@@ -50,6 +50,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { PageTemplate, CampaignPage, CampaignPageVersion } from '@/lib/types';
 import Link from 'next/link';
+import { ALL_TEMPLATES } from '@/lib/page-builder/templates';
 
 const GOAL_ICONS: Record<string, any> = {
     lead_capture: Target,
@@ -148,7 +149,22 @@ export default function NewPageClient() {
     }, []);
 
     const templates = useMemo(() => {
-        return platformTemplates.map(pt => {
+        let baseTemplates = platformTemplates;
+        if (baseTemplates.length === 0) {
+            // Fallback to local static templates if database is empty/unseeded
+            const blankPage: PageTemplate = {
+                id: 'blank-page',
+                name: 'Blank Page',
+                description: 'Start from scratch with a blank canvas.',
+                goal: 'information',
+                isGlobal: true,
+                structureJson: { sections: [] },
+                industry: 'all'
+            };
+            return [blankPage, ...ALL_TEMPLATES];
+        }
+
+        const mapped = baseTemplates.map(pt => {
             const rawContent = pt.content as Record<string, unknown> | null;
             const goalValue = (rawContent?.goal as string) || pt.category || 'information';
             const structureValue = (rawContent?.structureJson as import('@/lib/types').CampaignPageStructure) || { sections: [] };
@@ -161,14 +177,28 @@ export default function NewPageClient() {
                 id: pt.id,
                 name: pt.name,
                 description: pt.description,
-                goal: goalValue,
+                goal: goalValue as PageTemplate['goal'],
                 isGlobal: pt.scope === 'system',
                 structureJson: structureValue,
-                industry: industryValue,
-                createdAt: pt.createdAt,
-                updatedAt: pt.updatedAt
+                industry: industryValue
             } as PageTemplate;
         });
+
+        const hasBlank = mapped.some(t => t.id === 'blank-page');
+        if (!hasBlank) {
+            const blankPage: PageTemplate = {
+                id: 'blank-page',
+                name: 'Blank Page',
+                description: 'Start from scratch with a blank canvas.',
+                goal: 'information',
+                isGlobal: true,
+                structureJson: { sections: [] },
+                industry: 'all'
+            };
+            return [blankPage, ...mapped];
+        }
+
+        return mapped;
     }, [platformTemplates]);
 
     // Initialize industryFilter once activeWorkspace resolves
@@ -187,6 +217,9 @@ export default function NewPageClient() {
     const filteredTemplates = useMemo(() => {
         if (!templates) return [];
         return templates.filter(t => {
+            // The blank page template is always visible to enable starting from scratch
+            if (t.id === 'blank-page') return true;
+
             if (searchFilter && !t.name.toLowerCase().includes(searchFilter.toLowerCase()) && !t.description.toLowerCase().includes(searchFilter.toLowerCase())) return false;
             if (goalFilter && t.goal !== goalFilter) return false;
             
