@@ -208,3 +208,84 @@ export async function purgeAllPendingJobsForAutomation(
     await batch.commit();
   }
 }
+
+/**
+ * Sweeps all pending/parked jobs at a milestone node when the sequential behavior changes
+ * and either proceeds downstream immediately or exits the runs.
+ */
+export async function rescheduleMilestoneJobs(
+  automationId: string,
+  nodeId: string,
+  newBehavior: 'wait' | 'proceed' | 'exit',
+  oldBehavior: string | undefined
+): Promise<void> {
+  if (newBehavior === oldBehavior) return;
+
+  // We only transition contacts away if they were waiting
+  if (oldBehavior !== 'wait') return;
+
+  const snap = await adminDb
+    .collection('automation_jobs')
+    .where('automationId', '==', automationId)
+    .where('targetNodeId', '==', nodeId)
+    .where('status', '==', 'pending')
+    .get();
+
+  if (snap.empty) return;
+
+  console.log(`[rescheduleMilestoneJobs] Found ${snap.size} parked contacts at milestone ${nodeId}. Transitioning to behavior: ${newBehavior}`);
+
+  const { traverseNodes } = await import('./nodes/traverse');
+  const { loadAutomationForAuth } = await import('../automation-permissions');
+
+  const automation = await loadAutomationForAuth(automationId);
+  if (!automation) return;
+
+  for (const doc of snap.docs) {
+    const jobData = doc.data();
+    const runId = jobData.runId as string;
+    if (!runId) continue;
+
+    const runRef = adminDb.collection('automation_runs').doc(runId);
+    const runSnap = await runRef.get();
+    if (!runSnap.exists) continue;
+    const runData = runSnap.data();
+
+    if (newBehavior === 'proceed') {
+      // 1. Cancel the parked job in Firestore and GCP Tasks
+      await doc.ref.update({
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        reason: 'Milestone sequential entry behavior changed to Proceed Immediately',
+      });
+      await cancelDelayTask(runId, nodeId, parseQueueChannel(jobData.payload?.channel)).catch(() => {});
+
+      // 2. Traverse downstream past this milestone node
+      const context = {
+        entityId: runData?.entityId || '',
+        entityType: runData?.entityType || 'institution',
+        workspaceId: jobData.workspaceId || runData?.workspaceId || 'prospect',
+        payload: jobData.payload || runData?.payload || {},
+        automationId,
+        runId,
+        chainDepth: ((runData?.chainDepth as number) || 0) + 1,
+      };
+
+      await traverseNodes(nodeId, automation, context);
+    } else if (newBehavior === 'exit') {
+      // 1. Cancel the parked job
+      await doc.ref.update({
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        reason: 'Milestone sequential entry behavior changed to End Sequence',
+      });
+      await cancelDelayTask(runId, nodeId, parseQueueChannel(jobData.payload?.channel)).catch(() => {});
+
+      // 2. Complete the run
+      await runRef.update({
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+      });
+    }
+  }
+}

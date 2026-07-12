@@ -67,8 +67,10 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
     );
 
     for (const jumpNode of jumpNodes) {
-      // 1. Skip if the contact is already parked exactly at this Jump To node
-      if (runData.currentNodeId === jumpNode.id) continue;
+      // 1. Skip if the contact is already parked at this node AND the behavior is not 'wait'
+      if (runData.currentNodeId === jumpNode.id && jumpNode.data?.config?.sequentialBehavior !== 'wait') {
+        continue;
+      }
 
       // 2. Skip if jumpFromAnywhere is explicitly disabled
       if (jumpNode.data?.config?.jumpFromAnywhere === false) continue;

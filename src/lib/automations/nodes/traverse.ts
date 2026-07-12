@@ -364,6 +364,54 @@ export async function traverseNodes(
         await handleDelayNode(nextNode, context);
         return;
       } else if (nextNode.type === 'jumpToNode') {
+        const config = nextNode.data?.config || {};
+        const behavior = config.sequentialBehavior || 'proceed';
+
+        if (behavior === 'wait') {
+          const now = new Date();
+          const farFuture = new Date();
+          farFuture.setFullYear(farFuture.getFullYear() + 5);
+
+          logStepExecution(context.runId, {
+            nodeId: nextNode.id,
+            nodeType: 'jumpToNode',
+            nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+            status: 'waiting',
+            executedAt: now.toISOString(),
+            metadata: { reachedSequentially: true, conditionMet: false, delayUntil: farFuture.toISOString() },
+          });
+
+          const persistedPayload = {
+            ...context.payload,
+            ...(context.workspaceId ? { workspaceId: context.workspaceId } : {}),
+            ...(context.organizationId ? { organizationId: context.organizationId } : {}),
+            ...(context.entityId ? { entityId: context.entityId } : {}),
+            ...(context.entityType ? { entityType: context.entityType } : {}),
+          };
+
+          const { scheduleDelayTask } = await import('../../gcp-tasks-client');
+          await scheduleDelayTask({
+            runId: context.runId,
+            nodeId: nextNode.id,
+            automationId: context.automationId,
+            executeAt: farFuture.toISOString(),
+            workspaceId: context.workspaceId,
+            payload: persistedPayload,
+          });
+          return;
+        } else if (behavior === 'exit') {
+          logStepExecution(context.runId, {
+            nodeId: nextNode.id,
+            nodeType: 'jumpToNode',
+            nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Jump To (Goal)'),
+            status: 'success',
+            executedAt: new Date().toISOString(),
+            durationMs: Date.now() - stepStart,
+            metadata: { reachedSequentially: true, conditionMet: true, exitSequence: true },
+          });
+          return;
+        }
+
         logStepExecution(context.runId, {
           nodeId: nextNode.id,
           nodeType: 'jumpToNode',

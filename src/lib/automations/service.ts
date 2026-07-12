@@ -136,6 +136,23 @@ export async function saveAutomation(
           runAfter(() => purgePendingJobsForNode(id, oldNode.id));
         }
       }
+
+      // Check milestone nodes sequentialBehavior transitions
+      const oldMilestones = existing.nodes?.filter((n: any) => n.type === 'jumpToNode') || [];
+      const newMilestones = normalized.nodes?.filter((n: any) => n.type === 'jumpToNode') || [];
+      const oldMilestonesMap = new Map<string, any>(oldMilestones.map((n: any) => [n.id, n]));
+
+      for (const newMilestone of newMilestones) {
+        const oldMilestone = oldMilestonesMap.get(newMilestone.id);
+        if (oldMilestone) {
+          const newBehavior = newMilestone.data?.config?.sequentialBehavior || 'proceed';
+          const oldBehavior = oldMilestone.data?.config?.sequentialBehavior || 'proceed';
+          if (newBehavior !== oldBehavior) {
+            const { rescheduleMilestoneJobs } = await import('./reschedule');
+            runAfter(() => rescheduleMilestoneJobs(id, newMilestone.id, newBehavior, oldBehavior));
+          }
+        }
+      }
     }
 
     revalidateAutomationsHub();
