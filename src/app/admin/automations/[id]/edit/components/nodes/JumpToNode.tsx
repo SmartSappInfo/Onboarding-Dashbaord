@@ -60,7 +60,7 @@ export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
     const isWaitBehavior = data.config?.sequentialBehavior === 'wait';
 
     const jobsQuery = useMemoFirebase(() => {
-        if (!isWaitBehavior || !firestore || !automationId || !id || !activeWorkspaceId) return null;
+        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'automation_jobs'),
             where('automationId', '==', automationId),
@@ -68,10 +68,11 @@ export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
             where('status', '==', 'pending'),
             where('workspaceId', '==', activeWorkspaceId)
         );
-    }, [isWaitBehavior, firestore, automationId, id, activeWorkspaceId]);
+    }, [firestore, automationId, id, activeWorkspaceId]);
 
     const { data: jobs } = useCollection<Record<string, unknown>>(jobsQuery);
     const waitingCount = jobs?.length || 0;
+    const showPill = isWaitBehavior || waitingCount > 0;
 
     const overlay = useExecutionOverlay({
         executionStatus: data.executionStatus,
@@ -131,7 +132,7 @@ export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
                             {data.label || 'Jump To Milestone'}
                         </p>
                     </div>
-                    {isWaitBehavior && (
+                    {showPill && (
                         <Badge 
                             variant="outline" 
                             className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-fuchsia-100 bg-fuchsia-50 text-fuchsia-700 truncate max-w-[85px] h-5 flex-shrink-0 flex items-center justify-center cursor-pointer hover:bg-fuchsia-100/50 transition-colors"
