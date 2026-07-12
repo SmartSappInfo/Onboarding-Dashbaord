@@ -169,7 +169,7 @@ export default function EditAutomationPage() {
   }, [automation, savedSnapshot]);
 
   const isDirty = React.useMemo(() => {
-    if (!savedSnapshot) return false;
+    if (!savedSnapshot || !currentData.nodes) return false;
     const currentStr = JSON.stringify(getFunctionalSnapshot({
       name: currentData.name,
       description: currentData.description,

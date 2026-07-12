@@ -8,6 +8,28 @@ import {
   AutomationBackup,
 } from '@/lib/automation-storage';
 
+function getFunctionalSnapshot(data: any) {
+  if (!data) return null;
+  return {
+    name: data.name,
+    description: data.description || '',
+    triggers: data.triggers ?? [],
+    edges: data.edges?.map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      type: e.type,
+    })) ?? [],
+    nodes: data.nodes?.map((n: any) => ({
+      id: n.id,
+      type: n.type,
+      data: n.data,
+    })) ?? [],
+  };
+}
+
 export function useAutomationAutosave(
   automationId: string,
   currentData: Partial<Automation>,
@@ -32,12 +54,16 @@ export function useAutomationAutosave(
       const backupTime = new Date(backup.timestamp).getTime();
       const dbTime = automation.updatedAt ? new Date(automation.updatedAt).getTime() : 0;
 
-      // Only offer recovery if backup is newer than DB version
-      if (backupTime > dbTime) {
+      // Check if backup has functional differences from DB version
+      const backupSnap = JSON.stringify(getFunctionalSnapshot(backup));
+      const dbSnap = JSON.stringify(getFunctionalSnapshot(automation));
+
+      // Only offer recovery if backup is newer than DB version AND has functional differences
+      if (backupTime > dbTime && backupSnap !== dbSnap) {
         setBackupData(backup);
         setShowRestoreDialog(true);
       } else {
-        // Automatically prune stale backup if DB has caught up or progressed
+        // Automatically prune stale or identical backup
         clearAutomationBackup(automationId);
       }
     }
