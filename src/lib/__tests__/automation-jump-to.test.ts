@@ -187,9 +187,11 @@ describe('Automation Jump To Milestone Engine', () => {
 
   it('holds contact at goal node sequentially if conditions are not met and behavior is wait', async () => {
     const mockUpdate = vi.fn();
+    const mockSet = vi.fn();
     vi.mocked(adminDb.collection).mockImplementation(() => ({
       doc: vi.fn().mockReturnValue({
         update: mockUpdate,
+        set: mockSet,
       }),
     }) as any);
 
@@ -247,10 +249,10 @@ describe('Automation Jump To Milestone Engine', () => {
 
     await traverseNodes('node_1', automation, context);
 
-    // Step should be logged as success immediately since Jump To is a pass-through node sequentially
+    // Step should be logged as waiting since conditions are not met and behavior is wait
     expect(logStepExecution).toHaveBeenCalledWith('run_123', expect.objectContaining({
       nodeId: 'node_goal',
-      status: 'success',
+      status: 'waiting',
     }));
   });
 

@@ -213,6 +213,23 @@ export default function PublicPageClient({
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
+    // Separate the page theme mode from the viewer's system/browser preferences:
+    // Temporarily remove global 'dark' class from html/body elements on mount,
+    // and restore it on unmount.
+    useEffect(() => {
+        const root = document.documentElement;
+        const body = document.body;
+        const hadDarkRoot = root.classList.contains('dark');
+        const hadDarkBody = body.classList.contains('dark');
+
+        if (hadDarkRoot) root.classList.remove('dark');
+        if (hadDarkBody) body.classList.remove('dark');
+
+        return () => {
+            if (hadDarkRoot) root.classList.add('dark');
+            if (hadDarkBody) body.classList.add('dark');
+        };
+    }, []);
 
     // Fallback: Resolve variables client-side if preloadedVariables was empty but query params exist
     useEffect(() => {
