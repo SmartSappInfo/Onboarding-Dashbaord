@@ -255,18 +255,11 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [isMobile, setIsMobile] = useState(false);
     const { resolvedTheme } = useTheme();
     const sidebar = useSidebar();
-    const [designerThemeMode, setDesignerThemeMode] = useState<'light' | 'dark' | null>(null);
-
-    // Initialize designerThemeMode from resolvedTheme once resolved
-    useEffect(() => {
-        if (resolvedTheme && designerThemeMode === null) {
-            setDesignerThemeMode(resolvedTheme === 'light' ? 'light' : 'dark');
-        }
-    }, [resolvedTheme, designerThemeMode]);
-
     // Separate canvas viewport theme from the app's global workspace theme:
     // Temporarily remove global 'dark' class from html/body elements on mount,
     // and restore it on unmount to prevent admin theme leakage.
+    // At the same time, keep the global layouts (sidebar and header) dark if
+    // the workspace resolvedTheme is dark, matching the editing panels.
     useEffect(() => {
         const root = document.documentElement;
         const body = document.body;
@@ -276,11 +269,22 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         if (hadDarkRoot) root.classList.remove('dark');
         if (hadDarkBody) body.classList.remove('dark');
 
+        const isDark = resolvedTheme === 'dark';
+        const globalSidebar = document.querySelector('aside[data-sidebar="sidebar"]');
+        const globalHeader = document.querySelector('header.sticky');
+
+        if (isDark) {
+            if (globalSidebar) globalSidebar.classList.add('dark');
+            if (globalHeader) globalHeader.classList.add('dark');
+        }
+
         return () => {
             if (hadDarkRoot) root.classList.add('dark');
             if (hadDarkBody) body.classList.add('dark');
+            if (globalSidebar) globalSidebar.classList.remove('dark');
+            if (globalHeader) globalHeader.classList.remove('dark');
         };
-    }, []);
+    }, [resolvedTheme]);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -318,9 +322,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         }
     }, [builder.activeTab]);
 
-    const activeDesignerTheme = designerThemeMode 
-        ? (designerThemeMode === 'light' ? 'light' : 'blue') 
-        : (resolvedTheme === 'light' ? 'light' : 'blue');
+    const activeDesignerTheme = resolvedTheme === 'light' ? 'light' : 'blue';
     useEffect(() => {
         if (!firestore) return;
 
@@ -655,7 +657,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             activeDesignerTheme === 'light' ? 'designer-theme-light' : 'designer-theme-blue'
         )}>
             {/* ═══════════════ TOOLBAR ═══════════════ */}
-            <header className={cn("h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md", activeDesignerTheme !== 'light' && "dark")}>
+            <header className="h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                         <Link href="/admin/pages"><ArrowLeft className="h-4 w-4" /></Link>
@@ -800,18 +802,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
-                    {/* Design Studio Theme Toggle */}
-                    <div className="flex items-center bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30 mr-2">
-                        <Button
-                            variant="ghost" size="icon"
-                            onClick={() => setDesignerThemeMode(prev => prev === 'light' ? 'dark' : 'light')}
-                            className="h-7 w-7 text-slate-400 hover:text-slate-200 rounded-lg transition-all border-0"
-                            title="Toggle Design Studio Theme"
-                        >
-                            {designerThemeMode === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                        </Button>
-                    </div>
-
                     <div className="hidden" id="qr-trigger-wrapper">
                         <CreateQRButton
                             resourceType="landing_page"
@@ -894,7 +884,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             <div className="flex flex-1 overflow-hidden">
 
                 {/* ─── SIDEBAR ─── */}
-                <div className={cn("flex shrink-0 z-10 select-none", activeDesignerTheme !== 'light' && "dark")}>
+                <div className="flex shrink-0 z-10 select-none">
                     {/* 1. Thin vertical tab bar (56px) */}
                     <div className="w-14 bg-slate-950 border-r border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
                         <div className="flex flex-col gap-2.5 w-full px-1.5">
@@ -1124,8 +1114,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 <div
                     className={cn(
                         "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
-                        isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0",
-                        activeDesignerTheme !== 'light' && "dark"
+                        isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
                     )}
                 >
                     <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
