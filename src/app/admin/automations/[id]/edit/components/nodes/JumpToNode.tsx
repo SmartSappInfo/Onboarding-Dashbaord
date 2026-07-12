@@ -6,12 +6,8 @@ import { Milestone, Plus, StickyNote } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge, type ExecutionStatus } from './ExecutionOverlay';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface JumpToNodeConfig {
     groups?: Record<string, unknown>[];
@@ -52,24 +48,6 @@ interface JumpToNodeProps {
  */
 export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
-    const params = useParams();
-    const automationId = params?.id as string;
-    const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace();
-
-    const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automation_jobs'),
-            where('automationId', '==', automationId),
-            where('targetNodeId', '==', id),
-            where('status', '==', 'pending'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, automationId, id, activeWorkspaceId]);
-
-    const { data: jobs } = useCollection<Record<string, unknown>>(jobsQuery);
-    const waitingCount = jobs?.length || 0;
 
     const overlay = useExecutionOverlay({
         executionStatus: data.executionStatus,
@@ -129,18 +107,6 @@ export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
                             {data.label || 'Jump To Milestone'}
                         </p>
                     </div>
-                    <Badge 
-                        variant="outline" 
-                        className="text-[8px] font-bold px-1.5 py-0.5 rounded border border-fuchsia-100 bg-fuchsia-50 text-fuchsia-700 truncate max-w-[85px] h-5 flex-shrink-0 flex items-center justify-center cursor-pointer hover:bg-fuchsia-100/50 transition-colors"
-                        onClick={(e) => {
-                            if (data.onFilterDiagnostics) {
-                                e.stopPropagation();
-                                data.onFilterDiagnostics(id);
-                            }
-                        }}
-                    >
-                        {waitingCount} {waitingCount === 1 ? 'Contact' : 'Contacts'}
-                    </Badge>
                 </div>
             </Card>
             
