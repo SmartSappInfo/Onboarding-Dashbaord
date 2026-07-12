@@ -54,6 +54,7 @@ export async function migratePendingJobsToTasks(): Promise<{
           nodeId: job.targetNodeId,
           automationId: job.automationId,
           executeAt: job.executeAt,
+          workspaceId: job.workspaceId || (job.payload?.workspaceId as string) || 'onboarding',
           channel: job.payload?.channel as any,
           payload: job.payload,
         });

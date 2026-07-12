@@ -417,6 +417,7 @@ export async function resumePausedRun(
               nodeId: jobData.targetNodeId,
               automationId: run.automationId,
               executeAt: jobData.executeAt,
+              workspaceId: run.workspaceId || jobData.workspaceId || 'onboarding',
               channel: parseQueueChannel(jobData.payload?.channel),
               payload: jobData.payload,
             });

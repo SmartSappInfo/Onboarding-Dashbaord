@@ -2522,6 +2522,7 @@ export interface AutomationJob {
   payload: Record<string, unknown>;
   executeAt: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
+  workspaceId?: string;
 }
 
 export type WebhookType = 'inbound' | 'outbound';

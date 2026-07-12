@@ -47,6 +47,7 @@ export interface ScheduleTaskOptions {
   nodeId: string;
   automationId: string;
   executeAt: string;
+  workspaceId: string;
   channel?: QueueChannel;
   payload?: Record<string, unknown>;
 }
@@ -87,9 +88,13 @@ export async function scheduleDelayTask({
   nodeId,
   automationId,
   executeAt,
+  workspaceId,
   channel,
   payload = {},
 }: ScheduleTaskOptions): Promise<string> {
+  if (!workspaceId) {
+    throw new Error(`Cannot schedule delay task for run ${runId}: workspaceId is required.`);
+  }
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
   const client = await getCloudTasksClient();
@@ -138,7 +143,7 @@ export async function scheduleDelayTask({
       automationId,
       targetNodeId: nodeId,
       payload,
-      workspaceId: (payload?.workspaceId as string) || 'onboarding',
+      workspaceId,
       status: 'pending',
       executeAt,
       queue,
@@ -194,7 +199,7 @@ export async function scheduleDelayTask({
     automationId,
     targetNodeId: nodeId,
     payload,
-    workspaceId: (payload?.workspaceId as string) || 'onboarding',
+    workspaceId,
     status: 'pending',
     executeAt,
     queue,

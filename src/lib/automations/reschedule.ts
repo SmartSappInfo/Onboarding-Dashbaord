@@ -114,6 +114,7 @@ export async function reschedulePendingJobs(
               nodeId,
               automationId,
               executeAt: newExecuteAt.toISOString(),
+              workspaceId: data.workspaceId || data.payload?.workspaceId || 'onboarding',
               channel: parseQueueChannel(data.payload?.channel),
               payload: data.payload,
             });

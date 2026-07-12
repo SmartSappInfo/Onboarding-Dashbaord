@@ -44,6 +44,7 @@ describe('GCP Tasks Client & Emulator (P5-4, Strategy C)', () => {
       nodeId: 'delay-node',
       automationId: 'auto-456',
       executeAt,
+      workspaceId: 'onboarding',
       payload: { contactEmail: 'test@example.com' },
     });
 
@@ -80,6 +81,7 @@ describe('GCP Tasks Client & Emulator (P5-4, Strategy C)', () => {
       nodeId: 'delay-node-x',
       automationId: 'auto-888',
       executeAt,
+      workspaceId: 'onboarding',
     });
 
     // Cancel the task

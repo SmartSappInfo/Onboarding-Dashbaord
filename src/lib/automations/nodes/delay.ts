@@ -153,6 +153,7 @@ export async function handleDelayNode(
     nodeId: node.id,
     automationId: context.automationId,
     executeAt: executeAt.toISOString(),
+    workspaceId: context.workspaceId,
     payload: persistedPayload,
   });
 }
