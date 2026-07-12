@@ -70,7 +70,7 @@ import { useBackofficeAccess } from '@/hooks/use-backoffice-access';
 import type { AppFeatureId } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-export function AdminSidebar() {
+export function AdminSidebar({ className }: { className?: string } = {}) {
   const pathname = usePathname();
   const { plural, dealPlural } = useTerminology();
   const { activeWorkspaceId } = useTenant();
@@ -223,7 +223,7 @@ export function AdminSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="bg-background/80 backdrop-blur-xl text-foreground border-r border-border/50 shadow-2xl print:hidden z-40 transition-all duration-300">
+    <Sidebar collapsible="icon" className={cn("bg-background/80 backdrop-blur-xl text-foreground border-r border-border/50 shadow-2xl print:hidden z-40 transition-all duration-300", className)}>
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-border/10">
          <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
       </SidebarHeader>

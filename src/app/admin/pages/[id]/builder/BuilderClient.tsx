@@ -258,8 +258,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     // Separate canvas viewport theme from the app's global workspace theme:
     // Intercept next-themes changes and strip global 'dark' class from html/body elements on mount
     // using a MutationObserver to ensure no background dark-mode leakage into light-mode canvases.
-    // At the same time, keep the global layouts (sidebar and header) dark if
-    // the workspace resolvedTheme is dark, matching the editing panels.
     useEffect(() => {
         const root = document.documentElement;
         const body = document.body;
@@ -285,16 +283,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         observer.observe(body, { attributes: true, attributeFilter: ['class'] });
 
         const isDark = resolvedTheme === 'dark';
-        const globalSidebar = document.querySelector('aside[data-sidebar="sidebar"]');
-        const globalHeader = document.querySelector('header.sticky');
-
-        if (isDark) {
-            if (globalSidebar) globalSidebar.classList.add('dark');
-            if (globalHeader) globalHeader.classList.add('dark');
-        } else {
-            if (globalSidebar) globalSidebar.classList.remove('dark');
-            if (globalHeader) globalHeader.classList.remove('dark');
-        }
 
         return () => {
             observer.disconnect();
@@ -302,8 +290,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 root.classList.add('dark');
                 body.classList.add('dark');
             }
-            if (globalSidebar) globalSidebar.classList.remove('dark');
-            if (globalHeader) globalHeader.classList.remove('dark');
         };
     }, [resolvedTheme]);
 
