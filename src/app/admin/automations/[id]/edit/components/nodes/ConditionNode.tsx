@@ -203,10 +203,10 @@ export function ConditionNode({ id, data, selected }: any) {
             <span className="absolute text-[9px] font-bold text-rose-600 select-none animate-fade-in" style={{ bottom: '-20px', left: '75%', transform: 'translateX(50%)' }}>
                 False
             </span>
-            {data.note && (
-                <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md px-1.5 py-0.5 max-w-[200px] cursor-pointer" onClick={() => data.onToggleNote?.()}>
-                    <StickyNote className="h-2.5 w-2.5 text-amber-500 shrink-0" />
-                    <span className="text-[8px] text-amber-700 dark:text-amber-400 truncate font-medium">{data.note}</span>
+            {(selected || isHovered) && data.note && (
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-full px-2.5 py-1 max-w-[280px] shadow-sm cursor-pointer z-50" onClick={() => data.onToggleNote?.()}>
+                    <StickyNote className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 truncate font-semibold">{data.note}</span>
                 </div>
             )}
         </div>
