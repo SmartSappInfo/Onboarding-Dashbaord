@@ -81,6 +81,7 @@ import type { AutomationTriggerDef, AutomationRun } from '@/lib/types';
 import { useFirestore } from '@/firebase';
 import { useSearchParams } from 'next/navigation';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const nodeTypes = {
     triggerNode: TriggerNode,
@@ -121,6 +122,7 @@ interface AutomationBuilderProps {
  * custom deletable edges, and undo/redo history.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, triggers, onStateChange, onTriggersChange, automationId }: AutomationBuilderProps) {
+    const confirm = useConfirm();
     const healedEdges = React.useMemo(() => {
         if (!initialEdges) return [];
         return initialEdges.map((edge: any) => {
@@ -1756,7 +1758,15 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                             {noteDialogValue && (
                                 <Button
                                     variant="ghost"
-                                    onClick={() => {
+                                    onClick={async () => {
+                                        const confirmed = await confirm({
+                                            title: 'Clear Note?',
+                                            description: 'Are you sure you want to delete this note? This action cannot be undone.',
+                                            confirmText: 'Clear',
+                                            variant: 'destructive',
+                                        });
+                                        if (!confirmed) return;
+
                                         if (noteDialogNodeId) {
                                             handleUpdateNote(noteDialogNodeId, '');
                                         }
