@@ -32,6 +32,82 @@ type TenantContextType = {
   getPermissionsSchemaForWorkspace: (workspaceId: string) => import('@/lib/types').PermissionsSchema | undefined;
   isLoading: boolean;
 };
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.warn(`Promise timed out after ${ms}ms`);
+      resolve(fallback);
+    }, ms);
+    promise.then((val) => {
+      clearTimeout(timer);
+      resolve(val);
+    }).catch((err) => {
+      clearTimeout(timer);
+      console.error('Promise execution failed:', err);
+      resolve(fallback);
+    });
+  });
+}
+
+async function resolveWorkspaceFromPathname(pathname: string, firestore: unknown): Promise<string | null> {
+  if (!pathname || !firestore) return null;
+  const segments = pathname.split('/');
+  
+  if (segments[1] === 'admin') {
+    const section = segments[2];
+    const targetId = segments[3];
+    
+    // Ignore action keywords
+    const keywords = ['new', 'edit', 'settings', 'import', 'upload', 'logs', 'analytics', 'reports', 'profile'];
+    if (!targetId || keywords.includes(targetId)) return null;
+
+    const { getDoc, doc } = await import('firebase/firestore');
+    const typedFirestore = firestore as import('firebase/firestore').Firestore;
+    
+    let collectionName = '';
+    if (section === 'automations') collectionName = 'automations';
+    else if (section === 'surveys') collectionName = 'surveys';
+    else if (section === 'pdfs') collectionName = 'pdfs';
+    else if (section === 'meetings') collectionName = 'meetings';
+    else if (section === 'entities') collectionName = 'workspace_entities';
+    else if (section === 'finance' && segments[3] === 'contracts' && segments[4] && !keywords.includes(segments[4])) {
+      collectionName = 'contracts';
+      const contractId = segments[4];
+      try {
+        const docRef = doc(typedFirestore, collectionName, contractId);
+        const fetchPromise = getDoc(docRef).then(snap => {
+          if (snap.exists()) {
+            const data = snap.data();
+            return (data?.workspaceId || data?.workspaceIds?.[0] || null) as string | null;
+          }
+          return null;
+        });
+        return withTimeout(fetchPromise, 2500, null);
+      } catch (e) {
+        console.warn('Failed to resolve workspace from contracts pathname:', e);
+        return null;
+      }
+    }
+
+    if (!collectionName) return null;
+
+    try {
+      const docRef = doc(typedFirestore, collectionName, targetId);
+      const fetchPromise = getDoc(docRef).then(snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          return (data?.workspaceId || data?.workspaceIds?.[0] || null) as string | null;
+        }
+        return null;
+      });
+      return withTimeout(fetchPromise, 2500, null);
+    } catch (e) {
+      console.warn(`Failed to resolve workspace from pathname for collection ${collectionName}:`, e);
+      return null;
+    }
+  }
+  return null;
+}
 
 const TenantContext = React.createContext<TenantContextType | undefined>(undefined);
 
