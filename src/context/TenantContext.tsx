@@ -70,6 +70,7 @@ async function resolveWorkspaceFromPathname(pathname: string, firestore: unknown
     else if (section === 'pdfs') collectionName = 'pdfs';
     else if (section === 'meetings') collectionName = 'meetings';
     else if (section === 'entities') collectionName = 'workspace_entities';
+    else if (section === 'deals') collectionName = 'deals';
     else if (section === 'finance' && segments[3] === 'contracts' && segments[4] && !keywords.includes(segments[4])) {
       collectionName = 'contracts';
       const contractId = segments[4];
@@ -363,6 +364,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
     }
   }, [isInitialized, isWorkspacesLoading, orgWorkspaces, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization, profile, activeOrganizationId]);
+
+  // 6.3. Client-Side Path Workspace Transition Synchronizer
+  React.useEffect(() => {
+    if (!isInitialized || isWorkspacesLoading || !orgWorkspaces || orgWorkspaces.length === 0 || !accessibleWorkspaces || accessibleWorkspaces.length === 0) return;
+    
+    async function syncPathnameWorkspace() {
+        const pathWs = await resolveWorkspaceFromPathname(pathname, firestore);
+        if (pathWs && pathWs !== activeWorkspaceId && accessibleWorkspaces.find(w => w.id === pathWs)) {
+            setActiveWorkspaceIdState(pathWs);
+            if (typeof window !== 'undefined' && window.localStorage) {
+                localStorage.setItem('activeWorkspaceId', pathWs);
+            }
+        }
+    }
+    
+    syncPathnameWorkspace();
+  }, [pathname, isInitialized, isWorkspacesLoading, orgWorkspaces, accessibleWorkspaces, activeWorkspaceId, firestore]);
 
   // Handlers
   const setActiveOrganization = React.useCallback((orgId: string) => {
