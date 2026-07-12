@@ -87,10 +87,16 @@ export async function reschedulePendingJobs(
             startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
           }
 
+          const workspaceId = data.workspaceId || (data.payload?.workspaceId as string);
+          if (!workspaceId) {
+            console.warn(`[RESCHEDULE] Skipping reschedule for job ${doc.id}: missing workspaceId.`);
+            return;
+          }
+
           const context = {
             runId: data.runId,
             automationId,
-            workspaceId: data.payload?.workspaceId || 'onboarding',
+            workspaceId,
             organizationId: data.payload?.organizationId,
             entityId: data.payload?.entityId,
             entityType: data.payload?.entityType || 'contacts',
@@ -114,7 +120,7 @@ export async function reschedulePendingJobs(
               nodeId,
               automationId,
               executeAt: newExecuteAt.toISOString(),
-              workspaceId: data.workspaceId || data.payload?.workspaceId || 'onboarding',
+              workspaceId,
               channel: parseQueueChannel(data.payload?.channel),
               payload: data.payload,
             });

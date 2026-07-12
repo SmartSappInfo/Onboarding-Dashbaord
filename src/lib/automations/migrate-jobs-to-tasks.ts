@@ -49,12 +49,17 @@ export async function migratePendingJobsToTasks(): Promise<{
 
       // Schedule the task in GCP Tasks (or Emulator)
       try {
+        const workspaceId = job.workspaceId || (job.payload?.workspaceId as string);
+        if (!workspaceId) {
+          console.warn(`[MIGRATION] Skipping job ${job.id}: missing workspaceId.`);
+          continue;
+        }
         await scheduleDelayTask({
           runId: job.runId,
           nodeId: job.targetNodeId,
           automationId: job.automationId,
           executeAt: job.executeAt,
-          workspaceId: job.workspaceId || (job.payload?.workspaceId as string) || 'onboarding',
+          workspaceId,
           channel: job.payload?.channel as any,
           payload: job.payload,
         });

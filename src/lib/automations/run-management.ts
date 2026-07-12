@@ -411,13 +411,18 @@ export async function resumePausedRun(
         batch.update(doc.ref, { status: 'pending' });
         const jobData = doc.data();
         if (jobData.targetNodeId) {
+          const workspaceId = run.workspaceId || jobData.workspaceId;
+          if (!workspaceId) {
+            console.error(`[RESUME] Cannot resume job ${doc.id} for run ${runId}: missing workspaceId.`);
+            continue;
+          }
           try {
             await scheduleDelayTask({
               runId,
               nodeId: jobData.targetNodeId,
               automationId: run.automationId,
               executeAt: jobData.executeAt,
-              workspaceId: run.workspaceId || jobData.workspaceId || 'onboarding',
+              workspaceId,
               channel: parseQueueChannel(jobData.payload?.channel),
               payload: jobData.payload,
             });

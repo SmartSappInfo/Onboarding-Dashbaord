@@ -81,6 +81,7 @@ describe('Automation Delay Rescheduling Utilities', () => {
           data: () => ({
             executeAt: '2026-06-05T12:05:00.000Z',
             createdAt: '2026-06-05T12:00:00.000Z',
+            workspaceId: 'onboarding',
           }),
         },
         {
@@ -88,6 +89,7 @@ describe('Automation Delay Rescheduling Utilities', () => {
           ref: { id: 'job-legacy' },
           data: () => ({
             executeAt: '2026-06-05T12:05:00.000Z', // missing createdAt
+            workspaceId: 'onboarding',
           }),
         },
       ];
