@@ -17,6 +17,7 @@ import type { Tag, TagCategory } from '@/lib/types';
 import { applyTagsAction, removeTagsAction, createTagAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
 import { withRetryAction } from '@/lib/tag-retry';
+import { ToastAction } from '@/components/ui/toast';
 import { HighlightedText } from './HighlightedText';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +92,7 @@ export function TagSelector({
 }: TagSelectorProps) {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
   const isMobile = useMediaQuery('(max-width: 640px)');
 
@@ -109,7 +110,13 @@ export function TagSelector({
   // aria-live announcement
   const [announcement, setAnnouncement] = useState('');
 
-  const [optimisticTagIds, setOptimisticTagIds] = useOptimistic<string[]>(currentTagIds);
+  const [localTagIds, setLocalTagIds] = useState<string[]>(currentTagIds);
+
+  useEffect(() => {
+    setLocalTagIds(currentTagIds);
+  }, [currentTagIds]);
+
+  const [optimisticTagIds, setOptimisticTagIds] = useOptimistic<string[]>(localTagIds);
   const [isPending, startTransition] = useTransition();
 
   const recentTagsKey = `recent_tags_${activeWorkspaceId}`;
@@ -145,6 +152,12 @@ export function TagSelector({
   }, [firestore, activeWorkspaceId]);
 
   const { data: allTags } = useCollection<Tag>(tagsQuery);
+
+  const exactMatchExists = useMemo(() => {
+    const cleanSearch = searchTerm.trim().toLowerCase();
+    if (!cleanSearch) return true;
+    return (allTags || []).some(t => t.name.toLowerCase() === cleanSearch);
+  }, [allTags, searchTerm]);
 
   const currentTagObjects = useMemo(
     () => (allTags || []).filter(t => optimisticTagIds.includes(t.id)),
@@ -194,6 +207,22 @@ export function TagSelector({
 
   // Keyboard navigation handler for the tag list
   const handleListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const total = flatAvailableTags.length;
+      if (focusedIndex >= 0 && total > 0) {
+        e.preventDefault();
+        const tag = flatAvailableTags[focusedIndex];
+        if (tag) { handleApply(tag.id); setIsOpen(false); }
+      } else if (!exactMatchExists && searchTerm.trim()) {
+        e.preventDefault();
+        const nameToCreate = searchTerm.trim();
+        setSearchTerm('');
+        setIsOpen(false);
+        handleInstantCreateAndApply(nameToCreate);
+      }
+      return;
+    }
+
     const total = flatAvailableTags.length;
     if (total === 0) return;
 
@@ -203,10 +232,6 @@ export function TagSelector({
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedIndex(i => (i <= 0 ? total - 1 : i - 1));
-    } else if (e.key === 'Enter' && focusedIndex >= 0) {
-      e.preventDefault();
-      const tag = flatAvailableTags[focusedIndex];
-      if (tag) { handleApply(tag.id); setIsOpen(false); }
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setIsOpen(false);
@@ -223,86 +248,108 @@ export function TagSelector({
   const handleApply = async (tagId: string) => {
     if (!user) return;
     const tag = allTags?.find(t => t.id === tagId);
-    startTransition(() => {
-      setOptimisticTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
-    });
     
     if (!contactId || !contactType) {
       // Draft mode (e.g. creating new entity)
+      const nextTags = currentTagIds.includes(tagId) ? currentTagIds : [...currentTagIds, tagId];
+      startTransition(() => {
+        setOptimisticTagIds(nextTags);
+      });
+      setLocalTagIds(nextTags);
       recordRecentTag(tagId);
-      onTagsChange?.([...currentTagIds, tagId]);
+      onTagsChange?.(nextTags);
       return;
     }
 
-    const result = await withRetryAction(
-      () => applyTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
-      {
-        onRetry: (attempt) => {
-          setAnnouncement(`Retrying… attempt ${attempt + 1}`);
-        },
+    startTransition(async () => {
+      setOptimisticTagIds(prev => prev.includes(tagId) ? prev : [...prev, tagId]);
+      
+      const result = await withRetryAction(
+        () => applyTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
+        {
+          onRetry: (attempt) => {
+            setAnnouncement(`Retrying… attempt ${attempt + 1}`);
+          },
+        }
+      );
+      if (result.success) {
+        recordRecentTag(tagId);
+        setLocalTagIds(prev => {
+          const next = prev.includes(tagId) ? prev : [...prev, tagId];
+          setTimeout(() => onTagsChange?.(next), 0);
+          return next;
+        });
+        setAnnouncement(`Tag "${tag?.name}" applied`);
+        toast({
+          title: 'Tag Applied',
+          description: `"${tag?.name}" added.`,
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={() => handleRemove(tagId)}
+              className="text-xs font-bold underline underline-offset-2 hover:no-underline"
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+        setAnnouncement(`Failed to apply tag`);
       }
-    );
-    if (result.success) {
-      recordRecentTag(tagId);
-      onTagsChange?.([...currentTagIds, tagId]);
-      setAnnouncement(`Tag "${tag?.name}" applied`);
-      toast({
-        title: 'Tag Applied',
-        description: `"${tag?.name}" added.`,
-        action: (
-          <button
-            onClick={() => handleRemove(tagId)}
-            className="text-xs font-bold underline underline-offset-2 hover:no-underline"
-          >
-            Undo
-          </button>
-        ),
-      } as any);
-    } else {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
-      setAnnouncement(`Failed to apply tag`);
-    }
+    });
   };
 
   const handleRemove = async (tagId: string) => {
     if (!user) return;
     const tag = allTags?.find(t => t.id === tagId);
-    startTransition(() => {
-      setOptimisticTagIds(prev => prev.filter(id => id !== tagId));
-    });
 
     if (!contactId || !contactType) {
       // Draft mode
-      onTagsChange?.(currentTagIds.filter(id => id !== tagId));
+      const nextTags = currentTagIds.filter(id => id !== tagId);
+      startTransition(() => {
+        setOptimisticTagIds(nextTags);
+      });
+      setLocalTagIds(nextTags);
+      onTagsChange?.(nextTags);
       return;
     }
 
-    const result = await withRetryAction(
-      () => removeTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
-      {
-        onRetry: (attempt) => {
-          setAnnouncement(`Retrying… attempt ${attempt + 1}`);
-        },
+    startTransition(async () => {
+      setOptimisticTagIds(prev => prev.filter(id => id !== tagId));
+
+      const result = await withRetryAction(
+        () => removeTagsAction(contactId, contactType, [tagId], user.uid, user.displayName || undefined),
+        {
+          onRetry: (attempt) => {
+            setAnnouncement(`Retrying… attempt ${attempt + 1}`);
+          },
+        }
+      );
+      if (result.success) {
+        setLocalTagIds(prev => {
+          const next = prev.filter(id => id !== tagId);
+          setTimeout(() => onTagsChange?.(next), 0);
+          return next;
+        });
+        setAnnouncement(`Tag "${tag?.name}" removed`);
+        toast({
+          title: 'Tag Removed',
+          description: `"${tag?.name}" removed.`,
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={() => handleApply(tagId)}
+              className="text-xs font-bold underline underline-offset-2 hover:no-underline"
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-    );
-    if (result.success) {
-      onTagsChange?.(currentTagIds.filter(id => id !== tagId));
-      setAnnouncement(`Tag "${tag?.name}" removed`);
-      toast({
-        title: 'Tag Removed',
-        description: `"${tag?.name}" removed.`,
-        action: (
-          <button
-            onClick={() => handleApply(tagId)}
-            className="text-xs font-bold underline underline-offset-2 hover:no-underline"
-          >
-            Undo
-          </button>
-        ),
-      } as any);
-    } else {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
-    }
+    });
   };
 
   const handleCreateAndApply = async () => {
@@ -333,6 +380,30 @@ export function TagSelector({
     }
   };
 
+  const handleInstantCreateAndApply = async (name: string) => {
+    if (!user || !activeWorkspaceId) return;
+    const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+    try {
+      const result = await createTagAction({
+        workspaceId: activeWorkspaceId,
+        organizationId: activeOrganizationId || '',
+        name: name,
+        category: 'custom',
+        color: randomColor,
+        userId: user.uid,
+        userName: user.displayName || undefined,
+      });
+      if (result.success && result.data) {
+        await handleApply(result.data.id);
+        toast({ title: 'Tag Created & Applied', description: `"${name}" added.` });
+      } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+      }
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to create tag' });
+    }
+  };
+
   // Shared tag list content used in both Popover and Drawer
   const TagListContent = () => (
     <>
@@ -359,7 +430,6 @@ export function TagSelector({
         </div>
       </div>
 
-      {/* Tag list */}
       <div
         ref={listRef}
         id={listboxId}
@@ -369,6 +439,22 @@ export function TagSelector({
         className="max-h-64 overflow-y-auto p-2"
         onKeyDown={handleListKeyDown}
       >
+        {!exactMatchExists && searchTerm.trim() && (
+          <button
+            onClick={async () => {
+              const nameToCreate = searchTerm.trim();
+              setSearchTerm('');
+              setIsOpen(false);
+              await handleInstantCreateAndApply(nameToCreate);
+            }}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-xl transition-colors text-left min-h-[44px] sm:min-h-0 sm:py-1.5 cursor-pointer touch-manipulation hover:bg-primary/5 text-primary active:scale-[0.97]"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="text-xs font-bold flex-1 truncate">
+              Create tag "{searchTerm.trim()}"
+            </span>
+          </button>
+        )}
         {Object.entries(groupedAvailable).map(([category, tags]) => (
           <div key={category} role="group" aria-label={`${category} tags`}>
             <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1" aria-hidden="true">
@@ -536,7 +622,7 @@ export function TagSelector({
             </Sheet>
           </>
         ) : (
-          <Popover open={isOpen} onOpenChange={open => { setIsOpen(open); if (!open) setSearchTerm(''); }}>
+          <Popover modal={true} open={isOpen} onOpenChange={open => { setIsOpen(open); if (!open) setSearchTerm(''); }}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"

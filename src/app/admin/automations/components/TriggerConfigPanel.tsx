@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger, Automation } from '@/lib/types';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
@@ -129,29 +130,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
     onUpdateConfig(updates);
   };
 
-  const handleCreateInlineTag = async (tagName: string) => {
-    if (!tagName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
-    try {
-      const result = await createTagAction({
-        name: tagName.trim(),
-        workspaceId: activeWorkspaceId,
-        organizationId: activeOrganizationId,
-        category: 'custom',
-        color: '#10B981',
-        userId: user.uid,
-      });
 
-      if (result.success && result.data) {
-        toast({ title: 'Tag created', description: `"${tagName}" is now available and watched.` });
-        const current = config.tagIds || [];
-        updateConfig({ tagIds: [...current, result.data.id] });
-      } else {
-        toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
-      }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
-    }
-  };
 
   const tagOptions = React.useMemo(() => {
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
@@ -310,13 +289,10 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
                 <Tag className="h-3 w-3" /> Filter by Tags
               </Label>
-              <MultiSelect
-                options={tagOptions}
-                value={config.tagIds || []}
-                onChange={(val) => updateConfig({ tagIds: val })}
-                onCreate={handleCreateInlineTag}
-                placeholder="Select or type to create tags to watch..."
-                className="rounded-xl border-none shadow-inner"
+              <TagSelector
+                currentTagIds={config.tagIds || []}
+                onTagsChange={(val) => updateConfig({ tagIds: val })}
+                className="w-full"
               />
             </div>
           </div>

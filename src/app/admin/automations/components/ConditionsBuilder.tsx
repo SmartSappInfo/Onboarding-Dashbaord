@@ -12,6 +12,7 @@ import { Plus, Trash, Info, X, HelpCircle, CheckSquare, Play, Globe, Zap, ListFi
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import type { ConditionGroup, ConditionItem } from '@/lib/automation-condition';
 import type { Pipeline } from '@/lib/types';
 
@@ -718,14 +719,12 @@ export function ConditionsBuilder({
                             <div className="flex-grow min-w-[180px] space-y-1">
                               <Label className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/80">Value Criteria</Label>
                               
-                              {/* 1. MultiSelect for Tags */}
+                              {/* 1. TagSelector for Tags */}
                               {valueType === 'tags' && (
-                                <MultiSelect
-                                  options={allTags?.map((t: any) => ({ label: t.name, value: t.id })) || []}
-                                  onChange={(val: string[]) => updateConditionValue(group.id, cond.id, { value: val })}
-                                  value={Array.isArray(cond.value) ? cond.value : []}
-                                  placeholder="Select tags..."
-                                  className="min-h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full"
+                                <TagSelector
+                                  currentTagIds={Array.isArray(cond.value) ? cond.value : []}
+                                  onTagsChange={(val: string[]) => updateConditionValue(group.id, cond.id, { value: val })}
+                                  className="min-h-8 w-full bg-background/50 p-1.5 rounded-xl border"
                                 />
                               )}
 

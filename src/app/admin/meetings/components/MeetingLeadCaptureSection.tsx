@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   Database,
@@ -193,30 +194,7 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
     }
   }, [user, activeWorkspaceId, activeOrganizationId, handleUpdateMapping, toast]);
 
-  const handleCreateInlineTag = React.useCallback(async (tagName: string) => {
-    if (!tagName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
-    
-    try {
-      const result = await createTagAction({
-        name: tagName.trim(),
-        workspaceId: activeWorkspaceId,
-        organizationId: activeOrganizationId,
-        category: 'custom',
-        color: '#6366f1',
-        userId: user.uid,
-      });
 
-      if (result.success && result.data) {
-        toast({ title: 'Tag created', description: `"${tagName}" is now available and applied.` });
-        const currentTags = watch('autoTags') || [];
-        setValue('autoTags', [...currentTags, result.data.id]);
-      } else {
-        toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create tag.' });
-      }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
-    }
-  }, [user, activeWorkspaceId, activeOrganizationId, watch, setValue, toast]);
 
   const handleCreateInlineAutomation = React.useCallback(async (autoName: string) => {
     if (!autoName.trim() || !user || !activeWorkspaceId || !activeOrganizationId) return;
@@ -460,13 +438,10 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
                   <Plus className="h-3 w-3" /> New Tag
                 </Button>
               </div>
-              <MultiSelect
-                options={tagOptions}
-                value={watch('autoTags') || []}
-                onChange={(val) => setValue('autoTags', val)}
-                onCreate={handleCreateInlineTag}
-                placeholder="Select tags to apply..."
-                className="rounded-xl"
+              <TagSelector
+                currentTagIds={watch('autoTags') || []}
+                onTagsChange={(val) => setValue('autoTags', val)}
+                className="w-full"
               />
               {(watch('autoTags') || []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5">

@@ -9,6 +9,7 @@ import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
 import { TagFilter } from '@/components/tags/TagFilter';
+import { ManageTagsDialog } from '@/components/tags/ManageTagsDialog';
 import type { TagFilter as TagFilterState } from '@/components/tags/TagFilter';import { useEntityFilters, DEFAULT_FILTERS, type DirectoryFilterState } from './hooks/useEntityFilters';
 import { InterestFilterSelect } from './components/InterestFilterSelect';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
@@ -1873,24 +1874,17 @@ export default function EntitiesClient() {
 
             
             {taggingEntity && (
-                <AlertDialog open={!!taggingEntity} onOpenChange={(open) => !open && setTaggingEntity(null)}>
-                    <AlertDialogContent className="rounded-2xl max-w-md">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="font-semibold">Manage Tags</AlertDialogTitle>
-                            <AlertDialogDescription className="text-xs text-muted-foreground">
-                                {taggingEntity.displayName}
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <TagSelector
-                            contactId={taggingEntity.id}
-                            contactType="workspace_entity"
-                            currentTagIds={taggingEntity.workspaceTags ?? []}
-                        />
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-xl" onClick={() => setTaggingEntity(null)}>Done</AlertDialogCancel>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <ManageTagsDialog
+                    open={!!taggingEntity}
+                    onOpenChange={(open) => !open && setTaggingEntity(null)}
+                    entityId={taggingEntity.id}
+                    entityName={taggingEntity.displayName}
+                    currentTagIds={taggingEntity.workspaceTags ?? []}
+                    contactType="workspace_entity"
+                    onTagsChange={(newTagIds) => {
+                        setTaggingEntity(prev => prev ? { ...prev, workspaceTags: newTagIds } : null);
+                    }}
+                />
             )}
             <BulkTagOperations
                 open={isBulkTagOpen}

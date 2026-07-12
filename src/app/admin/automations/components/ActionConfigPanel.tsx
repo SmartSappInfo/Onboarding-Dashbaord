@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
@@ -403,30 +404,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
   }, [allTags]);
 
-  const handleCreateInlineTag = async (tagName: string) => {
-    if (!tagName.trim() || !user || !activeWorkspace) return;
-    try {
-      const result = await createTagAction({
-        name: tagName.trim(),
-        workspaceId: activeWorkspace.id,
-        organizationId: activeWorkspace.organizationId,
-        category: 'custom',
-        color: '#10B981',
-        userId: user.uid,
-      });
 
-      if (result.success && result.data) {
-        toast({ title: 'Tag created', description: `"${tagName}" is now available.` });
-        const current = config.tagIds || [];
-        updateConfig({ tagIds: [...current, result.data.id] });
-      } else {
-        toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
-      }
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      toast({ variant: 'destructive', title: 'Error', description: errMsg });
-    }
-  };
 
   const handleCreateField = async (data: { label: string; variableName: string }) => {
     if (!user || !activeWorkspace) return;
@@ -664,13 +642,10 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
 
         <div className="space-y-2">
           <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assign Workspace Tags</Label>
-          <MultiSelect
-            options={tagOptions}
-            value={config.tagIds || []}
-            onChange={(val) => updateConfig({ tagIds: val })}
-            onCreate={handleCreateInlineTag}
-            placeholder="+ Assign workspace tags..."
-            className="rounded-xl bg-card border shadow-sm text-xs font-semibold active:scale-[0.97] transition-transform duration-150 ease-out"
+          <TagSelector
+            currentTagIds={config.tagIds || []}
+            onTagsChange={(val) => updateConfig({ tagIds: val })}
+            className="w-full"
           />
         </div>
       </div>

@@ -20,7 +20,7 @@ import type { DuplicateStrategy } from '@/lib/import-types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, collection, where, orderBy } from 'firebase/firestore';
-import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -396,7 +396,6 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
     const [bulkStrategy, setBulkStrategy] = useState<DuplicateStrategy>('SKIP');
     const [isResolving, setIsResolving] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
-    const [isCreatingTag, setIsCreatingTag] = useState(false);
     const [resolutions, setResolutions] = useState<Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any; customExistingData?: any }>>(() => {
         const initial: Record<string, { strategy: DuplicateStrategy; tagIds: string[]; customPayload?: any; customExistingData?: any }> = {};
         duplicateRows.filter(r => !r.resolved).forEach(row => {
@@ -776,35 +775,10 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                     </Select>
                     {requiresTags(bulkStrategy) && (
                         <div className="w-[200px]">
-                            <MultiSelect
-                                options={tagsList?.map((t: any) => ({ label: t.name, value: t.id })) || []}
-                                value={selectedTags}
-                                onChange={setSelectedTags}
-                                placeholder="Tags..."
-                                onCreate={async (newTagName) => {
-                                    if (!activeWorkspace || !user?.uid) return;
-                                    setIsCreatingTag(true);
-                                    try {
-                                        const res = await createTagAction({
-                                            workspaceId: activeWorkspace.id,
-                                            organizationId: activeWorkspace.organizationId || 'smartsapp-hq',
-                                            name: newTagName,
-                                            category: 'custom',
-                                            color: '#e2e8f0',
-                                            userId: user.uid,
-                                        });
-                                        if (res.success && res.data) {
-                                            setSelectedTags(prev => [...prev, res.data.id]);
-                                            toast({ title: 'Tag Created', description: `Created "${newTagName}"` });
-                                        } else {
-                                            throw new Error(res.error || 'Failed to create tag');
-                                        }
-                                    } catch (e: any) {
-                                        toast({ variant: 'destructive', title: 'Error', description: e.message });
-                                    } finally {
-                                        setIsCreatingTag(false);
-                                    }
-                                }}
+                            <TagSelector
+                                currentTagIds={selectedTags}
+                                onTagsChange={setSelectedTags}
+                                className="w-full"
                             />
                         </div>
                     )}
@@ -955,47 +929,16 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                                             </div>
                                             {requiresTags(resolutions[row.id]?.strategy) && (
                                                 <div className="w-[280px]">
-                                                    <MultiSelect
-                                                        options={tagsList?.map((t: any) => ({ label: t.name, value: t.id })) || []}
-                                                        value={resolutions[row.id]?.tagIds || []}
-                                                        onChange={(tagIds) => {
-                                                            setResolutions(prev => ({
-                                                                ...prev,
-                                                                [row.id]: { ...prev[row.id], tagIds }
-                                                            }));
-                                                        }}
-                                                        placeholder="Add Resolution Tags..."
-                                                        onCreate={async (newTagName) => {
-                                                            if (!activeWorkspace || !user?.uid) return;
-                                                            setIsCreatingTag(true);
-                                                            try {
-                                                                const res = await createTagAction({
-                                                                    workspaceId: activeWorkspace.id,
-                                                                    organizationId: activeWorkspace.organizationId || 'smartsapp-hq',
-                                                                    name: newTagName,
-                                                                    category: 'custom',
-                                                                    color: '#e2e8f0',
-                                                                    userId: user.uid,
-                                                                });
-                                                                if (res.success && res.data) {
-                                                                    setResolutions(prev => ({
-                                                                        ...prev,
-                                                                        [row.id]: {
-                                                                            ...prev[row.id],
-                                                                            tagIds: [...(prev[row.id]?.tagIds || []), res.data.id]
-                                                                        }
-                                                                    }));
-                                                                    toast({ title: 'Tag Created', description: `Created "${newTagName}"` });
-                                                                } else {
-                                                                    throw new Error(res.error || 'Failed to create tag');
-                                                                }
-                                                            } catch (e: any) {
-                                                                toast({ variant: 'destructive', title: 'Error', description: e.message });
-                                                            } finally {
-                                                                setIsCreatingTag(false);
-                                                            }
-                                                        }}
-                                                    />
+                                                    <TagSelector
+                                                         currentTagIds={resolutions[row.id]?.tagIds || []}
+                                                         onTagsChange={(tagIds) => {
+                                                             setResolutions(prev => ({
+                                                                 ...prev,
+                                                                 [row.id]: { ...prev[row.id], tagIds }
+                                                             }));
+                                                         }}
+                                                         className="w-full"
+                                                     />
                                                 </div>
                                             )}
                                         </div>

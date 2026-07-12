@@ -20,6 +20,7 @@ import {
     Plus, X, Search, Users, Loader2, Filter, ChevronDown, Eye, Trash2,
 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 
 // ─── Field + Operator Config ──────────────────────────────────────────────────
@@ -238,62 +239,7 @@ function AutomationValuePicker({ value, onChange }: { value: string[]; onChange:
     );
 }
 
-function TagValuePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-    const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace() as any;
-    const [open, setOpen] = React.useState(false);
-    const [search, setSearch] = React.useState('');
 
-    const tagsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
-    }, [firestore, activeWorkspaceId]);
-
-    const { data: allTags } = useCollection<Tag>(tagsQuery);
-
-    const filtered = React.useMemo(() => {
-        if (!allTags) return [];
-        const q = search.toLowerCase();
-        return allTags.filter(t => !q || t.name.toLowerCase().includes(q));
-    }, [allTags, search]);
-
-    const toggle = (tagId: string) => {
-        onChange(value.includes(tagId) ? value.filter(id => id !== tagId) : [...value, tagId]);
-    };
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button type="button" variant="outline" size="sm" className="h-8 rounded-xl border-dashed font-bold text-[10px] gap-1.5 justify-start max-w-[220px]">
-                    <Search className="h-3 w-3" />
-                    {value.length === 0 ? 'Select tags...' : `${value.length} tag(s)`}
-                    <ChevronDown className="h-2.5 w-2.5 ml-auto opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-0 rounded-2xl shadow-2xl border-none" align="start">
-                <div className="p-2.5 border-b">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                        <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-7 rounded-lg text-[10px] border-none bg-muted/30" autoFocus />
-                    </div>
-                </div>
-                <div className="max-h-48 overflow-y-auto p-1.5">
-                    {filtered.map(tag => (
-                        <button key={tag.id} type="button" onClick={() => toggle(tag.id)} className={cn(
-                            'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left',
-                            value.includes(tag.id) ? 'bg-primary/10' : 'hover:bg-muted/50'
-                        )}>
-                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
-                            <span className="text-[10px] font-bold flex-1 truncate">{tag.name}</span>
-                            {value.includes(tag.id) && <X className="h-2.5 w-2.5 text-primary" />}
-                        </button>
-                    ))}
-                    {filtered.length === 0 && <p className="text-[9px] text-muted-foreground text-center py-3 font-medium">No tags found</p>}
-                </div>
-            </PopoverContent>
-        </Popover>
-    );
-}
 
 // ─── Single Filter Row ────────────────────────────────────────────────────────
 
@@ -344,7 +290,13 @@ const FilterRow = React.memo(function FilterRow({
 
             {/* Value */}
             {needsValue && config?.valueType === 'tags' && (
-                <TagValuePicker value={Array.isArray(filter.value) ? filter.value : []} onChange={v => onUpdate({ ...filter, value: v })} />
+                <div className="w-[220px]">
+                    <TagSelector
+                        currentTagIds={Array.isArray(filter.value) ? filter.value : []}
+                        onTagsChange={(v) => onUpdate({ ...filter, value: v })}
+                        className="w-full"
+                    />
+                </div>
             )}
             {needsValue && config?.valueType === 'select' && (
                 <Select value={filter.value || ''} onValueChange={v => onUpdate({ ...filter, value: v })}>
