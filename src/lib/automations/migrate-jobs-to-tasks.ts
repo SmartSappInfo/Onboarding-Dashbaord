@@ -49,7 +49,11 @@ export async function migratePendingJobsToTasks(): Promise<{
 
       // Schedule the task in GCP Tasks (or Emulator)
       try {
-        const workspaceId = job.workspaceId || (job.payload?.workspaceId as string);
+        let workspaceId = job.workspaceId || (job.payload?.workspaceId as string);
+        if (!workspaceId) {
+          const autoSnap = await adminDb.collection('automations').doc(job.automationId).get();
+          workspaceId = autoSnap.data()?.workspaceIds?.[0];
+        }
         if (!workspaceId) {
           console.warn(`[MIGRATION] Skipping job ${job.id}: missing workspaceId.`);
           continue;

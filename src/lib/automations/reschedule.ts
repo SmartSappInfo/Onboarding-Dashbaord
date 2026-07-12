@@ -87,7 +87,11 @@ export async function reschedulePendingJobs(
             startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
           }
 
-          const workspaceId = data.workspaceId || (data.payload?.workspaceId as string);
+          let workspaceId = data.workspaceId || (data.payload?.workspaceId as string);
+          if (!workspaceId) {
+            const autoSnap = await adminDb.collection('automations').doc(automationId).get();
+            workspaceId = autoSnap.data()?.workspaceIds?.[0];
+          }
           if (!workspaceId) {
             console.warn(`[RESCHEDULE] Skipping reschedule for job ${doc.id}: missing workspaceId.`);
             return;
