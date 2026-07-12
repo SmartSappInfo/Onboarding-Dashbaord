@@ -219,9 +219,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   // 4. Initial Context Synchronization
   React.useEffect(() => {
-    if (isOrgsLoading || isProfileLoading || isUserLoading || !organizations || !profile) return;
+    if (isOrgsLoading || isProfileLoading || isUserLoading || !organizations || !profile || isInitialized) return;
     
-    if (!isInitialized) {
+    async function initContext() {
         // Resolve Active Organization
         const storedOrg = localStorage.getItem('activeOrganizationId');
         let initialOrgId = profile.organizationId; // Default to user's assigned org
@@ -254,20 +254,30 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         let initialWsId = '';
         if (urlTrack) {
             initialWsId = urlTrack;
-        } else if (profile.defaultWorkspaceId) {
-            initialWsId = profile.defaultWorkspaceId;
-        } else if (orgDefaultWsId) {
-            initialWsId = orgDefaultWsId;
-        } else if (storedWs) {
-            initialWsId = storedWs;
-        } else if (profile.lastActiveWorkspaceId) {
-            initialWsId = profile.lastActiveWorkspaceId;
+        } else {
+            const pathWs = await resolveWorkspaceFromPathname(pathname, firestore);
+            if (pathWs) {
+                initialWsId = pathWs;
+            } else if (storedWs) {
+                initialWsId = storedWs;
+            } else if (profile.lastActiveWorkspaceId) {
+                initialWsId = profile.lastActiveWorkspaceId;
+            } else if (profile.defaultWorkspaceId) {
+                initialWsId = profile.defaultWorkspaceId;
+            } else if (orgDefaultWsId) {
+                initialWsId = orgDefaultWsId;
+            }
         }
 
         setActiveWorkspaceIdState(initialWsId);
+        if (initialWsId) {
+            localStorage.setItem('activeWorkspaceId', initialWsId);
+        }
         setIsInitialized(true);
     }
-  }, [isOrgsLoading, isProfileLoading, isUserLoading, organizations, profile, isSuperAdmin, isInitialized, searchParams]);
+
+    initContext();
+  }, [isOrgsLoading, isProfileLoading, isUserLoading, organizations, profile, isSuperAdmin, isInitialized, searchParams, pathname, firestore]);
 
   // 5. Resolve Accessible Workspaces
   const accessibleWorkspaces = React.useMemo(() => {
