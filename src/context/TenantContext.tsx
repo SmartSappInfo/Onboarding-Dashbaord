@@ -223,7 +223,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     
     async function initContext() {
         // Resolve Active Organization
-        const storedOrg = localStorage.getItem('activeOrganizationId');
+        const storedOrg = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('activeOrganizationId') : null;
         let initialOrgId = profile.organizationId; // Default to user's assigned org
 
         if (isSuperAdmin && storedOrg && organizations.find(o => o.id === storedOrg)) {
@@ -246,7 +246,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         // Resolve Active Workspace
         const urlTrack = searchParams.get('track') || null;
-        const storedWs = localStorage.getItem('activeWorkspaceId');
+        const storedWs = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('activeWorkspaceId') : null;
         
         const currentOrg = organizations?.find(o => o.id === initialOrgId);
         const orgDefaultWsId = currentOrg?.defaultWorkspaceId;
@@ -270,7 +270,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
 
         setActiveWorkspaceIdState(initialWsId);
-        if (initialWsId) {
+        if (initialWsId && typeof window !== 'undefined' && window.localStorage) {
             localStorage.setItem('activeWorkspaceId', initialWsId);
         }
         setIsInitialized(true);
