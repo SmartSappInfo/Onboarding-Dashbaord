@@ -221,22 +221,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (isOrgsLoading || isProfileLoading || isUserLoading || !organizations || !profile || isInitialized) return;
     
+    const activeProfile = profile;
     async function initContext() {
         // Resolve Active Organization
         const storedOrg = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('activeOrganizationId') : null;
-        let initialOrgId = profile.organizationId; // Default to user's assigned org
+        let initialOrgId = activeProfile.organizationId; // Default to user's assigned org
 
         if (isSuperAdmin && storedOrg && organizations.find(o => o.id === storedOrg)) {
             initialOrgId = storedOrg;
-        } else if (profile.lastActiveOrganizationId && organizations.find(o => o.id === profile.lastActiveOrganizationId)) {
-            initialOrgId = profile.lastActiveOrganizationId;
+        } else if (activeProfile.lastActiveOrganizationId && organizations.find(o => o.id === activeProfile.lastActiveOrganizationId)) {
+            initialOrgId = activeProfile.lastActiveOrganizationId;
         } else if (!isSuperAdmin) {
-            initialOrgId = profile.organizationId; // Force non-super-admins to their assigned org
+            initialOrgId = activeProfile.organizationId; // Force non-super-admins to their assigned org
         }
 
         if (isSuperAdmin && !initialOrgId) {
-            if (profile.organizationId && organizations.find(o => o.id === profile.organizationId)) {
-                initialOrgId = profile.organizationId;
+            if (activeProfile.organizationId && organizations.find(o => o.id === activeProfile.organizationId)) {
+                initialOrgId = activeProfile.organizationId;
             } else if (organizations.length > 0) {
                 initialOrgId = organizations[0].id;
             }
@@ -260,10 +261,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
                 initialWsId = pathWs;
             } else if (storedWs) {
                 initialWsId = storedWs;
-            } else if (profile.lastActiveWorkspaceId) {
-                initialWsId = profile.lastActiveWorkspaceId;
-            } else if (profile.defaultWorkspaceId) {
-                initialWsId = profile.defaultWorkspaceId;
+            } else if (activeProfile.lastActiveWorkspaceId) {
+                initialWsId = activeProfile.lastActiveWorkspaceId;
+            } else if (activeProfile.defaultWorkspaceId) {
+                initialWsId = activeProfile.defaultWorkspaceId;
             } else if (orgDefaultWsId) {
                 initialWsId = orgDefaultWsId;
             }
