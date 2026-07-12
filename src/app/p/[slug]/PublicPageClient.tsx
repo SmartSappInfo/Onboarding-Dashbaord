@@ -215,17 +215,30 @@ export default function PublicPageClient({
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
     // Separate the page theme mode from the viewer's system/browser preferences:
     // Temporarily remove global 'dark' class from html/body elements on mount,
-    // and restore it on unmount.
+    // and restore it on unmount. Use MutationObserver to robustly prevent race conditions.
     useEffect(() => {
         const root = document.documentElement;
         const body = document.body;
         const hadDarkRoot = root.classList.contains('dark');
         const hadDarkBody = body.classList.contains('dark');
 
-        if (hadDarkRoot) root.classList.remove('dark');
-        if (hadDarkBody) body.classList.remove('dark');
+        const forceLightRoot = () => {
+            if (root.classList.contains('dark')) root.classList.remove('dark');
+            if (body.classList.contains('dark')) body.classList.remove('dark');
+        };
+
+        // Run immediately
+        forceLightRoot();
+
+        // Setup observer
+        const observer = new MutationObserver(() => {
+            forceLightRoot();
+        });
+        observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+        observer.observe(body, { attributes: true, attributeFilter: ['class'] });
 
         return () => {
+            observer.disconnect();
             if (hadDarkRoot) root.classList.add('dark');
             if (hadDarkBody) body.classList.add('dark');
         };
