@@ -77,9 +77,10 @@ interface ResponsiveIframePreviewProps {
     srcDoc: string;
     title?: string;
     className?: string;
+    allowScroll?: boolean;
 }
 const ResponsiveIframePreview = React.memo(function ResponsiveIframePreview({
-    srcDoc, title = 'Preview', className,
+    srcDoc, title = 'Preview', className, allowScroll = false,
 }: ResponsiveIframePreviewProps) {
     const containerRef = React.useRef<HTMLDivElement>(null);
     const [scale, setScale] = React.useState(0.25);
@@ -99,6 +100,10 @@ const ResponsiveIframePreview = React.memo(function ResponsiveIframePreview({
     }, []);
 
     React.useEffect(() => {
+        if (allowScroll) {
+            setIsMeasured(true);
+            return;
+        }
         const el = containerRef.current;
         if (!el) return;
         const ro = new ResizeObserver((entries) => {
@@ -114,15 +119,19 @@ const ResponsiveIframePreview = React.memo(function ResponsiveIframePreview({
         });
         ro.observe(el);
         return () => ro.disconnect();
-    }, []);
+    }, [allowScroll]);
 
     return (
-        <div ref={containerRef} className={cn('w-full h-full overflow-hidden relative bg-slate-50', className)}>
+        <div ref={containerRef} className={cn('w-full h-full relative bg-slate-50', allowScroll ? 'overflow-y-auto' : 'overflow-hidden', className)}>
             {inView && (
                 <iframe
                     srcDoc={srcDoc}
                     sandbox="allow-same-origin"
-                    style={{
+                    style={allowScroll ? {
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                    } : {
                         width: `${dimensions.width}px`,
                         height: `${dimensions.height}px`,
                         transform: `scale(${scale})`,
@@ -132,7 +141,11 @@ const ResponsiveIframePreview = React.memo(function ResponsiveIframePreview({
                         left: 0,
                         border: 'none',
                     }}
-                    className={cn('pointer-events-none transition-opacity duration-300', isMeasured ? 'opacity-100' : 'opacity-0')}
+                    className={cn(
+                        'transition-opacity duration-300',
+                        !allowScroll && 'pointer-events-none',
+                        isMeasured ? 'opacity-100' : 'opacity-0'
+                    )}
                     title={title}
                     loading="lazy"
                 />
@@ -1048,6 +1061,7 @@ export function MessagingTemplateSelector({
                                     } 
                                     title={selectedTemplate.name} 
                                     className="absolute inset-0 bg-background" 
+                                    allowScroll
                                 />
                             ) : (
                                 <div className="h-full flex items-center justify-center p-6 bg-slate-950/40">
