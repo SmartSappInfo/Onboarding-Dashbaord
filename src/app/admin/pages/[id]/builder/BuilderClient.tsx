@@ -761,6 +761,27 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
+                    {/* Canvas Theme Toggle */}
+                    <div className="flex items-center bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
+                        <Button
+                            variant="ghost" size="icon"
+                            onClick={() => {
+                                const currentThemeMode = builder.page?.settings?.themeOverrides?.themeMode || 'light';
+                                const nextThemeMode: 'light' | 'dark' = currentThemeMode === 'light' ? 'dark' : 'light';
+                                const newOverrides = { ...(builder.page?.settings?.themeOverrides || {}), themeMode: nextThemeMode };
+                                builder.dispatch({ type: 'UPDATE_PAGE_SETTINGS', payload: { themeOverrides: newOverrides } });
+                            }}
+                            className="h-7 w-7 p-0 rounded-lg transition-all border-0 text-slate-500 hover:text-slate-300"
+                            title="Toggle Canvas Theme (Light/Dark)"
+                        >
+                            {(builder.page?.settings?.themeOverrides?.themeMode || 'light') === 'light' ? (
+                                <Moon className="w-3.5 h-3.5" />
+                            ) : (
+                                <Sun className="w-3.5 h-3.5" />
+                            )}
+                        </Button>
+                    </div>
+
                     {/* Components / Columns Switcher (only in Edit mode) */}
                     {builder.canvasMode === 'edit' && (
                         <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
