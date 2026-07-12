@@ -214,35 +214,43 @@ export default function PublicPageClient({
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
     // Separate the page theme mode from the viewer's system/browser preferences:
-    // Temporarily remove global 'dark' class from html/body elements on mount,
-    // and restore it on unmount. Use MutationObserver to robustly prevent race conditions.
+    // Intercept next-themes and system browser preferences, and force the root 'dark' class
+    // list state to strictly match the campaign page's own themeMode setting.
     useEffect(() => {
         const root = document.documentElement;
         const body = document.body;
-        const hadDarkRoot = root.classList.contains('dark');
-        const hadDarkBody = body.classList.contains('dark');
+        const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
+        const isDark = pageThemeMode === 'dark';
 
-        const forceLightRoot = () => {
-            if (root.classList.contains('dark')) root.classList.remove('dark');
-            if (body.classList.contains('dark')) body.classList.remove('dark');
-        };
+        if (isDark) {
+            root.classList.add('dark');
+            body.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+            body.classList.remove('dark');
+        }
 
-        // Run immediately
-        forceLightRoot();
-
-        // Setup observer
-        const observer = new MutationObserver(() => {
-            forceLightRoot();
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (isDark) {
+                        if (!root.classList.contains('dark')) root.classList.add('dark');
+                        if (!body.classList.contains('dark')) body.classList.add('dark');
+                    } else {
+                        if (root.classList.contains('dark')) root.classList.remove('dark');
+                        if (body.classList.contains('dark')) body.classList.remove('dark');
+                    }
+                }
+            });
         });
+
         observer.observe(root, { attributes: true, attributeFilter: ['class'] });
         observer.observe(body, { attributes: true, attributeFilter: ['class'] });
 
         return () => {
             observer.disconnect();
-            if (hadDarkRoot) root.classList.add('dark');
-            if (hadDarkBody) body.classList.add('dark');
         };
-    }, []);
+    }, [page?.settings?.themeOverrides?.themeMode]);
 
     // Fallback: Resolve variables client-side if preloadedVariables was empty but query params exist
     useEffect(() => {

@@ -256,27 +256,31 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const { resolvedTheme } = useTheme();
     const sidebar = useSidebar();
     // Separate canvas viewport theme from the app's global workspace theme:
-    // Temporarily remove global 'dark' class from html/body elements on mount,
-    // and restore it on unmount to prevent admin theme leakage.
+    // Intercept next-themes changes and strip global 'dark' class from html/body elements on mount
+    // using a MutationObserver to ensure no background dark-mode leakage into light-mode canvases.
     // At the same time, keep the global layouts (sidebar and header) dark if
     // the workspace resolvedTheme is dark, matching the editing panels.
-    // Use a MutationObserver to prevent race conditions with next-themes asynchronously re-adding 'dark' class.
     useEffect(() => {
         const root = document.documentElement;
         const body = document.body;
 
-        const forceLightRoot = () => {
-            if (root.classList.contains('dark')) root.classList.remove('dark');
-            if (body.classList.contains('dark')) body.classList.remove('dark');
-        };
+        // Strip immediately
+        root.classList.remove('dark');
+        body.classList.remove('dark');
 
-        // Run immediately
-        forceLightRoot();
-
-        // Setup observer
-        const observer = new MutationObserver(() => {
-            forceLightRoot();
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (root.classList.contains('dark')) {
+                        root.classList.remove('dark');
+                    }
+                    if (body.classList.contains('dark')) {
+                        body.classList.remove('dark');
+                    }
+                }
+            });
         });
+
         observer.observe(root, { attributes: true, attributeFilter: ['class'] });
         observer.observe(body, { attributes: true, attributeFilter: ['class'] });
 
@@ -294,7 +298,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
 
         return () => {
             observer.disconnect();
-            if (resolvedTheme === 'dark') {
+            if (isDark) {
                 root.classList.add('dark');
                 body.classList.add('dark');
             }
@@ -340,13 +344,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     }, [builder.activeTab]);
 
     const activeDesignerTheme = resolvedTheme === 'light' ? 'light' : 'blue';
-    const currentThemeMode = builder.page?.settings?.themeOverrides?.themeMode || 'light';
-    const toggleCanvasTheme = () => {
-        if (!builder.page) return;
-        const nextMode: 'light' | 'dark' = currentThemeMode === 'light' ? 'dark' : 'light';
-        const newOverrides = { ...(builder.page.settings.themeOverrides || {}), themeMode: nextMode };
-        builder.dispatch({ type: 'UPDATE_PAGE_SETTINGS', payload: { themeOverrides: newOverrides } });
-    };
     useEffect(() => {
         if (!firestore) return;
 
@@ -727,7 +724,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                         </Button>
                     </div>
 
-                    {/* Viewport/Device Switcher & Canvas Theme Toggle */}
+                    {/* Viewport/Device Switcher */}
                     <div className="flex items-center gap-0.5 bg-slate-800/40 p-0.5 rounded-xl border border-slate-700/30">
                         <Button
                             variant="ghost" size="icon"
@@ -761,15 +758,6 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             title="Mobile View"
                         >
                             <Smartphone className="w-3.5 h-3.5" />
-                        </Button>
-                        <div className="h-4 w-px bg-slate-700/60 mx-1" />
-                        <Button
-                            variant="ghost" size="icon"
-                            onClick={toggleCanvasTheme}
-                            className="h-7 w-7 p-0 rounded-lg transition-all border-0 bg-transparent text-slate-400 hover:text-slate-200"
-                            title={currentThemeMode === 'light' ? "Switch Canvas to Dark Mode" : "Switch Canvas to Light Mode"}
-                        >
-                            {currentThemeMode === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
                         </Button>
                     </div>
 
