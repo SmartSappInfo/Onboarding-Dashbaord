@@ -678,7 +678,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             activeDesignerTheme === 'light' ? 'designer-theme-light' : 'designer-theme-blue'
         )}>
             {/* ═══════════════ TOOLBAR ═══════════════ */}
-            <header className="h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md">
+            <header className={cn("h-14 flex items-center justify-between px-4 shrink-0 z-20 border-b border-slate-700/50 bg-slate-900/85 backdrop-blur-md", resolvedTheme === 'dark' && "dark")}>
                 <div className="flex items-center gap-3">
                     <Button asChild variant="ghost" className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                         <Link href="/admin/pages"><ArrowLeft className="h-4 w-4" /></Link>
@@ -926,7 +926,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             <div className="flex flex-1 overflow-hidden">
 
                 {/* ─── SIDEBAR ─── */}
-                <div className="flex shrink-0 z-10 select-none">
+                <div className={cn("flex shrink-0 z-10 select-none", resolvedTheme === 'dark' && "dark")}>
                     {/* 1. Thin vertical tab bar (56px) */}
                     <div className="w-14 bg-slate-950 border-r border-slate-850 flex flex-col justify-between items-center py-3 shrink-0">
                         <div className="flex flex-col gap-2.5 w-full px-1.5">
@@ -1156,7 +1156,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 <div
                     className={cn(
                         "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
-                        isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0"
+                        isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0",
+                        resolvedTheme === 'dark' && "dark"
                     )}
                 >
                     <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
