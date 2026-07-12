@@ -93,13 +93,22 @@ export async function scheduleResendCheck(params: {
   const now = new Date();
   const executeAt = addHours(now, config.resendDelayHours).toISOString();
 
+  let workspaceId = context.workspaceId;
+  if (!workspaceId) {
+    const autoSnap = await adminDb.collection('automations').doc(context.automationId).get();
+    workspaceId = autoSnap.data()?.workspaceIds?.[0];
+  }
+  if (!workspaceId) {
+    workspaceId = 'onboarding';
+  }
+
   const meta: ResendJobMeta = {
     nodeId,
     attempt,
     config,
     entityId: context.entityId,
     entityType: context.entityType,
-    workspaceId: context.workspaceId,
+    workspaceId,
     organizationId: context.organizationId,
   };
 
@@ -108,7 +117,7 @@ export async function scheduleResendCheck(params: {
     runId: context.runId,
     targetNodeId: RESEND_CHECK_SENTINEL,
     payload: { ...context.payload, __resend: meta },
-    workspaceId: context.workspaceId || 'onboarding',
+    workspaceId,
     executeAt,
     status: 'pending',
     createdAt: now.toISOString(),
@@ -169,12 +178,21 @@ async function advanceFromNode(
 ): Promise<void> {
   await cancelPendingResendChecks(runId, nodeId, currentJobId);
   const now = new Date().toISOString();
+  let workspaceId = payload.workspaceId as string | undefined;
+  if (!workspaceId) {
+    const autoSnap = await adminDb.collection('automations').doc(automationId).get();
+    workspaceId = autoSnap.data()?.workspaceIds?.[0];
+  }
+  if (!workspaceId) {
+    workspaceId = 'onboarding';
+  }
+
   await adminDb.collection(AUTOMATION_JOBS).add({
     automationId,
     runId,
     targetNodeId: nodeId,
     payload,
-    workspaceId: (payload.workspaceId as string) || 'onboarding',
+    workspaceId,
     executeAt: now,
     status: 'pending',
     createdAt: now,

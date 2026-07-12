@@ -29,7 +29,10 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
 
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    const workspaceId = job.payload.workspaceId as string | undefined;
+    let workspaceId = job.payload.workspaceId as string | undefined;
+    if (!workspaceId) {
+      workspaceId = autoSnap.data()?.workspaceIds?.[0];
+    }
 
     // organizationId lives on the live ExecutionContext but is NOT persisted into
     // job.payload when a Delay node parks the contact — so on resume it is virtually

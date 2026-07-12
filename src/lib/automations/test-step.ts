@@ -47,7 +47,11 @@ export async function testAutomationStep(
     }
 
     // Scopes to the first configured workspace constraints
-    const workspaceId = automation.workspaceIds?.[0] || 'onboarding';
+    let workspaceId = automation.workspaceIds?.[0];
+    if (!workspaceId) {
+      const userSnap = await adminDb.collection('users').doc(userId).get();
+      workspaceId = userSnap.data()?.workspaceIds?.[0] || 'onboarding';
+    }
 
     // Fetch the captured webhook from triggers config, trigger node data, or root
     const triggerNode = automation.nodes?.find((n: any) => n.type === 'triggerNode');

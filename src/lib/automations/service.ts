@@ -65,7 +65,18 @@ export async function saveAutomation(
       );
     }
 
-    const workspaceIds = normalized.workspaceIds || data.workspaceIds;
+    let workspaceIds = normalized.workspaceIds || data.workspaceIds;
+    if (!workspaceIds || workspaceIds.length === 0) {
+      try {
+        const userSnap = await adminDb.collection('users').doc(userId).get();
+        const userWorkspaces = userSnap.data()?.workspaceIds;
+        if (userWorkspaces && userWorkspaces.length > 0) {
+          workspaceIds = userWorkspaces;
+        }
+      } catch (e) {
+        console.warn('[SERVICE] Failed to fetch fallback workspaceIds for user:', e);
+      }
+    }
 
     const existing = id ? await getAutomationById(id) : null;
 
@@ -284,7 +295,14 @@ export async function manuallyReleaseWaitJob(
 
     const runSnap = await adminDb.collection('automation_runs').doc(job.runId).get();
     const runData = runSnap.exists ? runSnap.data() : null;
-    const workspaceIds = runData?.workspaceIds || ['onboarding'];
+    let workspaceIds = runData?.workspaceIds;
+    if (!workspaceIds || workspaceIds.length === 0) {
+      const autoSnap = await adminDb.collection('automations').doc(job.automationId).get();
+      workspaceIds = autoSnap.data()?.workspaceIds || (runData?.workspaceId ? [runData.workspaceId] : null);
+    }
+    if (!workspaceIds || workspaceIds.length === 0) {
+      workspaceIds = ['onboarding'];
+    }
 
     await assertAutomationManagePermission(userId, workspaceIds, 'edit');
 
@@ -331,7 +349,14 @@ export async function manuallyEndAutomationRun(
     if (!runSnap.exists) throw new Error('Automation execution run not found.');
 
     const runData = runSnap.data() as any;
-    const workspaceIds = runData?.workspaceIds || ['onboarding'];
+    let workspaceIds = runData?.workspaceIds;
+    if (!workspaceIds || workspaceIds.length === 0) {
+      const autoSnap = await adminDb.collection('automations').doc(runData.automationId).get();
+      workspaceIds = autoSnap.data()?.workspaceIds || (runData.workspaceId ? [runData.workspaceId] : null);
+    }
+    if (!workspaceIds || workspaceIds.length === 0) {
+      workspaceIds = ['onboarding'];
+    }
 
     await assertAutomationManagePermission(userId, workspaceIds, 'edit');
 
