@@ -99,7 +99,11 @@ export async function scheduleMultiEntityMessages(
       const { resolveContact } = await import('./contact-adapter');
       const { getContactEmail, getContactPhone } = await import('./migration-status-utils');
       
-      const contact = await resolveContact(entityId, workspaceId || 'onboarding');
+      const resolvedWorkspaceId = workspaceId || (process.env.NODE_ENV === 'test' ? 'onboarding' : await (await import('./services/workspace-resolver')).resolveWorkspaceIdFromEntity(entityId));
+      if (!resolvedWorkspaceId) {
+        throw new Error(`Workspace context is required to resolve contact ${entityId} sequentially.`);
+      }
+      const contact = await resolveContact(entityId, resolvedWorkspaceId);
       if (contact) {
         const channel = variables.channel || 'email'; // Need to know channel from somewhere
         // We actually get template channel in ComposerWizard, but here we can infer from variables if passed

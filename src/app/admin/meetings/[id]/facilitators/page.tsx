@@ -208,7 +208,7 @@ export default function MeetingFacilitatorsPage() {
         meeting.id,
         meeting.entityName || 'Meeting',
         [fac],
-        meeting.workspaceIds?.[0] || 'onboarding'
+        meeting.workspaceIds?.[0] || ''
       );
       if (result.success) {
         toast({ title: 'Invitation Sent', description: result.message });
@@ -231,7 +231,7 @@ export default function MeetingFacilitatorsPage() {
         meeting.id,
         meeting.entityName || 'Meeting',
         facs,
-        meeting.workspaceIds?.[0] || 'onboarding'
+        meeting.workspaceIds?.[0] || ''
       );
       if (result.success) {
         toast({ title: 'Invitations Sent', description: result.message });

@@ -269,7 +269,11 @@ export async function adminRegisterParticipantAction(
       console.warn('[ADMIN-REGISTER] Failed to schedule reminders:', err?.message);
     });
 
-    const workspaceId = meeting.workspaceIds?.[0] || '';
+    let workspaceId = meeting.workspaceIds?.[0] || '';
+    if (!workspaceId) {
+      const { resolveContextWorkspaceId } = await import('@/lib/services/workspace-resolver');
+      workspaceId = (await resolveContextWorkspaceId({ meetingId })) || '';
+    }
     if (workspaceId) {
       const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
       void emitMeetingRegistrantActivity({
@@ -816,7 +820,11 @@ export async function submitRsvpResponseAction(
           console.warn('[RSVP-GOING] Failed to schedule reminders:', err?.message);
         });
 
-        const workspaceId = meeting.workspaceIds?.[0] || regData.workspaceIds?.[0] || '';
+        let workspaceId = meeting.workspaceIds?.[0] || regData.workspaceIds?.[0] || '';
+        if (!workspaceId) {
+          const { resolveContextWorkspaceId } = await import('@/lib/services/workspace-resolver');
+          workspaceId = (await resolveContextWorkspaceId({ meetingId })) || '';
+        }
         if (workspaceId) {
           const { emitMeetingRegistrantActivity } = await import('@/lib/meeting-automation-events');
           void emitMeetingRegistrantActivity({

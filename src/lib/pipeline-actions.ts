@@ -87,7 +87,8 @@ export async function deletePipelineAction(id: string, userId: string): Promise<
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
         if (!docSnap.exists) throw new Error("Pipeline not found.");
-        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId || 'onboarding';
+        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId;
+        if (!workspaceId) throw new Error("Pipeline document is corrupt: missing workspaceId.");
 
         // 0. Permission Check
         const permission = await canUser(userId, 'operations', 'pipeline', 'delete', workspaceId);
@@ -144,7 +145,8 @@ export async function archivePipelineAction(id: string, isArchived: boolean, use
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
         if (!docSnap.exists) throw new Error("Pipeline not found.");
-        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId || 'onboarding';
+        const workspaceId = docSnap.data()?.workspaceIds?.[0] || docSnap.data()?.workspaceId;
+        if (!workspaceId) throw new Error("Pipeline document is corrupt: missing workspaceId.");
 
         // 0. Permission Check (Archive maps to edit permission)
         const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);

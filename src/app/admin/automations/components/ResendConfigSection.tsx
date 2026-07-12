@@ -60,20 +60,12 @@ export function ResendConfigSection({
   organizationId,
 }: ResendConfigSectionProps): React.ReactElement {
   const isEmail = (channel || 'email') === 'email';
-
-  if (!isEmail) {
-    return (
-      <div className="rounded-2xl border border-border/60 bg-muted/20 p-3 text-[10px] text-muted-foreground">
-        Resend on no-engagement is available for email steps only — SMS has no open/click signal to detect engagement.
-      </div>
-    );
-  }
-
   const cfg = value ?? defaultResendConfig();
   const enabled = !!value?.enabled;
 
   // Auto-populate when template changes if inputs are empty
   React.useEffect(() => {
+    if (!isEmail) return;
     if (enabled && templateSubject && cfg.variants.length > 0) {
       const allEmpty = cfg.variants.every(v => !v.title.trim() && !(v.previewText || '').trim());
       if (allEmpty) {
@@ -86,7 +78,15 @@ export function ResendConfigSection({
         });
       }
     }
-  }, [templateSubject, templatePreviewText, enabled]);
+  }, [templateSubject, templatePreviewText, enabled, isEmail, cfg, onChange]);
+
+  if (!isEmail) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-muted/20 p-3 text-[10px] text-muted-foreground">
+        Resend on no-engagement is available for email steps only — SMS has no open/click signal to detect engagement.
+      </div>
+    );
+  }
 
   const update = (patch: Partial<MessageResendConfig>) => {
     const merged: MessageResendConfig = { ...cfg, ...patch };

@@ -82,8 +82,23 @@ export async function sendContractAction(input: {
     try {
         const { contractId, emailTemplateId, smsTemplateId, recipients, entityId, entityName, userId, publicUrl, workspaceId } = input;
 
+        let resolvedWorkspaceId = workspaceId;
+        if (!resolvedWorkspaceId || resolvedWorkspaceId === 'onboarding') {
+            const contractDoc = await adminDb.collection('contracts').doc(contractId).get();
+            if (contractDoc.exists) {
+                resolvedWorkspaceId = contractDoc.data()?.workspaceId || undefined;
+            }
+        }
+        if (!resolvedWorkspaceId) {
+            const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+            resolvedWorkspaceId = (entityId ? await resolveWorkspaceIdFromEntity(entityId) : null) || undefined;
+        }
+        if (!resolvedWorkspaceId) {
+            throw new Error('Workspace context is required to send contract.');
+        }
+
         // 0. Permission Check
-        const permission = await canUser(userId, 'finance', 'agreements', 'edit', workspaceId);
+        const permission = await canUser(userId, 'finance', 'agreements', 'edit', resolvedWorkspaceId);
         if (!permission.granted) {
             return { success: false, error: permission.reason };
         }
@@ -109,7 +124,7 @@ export async function sendContractAction(input: {
                     recipient: recipient.email,
                     variables: baseVars,
                     entityId,
-                    workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
+                    workspaceId: resolvedWorkspaceId // Pass workspace context (Requirement 11)
                 }));
             }
 
@@ -121,7 +136,7 @@ export async function sendContractAction(input: {
                     recipient: recipient.phone,
                     variables: baseVars,
                     entityId,
-                    workspaceId: workspaceId || 'onboarding' // Pass workspace context (Requirement 11)
+                    workspaceId: resolvedWorkspaceId // Pass workspace context (Requirement 11)
                 }));
             }
         });

@@ -711,8 +711,12 @@ export async function autoSaveSurveyAction(
         let targetId = surveyId;
         let isNew = surveyId === 'new-survey';
 
-        // 2. Permission Check
-        const workspaceId = data.workspaceIds?.[0] || 'generic';
+        // 2. Workspace Validation & Permission Check
+        const workspaceIds = data.workspaceIds || [];
+        if (workspaceIds.length === 0 || workspaceIds.includes('onboarding') || workspaceIds.includes('generic')) {
+            return { success: false, error: 'A survey must be associated with at least one valid workspace.' };
+        }
+        const workspaceId = workspaceIds[0];
         const permission = await canUser(userId, 'studios', 'surveys', isNew ? 'create' : 'edit', workspaceId);
         if (!permission.granted) {
             return { success: false, error: permission.reason };

@@ -608,7 +608,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     try {
       const res = await sendMeetingInvitationsAction(
         meetingId,
-        activeWorkspaceId || 'onboarding',
+        activeWorkspaceId || '',
         filteredRecipients,
         selectedChannels,
         emailTemplateId || undefined,
@@ -658,7 +658,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     try {
       const res = await sendMeetingInvitationsAction(
         meetingId,
-        activeWorkspaceId || 'onboarding',
+        activeWorkspaceId || '',
         filteredRecipients,
         selectedChannels,
         emailTemplateId || undefined,
@@ -702,7 +702,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     try {
       const res = await sendMeetingInvitationsAction(
         meetingId,
-        activeWorkspaceId || 'onboarding',
+        activeWorkspaceId || '',
         reportData.failedRecipients.map(r => ({
           entityId: r.entityId || '',
           name: r.name,
@@ -810,7 +810,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         meetingId, 
         meeting.entityName || meeting.heroTitle || 'Meeting',
         [registrant],
-        meeting.workspaceIds?.[0] || 'onboarding'
+        meeting.workspaceIds?.[0] || ''
       );
       if (!result.success) throw new Error(result.message);
       toast({ title: 'Link Sent', description: `Join link emailed to ${registrant.name}.` });
@@ -843,7 +843,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           meetingId,
           meeting.entityName || meeting.heroTitle || 'Meeting',
           selectedRegistrants,
-          meeting.workspaceIds?.[0] || 'onboarding'
+          meeting.workspaceIds?.[0] || ''
         );
         if (!result.success) throw new Error(result.message);
         toast({ title: 'Links Sent', description: result.message });

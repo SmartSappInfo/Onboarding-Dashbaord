@@ -406,6 +406,16 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
         if (!userSnap.exists) throw new Error('User not found.');
         const userData = userSnap.data()!;
 
+        // Enforce user must have at least one workspace when being activated
+        if (isAuthorized) {
+            const workspaceIds = userData.workspaceIds || [];
+            if (workspaceIds.length === 0 || (workspaceIds.length === 1 && workspaceIds[0] === 'onboarding')) {
+                const { flagMissingWorkspaceToAdmin } = await import('./services/workspace-resolver');
+                await flagMissingWorkspaceToAdmin(userId, userData.organizationId || 'default');
+                return { success: false, error: 'Cannot activate user: User has no active workspace assigned. Organization admin has been alerted.' };
+            }
+        }
+
         // 2. Toggle Firebase Auth user status (disabled flag)
         await auth.updateUser(userId, { disabled: !isAuthorized });
 

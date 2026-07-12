@@ -50,9 +50,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     messagingConfig?: MeetingMessagingConfig;
   };
 
-  // Resolve org ID (needed for ack + entity capture)
+  // Resolve workspaceId & org ID (needed for ack + entity capture)
+  let workspaceId = meeting.workspaceIds?.[0] || '';
+  if (!workspaceId) {
+    const { resolveContextWorkspaceId } = await import('@/lib/services/workspace-resolver');
+    workspaceId = (await resolveContextWorkspaceId({ meetingId })) || '';
+  }
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Cannot register: meeting is missing workspace context' }, { status: 400 });
+  }
+
   const orgSnap = await adminDb.collection('workspaces')
-    .doc(meeting.workspaceIds?.[0] || 'onboarding')
+    .doc(workspaceId)
     .get();
   const orgId: string = orgSnap.data()?.organizationId || 'default';
 
@@ -151,7 +160,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.warn('[REGISTER] Failed to schedule reminders for new registrant:', err?.message);
   });
 
-  const workspaceId = meeting.workspaceIds?.[0] || '';
   if (workspaceId) {
     void import('@/lib/meeting-automation-events').then(({ emitMeetingRegistrantActivity }) =>
       emitMeetingRegistrantActivity({
@@ -191,7 +199,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     personalizedMeetingUrl,
     registrationData: formData,
     registeredAt: now,
-  }, orgId);
+  }, orgId, workspaceId);
 
   // ── 9. Respond ─────────────────────────────────────────────────────────
   return NextResponse.json({ token, status, personalizedMeetingUrl });
@@ -285,8 +293,8 @@ async function captureAndDispatch(
   meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
   registrant: WebhookRegistrantInfo,
   orgId: string,
+  workspaceId: string
 ): Promise<void> {
-  const workspaceId = meeting.workspaceIds?.[0] || 'onboarding';
   let entityPayload: (Record<string, unknown> & { id: string; isNew?: boolean }) | null = null;
 
   // ── CRM lead capture ────────────────────────────────────────────────────

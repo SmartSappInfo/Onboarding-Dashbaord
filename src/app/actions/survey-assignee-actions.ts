@@ -103,13 +103,19 @@ export async function sendSurveyLinkToAssignee(
     }
 
     // Send message using raw message function
+    const { resolveWorkspaceIdFromEntity } = await import('@/lib/services/workspace-resolver');
+    const resolvedWorkspaceId = userData?.workspaceIds?.[0] || (surveyId ? await resolveWorkspaceIdFromEntity(surveyId) : null);
+    if (!resolvedWorkspaceId) {
+      return { success: false, error: 'Cannot send survey link: no workspace context resolved.' };
+    }
+
     const result = await sendRawMessage({
       channel,
       recipient,
       body,
       subject,
       variables,
-      workspaceIds: userData?.workspaceIds || ['onboarding'],
+      workspaceIds: [resolvedWorkspaceId],
     });
 
     if (result.success) {
@@ -124,7 +130,7 @@ export async function sendSurveyLinkToAssignee(
             contact_name: userName,
             contact_email: userData?.email || '',
             surveyId: surveyId || '',
-            workspaceId: userData?.workspaceIds?.[0] || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           },
           channel: 'both'
         });

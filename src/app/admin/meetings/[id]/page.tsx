@@ -115,7 +115,7 @@ export default function MeetingDetailPage() {
         testRecipient,
         previewContent.body,
         previewContent.subject,
-        activeWorkspaceId ? [activeWorkspaceId] : ['onboarding']
+        activeWorkspaceId ? [activeWorkspaceId] : (meeting.workspaceIds || [])
       );
       if (res.success) {
         toast({ title: 'Success', description: res.message });

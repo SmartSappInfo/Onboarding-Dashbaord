@@ -21,6 +21,7 @@ import { CHANNEL_REGISTRY } from './messaging/channel-registry';
 import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messaging/sender-repository';
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
+import { resolveContextWorkspaceId, resolveWorkspaceIdFromEntity } from './services/workspace-resolver';
 
 interface SendMessageInput {
   templateId: string;
@@ -187,9 +188,22 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // 3. Resolve Operational Workspace context (Requirement 11)
-    // Priority: explicit workspaceId > template workspaceIds > contact workspaceIds > default
+    // Priority: explicit workspaceId > template workspaceIds > contact workspaceIds > dynamic resolution
     let resolvedWorkspaceId = workspaceId;
-    let workspaceIds: string[] = template.workspaceIds || ['onboarding'];
+    let workspaceIds: string[] = template.workspaceIds && template.workspaceIds.length > 0 ? template.workspaceIds : [];
+    if (!resolvedWorkspaceId && workspaceIds.length === 0) {
+        const resolved = await resolveContextWorkspaceId({
+            workspaceId,
+            entityId: entityId || undefined,
+            surveyId: (variables?.surveyId || variables?._surveyId) as string | undefined,
+            meetingId: (variables?.meetingId || variables?._meetingId) as string | undefined,
+            contractId: (variables?.contractId || variables?._contractId) as string | undefined
+        });
+        if (resolved) {
+            resolvedWorkspaceId = resolved;
+            workspaceIds = [resolved];
+        }
+    }
     const finalVariables = { ...variables };
 
     // Inject Sender Variables
@@ -209,7 +223,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     if (entityId) {
         // Use adapter to resolve contact from either schools or entities + workspace_entities
-        const contextWorkspaceId = resolvedWorkspaceId || workspaceIds[0] || 'onboarding';
+        const contextWorkspaceId = resolvedWorkspaceId || workspaceIds[0];
+        if (!contextWorkspaceId) {
+            return { success: false, error: 'Cannot send message: no workspace context could be resolved for the entity.' };
+        }
         const contact = await resolveContact(entityId || '', contextWorkspaceId);
         resolvedContact = contact;
         
@@ -230,14 +247,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
             // If no explicit workspaceId provided, use the primary workspace from contact
             if (!resolvedWorkspaceId) {
-                resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+                resolvedWorkspaceId = workspaceIds[0];
             }
         }
     }
 
     // Ensure resolvedWorkspaceId is not undefined/empty (Requirement 11)
     if (!resolvedWorkspaceId) {
-        resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+        resolvedWorkspaceId = workspaceIds[0];
+    }
+    if (!resolvedWorkspaceId) {
+        return { success: false, error: 'Cannot send message: no workspace context resolved.' };
     }
 
     // Unify variable mapping using the single FieldsVariablesService source of truth
@@ -291,7 +311,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     // Ensure resolvedWorkspaceId is not undefined/empty (Requirement 11)
     if (!resolvedWorkspaceId) {
-        resolvedWorkspaceId = workspaceIds[0] || 'onboarding';
+        resolvedWorkspaceId = workspaceIds[0];
     }
 
     // 4.4 Meeting Context Auto-Enrichment
@@ -1001,17 +1021,36 @@ export async function sendRawMessage(input: {
     isResend?: boolean,
     scheduledAt?: string
 }) {
-    const { channel, recipient, body, subject, previewText, senderProfileId, variables = {}, workspaceIds = ['onboarding'], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
+    const { channel, recipient, body, subject, previewText, senderProfileId, variables = {}, workspaceIds = [], messageType = 'marketing', entityId, entityType, isAutomation = false, automationId, runId, nodeId, isResend = false, scheduledAt } = input;
 
     try {
+        // Resolve workspace context dynamically
+        let resolvedWorkspaceIds = workspaceIds && workspaceIds.length > 0 ? workspaceIds : [];
+        if (resolvedWorkspaceIds.length === 0) {
+            const resolved = await resolveContextWorkspaceId({
+                entityId,
+                workspaceId: input.workspaceIds?.[0],
+                surveyId: (variables?.surveyId || variables?._surveyId) as string | undefined,
+                meetingId: (variables?.meetingId || variables?._meetingId) as string | undefined,
+                contractId: (variables?.contractId || variables?._contractId) as string | undefined
+            });
+            if (resolved) {
+                resolvedWorkspaceIds = [resolved];
+            }
+        }
+
+        const baseWorkspaceId = resolvedWorkspaceIds[0];
+        if (!baseWorkspaceId) {
+            return { success: false, error: 'Cannot send message: no workspace context resolved.' };
+        }
+
         // Resolve the tenant FIRST (no cross-tenant fallback), then the sender.
-        const baseWorkspaceId = workspaceIds?.[0];
         let finalOrgId = resolveOrgId(
             input.organizationId,
             typeof variables.organizationId === 'string' ? variables.organizationId : undefined,
             undefined,
         );
-        if (!finalOrgId && baseWorkspaceId) {
+        if (!finalOrgId) {
             const wsSnap = await adminDb.collection('workspaces').doc(baseWorkspaceId).get();
             if (wsSnap.exists) finalOrgId = (wsSnap.data()?.organizationId as string) || null;
         }
@@ -1084,7 +1123,7 @@ export async function sendRawMessage(input: {
         if (scheduledAt) {
             const scheduledMsgData = {
                 organizationId: finalOrgId || 'default',
-                workspaceId: baseWorkspaceId || 'onboarding',
+                workspaceId: baseWorkspaceId,
                 templateId: 'raw',
                 channel,
                 recipientContact: recipient,
@@ -1112,7 +1151,7 @@ export async function sendRawMessage(input: {
                 entityType: (entityType as EntityType) || null,
                 organizationId: finalOrgId || 'default',
                 userId: null,
-                workspaceId: baseWorkspaceId || 'onboarding',
+                workspaceId: baseWorkspaceId,
                 type: 'notification_scheduled',
                 source: 'system',
                 description: `Scheduled ${channel} "${resolvedSubject}" to ${recipient} for ${scheduledAt}`,
@@ -1128,12 +1167,12 @@ export async function sendRawMessage(input: {
             const { isSuppressed } = await import('./suppression-service');
             const suppressed = await isSuppressed({
                 recipient,
-                workspaceId: workspaceIds[0] || 'onboarding',
+                workspaceId: baseWorkspaceId,
                 channel: channel as 'email' | 'sms'
             });
 
             if (suppressed) {
-                console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for RAW ${channel} in workspace ${workspaceIds[0]}`);
+                console.warn(`>>> [MSG-ENGINE] Recipient ${recipient} is suppressed for RAW ${channel} in workspace ${baseWorkspaceId}`);
                 return { success: false, error: 'Recipient unsubscribed' };
             }
         }
@@ -1235,8 +1274,8 @@ export async function sendRawMessage(input: {
             status: 'sent',
             sentAt: new Date().toISOString(),
             variables: JSON.parse(JSON.stringify(variables)),
-            workspaceIds,
-            workspaceId: workspaceIds[0] || 'onboarding',
+            workspaceIds: resolvedWorkspaceIds,
+            workspaceId: baseWorkspaceId,
             entityId: entityId || null,
             entityType: entityType || null,
             providerId: null,
@@ -1258,7 +1297,7 @@ export async function sendRawMessage(input: {
             .then(({ incrementMessageNodeStat }) => incrementMessageNodeStat({
               automationId,
               nodeId,
-              workspaceId: workspaceIds[0] || '',
+              workspaceId: baseWorkspaceId,
               organizationId: finalOrgId || undefined,
               channel: directStatChannel,
               counter: isResend ? 'resent' : 'sent',
@@ -1273,7 +1312,7 @@ export async function sendRawMessage(input: {
             entityType: (entityType as EntityType) || null, // Firebase expects EntityType | null
             organizationId: (variables.organizationId as string) || 'default',
             userId: null,
-            workspaceId: workspaceIds[0] || 'onboarding',
+            workspaceId: baseWorkspaceId,
             type: 'notification_sent',
             source: 'system',
             description: `Sent Direct ${channel.toUpperCase()} message to ${recipient}`,

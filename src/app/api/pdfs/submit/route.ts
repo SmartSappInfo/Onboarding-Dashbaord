@@ -38,6 +38,12 @@ export async function POST(req: Request) {
 
     const timestamp = new Date().toISOString();
 
+    const { resolveWorkspaceIdFromEntity } = await import('@/lib/services/workspace-resolver');
+    const workspaceId = pdfData.workspaceIds?.[0] || (targetEntityId ? await resolveWorkspaceIdFromEntity(targetEntityId) : null);
+    if (!workspaceId) {
+      return Response.json({ error: 'Workspace context is required to process submission.' }, { status: 400 });
+    }
+
     // Dual-write: populate both entityId and entityId (Requirement 16.5)
     const submissionData = {
       pdfId,
@@ -75,7 +81,7 @@ export async function POST(req: Request) {
                 entityId: targetEntityId || null,
                 organizationId: pdfData.organizationId || 'default',
                 userId: null,
-                workspaceId: pdfData.workspaceIds[0] || 'onboarding',
+                workspaceId: workspaceId,
                 type: 'pdf_status_changed',
                 source: 'public',
                 description: `legally executed agreement: "${pdfData.name}"`,
@@ -104,9 +110,6 @@ export async function POST(req: Request) {
 
             const baseUrl = getBaseUrl();
             const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
-
-            // Resolve workspaceId from pdfData (Requirement 11)
-            const workspaceId = pdfData.workspaceIds?.[0] || 'onboarding';
 
             await sendMessage({
                 templateId: pdfData.confirmationTemplateId,
@@ -141,7 +144,8 @@ export async function POST(req: Request) {
                 form_name: pdfData.name,
                 submission_id: submissionId,
                 event_type: pdfData.isContractDocument ? 'Contract Signed' : 'Doc Signed',
-                school_name: pdfData.entityName || 'Unknown'
+                school_name: pdfData.entityName || 'Unknown',
+                workspaceId // Pass workspace context to internal alerts
             }
         });
     }
@@ -152,7 +156,7 @@ export async function POST(req: Request) {
             entityId: targetEntityId || null,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
-            workspaceId: 'onboarding',
+            workspaceId: workspaceId,
             type: 'pdf_form_submitted',
             source: 'public',
             description: `Submission received for "${pdfData?.name}"`,

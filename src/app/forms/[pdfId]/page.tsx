@@ -38,7 +38,11 @@ const getPdfFormData = cache(async function getPdfFormData(id: string, queryScho
         let identity: Entity | undefined = undefined;
         
         const targetEntityId = querySchoolId || pdfForm.entityId;
-        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
+        const { resolveWorkspaceIdFromEntity } = await import('@/lib/services/workspace-resolver');
+        const workspaceId = pdfForm.workspaceIds?.[0] || (targetEntityId ? await resolveWorkspaceIdFromEntity(targetEntityId) : null);
+        if (!workspaceId) {
+            return null;
+        }
 
         if (targetEntityId) {
             // Fetch identity

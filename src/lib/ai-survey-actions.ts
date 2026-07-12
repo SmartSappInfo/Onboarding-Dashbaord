@@ -21,7 +21,10 @@ interface CreateSurveyFromAiInput {
 export async function createSurveyFromAiAction({ surveyData, resultPages, workspaceId, userId }: CreateSurveyFromAiInput) {
     console.log(`>>> [AI-SAVE] Persisting AI-generated blueprint for workspace: ${workspaceId}`);
     try {
-        // 0. Permission Check
+        // 0. Workspace & Permission Check
+        if (!workspaceId || workspaceId === 'onboarding' || workspaceId === 'generic') {
+            return { success: false, error: 'A survey must be associated with a valid workspace.' };
+        }
         const permission = await canUser(userId, 'studios', 'surveys', 'create', workspaceId);
         if (!permission.granted) {
             return { success: false, error: `Permission denied: ${permission.reason}` };

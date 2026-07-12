@@ -687,7 +687,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                         setSendProgress(p => ({ ...p, currentEntity: entityId }));
                         try {
                             // Resolve the display name server-side (no client entity cache).
-                            const contactRes = await resolveContact(entityId, activeWorkspace?.id || 'onboarding');
+                            const contactRes = await resolveContact(entityId, activeWorkspace?.id || '');
                             const entityName = contactRes?.name || 'Unknown Entity';
 
                             const recipients = await resolveRecipientContacts({

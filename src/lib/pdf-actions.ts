@@ -74,7 +74,11 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     let school: School | undefined = undefined;
     if (pdfForm.entityId) {
         // Use adapter to resolve contact (Requirement 18)
-        const workspaceId = pdfForm.workspaceIds?.[0] || 'onboarding';
+        const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+        const workspaceId = pdfForm.workspaceIds?.[0] || (pdfForm.entityId ? await resolveWorkspaceIdFromEntity(pdfForm.entityId) : null);
+        if (!workspaceId) {
+            throw new Error('Workspace context is required to resolve contact.');
+        }
         const contact = await resolveContact(pdfForm.entityId, workspaceId);
         if (contact && contact.schoolData) {
             school = contact.schoolData;
@@ -285,6 +289,12 @@ export async function finalizeAgreementAction(
         if (!pdfSnap.exists) throw new Error("PDF Template not found.");
         const pdfData = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
 
+        const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+        const workspaceId = pdfData.workspaceIds?.[0] || (entityId ? await resolveWorkspaceIdFromEntity(entityId) : null);
+        if (!workspaceId) {
+            throw new Error("Workspace context is required to finalize PDF submission.");
+        }
+
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol.where('entityId', '==', entityId).limit(1).get();
         
@@ -359,9 +369,6 @@ export async function finalizeAgreementAction(
                 const baseUrl = getBaseUrl();
                 const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
 
-                // Resolve workspaceId from pdfData or school (Requirement 11)
-                let workspaceId = pdfData.workspaceIds?.[0] || 'onboarding';
-                
                 await sendMessage({
                     templateId: pdfData.confirmationTemplateId,
                     senderProfileId: pdfData.confirmationSenderProfileId || 'default',
@@ -394,7 +401,8 @@ export async function finalizeAgreementAction(
                     ...formData,
                     event_type: 'Agreement Executed',
                     entity_name: contractData?.entityName || 'Institution',
-                    submission_id: submissionId
+                    submission_id: submissionId,
+                    workspaceId // Pass the workspace context to the alerts
                 },
                 channel: pdfData.adminAlertChannel
             });
@@ -405,7 +413,7 @@ export async function finalizeAgreementAction(
             entityId,
             organizationId: pdfData.organizationId || 'default',
             userId: null,
-            workspaceId: pdfData.workspaceIds[0] || 'onboarding',
+            workspaceId: workspaceId,
             type: 'pdf_status_changed',
             source: 'public',
             description: `successfully executed agreement: "${pdfData.name}"`,
@@ -420,6 +428,9 @@ export async function finalizeAgreementAction(
 }
 
 export async function createPdfForm(data: any, userId: string, workspaceIds: string[]): Promise<{ success: boolean; id?: string; error?: string }> {
+  if (!workspaceIds || workspaceIds.length === 0 || workspaceIds.includes('onboarding') || workspaceIds.includes('generic')) {
+    return { success: false, error: 'A PDF Form must be associated with at least one valid workspace.' };
+  }
   const { size, mimeType, ...formData } = data;
   const slug = formData.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const timestamp = new Date().toISOString();
@@ -491,6 +502,10 @@ export async function clonePdfForm(pdfId: string, userId: string) {
     const newSlug = `${originalData.slug || pdfId}-copy-${Math.random().toString(36).substring(2, 7)}`;
     const timestamp = new Date().toISOString();
 
+    if (!originalData.workspaceIds || originalData.workspaceIds.length === 0 || originalData.workspaceIds.includes('onboarding') || originalData.workspaceIds.includes('generic')) {
+      return { success: false, error: 'Original PDF Form is missing a valid workspace context.' };
+    }
+
     const cloneData: Omit<PDFForm, 'id'> = {
       ...originalData,
       name: newName,
@@ -510,6 +525,11 @@ export async function clonePdfForm(pdfId: string, userId: string) {
 }
 
 export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
+    if (data.workspaceIds !== undefined) {
+        if (!data.workspaceIds || data.workspaceIds.length === 0 || data.workspaceIds.includes('onboarding') || data.workspaceIds.includes('generic')) {
+            throw new Error('A PDF Form must be associated with at least one valid workspace.');
+        }
+    }
     await adminDb.collection('pdfs').doc(pdfId).update({
         ...data,
         updatedAt: new Date().toISOString(),

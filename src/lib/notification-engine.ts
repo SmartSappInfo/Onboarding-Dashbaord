@@ -39,6 +39,13 @@ interface ExternalNotificationOptions {
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
   const { entityId, specificUserIds, notifyManager, variables, channel = 'both', triggerKey } = options;
+  const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+  const resolvedWorkspaceId = (variables.workspaceId as string | undefined) || (entityId ? await resolveWorkspaceIdFromEntity(entityId) : null) || undefined;
+  if (!resolvedWorkspaceId) {
+    console.warn(">>> [NOTIFY] Skipping: no workspace context resolved.");
+    return;
+  }
+
   let emailTemplateId = options.emailTemplateId;
   let smsTemplateId = options.smsTemplateId;
   let whatsappTemplateId = options.whatsappTemplateId;
@@ -50,14 +57,14 @@ export async function triggerInternalNotification(options: InternalNotificationO
   if (triggerKey) {
     try {
       let orgId: string | null = (variables.organizationId as string | undefined) || null;
-      if (!orgId && variables.workspaceId) {
-        const wsSnap = await adminDb.collection('workspaces').doc(variables.workspaceId as string).get();
+      if (!orgId && resolvedWorkspaceId) {
+        const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
         if (wsSnap.exists) {
           orgId = (wsSnap.data()?.organizationId as string | undefined) || null;
         }
       }
       if (!orgId && entityId) {
-        const contact = await resolveContact(entityId, (variables.workspaceId as string | undefined) || 'onboarding');
+        const contact = await resolveContact(entityId, resolvedWorkspaceId);
         if (contact && contact.schoolData?.organizationId) {
           orgId = contact.schoolData.organizationId;
         }
@@ -134,7 +141,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
     // 1. Resolve Assigned Manager using adapter layer (Requirement 18)
     if (notifyManager && entityId) {
       // Use adapter to resolve contact from either schools or entities + workspace_entities
-      const contact = await resolveContact(entityId, variables.workspaceId || 'onboarding');
+      const contact = await resolveContact(entityId, resolvedWorkspaceId);
       if (contact && contact.assignedTo && contact.assignedTo.userId) {
         recipients.add(contact.assignedTo.userId);
       }
@@ -192,7 +199,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.email,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -206,7 +213,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.phone,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -220,7 +227,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.phone,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -234,7 +241,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.id, // For in-app, recipient is userId
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -248,7 +255,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
             recipient: contact.id, // For push, recipient is userId
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -272,8 +279,15 @@ export async function triggerExternalNotification(options: ExternalNotificationO
   console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId}`);
 
   try {
+    const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+    const resolvedWorkspaceId = (variables.workspaceId as string | undefined) || (entityId ? await resolveWorkspaceIdFromEntity(entityId) : null) || undefined;
+    if (!resolvedWorkspaceId) {
+      console.warn(">>> [EXTERNAL-NOTIFY] Skipping: no workspace context resolved.");
+      return;
+    }
+
     // 1. Resolve Entity Contacts using adapter layer
-    const contact = await resolveContact(entityId, variables.workspaceId || 'onboarding');
+    const contact = await resolveContact(entityId, resolvedWorkspaceId);
     
     if (!contact || !contact.contacts || contact.contacts.length === 0) {
       console.warn(">>> [EXTERNAL-NOTIFY] No focal persons found for entity.");
@@ -309,7 +323,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
             recipient: stakeholder.email,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -323,7 +337,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
             recipient: stakeholder.phone,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }
@@ -337,7 +351,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
             recipient: stakeholder.phone,
             variables: personalVars,
             entityId,
-            workspaceId: variables.workspaceId || 'onboarding'
+            workspaceId: resolvedWorkspaceId
           })
         );
       }

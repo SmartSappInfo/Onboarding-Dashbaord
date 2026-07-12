@@ -205,13 +205,23 @@ export async function processBulkJobChunk(jobId: string) {
             taskDocRef: FirebaseFirestore.DocumentReference;
             tags: { name: string; value: string }[];
         }> = [];
+        const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+        const jobWorkspaceId = job.workspaceId || template.workspaceIds?.[0];
+
         for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
             
+            const taskWorkspaceId = jobWorkspaceId || (task.entityId ? await resolveWorkspaceIdFromEntity(task.entityId) : null);
+            if (!taskWorkspaceId) {
+                failedIncrement++;
+                await taskDoc.ref.update({ status: 'failed', error: 'Cannot process task: missing workspace context' });
+                continue;
+            }
+
             // Suppression Check
             const suppressed = await isSuppressed({
                 recipient: task.recipient,
-                workspaceId: job.workspaceId || 'onboarding',
+                workspaceId: taskWorkspaceId,
                 channel: 'email'
             });
             
@@ -227,7 +237,7 @@ export async function processBulkJobChunk(jobId: string) {
             // Phase 7: Inject Unsubscribe Link
             const baseUrl = getBaseUrl();
             const unsubId = task.entityId || task.recipient;
-            let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+            let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${taskWorkspaceId}&c=${job.channel}`;
             if (job.campaignId) {
                 unsubUrl += `&cmp=${encodeURIComponent(job.campaignId)}`;
             }
@@ -567,10 +577,19 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
 
       processedCount++;
 
+      const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
+      const jobWorkspaceId = job.workspaceId || template.workspaceIds?.[0];
+      const taskWorkspaceId = jobWorkspaceId || (task.entityId ? await resolveWorkspaceIdFromEntity(task.entityId) : null);
+      if (!taskWorkspaceId) {
+        failedIncrement++;
+        await taskDoc.ref.update({ status: 'failed', error: 'Cannot process task: missing workspace context' });
+        continue;
+      }
+
       // Suppression Check
       const suppressed = await isSuppressed({
         recipient: task.recipient,
-        workspaceId: job.workspaceId || 'onboarding',
+        workspaceId: taskWorkspaceId,
         channel: 'email',
       });
 
@@ -586,7 +605,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
       // Inject unsubscribe link
       const baseUrl = getBaseUrl();
       const unsubId = task.entityId || task.recipient;
-      let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${job.workspaceId || 'onboarding'}&c=${job.channel}`;
+      let unsubUrl = `${baseUrl}/unsubscribe/${encodeURIComponent(unsubId)}?ws=${taskWorkspaceId}&c=${job.channel}`;
       if (job.campaignId) {
         unsubUrl += `&cmp=${encodeURIComponent(job.campaignId)}`;
       }
