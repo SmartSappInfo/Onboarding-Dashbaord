@@ -598,6 +598,69 @@ export function renderBlocksToHtml(
         break;
       }
 
+      case 'audio': {
+        const audioTitle = resolveVariables(block.audioTitle || 'Listen to Audio', variables);
+        const audioDuration = resolveVariables(block.audioDuration || '0:00', variables);
+        const audioUrl = resolveVariables(block.url || '#', variables);
+        
+        let link = audioUrl;
+        if (block.audioAction === 'redirect' && block.audioRedirectUrl) {
+            link = resolveVariables(block.audioRedirectUrl, variables);
+        }
+        if (link.startsWith('/')) {
+            link = `${getBaseUrl()}${link}`;
+        }
+
+        const primaryColor = options?.style?.primaryColor || '#3B5FFF';
+        const styleRadius = options?.style?.borderRadius;
+        const defaultRadius = styleRadius ? (hasUnit(styleRadius) ? styleRadius : `${styleRadius}px`) : '16px';
+        const cardRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
+        
+        const cardBg = s.backgroundColor || '#ffffff';
+        const borderConfig = s.borderWidth 
+            ? `${ensureUnit(s.borderWidth)} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
+            : `1px solid ${dividerColor}`;
+
+        const cardTextColor = s.color || textColor;
+        const subTextColor = isDark ? '#9ca3af' : '#64748b';
+        const actionText = block.audioAction === 'download' ? 'Download Note' : 'Listen Now';
+
+        blockHtml = `
+            <!--[if !mso]><!-->
+            <div class="audio-native-player" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
+                <audio src="${audioUrl}" controls style="width: 100%;"></audio>
+            </div>
+            <!--<![endif]-->
+
+            <div style="margin: 16px 0; ${marginStyles}">
+                <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
+                    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background-color: ${cardBg}; border: ${borderConfig}; border-radius: ${cardRadius}; overflow: hidden;">
+                        <tr>
+                            <td style="padding: 16px 12px 16px 20px; width: 40px; vertical-align: middle;">
+                                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin: 0;">
+                                    <tr>
+                                        <td align="center" valign="middle" style="width: 40px; height: 40px; border-radius: 20px; background-color: ${primaryColor}; text-align: center;">
+                                            <span style="color: #ffffff; font-size: 14px; font-weight: bold; line-height: 40px; font-family: Helvetica, Arial, sans-serif;">▶</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td style="padding: 16px 20px 16px 12px; vertical-align: middle; text-align: left;">
+                                <div style="font-size: 14px; font-weight: bold; color: ${cardTextColor}; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; line-height: 1.3; margin-bottom: 4px;">
+                                    ${audioTitle}
+                                </div>
+                                <div style="font-size: 11px; font-weight: 600; color: ${subTextColor}; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; line-height: 1; text-transform: uppercase; letter-spacing: 0.05em;">
+                                    ${audioDuration} &bull; ${actionText}
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </a>
+            </div>
+        `;
+        break;
+      }
+
       case 'header': {
         const headerLogo = resolveVariables(block.url || '{{org_logo_url}}', variables);
         const headerName = resolveVariables('{{org_name}}', variables);

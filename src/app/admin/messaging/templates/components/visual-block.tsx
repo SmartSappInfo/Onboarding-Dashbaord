@@ -642,7 +642,7 @@ export function VisualBlock({
                         {/* Circular Play Button Mock */}
                         <div 
                             className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm active:scale-95 duration-100 cursor-pointer"
-                            style={{ backgroundColor: options?.style?.primaryColor || '#2563eb' }}
+                            style={{ backgroundColor: 'var(--org-primary, rgb(37 99 235))' }}
                         >
                             <span className="text-xs">▶</span>
                         </div>
