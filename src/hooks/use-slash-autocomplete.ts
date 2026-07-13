@@ -124,8 +124,10 @@ export function useSlashAutocomplete({
         setShowAutocomplete(false);
         return;
       }
-      setAutocompleteQuery(textBetween);
-      setAutocompleteIndex(0);
+      if (!showAutocomplete || textBetween !== autocompleteQuery) {
+        setAutocompleteQuery(textBetween);
+        setAutocompleteIndex(0);
+      }
       setShowAutocomplete(true);
       
       const coords = getCaretCoordinates(element, lastSlashIdx);
@@ -158,13 +160,15 @@ export function useSlashAutocomplete({
       return;
     }
     
-    setAutocompleteQuery(textBetween);
-    setAutocompleteIndex(0);
+    if (!showAutocomplete || textBetween !== autocompleteQuery) {
+      setAutocompleteQuery(textBetween);
+      setAutocompleteIndex(0);
+    }
     setShowAutocomplete(true);
     
     const coords = getCaretCoordinates(element, lastSlashIdx);
     setAutocompleteCoords(coords);
-  }, [getCaretCoordinates]);
+  }, [getCaretCoordinates, showAutocomplete, autocompleteQuery]);
 
   // Filter variables matching typed query
   const filteredVars = React.useMemo(() => {
