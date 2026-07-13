@@ -199,14 +199,6 @@ export async function cleanContactEmailAction(
     const cleanEmail = currentEmail.toLowerCase().trim();
     const cleanRepl = replacementValue?.toLowerCase().trim();
 
-    if (mode === 'correct') {
-      try {
-        await removeSuppression(cleanEmail);
-      } catch (err) {
-        console.warn(`[CleanContact] Suppression removal failed for ${cleanEmail}:`, err);
-      }
-    }
-
     // Update entities in 'entities'
     const entitiesSnap = await adminDb.collection('entities').get();
     for (const doc of entitiesSnap.docs) {
@@ -216,8 +208,15 @@ export async function cleanContactEmailAction(
       if (!hasContact) continue;
 
       let updatedContacts: ContactItem[] = [...entityContacts];
+      const workspaceId = data.workspaceId || 'default';
 
       if (mode === 'correct' && cleanRepl) {
+        try {
+          await removeSuppression(cleanEmail, workspaceId);
+        } catch (err) {
+          console.warn(`[CleanContact] Suppression removal failed for ${cleanEmail} in ${workspaceId}:`, err);
+        }
+
         updatedContacts = entityContacts.map(c => {
           if (c.email?.toLowerCase().trim() === cleanEmail) {
             return {

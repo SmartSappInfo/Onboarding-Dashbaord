@@ -136,7 +136,7 @@ export async function handleSendMessage(
       );
       if (matchedContact) {
         if (usePhone) {
-          const isBounced = matchedContact.phoneStatus === 'undelivered';
+          const isBounced = matchedContact.phoneStatus === 'failed';
           const isLowScore = typeof matchedContact.phoneVerificationScore === 'number' && matchedContact.phoneVerificationScore < 40;
           if (isBounced || isLowScore) {
             console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/low verification phone status.`);

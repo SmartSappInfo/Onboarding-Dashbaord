@@ -257,8 +257,13 @@ export interface VerifyPhoneResult {
 export class PhoneVerificationEngine {
   constructor(private strategies: IPhoneVerificationStrategy[] = defaultStrategies()) {}
 
-  async verify(phone: string, defaultCountry?: string): Promise<VerifyPhoneResult> {
-    try {
+  async verify(
+    phone: string,
+    defaultCountry?: string,
+    options?: { forceRefresh?: boolean }
+  ): Promise<VerifyPhoneResult> {
+    if (!options?.forceRefresh) {
+      try {
       const { checkMessageDeliveryLogs } = await import('./services/delivery-telemetry');
       const telemetry = await checkMessageDeliveryLogs(phone, 'phone');
       if (telemetry.status !== null && telemetry.score !== null) {
@@ -285,6 +290,7 @@ export class PhoneVerificationEngine {
     } catch (err) {
       console.warn('[PhoneVerifier] Failed checking delivery logs:', err);
     }
+  }
 
     const context: PhoneVerificationContext = { phone, defaultCountry };
     const state: Record<string, any> = {};

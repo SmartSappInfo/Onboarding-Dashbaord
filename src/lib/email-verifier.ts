@@ -344,30 +344,32 @@ export interface VerifyEmailResult {
 export class EmailVerificationEngine {
   constructor(private strategies: IVerificationStrategy[] = []) {}
 
-  async verify(email: string): Promise<VerifyEmailResult> {
-    try {
-      const { checkMessageDeliveryLogs } = await import('./services/delivery-telemetry');
-      const telemetry = await checkMessageDeliveryLogs(email, 'email');
-      if (telemetry.status !== null && telemetry.score !== null) {
-        return {
-          valid: telemetry.status === 'verified',
-          score: telemetry.score,
-          status: telemetry.status === 'verified' ? 'verified' : 'invalid',
-          checks: {
-            syntax: true,
-            dns: telemetry.status === 'verified',
-            smtp: telemetry.status === 'verified',
-            disposable: false,
-            roleAccount: false,
-            catchAll: false,
-          },
-          details: {
-            telemetry: `delivery_${telemetry.status}`,
-          },
-        };
+  async verify(email: string, options?: { forceRefresh?: boolean }): Promise<VerifyEmailResult> {
+    if (!options?.forceRefresh) {
+      try {
+        const { checkMessageDeliveryLogs } = await import('./services/delivery-telemetry');
+        const telemetry = await checkMessageDeliveryLogs(email, 'email');
+        if (telemetry.status !== null && telemetry.score !== null) {
+          return {
+            valid: telemetry.status === 'verified',
+            score: telemetry.score,
+            status: telemetry.status === 'verified' ? 'verified' : 'invalid',
+            checks: {
+              syntax: true,
+              dns: telemetry.status === 'verified',
+              smtp: telemetry.status === 'verified',
+              disposable: false,
+              roleAccount: false,
+              catchAll: false,
+            },
+            details: {
+              telemetry: `delivery_${telemetry.status}`,
+            },
+          };
+        }
+      } catch (err) {
+        console.warn('[EmailVerifier] Failed checking delivery logs:', err);
       }
-    } catch (err) {
-      console.warn('[EmailVerifier] Failed checking delivery logs:', err);
     }
 
     const parts = email.split('@');
