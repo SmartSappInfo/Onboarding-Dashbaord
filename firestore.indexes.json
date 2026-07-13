@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "thumbnail_designs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "media_categories",
       "queryScope": "COLLECTION",
       "fields": [

@@ -371,6 +371,12 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    match /thumbnail_designs/{designId} {
+      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     // --- Message Templates (Two-Tier System) ---
     // Task 16.1: Security rules for message_templates collection
     // Global templates: read by all authenticated users, write only by super admins
