@@ -164,6 +164,10 @@ export default function MediaUploader({
       toast({ variant: 'destructive', title: 'File Too Large', description: `${file.name} exceeds the ${MAX_FILE_SIZE_MB}MB size limit.` });
       return false;
     }
+    if (mediaType === 'audio' && file.size > 10 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Audio File Too Large', description: `${file.name} exceeds the 10MB audio size limit.` });
+      return false;
+    }
     return true;
   };
   

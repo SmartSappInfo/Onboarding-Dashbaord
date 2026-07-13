@@ -34,7 +34,7 @@ export default function UploadButton({ workspaceId }: UploadButtonProps) {
           <DialogHeader className="px-6 pt-6 pb-4 border-b bg-muted/10 shrink-0 relative">
             <DialogTitle className="text-2xl font-semibold tracking-tight w-3/4">Upload Media</DialogTitle>
             <DialogDescription>
-              Drag and drop files, edit, and upload. Max 100MB per file.
+              Drag and drop files, edit, and upload. Max 100MB per file (10MB for audio).
             </DialogDescription>
             <div id="uploader-header-portal" className="absolute top-6 right-16 z-[100]"></div>
           </DialogHeader>
