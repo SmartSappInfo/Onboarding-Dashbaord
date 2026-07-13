@@ -9,7 +9,7 @@ export interface ElementShadow {
 
 export interface CanvasElement {
   id: string;
-  type: 'text' | 'image' | 'rect' | 'circle' | 'arrow';
+  type: 'text' | 'image' | 'rect' | 'circle' | 'arrow' | 'icon' | 'emoji' | 'svg';
   x: number; // percentage (0 - 100)
   y: number; // percentage (0 - 100)
   width: number; // percentage (0 - 100)
@@ -17,6 +17,11 @@ export interface CanvasElement {
   zIndex: number;
   rotation?: number; // degrees
   opacity?: number; // 0 - 1
+  isLocked?: boolean;
+  isHidden?: boolean;
+  groupId?: string;
+  iconName?: string;
+  maskShape?: 'none' | 'circle' | 'hexagon' | 'squircle';
   
   // Text Specific
   text?: string;
