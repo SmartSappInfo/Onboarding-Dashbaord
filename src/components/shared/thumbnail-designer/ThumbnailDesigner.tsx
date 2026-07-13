@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useTransition } from 'react';
-import type { CanvasElement, ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
+import type { CanvasElement, ThumbnailDesign, BrandKit } from '@/lib/thumbnail/thumbnail-types';
 import { CTR_TEMPLATES, THUMBNAIL_FONT_OPTIONS, makeUniqueId } from '@/lib/thumbnail/thumbnail-types';
 import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-editor';
 import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY, getEffectStyle } from '@/lib/thumbnail/design-system-presets';
@@ -117,6 +117,30 @@ export default function ThumbnailDesigner({
   const [copywriterTopic, setCopywriterTopic] = useState('');
   const [generatedHooks, setGeneratedHooks] = useState<{ text: string; score: number; emotion: string; readability: string; }[]>([]);
   const [isGeneratingHooks, setIsGeneratingHooks] = useState(false);
+
+  // Brand Kit states
+  const [brandKit, setBrandKit] = useState<BrandKit>({
+    colors: ['#0f172a', '#1e293b', '#facc15'],
+    fontFamily: 'Impact',
+    watermarkUrl: 'https://picsum.photos/id/1025/120/120'
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`brand-kit-${design.workspaceId || 'default'}`);
+    if (saved) {
+      try {
+        setBrandKit(JSON.parse(saved));
+      } catch (err) {
+        console.error('Failed to parse brand kit:', err);
+      }
+    }
+  }, [design.workspaceId]);
+
+  const saveBrandKit = (newKit: BrandKit) => {
+    setBrandKit(newKit);
+    localStorage.setItem(`brand-kit-${design.workspaceId || 'default'}`, JSON.stringify(newKit));
+    toast({ title: 'Brand Kit Saved', description: 'Your brand assets are updated.' });
+  };
 
   // Search filter for icons library
   const [iconSearch, setIconSearch] = useState('');
@@ -257,6 +281,65 @@ export default function ThumbnailDesigner({
     };
     initializeStore(enrichedTemplate);
     toast({ title: 'Template applied', description: `${tpl.name} is now loaded.` });
+  };
+
+  const handleApplyBrand = () => {
+    // 1. Update background gradient using brand colors
+    const updatedColors = brandKit.colors.slice(0, 3);
+    const backgroundGradient = updatedColors.length > 1 ? {
+      type: 'linear' as const,
+      angle: 135,
+      colors: updatedColors
+    } : undefined;
+    
+    const backgroundColor = updatedColors[0] || '#0f172a';
+
+    // 2. Update typography font-family for all existing text layers
+    let updatedElements = design.elements.map((el) => {
+      if (el.type === 'text') {
+        return {
+          ...el,
+          fontFamily: brandKit.fontFamily,
+          // Enforce contrast: if background is dark and text is dark, invert to yellow
+          fill: (el.fill === '#000000' || el.fill === '#0f172a' || el.fill === '#09090b') ? '#facc15' : el.fill
+        };
+      }
+      return el;
+    });
+
+    // 3. Add brand watermark overlay (avoid duplicates)
+    if (brandKit.watermarkUrl) {
+      const existingWatermarkIdx = updatedElements.findIndex(el => el.id === 'brand-watermark');
+      const watermarkEl: CanvasElement = {
+        id: 'brand-watermark',
+        type: 'image',
+        x: 5,
+        y: 80,
+        width: 12,
+        height: 12,
+        zIndex: design.elements.length + 5,
+        imageSrc: brandKit.watermarkUrl,
+        imageOutlineColor: '#ffffff',
+        imageOutlineWidth: 0,
+      };
+
+      if (existingWatermarkIdx >= 0) {
+        updatedElements[existingWatermarkIdx] = watermarkEl;
+      } else {
+        updatedElements.push(watermarkEl);
+      }
+    }
+
+    const updatedDesign: ThumbnailDesign = {
+      ...design,
+      backgroundColor,
+      backgroundGradient,
+      elements: updatedElements,
+      updatedAt: new Date().toISOString()
+    };
+
+    initializeStore(updatedDesign);
+    toast({ title: 'Brand applied', description: 'Updated canvas styling to match your Brand Kit.' });
   };
 
   const handleRemoveBackground = async () => {
@@ -536,18 +619,21 @@ export default function ThumbnailDesigner({
       {/* Left Tools Sidebar */}
       <aside className="w-80 border-r border-slate-800 bg-slate-900 flex flex-col shrink-0 overflow-y-auto">
         <Tabs defaultValue="ai" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 bg-slate-950 rounded-none h-12">
-            <TabsTrigger value="ai" className="text-[10px] font-bold data-[state=active]:bg-slate-900">
-              <Sparkles className="w-3 h-3 mr-1" /> AI
+          <TabsList className="w-full grid grid-cols-5 bg-slate-950 rounded-none h-12">
+            <TabsTrigger value="ai" className="text-[10px] font-bold data-[state=active]:bg-slate-900 px-0">
+              <Sparkles className="w-3 h-3 mr-0.5" /> AI
             </TabsTrigger>
-            <TabsTrigger value="elements" className="text-[10px] font-bold data-[state=active]:bg-slate-900">
+            <TabsTrigger value="elements" className="text-[10px] font-bold data-[state=active]:bg-slate-900 px-0">
               Layers
             </TabsTrigger>
-            <TabsTrigger value="templates" className="text-[10px] font-bold data-[state=active]:bg-slate-900">
+            <TabsTrigger value="templates" className="text-[10px] font-bold data-[state=active]:bg-slate-900 px-0">
               Templates
             </TabsTrigger>
-            <TabsTrigger value="library" className="text-[10px] font-bold data-[state=active]:bg-slate-900">
+            <TabsTrigger value="library" className="text-[10px] font-bold data-[state=active]:bg-slate-900 px-0">
               Library
+            </TabsTrigger>
+            <TabsTrigger value="brand" className="text-[10px] font-bold data-[state=active]:bg-slate-900 px-0">
+              <Palette className="w-3 h-3 mr-0.5" /> Brand
             </TabsTrigger>
           </TabsList>
 
@@ -1091,6 +1177,92 @@ export default function ThumbnailDesigner({
                     <span className="text-[8px] mt-1 font-bold truncate w-full text-center">{shape.name}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Brand Kit Tab */}
+          <TabsContent value="brand" className="p-4 space-y-4 text-left">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="font-bold text-xs uppercase tracking-wider text-slate-400">Workspace Brand Kit</div>
+              <Button
+                onClick={handleApplyBrand}
+                size="sm"
+                className="bg-violet-600 hover:bg-violet-500 active:scale-[0.97] text-[10px] font-black rounded-lg h-7 px-3"
+              >
+                Apply Brand
+              </Button>
+            </div>
+
+            {/* 1. Brand Colors */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Brand Color Swatches</Label>
+              <div className="grid grid-cols-3 gap-2 mt-1">
+                {brandKit.colors.map((color, index) => (
+                  <div key={index} className="flex flex-col gap-1 items-center bg-slate-950 p-2 border border-slate-850 rounded-xl">
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => {
+                        const newColors = [...brandKit.colors];
+                        newColors[index] = e.target.value;
+                        saveBrandKit({ ...brandKit, colors: newColors });
+                      }}
+                      className="w-10 h-10 rounded-full border border-slate-800 cursor-pointer shrink-0"
+                    />
+                    <span className="text-[8px] font-mono text-slate-500">{color.toUpperCase()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Brand Font Family */}
+            <div className="space-y-2 border-t border-slate-800 pt-3">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Default Brand Font</Label>
+              <Select
+                value={brandKit.fontFamily}
+                onValueChange={(val) => saveBrandKit({ ...brandKit, fontFamily: val })}
+              >
+                <SelectTrigger className="bg-slate-950 border-slate-800 text-xs rounded-xl h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-850 text-slate-100">
+                  {THUMBNAIL_FONT_OPTIONS.map(f => (
+                    <SelectItem key={f} value={f} className="text-xs">
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 3. Watermarks & Brand Logos */}
+            <div className="space-y-2 border-t border-slate-800 pt-3">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Default Brand Watermark Logo</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {[
+                  { name: 'Default Watermark', url: 'https://picsum.photos/id/1025/120/120' },
+                  { name: 'Branded Shield', url: 'https://picsum.photos/id/1043/120/120' }
+                ].map((wt) => {
+                  const isActive = brandKit.watermarkUrl === wt.url;
+                  return (
+                    <div
+                      key={wt.name}
+                      onClick={() => saveBrandKit({ ...brandKit, watermarkUrl: wt.url })}
+                      className={cn(
+                        "border bg-slate-950 p-2 rounded-xl cursor-pointer transition-all hover:border-violet-500 text-center space-y-1.5",
+                        isActive ? "border-violet-500" : "border-slate-850"
+                      )}
+                    >
+                      <img
+                        src={wt.url}
+                        alt=""
+                        className="w-full aspect-square object-cover rounded-lg"
+                      />
+                      <div className="text-[8px] font-bold text-slate-350 truncate">{wt.name}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </TabsContent>

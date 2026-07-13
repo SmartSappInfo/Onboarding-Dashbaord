@@ -655,6 +655,12 @@ export const CTR_TEMPLATES: CTRTemplate[] = [
   }
 ];
 
+export interface BrandKit {
+  colors: string[];
+  fontFamily: string;
+  watermarkUrl?: string;
+}
+
 export function makeUniqueId(): string {
   return `el-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 }
