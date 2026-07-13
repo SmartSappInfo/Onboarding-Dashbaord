@@ -661,6 +661,22 @@ export interface BrandKit {
   watermarkUrl?: string;
 }
 
+export interface DesignComment {
+  id: string;
+  authorName: string;
+  authorEmail: string;
+  text: string;
+  timestamp: string;
+  resolved?: boolean;
+}
+
+export interface ActivityLog {
+  id: string;
+  user: string;
+  action: string;
+  time: string;
+}
+
 export function makeUniqueId(): string {
   return `el-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 }

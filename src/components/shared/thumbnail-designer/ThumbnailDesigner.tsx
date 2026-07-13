@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useTransition } from 'react';
-import type { CanvasElement, ThumbnailDesign, BrandKit } from '@/lib/thumbnail/thumbnail-types';
+import type { CanvasElement, ThumbnailDesign, BrandKit, DesignComment, ActivityLog } from '@/lib/thumbnail/thumbnail-types';
 import { CTR_TEMPLATES, THUMBNAIL_FONT_OPTIONS, makeUniqueId } from '@/lib/thumbnail/thumbnail-types';
 import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-editor';
 import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY, getEffectStyle } from '@/lib/thumbnail/design-system-presets';
@@ -20,7 +20,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { 
   Sparkles, Trash2, ArrowLeft, Wand2, RefreshCw, Save, 
   Layers, Lock, Unlock, Eye, EyeOff, Copy, ZoomIn, ZoomOut, Move,
-  Smile, Search, Settings, HelpCircle, Palette, Download
+  Smile, Search, Settings, HelpCircle, Palette, Download,
+  MessageSquare, Check, Send, X
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -140,6 +141,68 @@ export default function ThumbnailDesigner({
     setBrandKit(newKit);
     localStorage.setItem(`brand-kit-${design.workspaceId || 'default'}`, JSON.stringify(newKit));
     toast({ title: 'Brand Kit Saved', description: 'Your brand assets are updated.' });
+  };
+
+  // Collaboration States
+  const [comments, setComments] = useState<DesignComment[]>([]);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [reviewerName, setReviewerName] = useState('Joseph Aidoo');
+  const [reviewerEmail, setReviewerEmail] = useState('joseph@smartsapp.com');
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([
+    { id: 'l-seed-1', user: 'Joseph Aidoo', action: 'Created design workspace', time: '1:10 PM' },
+    { id: 'l-seed-2', user: 'AI Assistant', action: 'Suggested CTR topic alignment guidelines', time: '1:12 PM' },
+  ]);
+
+  // Load comments from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`design-comments-${design.id || 'default'}`);
+    if (saved) {
+      try {
+        setComments(JSON.parse(saved));
+      } catch (err) {
+        console.error('Failed to parse comments:', err);
+      }
+    }
+  }, [design.id]);
+
+  const saveCommentsList = (newList: DesignComment[]) => {
+    setComments(newList);
+    localStorage.setItem(`design-comments-${design.id || 'default'}`, JSON.stringify(newList));
+  };
+
+  const logActivity = (actionText: string) => {
+    const newLog: ActivityLog = {
+      id: makeUniqueId(),
+      user: reviewerName,
+      action: actionText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setActivityLogs(prev => [newLog, ...prev.slice(0, 19)]);
+  };
+
+  const handleAddComment = () => {
+    if (!newCommentText.trim()) return;
+    const newComment: DesignComment = {
+      id: makeUniqueId(),
+      authorName: reviewerName,
+      authorEmail: reviewerEmail,
+      text: newCommentText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      resolved: false,
+    };
+    const newList = [...comments, newComment];
+    saveCommentsList(newList);
+    setNewCommentText('');
+    logActivity(`Added feedback comment: "${newCommentText.substring(0, 20)}..."`);
+    toast({ title: 'Feedback Added', description: 'Review comment posted successfully.' });
+  };
+
+  const handleResolveComment = (commentId: string) => {
+    const newList = comments.map(c => c.id === commentId ? { ...c, resolved: true } : c);
+    saveCommentsList(newList);
+    logActivity('Resolved design feedback comment');
+    toast({ title: 'Feedback Resolved', description: 'Comment status marked as resolved.' });
   };
 
   // Search filter for icons library
@@ -280,6 +343,7 @@ export default function ThumbnailDesigner({
       updatedAt: new Date().toISOString()
     };
     initializeStore(enrichedTemplate);
+    logActivity('Applied layout template: ' + tpl.name);
     toast({ title: 'Template applied', description: `${tpl.name} is now loaded.` });
   };
 
@@ -339,6 +403,7 @@ export default function ThumbnailDesigner({
     };
 
     initializeStore(updatedDesign);
+    logActivity('Applied Workspace Brand Kit styles');
     toast({ title: 'Brand applied', description: 'Updated canvas styling to match your Brand Kit.' });
   };
 
@@ -1330,6 +1395,18 @@ export default function ThumbnailDesigner({
               </SelectContent>
             </Select>
 
+            <Button
+              onClick={() => setIsCommentsOpen(!isCommentsOpen)}
+              variant={isCommentsOpen ? 'secondary' : 'ghost'}
+              size="icon"
+              className={cn(
+                "rounded-xl border h-9 w-9 bg-slate-900 border-slate-800 text-slate-355 hover:bg-slate-800 active:scale-[0.97]",
+                isCommentsOpen ? "bg-violet-600/10 border-violet-500 text-violet-400 hover:bg-violet-600/20" : ""
+              )}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+
             <Button onClick={handleSaveDesign} className="bg-emerald-500 hover:bg-emerald-600 font-bold rounded-xl text-xs h-9 px-4 active:scale-[0.97]">
               <Save className="w-4 h-4 mr-1.5" /> Save Design
             </Button>
@@ -2002,6 +2079,121 @@ export default function ThumbnailDesigner({
         filterType="image"
         workspaceId={workspaceId}
       />
+
+      {/* Right Collaboration Drawer */}
+      {isCommentsOpen && (
+        <aside className="w-80 border-l border-slate-800 bg-slate-900 flex flex-col shrink-0 overflow-hidden">
+          {/* Header */}
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-violet-400" />
+              <span className="font-bold text-xs uppercase tracking-wider text-slate-200">Reviews & Team Feed</span>
+            </div>
+            <Button
+              onClick={() => setIsCommentsOpen(false)}
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-800"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Reviewer Details Settings */}
+            <div className="bg-slate-950/50 border border-slate-850 p-3 rounded-xl space-y-2">
+              <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Reviewer Profile</Label>
+              <div className="space-y-1.5">
+                <Input
+                  placeholder="Reviewer Name"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-[11px] rounded-lg h-8"
+                />
+                <Input
+                  placeholder="Reviewer Email"
+                  value={reviewerEmail}
+                  onChange={(e) => setReviewerEmail(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-[11px] rounded-lg h-8"
+                />
+              </div>
+            </div>
+
+            {/* Comments List */}
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Design Feedbacks</Label>
+              
+              {comments.filter(c => !c.resolved).length === 0 ? (
+                <div className="text-center py-4 bg-slate-950/30 border border-dashed border-slate-850 rounded-xl">
+                  <p className="text-[10px] text-slate-500 italic">No active feedback. Design approved!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {comments.filter(c => !c.resolved).map((c) => (
+                    <div key={c.id} className="bg-slate-950 border border-slate-850 p-3 rounded-xl space-y-1.5 text-left">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-[11px] text-slate-200">{c.authorName}</span>
+                          <span className="text-[8px] text-slate-500">{c.authorEmail}</span>
+                        </div>
+                        <span className="text-[8px] text-slate-500">{c.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed">{c.text}</p>
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          onClick={() => handleResolveComment(c.id)}
+                          size="sm"
+                          variant="ghost"
+                          className="text-[9px] font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 h-6 px-2 rounded-lg"
+                        >
+                          <Check className="w-3 h-3 mr-1" /> Mark Resolved
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* New Comment Form */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Add Feedback Comment</Label>
+              <div className="space-y-2">
+                <textarea
+                  placeholder="e.g. Can you make the title outline black to improve contrast?..."
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs rounded-xl p-2.5 h-20 outline-none text-slate-100 placeholder:text-slate-500 focus:border-violet-500 transition-colors resize-none"
+                />
+                <Button
+                  onClick={handleAddComment}
+                  className="w-full bg-violet-600 hover:bg-violet-500 active:scale-[0.97] text-xs font-bold rounded-xl h-9"
+                >
+                  <Send className="w-3.5 h-3.5 mr-1.5" /> Post Comment
+                </Button>
+              </div>
+            </div>
+
+            {/* Team Activity Logs Feed */}
+            <div className="space-y-3 border-t border-slate-800 pt-4">
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Team Activity Feed</Label>
+              <div className="relative border-l border-slate-850 pl-3.5 space-y-4 text-left">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="relative text-xs">
+                    {/* Circle Node */}
+                    <div className="absolute -left-[20.5px] top-1.5 w-1.5 h-1.5 rounded-full bg-slate-700 border border-slate-900" />
+                    <div className="flex items-center justify-between text-[9px] text-slate-500">
+                      <span className="font-bold text-slate-350">{log.user}</span>
+                      <span>{log.time}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">{log.action}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
