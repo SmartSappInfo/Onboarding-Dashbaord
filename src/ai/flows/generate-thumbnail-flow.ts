@@ -99,10 +99,21 @@ const generateThumbnailFlow = ai.defineFlow(
       }
     }
 
-    const resolvedModel = await getModel({
-      provider: 'anthropic',
-      modelId: 'claude-3-5-sonnet',
-    });
+    let resolvedModel;
+    let fallbackUsed = false;
+    try {
+      resolvedModel = await getModel({
+        provider: 'anthropic',
+        modelId: 'claude-3-5-sonnet',
+      });
+    } catch (err) {
+      console.warn('Primary Anthropic model config failed, trying fallback Gemini model...', err);
+      resolvedModel = await getModel({
+        provider: 'google-genai',
+        modelId: 'gemini-2.5-flash',
+      });
+      fallbackUsed = true;
+    }
 
     const generatorAi = resolvedModel.customAi || ai;
     const rendered = await thumbnailArchitectPrompt.render({
@@ -112,11 +123,32 @@ const generateThumbnailFlow = ai.defineFlow(
       templateId: input.templateId,
     });
 
-    const { output } = await generatorAi.generate({
-      model: resolvedModel.modelString,
-      ...rendered,
-      output: { schema: GenerateThumbnailOutputSchema },
-    });
+    let result;
+    try {
+      result = await generatorAi.generate({
+        model: resolvedModel.modelString,
+        ...rendered,
+        output: { schema: GenerateThumbnailOutputSchema },
+      });
+    } catch (err) {
+      if (!fallbackUsed) {
+        console.warn('Anthropic generation failed, triggering Gemini failover...', err);
+        const backupModel = await getModel({
+          provider: 'google-genai',
+          modelId: 'gemini-2.5-flash',
+        });
+        const backupAi = backupModel.customAi || ai;
+        result = await backupAi.generate({
+          model: backupModel.modelString,
+          ...rendered,
+          output: { schema: GenerateThumbnailOutputSchema },
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    const { output } = result;
 
     if (!output) throw new Error("Thumbnail Architect failed to generate composition.");
     return output;
