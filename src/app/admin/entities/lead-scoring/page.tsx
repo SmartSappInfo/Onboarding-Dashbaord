@@ -45,7 +45,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
-import { verifySingleContactAction } from '@/lib/automation-actions';
+import { verifySingleContactAction, deleteContactAction } from '@/lib/automation-actions';
 import type { 
   WorkspaceEntity, 
   EntityContact, 
@@ -747,7 +747,7 @@ export default function LeadScoringCleanupPage() {
     workspaceEntities.forEach(we => {
       const contacts = we.entityContacts || [];
       contacts.forEach(c => {
-        const contactName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.name || 'Unnamed Contact';
+        const contactName = c.name || 'Unnamed Contact';
         const email = c.email || '';
         const phone = c.phone || '';
         
@@ -2000,7 +2000,7 @@ export default function LeadScoringCleanupPage() {
                 <AlertTriangle className="h-5 w-5" /> Bulk Archive Warning
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                You are about to soft-archive <span className="font-bold text-foreground">{hygieneLeads.length}</span> stale prospects with identified data hygiene issues. This cannot be easily reversed.
+                You are about to soft-archive <span className="font-bold text-foreground">{hygieneContacts.length}</span> stale prospects with identified data hygiene issues. This cannot be easily reversed.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
@@ -2018,7 +2018,7 @@ export default function LeadScoringCleanupPage() {
                 <AlertTriangle className="h-5 w-5" /> Permanent Delete Warning
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground animate-pulse">
-                You are about to permanently delete <span className="font-bold text-foreground">{hygieneLeads.length}</span> leads from this workspace. This action is irreversible.
+                You are about to permanently delete <span className="font-bold text-foreground">{hygieneContacts.length}</span> leads from this workspace. This action is irreversible.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
