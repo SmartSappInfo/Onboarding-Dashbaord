@@ -222,13 +222,13 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <PageTitleManager map={ADMIN_ROUTE_TITLES} orgName={activeOrganization?.name} fallback="Admin" />
-      <AdminSidebar className={cn(isBuilderPage && resolvedTheme === 'dark' && "dark")} />
+      <AdminSidebar className={cn(isBuilderPage && resolvedTheme === 'dark' && "dark bg-[#0b0f19] border-slate-800")} />
       <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden relative">
         {/* Subtle radial gradient accent */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.04),transparent_50%)] pointer-events-none" />
         <header className={cn(
           "sticky top-0 z-50 h-16 flex shrink-0 items-center gap-4 px-6 border-b border-border bg-background/80 backdrop-blur-xl print:hidden",
-          isBuilderPage && resolvedTheme === 'dark' && "dark"
+          isBuilderPage && resolvedTheme === 'dark' && "dark bg-[#0b0f19] border-slate-800"
         )}>
           <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
           <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
