@@ -597,34 +597,62 @@ export function VisualBlock({
                     )}
                 </div>
             );
-        case 'video':
+        case 'video': {
+            const hasPoster = !!(resolvedUrl || block.videoThumbnailUrl);
             return (
                 <div className={cn("w-full py-2", alignmentClass)}>
-                    {resolvedUrl ? (
+                    {hasPoster ? (
                         <div 
-                            className="relative overflow-hidden w-full aspect-video"
+                            className="relative overflow-hidden w-full aspect-video border rounded-2xl group flex items-center justify-center cursor-pointer shadow-sm animate-in fade-in duration-200"
                             style={{
                                 borderRadius: s.borderRadius ? `${s.borderRadius}px` : '20px',
-                                borderWidth: s.borderWidth ? `${s.borderWidth}px` : undefined,
-                                borderStyle: s.borderStyle || undefined,
-                                borderColor: s.borderColor || undefined,
+                                borderWidth: s.borderWidth ? `${s.borderWidth}px` : '1px',
+                                borderStyle: s.borderStyle || 'solid',
+                                borderColor: s.borderColor || '#e2e8f0',
+                                backgroundColor: s.backgroundColor || '#000000',
                                 ...spacingStyle
                             }}
                         >
-                            <iframe 
-                                src={`https://www.youtube.com/embed/${resolvedUrl.split('/').pop()?.split('v=')[1]?.split('&')[0] || resolvedUrl.split('/').pop()}`}
-                                className="w-full h-full border-none"
-                                allowFullScreen
-                            />
+                            {/* Thumbnail Poster */}
+                            {block.videoThumbnailUrl ? (
+                                <img 
+                                    src={block.videoThumbnailUrl} 
+                                    alt="Video Poster" 
+                                    className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                />
+                            ) : (
+                                <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-slate-400 gap-2">
+                                    <Video className="h-8 w-8 opacity-40" />
+                                    <span className="text-[10px] font-bold">Mock Video Poster</span>
+                                </div>
+                            )}
+
+                            {/* Play Button Overlay */}
+                            <div 
+                                className="w-16 h-16 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg cursor-pointer bg-white/20 backdrop-blur-md group-hover:scale-110 active:scale-95 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                            >
+                                <span className="text-xl ml-1">▶</span>
+                            </div>
+
+                            {/* Video metadata overlay bottom bar */}
+                            <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-left flex justify-between items-center text-white">
+                                <span className="text-[10px] font-bold tracking-tight truncate max-w-[70%]">
+                                    {block.videoAction === 'download' ? 'Download Action' : block.videoAction === 'redirect' ? 'Tracking Redirect' : 'Inline Player'}
+                                </span>
+                                <span className="text-[9px] font-semibold bg-white/10 px-2 py-0.5 rounded backdrop-blur">
+                                    Video Card
+                                </span>
+                            </div>
                         </div>
                     ) : (
                         <div className="aspect-video w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-muted/20 text-muted-foreground gap-2">
                             <Video className="h-8 w-8 opacity-20" />
-                            <span className="text-[10px] font-semibold ">Video Area</span>
+                            <span className="text-[10px] font-semibold">Video Block (Configure Source or Thumbnail)</span>
                         </div>
                     )}
                 </div>
             );
+        }
         case 'audio':
             return (
                 <div className={cn("w-full py-2", alignmentClass)}>
