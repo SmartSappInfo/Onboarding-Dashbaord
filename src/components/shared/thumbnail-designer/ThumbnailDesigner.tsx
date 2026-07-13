@@ -5,6 +5,7 @@ import { useState, useEffect, useTransition } from 'react';
 import type { CanvasElement, ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
 import { CTR_TEMPLATES, THUMBNAIL_FONT_OPTIONS, makeUniqueId } from '@/lib/thumbnail/thumbnail-types';
 import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-editor';
+import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY } from '@/lib/thumbnail/design-system-presets';
 import ThumbnailCanvas from './ThumbnailCanvas';
 import { runGenerateThumbnail, runModifyThumbnail } from '@/app/actions/thumbnail-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -165,6 +166,21 @@ export default function ThumbnailDesigner({
       shapeFill: '#ef4444',
     };
     addElement(arrowEl);
+  };  const handleAddSvgShape = (path: string) => {
+    const svgEl: CanvasElement = {
+      id: makeUniqueId(),
+      type: 'svg',
+      x: 40,
+      y: 40,
+      width: 20,
+      height: 20,
+      zIndex: design.elements.length + 1,
+      svgPath: path,
+      shapeFill: '#38bdf8',
+      shapeStroke: '#0284c7',
+      shapeStrokeWidth: 1,
+    };
+    addElement(svgEl);
   };
 
   const handleDuplicateElement = (element: CanvasElement) => {
@@ -567,6 +583,24 @@ export default function ThumbnailDesigner({
                 })}
               </div>
             </div>
+
+            <div className="border-t border-slate-800 pt-3">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">SVG Shapes & Callouts</Label>
+              <div className="grid grid-cols-3 gap-2 mt-2 max-h-36 overflow-y-auto pr-1">
+                {SHAPE_PATH_REGISTRY.map((shape) => (
+                  <button
+                    key={shape.id}
+                    onClick={() => handleAddSvgShape(shape.path)}
+                    className="h-14 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-xl hover:border-emerald-500 active:scale-[0.97] p-2 text-slate-355"
+                  >
+                    <svg viewBox="0 0 100 100" className="w-6 h-6 fill-slate-300 stroke-slate-400 stroke-2">
+                      <path d={shape.path} />
+                    </svg>
+                    <span className="text-[8px] mt-1 font-bold truncate w-full text-center">{shape.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </aside>
@@ -775,6 +809,57 @@ export default function ThumbnailDesigner({
               </div>
 
               <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400">CTR Font Pairing</Label>
+                <Select
+                  value=""
+                  onValueChange={(val) => {
+                    const pair = FONT_PAIRINGS.find(p => p.name === val);
+                    if (pair) {
+                      updateElement(selectedElement.id, { 
+                        fontFamily: pair.headline
+                      });
+                      const otherText = design.elements.find(el => el.type === 'text' && el.id !== selectedElement.id);
+                      if (otherText) {
+                        updateElement(otherText.id, { fontFamily: pair.sub });
+                      }
+                    }
+                  }}
+                  disabled={selectedElement.isLocked}
+                >
+                  <SelectTrigger className="bg-slate-950 border-slate-800 text-xs rounded-xl h-10">
+                    <SelectValue placeholder="Apply font pair..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                    {FONT_PAIRINGS.map((p) => (
+                      <SelectItem key={p.name} value={p.name}>
+                        {p.name} ({p.headline} / {p.sub})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400">Typography Visual Effect</Label>
+                <Select
+                  value={selectedElement.textEffect || 'none'}
+                  onValueChange={(val: any) => updateElement(selectedElement.id, { textEffect: val })}
+                  disabled={selectedElement.isLocked}
+                >
+                  <SelectTrigger className="bg-slate-950 border-slate-800 text-xs rounded-xl h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                    <SelectItem value="none">None (Plain)</SelectItem>
+                    <SelectItem value="neon">Neon Glow</SelectItem>
+                    <SelectItem value="3d">3D Offset</SelectItem>
+                    <SelectItem value="gradient">Gradient Fills</SelectItem>
+                    <SelectItem value="metallic">Metallic Shimmer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400">Font Color</Label>
                 <div className="flex gap-2">
                   <input
@@ -795,14 +880,33 @@ export default function ThumbnailDesigner({
 
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400">Font Size ({selectedElement.fontSize || 24}px)</Label>
-                <Slider
-                  min={12}
-                  max={96}
-                  step={1}
-                  value={[selectedElement.fontSize || 24]}
-                  onValueChange={([val]) => updateElement(selectedElement.id, { fontSize: val })}
-                  disabled={selectedElement.isLocked}
-                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => updateElement(selectedElement.id, { fontSize: Math.max(12, (selectedElement.fontSize || 24) - 2) })}
+                    disabled={selectedElement.isLocked}
+                    variant="outline"
+                    className="w-8 h-8 rounded-lg p-0 shrink-0 text-slate-350 active:scale-[0.95]"
+                  >
+                    -
+                  </Button>
+                  <Slider
+                    min={12}
+                    max={96}
+                    step={1}
+                    value={[selectedElement.fontSize || 24]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { fontSize: val })}
+                    disabled={selectedElement.isLocked}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => updateElement(selectedElement.id, { fontSize: Math.min(120, (selectedElement.fontSize || 24) + 2) })}
+                    disabled={selectedElement.isLocked}
+                    variant="outline"
+                    className="w-8 h-8 rounded-lg p-0 shrink-0 text-slate-350 active:scale-[0.95]"
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
 
               {/* Text Outline config */}
@@ -903,7 +1007,7 @@ export default function ThumbnailDesigner({
             </div>
           )}
 
-          {(selectedElement.type === 'icon' || selectedElement.type === 'arrow') && (
+          {(selectedElement.type === 'icon' || selectedElement.type === 'arrow' || selectedElement.type === 'svg') && (
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400">Fill Color</Label>
@@ -935,6 +1039,41 @@ export default function ThumbnailDesigner({
                   disabled={selectedElement.isLocked}
                 />
               </div>
+
+              {selectedElement.type === 'svg' && (
+                <>
+                  <div className="space-y-1 border-t border-slate-800 pt-3">
+                    <Label className="text-[10px] font-bold text-slate-400">Stroke Color</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={selectedElement.shapeStroke || '#000000'}
+                        onChange={(e) => updateElement(selectedElement.id, { shapeStroke: e.target.value })}
+                        disabled={selectedElement.isLocked}
+                        className="w-7 h-7 rounded border border-slate-800 cursor-pointer shrink-0"
+                      />
+                      <Input
+                        value={selectedElement.shapeStroke || ''}
+                        onChange={(e) => updateElement(selectedElement.id, { shapeStroke: e.target.value })}
+                        disabled={selectedElement.isLocked}
+                        className="bg-slate-950 border-slate-800 text-[10px] font-mono rounded-xl h-7"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold text-slate-400">Stroke Width ({selectedElement.shapeStrokeWidth || 0}px)</Label>
+                    <Slider
+                      min={0}
+                      max={10}
+                      step={1}
+                      value={[selectedElement.shapeStrokeWidth || 0]}
+                      onValueChange={([val]) => updateElement(selectedElement.id, { shapeStrokeWidth: val })}
+                      disabled={selectedElement.isLocked}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
 

@@ -13,9 +13,7 @@ describe('FontLoader Utility', () => {
     const originalDocument = global.document;
 
     // Temporarily delete window/document globals
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (global as any).window;
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (global as any).document;
 
     const res = FontLoader.loadFont('Montserrat');

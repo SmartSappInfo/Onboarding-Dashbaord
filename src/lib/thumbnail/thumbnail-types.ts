@@ -48,6 +48,8 @@ export interface CanvasElement {
   shapeStroke?: string;
   shapeStrokeWidth?: number;
   borderRadius?: number;
+  textEffect?: 'none' | 'neon' | '3d' | 'gradient' | 'metallic';
+  svgPath?: string;
 }
 
 export interface ThumbnailDesign {
