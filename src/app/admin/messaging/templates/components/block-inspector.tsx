@@ -63,6 +63,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     }, [variables]);
 
     const [showLinkPicker, setShowLinkPicker] = React.useState<boolean>(false);
+    const [showAudioLinkPicker, setShowAudioLinkPicker] = React.useState<boolean>(false);
+    const [showVideoLinkPicker, setShowVideoLinkPicker] = React.useState<boolean>(false);
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
         typography: true,
         spacing: false,
@@ -73,6 +75,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const titleInputRef = React.useRef<HTMLInputElement>(null);
     const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null);
     const linkInputRef = React.useRef<HTMLInputElement>(null);
+    const audioRedirectInputRef = React.useRef<HTMLInputElement>(null);
+    const videoRedirectInputRef = React.useRef<HTMLInputElement>(null);
     const dateInputRef = React.useRef<HTMLInputElement>(null);
     const timeInputRef = React.useRef<HTMLInputElement>(null);
     const locationInputRef = React.useRef<HTMLInputElement>(null);
