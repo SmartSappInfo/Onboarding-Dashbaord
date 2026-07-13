@@ -10,8 +10,8 @@ interface ThumbnailCanvasProps {
   backgroundColor: string;
   backgroundGradient?: {
     type: 'linear' | 'radial';
-    angle?: number;
     colors: string[];
+    angle?: number;
   };
   backgroundImage?: string;
   elements: CanvasElement[];
@@ -43,6 +43,9 @@ export default function ThumbnailCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  
+  // Track DOM element nodes for transient drag updates
+  const elementRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
   const [containerWidth, setContainerWidth] = useState(1280);
   const [isMounted, setIsMounted] = useState(false);
@@ -83,40 +86,70 @@ export default function ThumbnailCanvas({
     return { backgroundColor };
   };
 
-  const handleStartDrag = (e: React.MouseEvent, element: CanvasElement, type: 'move' | 'resize', handle?: string) => {
+  // Maps external image URLs to proxy API to prevent canvas tainting CORS issues
+  const getCORSFriendlyUrl = (url?: string): string | undefined => {
+    if (!url) return undefined;
+    if (
+      url.includes('firebasestorage.googleapis.com') || 
+      url.startsWith('data:') || 
+      url.startsWith('blob:') || 
+      url.startsWith('/')
+    ) {
+      return url;
+    }
+    return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  };
+
+  const handleStartDrag = (
+    e: React.MouseEvent | React.TouchEvent,
+    element: CanvasElement,
+    type: 'move' | 'resize',
+    handle?: string
+  ) => {
     e.stopPropagation();
     onSelectElement(element.id);
 
     if (!canvasRef.current) return;
+
+    // Support touch and mouse pointer coordinates
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
-    // Coordinates are out of 1280x720 absolute scale on the target canvas
     dragRef.current = {
       type,
       handle,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: clientX,
+      startY: clientY,
       elX: element.x,
       elY: element.y,
       elW: element.width,
       elH: element.height,
     };
 
-    const handleMouseMove = (ev: MouseEvent) => {
+    let latestX = element.x;
+    let latestY = element.y;
+    let latestW = element.width;
+    let latestH = element.height;
+
+    const handlePointerMove = (evX: number, evY: number) => {
       if (!dragRef.current) return;
       
-      // Calculate delta in raw pixels and scale by viewport coefficient
-      const deltaX = (ev.clientX - dragRef.current.startX) / scale;
-      const deltaY = (ev.clientY - dragRef.current.startY) / scale;
+      const deltaX = (evX - dragRef.current.startX) / scale;
+      const deltaY = (evY - dragRef.current.startY) / scale;
       
-      // Convert deltas to percentage values of 1280x720 canvas
       const dx = (deltaX / 1280) * 100;
       const dy = (deltaY / 720) * 100;
 
+      const node = elementRefs.current[element.id];
+
       if (dragRef.current.type === 'move') {
-        onUpdateElement(element.id, {
-          x: Math.max(0, Math.min(100 - dragRef.current.elW, dragRef.current.elX + dx)),
-          y: Math.max(0, Math.min(100 - dragRef.current.elH, dragRef.current.elY + dy)),
-        });
+        latestX = Math.max(0, Math.min(100 - dragRef.current.elW, dragRef.current.elX + dx));
+        latestY = Math.max(0, Math.min(100 - dragRef.current.elH, dragRef.current.elY + dy));
+        
+        if (node) {
+          node.style.left = `${latestX}%`;
+          node.style.top = `${latestY}%`;
+        }
       } else if (dragRef.current.type === 'resize' && dragRef.current.handle) {
         let newX = dragRef.current.elX;
         let newY = dragRef.current.elY;
@@ -142,23 +175,55 @@ export default function ThumbnailCanvas({
           }
         }
 
-        onUpdateElement(element.id, {
-          x: Math.max(0, Math.min(100, newX)),
-          y: Math.max(0, Math.min(100, newY)),
-          width: Math.max(2, Math.min(100, newW)),
-          height: Math.max(2, Math.min(100, newH)),
-        });
+        latestX = Math.max(0, Math.min(100, newX));
+        latestY = Math.max(0, Math.min(100, newY));
+        latestW = Math.max(2, Math.min(100, newW));
+        latestH = Math.max(2, Math.min(100, newH));
+
+        if (node) {
+          node.style.left = `${latestX}%`;
+          node.style.top = `${latestY}%`;
+          node.style.width = `${latestW}%`;
+          node.style.height = `${latestH}%`;
+        }
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = (ev: MouseEvent) => {
+      handlePointerMove(ev.clientX, ev.clientY);
+    };
+
+    const handleTouchMove = (ev: TouchEvent) => {
+      // Prevent screen pulling/refresh gestures during drag operations
+      if (ev.cancelable) {
+        ev.preventDefault();
+      }
+      if (ev.touches.length > 0) {
+        handlePointerMove(ev.touches[0].clientX, ev.touches[0].clientY);
+      }
+    };
+
+    const handlePointerUp = () => {
       dragRef.current = null;
+      
+      // Commit the transient styling coordinates back to the React state on release
+      onUpdateElement(element.id, {
+        x: latestX,
+        y: latestY,
+        width: latestW,
+        height: latestH,
+      });
+
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handlePointerUp);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
   };
 
   const getShadowCss = (shadow?: { color: string; blur: number; offsetX: number; offsetY: number }): string | undefined => {
@@ -197,6 +262,9 @@ export default function ThumbnailCanvas({
           return (
             <div
               key={el.id}
+              ref={(node) => {
+                elementRefs.current[el.id] = node;
+              }}
               style={{
                 position: 'absolute',
                 left: `${el.x}%`,
@@ -218,6 +286,7 @@ export default function ThumbnailCanvas({
                   isSelected && "ring-4 ring-emerald-500 ring-offset-4 ring-offset-slate-950"
                 )}
                 onMouseDown={(e) => handleStartDrag(e, el, 'move')}
+                onTouchStart={(e) => handleStartDrag(e, el, 'move')}
               >
                 {/* 1. Text Element */}
                 {el.type === 'text' && (
@@ -231,6 +300,7 @@ export default function ThumbnailCanvas({
                       color: el.fill || '#ffffff',
                       textAlign: el.textAlign || 'center',
                       WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth}px ${el.textStrokeColor || '#000000'}` : undefined,
+                      paintOrder: 'stroke fill', // Renders text outline behind characters for clean legibility
                       textShadow: shadowStyle,
                       backgroundColor: el.badgeColor || undefined,
                       opacity: el.badgeOpacity !== undefined ? el.badgeOpacity : 1,
@@ -252,10 +322,10 @@ export default function ThumbnailCanvas({
                     }}
                   >
                     {el.imageSrc ? (
-                      /* Use standard img with crossOrigin for html-to-image serialization integrity */
+                      /* Use standard img wrapped in CORS proxy check to avoid canvas tainting */
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={el.imageSrc}
+                        src={getCORSFriendlyUrl(el.imageSrc)}
                         alt="Canvas layer subject"
                         className="w-full h-full object-cover"
                         crossOrigin="anonymous"
@@ -319,11 +389,13 @@ export default function ThumbnailCanvas({
                           left: h.includes('w') ? '-10px' : 'calc(100% - 10px)',
                         }}
                         onMouseDown={(e) => handleStartDrag(e, el, 'resize', h)}
+                        onTouchStart={(e) => handleStartDrag(e, el, 'resize', h)}
                       />
                     ))}
                     <div
                       className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-full p-2 shadow-lg z-45 cursor-move pointer-events-auto hover:bg-slate-800"
                       onMouseDown={(e) => handleStartDrag(e, el, 'move')}
+                      onTouchStart={(e) => handleStartDrag(e, el, 'move')}
                     >
                       <Move className="w-4 h-4 text-emerald-500" />
                     </div>
