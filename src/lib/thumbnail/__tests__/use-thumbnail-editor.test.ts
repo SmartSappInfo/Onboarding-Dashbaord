@@ -72,4 +72,22 @@ describe('useThumbnailEditor Zustand Store', () => {
     expect(useThumbnailEditor.getState().design.elements.length).toBe(0);
     expect(useThumbnailEditor.getState().selectedId).toBeNull();
   });
+
+  test('limits the past history stack size to 50 edits', () => {
+    // Add 60 dummy edits
+    for (let i = 0; i < 60; i++) {
+      const el: CanvasElement = {
+        id: `el-${i}`,
+        type: 'rect',
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+        zIndex: i
+      };
+      useThumbnailEditor.getState().addElement(el);
+    }
+    const state = useThumbnailEditor.getState();
+    expect(state.history.past.length).toBeLessThanOrEqual(50);
+  });
 });

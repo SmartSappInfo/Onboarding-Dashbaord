@@ -83,7 +83,7 @@ export default function ThumbnailDesigner({
       const result = analyzeThumbnailCTR(design);
       setCtrScore(result.score);
       setCtrRecommendations(result.recommendations);
-    }, 150);
+    }, 250);
     return () => clearTimeout(timer);
   }, [design]);
 

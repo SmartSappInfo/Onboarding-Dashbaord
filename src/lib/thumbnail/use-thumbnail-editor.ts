@@ -69,7 +69,7 @@ export const useThumbnailEditor = create<EditorState>((set, get) => ({
       design: updated,
       selectedId: el.id,
       history: {
-        past: [...history.past, history.present],
+        past: [...history.past, history.present].slice(-50),
         present: updated,
         future: []
       }
@@ -88,7 +88,7 @@ export const useThumbnailEditor = create<EditorState>((set, get) => ({
       set({
         design: updated,
         history: {
-          past: [...history.past, history.present],
+          past: [...history.past, history.present].slice(-50),
           present: updated,
           future: []
         }
@@ -110,7 +110,7 @@ export const useThumbnailEditor = create<EditorState>((set, get) => ({
       design: updated,
       selectedId: selectedId === id ? null : selectedId,
       history: {
-        past: [...history.past, history.present],
+        past: [...history.past, history.present].slice(-50),
         present: updated,
         future: []
       }
