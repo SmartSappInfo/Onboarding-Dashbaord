@@ -41,8 +41,11 @@ import {
   Calendar,
   AlertTriangle,
   ArrowRight,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
+import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
+import { verifySingleContactAction } from '@/lib/automation-actions';
 import type { 
   WorkspaceEntity, 
   EntityContact, 
@@ -716,75 +719,136 @@ export default function LeadScoringCleanupPage() {
   const [isBulkHygieneArchiveOpen, setIsBulkHygieneArchiveOpen] = useState(false);
   const [isBulkHygieneDeleteOpen, setIsBulkHygieneDeleteOpen] = useState(false);
 
-  const hygieneLeads = useMemo(() => {
+  // Modal & verifier state for individual contacts
+  const [selectedCleanEmail, setSelectedCleanEmail] = useState('');
+  const [selectedCleanEntityId, setSelectedCleanEntityId] = useState('');
+  const [isCleanDialogOpen, setIsCleanDialogOpen] = useState(false);
+  const [verifyingContactId, setVerifyingContactId] = useState<string | null>(null);
+
+  interface FlatHygieneContact {
+    id: string;
+    entityId: string;
+    entityName: string;
+    contactName: string;
+    email: string;
+    phone: string;
+    isPrimary: boolean;
+    isSignatory: boolean;
+    emailStatus?: string;
+    emailVerificationScore?: number;
+    phoneStatus?: string;
+    phoneVerificationScore?: number;
+  }
+
+  const hygieneContacts = useMemo<FlatHygieneContact[]>(() => {
     if (!workspaceEntities) return [];
-    const now = Date.now();
-    const dayInMs = 24 * 60 * 60 * 1000;
-    
-    return workspaceEntities.filter(we => {
-      let matchesFilter = false;
-      const lastEngagedAt = we.lastEngagedAt ? new Date(we.lastEngagedAt).getTime() : 0;
-      const daysInactive = lastEngagedAt ? (now - lastEngagedAt) / dayInMs : Infinity;
-      
-      const lastEmailOpenedAt = we.entityContacts.find(c => c.isPrimary)?.emailStatus === 'valid'; // simple mock
-      
-      const hasBounced = we.entityContacts.some(c => c.emailStatus === 'bounced');
-      const hasUnsubscribed = we.entityContacts.some(c => c.emailStatus === 'unsubscribed');
-      const hasNoRole = we.entityContacts.some(c => c.isPrimary && !c.typeLabel && !c.typeKey);
-      const hasNoPhone = !we.primaryPhone;
-      const hasNoEmail = !we.primaryEmail;
-      const hasUnverifiedEmail = we.entityContacts.some(c => c.isPrimary && c.emailVerificationScore === undefined);
-      
-      if (hygieneFilter === 'all') {
-        matchesFilter = hasBounced || hasUnsubscribed || daysInactive > 30 || hasNoRole || hasNoPhone || hasNoEmail || hasUnverifiedEmail;
-      } else if (hygieneFilter === 'bounced') {
-        matchesFilter = hasBounced;
-      } else if (hygieneFilter === 'unsubscribed') {
-        matchesFilter = hasUnsubscribed;
-      } else if (hygieneFilter === 'inactive_30') {
-        matchesFilter = daysInactive > 30;
-      } else if (hygieneFilter === 'no_role') {
-        matchesFilter = hasNoRole;
-      } else if (hygieneFilter === 'no_phone') {
-        matchesFilter = hasNoPhone;
-      } else if (hygieneFilter === 'no_email') {
-        matchesFilter = hasNoEmail;
-      } else if (hygieneFilter === 'unverified_email') {
-        matchesFilter = hasUnverifiedEmail;
-      }
-      
-      if (!matchesFilter) return false;
-      
-      if (hygieneSearchTerm) {
-        const term = hygieneSearchTerm.toLowerCase();
-        const matchesSearch = (we.displayName || '').toLowerCase().includes(term) || (we.primaryEmail || '').toLowerCase().includes(term);
-        if (!matchesSearch) return false;
-      }
-      
-      return true;
+    const list: FlatHygieneContact[] = [];
+
+    workspaceEntities.forEach(we => {
+      const contacts = we.entityContacts || [];
+      contacts.forEach(c => {
+        const contactName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.name || 'Unnamed Contact';
+        const email = c.email || '';
+        const phone = c.phone || '';
+        
+        let matchesFilter = false;
+        const isEmailBounced = c.emailStatus === 'bounced';
+        const isEmailLowScore = typeof c.emailVerificationScore === 'number' && c.emailVerificationScore < 40;
+        const isPhoneBounced = c.phoneStatus === 'failed';
+        const isPhoneLowScore = typeof c.phoneVerificationScore === 'number' && c.phoneVerificationScore < 40;
+        const isUnverified = c.emailVerificationScore === undefined || c.emailVerificationScore === null;
+
+        if (hygieneFilter === 'all') {
+          matchesFilter = isEmailBounced || isEmailLowScore || isPhoneBounced || isPhoneLowScore || isUnverified;
+        } else if (hygieneFilter === 'bounced') {
+          matchesFilter = isEmailBounced || isPhoneBounced;
+        } else if (hygieneFilter === 'low_score') {
+          matchesFilter = isEmailLowScore || isPhoneLowScore;
+        } else if (hygieneFilter === 'unverified') {
+          matchesFilter = isUnverified;
+        }
+
+        if (!matchesFilter) return;
+
+        if (hygieneSearchTerm) {
+          const term = hygieneSearchTerm.toLowerCase();
+          const matchesSearch =
+            contactName.toLowerCase().includes(term) ||
+            email.toLowerCase().includes(term) ||
+            phone.toLowerCase().includes(term) ||
+            (we.displayName || '').toLowerCase().includes(term);
+          if (!matchesSearch) return;
+        }
+
+        list.push({
+          id: `${we.id}-${email || phone || Math.random()}`,
+          entityId: we.id,
+          entityName: we.displayName || 'Unnamed Entity',
+          contactName,
+          email,
+          phone,
+          isPrimary: !!c.isPrimary,
+          isSignatory: !!c.isSignatory,
+          emailStatus: c.emailStatus,
+          emailVerificationScore: c.emailVerificationScore,
+          phoneStatus: c.phoneStatus,
+          phoneVerificationScore: c.phoneVerificationScore,
+        });
+      });
     });
+
+    return list;
   }, [workspaceEntities, hygieneFilter, hygieneSearchTerm]);
 
-  const hygieneTotalRecords = hygieneLeads.length;
+  const handleManualVerify = async (entityId: string, recipient: string, type: 'email' | 'phone', contactId: string) => {
+    setVerifyingContactId(contactId);
+    try {
+      const res = await verifySingleContactAction(entityId, recipient, type);
+      if (res.success) {
+        toast({
+          title: 'Verification Complete',
+          description: `Result: ${res.result?.valid ? 'Valid' : 'Invalid'} (Score: ${res.result?.score})`,
+        });
+      } else {
+        toast({
+          title: 'Verification Failed',
+          description: res.error || 'Check failed',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        title: 'Error',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setVerifyingContactId(null);
+    }
+  };
+
+  const hygieneTotalRecords = hygieneContacts.length;
   const hygieneTotalPages = Math.max(1, Math.ceil(hygieneTotalRecords / hygienePageSize));
   
-  const paginatedHygieneLeads = useMemo(() => {
+  const paginatedHygieneLeads = useMemo<FlatHygieneContact[]>(() => {
     const start = (hygieneCurrentPage - 1) * hygienePageSize;
-    return hygieneLeads.slice(start, start + hygienePageSize);
-  }, [hygieneLeads, hygieneCurrentPage, hygienePageSize]);
+    return hygieneContacts.slice(start, start + hygienePageSize);
+  }, [hygieneContacts, hygieneCurrentPage, hygienePageSize]);
 
   React.useEffect(() => {
     setHygieneCurrentPage(1);
   }, [hygieneSearchTerm, hygieneFilter, hygienePageSize]);
 
   const handleExportHygieneCSV = () => {
-    if (hygieneLeads.length === 0) return;
-    const headers = ['Entity Name', 'Primary Email', 'Issues', 'Lead Score'];
-    const csvRows = hygieneLeads.map(lead => {
-      const hasBounced = lead.entityContacts.some(c => c.emailStatus === 'bounced');
-      const hasUnsubscribed = lead.entityContacts.some(c => c.emailStatus === 'unsubscribed');
-      const issues = [hasBounced ? 'Bounced' : '', hasUnsubscribed ? 'Unsubscribed' : ''].filter(Boolean).join(' & ');
-      return `"${lead.displayName}","${lead.primaryEmail || ''}","${issues}","${lead.leadScore || 0}"`;
+    if (hygieneContacts.length === 0) return;
+    const headers = ['Contact Name', 'Email', 'Phone', 'Company Name', 'Roles', 'Email Score', 'Phone Score', 'Issues'];
+    const csvRows = hygieneContacts.map(c => {
+      const roles = [c.isPrimary ? 'Primary' : '', c.isSignatory ? 'Signatory' : ''].filter(Boolean).join(' & ');
+      const isEmailBounced = c.emailStatus === 'bounced';
+      const isPhoneBounced = c.phoneStatus === 'failed';
+      const issues = [isEmailBounced ? 'Bounced Email' : '', isPhoneBounced ? 'Bounced Phone' : ''].filter(Boolean).join(' & ');
+      return `"${c.contactName}","${c.email}","${c.phone}","${c.entityName}","${roles}","${c.emailVerificationScore ?? ''}","${c.phoneVerificationScore ?? ''}","${issues}"`;
     });
     
     const csvContent = [headers.join(','), ...csvRows].join('\n');
@@ -798,19 +862,22 @@ export default function LeadScoringCleanupPage() {
   };
 
   const handleBulkArchiveHygiene = async () => {
-    if (!firestore || hygieneLeads.length === 0) return;
+    if (!firestore || hygieneContacts.length === 0) return;
     setIsBulkHygieneArchiveOpen(false);
     try {
       const batch = writeBatch(firestore);
       const timestamp = new Date().toISOString();
-      hygieneLeads.forEach(lead => {
-        batch.update(doc(firestore, 'workspace_entities', lead.id), { status: 'archived', updatedAt: timestamp });
-        if (lead.entityId) {
-          batch.update(doc(firestore, 'entities', lead.entityId), { status: 'archived', updatedAt: timestamp });
-        }
+      const processedEntityIds = new Set<string>();
+      
+      hygieneContacts.forEach(c => {
+        if (processedEntityIds.has(c.entityId)) return;
+        processedEntityIds.add(c.entityId);
+        
+        batch.update(doc(firestore, 'workspace_entities', c.entityId), { status: 'archived', updatedAt: timestamp });
+        batch.update(doc(firestore, 'entities', c.entityId), { status: 'archived', updatedAt: timestamp });
       });
       await batch.commit();
-      toast({ title: 'Success', description: `Archived ${hygieneLeads.length} records.` });
+      toast({ title: 'Success', description: `Archived ${processedEntityIds.size} records.` });
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Archive failed';
       toast({ variant: 'destructive', title: 'Error', description: errorMsg });
@@ -818,15 +885,21 @@ export default function LeadScoringCleanupPage() {
   };
 
   const handleBulkDeleteHygiene = async () => {
-    if (!firestore || hygieneLeads.length === 0) return;
+    if (!firestore || hygieneContacts.length === 0) return;
     setIsBulkHygieneDeleteOpen(false);
     try {
       const batch = writeBatch(firestore);
-      hygieneLeads.forEach(lead => {
-        batch.delete(doc(firestore, 'workspace_entities', lead.id));
+      const processedEntityIds = new Set<string>();
+      
+      hygieneContacts.forEach(c => {
+        if (processedEntityIds.has(c.entityId)) return;
+        processedEntityIds.add(c.entityId);
+        
+        batch.delete(doc(firestore, 'workspace_entities', c.entityId));
+        batch.delete(doc(firestore, 'entities', c.entityId));
       });
       await batch.commit();
-      toast({ title: 'Success', description: `Permanently deleted ${hygieneLeads.length} records.` });
+      toast({ title: 'Success', description: `Permanently deleted ${processedEntityIds.size} records.` });
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Delete failed';
       toast({ variant: 'destructive', title: 'Error', description: errorMsg });
@@ -1263,13 +1336,9 @@ export default function LeadScoringCleanupPage() {
                   </SelectTrigger>
                   <SelectContent className="rounded-lg">
                     <SelectItem value="all" className="text-xs">All Issues</SelectItem>
-                    <SelectItem value="bounced" className="text-xs text-rose-500">Bounced Emails</SelectItem>
-                    <SelectItem value="unsubscribed" className="text-xs text-amber-500">Unsubscribed Contacts</SelectItem>
-                    <SelectItem value="inactive_30" className="text-xs">Inactive &gt; 30 Days</SelectItem>
-                    <SelectItem value="no_role" className="text-xs">No Contact Role</SelectItem>
-                    <SelectItem value="no_phone" className="text-xs">No Phone Number</SelectItem>
-                    <SelectItem value="no_email" className="text-xs">No Email Address</SelectItem>
-                    <SelectItem value="unverified_email" className="text-xs">Unverified Email Address</SelectItem>
+                    <SelectItem value="bounced" className="text-xs text-rose-500">Bounced/Failed Deliveries</SelectItem>
+                    <SelectItem value="low_score" className="text-xs text-amber-500">Low Score (&lt; 40)</SelectItem>
+                    <SelectItem value="unverified" className="text-xs text-blue-400">Unverified Contacts</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -1288,78 +1357,271 @@ export default function LeadScoringCleanupPage() {
                 <Button variant="outline" size="sm" onClick={handleExportHygieneCSV} className="h-9 rounded-lg font-bold text-xs active:scale-[0.97]">
                   <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneArchiveOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-500 hover:bg-rose-500/5 active:scale-[0.97]" disabled={hygieneLeads.length === 0}>
+                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneArchiveOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-500 hover:bg-rose-500/5 active:scale-[0.97]" disabled={hygieneContacts.length === 0}>
                   <Archive className="h-3.5 w-3.5 mr-1" /> Archive All
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneDeleteOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-600 hover:bg-rose-600/5 active:scale-[0.97]" disabled={hygieneLeads.length === 0}>
+                <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneDeleteOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-600 hover:bg-rose-600/5 active:scale-[0.97]" disabled={hygieneContacts.length === 0}>
                   <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete All
                 </Button>
               </div>
             </div>
 
             <Card className="rounded-2xl border-border/40 bg-card/35 backdrop-blur-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/15">
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Company Name</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Primary Email</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Score</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider">Issues Identified</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-xs font-semibold text-muted-foreground">
-                        Aggregating hygiene metrics...
-                      </TableCell>
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/15">
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Contact Name</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Email / Phone</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider">Company Name</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-center">Score / Status</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-right">Actions</TableHead>
                     </TableRow>
-                  ) : hygieneLeads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-xs font-semibold text-emerald-500">
-                        <CheckCircle2 className="h-5 w-5 mx-auto mb-2 text-emerald-500 animate-bounce" />
-                        Lead directory is clean! No hygiene alerts detected.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedHygieneLeads.map((lead) => {
-                      const score = lead.leadScore || 0;
-                      
-                      const hasBounced = lead.entityContacts.some(c => c.emailStatus === 'bounced');
-                      const hasUnsubscribed = lead.entityContacts.some(c => c.emailStatus === 'unsubscribed');
-                      const hasNoRole = lead.entityContacts.some(c => c.isPrimary && !c.typeLabel && !c.typeKey);
-                      const hasNoPhone = !lead.primaryPhone;
-                      const hasNoEmail = !lead.primaryEmail;
-                      
-                      const issues = [
-                        hasBounced ? 'Bounced Email' : '',
-                        hasUnsubscribed ? 'Unsubscribed' : '',
-                        hasNoRole ? 'Missing Job Title' : '',
-                        hasNoPhone ? 'No Phone' : '',
-                        hasNoEmail ? 'No Email' : ''
-                      ].filter(Boolean);
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-xs font-semibold text-muted-foreground">
+                          Aggregating hygiene metrics...
+                        </TableCell>
+                      </TableRow>
+                    ) : hygieneContacts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-10 text-xs font-semibold text-emerald-500">
+                          <CheckCircle2 className="h-5 w-5 mx-auto mb-2 text-emerald-500 animate-bounce" />
+                          Lead directory is clean! No hygiene alerts detected.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedHygieneLeads.map((contact) => {
+                        const isEmailBounced = contact.emailStatus === 'bounced';
+                        const isPhoneBounced = contact.phoneStatus === 'failed';
+                        const isUnverified = contact.emailVerificationScore === undefined;
 
-                      return (
-                        <TableRow key={lead.id} className="hover:bg-muted/5 border-b border-border/30 last:border-none">
-                          <TableCell className="font-bold text-xs text-foreground py-3.5">{lead.displayName}</TableCell>
-                          <TableCell className="text-xs font-medium text-muted-foreground">{lead.primaryEmail || 'No Email'}</TableCell>
-                          <TableCell className="text-xs font-black text-center text-foreground font-mono">{score}</TableCell>
-                          <TableCell className="py-3.5">
-                            <div className="flex flex-wrap gap-1">
-                              {issues.map((iss, i) => (
-                                <Badge key={i} variant="outline" className="text-[8px] font-bold uppercase rounded-lg border-rose-500/20 text-rose-500 bg-rose-500/5">
-                                  {iss}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                        return (
+                          <TableRow key={contact.id} className="hover:bg-muted/5 border-b border-border/30 last:border-none">
+                            <TableCell className="py-3.5 font-bold text-xs text-slate-200">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-slate-100">{contact.contactName}</span>
+                                <div className="flex gap-1.5">
+                                  {contact.isPrimary && (
+                                    <Badge className="bg-blue-500/10 text-blue-400 border-none text-[9px] font-semibold px-1 py-0.5 rounded">Primary</Badge>
+                                  )}
+                                  {contact.isSignatory && (
+                                    <Badge className="bg-indigo-500/10 text-indigo-400 border-none text-[9px] font-semibold px-1 py-0.5 rounded">Signatory</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-slate-400">
+                              <div className="flex flex-col gap-0.5">
+                                {contact.email && <span className="break-all">{contact.email}</span>}
+                                {contact.phone && <span className="text-slate-500">{contact.phone}</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-slate-400">{contact.entityName}</TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center gap-1.5">
+                                {contact.email && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-mono ${isEmailBounced ? 'border-red-500/20 text-red-400 bg-red-500/5' : 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5'}`}>
+                                      Email: {contact.emailVerificationScore ?? 'N/A'}
+                                    </Badge>
+                                  </div>
+                                )}
+                                {contact.phone && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 font-mono ${isPhoneBounced ? 'border-red-500/20 text-red-400 bg-red-500/5' : 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5'}`}>
+                                      Phone: {contact.phoneVerificationScore ?? 'N/A'}
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right py-3.5">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleManualVerify(contact.entityId, contact.email || contact.phone, contact.email ? 'email' : 'phone', contact.id)}
+                                  disabled={verifyingContactId === contact.id}
+                                  className="h-8 w-8 p-0 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                >
+                                  {verifyingContactId === contact.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+
+                                {isEmailBounced && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedCleanEmail(contact.email);
+                                      setSelectedCleanEntityId(contact.entityId);
+                                      setIsCleanDialogOpen(true);
+                                    }}
+                                    className="h-8 w-8 p-0 rounded-lg hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300"
+                                  >
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this contact?')) {
+                                      const res = await deleteContactAction(contact.entityId, contact.email);
+                                      if (res.success) {
+                                        toast({ title: 'Success', description: 'Contact deleted.' });
+                                      }
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="block md:hidden p-4 space-y-4">
+                {isLoading ? (
+                  <div className="text-center py-10 text-xs font-semibold text-muted-foreground">
+                    Aggregating hygiene metrics...
+                  </div>
+                ) : hygieneContacts.length === 0 ? (
+                  <div className="text-center py-10 text-xs font-semibold text-emerald-500">
+                    <CheckCircle2 className="h-5 w-5 mx-auto mb-2 text-emerald-500 animate-bounce" />
+                    Lead directory is clean! No hygiene alerts detected.
+                  </div>
+                ) : (
+                  paginatedHygieneLeads.map((contact) => {
+                    const isEmailBounced = contact.emailStatus === 'bounced';
+                    const isPhoneBounced = contact.phoneStatus === 'failed';
+
+                    return (
+                      <div key={contact.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-sm text-slate-100">{contact.contactName}</h4>
+                            <span className="text-xs text-slate-500 block">{contact.entityName}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {contact.isPrimary && (
+                              <Badge className="bg-blue-500/10 text-blue-400 border-none text-[8px] font-bold px-1.5 py-0.5 rounded">Primary</Badge>
+                            )}
+                            {contact.isSignatory && (
+                              <Badge className="bg-indigo-500/10 text-indigo-400 border-none text-[8px] font-bold px-1.5 py-0.5 rounded">Signatory</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 text-xs text-slate-400 break-all">
+                          {contact.email && <p className="flex items-center gap-1.5">📧 {contact.email}</p>}
+                          {contact.phone && <p className="flex items-center gap-1.5">📱 {contact.phone}</p>}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 pt-1.5">
+                          {contact.email && (
+                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0.5 font-mono ${isEmailBounced ? 'border-red-500/20 text-red-400 bg-red-500/5' : 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5'}`}>
+                              Email Score: {contact.emailVerificationScore ?? 'N/A'}
+                            </Badge>
+                          )}
+                          {contact.phone && (
+                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0.5 font-mono ${isPhoneBounced ? 'border-red-500/20 text-red-400 bg-red-500/5' : 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5'}`}>
+                              Phone Score: {contact.phoneVerificationScore ?? 'N/A'}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/60">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleManualVerify(contact.entityId, contact.email || contact.phone, contact.email ? 'email' : 'phone', contact.id)}
+                            disabled={verifyingContactId === contact.id}
+                            className="h-8 text-xs px-2.5 rounded-lg border-slate-800 text-slate-400 hover:text-slate-200"
+                          >
+                            {verifyingContactId === contact.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                            )}
+                            Verify
+                          </Button>
+
+                          {isEmailBounced && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCleanEmail(contact.email);
+                                setSelectedCleanEntityId(contact.entityId);
+                                setIsCleanDialogOpen(true);
+                              }}
+                              className="h-8 text-xs px-2.5 rounded-lg border-slate-800 text-indigo-400 hover:text-indigo-300 bg-indigo-500/5"
+                            >
+                              <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
+                              Clean
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to delete this contact?')) {
+                                const res = await deleteContactAction(contact.entityId, contact.email);
+                                if (res.success) {
+                                  toast({ title: 'Success', description: 'Contact deleted.' });
+                                }
+                              }
+                            }}
+                            className="h-8 text-xs px-2.5 rounded-lg border-slate-800 text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </Card>
+
+            {hygieneTotalRecords > hygienePageSize && (
+              <BentoPagination
+                currentPage={hygieneCurrentPage}
+                totalPages={hygieneTotalPages}
+                totalRecords={hygieneTotalRecords}
+                pageSize={hygienePageSize}
+                onPageChange={setHygieneCurrentPage}
+                onPageSizeChange={setHygienePageSize}
+              />
+            )}
+
+            <CleanContactEmailDialog
+              email={selectedCleanEmail}
+              entityId={selectedCleanEntityId}
+              isOpen={isCleanDialogOpen}
+              onClose={() => setIsCleanDialogOpen(false)}
+              onSuccess={() => {
+                // local re-query triggers via useCollection reactive sub
+              }}
+            />
           </TabsContent>
 
           {/* Settings Tab */}
