@@ -126,35 +126,38 @@ const generateThumbnailFlow = ai.defineFlow(
     const generatorAi = resolvedModel.customAi || ai;
 
     // Step 1: Run Topic Analyst + Copywriter
+    const topicRendered = await topicAnalystPrompt.render({
+      prompt: input.prompt,
+      videoContext,
+    });
     const topicOutput = await generatorAi.generate({
       model: resolvedModel.modelString,
-      prompt: await topicAnalystPrompt.render({
-        prompt: input.prompt,
-        videoContext,
-      }),
+      ...topicRendered,
       output: { schema: TopicAnalysisSchema },
     });
     const strategy = topicOutput.output;
     if (!strategy) throw new Error("Topic Analyst failed to build CTR strategy.");
 
     // Step 2: Run Color & Typography Consultant
+    const designRendered = await designSchemePrompt.render(strategy);
     const designOutput = await generatorAi.generate({
       model: resolvedModel.modelString,
-      prompt: await designSchemePrompt.render(strategy),
+      ...designRendered,
       output: { schema: DesignSchemeSchema },
     });
     const designScheme = designOutput.output;
     if (!designScheme) throw new Error("Design Consultant failed to output styles.");
 
     // Step 3: Run Layout Planner & CTR Reviewer
+    const plannerRendered = await layoutPlannerPrompt.render({
+      strategy,
+      design: designScheme,
+      subjectImageUrls: input.subjectImageUrls,
+      templateId: input.templateId,
+    });
     const plannerOutput = await generatorAi.generate({
       model: resolvedModel.modelString,
-      prompt: await layoutPlannerPrompt.render({
-        strategy,
-        design: designScheme,
-        subjectImageUrls: input.subjectImageUrls,
-        templateId: input.templateId,
-      }),
+      ...plannerRendered,
       output: { schema: GenerateThumbnailOutputSchema },
     });
 

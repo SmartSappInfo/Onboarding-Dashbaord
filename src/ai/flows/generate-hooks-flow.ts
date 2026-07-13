@@ -49,11 +49,13 @@ export async function generateHookAlternatives(input: GenerateHooksInput): Promi
 
   const generatorAi = resolvedModel.customAi || ai;
 
+  const rendered = await copywriterHookPrompt.render({
+    topic: input.topic,
+  });
+
   const response = await generatorAi.generate({
     model: resolvedModel.modelString,
-    prompt: await copywriterHookPrompt.render({
-      topic: input.topic,
-    }),
+    ...rendered,
     output: { schema: GenerateHooksOutputSchema },
   });
 
