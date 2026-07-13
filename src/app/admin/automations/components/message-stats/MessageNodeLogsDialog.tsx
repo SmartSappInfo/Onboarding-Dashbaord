@@ -34,8 +34,10 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles
 } from 'lucide-react';
+import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
 import { format } from 'date-fns';
 import { getMessageNodeLogsAction } from '@/lib/automation-actions';
 import type { MessageLog } from '@/lib/types';
@@ -151,6 +153,9 @@ export function MessageNodeLogsDialog({
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const [search, setSearch] = React.useState('');
   const [isExporting, setIsExporting] = React.useState(false);
+  const [selectedCleanEmail, setSelectedCleanEmail] = React.useState('');
+  const [selectedCleanEntityId, setSelectedCleanEntityId] = React.useState('');
+  const [isCleanDialogOpen, setIsCleanDialogOpen] = React.useState(false);
 
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
@@ -973,23 +978,40 @@ export function MessageNodeLogsDialog({
                         {statusBadge}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entityId && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-md hover:bg-primary/5 text-muted-foreground hover:text-primary"
-                            asChild
-                          >
-                            <a
-                              href={`/admin/entities/${entityId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="View Contact Profile"
+                        <div className="flex items-center justify-end gap-1.5">
+                          {entityId && channel === 'email' && hasFailed && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-md hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300"
+                              onClick={() => {
+                                setSelectedCleanEmail(log.recipient);
+                                setSelectedCleanEntityId(entityId);
+                                setIsCleanDialogOpen(true);
+                              }}
+                              title="Clean Bounced Email"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          </Button>
-                        )}
+                              <Sparkles className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {entityId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-md hover:bg-primary/5 text-muted-foreground hover:text-primary"
+                              asChild
+                            >
+                              <a
+                                href={`/admin/entities/${entityId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="View Contact Profile"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -1016,6 +1038,24 @@ export function MessageNodeLogsDialog({
             </div>
           )}
         </div>
+
+        <CleanContactEmailDialog
+          email={selectedCleanEmail}
+          entityId={selectedCleanEntityId}
+          isOpen={isCleanDialogOpen}
+          onClose={() => setIsCleanDialogOpen(false)}
+          onSuccess={() => {
+            // Re-load logs to update states
+            void (async () => {
+              try {
+                const data = await getMessageNodeLogsAction(automationId, nodeId);
+                setLogs(data);
+              } catch (err) {
+                console.error(err);
+              }
+            })();
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
