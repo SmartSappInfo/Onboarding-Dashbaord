@@ -173,3 +173,301 @@ export async function importAutomationAction(
   const { importAutomationAction: executeImport } = await import('./automations/portability');
   return executeImport(envelope, mappings, workspaceId, userId);
 }
+
+// ── Contact Hygiene & Deletion Server Actions ──────────────────────────────────
+
+interface ContactItem {
+  email?: string;
+  phone?: string;
+  isPrimary?: boolean;
+  isSignatory?: boolean;
+  emailStatus?: string;
+  emailVerificationScore?: number;
+  phoneStatus?: string;
+  phoneVerificationScore?: number;
+}
+
+export async function cleanContactEmailAction(
+  currentEmail: string,
+  mode: 'correct' | 'archive' | 'delete',
+  replacementValue?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { adminDb } = await import('./firebase-admin');
+    const { removeSuppression } = await import('./suppression-service');
+
+    const cleanEmail = currentEmail.toLowerCase().trim();
+    const cleanRepl = replacementValue?.toLowerCase().trim();
+
+    if (mode === 'correct') {
+      try {
+        await removeSuppression(cleanEmail);
+      } catch (err) {
+        console.warn(`[CleanContact] Suppression removal failed for ${cleanEmail}:`, err);
+      }
+    }
+
+    // Update entities in 'entities'
+    const entitiesSnap = await adminDb.collection('entities').get();
+    for (const doc of entitiesSnap.docs) {
+      const data = doc.data();
+      const entityContacts = (data.entityContacts || []) as ContactItem[];
+      const hasContact = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail);
+      if (!hasContact) continue;
+
+      let updatedContacts: ContactItem[] = [...entityContacts];
+
+      if (mode === 'correct' && cleanRepl) {
+        updatedContacts = entityContacts.map(c => {
+          if (c.email?.toLowerCase().trim() === cleanEmail) {
+            return {
+              ...c,
+              email: cleanRepl,
+              emailStatus: 'valid',
+              emailVerificationScore: 100,
+            };
+          }
+          return c;
+        });
+      } else if (mode === 'archive') {
+        updatedContacts = entityContacts.map(c => {
+          if (c.email?.toLowerCase().trim() === cleanEmail) {
+            return {
+              ...c,
+              emailStatus: 'archived',
+            };
+          }
+          return c;
+        });
+      } else if (mode === 'delete') {
+        updatedContacts = entityContacts.filter(c => c.email?.toLowerCase().trim() !== cleanEmail);
+        const wasPrimaryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isPrimary);
+        const wasSignatoryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isSignatory);
+        if (updatedContacts.length > 0) {
+          if (wasPrimaryDeleted) {
+            updatedContacts[0].isPrimary = true;
+          }
+          if (wasSignatoryDeleted) {
+            updatedContacts[0].isSignatory = true;
+          }
+        }
+      }
+
+      if (updatedContacts.length === 0) {
+        await doc.ref.delete();
+      } else {
+        await doc.ref.update({ entityContacts: updatedContacts });
+      }
+    }
+
+    // Sync to workspace_entities
+    const wsEntitiesSnap = await adminDb.collection('workspace_entities').get();
+    for (const doc of wsEntitiesSnap.docs) {
+      const data = doc.data();
+      const entityContacts = (data.entityContacts || []) as ContactItem[];
+      const hasContact = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail);
+      if (!hasContact) continue;
+
+      let updatedContacts: ContactItem[] = [...entityContacts];
+
+      if (mode === 'correct' && cleanRepl) {
+        updatedContacts = entityContacts.map(c => {
+          if (c.email?.toLowerCase().trim() === cleanEmail) {
+            return {
+              ...c,
+              email: cleanRepl,
+              emailStatus: 'valid',
+              emailVerificationScore: 100,
+            };
+          }
+          return c;
+        });
+      } else if (mode === 'archive') {
+        updatedContacts = entityContacts.map(c => {
+          if (c.email?.toLowerCase().trim() === cleanEmail) {
+            return {
+              ...c,
+              emailStatus: 'archived',
+            };
+          }
+          return c;
+        });
+      } else if (mode === 'delete') {
+        updatedContacts = entityContacts.filter(c => c.email?.toLowerCase().trim() !== cleanEmail);
+        const wasPrimaryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isPrimary);
+        const wasSignatoryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isSignatory);
+        if (updatedContacts.length > 0) {
+          if (wasPrimaryDeleted) {
+            updatedContacts[0].isPrimary = true;
+          }
+          if (wasSignatoryDeleted) {
+            updatedContacts[0].isSignatory = true;
+          }
+        }
+      }
+
+      if (updatedContacts.length === 0) {
+        await doc.ref.delete();
+      } else {
+        await doc.ref.update({ entityContacts: updatedContacts });
+      }
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[cleanContactEmailAction] Error:', err);
+    return { success: false, error: errorMsg };
+  }
+}
+
+export async function deleteContactAction(
+  entityId: string,
+  email: string
+): Promise<{ success: boolean; deletedEntity: boolean; error?: string }> {
+  try {
+    const { adminDb } = await import('./firebase-admin');
+
+    const cleanEmail = email.toLowerCase().trim();
+    let deletedEntity = false;
+
+    await adminDb.runTransaction(async (transaction) => {
+      const entityRef = adminDb.collection('entities').doc(entityId);
+      const entityDoc = await transaction.get(entityRef);
+
+      if (!entityDoc.exists) {
+        throw new Error(`Entity ${entityId} not found`);
+      }
+
+      const entityContacts = (entityDoc.data()?.entityContacts || []) as ContactItem[];
+      const updatedContacts = entityContacts.filter(c => c.email?.toLowerCase().trim() !== cleanEmail);
+
+      const wasPrimaryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isPrimary);
+      const wasSignatoryDeleted = entityContacts.some(c => c.email?.toLowerCase().trim() === cleanEmail && c.isSignatory);
+
+      if (updatedContacts.length > 0) {
+        if (wasPrimaryDeleted) {
+          updatedContacts[0].isPrimary = true;
+        }
+        if (wasSignatoryDeleted) {
+          updatedContacts[0].isSignatory = true;
+        }
+        transaction.update(entityRef, { entityContacts: updatedContacts });
+      } else {
+        transaction.delete(entityRef);
+        deletedEntity = true;
+      }
+
+      // Sync workspace_entities
+      const wsRef = adminDb.collection('workspace_entities').doc(entityId);
+      const wsDoc = await transaction.get(wsRef);
+      if (wsDoc.exists) {
+        if (deletedEntity) {
+          transaction.delete(wsRef);
+        } else {
+          transaction.update(wsRef, { entityContacts: updatedContacts });
+        }
+      }
+    });
+
+    return { success: true, deletedEntity };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[deleteContactAction] Error:', err);
+    return { success: false, deletedEntity: false, error: errorMsg };
+  }
+}
+
+export async function verifySingleContactAction(
+  entityId: string,
+  recipient: string,
+  type: 'email' | 'phone'
+): Promise<{ success: boolean; result?: { valid: boolean; score: number; status: string }; error?: string }> {
+  try {
+    const { adminDb } = await import('./firebase-admin');
+    const cleanRecipient = recipient.toLowerCase().trim();
+
+    let valid = false;
+    let score = 0;
+    let status = 'invalid';
+
+    if (type === 'email') {
+      const { EmailVerificationEngine } = await import('./email-verifier');
+      const engine = new EmailVerificationEngine();
+      const res = await engine.verify(cleanRecipient, { forceRefresh: true });
+      valid = res.valid;
+      score = res.score;
+      status = res.status;
+    } else {
+      const { PhoneVerificationEngine } = await import('./phone-verifier');
+      const engine = new PhoneVerificationEngine();
+      const res = await engine.verify(cleanRecipient, undefined, { forceRefresh: true });
+      valid = res.valid;
+      score = res.score;
+      status = res.status;
+    }
+
+    const verificationResult = { valid, score, status };
+
+    // Update entities
+    const entityRef = adminDb.collection('entities').doc(entityId);
+    const entityDoc = await entityRef.get();
+    if (entityDoc.exists) {
+      const entityContacts = (entityDoc.data()?.entityContacts || []) as ContactItem[];
+      const updatedContacts = entityContacts.map(c => {
+        const contactVal = (type === 'email' ? c.email : c.phone)?.toLowerCase().trim();
+        if (contactVal === cleanRecipient) {
+          if (type === 'email') {
+            return {
+              ...c,
+              emailStatus: verificationResult.valid ? 'valid' : 'invalid',
+              emailVerificationScore: verificationResult.score,
+            };
+          } else {
+            return {
+              ...c,
+              phoneStatus: verificationResult.valid ? 'valid' : 'invalid',
+              phoneVerificationScore: verificationResult.score,
+            };
+          }
+        }
+        return c;
+      });
+      await entityRef.update({ entityContacts: updatedContacts });
+    }
+
+    // Sync workspace_entities
+    const wsRef = adminDb.collection('workspace_entities').doc(entityId);
+    const wsDoc = await wsRef.get();
+    if (wsDoc.exists) {
+      const entityContacts = (wsDoc.data()?.entityContacts || []) as ContactItem[];
+      const updatedContacts = entityContacts.map(c => {
+        const contactVal = (type === 'email' ? c.email : c.phone)?.toLowerCase().trim();
+        if (contactVal === cleanRecipient) {
+          if (type === 'email') {
+            return {
+              ...c,
+              emailStatus: verificationResult.valid ? 'valid' : 'invalid',
+              emailVerificationScore: verificationResult.score,
+            };
+          } else {
+            return {
+              ...c,
+              phoneStatus: verificationResult.valid ? 'valid' : 'invalid',
+              phoneVerificationScore: verificationResult.score,
+            };
+          }
+        }
+        return c;
+      });
+      await wsRef.update({ entityContacts: updatedContacts });
+    }
+
+    return { success: true, result: verificationResult };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[verifySingleContactAction] Error:', err);
+    return { success: false, error: errorMsg };
+  }
+}
+
