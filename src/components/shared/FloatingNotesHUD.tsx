@@ -68,6 +68,16 @@ export default function FloatingNotesHUD() {
   const isDraggingRef = React.useRef(false);
   const dragStartRef = React.useRef({ x: 0, y: 0 });
   const initialOffsetRef = React.useRef({ x: 0, y: 0 });
+  const saveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   // Responsive boundary checking on mount & resize
   React.useEffect(() => {
@@ -115,16 +125,20 @@ export default function FloatingNotesHUD() {
   // Sync selected entity context when path-parsed entity ID changes
   React.useEffect(() => {
     const loadSelectedEntity = async () => {
-      const targetId = activeEntityId || selectedEntityId;
-      if (!targetId || !firestore) return;
-      try {
-        const snap = await getDoc(doc(firestore, 'schools', targetId));
-        if (snap.exists()) {
-          setSelectedEntityName(snap.data().name as string || 'Unnamed School');
-          setSelectedEntityId(targetId);
+      if (!firestore) return;
+      if (activeEntityId) {
+        try {
+          const snap = await getDoc(doc(firestore, 'schools', activeEntityId));
+          if (snap.exists()) {
+            setSelectedEntityName(snap.data().name as string || 'Unnamed School');
+            setSelectedEntityId(activeEntityId);
+          }
+        } catch (err) {
+          console.error('Error fetching target entity metadata:', err);
         }
-      } catch (err) {
-        console.error('Error fetching target entity metadata:', err);
+      } else {
+        setSelectedEntityName('');
+        setSelectedEntityId('');
       }
     };
     loadSelectedEntity();
@@ -134,8 +148,12 @@ export default function FloatingNotesHUD() {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setDraftText(e.target.value);
     setIsSavingDraft(true);
-    const timer = setTimeout(() => setIsSavingDraft(false), 500);
-    return () => clearTimeout(timer);
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      setIsSavingDraft(false);
+    }, 500);
   };
 
   // Draggable Pointer events

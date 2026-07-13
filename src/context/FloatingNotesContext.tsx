@@ -57,8 +57,10 @@ export function FloatingNotesProvider({ children }: { children: React.ReactNode 
       const isSubPage = ['lead-scoring', 'upload', 'components'].includes(match[1]);
       if (!isSubPage) {
         setActiveEntityId(match[1]);
+        return;
       }
     }
+    setActiveEntityId(null);
   }, [pathname]);
 
   const open = React.useCallback((entityId?: string | null) => {
