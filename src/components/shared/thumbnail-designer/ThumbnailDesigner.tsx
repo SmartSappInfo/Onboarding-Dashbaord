@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Sparkles, Trash2, ArrowLeft, Wand2, RefreshCw, Save, 
   Layers, Lock, Unlock, Eye, EyeOff, Copy, ZoomIn, ZoomOut, Move,
@@ -153,6 +154,15 @@ export default function ThumbnailDesigner({
     { id: 'l-seed-1', user: 'Joseph Aidoo', action: 'Created design workspace', time: '1:10 PM' },
     { id: 'l-seed-2', user: 'AI Assistant', action: 'Suggested CTR topic alignment guidelines', time: '1:12 PM' },
   ]);
+
+  // Direct Publishing States
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [selectedPublishChannel, setSelectedPublishChannel] = useState<'youtube' | 'facebook' | 'linkedin'>('youtube');
+  const [targetVideoId, setTargetVideoId] = useState('');
+  const [isPublishingDesign, setIsPublishingDesign] = useState(false);
+  const [publishMode, setPublishMode] = useState<'immediate' | 'schedule'>('immediate');
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   // Load comments from localStorage on mount
   useEffect(() => {
@@ -405,6 +415,36 @@ export default function ThumbnailDesigner({
     initializeStore(updatedDesign);
     logActivity('Applied Workspace Brand Kit styles');
     toast({ title: 'Brand applied', description: 'Updated canvas styling to match your Brand Kit.' });
+  };
+
+  const handleConfirmPublish = () => {
+    if (!targetVideoId) {
+      toast({ variant: 'destructive', title: 'Selection Required', description: 'Please select a target video to update.' });
+      return;
+    }
+
+    setIsPublishingDesign(true);
+    setTimeout(() => {
+      setIsPublishingDesign(false);
+      setIsPublishDialogOpen(false);
+      
+      const channelLabel = selectedPublishChannel === 'youtube' ? 'YouTube' : selectedPublishChannel === 'facebook' ? 'Facebook' : 'LinkedIn';
+      const selectedVideoName = targetVideoId === 'v-1' ? 'I Built a SaaS to $10K MRR in 30 Days' : '10 Coding Secrets They Don\'t Want You to Know';
+
+      if (publishMode === 'immediate') {
+        logActivity(`Published thumbnail directly to ${channelLabel} for video "${selectedVideoName}"`);
+        toast({
+          title: 'Publishing Successful!',
+          description: `Successfully uploaded and synced thumbnail to ${channelLabel} for "${selectedVideoName}".`,
+        });
+      } else {
+        logActivity(`Scheduled thumbnail release on ${channelLabel} for video "${selectedVideoName}" on ${scheduleDate} at ${scheduleTime}`);
+        toast({
+          title: 'Publish Scheduled!',
+          description: `Thumbnail is queued for update on ${scheduleDate} at ${scheduleTime}.`,
+        });
+      }
+    }, 1500);
   };
 
   const handleRemoveBackground = async () => {
@@ -1410,6 +1450,13 @@ export default function ThumbnailDesigner({
             <Button onClick={handleSaveDesign} className="bg-emerald-500 hover:bg-emerald-600 font-bold rounded-xl text-xs h-9 px-4 active:scale-[0.97]">
               <Save className="w-4 h-4 mr-1.5" /> Save Design
             </Button>
+
+            <Button
+              onClick={() => setIsPublishDialogOpen(true)}
+              className="bg-violet-600 hover:bg-violet-500 font-bold rounded-xl text-xs h-9 px-4 active:scale-[0.97]"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" /> Publish
+            </Button>
           </div>
         </div>
 
@@ -2194,6 +2241,144 @@ export default function ThumbnailDesigner({
           </div>
         </aside>
       )}
+      {/* Direct Publishing & Scheduling Dialog */}
+      <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-100 max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-black uppercase tracking-wider text-slate-200">
+              Direct Publishing Portal
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2 text-left">
+            {/* 1. Destination Channel */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Target Platform</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'youtube', label: 'YouTube' },
+                  { id: 'facebook', label: 'Facebook' },
+                  { id: 'linkedin', label: 'LinkedIn' }
+                ].map(ch => (
+                  <button
+                    key={ch.id}
+                    onClick={() => setSelectedPublishChannel(ch.id as any)}
+                    className={cn(
+                      "py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.97]",
+                      selectedPublishChannel === ch.id
+                        ? "bg-violet-600/10 border-violet-500 text-violet-400 font-extrabold"
+                        : "bg-slate-950 border-slate-855 text-slate-400 hover:border-slate-700"
+                    )}
+                  >
+                    {ch.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Target Video Binding */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Select Target Video / Post</Label>
+              <Select value={targetVideoId} onValueChange={setTargetVideoId}>
+                <SelectTrigger className="bg-slate-950 border-slate-855 text-xs rounded-xl h-10 text-slate-200">
+                  <SelectValue placeholder="Choose draft to update..." />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-850 text-slate-100">
+                  <SelectItem value="v-1" className="text-xs">
+                    I Built a SaaS to $10K MRR in 30 Days (Draft)
+                  </SelectItem>
+                  <SelectItem value="v-2" className="text-xs">
+                    10 Coding Secrets They Don't Want You to Know (Live)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 3. Publishing Mode */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Publish Mode</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'immediate', label: 'Publish Now' },
+                  { id: 'schedule', label: 'Schedule Post' }
+                ].map(mode => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setPublishMode(mode.id as any)}
+                    className={cn(
+                      "py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.97]",
+                      publishMode === mode.id
+                        ? "bg-violet-600/10 border-violet-500 text-violet-400 font-extrabold"
+                        : "bg-slate-950 border-slate-855 text-slate-400 hover:border-slate-700"
+                    )}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Scheduling Inputs */}
+            {publishMode === 'schedule' && (
+              <div className="grid grid-cols-2 gap-2 bg-slate-950/50 p-3 rounded-xl border border-slate-855">
+                <div className="space-y-1">
+                  <Label className="text-[8px] font-bold text-slate-500 uppercase">Release Date</Label>
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[8px] font-bold text-slate-500 uppercase">Release Time</Label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 5. Health Check Warning */}
+            <div className="bg-slate-950 p-3 border border-slate-850 rounded-xl flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black text-slate-400 uppercase">CTR Quality Score</span>
+                <span className="text-[8px] text-slate-500 font-semibold">Recommended benchmark: &gt;75%</span>
+              </div>
+              <span className={cn(
+                "text-[10px] font-black px-2 py-0.5 rounded-full shrink-0",
+                ctrScore >= 75 ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+              )}>
+                {ctrScore}/100 {ctrScore >= 75 ? 'PASSED' : 'LOW CTR'}
+              </span>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={() => setIsPublishDialogOpen(false)}
+                variant="ghost"
+                className="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-[0.97] rounded-xl text-xs font-bold text-slate-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmPublish}
+                disabled={isPublishingDesign || !targetVideoId}
+                className="flex-1 bg-violet-600 hover:bg-violet-500 active:scale-[0.97] rounded-xl text-xs font-bold"
+              >
+                {isPublishingDesign ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : null}
+                {publishMode === 'immediate' ? 'Publish Now' : 'Schedule'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
