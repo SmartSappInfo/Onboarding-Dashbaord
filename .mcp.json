@@ -6,6 +6,10 @@
       "env": {
         "RESEND_API_KEY": "${RESEND_API_KEY}"
       }
+    },
+    "reactbits": {
+      "command": "npx",
+      "args": ["-y", "reactbits-dev-mcp-server"]
     }
   }
 }
