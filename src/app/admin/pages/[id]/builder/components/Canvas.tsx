@@ -96,6 +96,9 @@ import '@/lib/page-builder/blocks'; // register all blocks
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo } from '@/components/icons';
 import Footer from '@/components/footer';
+import { useTenant } from '@/context/TenantContext';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { AiCopilotPanel } from './AiCopilotPanel';
 
 interface CanvasProps {
@@ -576,6 +579,159 @@ function ColumnCell({
                 <div className="flex-1 flex flex-col items-center justify-center py-6 text-center text-slate-400/80 select-none">
                     <p className="text-[10px] font-bold uppercase tracking-wider">Empty Column</p>
                     <p className="text-[9px] mt-0.5 text-slate-500 leading-tight">Drag and drop or select items to place blocks here.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Card Nav Component (Animated Overlay Cards Navigation) ───────────────
+interface CardNavMenuProps {
+    headerSettings: PageHeaderSettings;
+    isEditMode: boolean;
+    onUpdateHeader?: (updates: Partial<PageHeaderSettings>) => void;
+}
+
+function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader }: CardNavMenuProps) {
+    const { activeOrganization } = useTenant();
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useGSAP(() => {
+        if (isOpen) {
+            gsap.fromTo(".card-nav-item",
+                { opacity: 0, y: 40, scale: 0.9 },
+                { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.06, ease: "power3.out" }
+            );
+            gsap.fromTo(".card-nav-header",
+                { opacity: 0, y: -10 },
+                { opacity: 1, y: 0, duration: 0.3, delay: 0.1 }
+            );
+        }
+    }, { scope: containerRef, dependencies: [isOpen] });
+
+    return (
+        <div ref={containerRef} className="w-full relative pointer-events-auto">
+            {/* Header bar */}
+            <div className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-3">
+                    {activeOrganization?.logoUrl ? (
+                        <img 
+                            src={activeOrganization.logoUrl} 
+                            alt={activeOrganization.name} 
+                            className="h-8 w-auto object-contain max-w-[120px]" 
+                        />
+                    ) : (
+                        <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
+                    )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                    {headerSettings.showCta && (
+                        <Button 
+                            className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1"
+                            disabled={!isEditMode}
+                        >
+                            <InlineEditable
+                                tagName="span"
+                                isEdit={isEditMode}
+                                onChange={(val) => onUpdateHeader?.({ ctaText: val })}
+                                className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block"
+                                onClick={(e) => e.stopPropagation()}
+                                value={headerSettings.ctaText || 'Get Started'}
+                                html={false}
+                            />
+                        </Button>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(!isOpen);
+                        }}
+                        className="flex flex-col gap-1.5 justify-center items-center h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all z-50 relative border border-transparent cursor-pointer"
+                    >
+                        <span className={cn(
+                            "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+                            isOpen ? "rotate-45 translate-y-1" : ""
+                        )} />
+                        <span className={cn(
+                            "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+                            isOpen ? "opacity-0" : ""
+                        )} />
+                        <span className={cn(
+                            "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+                            isOpen ? "-rotate-45 -translate-y-1" : ""
+                        )} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Overlay fullscreen card menu */}
+            {isOpen && (
+                <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 animate-in fade-in duration-300 pointer-events-auto">
+                    {/* Header inside overlay */}
+                    <div className="card-nav-header flex items-center justify-between w-full border-b border-zinc-800/80 pb-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            {activeOrganization?.logoUrl ? (
+                                <img 
+                                    src={activeOrganization.logoUrl} 
+                                    alt={activeOrganization.name} 
+                                    className="h-8 w-auto object-contain max-w-[120px]" 
+                                />
+                            ) : (
+                                <SmartSappLogo className="h-8 w-auto text-white" />
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen(false)}
+                            className="h-9 w-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white hover:bg-zinc-800 transition-all cursor-pointer"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    {/* Cards grid */}
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-w-5xl mx-auto w-full justify-center items-center py-4">
+                        {(headerSettings.navItems || []).map((item) => (
+                            <div
+                                key={item.id}
+                                className="card-nav-item group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 flex flex-col justify-between aspect-[16/10] hover:bg-zinc-900 hover:border-[#3B5FFF]/40 hover:shadow-[0_0_25px_-5px_rgba(59,95,255,0.15)] transition-all duration-300 cursor-pointer"
+                                onClick={() => {
+                                    if (!isEditMode && item.url) {
+                                        window.open(item.url, '_blank');
+                                    }
+                                }}
+                            >
+                                <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-[-4px] group-hover:translate-y-[4px] transition-all duration-300">
+                                    <ArrowRight className="h-4 w-4 text-[#3B5FFF]" />
+                                </div>
+                                <div className="mt-auto">
+                                    <span onClick={(e) => e.stopPropagation()}>
+                                        <InlineEditable
+                                            tagName="h3"
+                                            isEdit={isEditMode}
+                                            onChange={(val) => {
+                                                const updatedNavItems = headerSettings.navItems.map(navItem => 
+                                                    navItem.id === item.id ? { ...navItem, label: val } : navItem
+                                                );
+                                                onUpdateHeader?.({ navItems: updatedNavItems });
+                                            }}
+                                            className="outline-none border-0 bg-transparent text-xl font-bold text-white hover:text-white cursor-text w-full block text-left"
+                                            onClick={(e) => e.stopPropagation()}
+                                            value={item.label}
+                                            html={false}
+                                        />
+                                    </span>
+                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1.5 animate-pulse">
+                                        Navigate Link
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
@@ -1520,7 +1676,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                             : "bg-white dark:bg-zinc-950"
                                                       )
                                             )}>
-                                                {headerSettings.preset === 'minimal' ? (
+                                                {headerSettings.preset === 'card-nav' ? (
+                                                    <CardNavMenu
+                                                        headerSettings={headerSettings}
+                                                        isEditMode={isEditMode}
+                                                        onUpdateHeader={onUpdateHeader}
+                                                    />
+                                                ) : headerSettings.preset === 'minimal' ? (
                                                     <div className="flex items-center justify-center w-full">
                                                         <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
                                                     </div>

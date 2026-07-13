@@ -79,6 +79,7 @@ export function HeaderSettingsControl({
               <option value="full-nav">Full Navigation Menu</option>
               <option value="cta-only">CTA Button Only</option>
               <option value="search-nav">Search Bar + Navigation Links</option>
+              <option value="card-nav">Card Nav (Animated Cards Menu)</option>
             </select>
           </div>
 
@@ -133,7 +134,7 @@ export function HeaderSettingsControl({
             )}
           </div>
 
-          {(header.preset === 'full-nav' || header.preset === 'search-nav') && (
+          {(header.preset === 'full-nav' || header.preset === 'search-nav' || header.preset === 'card-nav') && (
             <div className="pt-3 border-t border-slate-800/40 space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Menu Items</Label>

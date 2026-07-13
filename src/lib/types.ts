@@ -3574,7 +3574,7 @@ export interface HeaderNavItem {
 }
 
 export interface PageHeaderSettings {
-  preset: 'native' | 'minimal' | 'full-nav' | 'cta-only' | 'search-nav';
+  preset: 'native' | 'minimal' | 'full-nav' | 'cta-only' | 'search-nav' | 'card-nav';
   overlap: boolean;
   sticky: boolean;
   floating: boolean;

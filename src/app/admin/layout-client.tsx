@@ -14,10 +14,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
+const FloatingNotesHUD = dynamic(() => import('@/components/shared/FloatingNotesHUD'), { ssr: false });
 
 import { 
     LogOut, 
     User as UserIcon,
+    NotebookPen
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { AdminSidebar } from './components/AdminSidebar';
@@ -43,6 +45,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NavigationProvider } from '@/context/NavigationContext';
 import { TenantProvider, useTenant } from '@/context/TenantContext';
+import { FloatingNotesProvider, useFloatingNotes } from '@/context/FloatingNotesContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageTitleManager } from '@/components/seo/PageTitleManager';
 import { ADMIN_ROUTE_TITLES } from '@/lib/route-titles';
 import { IndustryProvider } from '@/context/IndustryContext';
@@ -87,6 +91,23 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const [userRolesData, setUserRolesData] = React.useState<{ id: string, name: string }[]>([]);
   const { can, isSystemAdmin } = usePermissions();
   const { hasBackofficeAccess } = useBackofficeAccess();
+  const { open: openNotes, close: closeNotes, isOpen: isNotesOpen } = useFloatingNotes();
+
+  // Keyboard shortcut listener for Option/Alt + N
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        if (isNotesOpen) {
+          closeNotes();
+        } else {
+          openNotes();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openNotes, closeNotes, isNotesOpen]);
 
   // 1. Hydration Guard
   React.useEffect(() => {
@@ -241,40 +262,41 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </Badge>
               <ThemeToggle />
               <QuickComposeButton />
+              <FloatingNotesTrigger />
               <NotificationBell />
               <NotificationCenter />
               <div className="h-6 w-px bg-border mx-1" />
               <DropdownMenu>
               <DropdownMenuTrigger asChild>
- <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
- <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
+  <Button variant="ghost" className="relative h-10 w-10 rounded-xl p-0 hover:bg-primary/5 transition-all">
+  <Avatar className="h-10 w-10 border-2 border-primary/10 shadow-sm">
                       <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName || 'User'} />
- <AvatarFallback className="bg-primary/5 text-primary font-semibold text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
+  <AvatarFallback className="bg-primary/5 text-primary font-semibold text-xs">{getInitials(user?.displayName || undefined)}</AvatarFallback>
                   </Avatar>
                   </Button>
               </DropdownMenuTrigger>
- <DropdownMenuContent className="w-64 p-2 rounded-2xl border-border bg-card shadow-lg animate-in zoom-in-95 duration-200" align="end">
- <DropdownMenuLabel className="font-normal px-2 py-3">
- <div className="flex flex-col space-y-1 text-left">
- <p className="text-sm font-semibold tracking-tight leading-none text-foreground">{user?.displayName}</p>
- <p className="text-[10px] leading-none text-muted-foreground font-bold tracking-tight">{user?.email}</p>
- <div className="flex flex-wrap gap-1 mt-3">
+  <DropdownMenuContent className="w-64 p-2 rounded-2xl border-border bg-card shadow-lg animate-in zoom-in-95 duration-200" align="end">
+  <DropdownMenuLabel className="font-normal px-2 py-3">
+  <div className="flex flex-col space-y-1 text-left">
+  <p className="text-sm font-semibold tracking-tight leading-none text-foreground">{user?.displayName}</p>
+  <p className="text-[10px] leading-none text-muted-foreground font-bold tracking-tight">{user?.email}</p>
+  <div className="flex flex-wrap gap-1 mt-3">
                         {userRolesData.map(role => (
                             <Badge key={role.id} variant="outline" className="text-[7px] uppercase font-bold px-1.5 h-4 bg-primary/10 border-primary/20 text-primary">{role.name}</Badge>
                         ))}
                       </div>
                   </div>
                   </DropdownMenuLabel>
- <DropdownMenuSeparator className="my-1" />
+  <DropdownMenuSeparator className="my-1" />
                   {isSystemAdmin && (
                     <>
                       <AssignedUserGlobalFilter />
- <DropdownMenuSeparator className="my-1" />
+  <DropdownMenuSeparator className="my-1" />
                     </>
                   )}
- <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs ">My Profile</span></Link></DropdownMenuItem>
- <DropdownMenuSeparator className="my-1" />
- <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs ">Log out</span></DropdownMenuItem>
+  <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs ">My Profile</span></Link></DropdownMenuItem>
+  <DropdownMenuSeparator className="my-1" />
+  <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs ">Log out</span></DropdownMenuItem>
               </DropdownMenuContent>
               </DropdownMenu>
           </div>
@@ -282,6 +304,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         <main className="flex-1 flex flex-col overflow-auto relative w-full">
           {children}
         </main>
+        <FloatingNotesHUD />
       </SidebarInset>
     </SidebarProvider>
   );
@@ -295,12 +318,40 @@ export default function AdminLayoutClient({ children }: { children: ReactNode })
             <EntityCacheProvider>
               <GlobalFilterProvider>
                 <IndustryProvider>
-                  <AdminLayoutContent>{children}</AdminLayoutContent>
+                  <FloatingNotesProvider>
+                    <AdminLayoutContent>{children}</AdminLayoutContent>
+                  </FloatingNotesProvider>
                 </IndustryProvider>
               </GlobalFilterProvider>
             </EntityCacheProvider>
           </TenantProvider>
         </UnsavedChangesProvider>
       </NavigationProvider>
+  );
+}
+
+function FloatingNotesTrigger() {
+  const { open, isOpen } = useFloatingNotes();
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              "h-10 w-10 rounded-xl relative hover:bg-primary/5 transition-all shrink-0",
+              isOpen && "bg-primary/10 text-primary border-primary/20"
+            )}
+            onClick={() => open()}
+          >
+            <NotebookPen className="h-[18px] w-[18px] text-muted-foreground" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs font-semibold">Quick Note (Alt+N)</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
