@@ -124,7 +124,42 @@ export async function handleSendMessage(
     }
   }
 
-  const recipientList = Array.from(recipients);
+  // Filter final recipients based on contact emailStatus and score
+  const finalRecipientsList = new Set<string>();
+  if (context.entityId) {
+    const contact = await resolveContact(context.entityId, context.workspaceId);
+    const entityContacts = contact?.entityContacts || [];
+    
+    for (const r of recipients) {
+      const matchedContact = entityContacts.find(ec => 
+        (usePhone ? ec.phone : ec.email)?.toLowerCase().trim() === r.toLowerCase().trim()
+      );
+      if (matchedContact) {
+        if (usePhone) {
+          const isBounced = matchedContact.phoneStatus === 'undelivered';
+          const isLowScore = typeof matchedContact.phoneVerificationScore === 'number' && matchedContact.phoneVerificationScore < 40;
+          if (isBounced || isLowScore) {
+            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/low verification phone status.`);
+            continue;
+          }
+        } else {
+          const isBounced = matchedContact.emailStatus === 'bounced';
+          const isLowScore = typeof matchedContact.emailVerificationScore === 'number' && matchedContact.emailVerificationScore < 40;
+          if (isBounced || isLowScore) {
+            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/low verification email status.`);
+            continue;
+          }
+        }
+      }
+      finalRecipientsList.add(r);
+    }
+  } else {
+    for (const r of recipients) {
+      finalRecipientsList.add(r);
+    }
+  }
+
+  const recipientList = Array.from(finalRecipientsList);
   if (recipientList.length === 0) {
     throw new Error('Message action could not resolve any recipients to send to.');
   }
