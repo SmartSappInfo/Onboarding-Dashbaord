@@ -6,23 +6,20 @@ import {
   Minus, 
   Bot, 
   Loader2, 
-  CheckSquare, 
   PhoneCall, 
   Mail, 
   Calendar, 
   MapPin, 
   Notebook,
-  ChevronsUpDown,
-  Check
+  ChevronDown
 } from 'lucide-react';
-import { useUser, useAuth, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useFloatingNotes } from '@/context/FloatingNotesContext';
-import { collection, query, where, getDocs, getDoc, doc, addDoc, limit } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { logNoteActivity } from '@/lib/note-actions';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { EntityNote } from '@/lib/types';
@@ -35,7 +32,6 @@ const NOTE_TYPES = [
   { id: 'followup', label: 'Followup', icon: Mail, color: 'text-blue-400 bg-blue-500/10' },
   { id: 'escalation', label: 'Escalation', icon: MapPin, color: 'text-amber-400 bg-amber-500/10' }
 ] as const;
-
 
 export default function FloatingNotesHUD() {
   const { 
@@ -55,16 +51,14 @@ export default function FloatingNotesHUD() {
   const { toast } = useToast();
 
   const [noteType, setNoteType] = React.useState<NonNullable<EntityNote['noteType']>>('general');
-  const [entities, setEntities] = React.useState<{ id: string; name: string }[]>([]);
-  const [selectedEntityId, setSelectedEntityId] = React.useState<string>('');
-  const [selectedEntityName, setSelectedEntityName] = React.useState<string>('');
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
 
   // Position coordinates refs for non-re-rendering dragging
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const positionRef = React.useRef({ x: 100, y: 100 }); // Default relative offsets
+  const positionRef = React.useRef({ x: 100, y: 100 });
   const isDraggingRef = React.useRef(false);
   const dragStartRef = React.useRef({ x: 0, y: 0 });
   const initialOffsetRef = React.useRef({ x: 0, y: 0 });
@@ -79,7 +73,7 @@ export default function FloatingNotesHUD() {
     };
   }, []);
 
-  // Responsive boundary checking on mount & resize
+  // Responsive boundary checking on resize
   React.useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
@@ -87,9 +81,8 @@ export default function FloatingNotesHUD() {
       if (mobile && panelRef.current) {
         panelRef.current.style.transform = 'none';
       } else if (panelRef.current) {
-        // Place initial coordinates in viewport bottom-right
-        const rightPos = window.innerWidth - 380 - 24;
-        const bottomPos = window.innerHeight - 440 - 24;
+        const rightPos = window.innerWidth - 360 - 24;
+        const bottomPos = window.innerHeight - 320 - 24;
         positionRef.current = { x: rightPos, y: bottomPos };
         panelRef.current.style.transform = `translate3d(${rightPos}px, ${bottomPos}px, 0)`;
       }
@@ -97,52 +90,7 @@ export default function FloatingNotesHUD() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Fetch recent entities list for linking
-  React.useEffect(() => {
-    const loadEntities = async () => {
-      if (!firestore || !activeOrganizationId) return;
-      try {
-        const q = query(
-          collection(firestore, 'schools'),
-          where('organizationId', '==', activeOrganizationId),
-          limit(15)
-        );
-        const snap = await getDocs(q);
-        const list = snap.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().name as string || 'Unnamed School'
-        }));
-        setEntities(list);
-      } catch (err) {
-        console.error('Error loading HUD entities:', err);
-      }
-    };
-    if (isOpen) loadEntities();
-  }, [firestore, activeOrganizationId, isOpen]);
-
-  // Sync selected entity context when path-parsed entity ID changes
-  React.useEffect(() => {
-    const loadSelectedEntity = async () => {
-      if (!firestore) return;
-      if (activeEntityId) {
-        try {
-          const snap = await getDoc(doc(firestore, 'schools', activeEntityId));
-          if (snap.exists()) {
-            setSelectedEntityName(snap.data().name as string || 'Unnamed School');
-            setSelectedEntityId(activeEntityId);
-          }
-        } catch (err) {
-          console.error('Error fetching target entity metadata:', err);
-        }
-      } else {
-        setSelectedEntityName('');
-        setSelectedEntityId('');
-      }
-    };
-    loadSelectedEntity();
-  }, [activeEntityId, firestore]);
+  }, [isOpen]);
 
   // Flash saving indicator briefly on keydown
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -160,7 +108,6 @@ export default function FloatingNotesHUD() {
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isMobile || isMinimized) return;
     const target = e.target as HTMLElement;
-    // Do not trigger drag on buttons or form fields
     if (target.closest('button') || target.closest('select') || target.closest('textarea')) return;
 
     isDraggingRef.current = true;
@@ -177,9 +124,9 @@ export default function FloatingNotesHUD() {
     let targetX = initialOffsetRef.current.x + dx;
     let targetY = initialOffsetRef.current.y + dy;
 
-    // Viewport clamping bounds checks
-    const width = 380;
-    const height = 400;
+    // Viewport clamping bounds checks (W: 360px, H: 320px)
+    const width = 360;
+    const height = 320;
     const maxX = window.innerWidth - width - 12;
     const maxY = window.innerHeight - height - 12;
 
@@ -202,10 +149,6 @@ export default function FloatingNotesHUD() {
       toast({ title: 'Please enter note content', variant: 'destructive' });
       return;
     }
-    if (!selectedEntityId) {
-      toast({ title: 'Please select an entity to link this note', variant: 'destructive' });
-      return;
-    }
     if (!firestore || !user || !activeWorkspaceId) {
       toast({ title: 'Authentication context missing', variant: 'destructive' });
       return;
@@ -214,7 +157,7 @@ export default function FloatingNotesHUD() {
     setIsSubmitting(true);
     try {
       const noteData = {
-        entityId: selectedEntityId,
+        entityId: activeEntityId || activeWorkspaceId || 'general',
         workspaceId: activeWorkspaceId,
         content: draftText.trim(),
         noteType,
@@ -243,12 +186,12 @@ export default function FloatingNotesHUD() {
 
   if (!isOpen) return null;
 
-  // Minimized state rendering (sleek bottom capsule)
+  // Minimized state rendering (sleek horizontally-centered bottom capsule)
   if (isMinimized) {
     return (
       <div 
         onClick={restore}
-        className="fixed bottom-6 right-6 z-[999] bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-full shadow-2xl cursor-pointer flex items-center gap-2.5 animate-in slide-in-from-bottom-8 duration-300 font-bold text-xs border border-violet-500/30 scale-95 hover:scale-100 transition-all select-none"
+        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[999] bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-full shadow-2xl cursor-pointer flex items-center gap-2.5 animate-in slide-in-from-bottom-8 duration-300 font-bold text-xs border border-violet-500/30 scale-95 hover:scale-100 transition-all select-none"
       >
         <Bot className="h-4 w-4 animate-bounce" />
         <span>Open Quick Note ({draftText ? 'Draft active' : 'Empty'})</span>
@@ -256,16 +199,19 @@ export default function FloatingNotesHUD() {
     );
   }
 
+  const activeType = NOTE_TYPES.find(t => t.id === noteType) || NOTE_TYPES[0];
+  const ActiveIcon = activeType.icon;
+
   return (
     <div
       ref={panelRef}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       className={cn(
-        "fixed z-[999] flex flex-col w-[380px] h-[420px] bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl transition-shadow select-none",
+        "fixed z-[999] flex flex-col w-[360px] h-[320px] bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl transition-shadow select-none overflow-visible",
         isMobile 
-          ? "bottom-0 inset-x-0 w-full h-[85vh] rounded-t-3xl border-t border-x-0 border-b-0 animate-in slide-in-from-bottom duration-300"
-          : "rounded-2xl select-none"
+          ? "bottom-0 inset-x-0 w-full h-[60vh] rounded-t-3xl border-t border-x-0 border-b-0 animate-in slide-in-from-bottom duration-300"
+          : "rounded-2xl"
       )}
       style={{
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px 1px rgba(99, 102, 241, 0.05)'
@@ -275,7 +221,7 @@ export default function FloatingNotesHUD() {
       <div
         onPointerDown={handlePointerDown}
         className={cn(
-          "flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800/80 cursor-grab active:cursor-grabbing select-none",
+          "flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800/80 cursor-grab active:cursor-grabbing select-none",
           isMobile ? "rounded-t-3xl" : "rounded-t-2xl"
         )}
       >
@@ -283,7 +229,7 @@ export default function FloatingNotesHUD() {
           <Bot className="h-4 w-4 text-violet-400" />
           <span className="text-xs font-black uppercase tracking-wider text-slate-300">Quick Note</span>
           {isSavingDraft && (
-            <span className="text-[9px] text-emerald-400 font-bold animate-pulse">Autosaving...</span>
+            <span className="text-[9px] text-emerald-400 font-bold animate-pulse">Saved</span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
@@ -309,85 +255,66 @@ export default function FloatingNotesHUD() {
       </div>
 
       {/* Panel Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col justify-between text-left">
-        <div className="space-y-4 flex-1 flex flex-col">
-          {/* Note Type Badges */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Note Type</span>
-            <div className="flex flex-wrap gap-1.5">
-              {NOTE_TYPES.map((t) => {
-                const Icon = t.icon;
-                const active = noteType === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setNoteType(t.id)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer",
-                      active 
-                        ? cn(t.color, "border-current ring-1 ring-current/20 scale-[0.97]") 
-                        : "border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 bg-transparent"
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span>{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <div className="flex-1 p-3 flex flex-col justify-between text-left overflow-visible">
+        {/* Text Editor Area (Largest component) */}
+        <div className="flex-1 flex flex-col min-h-0 relative mb-3">
+          <Textarea
+            placeholder="Type quick notes here..."
+            value={draftText}
+            onChange={handleTextChange}
+            className="w-full h-full flex-1 bg-slate-900/60 border-slate-850 rounded-xl text-xs p-3 text-slate-200 placeholder:text-slate-600 focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:ring-offset-0 resize-none"
+          />
+        </div>
 
-          {/* Linked Entity Dropdown */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Linked Account</span>
-            {activeEntityId ? (
-              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800/80 px-3 py-2 rounded-xl text-xs text-slate-200">
-                <Check className="h-4 w-4 text-emerald-400" />
-                <span className="font-semibold truncate">{selectedEntityName || 'Loading linked context...'}</span>
-                <span className="ml-auto text-[8px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-black uppercase">Active Path</span>
+        {/* Footer Actions (Select Type Pill and smaller Save button) */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-850/50 overflow-visible">
+          {/* Note Type select dropdown pill */}
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-slate-900 border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700"
+              )}
+            >
+              <ActiveIcon className="h-3.5 w-3.5" />
+              <span>{activeType.label}</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 z-[999] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                {NOTE_TYPES.map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setNoteType(t.id);
+                        setDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-slate-800 transition-colors",
+                        noteType === t.id ? "text-violet-400 bg-slate-800/40" : "text-slate-400 hover:text-slate-200"
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
-              <select
-                value={selectedEntityId}
-                onChange={(e) => setSelectedEntityId(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
-              >
-                <option value="">-- Link to an account --</option>
-                {entities.map(ent => (
-                  <option key={ent.id} value={ent.id}>{ent.name}</option>
-                ))}
-              </select>
             )}
           </div>
 
-          {/* Text Editor Area */}
-          <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Note Content</span>
-            <Textarea
-              placeholder="Start drafting quick notes..."
-              value={draftText}
-              onChange={handleTextChange}
-              className="flex-1 bg-slate-900 border-slate-800/80 rounded-xl text-xs p-3 text-slate-200 placeholder:text-slate-600 focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:ring-offset-0 resize-none min-h-[100px]"
-            />
-          </div>
-        </div>
-
-        {/* Footer Actions */}
-        <div className="pt-3 border-t border-slate-850 flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={close} 
-            className="flex-1 rounded-xl h-10 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900 font-bold text-xs"
-          >
-            Cancel
-          </Button>
+          {/* Smaller, compact save button */}
           <Button 
             onClick={handleSaveNote} 
-            disabled={isSubmitting || !draftText.trim() || !selectedEntityId}
-            className="flex-1 rounded-xl h-10 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-lg shadow-violet-500/10 scale-100 hover:scale-[1.01] active:scale-[0.98] transition-all"
+            disabled={isSubmitting || !draftText.trim()}
+            size="sm"
+            className="rounded-full h-8 px-4 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/10 active:scale-[0.98] transition-all"
           >
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               'Save Note'
             )}
