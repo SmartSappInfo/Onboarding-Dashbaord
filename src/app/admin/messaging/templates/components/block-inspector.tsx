@@ -764,6 +764,64 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                         </div>
                     )}
 
+                    {/* Audio Player Settings */}
+                    {block.type === 'audio' && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio File Title</Label>
+                                <Input 
+                                    value={block.audioTitle || ''} 
+                                    onChange={e => onUpdate({ audioTitle: e.target.value })} 
+                                    placeholder="e.g. Onboarding Welcome Podcast"
+                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Duration</Label>
+                                <Input 
+                                    value={block.audioDuration || ''} 
+                                    onChange={e => onUpdate({ audioDuration: e.target.value })} 
+                                    placeholder="e.g. 3:45"
+                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Source URL</Label>
+                                <SlashInput 
+                                    value={block.url || ''} 
+                                    onChange={val => onUpdate({ url: val })} 
+                                    variables={autocompleteVariables}
+                                    placeholder="https://example.com/audio.mp3"
+                                    className="h-10 rounded-xl text-xs font-mono bg-muted/10"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Play Action Behavior</Label>
+                                <select
+                                    value={block.audioAction || 'play_inline'}
+                                    onChange={e => onUpdate({ audioAction: e.target.value as 'download' | 'play_inline' | 'redirect' })}
+                                    className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
+                                >
+                                    <option value="play_inline">Play Inline (where supported)</option>
+                                    <option value="download">Direct Download</option>
+                                    <option value="redirect">Redirect with Tracking</option>
+                                </select>
+                            </div>
+                            {(block.audioAction === 'redirect' || block.audioAction === 'play_inline') && (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Redirect Page URL</Label>
+                                    <SlashInput 
+                                        value={block.audioRedirectUrl || ''} 
+                                        onChange={val => onUpdate({ audioRedirectUrl: val })} 
+                                        variables={autocompleteVariables}
+                                        placeholder="https://yourpage.com/listen"
+                                        className="h-10 rounded-xl text-xs font-mono bg-muted/10"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Logo Settings */}
                     {block.type === 'logo' && (
                         <div className="space-y-4">
