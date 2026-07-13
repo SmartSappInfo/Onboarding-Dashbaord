@@ -820,18 +820,77 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                             {/* Redirect Destination URL */}
                             {(block.videoAction === 'redirect' || block.videoAction === 'play_inline') && (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Redirect Destination URL</Label>
-                                    <SlashInput 
-                                        value={block.videoRedirectUrl || ''} 
-                                        onChange={val => onUpdate({ videoRedirectUrl: val })} 
-                                        variables={autocompleteVariables}
-                                        placeholder="https://yoursite.com/watch?token={{contact_id}}"
-                                        className="h-10 rounded-xl text-xs font-mono bg-muted/10"
-                                    />
-                                    <p className="text-[9px] text-muted-foreground font-semibold italic ml-1">
-                                        Tip: You can append variables like {"\"{{contact_id}}\""} or {"\"{{email}}\""} to track link clicks.
-                                    </p>
+                                <div className="space-y-2 pt-2 border-t">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Destination URL</Label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowVideoLinkPicker(prev => !prev)}
+                                            className={`flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] ${
+                                                showVideoLinkPicker 
+                                                    ? 'text-white bg-primary border-primary/20 hover:bg-primary/95' 
+                                                    : 'text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]'
+                                            }`}
+                                        >
+                                            <LinkIcon className="h-2.5 w-2.5" /> Choose Link Target
+                                        </button>
+                                    </div>
+                                    <div className="relative group flex items-center w-full">
+                                        <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                        <SlashInput 
+                                            value={block.videoRedirectUrl || ''} 
+                                            onChange={val => onUpdate({ videoRedirectUrl: val })} 
+                                            variables={autocompleteVariables}
+                                            placeholder="https://..."
+                                            className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8 w-full" 
+                                            ref={videoRedirectInputRef}
+                                        />
+                                        <div className="absolute right-2 z-10">
+                                            <InlineVariablePicker 
+                                                targetRef={videoRedirectInputRef} 
+                                                currentValue={block.videoRedirectUrl || ''} 
+                                                onFieldChange={val => onUpdate({ videoRedirectUrl: val })} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {showVideoLinkPicker && (
+                                        <LinkPicker 
+                                            onSelect={(url) => {
+                                                const hasTracking = block.videoRedirectUrl?.includes('ref={{encrypted_recipient_token}}');
+                                                let finalUrl = url;
+                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                    const joiner = finalUrl.includes('?') ? '&' : '?';
+                                                    finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ videoRedirectUrl: finalUrl });
+                                                setShowVideoLinkPicker(false);
+                                            }}
+                                        />
+                                    )}
+
+                                    <div className="flex items-center space-x-2 px-1 py-1">
+                                        <Checkbox
+                                            id="video-track-visitor"
+                                            checked={Boolean(block.videoRedirectUrl?.includes('ref={{encrypted_recipient_token}}'))}
+                                            onCheckedChange={(checked) => {
+                                                let currentLink = block.videoRedirectUrl || '';
+                                                currentLink = currentLink.replace(/[?&]ref=\{\{encrypted_recipient_token\}\}/, '');
+                                                if (checked === true) {
+                                                    const joiner = currentLink.includes('?') ? '&' : '?';
+                                                    currentLink = `${currentLink}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ videoRedirectUrl: currentLink });
+                                            }}
+                                            className="rounded-md"
+                                        />
+                                        <label
+                                            htmlFor="video-track-visitor"
+                                            className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest cursor-pointer select-none leading-none"
+                                        >
+                                            Track Contact Identity
+                                        </label>
+                                    </div>
                                 </div>
                             )}
                         </div>
