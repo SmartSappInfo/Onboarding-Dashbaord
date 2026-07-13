@@ -2,6 +2,7 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
+import { correctDeadZoneCoordinates } from './generate-thumbnail-flow';
 
 const ModifyCanvasElementSchema = z.object({
   id: z.string(),
@@ -24,11 +25,28 @@ const ModifyCanvasElementSchema = z.object({
   textStrokeWidth: z.number().optional(),
   badgeColor: z.string().optional(),
   badgeOpacity: z.number().optional(),
+  textEffect: z.enum(['none', 'neon', '3d', 'gradient', 'metallic']).optional(),
   
   // Image Specific
   imageSrc: z.string().optional(),
   imageOutlineColor: z.string().optional(),
   imageOutlineWidth: z.number().optional(),
+  brightness: z.number().optional(),
+  contrast: z.number().optional(),
+  blurRadius: z.number().optional(),
+  hueRotate: z.number().optional(),
+  saturate: z.number().optional(),
+  flipHorizontal: z.boolean().optional(),
+  flipVertical: z.boolean().optional(),
+  
+  // Shape/SVG Specific
+  shapeFill: z.string().optional(),
+  shapeStroke: z.string().optional(),
+  shapeStrokeWidth: z.number().optional(),
+  svgPath: z.string().optional(),
+  
+  // Shared
+  blendMode: z.string().optional(),
 });
 
 const ModifyThumbnailInputSchema = z.object({
@@ -63,8 +81,9 @@ const modifyPrompt = ai.definePrompt({
     instruction: z.string(),
   })},
   output: { schema: ModifyThumbnailOutputSchema },
-  prompt: `You are an expert design assistant. Modify the current canvas configuration based on the user's change instructions.
+  prompt: `You are an expert YouTube CTR design assistant. Modify the current canvas configuration based on the user's instructions.
 Preserve elements that aren't mentioned, but modify, move, resize, color, re-style, delete, or create elements based on the instruction.
+Ensure all elements have high contrast outlines, avoid overlaps, and stay readable.
 
 ### CURRENT CANVAS CONFIG:
 - Background Color: "{{backgroundColor}}"
@@ -139,7 +158,14 @@ const modifyThumbnailFlow = ai.defineFlow(
     const { output } = result;
 
     if (!output) throw new Error("Failed to modify thumbnail elements.");
-    return output;
+
+    // Run dead zone checks and auto-corrections to protect layout CTR
+    const correctedElements = correctDeadZoneCoordinates(output.elements);
+
+    return {
+      ...output,
+      elements: correctedElements,
+    };
   }
 );
 
