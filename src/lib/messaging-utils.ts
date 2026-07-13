@@ -661,6 +661,58 @@ export function renderBlocksToHtml(
         break;
       }
 
+      case 'video': {
+        const videoUrl = resolveVariables(block.url || '#', variables);
+        const thumbnailUrl = resolveVariables(block.videoThumbnailUrl || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80', variables);
+        
+        let link = videoUrl;
+        if (block.videoAction === 'redirect' && block.videoRedirectUrl) {
+            link = resolveVariables(block.videoRedirectUrl, variables);
+        }
+        if (link.startsWith('/')) {
+            link = `${getBaseUrl()}${link}`;
+        }
+
+        const styleRadius = options?.style?.borderRadius;
+        const defaultRadius = styleRadius ? (hasUnit(styleRadius) ? styleRadius : `${styleRadius}px`) : '16px';
+        const imgRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
+        
+        const borderConfig = s.borderWidth 
+            ? `${ensureUnit(s.borderWidth)} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
+            : `1px solid ${dividerColor}`;
+
+        blockHtml = `
+            <!--[if !mso]><!-->
+            <div class="video-native-player" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
+                <video src="${videoUrl}" poster="${thumbnailUrl}" controls style="width: 100%; border-radius: ${imgRadius};"></video>
+            </div>
+            <!--<![endif]-->
+
+            <div style="margin: 16px 0; ${marginStyles} text-align: ${align};">
+                <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
+                    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; border-collapse: collapse; border-radius: ${imgRadius}; border: ${borderConfig}; overflow: hidden; background-color: #000000; margin: 0 auto;">
+                        <tr>
+                            <td style="padding: 0; text-align: center; line-height: 0; position: relative;">
+                                <div style="position: relative; display: block;">
+                                    <!-- Poster Background Image -->
+                                    <img src="${thumbnailUrl}" style="display: block; width: 100%; height: auto; max-width: 100%; border-radius: ${imgRadius}; border: none;" alt="Watch Video" />
+                                    
+                                    <!-- Centered Play Button Overlay (Hidden in Outlook which doesn't support positioning) -->
+                                    <!--[if !mso]><!-->
+                                    <div style="position: absolute; top: 50%; left: 50%; margin-top: -30px; margin-left: -30px; width: 60px; height: 60px; border-radius: 30px; background-color: rgba(255, 255, 255, 0.25); text-align: center;">
+                                        <span style="color: #ffffff; font-size: 20px; font-weight: bold; line-height: 60px; font-family: Helvetica, Arial, sans-serif; display: inline-block;">▶</span>
+                                    </div>
+                                    <!--<![endif]-->
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </a>
+            </div>
+        `;
+        break;
+      }
+
       case 'header': {
         const headerLogo = resolveVariables(block.url || '{{org_logo_url}}', variables);
         const headerName = resolveVariables('{{org_name}}', variables);

@@ -826,7 +826,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                     />
                                     <p className="text-[9px] text-muted-foreground font-semibold italic ml-1">
-                                        Tip: You can append variables like `{{contact_id}}` or `{{email}}` to track link clicks.
+                                        Tip: You can append variables like {"\"{{contact_id}}\""} or {"\"{{email}}\""} to track link clicks.
                                     </p>
                                 </div>
                             )}
