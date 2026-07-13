@@ -112,6 +112,8 @@ export default function ThumbnailDesigner({
   const [videoUrl, setVideoUrl] = useState('');
   const [aiInstructions, setAiInstructions] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('reaction-surprise');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [confirmTemplateId, setConfirmTemplateId] = useState<string | null>(null);
 
   // Search filter for icons library
   const [iconSearch, setIconSearch] = useState('');
@@ -230,6 +232,19 @@ export default function ThumbnailDesigner({
   };
 
   const handleApplyTemplate = (tpl: typeof CTR_TEMPLATES[0]) => {
+    // If canvas has layers, require double tap confirmation
+    if (design.elements.length > 0 && confirmTemplateId !== tpl.id) {
+      setConfirmTemplateId(tpl.id);
+      toast({
+        title: 'Overwrite Canvas?',
+        description: 'Click again to confirm applying this template. Your current layers will be cleared.',
+      });
+      // Clear confirmation status after 4 seconds
+      setTimeout(() => setConfirmTemplateId(null), 4000);
+      return;
+    }
+
+    setConfirmTemplateId(null);
     const enrichedTemplate: ThumbnailDesign = {
       ...design,
       backgroundColor: tpl.backgroundColor,
@@ -735,16 +750,164 @@ export default function ThumbnailDesigner({
 
           {/* Templates Tab */}
           <TabsContent value="templates" className="p-4 space-y-3 text-left">
-            {CTR_TEMPLATES.map((tpl) => (
-              <div
-                key={tpl.id}
-                onClick={() => handleApplyTemplate(tpl)}
-                className="border border-slate-800 bg-slate-950 p-3 rounded-xl hover:border-emerald-500 cursor-pointer transition-all space-y-1 group"
-              >
-                <div className="font-bold text-xs group-hover:text-emerald-400">{tpl.name}</div>
-                <div className="text-[10px] text-slate-400 font-medium leading-relaxed">{tpl.description}</div>
-              </div>
-            ))}
+            {/* Category Filter Chips scrollable list */}
+            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-none select-none -mx-4 px-4">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'business', label: 'Business' },
+                { id: 'gaming', label: 'Gaming' },
+                { id: 'finance', label: 'Finance' },
+                { id: 'podcast', label: 'Podcast' },
+                { id: 'education', label: 'Education' }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={cn(
+                    "text-[10px] font-bold px-3 py-1.5 rounded-full shrink-0 border transition-all active:scale-[0.96]",
+                    selectedCategory === cat.id
+                      ? "bg-slate-100 text-slate-900 border-slate-100"
+                      : "bg-slate-950 text-slate-450 border-slate-850 hover:text-slate-200 hover:border-slate-800"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-1">
+              {(selectedCategory === 'all'
+                ? CTR_TEMPLATES
+                : CTR_TEMPLATES.filter(t => t.category === selectedCategory)
+              ).map((tpl) => {
+                const isConfirmed = confirmTemplateId === tpl.id;
+                
+                const getTplBackground = (): React.CSSProperties => {
+                  if (tpl.backgroundImage) {
+                    return { backgroundImage: `url(${tpl.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+                  }
+                  if (tpl.backgroundGradient && tpl.backgroundGradient.colors.length > 0) {
+                    const colorsStr = tpl.backgroundGradient.colors.join(', ');
+                    if (tpl.backgroundGradient.type === 'radial') {
+                      return { background: `radial-gradient(circle, ${colorsStr})` };
+                    }
+                    const angle = tpl.backgroundGradient.angle !== undefined ? `${tpl.backgroundGradient.angle}deg` : '135deg';
+                    return { background: `linear-gradient(${angle}, ${colorsStr})` };
+                  }
+                  return { backgroundColor: tpl.backgroundColor || '#0f172a' };
+                };
+
+                return (
+                  <div
+                    key={tpl.id}
+                    onClick={() => handleApplyTemplate(tpl)}
+                    className={cn(
+                      "border bg-slate-950 p-2.5 rounded-xl hover:border-emerald-500 cursor-pointer transition-all space-y-2 group flex flex-col justify-between select-none relative",
+                      isConfirmed ? "border-amber-500 hover:border-amber-500" : "border-slate-800"
+                    )}
+                  >
+                    <div className="w-full aspect-video bg-slate-900 rounded-lg overflow-hidden border border-slate-850 relative shrink-0">
+                      <div
+                        className="w-[1280px] h-[720px] origin-top-left scale-[0.09375] absolute pointer-events-none"
+                        style={{
+                          ...getTplBackground(),
+                          width: '1280px',
+                          height: '720px'
+                        }}
+                      >
+                        {tpl.elements.map((el) => {
+                          const isText = el.type === 'text';
+                          const effectStyle = isText
+                            ? getEffectStyle(el.textEffect || 'none', el.fill || '#facc15')
+                            : {};
+                          const isGradient = isText && (el.textEffect === 'gradient' || el.textEffect === 'metallic');
+
+                          const shadowStyle = el.type === 'image' && el.imageOutlineWidth
+                            ? `0 0 ${el.imageOutlineWidth * 2}px ${el.imageOutlineColor || '#facc15'}`
+                            : undefined;
+
+                          const transformStr = `
+                            rotate(${el.rotation || 0}deg)
+                            scaleX(${el.flipHorizontal ? -1 : 1})
+                            scaleY(${el.flipVertical ? -1 : 1})
+                          `.trim().replace(/\s+/g, ' ');
+
+                          return (
+                            <div
+                              key={el.id}
+                              style={{
+                                position: 'absolute',
+                                left: `${el.x}%`,
+                                top: `${el.y}%`,
+                                width: `${el.width}%`,
+                                height: `${el.height}%`,
+                                zIndex: el.zIndex,
+                                transform: transformStr,
+                                opacity: el.opacity !== undefined ? el.opacity : 1,
+                              }}
+                            >
+                              {isText && (
+                                <div
+                                  className="w-full h-full flex items-center justify-center font-black text-[64px] leading-tight text-center uppercase"
+                                  style={{
+                                    fontFamily: el.fontFamily || 'Inter',
+                                    color: isGradient ? undefined : (el.fill || '#ffffff'),
+                                    textShadow: shadowStyle || (effectStyle as React.CSSProperties).textShadow,
+                                    WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth * 2}px ${el.textStrokeColor || '#000000'}` : undefined,
+                                    ...effectStyle,
+                                  }}
+                                >
+                                  {el.text || 'TEXT'}
+                                </div>
+                              )}
+                              {el.type === 'image' && el.imageSrc && (
+                                <img
+                                  src={el.imageSrc}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  style={{ borderRadius: `${el.borderRadius || 12}px` }}
+                                />
+                              )}
+                              {el.type === 'emoji' && (
+                                <div className="w-full h-full flex items-center justify-center text-[64px]">
+                                  {el.text || '😀'}
+                                </div>
+                              )}
+                              {el.type === 'svg' && (
+                                <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                                  <path
+                                    d={el.svgPath || 'M0 0 H100 V100 H0 Z'}
+                                    fill={el.shapeFill || '#ffffff'}
+                                    stroke={el.shapeStroke || '#000000'}
+                                    strokeWidth={el.shapeStrokeWidth !== undefined ? el.shapeStrokeWidth * 2 : 0}
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      <div className="absolute bottom-1 right-1 bg-slate-950/80 border border-slate-800 text-[8px] font-black px-1.5 py-0.5 rounded text-emerald-400">
+                        CTR: {tpl.baselineCtr}%
+                      </div>
+                    </div>
+
+                    <div className="space-y-0.5 text-left">
+                      <div className={cn(
+                        "font-bold text-[10px] leading-tight truncate group-hover:text-emerald-400 transition-colors",
+                        isConfirmed ? "text-amber-400 group-hover:text-amber-400" : "text-slate-200"
+                      )}>
+                        {isConfirmed ? 'Confirm Overwrite' : tpl.name}
+                      </div>
+                      <div className="text-[8px] text-slate-500 truncate leading-snug font-medium">
+                        {tpl.description}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </TabsContent>
 
           {/* Icons and Emojis Library Tab */}
