@@ -3,7 +3,9 @@
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import type { CanvasElement } from '@/lib/thumbnail/thumbnail-types';
-import { ArrowRight, Move } from 'lucide-react';
+import { calculateSnapping, SnapLine } from '@/lib/thumbnail/snap-helpers';
+import * as LucideIcons from 'lucide-react';
+import { Move } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ThumbnailCanvasProps {
@@ -17,11 +19,18 @@ interface ThumbnailCanvasProps {
   elements: CanvasElement[];
   selectedId: string | null;
   onSelectElement: (id: string | null) => void;
-  onUpdateElement: (id: string, patch: Partial<CanvasElement>) => void;
+  onUpdateElement: (id: string, patch: Partial<CanvasElement>, commitToHistory?: boolean) => void;
+  onDeleteElement: (id: string) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  zoomPercent: number; // 10 - 200
+  panX: number;
+  panY: number;
+  onPanChange: (x: number, y: number) => void;
 }
 
 interface DragState {
-  type: 'move' | 'resize';
+  type: 'move' | 'resize' | 'pan';
   handle?: string;
   startX: number;
   startY: number;
@@ -39,20 +48,58 @@ export default function ThumbnailCanvas({
   selectedId,
   onSelectElement,
   onUpdateElement,
+  onDeleteElement,
+  onUndo,
+  onRedo,
+  zoomPercent,
+  panX,
+  panY,
+  onPanChange,
 }: ThumbnailCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   
-  // Track DOM element nodes for transient drag updates
+  // Track DOM elements for smooth direct styling during dragging
   const elementRefs = useRef<{ [id: string]: HTMLDivElement | null }>({});
 
   const [containerWidth, setContainerWidth] = useState(1280);
   const [isMounted, setIsMounted] = useState(false);
+  const [activeGuides, setActiveGuides] = useState<SnapLine[]>([]);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-  // Monitor size of container for mobile scaling
+  // Monitor Spacebar state for panning
   useEffect(() => {
     setIsMounted(true);
+
+    const handleKeyDownGlobal = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        const active = document.activeElement;
+        if (active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' || active?.hasAttribute('contenteditable')) {
+          return;
+        }
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUpGlobal = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpacePressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDownGlobal);
+    window.addEventListener('keyup', handleKeyUpGlobal);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDownGlobal);
+      window.removeEventListener('keyup', handleKeyUpGlobal);
+    };
+  }, []);
+
+  // Monitor size of container for layout scale ratio
+  useEffect(() => {
     if (!containerRef.current) return;
 
     const observer = new ResizeObserver((entries) => {
@@ -65,7 +112,65 @@ export default function ThumbnailCanvas({
     return () => observer.disconnect();
   }, []);
 
-  const scale = containerWidth / 1280;
+  const baseScale = containerWidth / 1280;
+  const currentScale = baseScale * (zoomPercent / 100);
+
+  // Keyboard Shortcuts Hook
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (
+        active?.tagName === 'INPUT' || 
+        active?.tagName === 'TEXTAREA' || 
+        active?.hasAttribute('contenteditable')
+      ) {
+        return;
+      }
+
+      // 1. Delete element
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        e.preventDefault();
+        onDeleteElement(selectedId);
+      }
+
+      // 2. Undo / Redo
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          onRedo?.();
+        } else {
+          onUndo?.();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        onRedo?.();
+      }
+
+      // 3. Arrow Keys Nudging
+      if (selectedId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const el = elements.find(item => item.id === selectedId);
+        if (el && !el.isLocked) {
+          const step = e.shiftKey ? 5 : 1; // 5% or 1%
+          let dx = 0;
+          let dy = 0;
+          if (e.key === 'ArrowLeft') dx = -step;
+          if (e.key === 'ArrowRight') dx = step;
+          if (e.key === 'ArrowUp') dy = -step;
+          if (e.key === 'ArrowDown') dy = step;
+
+          onUpdateElement(selectedId, {
+            x: Math.max(0, Math.min(100 - el.width, el.x + dx)),
+            y: Math.max(0, Math.min(100 - el.height, el.y + dy)),
+          }, true); // Commit directly to history stack
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId, elements, onUndo, onRedo, onDeleteElement, onUpdateElement]);
 
   const getBackgroundStyle = (): React.CSSProperties => {
     if (backgroundImage) {
@@ -86,7 +191,6 @@ export default function ThumbnailCanvas({
     return { backgroundColor };
   };
 
-  // Maps external image URLs to proxy API to prevent canvas tainting CORS issues
   const getCORSFriendlyUrl = (url?: string): string | undefined => {
     if (!url) return undefined;
     if (
@@ -102,16 +206,61 @@ export default function ThumbnailCanvas({
 
   const handleStartDrag = (
     e: React.MouseEvent | React.TouchEvent,
-    element: CanvasElement,
-    type: 'move' | 'resize',
+    element: CanvasElement | null,
+    type: 'move' | 'resize' | 'pan',
     handle?: string
   ) => {
     e.stopPropagation();
+
+    // Spacebar panning check
+    if (isSpacePressed || type === 'pan') {
+      const startClientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const startClientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      dragRef.current = {
+        type: 'pan',
+        startX: startClientX,
+        startY: startClientY,
+        elX: panX,
+        elY: panY,
+        elW: 0,
+        elH: 0
+      };
+
+      const handlePanMove = (moveEv: MouseEvent) => {
+        if (!dragRef.current) return;
+        const dx = moveEv.clientX - dragRef.current.startX;
+        const dy = moveEv.clientY - dragRef.current.startY;
+        onPanChange(dragRef.current.elX + dx, dragRef.current.elY + dy);
+      };
+
+      const handlePanTouchMove = (moveEv: TouchEvent) => {
+        if (moveEv.cancelable) moveEv.preventDefault();
+        if (!dragRef.current || moveEv.touches.length === 0) return;
+        const dx = moveEv.touches[0].clientX - dragRef.current.startX;
+        const dy = moveEv.touches[0].clientY - dragRef.current.startY;
+        onPanChange(dragRef.current.elX + dx, dragRef.current.elY + dy);
+      };
+
+      const handlePanUp = () => {
+        dragRef.current = null;
+        window.removeEventListener('mousemove', handlePanMove);
+        window.removeEventListener('mouseup', handlePanUp);
+        window.removeEventListener('touchmove', handlePanTouchMove);
+        window.removeEventListener('touchend', handlePanUp);
+      };
+
+      window.addEventListener('mousemove', handlePanMove);
+      window.addEventListener('mouseup', handlePanUp);
+      window.addEventListener('touchmove', handlePanTouchMove, { passive: false });
+      window.addEventListener('touchend', handlePanUp);
+      return;
+    }
+
+    if (!element || element.isLocked) return;
     onSelectElement(element.id);
 
     if (!canvasRef.current) return;
 
-    // Support touch and mouse pointer coordinates
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
@@ -134,8 +283,8 @@ export default function ThumbnailCanvas({
     const handlePointerMove = (evX: number, evY: number) => {
       if (!dragRef.current) return;
       
-      const deltaX = (evX - dragRef.current.startX) / scale;
-      const deltaY = (evY - dragRef.current.startY) / scale;
+      const deltaX = (evX - dragRef.current.startX) / currentScale;
+      const deltaY = (evY - dragRef.current.startY) / currentScale;
       
       const dx = (deltaX / 1280) * 100;
       const dy = (deltaY / 720) * 100;
@@ -143,8 +292,16 @@ export default function ThumbnailCanvas({
       const node = elementRefs.current[element.id];
 
       if (dragRef.current.type === 'move') {
-        latestX = Math.max(0, Math.min(100 - dragRef.current.elW, dragRef.current.elX + dx));
-        latestY = Math.max(0, Math.min(100 - dragRef.current.elH, dragRef.current.elY + dy));
+        const rawX = dragRef.current.elX + dx;
+        const rawY = dragRef.current.elY + dy;
+
+        // Perform alignment snapping
+        const tempElement: CanvasElement = { ...element, x: rawX, y: rawY };
+        const snap = calculateSnapping(tempElement, elements);
+
+        latestX = snap.x;
+        latestY = snap.y;
+        setActiveGuides(snap.guides);
         
         if (node) {
           node.style.left = `${latestX}%`;
@@ -175,10 +332,21 @@ export default function ThumbnailCanvas({
           }
         }
 
-        latestX = Math.max(0, Math.min(100, newX));
-        latestY = Math.max(0, Math.min(100, newY));
-        latestW = Math.max(2, Math.min(100, newW));
-        latestH = Math.max(2, Math.min(100, newH));
+        const tempElement: CanvasElement = { 
+          ...element, 
+          x: newX, 
+          y: newY, 
+          width: newW, 
+          height: newH 
+        };
+        const snap = calculateSnapping(tempElement, elements);
+
+        latestX = snap.x;
+        latestY = snap.y;
+        latestW = snap.x === newX ? newW : newW + (newX - snap.x);
+        latestH = snap.y === newY ? newH : newH + (newY - snap.y);
+
+        setActiveGuides(snap.guides);
 
         if (node) {
           node.style.left = `${latestX}%`;
@@ -194,10 +362,7 @@ export default function ThumbnailCanvas({
     };
 
     const handleTouchMove = (ev: TouchEvent) => {
-      // Prevent screen pulling/refresh gestures during drag operations
-      if (ev.cancelable) {
-        ev.preventDefault();
-      }
+      if (ev.cancelable) ev.preventDefault();
       if (ev.touches.length > 0) {
         handlePointerMove(ev.touches[0].clientX, ev.touches[0].clientY);
       }
@@ -205,14 +370,14 @@ export default function ThumbnailCanvas({
 
     const handlePointerUp = () => {
       dragRef.current = null;
+      setActiveGuides([]);
       
-      // Commit the transient styling coordinates back to the React state on release
       onUpdateElement(element.id, {
         x: latestX,
         y: latestY,
         width: latestW,
         height: latestH,
-      });
+      }, true); // Commit history step on release
 
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handlePointerUp);
@@ -236,28 +401,59 @@ export default function ThumbnailCanvas({
   return (
     <div
       ref={containerRef}
-      className="w-full relative bg-slate-900 border border-slate-800 rounded-2xl p-2 select-none overflow-hidden aspect-video flex items-start justify-start"
+      onMouseDown={(e) => {
+        if (isSpacePressed) handleStartDrag(e, null, 'pan');
+      }}
+      onTouchStart={(e) => {
+        if (isSpacePressed) handleStartDrag(e, null, 'pan');
+      }}
+      className={cn(
+        "w-full relative bg-slate-900 border border-slate-800 rounded-2xl p-2 select-none overflow-hidden aspect-video flex items-center justify-center",
+        isSpacePressed ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+      )}
     >
       <div
         ref={canvasRef}
         id="thumbnail-canvas-container"
-        className="relative overflow-hidden shrink-0"
+        className="relative overflow-hidden shrink-0 shadow-2xl transition-all duration-75"
         style={{
           width: '1280px',
           height: '720px',
           ...getBackgroundStyle(),
-          transform: isMounted ? `scale(${scale})` : 'scale(1)',
-          transformOrigin: 'top left',
-          transition: 'transform 0.1s ease-out',
+          transform: isMounted 
+            ? `translate(${panX}px, ${panY}px) scale(${currentScale})` 
+            : 'scale(1)',
+          transformOrigin: 'center center',
         }}
         onClick={() => onSelectElement(null)}
       >
-        {/* Alignment Assist Grids */}
+        {/* Grids and Guides */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800d_1px,transparent_1px),linear-gradient(to_bottom,#8080800d_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
+        {/* Dynamic Snap Guides Overlay */}
+        {activeGuides.map((guide, idx) => (
+          <div
+            key={idx}
+            className="absolute border-emerald-500 border-dashed pointer-events-none z-[999]"
+            style={{
+              left: guide.type === 'vertical' ? `${guide.coordinate}%` : '0',
+              top: guide.type === 'horizontal' ? `${guide.coordinate}%` : '0',
+              width: guide.type === 'vertical' ? '1px' : '100%',
+              height: guide.type === 'horizontal' ? '1px' : '100%',
+            }}
+          />
+        ))}
+
         {sortedElements.map((el) => {
+          if (el.isHidden) return null;
+
           const isSelected = selectedId === el.id;
           const shadowStyle = getShadowCss(el.textShadow || el.imageShadow);
+
+          // Get dynamically resolved Lucide icons
+          const IconComponent = el.type === 'icon' && el.iconName 
+            ? (LucideIcons as any)[el.iconName] || LucideIcons.HelpCircle 
+            : null;
 
           return (
             <div
@@ -283,7 +479,8 @@ export default function ThumbnailCanvas({
               <div
                 className={cn(
                   "w-full h-full relative group transition-shadow",
-                  isSelected && "ring-4 ring-emerald-500 ring-offset-4 ring-offset-slate-950"
+                  isSelected && !el.isLocked && "ring-4 ring-emerald-500 ring-offset-4 ring-offset-slate-950",
+                  isSelected && el.isLocked && "ring-4 ring-red-500 ring-offset-4 ring-offset-slate-950"
                 )}
                 onMouseDown={(e) => handleStartDrag(e, el, 'move')}
                 onTouchStart={(e) => handleStartDrag(e, el, 'move')}
@@ -300,7 +497,7 @@ export default function ThumbnailCanvas({
                       color: el.fill || '#ffffff',
                       textAlign: el.textAlign || 'center',
                       WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth}px ${el.textStrokeColor || '#000000'}` : undefined,
-                      paintOrder: 'stroke fill', // Renders text outline behind characters for clean legibility
+                      paintOrder: 'stroke fill',
                       textShadow: shadowStyle,
                       backgroundColor: el.badgeColor || undefined,
                       opacity: el.badgeOpacity !== undefined ? el.badgeOpacity : 1,
@@ -314,15 +511,18 @@ export default function ThumbnailCanvas({
                 {/* 2. Image Element */}
                 {el.type === 'image' && (
                   <div
-                    className="w-full h-full relative overflow-hidden"
+                    className={cn(
+                      "w-full h-full relative overflow-hidden",
+                      el.maskShape === 'circle' && "rounded-full",
+                      el.maskShape === 'hexagon' && "clip-path-hex" // HEX clip path in index.css
+                    )}
                     style={{
                       boxShadow: shadowStyle,
                       border: el.imageOutlineWidth ? `${el.imageOutlineWidth}px solid ${el.imageOutlineColor || '#ffffff'}` : undefined,
-                      borderRadius: el.borderRadius ? `${el.borderRadius}px` : '12px',
+                      borderRadius: (!el.maskShape || el.maskShape === 'none') ? `${el.borderRadius || 12}px` : undefined,
                     }}
                   >
                     {el.imageSrc ? (
-                      /* Use standard img wrapped in CORS proxy check to avoid canvas tainting */
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={getCORSFriendlyUrl(el.imageSrc)}
@@ -377,20 +577,37 @@ export default function ThumbnailCanvas({
                   </div>
                 )}
 
-                {/* Selected outline handles */}
-                {isSelected && (
+                {/* 6. Icon Element */}
+                {el.type === 'icon' && IconComponent && (
+                  <div className="w-full h-full flex items-center justify-center" style={{ filter: shadowStyle ? `drop-shadow(${shadowStyle})` : undefined }}>
+                    <IconComponent className="w-full h-full" style={{ color: el.shapeFill || '#ffffff' }} />
+                  </div>
+                )}
+
+                {/* 7. Emoji Element */}
+                {el.type === 'emoji' && (
+                  <div className="w-full h-full flex items-center justify-center select-none text-[64px]" style={{ textShadow: shadowStyle }}>
+                    {el.text || '😀'}
+                  </div>
+                )}
+
+                {/* Selected resize corners */}
+                {isSelected && !el.isLocked && (
                   <>
+                    {/* Enlarged touch target templates */}
                     {['nw', 'ne', 'sw', 'se'].map((h) => (
                       <div
                         key={h}
-                        className="absolute w-5 h-5 bg-white border-2 border-emerald-500 rounded-full z-45 cursor-pointer pointer-events-auto shadow-md"
+                        className="absolute w-8 h-8 z-45 cursor-pointer pointer-events-auto flex items-center justify-center"
                         style={{
-                          top: h.includes('n') ? '-10px' : 'calc(100% - 10px)',
-                          left: h.includes('w') ? '-10px' : 'calc(100% - 10px)',
+                          top: h.includes('n') ? '-16px' : 'calc(100% - 16px)',
+                          left: h.includes('w') ? '-16px' : 'calc(100% - 16px)',
                         }}
                         onMouseDown={(e) => handleStartDrag(e, el, 'resize', h)}
                         onTouchStart={(e) => handleStartDrag(e, el, 'resize', h)}
-                      />
+                      >
+                        <div className="w-3 h-3 bg-white border-2 border-emerald-500 rounded-full shadow-md" />
+                      </div>
                     ))}
                     <div
                       className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded-full p-2 shadow-lg z-45 cursor-move pointer-events-auto hover:bg-slate-800"

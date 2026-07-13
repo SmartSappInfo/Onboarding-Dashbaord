@@ -24,6 +24,11 @@ describe('ThumbnailCanvas Component', () => {
         selectedId={null}
         onSelectElement={() => {}}
         onUpdateElement={() => {}}
+        onDeleteElement={() => {}}
+        zoomPercent={100}
+        panX={0}
+        panY={0}
+        onPanChange={() => {}}
       />
     );
     
