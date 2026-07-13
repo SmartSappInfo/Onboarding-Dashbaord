@@ -7,6 +7,8 @@ import { calculateSnapping, SnapLine } from '@/lib/thumbnail/snap-helpers';
 import * as LucideIcons from 'lucide-react';
 import { Move, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FontLoader } from '@/lib/thumbnail/font-loader';
+import { getEffectStyle } from '@/lib/thumbnail/design-system-presets';
 
 interface ThumbnailCanvasProps {
   backgroundColor: string;
@@ -67,6 +69,15 @@ export default function ThumbnailCanvas({
   const [isMounted, setIsMounted] = useState(false);
   const [activeGuides, setActiveGuides] = useState<SnapLine[]>([]);
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // Preload any active Google Fonts dynamically on changes
+  useEffect(() => {
+    elements.forEach((el) => {
+      if (el.type === 'text' && el.fontFamily) {
+        FontLoader.loadFont(el.fontFamily);
+      }
+    });
+  }, [elements]);
 
   // Monitor Spacebar state for panning
   useEffect(() => {
@@ -486,27 +497,32 @@ export default function ThumbnailCanvas({
                 onTouchStart={(e) => handleStartDrag(e, el, 'move')}
               >
                 {/* 1. Text Element */}
-                {el.type === 'text' && (
-                  <div
-                    className="w-full h-full flex items-center justify-center p-2 leading-tight"
-                    style={{
-                      fontFamily: el.fontFamily || 'Inter',
-                      fontSize: el.fontSize ? `${el.fontSize}px` : '32px',
-                      fontWeight: el.fontWeight || 'bold',
-                      fontStyle: el.fontStyle || 'normal',
-                      color: el.fill || '#ffffff',
-                      textAlign: el.textAlign || 'center',
-                      WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth}px ${el.textStrokeColor || '#000000'}` : undefined,
-                      paintOrder: 'stroke fill',
-                      textShadow: shadowStyle,
-                      backgroundColor: el.badgeColor || undefined,
-                      opacity: el.badgeOpacity !== undefined ? el.badgeOpacity : 1,
-                      borderRadius: el.badgeColor ? '8px' : undefined,
-                    }}
-                  >
-                    <span className="break-words w-full select-none">{el.text || 'Text Layer'}</span>
-                  </div>
-                )}
+                {el.type === 'text' && (() => {
+                  const effectStyle = getEffectStyle(el.textEffect || 'none', el.fill || '#facc15');
+                  const isGradient = el.textEffect === 'gradient' || el.textEffect === 'metallic';
+                  return (
+                    <div
+                      className="w-full h-full flex items-center justify-center p-2 leading-tight"
+                      style={{
+                        fontFamily: el.fontFamily || 'Inter',
+                        fontSize: el.fontSize ? `${el.fontSize}px` : '32px',
+                        fontWeight: el.fontWeight || 'bold',
+                        fontStyle: el.fontStyle || 'normal',
+                        color: isGradient ? undefined : (el.fill || '#ffffff'),
+                        textAlign: el.textAlign || 'center',
+                        WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth}px ${el.textStrokeColor || '#000000'}` : undefined,
+                        paintOrder: 'stroke fill',
+                        textShadow: shadowStyle || effectStyle.textShadow,
+                        backgroundColor: el.badgeColor || undefined,
+                        opacity: el.badgeOpacity !== undefined ? el.badgeOpacity : 1,
+                        borderRadius: el.badgeColor ? '8px' : undefined,
+                        ...effectStyle,
+                      }}
+                    >
+                      <span className="break-words w-full select-none">{el.text || 'Text Layer'}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* 2. Image Element */}
                 {el.type === 'image' && (
@@ -588,6 +604,24 @@ export default function ThumbnailCanvas({
                 {el.type === 'emoji' && (
                   <div className="w-full h-full flex items-center justify-center select-none text-[64px]" style={{ textShadow: shadowStyle }}>
                     {el.text || '😀'}
+                  </div>
+                )}
+
+                {/* 8. SVG Shape Element */}
+                {el.type === 'svg' && (
+                  <div className="w-full h-full flex items-center justify-center" style={{ filter: shadowStyle ? `drop-shadow(${shadowStyle})` : undefined }}>
+                    <svg
+                      viewBox="0 0 100 100"
+                      className="w-full h-full"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        d={el.svgPath || 'M0 0 H100 V100 H0 Z'}
+                        fill={el.shapeFill || '#ffffff'}
+                        stroke={el.shapeStroke || '#000000'}
+                        strokeWidth={el.shapeStrokeWidth !== undefined ? el.shapeStrokeWidth * 2 : 0}
+                      />
+                    </svg>
                   </div>
                 )}
 
