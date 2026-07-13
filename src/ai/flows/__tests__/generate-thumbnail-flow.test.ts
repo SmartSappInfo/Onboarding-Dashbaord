@@ -57,7 +57,7 @@ describe('correctDeadZoneCoordinates helper function', () => {
     const elements = [
       { id: 'el-1', type: 'text' as const, x: 85, y: 80, width: 10, height: 10, zIndex: 1 }
     ];
-    const res = correctDeadZoneCoordinates(elements);
+    const res = await correctDeadZoneCoordinates(elements);
     // Element should be shifted to x: 65 (75 - width)
     expect(res[0].x).toBe(65);
   });
@@ -67,7 +67,7 @@ describe('correctDeadZoneCoordinates helper function', () => {
     const elements = [
       { id: 'el-2', type: 'text' as const, x: 10, y: 20, width: 20, height: 20, zIndex: 1 }
     ];
-    const res = correctDeadZoneCoordinates(elements);
+    const res = await correctDeadZoneCoordinates(elements);
     expect(res[0].x).toBe(10);
   });
 });

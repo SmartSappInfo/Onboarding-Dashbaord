@@ -159,7 +159,7 @@ const modifyThumbnailFlow = ai.defineFlow(
     if (!output) throw new Error("Failed to modify thumbnail elements.");
 
     // Run dead zone checks and auto-corrections to protect layout CTR
-    const correctedElements = correctDeadZoneCoordinates(output.elements);
+    const correctedElements = await correctDeadZoneCoordinates(output.elements);
 
     return {
       ...output,

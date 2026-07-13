@@ -152,7 +152,7 @@ Given the copy strategy and design styles below, construct the final elements on
 6. Return the finalized composition coordinates. Explain your layout choices.`,
 });
 
-export function correctDeadZoneCoordinates(elements: z.infer<typeof CanvasElementSchema>[]): z.infer<typeof CanvasElementSchema>[] {
+export async function correctDeadZoneCoordinates(elements: z.infer<typeof CanvasElementSchema>[]): Promise<z.infer<typeof CanvasElementSchema>[]> {
   return elements.map((el) => {
     // Check if element intersects with YouTube timestamp overlay (x > 80 && y > 75)
     const overlapsX = el.x + el.width > 80;
@@ -240,7 +240,7 @@ const generateThumbnailFlow = ai.defineFlow(
     if (!finalComposition) throw new Error("Layout Planner failed to compose canvas.");
 
     // Inject dead zone checking and auto-corrections
-    const correctedElements = correctDeadZoneCoordinates(finalComposition.elements);
+    const correctedElements = await correctDeadZoneCoordinates(finalComposition.elements);
 
     return {
       ...finalComposition,
