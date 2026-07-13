@@ -625,6 +625,51 @@ export function VisualBlock({
                     )}
                 </div>
             );
+        case 'audio':
+            return (
+                <div className={cn("w-full py-2", alignmentClass)}>
+                    <div 
+                        className="w-full border p-4 shadow-sm flex items-center gap-4 transition-all"
+                        style={{
+                            borderRadius: s.borderRadius ? `${s.borderRadius}px` : '16px',
+                            borderWidth: s.borderWidth ? `${s.borderWidth}px` : '1px',
+                            borderStyle: s.borderStyle || 'solid',
+                            borderColor: s.borderColor || '#e2e8f0',
+                            backgroundColor: s.backgroundColor || '#ffffff',
+                            ...spacingStyle
+                        }}
+                    >
+                        {/* Circular Play Button Mock */}
+                        <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm active:scale-95 duration-100 cursor-pointer"
+                            style={{ backgroundColor: options?.style?.primaryColor || '#2563eb' }}
+                        >
+                            <span className="text-xs">▶</span>
+                        </div>
+
+                        {/* Title and metadata */}
+                        <div className="flex-1 min-w-0 text-left">
+                            <h4 className="text-sm font-semibold truncate text-foreground leading-snug">
+                                {block.audioTitle || 'Untitled Audio'}
+                            </h4>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mt-1">
+                                {block.audioDuration || '0:00'} &bull; {block.audioAction === 'download' ? 'Download' : block.audioAction === 'redirect' ? 'Web Link' : 'Inline Player'}
+                            </p>
+                        </div>
+
+                        {/* Simulated Waveform Bars */}
+                        <div className="hidden sm:flex items-center gap-0.5 h-6 shrink-0 opacity-40">
+                            <div className="w-0.5 h-3 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-5 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-4 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-6 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-3 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-5 bg-foreground/60 rounded" />
+                            <div className="w-0.5 h-2 bg-foreground/60 rounded" />
+                        </div>
+                    </div>
+                </div>
+            );
         case 'quote':
             return (
                 <div 

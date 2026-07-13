@@ -10,7 +10,8 @@ import {
     Trophy,
     Layout,
     Square,
-    CalendarCheck
+    CalendarCheck,
+    Volume2
 } from 'lucide-react';
 
 export const blockIcons: Record<string, React.ComponentType<any>> = {
@@ -19,6 +20,7 @@ export const blockIcons: Record<string, React.ComponentType<any>> = {
     list: List,
     image: ImageIcon,
     video: Video,
+    audio: Volume2,
     button: MousePointer2,
     quote: Quote,
     divider: Square,

@@ -867,6 +867,34 @@ const blockTypeTemplates: Record<string, Array<{
             })
         }
     ],
+    audio: [
+        {
+            name: 'Modern Audio Waveform Card',
+            description: 'Rounded player card featuring dynamic visual waveform bars',
+            aspectRatio: 'aspect-[21/9]',
+            create: () => ({
+                id: `blk_audio_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'audio',
+                audioTitle: 'Onboarding Welcome Audio Note',
+                audioDuration: '2:15',
+                audioAction: 'play_inline',
+                url: '',
+                style: {
+                    backgroundColor: '#ffffff',
+                    borderRadius: '16px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: '#e2e8f0',
+                    paddingTop: '16px',
+                    paddingBottom: '16px',
+                    paddingLeft: '20px',
+                    paddingRight: '20px',
+                    marginTop: '12px',
+                    marginBottom: '12px'
+                }
+            })
+        }
+    ],
     button: [
         {
             name: 'CTA Pill Button',
@@ -1788,6 +1816,19 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                         style={{ borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px' }}
                     >
                         <span className="w-3.5 h-3.5 rounded-full bg-white/20 flex items-center justify-center text-[7px]">▶</span>
+                    </div>
+                </div>
+            );
+        case 'audio':
+            return (
+                <div className="w-full py-1 px-2 flex justify-center">
+                    <div 
+                        className="bg-slate-200 border rounded flex items-center justify-between w-full h-10 px-3 text-[7px] text-slate-600 font-bold"
+                        style={{ borderRadius: s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '4px' }}
+                    >
+                        <span className="shrink-0 mr-1.5">🔊</span>
+                        <span className="truncate flex-1 text-left">{block.audioTitle || 'Audio Note'}</span>
+                        <span className="opacity-60">{block.audioDuration || '0:00'}</span>
                     </div>
                 </div>
             );
