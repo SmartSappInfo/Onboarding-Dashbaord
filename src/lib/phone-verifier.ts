@@ -258,6 +258,34 @@ export class PhoneVerificationEngine {
   constructor(private strategies: IPhoneVerificationStrategy[] = defaultStrategies()) {}
 
   async verify(phone: string, defaultCountry?: string): Promise<VerifyPhoneResult> {
+    try {
+      const { checkMessageDeliveryLogs } = await import('./services/delivery-telemetry');
+      const telemetry = await checkMessageDeliveryLogs(phone, 'phone');
+      if (telemetry.status !== null && telemetry.score !== null) {
+        return {
+          valid: telemetry.status === 'verified',
+          score: telemetry.score,
+          status: telemetry.status === 'verified' ? 'format_valid' : 'invalid',
+          e164: phone,
+          country: null,
+          callingCode: null,
+          lineType: null,
+          checks: {
+            structure: true,
+            possible: telemetry.status === 'verified',
+            valid: telemetry.status === 'verified',
+            lineType: telemetry.status === 'verified',
+            suspicious: false,
+          },
+          details: {
+            telemetry: `delivery_${telemetry.status}`,
+          },
+        };
+      }
+    } catch (err) {
+      console.warn('[PhoneVerifier] Failed checking delivery logs:', err);
+    }
+
     const context: PhoneVerificationContext = { phone, defaultCountry };
     const state: Record<string, any> = {};
 
