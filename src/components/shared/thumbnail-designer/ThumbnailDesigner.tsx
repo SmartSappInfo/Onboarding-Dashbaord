@@ -8,6 +8,7 @@ import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-e
 import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY } from '@/lib/thumbnail/design-system-presets';
 import ThumbnailCanvas from './ThumbnailCanvas';
 import { runGenerateThumbnail, runModifyThumbnail } from '@/app/actions/thumbnail-actions';
+import { removeImageBackgroundAction } from '@/app/actions/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,7 @@ export default function ThumbnailDesigner({
   const firestore = useFirestore();
   const { user } = useUser();
   const [isPending, startTransition] = useTransition();
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
 
   // Zustand Store states and actions
   const design = useThumbnailEditor((s: EditorState) => s.design);
@@ -204,6 +206,20 @@ export default function ThumbnailDesigner({
     };
     initializeStore(enrichedTemplate);
     toast({ title: 'Template applied', description: `${tpl.name} is now loaded.` });
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!selectedElement || !selectedElement.imageSrc) return;
+    setIsRemovingBg(true);
+    try {
+      const cutoutUrl = await removeImageBackgroundAction(selectedElement.imageSrc);
+      updateElement(selectedElement.id, { imageSrc: cutoutUrl });
+      toast({ title: 'Background removed', description: 'AI successfully extracted the subject.' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Background extraction failed', description: 'AI could not cut out subject.' });
+    } finally {
+      setIsRemovingBg(false);
+    }
   };
 
   const handleGenerateAI = () => {
@@ -959,9 +975,19 @@ export default function ThumbnailDesigner({
 
           {selectedElement.type === 'image' && (
             <div className="space-y-3">
-              <Button onClick={() => setShowMediaForSubject(true)} disabled={selectedElement.isLocked} variant="outline" className="w-full text-xs rounded-xl active:scale-[0.97]">
-                Replace Subject Image
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowMediaForSubject(true)} disabled={selectedElement.isLocked} variant="outline" className="flex-1 text-xs rounded-xl active:scale-[0.97]">
+                  Replace Image
+                </Button>
+                <Button
+                  onClick={handleRemoveBackground}
+                  disabled={selectedElement.isLocked || isRemovingBg}
+                  className="flex-1 bg-violet-600 hover:bg-violet-750 text-xs rounded-xl active:scale-[0.97] text-white flex items-center justify-center"
+                >
+                  {isRemovingBg ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1 shrink-0" /> : <Sparkles className="w-3.5 h-3.5 mr-1 shrink-0" />}
+                  Cutout Face/Obj
+                </Button>
+              </div>
 
               {/* Crop Mask configuration */}
               <div className="space-y-1 border-t border-slate-800 pt-3">
@@ -1002,6 +1028,119 @@ export default function ThumbnailDesigner({
                     disabled={selectedElement.isLocked}
                     className="flex-1"
                   />
+                </div>
+              </div>
+
+              {/* Image adjustment filters */}
+              <div className="space-y-3 border-t border-slate-800 pt-3">
+                <Label className="text-[10px] font-bold uppercase text-slate-400">Image Adjustments (Double-Tap ResetLabel)</Label>
+                
+                <div className="space-y-1">
+                  <Label
+                    onDoubleClick={() => updateElement(selectedElement.id, { brightness: 100 })}
+                    className="text-[10px] font-bold text-slate-450 cursor-pointer hover:text-slate-205 select-none"
+                  >
+                    Brightness ({selectedElement.brightness !== undefined ? selectedElement.brightness : 100}%)
+                  </Label>
+                  <Slider
+                    min={50}
+                    max={150}
+                    step={1}
+                    value={[selectedElement.brightness !== undefined ? selectedElement.brightness : 100]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { brightness: val })}
+                    disabled={selectedElement.isLocked}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    onDoubleClick={() => updateElement(selectedElement.id, { contrast: 100 })}
+                    className="text-[10px] font-bold text-slate-450 cursor-pointer hover:text-slate-205 select-none"
+                  >
+                    Contrast ({selectedElement.contrast !== undefined ? selectedElement.contrast : 100}%)
+                  </Label>
+                  <Slider
+                    min={50}
+                    max={150}
+                    step={1}
+                    value={[selectedElement.contrast !== undefined ? selectedElement.contrast : 100]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { contrast: val })}
+                    disabled={selectedElement.isLocked}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    onDoubleClick={() => updateElement(selectedElement.id, { saturate: 100 })}
+                    className="text-[10px] font-bold text-slate-450 cursor-pointer hover:text-slate-205 select-none"
+                  >
+                    Saturation ({selectedElement.saturate !== undefined ? selectedElement.saturate : 100}%)
+                  </Label>
+                  <Slider
+                    min={0}
+                    max={200}
+                    step={1}
+                    value={[selectedElement.saturate !== undefined ? selectedElement.saturate : 100]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { saturate: val })}
+                    disabled={selectedElement.isLocked}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    onDoubleClick={() => updateElement(selectedElement.id, { blurRadius: 0 })}
+                    className="text-[10px] font-bold text-slate-450 cursor-pointer hover:text-slate-205 select-none"
+                  >
+                    Blur ({selectedElement.blurRadius || 0}px)
+                  </Label>
+                  <Slider
+                    min={0}
+                    max={20}
+                    step={1}
+                    value={[selectedElement.blurRadius || 0]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { blurRadius: val })}
+                    disabled={selectedElement.isLocked}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label
+                    onDoubleClick={() => updateElement(selectedElement.id, { hueRotate: 0 })}
+                    className="text-[10px] font-bold text-slate-450 cursor-pointer hover:text-slate-205 select-none"
+                  >
+                    Hue Rotation ({selectedElement.hueRotate || 0}°)
+                  </Label>
+                  <Slider
+                    min={0}
+                    max={360}
+                    step={5}
+                    value={[selectedElement.hueRotate || 0]}
+                    onValueChange={([val]) => updateElement(selectedElement.id, { hueRotate: val })}
+                    disabled={selectedElement.isLocked}
+                  />
+                </div>
+              </div>
+
+              {/* Flip configurations */}
+              <div className="space-y-2 border-t border-slate-800 pt-3">
+                <Label className="text-[10px] font-bold uppercase text-slate-400">Flip Transformations</Label>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => updateElement(selectedElement.id, { flipHorizontal: !selectedElement.flipHorizontal })}
+                    disabled={selectedElement.isLocked}
+                    variant={selectedElement.flipHorizontal ? "secondary" : "outline"}
+                    className="flex-1 text-xs rounded-xl active:scale-[0.97]"
+                  >
+                    Flip Horiz
+                  </Button>
+                  <Button
+                    onClick={() => updateElement(selectedElement.id, { flipVertical: !selectedElement.flipVertical })}
+                    disabled={selectedElement.isLocked}
+                    variant={selectedElement.flipVertical ? "secondary" : "outline"}
+                    className="flex-1 text-xs rounded-xl active:scale-[0.97]"
+                  >
+                    Flip Vert
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1076,6 +1215,30 @@ export default function ThumbnailDesigner({
               )}
             </div>
           )}
+
+          <div className="space-y-1 border-t border-slate-800 pt-4">
+            <Label className="text-[10px] font-bold uppercase text-slate-400">Layer Blend Mode</Label>
+            <Select
+              value={selectedElement.blendMode || 'normal'}
+              onValueChange={(val: any) => updateElement(selectedElement.id, { blendMode: val })}
+              disabled={selectedElement.isLocked}
+            >
+              <SelectTrigger className="bg-slate-950 border-slate-800 text-xs rounded-xl h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="multiply">Multiply</SelectItem>
+                <SelectItem value="screen">Screen</SelectItem>
+                <SelectItem value="overlay">Overlay</SelectItem>
+                <SelectItem value="darken">Darken</SelectItem>
+                <SelectItem value="lighten">Lighten</SelectItem>
+                <SelectItem value="color-dodge">Color Dodge</SelectItem>
+                <SelectItem value="color-burn">Color Burn</SelectItem>
+                <SelectItem value="difference">Difference</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="space-y-1 border-t border-slate-800 pt-4">
             <Label className="text-[10px] font-bold uppercase text-slate-400">Depth Arrangements</Label>
