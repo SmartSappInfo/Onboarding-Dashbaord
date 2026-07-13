@@ -62,6 +62,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
+import { TemplatePreviewModal } from '../templates/components/template-preview-modal';
 
 const DEFAULT_HTML = `<html>
   <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
@@ -101,6 +102,37 @@ export default function MessageStylesPage() {
     const [isAdding, setIsAdding] = React.useState(false);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [previewStyle, setPreviewStyle] = React.useState<MessageStyle | null>(null);
+    
+    const dummyTemplateForStyle = React.useMemo<MessageTemplate | null>(() => {
+        if (!previewStyle) return null;
+        return {
+            id: 'preview-dummy',
+            name: previewStyle.name,
+            channel: 'email',
+            contentMode: 'rich_builder',
+            styleId: previewStyle.id,
+            target: 'external_client',
+            subject: 'The Real Cost of Outstanding Fees and Why Most Schools Underestimate the Damage',
+            previewText: 'A deep dive into fee collections and optimization strategies for modern administrators.',
+            body: '',
+            blocks: [
+                {
+                    id: 'b1',
+                    type: 'text',
+                    content: '<h1>Outstanding Fees Masterclass</h1><p>Outstanding fees create more problems than most schools realize. The obvious problem is lost cash flow. The hidden problem is delayed decisions, postponed projects, and uncertainty.</p><p>Administrative teams spend hours following up. Accountants spend time reconciling records. School leaders spend energy worrying about collections.</p>',
+                },
+                {
+                    id: 'b2',
+                    type: 'button',
+                    title: 'Read the Guide',
+                    url: 'https://smartsapp.com',
+                }
+            ],
+            workspaceIds: [],
+            createdAt: '',
+            updatedAt: ''
+        };
+    }, [previewStyle]);
     
     // Edit Style State
     const [editingStyle, setEditingStyle] = React.useState<MessageStyle | null>(null);
@@ -945,74 +977,18 @@ export default function MessageStylesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Preview Dialog */}
-            <Dialog open={!!previewStyle} onOpenChange={() => setPreviewStyle(null)}>
-                <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-background">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl"><Eye className="h-5 w-5 text-primary" /></div>
-                            <div>
-                                <DialogTitle className="text-xl font-semibold tracking-tight">Atmospheric Preview</DialogTitle>
-                                <DialogDescription className="text-xs font-bold">{previewStyle?.name}</DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-                    {previewStyle && (
-                        <Tabs defaultValue="external" className="flex-1 flex flex-col overflow-hidden">
-                            <div className="px-8 py-2 bg-muted/10 border-b flex justify-between items-center">
-                                <TabsList className="bg-background border p-1 h-9 rounded-xl shadow-sm">
-                                    <TabsTrigger value="internal" className="text-[10px] font-semibold px-4 rounded-lg">🏢 Internal Wrapper</TabsTrigger>
-                                    <TabsTrigger value="external" className="text-[10px] font-semibold px-4 rounded-lg">🌍 External Wrapper</TabsTrigger>
-                                </TabsList>
-                                <Badge variant="outline" className="text-[8px] font-bold h-5 uppercase rounded-lg">Interactive Frame</Badge>
-                            </div>
-                            <div className="flex-1 overflow-hidden relative bg-background flex justify-center p-6">
-                                <TabsContent value="internal" className="w-full h-full mt-0">
-                                    <iframe 
-                                        srcDoc={resolveBrandingInHtml(
-                                            previewStyle.htmlWrapperInternal ?? previewStyle.htmlWrapper ?? '', 
-                                            orgData,
-                                            previewStyle
-                                        ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where internal admin templates are dynamically injected.</p></div>')}
-                                        className="w-full h-full border rounded-2xl bg-white shadow-inner"
-                                        title="Internal Wrapper Live Preview"
-                                        sandbox="allow-same-origin"
-                                    />
-                                </TabsContent>
-                                <TabsContent value="external" className="w-full h-full mt-0">
-                                    <iframe 
-                                        srcDoc={resolveBrandingInHtml(
-                                            previewStyle.htmlWrapperExternal ?? previewStyle.htmlWrapper ?? '', 
-                                            orgData,
-                                            previewStyle
-                                        ).replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Content Block</p><p style="margin: 8px 0 0; font-size: 11px; color: #94a3b8;">This block represents where client-facing templates are dynamically injected.</p></div>')}
-                                        className="w-full h-full border rounded-2xl bg-white shadow-inner"
-                                        title="External Wrapper Live Preview"
-                                        sandbox="allow-same-origin"
-                                    />
-                                </TabsContent>
-                            </div>
-                        </Tabs>
-                    )}
-                    <DialogFooter className="p-4 bg-card border-t shrink-0 flex items-center justify-end gap-2">
-                        <Button variant="outline" onClick={() => setPreviewStyle(null)} className="rounded-xl h-11 px-6 text-xs font-semibold">
-                            Close
-                        </Button>
-                        {previewStyle && !(!previewStyle.workspaceIds || previewStyle.workspaceIds.length === 0 || previewStyle.scope === 'global') && (
-                            <Button 
-                                onClick={() => {
-                                    const styleToEdit = previewStyle;
-                                    setPreviewStyle(null);
-                                    router.push(`/admin/messaging/styles/${styleToEdit.id}`);
-                                }} 
-                                className="rounded-xl h-11 px-6 text-xs font-semibold shadow-lg shadow-primary/20"
-                            >
-                                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Style
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Unified Theme & Template Previewer Modal */}
+            <TemplatePreviewModal
+                template={dummyTemplateForStyle}
+                isOpen={!!previewStyle}
+                onClose={() => setPreviewStyle(null)}
+                styles={previewStyle ? [previewStyle] : []}
+                onEdit={previewStyle && !(!previewStyle.workspaceIds || previewStyle.workspaceIds.length === 0 || previewStyle.scope === 'global') ? (tmpl) => {
+                    if (tmpl.styleId) {
+                        router.push(`/admin/messaging/styles/${tmpl.styleId}`);
+                    }
+                } : undefined}
+            />
 
             {/* Delete Blocked Dialog */}
             <AlertDialog open={!!styleInUseToDelete} onOpenChange={(o) => !o && setStyleInUseToDelete(null)}>
