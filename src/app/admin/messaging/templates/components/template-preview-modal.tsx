@@ -51,7 +51,7 @@ interface TemplatePreviewModalProps {
     template: MessageTemplate | null;
     isOpen: boolean;
     onClose: () => void;
-    onEdit: (tmpl: MessageTemplate) => void;
+    onEdit?: (tmpl: MessageTemplate) => void;
     styles?: MessageStyle[];
 }
 
@@ -180,7 +180,7 @@ export function TemplatePreviewModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="max-w-4xl w-[92vw] h-[85vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl flex flex-col bg-background">
+            <DialogContent className="max-w-4xl w-[92vw] h-[85vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl flex flex-col bg-background [&>button]:hidden">
                 {/* Screen Reader Accessible Titles & Descriptions */}
                 <DialogTitle className="sr-only">
                     Previewing {template.name} ({template.channel})
@@ -190,7 +190,7 @@ export function TemplatePreviewModal({
                 </DialogDescription>
 
                 {/* Minimalist Top Nav Header */}
-                <div className="h-16 shrink-0 border-b border-border/60 px-6 flex items-center justify-between bg-card/40 backdrop-blur-md">
+                <div className="h-auto md:h-16 py-3 md:py-0 shrink-0 border-b border-border/60 px-4 md:px-6 flex flex-col md:flex-row gap-3 md:gap-0 md:items-center md:justify-between bg-card/40 backdrop-blur-md">
                     <div className="flex items-center gap-3">
                         <div className={cn(
                             "p-2 rounded-xl border font-semibold",
@@ -207,47 +207,49 @@ export function TemplatePreviewModal({
                     </div>
 
                     {/* View Controls & Toggles */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4 justify-between md:justify-end flex-wrap">
                         {template.channel === 'email' && (
-                            <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl border shadow-inner">
+                            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl border shadow-inner">
                                 <Button 
                                     variant={viewMode === 'desktop' ? 'secondary' : 'ghost'} 
                                     size="sm" 
-                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-3 transition-all duration-300"
+                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => setViewMode('desktop')}
                                 >
-                                    <Monitor className="h-3.5 w-3.5" /> Desktop
+                                    <Monitor className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Desktop</span>
                                 </Button>
                                 <Button 
                                     variant={viewMode === 'mobile' ? 'secondary' : 'ghost'} 
                                     size="sm" 
-                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-3 transition-all duration-300"
+                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => setViewMode('mobile')}
                                 >
-                                    <Smartphone className="h-3.5 w-3.5" /> Mobile
+                                    <Smartphone className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Mobile</span>
                                 </Button>
                             </div>
                         )}
 
-                        <div className="h-5 w-px bg-border/60" />
+                        <div className="hidden sm:block h-5 w-px bg-border/60" />
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-9 gap-2 rounded-xl font-bold text-xs bg-background hover:bg-muted border shadow-sm transition-all duration-300"
-                                onClick={() => {
-                                    onEdit(template);
-                                    onClose();
-                                }}
-                            >
-                                <Pencil className="h-3.5 w-3.5" /> Edit Template
-                            </Button>
+                        <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                            {onEdit && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-9 gap-2 rounded-xl font-bold text-xs bg-background hover:bg-muted border shadow-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
+                                    onClick={() => {
+                                        onEdit(template);
+                                        onClose();
+                                    }}
+                                >
+                                    <Pencil className="h-3.5 w-3.5" /> Edit Template
+                                </Button>
+                            )}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-9 w-9 rounded-xl border hover:bg-muted transition-all duration-300 text-muted-foreground hover:text-foreground"
+                                className="h-9 w-9 rounded-xl border hover:bg-muted transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] text-muted-foreground hover:text-foreground"
                                 onClick={onClose}
                             >
                                 <X className="h-4 w-4" />
