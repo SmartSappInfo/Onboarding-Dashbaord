@@ -51,13 +51,17 @@ const ArchitectBlockStyleSchema = z.object({
 const ArchitectBlockSchema = z.object({
   id: z.string(),
   type: z.enum([
-    'heading', 'text', 'image', 'video', 'button', 'quote', 'divider',
+    'heading', 'text', 'image', 'video', 'audio', 'button', 'quote', 'divider',
     'list', 'logo', 'header', 'footer', 'score-card', 'columns', 'rsvp'
   ]),
   title: z.string().optional(),
   content: z.string().optional(),
   url: z.string().optional(),
   link: z.string().optional(),
+  audioTitle: z.string().optional(),
+  audioDuration: z.string().optional(),
+  audioAction: z.enum(['download', 'play_inline', 'redirect']).optional(),
+  audioRedirectUrl: z.string().optional(),
   variant: z.enum(['h1', 'h2', 'h3']).optional(),
   listStyle: z.enum(['ordered', 'unordered', 'roman', 'checkmark', 'arrow']).optional(),
   items: z.array(z.string()).optional(),

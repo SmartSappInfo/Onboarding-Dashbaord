@@ -2798,7 +2798,7 @@ export interface MessageTemplate {
 
 export interface MessageBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
+  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
   title?: string;
   content?: string;
   url?: string;
@@ -2817,6 +2817,10 @@ export interface MessageBlock {
   rsvpDateLabel?: string;
   rsvpTimeLabel?: string;
   rsvpLocationLabel?: string;
+  audioTitle?: string;
+  audioDuration?: string;
+  audioAction?: 'download' | 'play_inline' | 'redirect';
+  audioRedirectUrl?: string;
   columns?: {
     width: string;
     blocks: MessageBlock[];
