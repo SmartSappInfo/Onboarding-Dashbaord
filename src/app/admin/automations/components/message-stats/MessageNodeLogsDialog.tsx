@@ -918,10 +918,22 @@ export function MessageNodeLogsDialog({
                     </Badge>
                   );
                   if (hasFailed) {
+                    const failReason = log.error || 'Bounce / Delivery Failure';
+                    const bounceLabel = log.bounceType 
+                      ? (log.bounceType === 'permanent' ? 'Hard Bounce' : 'Soft Bounce')
+                      : (failReason.toLowerCase().includes('permanent') ? 'Hard Bounce' : failReason.toLowerCase().includes('temporary') ? 'Soft Bounce' : 'Failed');
+
                     statusBadge = (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]">
-                        Failed
-                      </Badge>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] whitespace-nowrap">
+                          {bounceLabel}
+                        </Badge>
+                        {log.error && (
+                          <span className="text-[9px] text-muted-foreground/60 max-w-[130px] truncate block text-center" title={log.error}>
+                            {log.error}
+                          </span>
+                        )}
+                      </div>
                     );
                   } else if (hasClicked) {
                     statusBadge = (

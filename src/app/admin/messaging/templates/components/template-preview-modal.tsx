@@ -239,7 +239,7 @@ export function TemplatePreviewModal({
                                     size="sm" 
                                     className="h-9 gap-2 rounded-xl font-bold text-xs bg-background hover:bg-muted border shadow-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => {
-                                        onEdit(template);
+                                        onEdit?.(template);
                                         onClose();
                                     }}
                                 >

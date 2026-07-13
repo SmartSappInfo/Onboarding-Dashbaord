@@ -34,7 +34,8 @@ const NODE_STAT_BY_EVENT: Record<string, MessageNodeStatCounter | undefined> = {
 async function handleAutomationMessageEvent(
   type: string,
   emailId: string,
-  createdAt: string | undefined
+  createdAt: string | undefined,
+  eventData?: any
 ): Promise<void> {
   const logsSnap = await adminDb
     .collection('message_logs')
@@ -85,7 +86,15 @@ async function handleAutomationMessageEvent(
       if (!log.bouncedAt) {
         updates.bouncedAt = ts;
         updates.status = 'failed';
-        updates.error = 'Bounced by recipient mail server';
+        
+        const bounceType = eventData?.bounce?.type;
+        const bounceDesc = eventData?.bounce?.description;
+        if (bounceType) {
+          updates.bounceType = bounceType;
+          updates.error = `${bounceType === 'permanent' ? 'Permanent' : 'Temporary'} Bounce: ${bounceDesc || 'Mailbox unavailable'}`;
+        } else {
+          updates.error = 'Bounced by recipient mail server';
+        }
         isNewMilestone = true;
       }
       break;
@@ -182,7 +191,7 @@ export async function POST(req: NextRequest) {
     // Not a campaign send — automation/transactional emails carry no job tags.
     // Correlate to message_logs by providerId and update per-node stats instead.
     try {
-      await handleAutomationMessageEvent(type, emailId, evt.created_at);
+      await handleAutomationMessageEvent(type, emailId, evt.created_at, data);
     } catch (err) {
       console.error('>>> [WEBHOOK] message_logs path error:', (err as Error).message);
       // Still ack — webhook retries should not be triggered by our processing errors.

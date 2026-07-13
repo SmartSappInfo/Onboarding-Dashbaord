@@ -3181,6 +3181,7 @@ export interface MessageLog {
   providerId: string | null;
   providerStatus: string | null;
   error?: string;
+  bounceType?: 'permanent' | 'temporary';
   hasAttachments?: boolean;
   attachmentCount?: number;
   openedCount?: number;

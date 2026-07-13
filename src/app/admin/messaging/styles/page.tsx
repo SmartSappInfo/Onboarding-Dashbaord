@@ -128,10 +128,7 @@ export default function MessageStylesPage() {
                     url: 'https://smartsapp.com',
                 }
             ],
-            workspaceIds: [],
-            createdAt: '',
-            updatedAt: ''
-        };
+        } as any as MessageTemplate;
     }, [previewStyle]);
     
     // Edit Style State

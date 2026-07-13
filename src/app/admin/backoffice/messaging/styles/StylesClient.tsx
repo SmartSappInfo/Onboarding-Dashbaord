@@ -80,11 +80,12 @@ export default function StylesClient() {
         if (!previewStyle) return null;
         return {
             id: 'preview-dummy',
-            name: previewStyle.name,
+            scope: 'organization',
+            category: 'general' as MessageTemplate['category'],
             channel: 'email',
-            contentMode: 'rich_builder',
-            styleId: previewStyle.id,
             target: 'external_client',
+            name: previewStyle.name,
+            contentMode: 'rich_builder',
             subject: 'The Real Cost of Outstanding Fees and Why Most Schools Underestimate the Damage',
             previewText: 'A deep dive into fee collections and optimization strategies for modern administrators.',
             body: '',
@@ -101,9 +102,15 @@ export default function StylesClient() {
                     url: 'https://smartsapp.com',
                 }
             ],
+            templateType: 'general',
+            variableContext: 'general' as MessageTemplate['variableContext'],
+            declaredVariables: [],
+            status: 'active' as MessageTemplate['status'],
+            version: 1,
+            styleId: previewStyle.id,
             workspaceIds: [],
-            createdAt: '',
-            updatedAt: ''
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
     }, [previewStyle]);
 
