@@ -10,6 +10,25 @@ import { cn } from '@/lib/utils';
 import { FontLoader } from '@/lib/thumbnail/font-loader';
 import { getEffectStyle } from '@/lib/thumbnail/design-system-presets';
 
+const getFilterString = (el: CanvasElement): string | undefined => {
+  if (el.type !== 'image') return undefined;
+  const parts: string[] = [];
+  if (el.brightness !== undefined) parts.push(`brightness(${el.brightness}%)`);
+  if (el.contrast !== undefined) parts.push(`contrast(${el.contrast}%)`);
+  if (el.blurRadius !== undefined && el.blurRadius > 0) parts.push(`blur(${el.blurRadius}px)`);
+  if (el.hueRotate !== undefined && el.hueRotate > 0) parts.push(`hue-rotate(${el.hueRotate}deg)`);
+  if (el.saturate !== undefined) parts.push(`saturate(${el.saturate}%)`);
+  return parts.length > 0 ? parts.join(' ') : undefined;
+};
+
+const getTransformString = (el: CanvasElement): string | undefined => {
+  const parts: string[] = [];
+  if (el.rotation) parts.push(`rotate(${el.rotation}deg)`);
+  if (el.flipHorizontal) parts.push('scaleX(-1)');
+  if (el.flipVertical) parts.push('scaleY(-1)');
+  return parts.length > 0 ? parts.join(' ') : undefined;
+};
+
 interface ThumbnailCanvasProps {
   backgroundColor: string;
   backgroundGradient?: {
@@ -479,8 +498,9 @@ export default function ThumbnailCanvas({
                 width: `${el.width}%`,
                 height: `${el.height}%`,
                 zIndex: el.zIndex,
-                transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                transform: getTransformString(el),
                 opacity: el.opacity !== undefined ? el.opacity : 1,
+                mixBlendMode: el.blendMode || 'normal',
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -544,6 +564,7 @@ export default function ThumbnailCanvas({
                         src={getCORSFriendlyUrl(el.imageSrc)}
                         alt="Canvas layer subject"
                         className="w-full h-full object-cover"
+                        style={{ filter: getFilterString(el) }}
                         crossOrigin="anonymous"
                         draggable={false}
                       />

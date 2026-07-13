@@ -50,6 +50,14 @@ export interface CanvasElement {
   borderRadius?: number;
   textEffect?: 'none' | 'neon' | '3d' | 'gradient' | 'metallic';
   svgPath?: string;
+  brightness?: number;
+  contrast?: number;
+  blurRadius?: number;
+  hueRotate?: number;
+  saturate?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blendMode?: 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten' | 'color-dodge' | 'color-burn' | 'difference';
 }
 
 export interface ThumbnailDesign {
