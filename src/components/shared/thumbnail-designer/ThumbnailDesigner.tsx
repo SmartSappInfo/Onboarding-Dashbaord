@@ -5,7 +5,8 @@ import { useState, useEffect, useTransition } from 'react';
 import type { CanvasElement, ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
 import { CTR_TEMPLATES, THUMBNAIL_FONT_OPTIONS, makeUniqueId } from '@/lib/thumbnail/thumbnail-types';
 import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-editor';
-import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY } from '@/lib/thumbnail/design-system-presets';
+import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY, getEffectStyle } from '@/lib/thumbnail/design-system-presets';
+import { analyzeThumbnailCTR } from '@/lib/thumbnail/ctr-evaluator';
 import ThumbnailCanvas from './ThumbnailCanvas';
 import { runGenerateThumbnail, runModifyThumbnail } from '@/app/actions/thumbnail-actions';
 import { removeImageBackgroundAction } from '@/app/actions/media-actions';
@@ -72,6 +73,38 @@ export default function ThumbnailDesigner({
 
   // Exporter configs
   const [exportFormat, setExportFormat] = useState<'png' | 'jpeg' | 'webp' | 'transparent-png'>('png');
+  const [ctrScore, setCtrScore] = useState(90);
+  const [ctrRecommendations, setCtrRecommendations] = useState<{ id: string; type: string; severity: string; message: string; }[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const result = analyzeThumbnailCTR(design);
+      setCtrScore(result.score);
+      setCtrRecommendations(result.recommendations);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [design]);
+
+  const getBackgroundStyle = (): React.CSSProperties => {
+    if (design.backgroundImage) {
+      return { 
+        backgroundImage: `url(${design.backgroundImage})`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center' 
+      };
+    }
+    if (design.backgroundGradient && design.backgroundGradient.colors.length > 0) {
+      const colorsStr = design.backgroundGradient.colors.join(', ');
+      if (design.backgroundGradient.type === 'radial') {
+        return { background: `radial-gradient(circle, ${colorsStr})` };
+      }
+      const angle = design.backgroundGradient.angle !== undefined ? `${design.backgroundGradient.angle}deg` : '135deg';
+      return { background: `linear-gradient(${angle}, ${colorsStr})` };
+    }
+    return { backgroundColor: design.backgroundColor || '#0f172a' };
+  };
+
+
   const [exportScale, setExportScale] = useState<1 | 2 | 4>(1);
 
   // AI Panel inputs
@@ -535,6 +568,115 @@ export default function ThumbnailDesigner({
                 </div>
               </div>
             )}
+
+            {/* Mobile Feed Preview Simulator */}
+            <div className="border-t border-slate-800 mt-4 pt-4 text-left space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Mobile Feed Preview (120px scale)</Label>
+              <div className="bg-slate-950 border border-slate-850 p-3 rounded-xl flex items-start gap-2.5">
+                {/* 120px mini thumbnail replica */}
+                <div className="w-[120px] aspect-video bg-slate-900 rounded border border-slate-850 overflow-hidden relative shrink-0">
+                  <div
+                    className="w-[1280px] h-[720px] origin-top-left scale-[0.09375] absolute pointer-events-none select-none"
+                    style={{
+                      ...getBackgroundStyle(),
+                    }}
+                  >
+                    {design.elements.map((el) => {
+                      if (el.isHidden) return null;
+                      
+                      // Text visual effect/glow styles
+                      const isText = el.type === 'text';
+                      const effectStyle = isText
+                        ? getEffectStyle(el.textEffect || 'none', el.fill || '#facc15')
+                        : {};
+                      const isGradient = isText && (el.textEffect === 'gradient' || el.textEffect === 'metallic');
+
+                      const shadowStyle = el.type === 'image' && el.imageOutlineWidth
+                        ? `0 0 ${el.imageOutlineWidth * 2}px ${el.imageOutlineColor || '#facc15'}`
+                        : undefined;
+
+                      const filterStr = el.type === 'image'
+                        ? `brightness(${el.brightness ?? 100}%) contrast(${el.contrast ?? 100}%) blur(${el.blurRadius ?? 0}px) hue-rotate(${el.hueRotate ?? 0}deg) saturate(${el.saturate ?? 100}%)`
+                        : undefined;
+
+                      const transformStr = `
+                        rotate(${el.rotation || 0}deg)
+                        scaleX(${el.flipHorizontal ? -1 : 1})
+                        scaleY(${el.flipVertical ? -1 : 1})
+                      `.trim().replace(/\s+/g, ' ');
+
+                      return (
+                        <div
+                          key={el.id}
+                          style={{
+                            position: 'absolute',
+                            left: `${el.x}%`,
+                            top: `${el.y}%`,
+                            width: `${el.width}%`,
+                            height: `${el.height}%`,
+                            zIndex: el.zIndex,
+                            transform: transformStr,
+                            opacity: el.opacity !== undefined ? el.opacity : 1,
+                            mixBlendMode: el.blendMode || 'normal',
+                          }}
+                        >
+                          {isText && (
+                            <div
+                              className="w-full h-full flex items-center justify-center font-black select-none text-[64px] leading-tight text-center uppercase"
+                              style={{
+                                fontFamily: el.fontFamily || 'Inter',
+                                color: isGradient ? undefined : (el.fill || '#ffffff'),
+                                textShadow: shadowStyle || (effectStyle as React.CSSProperties).textShadow,
+                                WebkitTextStroke: el.textStrokeWidth ? `${el.textStrokeWidth * 2}px ${el.textStrokeColor || '#000000'}` : undefined,
+                                ...effectStyle,
+                              }}
+                            >
+                              {el.text || 'TEXT'}
+                            </div>
+                          )}
+                          {el.type === 'image' && el.imageSrc && (
+                            <img
+                              src={el.imageSrc}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              style={{ filter: filterStr, borderRadius: `${el.borderRadius || 12}px` }}
+                            />
+                          )}
+                          {el.type === 'emoji' && (
+                            <div className="w-full h-full flex items-center justify-center select-none text-[64px]">
+                              {el.text || '😀'}
+                            </div>
+                          )}
+                          {el.type === 'svg' && (
+                            <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                              <path
+                                d={el.svgPath || 'M0 0 H100 V100 H0 Z'}
+                                fill={el.shapeFill || '#ffffff'}
+                                stroke={el.shapeStroke || '#000000'}
+                                strokeWidth={el.shapeStrokeWidth !== undefined ? el.shapeStrokeWidth * 2 : 0}
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dummy Video Metadata text */}
+                <div className="flex-1 space-y-1 min-w-0 text-left">
+                  <div className="text-[10px] font-bold text-slate-200 leading-snug truncate w-full">
+                    {design.name || 'My High CTR Video Title'}
+                  </div>
+                  <div className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                    Creative Studio • 1.2M views
+                  </div>
+                  <div className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                    2 hours ago
+                  </div>
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Layers Tab */}
@@ -830,9 +972,59 @@ export default function ThumbnailDesigner({
       </main>
 
       {/* Right Canvas Element Properties Sidebar */}
-      {selectedElement && (
-        <aside className="w-72 border-l border-slate-800 bg-slate-900 p-4 shrink-0 overflow-y-auto space-y-4 text-left">
-          <div className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b border-slate-850 pb-2 flex items-center gap-2">
+      <aside className="w-72 border-l border-slate-800 bg-slate-900 p-4 shrink-0 overflow-y-auto space-y-4 text-left">
+        {/* AI CTR Health Widget */}
+        <div className="space-y-3 bg-slate-950 border border-slate-850 p-3 rounded-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase text-slate-400">CTR Health Score</span>
+            <span className={cn(
+              "text-[10px] font-black px-2 py-0.5 rounded-full",
+              ctrScore >= 80 ? "bg-emerald-500/10 text-emerald-400" :
+              ctrScore >= 50 ? "bg-amber-500/10 text-amber-400" :
+              "bg-red-500/10 text-red-400"
+            )}>
+              {ctrScore}/100
+            </span>
+          </div>
+
+          <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-300",
+                ctrScore >= 80 ? "bg-emerald-500" :
+                ctrScore >= 50 ? "bg-amber-500" :
+                "bg-red-500"
+              )}
+              style={{ width: `${ctrScore}%` }}
+            />
+          </div>
+
+          {ctrRecommendations.length > 0 ? (
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-[9px] leading-normal pt-1">
+              {ctrRecommendations.map((rec) => (
+                <div key={rec.id} className="flex gap-1.5 text-slate-350 font-medium">
+                  <span className={cn(
+                    "font-black shrink-0",
+                    rec.severity === 'high' ? "text-red-400" :
+                    rec.severity === 'medium' ? "text-amber-400" :
+                    "text-slate-500"
+                  )}>
+                    •
+                  </span>
+                  <span>{rec.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[9px] text-emerald-400 font-bold leading-normal pt-1">
+              ✓ Layout is CTR optimized! Safe zones, contrast and scales look clean.
+            </div>
+          )}
+        </div>
+
+        {selectedElement ? (
+          <>
+            <div className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b border-slate-850 pb-2 flex items-center gap-2">
             <Settings className="w-4 h-4" /> Layer Settings ({selectedElement.type})
           </div>
 
@@ -1313,8 +1505,13 @@ export default function ThumbnailDesigner({
               </Button>
             </div>
           </div>
-        </aside>
-      )}
+        </>
+      ) : (
+          <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl text-center text-[10px] text-slate-500 font-bold uppercase mt-2 select-none">
+            Select a layer to edit properties
+          </div>
+        )}
+      </aside>
 
       {/* Media Selector Dialog */}
       <MediaSelectorDialog
