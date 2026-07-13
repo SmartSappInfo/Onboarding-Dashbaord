@@ -73,6 +73,8 @@ export interface ThumbnailDesign {
   backgroundImage?: string;
   elements: CanvasElement[];
   thumbnailUrl?: string; // rendered image link in Firebase Storage
+  explanation?: string;
+  alternativeCopies?: string[];
   createdAt: string;
   updatedAt: string;
 }

@@ -45,8 +45,7 @@ const ModifyCanvasElementSchema = z.object({
   shapeStrokeWidth: z.number().optional(),
   svgPath: z.string().optional(),
   
-  // Shared
-  blendMode: z.string().optional(),
+  blendMode: z.enum(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'difference']).optional(),
 });
 
 const ModifyThumbnailInputSchema = z.object({

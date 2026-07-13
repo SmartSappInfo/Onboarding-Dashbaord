@@ -222,6 +222,26 @@ export default function ThumbnailDesigner({
     }
   };
 
+  const handleSwapHeadline = (newText: string) => {
+    // If a text element is currently selected, update it
+    if (selectedId) {
+      const el = design.elements.find(item => item.id === selectedId);
+      if (el && el.type === 'text') {
+        updateElement(el.id, { text: newText });
+        toast({ title: 'Headline swapped', description: `Updated text to "${newText}"` });
+        return;
+      }
+    }
+    // Otherwise, find the first text layer on the canvas and update it
+    const firstText = design.elements.find(item => item.type === 'text');
+    if (firstText) {
+      updateElement(firstText.id, { text: newText });
+      toast({ title: 'Headline swapped', description: `Updated text layer to "${newText}"` });
+    } else {
+      toast({ variant: 'destructive', title: 'No text layer found', description: 'Please select or add a text layer first.' });
+    }
+  };
+
   const handleGenerateAI = () => {
     if (!aiPrompt.trim()) {
       toast({ variant: 'destructive', title: 'Prompt required', description: 'Please enter a description or topic.' });
@@ -245,6 +265,8 @@ export default function ThumbnailDesigner({
             id: makeUniqueId(),
             type: el.type as any,
           })),
+          explanation: output.explanation,
+          alternativeCopies: output.alternativeCopies,
           updatedAt: new Date().toISOString()
         };
         initializeStore(newDesign);
@@ -280,6 +302,7 @@ export default function ThumbnailDesigner({
             id: el.id || makeUniqueId(),
             type: el.type as any,
           })),
+          explanation: output.explanation,
           updatedAt: new Date().toISOString()
         };
         initializeStore(updatedDesign);
@@ -485,6 +508,33 @@ export default function ThumbnailDesigner({
                 </Button>
               </div>
             </div>
+
+            {design.alternativeCopies && design.alternativeCopies.length > 0 && (
+              <div className="border-t border-slate-800 mt-4 pt-4 text-left space-y-2">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Alternative Copy Options</Label>
+                <div className="flex flex-col gap-2 mt-1">
+                  {design.alternativeCopies.map((copyText, idx) => (
+                    <Button
+                      key={idx}
+                      onClick={() => handleSwapHeadline(copyText)}
+                      variant="outline"
+                      className="w-full text-[10px] justify-start h-auto py-2 rounded-xl text-left border-slate-800 hover:border-violet-500 font-medium leading-normal active:scale-[0.98] select-none text-slate-300"
+                    >
+                      {copyText}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {design.explanation && (
+              <div className="border-t border-slate-800 mt-4 pt-4 text-left space-y-2">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">AI Creative Strategy</Label>
+                <div className="text-[11px] text-slate-350 bg-slate-950 border border-slate-850 p-3 rounded-xl leading-relaxed whitespace-pre-wrap font-medium">
+                  {design.explanation}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Layers Tab */}
