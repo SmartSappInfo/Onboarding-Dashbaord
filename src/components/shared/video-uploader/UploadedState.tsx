@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, FolderHeart, Trash2, Link as LinkIcon, Upload, ArrowLeft, Play, FileVideo } from 'lucide-react';
+import { RefreshCw, FolderHeart, Trash2, Link as LinkIcon, Upload, ArrowLeft, Play, FileVideo, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ interface UploadedStateProps {
   onRemoveVideo: () => void;
   onRemoveThumbnail: () => void;
   onMetadataChange: (meta: { title: string; description: string }) => void;
+  onOpenAiDesigner?: () => void;
 }
 
 export function UploadedState({
@@ -42,7 +43,8 @@ export function UploadedState({
   onOpenLinkThumbnail,
   onRemoveVideo,
   onRemoveThumbnail,
-  onMetadataChange
+  onMetadataChange,
+  onOpenAiDesigner
 }: UploadedStateProps) {
   const [isChangingVideo, setIsChangingVideo] = useState(false);
   const [isChangingThumbnail, setIsChangingThumbnail] = useState(false);
@@ -258,6 +260,17 @@ export function UploadedState({
                       className="flex-1 h-7 rounded-lg text-[9px] font-bold bg-background border-border text-foreground hover:bg-accent active:scale-[0.97]"
                     >
                       <FolderHeart className="w-3 h-3 mr-1" /> Media
+                    </Button>
+                  )}
+                  {onOpenAiDesigner && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { onOpenAiDesigner(); setIsChangingThumbnail(false); }}
+                      className="flex-1 h-7 rounded-lg text-[9px] font-bold bg-background border-border text-foreground hover:bg-accent active:scale-[0.97]"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-500" /> AI Design
                     </Button>
                   )}
                   <Button

@@ -10,6 +10,7 @@ import { UploadingState } from './UploadingState';
 import { UploadedState } from './UploadedState';
 import { UrlDialog } from './UrlDialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import ThumbnailDesignerDialog from '@/components/shared/thumbnail-designer/ThumbnailDesignerDialog';
 import type { MediaAsset } from '@/lib/types';
 
 export interface VideoUploaderValue {
@@ -65,6 +66,7 @@ export function VideoUploader({
   
   const [isVideoGalleryOpen, setIsVideoGalleryOpen] = useState(false);
   const [isThumbnailGalleryOpen, setIsThumbnailGalleryOpen] = useState(false);
+  const [isAiDesignerOpen, setIsAiDesignerOpen] = useState(false);
 
   const handleTriggerVideoReplace = () => {
     videoInputRef.current?.click();
@@ -320,6 +322,7 @@ export function VideoUploader({
           onRemoveVideo={handleRemoveVideo}
           onRemoveThumbnail={handleRemoveThumbnail}
           onMetadataChange={handleMetadataChange}
+          onOpenAiDesigner={workspaceId ? () => setIsAiDesignerOpen(true) : undefined}
         />
       ) : (
         <EmptyState
@@ -374,6 +377,18 @@ export function VideoUploader({
             }}
             filterType="image"
             workspaceId={workspaceId}
+          />
+          <ThumbnailDesignerDialog
+            open={isAiDesignerOpen}
+            onOpenChange={setIsAiDesignerOpen}
+            workspaceId={workspaceId}
+            onSave={(imageUrl) => {
+              onChange({
+                ...value,
+                thumbnailUrl: imageUrl
+              });
+              setIsAiDesignerOpen(false);
+            }}
           />
         </>
       )}
