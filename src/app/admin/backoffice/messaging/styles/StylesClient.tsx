@@ -46,6 +46,7 @@ import { MediaSelect } from '../../../entities/components/media-select';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +75,38 @@ export default function StylesClient() {
     const [isAdding, setIsAdding] = React.useState(false);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [previewStyle, setPreviewStyle] = React.useState<MessageStyle | null>(null);
+
+    const dummyTemplateForStyle = React.useMemo<MessageTemplate | null>(() => {
+        if (!previewStyle) return null;
+        return {
+            id: 'preview-dummy',
+            name: previewStyle.name,
+            channel: 'email',
+            contentMode: 'rich_builder',
+            styleId: previewStyle.id,
+            target: 'external_client',
+            subject: 'The Real Cost of Outstanding Fees and Why Most Schools Underestimate the Damage',
+            previewText: 'A deep dive into fee collections and optimization strategies for modern administrators.',
+            body: '',
+            blocks: [
+                {
+                    id: 'b1',
+                    type: 'text',
+                    content: '<h1>Outstanding Fees Masterclass</h1><p>Outstanding fees create more problems than most schools realize. The obvious problem is lost cash flow. The hidden problem is delayed decisions, postponed projects, and uncertainty.</p><p>Administrative teams spend hours following up. Accountants spend time reconciling records. School leaders spend energy worrying about collections.</p>',
+                },
+                {
+                    id: 'b2',
+                    type: 'button',
+                    title: 'Read the Guide',
+                    url: 'https://smartsapp.com',
+                }
+            ],
+            workspaceIds: [],
+            createdAt: '',
+            updatedAt: ''
+        };
+    }, [previewStyle]);
+
     const [scopeFilter, setScopeFilter] = React.useState<ScopeFilter>('all');
     const [searchQuery, setSearchQuery] = React.useState('');
     
@@ -661,53 +694,18 @@ export default function StylesClient() {
                 </DialogContent>
             </Dialog>
 
-            {/* Standard Preview Dialog */}
-            <Dialog open={!!previewStyle} onOpenChange={() => setPreviewStyle(null)}>
-                <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-background">
-                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl"><Eye className="h-5 w-5 text-primary" /></div>
-                            <div>
-                                <DialogTitle className="text-xl font-semibold tracking-tight">Style Preview</DialogTitle>
-                                <DialogDescription className="text-xs font-bold flex items-center gap-2">
-                                    {previewStyle?.name}
-                                    {previewStyle && (
-                                        <Badge variant="secondary" className="text-[8px] font-semibold uppercase h-4 px-1.5">
-                                            {previewStyle.scope === 'global' ? 'Global' : 'Organization'}
-                                        </Badge>
-                                    )}
-                                </DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-hidden relative bg-background flex justify-center">
-                        <ScrollArea className="h-full w-full">
-                            <div className="w-full max-w-[650px] mx-auto p-6">
-                                {previewStyle && (
-                                    <div dangerouslySetInnerHTML={{ __html: (previewStyle.htmlWrapper || '').replace('{{content}}', '<div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 60px; text-align: center; color: #64748b; font-family: sans-serif; border-radius: 12px; margin: 20px 0;"><p style="margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Resolved Template Payload</p></div>') }} />
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                    <DialogFooter className="p-4 bg-card border-t shrink-0 flex items-center justify-end gap-2">
-                        <Button variant="outline" onClick={() => setPreviewStyle(null)} className="rounded-xl h-11 px-6 text-xs font-semibold">
-                            Close
-                        </Button>
-                        {previewStyle && (
-                            <Button 
-                                onClick={() => {
-                                    const styleToEdit = previewStyle;
-                                    setPreviewStyle(null);
-                                    router.push(`/admin/backoffice/messaging/styles/${styleToEdit.id}`);
-                                }} 
-                                className="rounded-xl h-11 px-6 text-xs font-semibold shadow-lg shadow-primary/20"
-                            >
-                                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Style
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Unified Theme & Template Previewer Modal */}
+            <TemplatePreviewModal
+                template={dummyTemplateForStyle}
+                isOpen={!!previewStyle}
+                onClose={() => setPreviewStyle(null)}
+                styles={previewStyle ? [previewStyle] : []}
+                onEdit={previewStyle ? (tmpl) => {
+                    if (tmpl.styleId) {
+                        router.push(`/admin/backoffice/messaging/styles/${tmpl.styleId}`);
+                    }
+                } : undefined}
+            />
 
             {/* Delete Blocked Dialog */}
             <AlertDialog open={!!styleInUseToDelete} onOpenChange={(o) => !o && setStyleInUseToDelete(null)}>
