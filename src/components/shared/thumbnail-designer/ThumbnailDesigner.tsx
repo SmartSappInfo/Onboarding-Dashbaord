@@ -8,7 +8,7 @@ import { useThumbnailEditor, EditorState } from '@/lib/thumbnail/use-thumbnail-e
 import { FONT_PAIRINGS, SHAPE_PATH_REGISTRY, getEffectStyle } from '@/lib/thumbnail/design-system-presets';
 import { analyzeThumbnailCTR } from '@/lib/thumbnail/ctr-evaluator';
 import ThumbnailCanvas from './ThumbnailCanvas';
-import { runGenerateThumbnail, runModifyThumbnail } from '@/app/actions/thumbnail-actions';
+import { runGenerateThumbnail, runModifyThumbnail, runGenerateHooks } from '@/app/actions/thumbnail-actions';
 import { removeImageBackgroundAction } from '@/app/actions/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -114,6 +114,9 @@ export default function ThumbnailDesigner({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('reaction-surprise');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [confirmTemplateId, setConfirmTemplateId] = useState<string | null>(null);
+  const [copywriterTopic, setCopywriterTopic] = useState('');
+  const [generatedHooks, setGeneratedHooks] = useState<{ text: string; score: number; emotion: string; readability: string; }[]>([]);
+  const [isGeneratingHooks, setIsGeneratingHooks] = useState(false);
 
   // Search filter for icons library
   const [iconSearch, setIconSearch] = useState('');
@@ -287,6 +290,65 @@ export default function ThumbnailDesigner({
       toast({ title: 'Headline swapped', description: `Updated text layer to "${newText}"` });
     } else {
       toast({ variant: 'destructive', title: 'No text layer found', description: 'Please select or add a text layer first.' });
+    }
+  };
+
+  const handleGenerateHooks = () => {
+    if (!copywriterTopic.trim()) {
+      toast({ variant: 'destructive', title: 'Topic required', description: 'Please enter a description or topic for hooks.' });
+      return;
+    }
+
+    setIsGeneratingHooks(true);
+    startTransition(async () => {
+      try {
+        const output = await runGenerateHooks({ topic: copywriterTopic });
+        setGeneratedHooks(output.hooks);
+        toast({ title: 'AI Hooks Generated!', description: 'Brainstorm list is now ready.' });
+      } catch (err) {
+        toast({ variant: 'destructive', title: 'Brainstorm failed', description: 'AI could not generate hooks.' });
+      } finally {
+        setIsGeneratingHooks(false);
+      }
+    });
+  };
+
+  const handleApplyHook = (hookText: string) => {
+    // If text layer is selected, update it
+    if (selectedId) {
+      const el = design.elements.find(item => item.id === selectedId);
+      if (el && el.type === 'text') {
+        updateElement(el.id, { text: hookText });
+        toast({ title: 'Hook applied', description: `Updated text to "${hookText}"` });
+        return;
+      }
+    }
+    
+    // Fallback: update the first text layer found on canvas
+    const firstText = design.elements.find(item => item.type === 'text');
+    if (firstText) {
+      updateElement(firstText.id, { text: hookText });
+      toast({ title: 'Hook applied', description: `Updated text layer to "${hookText}"` });
+    } else {
+      // Automatic fallback text layer creator
+      const newEl: CanvasElement = {
+        id: makeUniqueId(),
+        type: 'text',
+        x: 20,
+        y: 35,
+        width: 60,
+        height: 25,
+        zIndex: design.elements.length + 1,
+        text: hookText,
+        fontSize: 42,
+        fontFamily: 'Impact',
+        fill: '#facc15',
+        textAlign: 'center',
+        textStrokeColor: '#000000',
+        textStrokeWidth: 4,
+      };
+      addElement(newEl);
+      toast({ title: 'Text Layer Created', description: `Added new hook text layer "${hookText}" to canvas.` });
     }
   };
 
@@ -555,6 +617,65 @@ export default function ThumbnailDesigner({
                   Apply
                 </Button>
               </div>
+            </div>
+
+            <div className="border-t border-slate-800 my-4 pt-4 space-y-3 text-left">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">AI Copywriting Hook Generator</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. How to build a SaaS..."
+                  value={copywriterTopic}
+                  onChange={(e) => setCopywriterTopic(e.target.value)}
+                  className="bg-slate-950 border-slate-800 text-xs rounded-xl h-10"
+                />
+                <Button
+                  onClick={handleGenerateHooks}
+                  disabled={isGeneratingHooks || isPending}
+                  className="bg-slate-800 hover:bg-slate-700 active:scale-[0.97] text-xs font-bold rounded-xl whitespace-nowrap shrink-0 px-3"
+                >
+                  {isGeneratingHooks ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    'Brainstorm'
+                  )}
+                </Button>
+              </div>
+
+              {/* Hook brainstorming list */}
+              {generatedHooks.length > 0 && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {generatedHooks.map((hk, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleApplyHook(hk.text)}
+                      className="bg-slate-950 border border-slate-850 p-2.5 rounded-xl flex flex-col justify-between hover:border-violet-500 cursor-pointer transition-all active:scale-[0.98] select-none"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-black text-xs text-slate-100 uppercase tracking-tight truncate">
+                          {hk.text}
+                        </span>
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 shrink-0">
+                          CTR: {hk.score}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={cn(
+                          "text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0",
+                          hk.emotion === 'Greed' ? "bg-emerald-500/10 text-emerald-400" :
+                          hk.emotion === 'Curiosity' ? "bg-violet-500/10 text-violet-400" :
+                          hk.emotion === 'Fear' ? "bg-red-500/10 text-red-400" :
+                          "bg-blue-500/10 text-blue-400"
+                        )}>
+                          {hk.emotion}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+                          Readability: {hk.readability}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {design.alternativeCopies && design.alternativeCopies.length > 0 && (
