@@ -2,26 +2,14 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
-
-export const HookAlternativeSchema = z.object({
-  text: z.string().describe('The short title hook text (1-3 words max).'),
-  score: z.number().min(0).max(100).describe('Predicted CTR score (e.g., 75-98) based on copywriting rules.'),
-  emotion: z.enum(['Greed', 'Curiosity', 'Fear', 'Awe', 'Pride']).describe('Psychological emotional hook trigger category.'),
-  readability: z.enum(['High', 'Excellent', 'Standard']).describe('Visual readability scale based on text length.'),
-});
+import {
+  HookAlternativeSchema,
+  GenerateHooksInputSchema,
+  GenerateHooksOutputSchema
+} from './schemas';
 
 export type HookAlternative = z.infer<typeof HookAlternativeSchema>;
-
-export const GenerateHooksInputSchema = z.object({
-  topic: z.string().describe('The raw title topic or description to brainstorm hooks for.'),
-});
-
 export type GenerateHooksInput = z.infer<typeof GenerateHooksInputSchema>;
-
-export const GenerateHooksOutputSchema = z.object({
-  hooks: z.array(HookAlternativeSchema),
-});
-
 export type GenerateHooksOutput = z.infer<typeof GenerateHooksOutputSchema>;
 
 const copywriterHookPrompt = ai.definePrompt({
@@ -44,42 +32,35 @@ Assign:
 - readability: Grade as "Excellent" for 1-2 words, "High" for 3 words, and "Standard" for 4+ words.`,
 });
 
-export const generateHookAlternatives = ai.defineFlow(
-  {
-    name: 'generateHookAlternatives',
-    inputSchema: GenerateHooksInputSchema,
-    outputSchema: GenerateHooksOutputSchema,
-  },
-  async (input) => {
-    let resolvedModel;
-    try {
-      resolvedModel = await getModel({
-        provider: 'anthropic',
-        modelId: 'claude-3-5-sonnet',
-      });
-    } catch (err) {
-      console.warn('Anthropic model failed, trying fallback Gemini model...', err);
-      resolvedModel = await getModel({
-        provider: 'google-genai',
-        modelId: 'gemini-2.5-flash',
-      });
-    }
-
-    const generatorAi = resolvedModel.customAi || ai;
-
-    const response = await generatorAi.generate({
-      model: resolvedModel.modelString,
-      prompt: await copywriterHookPrompt.render({
-        topic: input.topic,
-      }),
-      output: { schema: GenerateHooksOutputSchema },
+export async function generateHookAlternatives(input: GenerateHooksInput): Promise<GenerateHooksOutput> {
+  let resolvedModel;
+  try {
+    resolvedModel = await getModel({
+      provider: 'anthropic',
+      modelId: 'claude-3-5-sonnet',
     });
-
-    const output = response.output;
-    if (!output || !output.hooks || output.hooks.length === 0) {
-      throw new Error('Copywriter model failed to return hook alternatives.');
-    }
-
-    return output;
+  } catch (err) {
+    console.warn('Anthropic model failed, trying fallback Gemini model...', err);
+    resolvedModel = await getModel({
+      provider: 'google-genai',
+      modelId: 'gemini-2.5-flash',
+    });
   }
-);
+
+  const generatorAi = resolvedModel.customAi || ai;
+
+  const response = await generatorAi.generate({
+    model: resolvedModel.modelString,
+    prompt: await copywriterHookPrompt.render({
+      topic: input.topic,
+    }),
+    output: { schema: GenerateHooksOutputSchema },
+  });
+
+  const output = response.output;
+  if (!output || !output.hooks || output.hooks.length === 0) {
+    throw new Error('Copywriter model failed to return hook alternatives.');
+  }
+
+  return output;
+}

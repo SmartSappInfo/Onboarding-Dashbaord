@@ -3,94 +3,16 @@
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getLinkMetadata } from './get-link-metadata-flow';
+import {
+  CanvasElementSchema,
+  GenerateThumbnailInputSchema,
+  GenerateThumbnailOutputSchema,
+  TopicAnalysisSchema,
+  DesignSchemeSchema
+} from './schemas';
 
-const GenerateThumbnailInputSchema = z.object({
-  prompt: z.string().describe('User instructions or core topic description.'),
-  videoUrl: z.string().url().optional().describe('An optional video URL to extract context from.'),
-  subjectImageUrls: z.array(z.string().url()).optional().describe('List of selected image asset URLs to position as subjects on the canvas.'),
-  templateId: z.string().optional().describe('Optional ID of a template layout formula to enforce.'),
-});
 export type GenerateThumbnailInput = z.infer<typeof GenerateThumbnailInputSchema>;
-
-export const CanvasElementSchema = z.object({
-  id: z.string(),
-  type: z.enum(['text', 'image', 'rect', 'circle', 'arrow', 'icon', 'emoji', 'svg']),
-  x: z.number().min(0).max(100),
-  y: z.number().min(0).max(100),
-  width: z.number().min(1).max(100),
-  height: z.number().min(1).max(100),
-  zIndex: z.number(),
-  rotation: z.number().optional(),
-  opacity: z.number().optional(),
-  
-  // Text Specific
-  text: z.string().optional(),
-  fontSize: z.number().optional(),
-  fontFamily: z.string().optional(),
-  fill: z.string().optional(),
-  textAlign: z.enum(['left', 'center', 'right']).optional(),
-  textStrokeColor: z.string().optional(),
-  textStrokeWidth: z.number().optional(),
-  badgeColor: z.string().optional(),
-  badgeOpacity: z.number().optional(),
-  textEffect: z.enum(['none', 'neon', '3d', 'gradient', 'metallic']).optional(),
-  
-  // Image Specific
-  imageSrc: z.string().optional(),
-  imageOutlineColor: z.string().optional(),
-  imageOutlineWidth: z.number().optional(),
-  brightness: z.number().optional(),
-  contrast: z.number().optional(),
-  blurRadius: z.number().optional(),
-  hueRotate: z.number().optional(),
-  saturate: z.number().optional(),
-  flipHorizontal: z.boolean().optional(),
-  flipVertical: z.boolean().optional(),
-  
-  // Shape/SVG Specific
-  shapeFill: z.string().optional(),
-  shapeStroke: z.string().optional(),
-  shapeStrokeWidth: z.number().optional(),
-  svgPath: z.string().optional(),
-  
-  blendMode: z.enum(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'difference']).optional(),
-});
-
-const GenerateThumbnailOutputSchema = z.object({
-  backgroundColor: z.string(),
-  backgroundGradient: z.object({
-    type: z.enum(['linear', 'radial']),
-    angle: z.number().optional(),
-    colors: z.array(z.string()),
-  }).optional(),
-  elements: z.array(CanvasElementSchema),
-  explanation: z.string().describe('Explanation of the CTR optimization decisions.'),
-  alternativeCopies: z.array(z.string()).optional().describe('Alternative copy options for the text swapper.'),
-});
 export type GenerateThumbnailOutput = z.infer<typeof GenerateThumbnailOutputSchema>;
-
-// Intermediate Agent 1 Schema: Topic Analyst + Copywriter
-const TopicAnalysisSchema = z.object({
-  targetAudience: z.string().describe('Target demographic profile and focus.'),
-  emotionalHook: z.string().describe('Primary emotional trigger: curiosity, urgency, fear, desire.'),
-  chosenCopy: z.string().describe('CTR hook copy phrase (typically 2-4 words, max 4 words). UPPERCASE.'),
-  alternativeCopies: z.array(z.string()).describe('List of 3 alternative copy headlines.'),
-});
-
-// Intermediate Agent 2 Schema: Designer Consultant
-const DesignSchemeSchema = z.object({
-  backgroundColor: z.string().describe('Solid background color hex.'),
-  backgroundGradient: z.object({
-    type: z.enum(['linear', 'radial']),
-    angle: z.number().optional(),
-    colors: z.array(z.string()),
-  }).optional(),
-  fontHeadline: z.string().describe('Headline font family name (e.g. Montserrat, Impact, Outfit).'),
-  fontSub: z.string().describe('Subtitle font family name (e.g. Inter, Open Sans).'),
-  textColor: z.string().describe('Hex color for headline text.'),
-  strokeColor: z.string().describe('High contrast outline stroke color.'),
-  textEffect: z.enum(['none', 'neon', '3d', 'gradient', 'metallic']).describe('Typography visual styling effect.'),
-});
 
 // Agent 1: Topic Analyst & Copywriter Prompt
 const topicAnalystPrompt = ai.definePrompt({

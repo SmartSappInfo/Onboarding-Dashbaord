@@ -3,98 +3,37 @@
 import { ai, getModel } from '@/ai/genkit';
 import { z } from 'genkit';
 import { correctDeadZoneCoordinates } from './generate-thumbnail-flow';
+import {
+  ModifyThumbnailInputSchema,
+  ModifyThumbnailOutputSchema
+} from './schemas';
 
-const ModifyCanvasElementSchema = z.object({
-  id: z.string(),
-  type: z.enum(['text', 'image', 'rect', 'circle', 'arrow', 'icon', 'emoji', 'svg']),
-  x: z.number().min(0).max(100),
-  y: z.number().min(0).max(100),
-  width: z.number().min(1).max(100),
-  height: z.number().min(1).max(100),
-  zIndex: z.number(),
-  rotation: z.number().optional(),
-  opacity: z.number().optional(),
-  
-  // Text Specific
-  text: z.string().optional(),
-  fontSize: z.number().optional(),
-  fontFamily: z.string().optional(),
-  fill: z.string().optional(),
-  textAlign: z.enum(['left', 'center', 'right']).optional(),
-  textStrokeColor: z.string().optional(),
-  textStrokeWidth: z.number().optional(),
-  badgeColor: z.string().optional(),
-  badgeOpacity: z.number().optional(),
-  textEffect: z.enum(['none', 'neon', '3d', 'gradient', 'metallic']).optional(),
-  
-  // Image Specific
-  imageSrc: z.string().optional(),
-  imageOutlineColor: z.string().optional(),
-  imageOutlineWidth: z.number().optional(),
-  brightness: z.number().optional(),
-  contrast: z.number().optional(),
-  blurRadius: z.number().optional(),
-  hueRotate: z.number().optional(),
-  saturate: z.number().optional(),
-  flipHorizontal: z.boolean().optional(),
-  flipVertical: z.boolean().optional(),
-  
-  // Shape/SVG Specific
-  shapeFill: z.string().optional(),
-  shapeStroke: z.string().optional(),
-  shapeStrokeWidth: z.number().optional(),
-  svgPath: z.string().optional(),
-  
-  blendMode: z.enum(['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'difference']).optional(),
-});
-
-const ModifyThumbnailInputSchema = z.object({
-  elements: z.array(ModifyCanvasElementSchema),
-  backgroundColor: z.string(),
-  backgroundGradient: z.object({
-    type: z.enum(['linear', 'radial']),
-    angle: z.number().optional(),
-    colors: z.array(z.string()),
-  }).optional(),
-  instruction: z.string().describe('User text instructions on what to change/edit on the canvas.'),
-});
 export type ModifyThumbnailInput = z.infer<typeof ModifyThumbnailInputSchema>;
-
-const ModifyThumbnailOutputSchema = z.object({
-  backgroundColor: z.string(),
-  backgroundGradient: z.object({
-    type: z.enum(['linear', 'radial']),
-    angle: z.number().optional(),
-    colors: z.array(z.string()),
-  }).optional(),
-  elements: z.array(ModifyCanvasElementSchema),
-  explanation: z.string().describe('Explanation of the CTR modifications.'),
-});
 export type ModifyThumbnailOutput = z.infer<typeof ModifyThumbnailOutputSchema>;
 
 const modifyPrompt = ai.definePrompt({
-  name: 'modifyThumbnailPrompt',
-  input: { schema: z.object({
-    backgroundColor: z.string(),
-    elementsJson: z.string(),
-    instruction: z.string(),
-  })},
+  name: 'modifyPrompt',
+  input: {
+    schema: z.object({
+      backgroundColor: z.string(),
+      elementsJson: z.string(),
+      instruction: z.string(),
+    }),
+  },
   output: { schema: ModifyThumbnailOutputSchema },
-  prompt: `You are an expert YouTube CTR design assistant. Modify the current canvas configuration based on the user's instructions.
-Preserve elements that aren't mentioned, but modify, move, resize, color, re-style, delete, or create elements based on the instruction.
-Ensure all elements have high contrast outlines, avoid overlaps, and stay readable.
-
-### CURRENT CANVAS CONFIG:
-- Background Color: "{{backgroundColor}}"
-- Elements JSON:
+  prompt: `You are an expert YouTube Thumbnail UI editor.
+You are given the current canvas background color: "{{backgroundColor}}".
+And the list of active elements currently on the 16:9 canvas:
 \`\`\`json
-{{{elementsJson}}}
+{{elementsJson}}
 \`\`\`
 
-### USER INSTRUCTION:
-"{{{instruction}}}"
-
-Review current positions (x, y, width, height out of 100), colors, texts, and styles. Make corresponding updates, and output the updated canvas background and elements array.`,
+The user has given this modification instruction: "{{instruction}}".
+Perform the modification strictly following these rules:
+1. Preserve existing elements unless the instruction requests deletion or replacement.
+2. When styling or repositioning, output coordinates strictly within the 16:9 canvas boundaries (0 to 100).
+3. If background colors or typography needs changes, apply high-CTR colors and readable fonts.
+4. Keep the output coordinates valid and well-formatted. Return the modified composition.`,
 });
 
 const modifyThumbnailFlow = ai.defineFlow(
@@ -112,7 +51,7 @@ const modifyThumbnailFlow = ai.defineFlow(
         modelId: 'claude-3-5-sonnet',
       });
     } catch (err) {
-      console.warn('Primary Anthropic model config failed, trying fallback Gemini model...', err);
+      console.warn('Anthropic model failed, trying fallback Gemini model...', err);
       resolvedModel = await getModel({
         provider: 'google-genai',
         modelId: 'gemini-2.5-flash',

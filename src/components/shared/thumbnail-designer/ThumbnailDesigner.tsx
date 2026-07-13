@@ -456,7 +456,10 @@ export default function ThumbnailDesigner({
           elements: output.elements.map((el) => ({
             ...el,
             id: makeUniqueId(),
-            type: el.type as any,
+            type: el.type as CanvasElement['type'],
+            blendMode: el.blendMode as CanvasElement['blendMode'],
+            textEffect: el.textEffect as CanvasElement['textEffect'],
+            textAlign: el.textAlign as CanvasElement['textAlign'],
           })),
           explanation: output.explanation,
           alternativeCopies: output.alternativeCopies,
@@ -493,7 +496,10 @@ export default function ThumbnailDesigner({
           elements: output.elements.map((el) => ({
             ...el,
             id: el.id || makeUniqueId(),
-            type: el.type as any,
+            type: el.type as CanvasElement['type'],
+            blendMode: el.blendMode as CanvasElement['blendMode'],
+            textEffect: el.textEffect as CanvasElement['textEffect'],
+            textAlign: el.textAlign as CanvasElement['textAlign'],
           })),
           explanation: output.explanation,
           updatedAt: new Date().toISOString()

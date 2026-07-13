@@ -2145,7 +2145,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     ) : (
                                                         <p className="text-[10px] text-slate-500 italic">No social links configured</p>
                                                     )}
-                                                    <p className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-800/30 flex justify-center items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                         <InlineEditable
                                                             tagName="span"
                                                             isEdit={isEditMode}
@@ -2154,7 +2154,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                             value={copyright}
                                                             html={false}
                                                         />
-                                                    </p>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -2163,7 +2163,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
                                                         <div className="space-y-3">
                                                             <SmartSappLogo className="h-7 mx-auto md:mx-0" />
-                                                            <p className="text-[10px] text-slate-400 flex justify-center md:justify-start items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="text-[10px] text-slate-400 flex justify-center md:justify-start items-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                 <InlineEditable
                                                                     tagName="span"
                                                                     isEdit={isEditMode}
@@ -2172,7 +2172,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                     value={copyright}
                                                                     html={false}
                                                                 />
-                                                            </p>
+                                                            </div>
                                                         </div>
                                                         <div className="space-y-3">
                                                             <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-350">Quick Links</h5>
