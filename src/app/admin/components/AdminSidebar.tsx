@@ -59,7 +59,8 @@ import {
     Lock,
     Sparkles,
     Sliders,
-    Share2
+    Share2,
+    Image
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -117,6 +118,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/portals'), icon: Globe, label: 'Public Portals', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'publicPortals', 'view') },
     { href: wrapHref('/admin/pages'), icon: Layout, label: 'Landing Pages', visible: isFeatureEnabled('portals'), disabled: !can('studios', 'landingPages', 'view') },
     { href: wrapHref('/admin/media'), icon: Film, label: 'Media', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
+    { href: wrapHref('/admin/media/thumbnails'), icon: Image, label: 'Thumbnail Studio', visible: isFeatureEnabled('media'), disabled: !can('studios', 'media', 'view') },
     { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isFeatureEnabled('surveys'), disabled: !can('studios', 'surveys', 'view') },
     { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isFeatureEnabled('pdfs'), disabled: !can('studios', 'docSigning', 'view') },
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
