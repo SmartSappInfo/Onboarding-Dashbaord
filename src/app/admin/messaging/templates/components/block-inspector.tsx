@@ -739,16 +739,16 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                         );
                     })()}
 
-                    {/* Image & Video Settings */}
-                    {(block.type === 'image' || block.type === 'video') && (
+                    {/* Image Settings */}
+                    {block.type === 'image' && (
                         <div className="space-y-4">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                                {block.type === 'image' ? 'Image File Source' : 'Video File Source'}
+                                Image File Source
                             </Label>
                             <MediaSelect 
                                 value={block.url} 
                                 onValueChange={(val) => onUpdate({ url: val })}
-                                filterType={block.type as any}
+                                filterType="image"
                                 className="rounded-xl border-none shadow-none bg-muted/20"
                             />
                             <div className="space-y-2 pt-2">
@@ -761,6 +761,75 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                 />
                             </div>
+                        </div>
+                    )}
+
+                    {/* Video Player Settings */}
+                    {block.type === 'video' && (
+                        <div className="space-y-4">
+                            {/* Video Source URL */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video File Source</Label>
+                                <SlashInput 
+                                    value={block.url || ''} 
+                                    onChange={val => onUpdate({ url: val })} 
+                                    variables={autocompleteVariables}
+                                    placeholder="https://example.com/video.mp4"
+                                    className="h-10 rounded-xl text-xs font-mono bg-muted/10"
+                                />
+                            </div>
+
+                            {/* Video Thumbnail Image */}
+                            <div className="space-y-4 pt-2 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video Poster Thumbnail</Label>
+                                <MediaSelect 
+                                    value={block.videoThumbnailUrl} 
+                                    onValueChange={val => onUpdate({ videoThumbnailUrl: val })}
+                                    filterType="image"
+                                    className="rounded-xl border-none shadow-none bg-muted/20"
+                                />
+                                <div className="space-y-2 pt-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Or Paste Thumbnail URL</Label>
+                                    <SlashInput 
+                                        value={block.videoThumbnailUrl || ''} 
+                                        onChange={val => onUpdate({ videoThumbnailUrl: val })} 
+                                        variables={autocompleteVariables}
+                                        placeholder="https://example.com/poster.jpg"
+                                        className="h-10 rounded-xl text-xs font-mono bg-muted/10"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Play Action Behavior */}
+                            <div className="space-y-2 pt-2 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video Action Behavior</Label>
+                                <select
+                                    value={block.videoAction || 'play_inline'}
+                                    onChange={e => onUpdate({ videoAction: e.target.value as 'download' | 'play_inline' | 'redirect' })}
+                                    className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
+                                >
+                                    <option value="play_inline">Play Inline (where supported)</option>
+                                    <option value="download">Direct Download</option>
+                                    <option value="redirect">Redirect with Tracking</option>
+                                </select>
+                            </div>
+
+                            {/* Redirect Destination URL */}
+                            {(block.videoAction === 'redirect' || block.videoAction === 'play_inline') && (
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Redirect Destination URL</Label>
+                                    <SlashInput 
+                                        value={block.videoRedirectUrl || ''} 
+                                        onChange={val => onUpdate({ videoRedirectUrl: val })} 
+                                        variables={autocompleteVariables}
+                                        placeholder="https://yoursite.com/watch?token={{contact_id}}"
+                                        className="h-10 rounded-xl text-xs font-mono bg-muted/10"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground font-semibold italic ml-1">
+                                        Tip: You can append variables like `{{contact_id}}` or `{{email}}` to track link clicks.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 
