@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CanvasElement } from '@/lib/thumbnail/thumbnail-types';
 import { calculateSnapping, SnapLine } from '@/lib/thumbnail/snap-helpers';
 import * as LucideIcons from 'lucide-react';
-import { Move } from 'lucide-react';
+import { Move, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ThumbnailCanvasProps {

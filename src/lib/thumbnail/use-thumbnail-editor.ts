@@ -7,7 +7,7 @@ interface EditorHistory {
   future: ThumbnailDesign[];
 }
 
-interface EditorState {
+export interface EditorState {
   design: ThumbnailDesign;
   selectedId: string | null;
   history: EditorHistory;

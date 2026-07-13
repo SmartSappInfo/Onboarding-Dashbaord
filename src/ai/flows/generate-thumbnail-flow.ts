@@ -14,7 +14,7 @@ export type GenerateThumbnailInput = z.infer<typeof GenerateThumbnailInputSchema
 
 const CanvasElementSchema = z.object({
   id: z.string(),
-  type: z.enum(['text', 'image', 'rect', 'circle', 'arrow']),
+  type: z.enum(['text', 'image', 'rect', 'circle', 'arrow', 'icon', 'emoji', 'svg']),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
   width: z.number().min(1).max(100),
