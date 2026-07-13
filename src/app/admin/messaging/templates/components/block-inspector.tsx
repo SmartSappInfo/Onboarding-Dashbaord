@@ -840,34 +840,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     {/* Audio Player Settings */}
                     {block.type === 'audio' && (
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio File Title</Label>
-                                <Input 
-                                    value={block.audioTitle || ''} 
-                                    onChange={e => onUpdate({ audioTitle: e.target.value })} 
-                                    placeholder="e.g. Onboarding Welcome Podcast"
-                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Duration</Label>
-                                <Input 
-                                    value={block.audioDuration || ''} 
-                                    onChange={e => onUpdate({ audioDuration: e.target.value })} 
-                                    placeholder="e.g. 3:45"
-                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Source URL</Label>
-                                <SlashInput 
-                                    value={block.url || ''} 
-                                    onChange={val => onUpdate({ url: val })} 
-                                    variables={autocompleteVariables}
-                                    placeholder="https://example.com/audio.mp3"
-                                    className="h-10 rounded-xl text-xs font-mono bg-muted/10"
-                                />
-                            </div>
+                            {/* Play Action Behavior */}
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Play Action Behavior</Label>
                                 <select
@@ -880,18 +853,134 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     <option value="redirect">Redirect with Tracking</option>
                                 </select>
                             </div>
+
+                            {/* Redirect Page URL */}
                             {(block.audioAction === 'redirect' || block.audioAction === 'play_inline') && (
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Redirect Page URL</Label>
+                                <div className="space-y-2 pt-2 border-t">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Page URL</Label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowAudioLinkPicker(prev => !prev)}
+                                            className={`flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] ${
+                                                showAudioLinkPicker 
+                                                    ? 'text-white bg-primary border-primary/20 hover:bg-primary/95' 
+                                                    : 'text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]'
+                                            }`}
+                                        >
+                                            <LinkIcon className="h-2.5 w-2.5" /> Choose Link Target
+                                        </button>
+                                    </div>
+                                    <div className="relative group flex items-center w-full">
+                                        <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                        <SlashInput 
+                                            value={block.audioRedirectUrl || ''} 
+                                            onChange={val => onUpdate({ audioRedirectUrl: val })} 
+                                            variables={autocompleteVariables}
+                                            placeholder="https://..."
+                                            className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8 w-full" 
+                                            ref={audioRedirectInputRef}
+                                        />
+                                        <div className="absolute right-2 z-10">
+                                            <InlineVariablePicker 
+                                                targetRef={audioRedirectInputRef} 
+                                                currentValue={block.audioRedirectUrl || ''} 
+                                                onFieldChange={val => onUpdate({ audioRedirectUrl: val })} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {showAudioLinkPicker && (
+                                        <LinkPicker 
+                                            onSelect={(url) => {
+                                                const hasTracking = block.audioRedirectUrl?.includes('ref={{encrypted_recipient_token}}');
+                                                let finalUrl = url;
+                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                    const joiner = finalUrl.includes('?') ? '&' : '?';
+                                                    finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ audioRedirectUrl: finalUrl });
+                                                setShowAudioLinkPicker(false);
+                                            }}
+                                        />
+                                    )}
+
+                                    <div className="flex items-center space-x-2 px-1 py-1">
+                                        <Checkbox
+                                            id="audio-track-visitor"
+                                            checked={Boolean(block.audioRedirectUrl?.includes('ref={{encrypted_recipient_token}}'))}
+                                            onCheckedChange={(checked) => {
+                                                let currentLink = block.audioRedirectUrl || '';
+                                                currentLink = currentLink.replace(/[?&]ref=\{\{encrypted_recipient_token\}\}/, '');
+                                                if (checked === true) {
+                                                    const joiner = currentLink.includes('?') ? '&' : '?';
+                                                    currentLink = `${currentLink}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ audioRedirectUrl: currentLink });
+                                            }}
+                                            className="rounded-md"
+                                        />
+                                        <label
+                                            htmlFor="audio-track-visitor"
+                                            className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest cursor-pointer select-none leading-none"
+                                        >
+                                            Track Contact Identity
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Audio Title */}
+                            <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio File Title</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={titleInputRef} 
+                                        currentValue={block.audioTitle || ''} 
+                                        onFieldChange={val => onUpdate({ audioTitle: val })} 
+                                    />
+                                </div>
+                                <SlashInput 
+                                    value={block.audioTitle || ''} 
+                                    onChange={val => onUpdate({ audioTitle: val })} 
+                                    variables={autocompleteVariables}
+                                    placeholder="e.g. Onboarding Welcome Podcast"
+                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
+                                    ref={titleInputRef}
+                                />
+                            </div>
+
+                            {/* Audio Duration */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Duration</Label>
+                                <Input 
+                                    value={block.audioDuration || ''} 
+                                    onChange={e => onUpdate({ audioDuration: e.target.value })} 
+                                    placeholder="e.g. 3:45"
+                                    className="h-10 rounded-xl text-xs font-semibold bg-background"
+                                />
+                            </div>
+
+                            {/* Audio Source URL */}
+                            <div className="space-y-4 pt-2 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Audio Source URL</Label>
+                                <MediaSelect 
+                                    value={block.url} 
+                                    onValueChange={val => onUpdate({ url: val })}
+                                    filterType="audio"
+                                    className="rounded-xl border-none shadow-none bg-muted/20"
+                                />
+                                <div className="space-y-2 pt-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Or Paste Direct URL Link</Label>
                                     <SlashInput 
-                                        value={block.audioRedirectUrl || ''} 
-                                        onChange={val => onUpdate({ audioRedirectUrl: val })} 
+                                        value={block.url || ''} 
+                                        onChange={val => onUpdate({ url: val })} 
                                         variables={autocompleteVariables}
-                                        placeholder="https://yourpage.com/listen"
+                                        placeholder="https://example.com/audio.mp3"
                                         className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                     />
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
 
