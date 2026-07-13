@@ -2821,6 +2821,9 @@ export interface MessageBlock {
   audioDuration?: string;
   audioAction?: 'download' | 'play_inline' | 'redirect';
   audioRedirectUrl?: string;
+  videoThumbnailUrl?: string;
+  videoAction?: 'download' | 'play_inline' | 'redirect';
+  videoRedirectUrl?: string;
   columns?: {
     width: string;
     blocks: MessageBlock[];
