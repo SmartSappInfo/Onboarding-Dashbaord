@@ -9,7 +9,7 @@
  * staggered animation (transform/opacity, with a reduced-motion opt-out) to
  * avoid JS motion on first paint.
  */
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BlockRenderer } from './BlockRenderer';
 import { themeToCssVars } from '@/lib/page-builder/resolve-theme';
@@ -23,9 +23,11 @@ import '@/lib/page-builder/blocks'; // side-effect: register all blocks
 import { Button } from '@/components/ui/button';
 import { 
   Phone, Search, Facebook, Twitter, Linkedin, 
-  Instagram, Youtube, MapPin, Mail, Globe 
+  Instagram, Youtube, MapPin, Mail, Globe, ArrowRight, X 
 } from 'lucide-react';
 import Footer from '@/components/footer';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 export interface PageRendererPage {
   id: string;
@@ -158,6 +160,186 @@ const AnimatedBlock = ({ block, ctx }: AnimatedBlockProps) => {
   );
 };
 
+// ─── Card Nav Component (Animated Overlay Cards Navigation) ───────────────
+interface CardNavMenuProps {
+  headerSettings: PageHeaderSettings;
+  orgBranding: OrgBranding | null;
+  theme: ResolvedTheme;
+}
+
+function CardNavMenu({ headerSettings, orgBranding, theme }: CardNavMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const primaryColor = theme?.colors?.primary || '#3B5FFF';
+
+  useGSAP(() => {
+    // Prevent layout collision or state flicker during rapid toggle clicks
+    gsap.killTweensOf([".card-nav-item", ".card-nav-header", ".card-nav-overlay"]);
+
+    if (isOpen) {
+      // Fade and display container overlay
+      gsap.to(".card-nav-overlay", {
+        autoAlpha: 1,
+        duration: 0.35,
+        ease: "power2.out"
+      });
+      // Stagger reveal card elements
+      gsap.fromTo(".card-nav-item",
+        { opacity: 0, y: 30, scale: 0.94 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.05, ease: "power3.out", delay: 0.05 }
+      );
+      // Slide down header bar inside overlay
+      gsap.fromTo(".card-nav-header",
+        { opacity: 0, y: -15 },
+        { opacity: 1, y: 0, duration: 0.35, delay: 0.08, ease: "power2.out" }
+      );
+    } else {
+      // Cards reverse exit glide
+      gsap.to(".card-nav-item", {
+        opacity: 0,
+        y: 15,
+        scale: 0.96,
+        duration: 0.25,
+        stagger: 0.02,
+        ease: "power2.in"
+      });
+      // Hide container overlay
+      gsap.to(".card-nav-overlay", {
+        autoAlpha: 0,
+        duration: 0.3,
+        delay: 0.1,
+        ease: "power2.inOut"
+      });
+    }
+  }, { scope: containerRef, dependencies: [isOpen] });
+
+  // Close on Escape keypress
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  return (
+    <div ref={containerRef} className="w-full relative pointer-events-auto">
+      {/* Header bar */}
+      <div className="flex items-center justify-between py-2.5 w-full">
+        <div className="flex items-center gap-3">
+          {orgBranding?.logoUrl ? (
+            <img 
+              src={orgBranding.logoUrl} 
+              alt={orgBranding.name} 
+              className="h-8 w-auto object-contain max-w-[120px]" 
+            />
+          ) : (
+            <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-4">
+          {headerSettings.showCta && (
+            <Button 
+              onClick={() => headerSettings.ctaUrl && window.open(headerSettings.ctaUrl, '_self')}
+              className="h-9 px-5 rounded-full font-bold text-xs text-white flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <span>{headerSettings.ctaText || 'Get Started'}</span>
+            </Button>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
+            className="flex flex-col gap-1.5 justify-center items-center h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all z-50 relative border border-transparent cursor-pointer"
+            aria-label="Toggle navigation menu"
+          >
+            <span className={cn(
+              "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+              isOpen ? "rotate-45 translate-y-1" : ""
+            )} />
+            <span className={cn(
+              "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+              isOpen ? "opacity-0" : ""
+            )} />
+            <span className={cn(
+              "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
+              isOpen ? "-rotate-45 -translate-y-1" : ""
+            )} />
+          </button>
+        </div>
+      </div>
+
+      {/* Overlay fullscreen card menu */}
+      <div className={cn(
+        "card-nav-overlay fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 opacity-0 invisible",
+        isOpen ? "pointer-events-auto" : "pointer-events-none"
+      )}>
+        {/* Header inside overlay */}
+        <div className="card-nav-header flex items-center justify-between w-full border-b border-zinc-800/80 pb-4 mb-6">
+          <div className="flex items-center gap-3">
+            {orgBranding?.logoUrl ? (
+              <img 
+                src={orgBranding.logoUrl} 
+                alt={orgBranding.name} 
+                className="h-8 w-auto object-contain max-w-[120px]" 
+              />
+            ) : (
+              <span className="text-sm font-bold text-white">{orgBranding?.name || 'SmartSapp'}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="h-9 w-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white hover:bg-zinc-800 transition-all cursor-pointer pointer-events-auto"
+            aria-label="Close menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Cards grid */}
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-w-5xl mx-auto w-full justify-center items-center py-4">
+          {(headerSettings.navItems || []).map((item) => (
+            <div
+              key={item.id}
+              className="card-nav-item group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 flex flex-col justify-between aspect-[16/10] hover:bg-zinc-900 hover:border-[var(--hover-border-color)] hover:shadow-[0_0_25px_-5px_var(--hover-shadow-color)] transition-all duration-300 cursor-pointer pointer-events-auto"
+              style={{
+                '--hover-border-color': primaryColor,
+                '--hover-shadow-color': `${primaryColor}26`,
+              } as React.CSSProperties}
+              onClick={() => {
+                setIsOpen(false);
+                if (item.url) {
+                  window.open(item.url, '_self');
+                }
+              }}
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-[-4px] group-hover:translate-y-[4px] transition-all duration-300">
+                <ArrowRight className="h-4 w-4" style={{ color: primaryColor }} />
+              </div>
+              <div className="mt-auto">
+                <h3 className="outline-none border-0 bg-transparent text-xl font-bold text-white hover:text-white w-full block text-left">
+                  {item.label}
+                </h3>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1.5 animate-pulse">
+                  Navigate Link
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PageRenderer({
   page,
   version,
@@ -263,7 +445,13 @@ export function PageRenderer({
                     : "bg-white dark:bg-zinc-950"
                 )
           )}>
-            {headerSettings.preset === 'minimal' ? (
+            {headerSettings.preset === 'card-nav' ? (
+              <CardNavMenu
+                headerSettings={headerSettings}
+                orgBranding={orgBranding}
+                theme={theme}
+              />
+            ) : headerSettings.preset === 'minimal' ? (
               <div className="flex items-center justify-center w-full">
                 {orgBranding?.logoUrl ? (
                   <img src={orgBranding.logoUrl} alt={orgBranding.name} className="h-8 w-auto object-contain" />

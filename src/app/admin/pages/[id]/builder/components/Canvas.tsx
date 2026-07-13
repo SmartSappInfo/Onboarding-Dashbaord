@@ -590,25 +590,66 @@ interface CardNavMenuProps {
     headerSettings: PageHeaderSettings;
     isEditMode: boolean;
     onUpdateHeader?: (updates: Partial<PageHeaderSettings>) => void;
+    theme: ResolvedTheme;
 }
 
-function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader }: CardNavMenuProps) {
+function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader, theme }: CardNavMenuProps) {
     const { activeOrganization } = useTenant();
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const primaryColor = theme?.colors?.primary || '#3B5FFF';
 
     useGSAP(() => {
+        // Prevent layout collision or state flicker during rapid toggle clicks
+        gsap.killTweensOf([".card-nav-item", ".card-nav-header", ".card-nav-overlay"]);
+
         if (isOpen) {
+            // Fade and display container overlay
+            gsap.to(".card-nav-overlay", {
+                autoAlpha: 1,
+                duration: 0.35,
+                ease: "power2.out"
+            });
+            // Stagger reveal card elements
             gsap.fromTo(".card-nav-item",
-                { opacity: 0, y: 40, scale: 0.9 },
-                { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.06, ease: "power3.out" }
+                { opacity: 0, y: 30, scale: 0.94 },
+                { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.05, ease: "power3.out", delay: 0.05 }
             );
+            // Slide down header bar inside overlay
             gsap.fromTo(".card-nav-header",
-                { opacity: 0, y: -10 },
-                { opacity: 1, y: 0, duration: 0.3, delay: 0.1 }
+                { opacity: 0, y: -15 },
+                { opacity: 1, y: 0, duration: 0.35, delay: 0.08, ease: "power2.out" }
             );
+        } else {
+            // Cards reverse exit glide
+            gsap.to(".card-nav-item", {
+                opacity: 0,
+                y: 15,
+                scale: 0.96,
+                duration: 0.25,
+                stagger: 0.02,
+                ease: "power2.in"
+            });
+            // Hide container overlay
+            gsap.to(".card-nav-overlay", {
+                autoAlpha: 0,
+                duration: 0.3,
+                delay: 0.1,
+                ease: "power2.inOut"
+            });
         }
     }, { scope: containerRef, dependencies: [isOpen] });
+
+    // Close on Escape keypress
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                setIsOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
 
     return (
         <div ref={containerRef} className="w-full relative pointer-events-auto">
@@ -629,7 +670,8 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader }: CardNavMenu
                 <div className="flex items-center gap-4">
                     {headerSettings.showCta && (
                         <Button 
-                            className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1"
+                            className="h-9 px-5 rounded-full font-bold text-xs text-white flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
+                            style={{ backgroundColor: primaryColor }}
                             disabled={!isEditMode}
                         >
                             <InlineEditable
@@ -651,6 +693,7 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader }: CardNavMenu
                             setIsOpen(!isOpen);
                         }}
                         className="flex flex-col gap-1.5 justify-center items-center h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all z-50 relative border border-transparent cursor-pointer"
+                        aria-label="Toggle navigation menu"
                     >
                         <span className={cn(
                             "h-0.5 w-5 bg-slate-800 dark:bg-white rounded transition-all duration-300",
@@ -669,71 +712,78 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader }: CardNavMenu
             </div>
 
             {/* Overlay fullscreen card menu */}
-            {isOpen && (
-                <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 animate-in fade-in duration-300 pointer-events-auto">
-                    {/* Header inside overlay */}
-                    <div className="card-nav-header flex items-center justify-between w-full border-b border-zinc-800/80 pb-4 mb-6">
-                        <div className="flex items-center gap-3">
-                            {activeOrganization?.logoUrl ? (
-                                <img 
-                                    src={activeOrganization.logoUrl} 
-                                    alt={activeOrganization.name} 
-                                    className="h-8 w-auto object-contain max-w-[120px]" 
-                                />
-                            ) : (
-                                <SmartSappLogo className="h-8 w-auto text-white" />
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setIsOpen(false)}
-                            className="h-9 w-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white hover:bg-zinc-800 transition-all cursor-pointer"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
+            <div className={cn(
+                "card-nav-overlay fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 opacity-0 invisible",
+                isOpen ? "pointer-events-auto" : "pointer-events-none"
+            )}>
+                {/* Header inside overlay */}
+                <div className="card-nav-header flex items-center justify-between w-full border-b border-zinc-800/80 pb-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        {activeOrganization?.logoUrl ? (
+                            <img 
+                                src={activeOrganization.logoUrl} 
+                                alt={activeOrganization.name} 
+                                className="h-8 w-auto object-contain max-w-[120px]" 
+                            />
+                        ) : (
+                            <SmartSappLogo className="h-8 w-auto text-white" />
+                        )}
                     </div>
-
-                    {/* Cards grid */}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-w-5xl mx-auto w-full justify-center items-center py-4">
-                        {(headerSettings.navItems || []).map((item) => (
-                            <div
-                                key={item.id}
-                                className="card-nav-item group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 flex flex-col justify-between aspect-[16/10] hover:bg-zinc-900 hover:border-[#3B5FFF]/40 hover:shadow-[0_0_25px_-5px_rgba(59,95,255,0.15)] transition-all duration-300 cursor-pointer"
-                                onClick={() => {
-                                    if (!isEditMode && item.url) {
-                                        window.open(item.url, '_blank');
-                                    }
-                                }}
-                            >
-                                <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-[-4px] group-hover:translate-y-[4px] transition-all duration-300">
-                                    <ArrowRight className="h-4 w-4 text-[#3B5FFF]" />
-                                </div>
-                                <div className="mt-auto">
-                                    <span onClick={(e) => e.stopPropagation()}>
-                                        <InlineEditable
-                                            tagName="h3"
-                                            isEdit={isEditMode}
-                                            onChange={(val) => {
-                                                const updatedNavItems = headerSettings.navItems.map(navItem => 
-                                                    navItem.id === item.id ? { ...navItem, label: val } : navItem
-                                                );
-                                                onUpdateHeader?.({ navItems: updatedNavItems });
-                                            }}
-                                            className="outline-none border-0 bg-transparent text-xl font-bold text-white hover:text-white cursor-text w-full block text-left"
-                                            onClick={(e) => e.stopPropagation()}
-                                            value={item.label}
-                                            html={false}
-                                        />
-                                    </span>
-                                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1.5 animate-pulse">
-                                        Navigate Link
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="h-9 w-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white hover:bg-zinc-800 transition-all cursor-pointer pointer-events-auto"
+                        aria-label="Close menu"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
                 </div>
-            )}
+
+                {/* Cards grid */}
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto max-w-5xl mx-auto w-full justify-center items-center py-4">
+                    {(headerSettings.navItems || []).map((item) => (
+                        <div
+                            key={item.id}
+                            className="card-nav-item group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 flex flex-col justify-between aspect-[16/10] hover:bg-zinc-900 hover:border-[var(--hover-border-color)] hover:shadow-[0_0_25px_-5px_var(--hover-shadow-color)] transition-all duration-300 cursor-pointer pointer-events-auto"
+                            style={{
+                                '--hover-border-color': primaryColor,
+                                '--hover-shadow-color': `${primaryColor}26`,
+                            } as React.CSSProperties}
+                            onClick={() => {
+                                setIsOpen(false);
+                                if (!isEditMode && item.url) {
+                                    window.open(item.url, '_blank');
+                                }
+                            }}
+                        >
+                            <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-[-4px] group-hover:translate-y-[4px] transition-all duration-300">
+                                <ArrowRight className="h-4 w-4" style={{ color: primaryColor }} />
+                            </div>
+                            <div className="mt-auto">
+                                <span onClick={(e) => e.stopPropagation()}>
+                                    <InlineEditable
+                                        tagName="h3"
+                                        isEdit={isEditMode}
+                                        onChange={(val) => {
+                                            const updatedNavItems = headerSettings.navItems.map(navItem => 
+                                                navItem.id === item.id ? { ...navItem, label: val } : navItem
+                                            );
+                                            onUpdateHeader?.({ navItems: updatedNavItems });
+                                        }}
+                                        className="outline-none border-0 bg-transparent text-xl font-bold text-white hover:text-white cursor-text w-full block text-left"
+                                        onClick={(e) => e.stopPropagation()}
+                                        value={item.label}
+                                        html={false}
+                                    />
+                                </span>
+                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1.5 animate-pulse">
+                                    Navigate Link
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -1681,6 +1731,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         headerSettings={headerSettings}
                                                         isEditMode={isEditMode}
                                                         onUpdateHeader={onUpdateHeader}
+                                                        theme={theme}
                                                     />
                                                 ) : headerSettings.preset === 'minimal' ? (
                                                     <div className="flex items-center justify-center w-full">
