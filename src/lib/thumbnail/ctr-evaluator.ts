@@ -1,4 +1,4 @@
-import type { CanvasElement, ThumbnailDesign } from './thumbnail-types';
+import type { ThumbnailDesign } from './thumbnail-types';
 
 export interface CTRRecommendation {
   id: string;
