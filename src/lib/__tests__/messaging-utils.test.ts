@@ -207,5 +207,64 @@ describe('renderBlocksToHtml with styles', () => {
     expect(html).toContain('MEETING_WIDE');
     expect(html).toContain('Simple Wide Title');
   });
+
+  describe('audio and video action blocks', () => {
+    it('compiles audio block with play_inline action and toggle styling', () => {
+      const blocks: MessageBlock[] = [
+        {
+          id: 'test_audio_1',
+          type: 'audio',
+          url: 'https://example.com/audio.mp3',
+          audioAction: 'play_inline',
+          audioRedirectUrl: 'https://example.com/redirect-audio',
+          audioTitle: 'Listen to this welcome note',
+          audioDuration: '3:00'
+        }
+      ];
+
+      const html = renderBlocksToHtml(blocks, {});
+      expect(html).toContain('class="audio-native-test_audio_1"');
+      expect(html).toContain('class="audio-card-test_audio_1"');
+      expect(html).toContain('<audio src="https://example.com/audio.mp3"');
+      expect(html).toContain('href="https://example.com/redirect-audio"');
+      expect(html).toContain('audio-native-test_audio_1 {');
+    });
+
+    it('compiles video block with play_inline action and toggle styling', () => {
+      const blocks: MessageBlock[] = [
+        {
+          id: 'test_video_1',
+          type: 'video',
+          url: 'https://example.com/video.mp4',
+          videoAction: 'play_inline',
+          videoRedirectUrl: 'https://example.com/redirect-video',
+          videoThumbnailUrl: 'https://example.com/thumbnail.jpg'
+        }
+      ];
+
+      const html = renderBlocksToHtml(blocks, {});
+      expect(html).toContain('class="video-native-test_video_1"');
+      expect(html).toContain('class="video-card-test_video_1"');
+      expect(html).toContain('<video src="https://example.com/video.mp4"');
+      expect(html).toContain('href="https://example.com/redirect-video"');
+      expect(html).toContain('video-native-test_video_1 {');
+    });
+
+    it('compiles video block with redirect action without native elements', () => {
+      const blocks: MessageBlock[] = [
+        {
+          id: 'test_video_2',
+          type: 'video',
+          url: 'https://example.com/video.mp4',
+          videoAction: 'redirect',
+          videoRedirectUrl: 'https://example.com/redirect-only'
+        }
+      ];
+
+      const html = renderBlocksToHtml(blocks, {});
+      expect(html).not.toContain('video-native-test_video_2');
+      expect(html).toContain('href="https://example.com/redirect-only"');
+    });
+  });
 });
 
