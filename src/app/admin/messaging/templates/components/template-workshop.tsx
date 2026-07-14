@@ -92,7 +92,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIn
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel, EntityContact } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import { SortableBlockItem } from './visual-block';
@@ -2481,8 +2481,8 @@ export function TemplateWorkshop({
     // Simulation State
     const [simEntity, setSimEntity] = React.useState('none');
     const [simRecordId, setSimRecordId] = React.useState('none');
-    const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
-    const [simContacts, setSimContacts] = React.useState<any[]>([]);
+    const [simVariables, setSimVariables] = React.useState<Record<string, string | number | boolean>>({});
+    const [simContacts, setSimContacts] = React.useState<EntityContact[]>([]);
     const [simContactId, setSimContactId] = React.useState<string>('none');
     const [isSimLoading, setIsSimLoading] = React.useState(false);
 
