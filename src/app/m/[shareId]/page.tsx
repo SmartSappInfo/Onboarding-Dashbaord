@@ -146,9 +146,48 @@ export default async function PublicMediaShareRoute({
 
     try {
         const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+        
+        const paramsRecord: Record<string, string> = {};
+        Object.entries(resolvedSearchParams).forEach(([k, v]) => {
+            if (v !== undefined) {
+                paramsRecord[k] = v;
+            }
+        });
+
+        // 1. Resolve encrypted recipient ref parameters
+        const ref = resolvedSearchParams.ref;
+        const isEncrypted = ref ? ref.split(':').length === 3 : false;
+        
+        let resolvedContactId = '';
+        let resolvedRecipientContact = '';
+
+        if (ref && isEncrypted) {
+            try {
+                const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
+                const decryptRes = await decryptRecipientAction(ref);
+                if (decryptRes.success && decryptRes.contactId) {
+                    resolvedContactId = decryptRes.contactId;
+                    resolvedRecipientContact = decryptRes.contactEmail || '';
+                }
+            } catch (err) {
+                console.warn('[PublicMediaShareRoute] Decryption error:', err);
+            }
+        }
+
+        // Fallback or explicit parameters mapping
+        if (ref && !isEncrypted) {
+            paramsRecord.entityId = ref;
+        }
+        if (resolvedContactId) {
+            paramsRecord.contactId = resolvedContactId;
+        }
+        if (resolvedRecipientContact) {
+            paramsRecord.email = resolvedRecipientContact;
+        }
+
         const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
             [config.workspaceId],
-            resolvedSearchParams
+            paramsRecord
         );
 
         const context = {
