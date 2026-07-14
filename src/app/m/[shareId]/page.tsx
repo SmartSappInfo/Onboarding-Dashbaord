@@ -164,14 +164,18 @@ export default async function PublicMediaShareRoute({
 
         if (ref && isEncrypted) {
             try {
-                const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
-                const decryptRes = await decryptRecipientAction(ref);
-                if (decryptRes.success && decryptRes.contactId) {
-                    resolvedContactId = decryptRes.contactId;
-                    resolvedRecipientContact = decryptRes.contactEmail || '';
+                const { decryptToken } = await import('@/lib/crypto');
+                const contactId = decryptToken(ref);
+                if (contactId) {
+                    resolvedContactId = contactId;
+                    const contactSnap = await adminDb.collection('contacts').doc(contactId).get();
+                    if (contactSnap.exists) {
+                        const data = contactSnap.data() || {};
+                        resolvedRecipientContact = String(data.email || '');
+                    }
                 }
             } catch (err) {
-                console.warn('[PublicMediaShareRoute] Decryption error:', err);
+                console.warn('[PublicMediaShareRoute] Direct token decryption error:', err);
             }
         }
 
