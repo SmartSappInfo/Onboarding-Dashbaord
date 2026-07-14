@@ -244,6 +244,40 @@ async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
 
   await logDoc.ref.update(updates);
 
+  if (isNewMilestone) {
+    try {
+      const workspaceId = log.workspaceId || log.workspaceIds?.[0];
+      if (workspaceId && log.entityId) {
+        let eventType = '';
+        if (ev.status === 'read') {
+          eventType = 'email_opened'; // treat read status similar to open
+        } else if (ev.status === 'failed') {
+          eventType = 'sms_failed'; // treat WhatsApp fail similar to SMS fail
+        }
+
+        if (eventType) {
+          const { emitScoringEvent } = await import('@/lib/scoring-performance-engine');
+          await emitScoringEvent({
+            organizationId: log.organizationId || '',
+            workspaceId,
+            eventType,
+            entityType: 'Contact',
+            entityId: log.entityId,
+            contactId: log.recipient,
+            actorType: 'Automation',
+            actorId: log.automationId || 'automation-system',
+            metadata: {
+              messageLogId: logDoc.id,
+              channel: 'whatsapp'
+            }
+          });
+        }
+      }
+    } catch (scoringErr) {
+      console.error('>>> [WEBHOOK] WhatsApp message scoring trigger failed:', scoringErr);
+    }
+  }
+
   if (isNewMilestone && counter && log.automationId && log.nodeId) {
     const { incrementMessageNodeStat } = await import('@/lib/messaging/message-node-stats');
     await incrementMessageNodeStat({

@@ -110,6 +110,43 @@ async function handleAutomationMessageEvent(
 
   await logDoc.ref.update(updates);
 
+  if (isNewMilestone) {
+    try {
+      const workspaceId = log.workspaceId || log.workspaceIds?.[0];
+      if (workspaceId && log.entityId) {
+        let eventType = '';
+        if (log.channel === 'email') {
+          if (type === 'email.opened') eventType = 'email_opened';
+          else if (type === 'email.clicked') eventType = 'email_clicked';
+          else if (type === 'email.bounced' || type === 'email.complained') eventType = 'email_bounced';
+        } else if (log.channel === 'sms') {
+          if (type === 'email.clicked') eventType = 'sms_link_clicked';
+          else if (type === 'email.bounced' || type === 'email.complained') eventType = 'sms_failed';
+        }
+
+        if (eventType) {
+          const { emitScoringEvent } = await import('@/lib/scoring-performance-engine');
+          await emitScoringEvent({
+            organizationId: log.organizationId || '',
+            workspaceId,
+            eventType,
+            entityType: 'Contact',
+            entityId: log.entityId,
+            contactId: log.recipient,
+            actorType: 'Automation',
+            actorId: log.automationId || 'automation-system',
+            metadata: {
+              messageLogId: logDoc.id,
+              channel: log.channel
+            }
+          });
+        }
+      }
+    } catch (scoringErr) {
+      console.error('>>> [WEBHOOK] Automation message scoring trigger failed:', scoringErr);
+    }
+  }
+
   const counter = NODE_STAT_BY_EVENT[type];
   if (isNewMilestone && counter && log.automationId && log.nodeId) {
     const channel: TrackedMessageChannel =
