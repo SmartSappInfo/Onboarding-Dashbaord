@@ -46,6 +46,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
 
   const [surveys, setSurveys] = React.useState<ResourceItem[]>([]);
   const [forms, setForms] = React.useState<ResourceItem[]>([]);
+  const [mediaShares, setMediaShares] = React.useState<ResourceItem[]>([]);
   const [pages, setPages] = React.useState<ResourceItem[]>([]);
   const [bookings, setBookings] = React.useState<ResourceItem[]>([]);
   const [qrs, setQrs] = React.useState<ResourceItem[]>([]);
@@ -126,6 +127,20 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
           });
           setQrs(fetchedQrs);
         }
+
+        // 6. Fetch Shared Media Pages
+        const mediaSnap = await getDocs(
+          query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))
+        );
+        const fetchedMedia = mediaSnap.docs.map((d) => {
+          const data = d.data() as { title?: string; assetId?: string };
+          return {
+            id: d.id,
+            name: data.title || 'Untitled Media Share',
+            path: `/m/${d.id}`,
+          };
+        });
+        setMediaShares(fetchedMedia);
       } catch (error) {
         console.error('[LinkPicker] Failed to fetch links:', error);
       }
@@ -142,6 +157,8 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
         return surveys;
       case 'forms':
         return forms;
+      case 'media':
+        return mediaShares;
       case 'pages':
         return pages;
       case 'bookings':
@@ -182,6 +199,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             <option value="dynamic">Dynamic Variables (rsvp, survey...)</option>
             <option value="surveys">Published Workspace Surveys</option>
             <option value="forms">Published Forms & PDFs</option>
+            <option value="media">Shared Media Pages</option>
             <option value="pages">Published Campaign Pages</option>
             <option value="bookings">Published Booking Pages</option>
             <option value="qrs">QR Studio Codes</option>
