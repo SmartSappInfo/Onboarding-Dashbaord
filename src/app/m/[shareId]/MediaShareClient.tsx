@@ -19,6 +19,7 @@ interface MediaShareClientProps {
     ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
     ctaMode: 'modal' | 'redirect' | 'replace';
     ctaPretext: string;
+    ctaPopoverEnabled: boolean;
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
@@ -33,6 +34,7 @@ export default function MediaShareClient({
     ctaType,
     ctaMode,
     ctaPretext,
+    ctaPopoverEnabled,
     orgBranding,
     isEmbed,
     searchParams,
@@ -44,6 +46,7 @@ export default function MediaShareClient({
     const [volume, setVolume] = React.useState(0.8);
     const [isCtaModalOpen, setIsCtaModalOpen] = React.useState(false);
     const [isVideoPlaying, setIsVideoPlaying] = React.useState(false);
+    const [isPlaybackFinished, setIsPlaybackFinished] = React.useState(false);
 
     // Audio handlers
     const toggleAudioPlay = () => {
@@ -51,6 +54,7 @@ export default function MediaShareClient({
         if (isPlaying) {
             audioRef.current.pause();
         } else {
+            setIsPlaybackFinished(false);
             audioRef.current.play();
         }
         setIsPlaying(!isPlaying);
@@ -69,6 +73,7 @@ export default function MediaShareClient({
     const handleAudioEnded = () => {
         setIsPlaying(false);
         setCurrentTime(0);
+        setIsPlaybackFinished(true);
     };
 
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +184,10 @@ export default function MediaShareClient({
                     {asset.type === 'video' && (
                         !isVideoPlaying ? (
                             <div 
-                                onClick={() => setIsVideoPlaying(true)}
+                                onClick={() => {
+                                    setIsPlaybackFinished(false);
+                                    setIsVideoPlaying(true);
+                                }}
                                 className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center cursor-pointer overflow-hidden"
                             >
                                 {thumbUrl ? (
@@ -218,6 +226,10 @@ export default function MediaShareClient({
                                     src={asset.url}
                                     controls
                                     autoPlay
+                                    onEnded={() => {
+                                        setIsPlaybackFinished(true);
+                                        setIsVideoPlaying(false);
+                                    }}
                                     className="w-full h-full object-contain"
                                 />
                             )
@@ -283,15 +295,52 @@ export default function MediaShareClient({
                             </Button>
                         </div>
                     )}
+
+                    {/* Popover overlay for CTA in Embed Mode */}
+                    {ctaPopoverEnabled && isPlaybackFinished && ctaType !== 'none' ? (
+                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-[#0B0F19]/95 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                            <div className="max-w-xs space-y-4 text-center">
+                                {ctaPretext && (
+                                    <p className="text-xs text-slate-200 font-bold leading-normal line-clamp-3">
+                                        {ctaPretext}
+                                    </p>
+                                )}
+                                <Button
+                                    onClick={handleCtaClick}
+                                    className="rounded-xl bg-primary hover:bg-primary/90 text-white font-extrabold h-9 px-6 text-[10px] uppercase tracking-wider cursor-pointer mx-auto flex items-center gap-1.5"
+                                >
+                                    {ctaText || 'Get Started'}
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                </Button>
+                                <div>
+                                    <button
+                                        onClick={() => {
+                                            setIsPlaybackFinished(false);
+                                            if (asset.type === 'video') {
+                                                setIsVideoPlaying(true);
+                                            } else if (asset.type === 'audio' && audioRef.current) {
+                                                audioRef.current.currentTime = 0;
+                                                audioRef.current.play();
+                                                setIsPlaying(true);
+                                            }
+                                        }}
+                                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                                    >
+                                        Replay
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Overlaid Title/CTA Bar on Hover */}
-                <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
-                    <div className="truncate pr-4 text-left">
-                        <p className="text-xs font-bold truncate">{title}</p>
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{description}</p>
-                    </div>
-                    {ctaType !== 'none' && (
+                {ctaType !== 'none' && !(ctaPopoverEnabled && isPlaybackFinished) && (
+                    <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
+                        <div className="truncate pr-4 text-left">
+                            <p className="text-xs font-bold truncate">{title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{description}</p>
+                        </div>
                         <Button 
                             size="sm" 
                             onClick={handleCtaClick} 
@@ -299,8 +348,8 @@ export default function MediaShareClient({
                         >
                             {ctaText || 'Get Started'} <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
-                    )}
-                </div>
+                    </div>
+                )}
 
                 {/* Render the iframe modal inside embed frame */}
                 {isCtaModalOpen && (
@@ -362,7 +411,7 @@ export default function MediaShareClient({
                             onClick={() => window.open(asset.url, '_blank')}
                             className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer"
                         >
-                            <Download className="h-3.5 w-3.5" /> Direct Download
+                            <Download className="h-3.5 w-3.5" /> Save
                         </Button>
                     </div>
                 </div>
@@ -400,7 +449,10 @@ export default function MediaShareClient({
                     {asset.type === 'video' && (
                         !isVideoPlaying ? (
                             <div 
-                                onClick={() => setIsVideoPlaying(true)}
+                                onClick={() => {
+                                    setIsPlaybackFinished(false);
+                                    setIsVideoPlaying(true);
+                                }}
                                 className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
                             >
                                 {thumbUrl ? (
@@ -448,6 +500,10 @@ export default function MediaShareClient({
                                         src={asset.url}
                                         controls
                                         autoPlay
+                                        onEnded={() => {
+                                            setIsPlaybackFinished(true);
+                                            setIsVideoPlaying(false);
+                                        }}
                                         className="w-full h-full object-contain"
                                     />
                                 </div>
@@ -554,10 +610,47 @@ export default function MediaShareClient({
                             </Button>
                         </div>
                     )}
+
+                    {/* Popover overlay for CTA */}
+                    {ctaPopoverEnabled && isPlaybackFinished && ctaType !== 'none' ? (
+                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 md:p-12 bg-white/95 dark:bg-[#070913]/95 backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
+                            <div className="max-w-md space-y-6 text-center">
+                                {ctaPretext && (
+                                    <p className="text-sm md:text-base text-slate-800 dark:text-slate-200 font-bold leading-relaxed whitespace-pre-line">
+                                        {ctaPretext}
+                                    </p>
+                                )}
+                                <Button
+                                    onClick={handleCtaClick}
+                                    className="rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer mx-auto"
+                                >
+                                    {ctaText || 'Get Started'}
+                                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                </Button>
+                                <div>
+                                    <button
+                                        onClick={() => {
+                                            setIsPlaybackFinished(false);
+                                            if (asset.type === 'video') {
+                                                setIsVideoPlaying(true);
+                                            } else if (asset.type === 'audio' && audioRef.current) {
+                                                audioRef.current.currentTime = 0;
+                                                audioRef.current.play();
+                                                setIsPlaying(true);
+                                            }
+                                        }}
+                                        className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                                    >
+                                        {asset.type === 'video' ? 'Watch again' : 'Listen again'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* 3. CTA Pre-text & CTA Button Layout - AT THE BOTTOM */}
-                {ctaType !== 'none' && (
+                {ctaType !== 'none' && !(ctaPopoverEnabled && isPlaybackFinished) && (
                     <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2">
                         {ctaPretext && (
                             <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">

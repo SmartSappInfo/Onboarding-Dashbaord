@@ -45,6 +45,7 @@ interface ShareConfig {
     ctaTargetUrl: string;
     ctaMode?: 'modal' | 'redirect' | 'replace';
     ctaPretext?: string;
+    ctaPopoverEnabled?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -81,6 +82,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaTargetUrl, setCtaTargetUrl] = React.useState<string>('');
     const [ctaMode, setCtaMode] = React.useState<'modal' | 'redirect' | 'replace'>('redirect');
     const [ctaPretext, setCtaPretext] = React.useState<string>('');
+    const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -123,6 +125,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaTargetUrl(data.ctaTargetUrl || '');
                 setCtaMode(data.ctaMode || 'redirect');
                 setCtaPretext(data.ctaPretext || '');
+                setCtaPopoverEnabled(data.ctaPopoverEnabled || false);
                 setIsSaved(true);
             } else {
                 // Generate a fresh random doc ID
@@ -146,6 +149,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaTargetUrl('');
                 setCtaMode('redirect');
                 setCtaPretext('');
+                setCtaPopoverEnabled(false);
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -260,6 +264,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaTargetUrl,
                 ctaMode,
                 ctaPretext: ctaPretext.trim(),
+                ctaPopoverEnabled,
                 updatedAt: new Date().toISOString(),
             };
 
@@ -438,16 +443,32 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                             </div>
                                         </div>
 
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Pretext (Above Button)</Label>
-                                            <SlashTextarea 
-                                                value={ctaPretext}
-                                                onChange={setCtaPretext}
-                                                variables={variables}
-                                                placeholder="Enter pretext layout above button supporting variables..."
-                                                className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
-                                            />
-                                        </div>
+                                         <div className="space-y-3 text-left">
+                                             <div className="flex items-center justify-between">
+                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Pretext (Above Button)</Label>
+                                                 <div className="flex items-center gap-2">
+                                                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Popover when done playing</span>
+                                                     <button
+                                                         type="button"
+                                                         role="switch"
+                                                         aria-checked={ctaPopoverEnabled}
+                                                         onClick={() => setCtaPopoverEnabled(!ctaPopoverEnabled)}
+                                                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ctaPopoverEnabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                                     >
+                                                         <span
+                                                             className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${ctaPopoverEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                                                         />
+                                                     </button>
+                                                 </div>
+                                             </div>
+                                             <SlashTextarea 
+                                                 value={ctaPretext}
+                                                 onChange={setCtaPretext}
+                                                 variables={variables}
+                                                 placeholder="Enter pretext layout above button supporting variables..."
+                                                 className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                             />
+                                         </div>
                                     </>
                                 )}
                             </div>

@@ -22,6 +22,7 @@ interface ShareConfig {
     ctaTargetUrl: string;
     ctaMode?: 'modal' | 'redirect' | 'replace';
     ctaPretext?: string;
+    ctaPopoverEnabled?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -215,6 +216,7 @@ export default async function PublicMediaShareRoute({
             ctaType={config.ctaType}
             ctaMode={config.ctaMode || 'redirect'}
             ctaPretext={resolvedCtaPretext}
+            ctaPopoverEnabled={config.ctaPopoverEnabled || false}
             orgBranding={orgBranding}
             isEmbed={isEmbed}
             searchParams={resolvedSearchParams}
