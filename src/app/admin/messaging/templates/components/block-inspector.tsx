@@ -815,8 +815,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
                                 >
                                     <option value="play_inline">Play Inline (where supported)</option>
-                                    <option value="download">Direct Download</option>
                                     <option value="redirect">Redirect with Tracking</option>
+                                    <option value="download">Direct Download</option>
                                 </select>
                             </div>
 
@@ -910,8 +910,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
                                 >
                                     <option value="play_inline">Play Inline (where supported)</option>
-                                    <option value="download">Direct Download</option>
                                     <option value="redirect">Redirect with Tracking</option>
+                                    <option value="download">Direct Download</option>
                                 </select>
                             </div>
 
