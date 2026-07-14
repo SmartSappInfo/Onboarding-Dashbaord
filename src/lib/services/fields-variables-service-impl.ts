@@ -126,6 +126,7 @@ export class FieldsVariablesService {
         source: 'static',
         featureContext: v.context as 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign',
         exampleValue: v.exampleValue ? String(v.exampleValue) : undefined,
+        fallbackValue: v.fallbackValue,
       });
     });
 
@@ -137,10 +138,10 @@ export class FieldsVariablesService {
       { category: 'core', dataType: 'string', description: 'Role or type key of the active contact', source: 'static' }
     ];
     
-    safePush({ key: 'contact_name', label: 'Contact Name', ...coreContacts[0] });
-    safePush({ key: 'contact_email', label: 'Contact Email', ...coreContacts[1] });
-    safePush({ key: 'contact_phone', label: 'Contact Phone', ...coreContacts[2] });
-    safePush({ key: 'contact_role', label: 'Contact Role', ...coreContacts[3] });
+    safePush({ key: 'contact_name', label: 'Contact Name', ...coreContacts[0], fallbackValue: 'there' });
+    safePush({ key: 'contact_email', label: 'Contact Email', ...coreContacts[1], fallbackValue: 'info@domain.com' });
+    safePush({ key: 'contact_phone', label: 'Contact Phone', ...coreContacts[2], fallbackValue: 'our contact number' });
+    safePush({ key: 'contact_role', label: 'Contact Role', ...coreContacts[3], fallbackValue: 'User' });
 
     // 4. Load Specific Contact Roles (Category: contact_specific)
     try {
@@ -904,6 +905,23 @@ export class FieldsVariablesService {
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching user data for rendering:', err);
       }
+    }
+
+    // 8.6. Inject pre-defined fallbacks from registry
+    try {
+      if (context.workspaceId) {
+        const registeredVars = await this.getVariables({
+          workspaceId: context.workspaceId,
+          featureContext: 'all',
+        });
+        registeredVars.forEach((v) => {
+          if (v.fallbackValue) {
+            valuesMap.set(`__fallback__${v.key}`, v.fallbackValue);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[FieldsVariablesService] Error fetching variables for fallback mapping:', err);
     }
 
     // 9. Merge caller overrides / extra variables

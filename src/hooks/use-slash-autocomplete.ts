@@ -8,7 +8,9 @@ export function convertToCleanHtml(element: HTMLElement): string {
   const pills = clone.querySelectorAll('[data-variable]');
   pills.forEach((pill) => {
     const varName = pill.getAttribute('data-variable');
-    const textNode = clone.ownerDocument.createTextNode(`{{${varName}}}`);
+    const fallback = pill.getAttribute('data-fallback') || '';
+    const token = fallback ? `{{${varName} | ${fallback}}}` : `{{${varName}}}`;
+    const textNode = clone.ownerDocument.createTextNode(token);
     pill.parentNode?.replaceChild(textNode, pill);
   });
   return clone.innerHTML;
@@ -198,9 +200,20 @@ export function useSlashAutocomplete({
       
       const pill = document.createElement('span');
       pill.contentEditable = 'false';
-      pill.className = 'inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none';
+      pill.className = 'inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none';
       pill.setAttribute('data-variable', varName);
-      pill.textContent = varName;
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = varName;
+      pill.appendChild(labelSpan);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-variable-settings', varName);
+      btn.className = 'hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer select-none border-0 bg-transparent';
+      btn.title = 'Configure fallback';
+      btn.textContent = '⚙️';
+      pill.appendChild(btn);
       
       range.insertNode(pill);
       

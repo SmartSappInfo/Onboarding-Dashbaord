@@ -153,8 +153,13 @@ export async function generateMetadata(
     let resolvedDescription = config.description || 'Shared media asset';
 
     try {
-        resolvedTitle = await FieldsVariablesService.resolveTemplateVariables(resolvedTitle, context);
-        resolvedDescription = await FieldsVariablesService.resolveTemplateVariables(resolvedDescription, context);
+        const varContext = {
+            workspaceId: config.workspaceId,
+            entityId: context.entityId || undefined,
+            recipientContact: context.recipientContact || undefined
+        };
+        resolvedTitle = await FieldsVariablesService.resolveTemplateVariables(resolvedTitle, varContext);
+        resolvedDescription = await FieldsVariablesService.resolveTemplateVariables(resolvedDescription, varContext);
     } catch (err) {
         console.warn('[PublicMediaShareMetadata] Variable resolution failed:', err);
     }

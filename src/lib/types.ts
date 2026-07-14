@@ -2661,6 +2661,7 @@ export interface TemplateVariable {
   // Computed variables
   isComputed: boolean;
   computeExpression?: string;
+  fallbackValue?: string;
 }
 
 export interface ReminderConfig {

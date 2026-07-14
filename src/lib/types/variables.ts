@@ -11,6 +11,7 @@ export interface UnifiedVariable {
   isDeprecated?: boolean;
   featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign';
   exampleValue?: string;  // For sandbox previews
+  fallbackValue?: string; // Predefined fallback value
 }
 
 export interface GetVariablesParams {

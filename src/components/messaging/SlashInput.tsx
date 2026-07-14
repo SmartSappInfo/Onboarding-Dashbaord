@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { TemplateVariable } from '@/lib/types';
 import { Bold, Italic, Underline, Strikethrough } from 'lucide-react';
+import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 
 export const SCRIPT_VARIABLES: TemplateVariable[] = [
   { id: 'entity_name', name: 'ENTITY_NAME', label: 'Entity Name', context: 'entity', description: 'Name of the entity', dataType: 'string', exampleValue: 'SmartSapp Inc', isDynamic: false, isComputed: false },
@@ -42,9 +43,17 @@ const contextLabels: Record<string, string> = {
 
 export function convertToVisualHtml(text: string): string {
   if (!text) return '';
-  // Convert variable tokens back to non-editable HTML spans
-  const parsed = text.replace(/\{\{([\w_]+)\}\}/g, (match, varName) => {
-    return `<span contenteditable="false" data-variable="${varName}" class="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none">${varName}</span>`;
+  // Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
+  const parsed = text.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
+    const parts = rawKey.split(/\|\||\|/);
+    const varName = parts[0].trim();
+    const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
+    const fallbackText = fallback ? ` (${fallback})` : '';
+
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all">
+      <span>${varName}${fallbackText}</span>
+      <button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent" title="Configure fallback">⚙️</button>
+    </span>`;
   });
   return parsed;
 }
@@ -56,7 +65,9 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
   const pills = clone.querySelectorAll('[data-variable]');
   pills.forEach((pill) => {
     const varName = pill.getAttribute('data-variable');
-    const textNode = clone.ownerDocument.createTextNode(`{{${varName}}}`);
+    const fallback = pill.getAttribute('data-fallback') || '';
+    const token = fallback ? `{{${varName} | ${fallback}}}` : `{{${varName}}}`;
+    const textNode = clone.ownerDocument.createTextNode(token);
     pill.parentNode?.replaceChild(textNode, pill);
   });
 
@@ -250,6 +261,33 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     const lastValueRef = React.useRef(value);
     const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
 
+    const [modalOpen, setModalOpen] = React.useState(false);
+    const [editingVarKey, setEditingVarKey] = React.useState('');
+    const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+    const [activePillElement, setActivePillElement] = React.useState<HTMLElement | null>(null);
+
+    const handleSaveFallback = React.useCallback((fallbackVal: string) => {
+      if (!activePillElement) return;
+      const cleanFallback = fallbackVal.trim();
+      activePillElement.setAttribute('data-fallback', cleanFallback);
+      
+      const labelSpan = activePillElement.querySelector('span');
+      const varName = activePillElement.getAttribute('data-variable') || '';
+      if (labelSpan) {
+        labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+      }
+      
+      const el = localRef.current;
+      if (el) {
+        const cleanVal = convertToCleanHtml(el, enableFormatting);
+        lastValueRef.current = cleanVal;
+        onChange(cleanVal);
+      }
+      
+      setModalOpen(false);
+      setActivePillElement(null);
+    }, [activePillElement, enableFormatting, onChange]);
+
     const updateCoords = React.useCallback(() => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
@@ -327,6 +365,23 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           contentEditable
           ref={localRef}
           onInput={handleInput}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const settingsBtn = target.closest('[data-variable-settings]');
+            if (settingsBtn) {
+              e.preventDefault();
+              e.stopPropagation();
+              const pill = settingsBtn.closest('[data-variable]');
+              if (pill) {
+                const varName = pill.getAttribute('data-variable') || '';
+                const fallback = pill.getAttribute('data-fallback') || '';
+                setEditingVarKey(varName);
+                setEditingVarCurrentFallback(fallback);
+                setActivePillElement(pill as HTMLElement);
+                setModalOpen(true);
+              }
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -425,6 +480,13 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           </div>,
           document.body
         )}
+        <FallbackEditorModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          variableKey={editingVarKey}
+          currentFallback={editingVarCurrentFallback}
+          onSave={handleSaveFallback}
+        />
       </div>
     );
   }
@@ -468,6 +530,33 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const lastValueRef = React.useRef(value);
     const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
+
+    const [modalOpen, setModalOpen] = React.useState(false);
+    const [editingVarKey, setEditingVarKey] = React.useState('');
+    const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+    const [activePillElement, setActivePillElement] = React.useState<HTMLElement | null>(null);
+
+    const handleSaveFallback = React.useCallback((fallbackVal: string) => {
+      if (!activePillElement) return;
+      const cleanFallback = fallbackVal.trim();
+      activePillElement.setAttribute('data-fallback', cleanFallback);
+      
+      const labelSpan = activePillElement.querySelector('span');
+      const varName = activePillElement.getAttribute('data-variable') || '';
+      if (labelSpan) {
+        labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+      }
+      
+      const el = localRef.current;
+      if (el) {
+        const cleanVal = convertToCleanHtml(el, enableFormatting);
+        lastValueRef.current = cleanVal;
+        onChange(cleanVal);
+      }
+      
+      setModalOpen(false);
+      setActivePillElement(null);
+    }, [activePillElement, enableFormatting, onChange]);
 
     const updateCoords = React.useCallback(() => {
       if (containerRef.current) {
@@ -546,6 +635,23 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           contentEditable
           ref={localRef}
           onInput={handleInput}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            const settingsBtn = target.closest('[data-variable-settings]');
+            if (settingsBtn) {
+              e.preventDefault();
+              e.stopPropagation();
+              const pill = settingsBtn.closest('[data-variable]');
+              if (pill) {
+                const varName = pill.getAttribute('data-variable') || '';
+                const fallback = pill.getAttribute('data-fallback') || '';
+                setEditingVarKey(varName);
+                setEditingVarCurrentFallback(fallback);
+                setActivePillElement(pill as HTMLElement);
+                setModalOpen(true);
+              }
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && showAutocomplete && filteredVars.length > 0) {
               e.preventDefault();
@@ -642,6 +748,13 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           </div>,
           document.body
         )}
+        <FallbackEditorModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          variableKey={editingVarKey}
+          currentFallback={editingVarCurrentFallback}
+          onSave={handleSaveFallback}
+        />
       </div>
     );
   }

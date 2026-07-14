@@ -23,6 +23,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: 'Jane Doe',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'there',
   },
   {
     id: 'common_contact_email',
@@ -34,6 +35,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: 'jane.doe@example.com',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'info@domain.com',
   },
   {
     id: 'common_contact_phone',
@@ -45,6 +47,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: '+233 24 123 4567',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'our contact number',
   },
   {
     id: 'common_entity_name',
@@ -56,6 +59,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: 'Greenwood Academy',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'our institution',
   },
   {
     id: 'common_organization_name',
@@ -67,6 +71,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: 'SmartSapp Education',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'our organization',
   },
   {
     id: 'common_workspace_name',
@@ -78,6 +83,7 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     exampleValue: 'Admissions 2025',
     isDynamic: false,
     isComputed: false,
+    fallbackValue: 'our workspace',
   },
   {
     id: 'common_user_name',

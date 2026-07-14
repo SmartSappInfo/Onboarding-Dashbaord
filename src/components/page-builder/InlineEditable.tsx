@@ -6,6 +6,7 @@ import { WorkspaceContext } from './WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { UnifiedVariable } from '@/lib/types/variables';
 import { cn } from '@/lib/utils';
+import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 
 interface InlineEditableProps extends Omit<React.HTMLAttributes<HTMLElement>, 'onChange'> {
   readonly value: string;
@@ -14,6 +15,34 @@ interface InlineEditableProps extends Omit<React.HTMLAttributes<HTMLElement>, 'o
   readonly tagName?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span' | 'div' | 'a' | 'blockquote' | 'figcaption';
   readonly html?: boolean;
   readonly placeholder?: string;
+}
+
+export function convertToVisualHtml(text: string): string {
+  if (!text) return '';
+  return text.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
+    const parts = rawKey.split(/\|\||\|/);
+    const varName = parts[0].trim();
+    const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
+    const fallbackText = fallback ? ` (${fallback})` : '';
+
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[90%] font-bold border border-emerald-500/20 align-baseline select-none hover:bg-emerald-500/20 transition-all">
+      <span>${varName}${fallbackText}</span>
+      <button type="button" data-variable-settings="${varName}" class="hover:bg-emerald-500/30 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent text-emerald-300 select-none" title="Configure fallback">⚙️</button>
+    </span>`;
+  });
+}
+
+export function convertToCleanHtml(element: HTMLElement, htmlMode = false): string {
+  const clone = element.cloneNode(true) as HTMLElement;
+  const pills = clone.querySelectorAll('[data-variable]');
+  pills.forEach((pill) => {
+    const varName = pill.getAttribute('data-variable');
+    const fallback = pill.getAttribute('data-fallback') || '';
+    const token = fallback ? `{{${varName} | ${fallback}}}` : `{{${varName}}}`;
+    const textNode = clone.ownerDocument.createTextNode(token);
+    pill.parentNode?.replaceChild(textNode, pill);
+  });
+  return htmlMode ? clone.innerHTML : (clone.textContent || '');
 }
 
 export const InlineEditable: React.FC<InlineEditableProps> = ({
@@ -38,6 +67,12 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
   const [variables, setVariables] = useState<UnifiedVariable[]>([]);
   const { workspaceId, organizationId } = useContext(WorkspaceContext);
 
+  // Fallback settings modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingVarKey, setEditingVarKey] = useState('');
+  const [editingVarCurrentFallback, setEditingVarCurrentFallback] = useState('');
+  const [activePillElement, setActivePillElement] = useState<HTMLElement | null>(null);
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -60,14 +95,10 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
     }
 
     const targetVal = value || '';
-    const currentVal = html ? elementRef.current.innerHTML : elementRef.current.textContent || '';
+    const cleanCurrent = convertToCleanHtml(elementRef.current, html);
     
-    if (currentVal !== targetVal) {
-      if (html) {
-        elementRef.current.innerHTML = targetVal;
-      } else {
-        elementRef.current.textContent = targetVal;
-      }
+    if (cleanCurrent !== targetVal) {
+      elementRef.current.innerHTML = convertToVisualHtml(targetVal);
     }
     lastValueRef.current = targetVal;
   }, [value, html, hasMounted]);
@@ -87,14 +118,22 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
   }, [filteredVars]);
 
   const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
-    const currentValue = html ? e.currentTarget.innerHTML : e.currentTarget.textContent || '';
-    lastValueRef.current = currentValue;
+    const cleanCurrent = convertToCleanHtml(e.currentTarget, html);
+    lastValueRef.current = cleanCurrent;
     if (onChange) {
-      onChange(currentValue);
+      onChange(cleanCurrent);
     }
   };
 
   const handleInput = () => {
+    if (elementRef.current) {
+      const cleanCurrent = convertToCleanHtml(elementRef.current, html);
+      lastValueRef.current = cleanCurrent;
+      if (onChange) {
+        onChange(cleanCurrent);
+      }
+    }
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       setShowMenu(false);
@@ -145,7 +184,6 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
 
     const range = selection.getRangeAt(0);
     const textNode = range.startContainer;
-    const replacement = `{{${varKey}}}`;
     
     if (textNode.nodeType === Node.TEXT_NODE) {
       const text = textNode.nodeValue || '';
@@ -154,37 +192,74 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       const slashIdx = textBeforeCursor.lastIndexOf('/');
       
       if (slashIdx !== -1) {
-        const before = text.substring(0, slashIdx);
-        const after = text.substring(offset);
-        textNode.nodeValue = before + replacement + after;
+        range.setStart(textNode, slashIdx);
+        range.setEnd(textNode, offset);
+        range.deleteContents();
         
-        // Move selection cursor to end of replacement
+        const pill = document.createElement('span');
+        pill.contentEditable = 'false';
+        pill.className = 'inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[90%] font-bold border border-emerald-500/20 align-baseline select-none hover:bg-emerald-500/20 transition-all';
+        pill.setAttribute('data-variable', varKey);
+        
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = varKey;
+        pill.appendChild(labelSpan);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-variable-settings', varKey);
+        btn.className = 'hover:bg-emerald-500/30 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent text-emerald-300 select-none';
+        btn.title = 'Configure fallback';
+        btn.textContent = '⚙️';
+        pill.appendChild(btn);
+        
+        range.insertNode(pill);
+        
         const newRange = document.createRange();
-        newRange.setStart(textNode, slashIdx + replacement.length);
-        newRange.setEnd(textNode, slashIdx + replacement.length);
+        newRange.setStartAfter(pill);
+        newRange.setEndAfter(pill);
         selection.removeAllRanges();
         selection.addRange(newRange);
       }
     } else {
-      const currentValue = html ? elementRef.current.innerHTML : elementRef.current.textContent || '';
+      const currentValue = convertToCleanHtml(elementRef.current, html);
       const slashIdx = currentValue.lastIndexOf('/');
       if (slashIdx !== -1) {
-        const newValue = currentValue.substring(0, slashIdx) + replacement;
-        if (html) {
-          elementRef.current.innerHTML = newValue;
-        } else {
-          elementRef.current.textContent = newValue;
-        }
+        const newValue = currentValue.substring(0, slashIdx) + `{{${varKey}}}`;
+        elementRef.current.innerHTML = convertToVisualHtml(newValue);
       }
     }
 
-    const finalValue = html ? elementRef.current.innerHTML : elementRef.current.textContent || '';
+    const finalValue = convertToCleanHtml(elementRef.current, html);
     lastValueRef.current = finalValue;
     if (onChange) {
       onChange(finalValue);
     }
     setShowMenu(false);
     elementRef.current.focus();
+  };
+
+  const handleSaveFallback = (fallbackVal: string) => {
+    if (!activePillElement) return;
+    const cleanFallback = fallbackVal.trim();
+    activePillElement.setAttribute('data-fallback', cleanFallback);
+    
+    const labelSpan = activePillElement.querySelector('span');
+    const varName = activePillElement.getAttribute('data-variable') || '';
+    if (labelSpan) {
+      labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+    }
+    
+    if (elementRef.current) {
+      const cleanCurrent = convertToCleanHtml(elementRef.current, html);
+      lastValueRef.current = cleanCurrent;
+      if (onChange) {
+        onChange(cleanCurrent);
+      }
+    }
+    
+    setModalOpen(false);
+    setActivePillElement(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
@@ -248,11 +323,28 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
+        onClick={(e: React.MouseEvent<HTMLElement>) => {
+          const target = e.target as HTMLElement;
+          const settingsBtn = target.closest('[data-variable-settings]');
+          if (settingsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const pill = settingsBtn.closest('[data-variable]');
+            if (pill) {
+              const varName = pill.getAttribute('data-variable') || '';
+              const fallback = pill.getAttribute('data-fallback') || '';
+              setEditingVarKey(varName);
+              setEditingVarCurrentFallback(fallback);
+              setActivePillElement(pill as HTMLElement);
+              setModalOpen(true);
+            }
+          }
+        }}
         className={cn(className, "outline-none")}
         placeholder={placeholder}
         dangerouslySetInnerHTML={
           !hasMounted
-            ? { __html: html ? sanitizeHtml(value || '') : (value || '') }
+            ? { __html: convertToVisualHtml(value || '') }
             : undefined
         }
         {...props}
@@ -282,6 +374,14 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
           ))}
         </div>
       )}
+
+      <FallbackEditorModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        variableKey={editingVarKey}
+        currentFallback={editingVarCurrentFallback}
+        onSave={handleSaveFallback}
+      />
     </div>
   );
 };

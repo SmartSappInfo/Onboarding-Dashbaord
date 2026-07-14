@@ -8,9 +8,11 @@ import {
   Activity, 
   HelpCircle,
   Globe,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,7 +55,7 @@ function getFlatKeys(obj: any, prefix = ''): { key: string; val: any }[] {
 function parseVariables(text: string) {
   if (typeof text !== 'string') return [];
   const regex = /\{\{(.*?)\}\}/g;
-  const parts: { type: 'text' | 'variable'; value: string; raw: string }[] = [];
+  const parts: { type: 'text' | 'variable'; value: string; fallback?: string; raw: string }[] = [];
   let lastIndex = 0;
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -64,9 +66,14 @@ function parseVariables(text: string) {
         raw: text.substring(lastIndex, match.index)
       });
     }
+    const tokenVal = match[1].trim();
+    const tokenParts = tokenVal.split(/\|\||\|/);
+    const key = tokenParts[0].trim();
+    const fallback = tokenParts.length > 1 ? tokenParts.slice(1).join('|').trim() : undefined;
     parts.push({
       type: 'variable',
-      value: match[1].trim(),
+      value: key,
+      fallback,
       raw: match[0]
     });
     lastIndex = regex.lastIndex;
@@ -99,6 +106,30 @@ export function MappableInputField({
   const automationId = params.id as string;
   const [capturedPayload, setCapturedPayload] = React.useState<any>(null);
   const [isFocused, setIsFocused] = React.useState(false);
+
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [editingVarKey, setEditingVarKey] = React.useState('');
+  const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+  const [editingVarPartIndex, setEditingVarPartIndex] = React.useState<number | null>(null);
+
+  const handleSaveFallback = (fallbackVal: string) => {
+    if (editingVarPartIndex === null) return;
+    const parts = parseVariables(value);
+    const nextVal = parts
+      .map((p, idx) => {
+        if (idx === editingVarPartIndex) {
+          const cleanFallback = fallbackVal.trim();
+          return cleanFallback ? `{{${p.value} | ${cleanFallback}}}` : `{{${p.value}}}`;
+        }
+        return p.type === 'variable'
+          ? (p.fallback ? `{{${p.value} | ${p.fallback}}}` : `{{${p.value}}}`)
+          : p.raw;
+      })
+      .join('');
+    onChange(nextVal);
+    setModalOpen(false);
+    setEditingVarPartIndex(null);
+  };
 
   React.useEffect(() => {
     if (!firestore || !automationId || automationId === 'new') return;
@@ -283,7 +314,26 @@ export function MappableInputField({
                 }}
               >
                 <GroupIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="truncate max-w-[120px]">{friendlyLabel}</span>
+                <span className="truncate max-w-[150px]">
+                  {friendlyLabel}
+                  {part.fallback && (
+                    <span className="text-slate-400 font-normal ml-1">({part.fallback})</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingVarKey(variableKey);
+                    setEditingVarCurrentFallback(part.fallback || '');
+                    setEditingVarPartIndex(idx);
+                    setModalOpen(true);
+                  }}
+                  className="hover:bg-foreground/15 p-0.5 rounded transition-colors inline-flex items-center justify-center ml-0.5 hover:text-emerald-500 active:scale-[0.95]"
+                  title="Configure fallback"
+                >
+                  <Settings className="h-3 w-3" />
+                </button>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -446,6 +496,14 @@ export function MappableInputField({
           </div>
         </PopoverContent>
       </Popover>
+
+      <FallbackEditorModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        variableKey={editingVarKey}
+        currentFallback={editingVarCurrentFallback}
+        onSave={handleSaveFallback}
+      />
     </div>
   );
 }
