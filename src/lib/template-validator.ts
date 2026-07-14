@@ -67,7 +67,9 @@ export function validateTemplateVariables(
 
   const validKeys = new Set(validVariables.map(v => v.key));
 
-  for (const varName of detected) {
+  for (const rawVarName of detected) {
+    const varName = rawVarName.split('|')[0].trim();
+
     // 1. Check if directly valid in current context
     if (validKeys.has(varName)) continue;
 
@@ -99,15 +101,15 @@ export function validateTemplateVariables(
       }
       errors.push({
         type: 'warning',
-        variable: varName,
-        message: `Variable "{{${varName}}}" belongs to the "${existsElsewhere.context}" context and might not resolve in this "${template.category || 'general'}" template.`,
+        variable: rawVarName,
+        message: `Variable "{{${rawVarName}}}" belongs to the "${existsElsewhere.context}" context and might not resolve in this "${template.category || 'general'}" template.`,
       });
     } else {
       // 4. Flat out typo / unknown variable (error)
       errors.push({
         type: 'error',
-        variable: varName,
-        message: `Variable "{{${varName}}}" is invalid or does not exist. Check for typos.`,
+        variable: rawVarName,
+        message: `Variable "{{${rawVarName}}}" is invalid or does not exist. Check for typos.`,
       });
     }
   }

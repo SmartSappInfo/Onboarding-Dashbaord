@@ -188,12 +188,12 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
 
 function renderTextWithVariablePills(text: string): React.ReactNode {
     if (!text) return null;
-    const parts = text.split(/(\{\{[\w_]+\}\})/g);
+    const parts = text.split(/(\{\{[^{}]+\}\})/g);
     return (
         <span className="whitespace-pre-wrap">
             {parts.map((part, i) => {
                 if (part.startsWith('{{') && part.endsWith('}}')) {
-                    const varName = part.slice(2, -2);
+                    const varName = part.slice(2, -2).trim();
                     return (
                         <span 
                             key={i} 
