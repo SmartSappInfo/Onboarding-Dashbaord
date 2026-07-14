@@ -9,6 +9,7 @@ import AutomationCleaner from './AutomationCleaner';
 import StripAccountStatusFer from './StripAccountStatusFer';
 import StripLifecycleStatusFer from './StripLifecycleStatusFer';
 import FixOrgAdminPermissionsFer from './FixOrgAdminPermissionsFer';
+import SeedAllWorkspacesFieldsFer from './SeedAllWorkspacesFieldsFer';
 
 export default function OperationsDashboard() {
   return (
@@ -62,6 +63,12 @@ export default function OperationsDashboard() {
           >
             <ShieldAlert className="h-3.5 w-3.5 mr-2" /> Org Admin Perms
           </TabsTrigger>
+          <TabsTrigger
+            value="fer-seed-workspace-fields"
+            className="rounded-lg text-xs font-semibold data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-400 cursor-pointer flex-1 sm:flex-none"
+          >
+            <Database className="h-3.5 w-3.5 mr-2" /> Seed Workspace Fields
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs" className="mt-4">
@@ -86,6 +93,10 @@ export default function OperationsDashboard() {
 
         <TabsContent value="fer-org-admin-perms" className="mt-4">
            <FixOrgAdminPermissionsFer />
+        </TabsContent>
+
+        <TabsContent value="fer-seed-workspace-fields" className="mt-4">
+           <SeedAllWorkspacesFieldsFer />
         </TabsContent>
 
       </Tabs>
