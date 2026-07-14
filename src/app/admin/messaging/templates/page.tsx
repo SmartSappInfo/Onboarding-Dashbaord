@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, or } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from '@/firebase';
 import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap, ChevronDown, RefreshCw, Mail, Smartphone, MessageCircle } from 'lucide-react';
+import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap, ChevronDown, RefreshCw, Mail, Smartphone, MessageCircle, ArrowUpToLine } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -65,6 +65,7 @@ import {
 } from './lib/unified-template';
 import type { TemplateDraft } from './components/whatsapp/shared';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
+import { bulkPushWhatsAppSkeletonsAction } from '@/app/actions/bulk-push-whatsapp-skeletons-action';
 import dynamic from 'next/dynamic';
 
 // WhatsApp authoring dialogs — lazy + conditional: only loaded when opened, so the
@@ -99,6 +100,8 @@ export default function MessageTemplatesPage() {
     const { activeOrganizationId } = useTenant();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const auth = useAuth();
+    const [isBulkPushing, setIsBulkPushing] = React.useState(false);
     
     // Live AI preferences & ULL tracking state
     const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
@@ -203,6 +206,10 @@ export default function MessageTemplatesPage() {
 
         return [...workspaceTemplatesList, ...filteredGlobal];
     }, [allTemplates, activeWorkspaceId]);
+
+    const unpushedSkeletons = React.useMemo(() => {
+        return templates.filter(t => t.channel === 'whatsapp' && !t.whatsappTemplateName);
+    }, [templates]);
 
     // Merge Firestore (email/SMS + orphan WhatsApp) with Meta-mirror WhatsApp
     // templates into one gallery list. Adopted WhatsApp docs are hidden in favor
@@ -566,6 +573,31 @@ export default function MessageTemplatesPage() {
         setActiveWaDialog({ kind: 'create', draft });
     };
 
+    const handleBulkPushSkeletons = async () => {
+        if (!activeOrganizationId) return;
+        setIsBulkPushing(true);
+        try {
+            const skeletonIds = unpushedSkeletons.map(s => s.id);
+            const idToken = await auth.currentUser?.getIdToken();
+            if (!idToken) throw new Error('Not authenticated');
+            const res = await bulkPushWhatsAppSkeletonsAction(idToken, activeOrganizationId, skeletonIds);
+            toast({
+                title: 'Bulk Push Successful',
+                description: `Successfully pushed ${res.count} skeleton templates to Meta.`,
+            });
+            // Trigger WhatsApp status sync
+            await whatsapp.sync();
+        } catch (e: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Bulk Push Failed',
+                description: e instanceof Error ? e.message : 'An error occurred while pushing templates to Meta.',
+            });
+        } finally {
+            setIsBulkPushing(false);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
@@ -604,6 +636,17 @@ export default function MessageTemplatesPage() {
                                             title="Pull the latest WhatsApp template statuses from Meta"
                                         >
                                             <RefreshCw className={`h-4 w-4 ${whatsapp.isSyncing ? 'animate-spin' : ''}`} /> Sync from Meta
+                                        </Button>
+                                    ) : null}
+                                    {whatsapp.connected && activeOrganizationId && unpushedSkeletons.length > 0 ? (
+                                        <Button
+                                            onClick={handleBulkPushSkeletons}
+                                            disabled={isBulkPushing}
+                                            variant="outline"
+                                            className="rounded-xl font-bold h-11 px-5 gap-2 border-emerald-500/20 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                                            title="Push all offline drafted WhatsApp skeletons to Meta"
+                                        >
+                                            <ArrowUpToLine className={`h-4 w-4 ${isBulkPushing ? 'animate-pulse' : ''}`} /> Push All Skeletons ({unpushedSkeletons.length})
                                         </Button>
                                     ) : null}
                                     <RainbowButton

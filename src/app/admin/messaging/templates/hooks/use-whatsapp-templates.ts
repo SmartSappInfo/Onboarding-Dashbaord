@@ -10,6 +10,7 @@ import * as React from 'react';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { listWhatsAppTemplates, syncWhatsAppTemplates } from '@/lib/whatsapp-template-actions';
+import { getWhatsAppConnection } from '@/lib/whatsapp-actions';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 
 export interface UseWhatsAppTemplatesResult {
@@ -20,6 +21,7 @@ export interface UseWhatsAppTemplatesResult {
   isSyncing: boolean;
   sync: () => Promise<void>;
   refetch: () => Promise<void>;
+  connected: boolean;
 }
 
 export function useWhatsAppTemplates(organizationId: string): UseWhatsAppTemplatesResult {
@@ -29,18 +31,30 @@ export function useWhatsAppTemplates(organizationId: string): UseWhatsAppTemplat
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [connected, setConnected] = React.useState(false);
 
   const refetch = React.useCallback(async () => {
     if (!user || !organizationId) {
       setTemplates([]);
       setError(null);
       setIsLoading(false);
+      setConnected(false);
       return;
     }
     setIsLoading(true);
     try {
       const idToken = await user.getIdToken();
-      const res = await listWhatsAppTemplates(idToken, organizationId);
+      const [connRes, res] = await Promise.all([
+        getWhatsAppConnection(idToken, organizationId),
+        listWhatsAppTemplates(idToken, organizationId)
+      ]);
+
+      if (connRes.success && connRes.data) {
+        setConnected(true);
+      } else {
+        setConnected(false);
+      }
+
       if (res.success) {
         setTemplates(res.data);
         setError(null);
@@ -50,6 +64,7 @@ export function useWhatsAppTemplates(organizationId: string): UseWhatsAppTemplat
       }
     } catch (e) {
       setTemplates([]);
+      setConnected(false);
       setError(e instanceof Error ? e.message : 'Failed to load WhatsApp templates.');
     } finally {
       setIsLoading(false);
@@ -69,6 +84,7 @@ export function useWhatsAppTemplates(organizationId: string): UseWhatsAppTemplat
       if (res.success) {
         setTemplates(res.data.templates);
         setError(null);
+        setConnected(true);
         toast({ title: 'Synced', description: `${res.data.count} template(s) pulled from Meta.` });
       } else {
         setError(res.error);
@@ -85,5 +101,5 @@ export function useWhatsAppTemplates(organizationId: string): UseWhatsAppTemplat
     }
   }, [user, organizationId, toast]);
 
-  return { templates, isLoading, error, isSyncing, sync, refetch };
+  return { templates, isLoading, error, isSyncing, sync, refetch, connected };
 }

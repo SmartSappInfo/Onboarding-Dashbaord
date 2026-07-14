@@ -4,10 +4,15 @@ import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 
 const listMock = vi.fn();
 const syncMock = vi.fn();
+const getConnMock = vi.fn();
 
 vi.mock('@/lib/whatsapp-template-actions', () => ({
   listWhatsAppTemplates: (...args: unknown[]) => listMock(...args),
   syncWhatsAppTemplates: (...args: unknown[]) => syncMock(...args),
+}));
+
+vi.mock('@/lib/whatsapp-actions', () => ({
+  getWhatsAppConnection: (...args: unknown[]) => getConnMock(...args),
 }));
 
 const userMock: { user: { getIdToken: () => Promise<string> } | null } = {
@@ -34,6 +39,7 @@ const sample: WhatsAppTemplate = {
 beforeEach(() => {
   listMock.mockReset();
   syncMock.mockReset();
+  getConnMock.mockReset();
   userMock.user = { user: { getIdToken: async () => 'tok' } }.user;
 });
 
@@ -47,15 +53,18 @@ describe('useWhatsAppTemplates', () => {
 
   it('loads templates on mount when org is present', async () => {
     listMock.mockResolvedValue({ success: true, data: [sample] });
+    getConnMock.mockResolvedValue({ success: true, data: { wabaId: '123' } });
     const { result } = renderHook(() => useWhatsAppTemplates('org1'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(listMock).toHaveBeenCalledWith('tok', 'org1');
     expect(result.current.templates).toEqual([sample]);
     expect(result.current.error).toBeNull();
+    expect(result.current.connected).toBe(true);
   });
 
   it('surfaces the action error message', async () => {
     listMock.mockResolvedValue({ success: false, error: 'Forbidden: org admin required.' });
+    getConnMock.mockResolvedValue({ success: true, data: null });
     const { result } = renderHook(() => useWhatsAppTemplates('org1'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toBe('Forbidden: org admin required.');
@@ -64,6 +73,7 @@ describe('useWhatsAppTemplates', () => {
 
   it('sync replaces templates', async () => {
     listMock.mockResolvedValue({ success: true, data: [] });
+    getConnMock.mockResolvedValue({ success: true, data: { wabaId: '123' } });
     syncMock.mockResolvedValue({ success: true, data: { count: 1, templates: [sample] } });
     const { result } = renderHook(() => useWhatsAppTemplates('org1'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
