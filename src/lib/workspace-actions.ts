@@ -113,7 +113,7 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
 
                 // Seed industry-specific fields and groups (Requirement: Fields Reform)
                 const { seedNativeFieldsAction } = await import('./fields-actions');
-                await seedNativeFieldsAction(newId, data.organizationId || 'default', userId);
+                await seedNativeFieldsAction(newId, data.organizationId || 'default', userId, true);
             }
 
             // Check if organization has a default workspace. If not, set this one as default.

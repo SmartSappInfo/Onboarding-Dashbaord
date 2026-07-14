@@ -331,13 +331,20 @@ export async function deleteFieldAction(id: string, userId: string) {
  * surveys, agreements, entity lifecycle, messaging) for EVERY workspace.
  * Idempotent — skips fields/groups that already exist.
  */
-export async function seedNativeFieldsAction(workspaceId: string, organizationId: string, userId: string) {
+export async function seedNativeFieldsAction(
+  workspaceId: string,
+  organizationId: string,
+  userId: string,
+  bypassPermissionCheck = false
+) {
   try {
-    // 0. Permission Check (SuperAdmin only)
-    const userSnap = await adminDb.collection('users').doc(userId).get();
-    const user = userSnap.data() as UserProfile;
-    if (!user?.permissions?.includes('system_admin')) {
-      throw new Error("Unauthorized: Only superadmins can seed native registries.");
+    if (!bypassPermissionCheck) {
+      // 0. Permission Check (SuperAdmin only)
+      const userSnap = await adminDb.collection('users').doc(userId).get();
+      const user = userSnap.data() as UserProfile;
+      if (!user?.permissions?.includes('system_admin')) {
+        throw new Error("Unauthorized: Only superadmins can seed native registries.");
+      }
     }
     // 1. Fetch Workspace to get Industry
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
