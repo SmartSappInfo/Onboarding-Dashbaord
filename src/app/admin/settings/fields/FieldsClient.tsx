@@ -117,10 +117,10 @@ const defaultGroupData: GroupFormData = {
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 50);
 }
-
 function SortableGroupAccordionItem({ 
   group, 
   fields, 
+  singularTerm = 'Entity',
   onEditGroup, 
   onDeleteGroup, 
   onAddField, 
@@ -130,6 +130,7 @@ function SortableGroupAccordionItem({
 }: { 
   group: FieldGroup; 
   fields: AppField[]; 
+  singularTerm?: string;
   onEditGroup: (g: FieldGroup) => void;
   onDeleteGroup: (g: FieldGroup) => void;
   onAddField: (g: FieldGroup) => void;
@@ -155,15 +156,18 @@ function SortableGroupAccordionItem({
                 <Icon className="h-4 w-4" />
               </div>
               <div className="flex flex-col items-start text-left">
-                <span className="font-semibold text-sm">{group.name}</span>
+                <span className="font-semibold text-sm">
+                  {group.slug === 'entity_details' ? `${singularTerm} Details` : group.name}
+                </span>
                 <span className="text-xs text-muted-foreground">{fields.length} field{fields.length !== 1 ? 's' : ''}</span>
               </div>
             </div>
           </AccordionTrigger>
         </div>
         <div className="flex items-center gap-2 pr-4">
-          <Button variant="outline" size="sm" onClick={() => onAddField(group)}>
-            <LucideIcons.Plus className="h-3 w-3 mr-1" /> Add Field
+          <Button variant="outline" size="sm" onClick={() => onAddField(group)} className="h-8 px-2 md:px-3 text-xs">
+            <LucideIcons.Plus className="h-3.5 w-3.5 md:mr-1" />
+            <span className="hidden md:inline">Add Field</span>
           </Button>
           {!group.isSystem && (
             <>
@@ -175,7 +179,12 @@ function SortableGroupAccordionItem({
               </Button>
             </>
           )}
-          {group.isSystem && <Badge variant="secondary" className="ml-2 font-normal text-xs"><LucideIcons.Lock className="h-3 w-3 mr-1" /> System</Badge>}
+          {group.isSystem && (
+            <Badge variant="secondary" className="ml-1 md:ml-2 font-normal text-[10px] md:text-xs py-0.5 px-1.5 md:px-2">
+              <LucideIcons.Lock className="h-3 w-3 md:mr-1" />
+              <span className="hidden md:inline">System</span>
+            </Badge>
+          )}
         </div>
       </div>
       <AccordionContent className="p-0 border-t-0">
@@ -280,6 +289,32 @@ export default function FieldsClient() {
 
   const { data: workspace } = useDoc<Workspace>(workspaceDocRef);
   const enabledFeatures = (workspace?.enabledFeatures || {}) as Record<string, boolean | undefined>;
+
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (loadingGroups || !rawGroups || !activeWorkspaceId || !activeOrganizationId || !user?.uid || isSyncing) return;
+
+    // Check if any restructured system groups are missing
+    const existingSlugs = new Set(rawGroups.map(g => g.slug));
+    const expectedSlugs = ['entity_details', 'location_data', 'billing_profile', 'entity_contacts'];
+    const hasMissing = expectedSlugs.some(slug => !existingSlugs.has(slug));
+
+    if (hasMissing) {
+      async function runAutoSeed() {
+        setIsSyncing(true);
+        try {
+          console.log('[AUTO-SEED] Seeding missing platform/system groups...');
+          await seedNativeFieldsAction(activeWorkspaceId!, activeOrganizationId!, user!.uid, true);
+        } catch (e) {
+          console.error('[AUTO-SEED] Seeding failed:', e);
+        } finally {
+          setIsSyncing(false);
+        }
+      }
+      runAutoSeed();
+    }
+  }, [rawGroups, loadingGroups, activeWorkspaceId, activeOrganizationId, user?.uid, isSyncing]);
 
   const [systemVarContext, setSystemVarContext] = React.useState<string>('all');
 
@@ -633,6 +668,7 @@ export default function FieldsClient() {
                 key={group.id}
                 group={group}
                 fields={(fields || []).filter(f => f.groupId === group.id)}
+                singularTerm={workspace?.terminology?.singular || 'Entity'}
                 onEditGroup={openEditGroup}
                 onDeleteGroup={setDeletingGroup}
                 onAddField={openNewField}
