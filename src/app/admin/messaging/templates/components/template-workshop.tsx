@@ -2369,6 +2369,8 @@ export function TemplateWorkshop({
     const [architectMode, setArchitectMode] = React.useState<'layout_analysis' | 'direct_placement'>('layout_analysis');
     const [isArchitecting, setIsArchitecting] = React.useState(false);
     const [lastBlocksBackup, setLastBlocksBackup] = React.useState<MessageBlock[] | null>(null);
+    const [lastSubjectBackup, setLastSubjectBackup] = React.useState<string | null>(null);
+    const [lastPreviewBackup, setLastPreviewBackup] = React.useState<string | null>(null);
     const [isUploadingImage, setIsUploadingImage] = React.useState(false);
 
     // Undo / Redo History State tracking
@@ -3267,8 +3269,10 @@ export function TemplateWorkshop({
                     }))
                 }));
 
-                // Back up blocks before mutation for Undo capability
+                // Back up blocks and headers before mutation for Undo capability
                 setLastBlocksBackup([...blocks]);
+                setLastSubjectBackup(subject);
+                setLastPreviewBackup(previewText);
                 setBlocks((prev) => [...prev, ...formatted]);
 
                 // Update template title if it is currently empty or untitled
@@ -3276,18 +3280,21 @@ export function TemplateWorkshop({
                     setName(res.name);
                 }
 
-                // Sync subject options and auto-apply if current input is empty
+                // Sync subject options
                 if (res.subjectOptions && res.subjectOptions.length > 0) {
                     setSubjectOptions(res.subjectOptions);
-                    if (!subject.trim() && !previewText.trim()) {
-                        const primSub = res.subject || '';
-                        const primPrev = res.previewText || '';
-                        setSubject(primSub);
-                        setPreviewText(primPrev);
-                        setManualSubject(primSub);
-                        setManualPreviewText(primPrev);
-                        setActiveOptionIndex(null);
-                    }
+                }
+
+                // Auto-apply primary subject and preview text if empty/blank
+                if (!subject.trim() && res.subject) {
+                    const cleanSub = stripHtml(res.subject);
+                    setSubject(cleanSub);
+                    setManualSubject(cleanSub);
+                }
+                if (!previewText.trim() && res.previewText) {
+                    const cleanPrev = stripHtml(res.previewText);
+                    setPreviewText(cleanPrev);
+                    setManualPreviewText(cleanPrev);
                 }
 
                 toast({ title: 'Blocks Appended', description: `Successfully added ${formatted.length} layout blocks.` });
@@ -3308,7 +3315,17 @@ export function TemplateWorkshop({
         if (lastBlocksBackup) {
             setBlocks(lastBlocksBackup);
             setLastBlocksBackup(null);
-            toast({ title: 'Action Undone', description: 'Appended blocks have been removed.' });
+            if (lastSubjectBackup !== null) {
+                setSubject(lastSubjectBackup);
+                setManualSubject(lastSubjectBackup);
+                setLastSubjectBackup(null);
+            }
+            if (lastPreviewBackup !== null) {
+                setPreviewText(lastPreviewBackup);
+                setManualPreviewText(lastPreviewBackup);
+                setLastPreviewBackup(null);
+            }
+            toast({ title: 'Action Undone', description: 'Appended blocks and email headers have been reverted.' });
         }
     };
 
