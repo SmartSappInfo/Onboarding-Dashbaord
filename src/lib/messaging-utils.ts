@@ -232,7 +232,7 @@ export function renderBlocksToHtml(
     backgroundColor?: string,
     wrapper?: string,
     isDark?: boolean,
-    style?: MessageStyle
+    style?: Partial<MessageStyle>
   }
 ): string {
   if (!blocks || !blocks.length) return '';

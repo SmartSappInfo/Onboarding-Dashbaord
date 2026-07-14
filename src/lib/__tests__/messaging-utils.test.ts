@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { describe, it, expect } from 'vitest';
 import { resolveVariables, shouldShowBlock, renderBlocksToHtml } from '../messaging-utils';
 import type { MessageBlock } from '../types';
@@ -115,7 +115,7 @@ describe('renderBlocksToHtml with styles', () => {
   });
 
   it('renders heading variants correctly', () => {
-    const headingBlocks = [
+    const headingBlocks: MessageBlock[] = [
       {
         id: 'h1',
         type: 'heading',
