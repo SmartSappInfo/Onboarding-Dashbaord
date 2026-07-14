@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { 
     Music, Link2, Download, ExternalLink, 
@@ -103,6 +102,23 @@ export default function MediaShareClient({
 
     const { isEmbeddable, embedUrl } = parseEmbedUrl(asset.url);
 
+    // YouTube / Vimeo preview image resolve
+    const videoId = React.useMemo(() => {
+        const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+        const match = asset.url.match(ytRegex);
+        return match ? match[1] : null;
+    }, [asset.url]);
+
+    const [thumbUrl, setThumbUrl] = React.useState<string | null>(asset.previewImageUrl || null);
+
+    React.useEffect(() => {
+        if (asset.previewImageUrl) {
+            setThumbUrl(asset.previewImageUrl);
+        } else if (videoId) {
+            setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+        }
+    }, [videoId, asset.previewImageUrl]);
+
     // Call-To-Action Link Resolver with query params propagation
     const getFinalCtaUrl = () => {
         if (!ctaTargetUrl) return '';
@@ -145,14 +161,11 @@ export default function MediaShareClient({
             <div className="w-full h-full min-h-screen bg-[#0B0F19] text-white flex flex-col justify-between overflow-hidden relative group">
                 <div className="flex-1 w-full h-full relative flex items-center justify-center">
                     {asset.type === 'image' && (
-                        <div className="relative w-full h-full">
-                            <Image
+                        <div className="relative w-full h-full flex items-center justify-center bg-slate-950">
+                            <img
                                 src={asset.url}
                                 alt={title}
-                                fill
-                                sizes="100vw"
-                                className="object-contain"
-                                priority
+                                className="max-w-full max-h-full object-contain"
                             />
                         </div>
                     )}
@@ -163,17 +176,18 @@ export default function MediaShareClient({
                                 onClick={() => setIsVideoPlaying(true)}
                                 className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center cursor-pointer overflow-hidden"
                             >
-                                {asset.previewImageUrl ? (
-                                    <Image
-                                        src={asset.previewImageUrl}
+                                {thumbUrl ? (
+                                    <img
+                                        src={thumbUrl}
                                         alt={title}
-                                        fill
-                                        sizes="100vw"
-                                        className="object-contain opacity-80"
-                                        priority
+                                        className="absolute inset-0 w-full h-full object-cover opacity-80"
                                     />
                                 ) : (
-                                    <div className="absolute inset-0 bg-slate-950 flex items-center justify-center" />
+                                    <video
+                                        src={asset.url}
+                                        preload="metadata"
+                                        className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
+                                    />
                                 )}
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                     <div className="relative">
@@ -318,12 +332,10 @@ export default function MediaShareClient({
                     >
                         {orgBranding?.logoUrl ? (
                             <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-800">
-                                <Image
+                                <img
                                     src={orgBranding.logoUrl}
                                     alt={orgBranding.name || 'Organization Logo'}
-                                    fill
-                                    className="object-contain"
-                                    sizes="32px"
+                                    className="w-full h-full object-contain"
                                 />
                             </div>
                         ) : (
@@ -367,14 +379,11 @@ export default function MediaShareClient({
                     <div className="absolute -inset-10 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 blur-3xl opacity-40 pointer-events-none" />
 
                     {asset.type === 'image' && (
-                        <div className="relative w-full aspect-video md:aspect-[16/9] group/view">
-                            <Image
+                        <div className="relative w-full aspect-video md:aspect-[16/9] group/view flex items-center justify-center bg-slate-950">
+                            <img
                                 src={asset.url}
                                 alt={title}
-                                fill
-                                sizes="(max-width: 768px) 100vw, 80vw"
-                                className="object-contain transition-transform duration-500 group-hover/view:scale-[1.01]"
-                                priority
+                                className="max-w-full max-h-full object-contain rounded-2xl transition-transform duration-500 group-hover/view:scale-[1.01]"
                             />
                         </div>
                     )}
@@ -385,20 +394,18 @@ export default function MediaShareClient({
                                 onClick={() => setIsVideoPlaying(true)}
                                 className="relative w-full aspect-video md:aspect-[16/9] bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
                             >
-                                {asset.previewImageUrl ? (
-                                    <Image
-                                        src={asset.previewImageUrl}
+                                {thumbUrl ? (
+                                    <img
+                                        src={thumbUrl}
                                         alt={title}
-                                        fill
-                                        sizes="(max-width: 768px) 100vw, 80vw"
-                                        className="object-cover transition-transform duration-700 group-hover:scale-105 opacity-80"
-                                        priority
+                                        className="absolute inset-0 w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105"
                                     />
                                 ) : (
-                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-950 flex items-center justify-center">
-                                        <div className="absolute -top-12 -left-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-                                        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-                                    </div>
+                                    <video
+                                        src={asset.url}
+                                        preload="metadata"
+                                        className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
+                                    />
                                 )}
                                 
                                 {/* Animated Premium Play Button */}
@@ -412,7 +419,7 @@ export default function MediaShareClient({
                                     </div>
                                 </div>
 
-                                <div className="absolute bottom-6 left-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="absolute bottom-6 left-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-left">
                                     <p className="text-white text-xs font-black uppercase tracking-wider drop-shadow-md">Click to play video</p>
                                 </div>
                             </div>
