@@ -604,7 +604,7 @@ export function renderBlocksToHtml(
         const audioUrl = resolveVariables(block.url || '#', variables);
         
         let link = audioUrl;
-        if (block.audioAction === 'redirect' && block.audioRedirectUrl) {
+        if ((block.audioAction === 'redirect' || block.audioAction === 'play_inline') && block.audioRedirectUrl) {
             link = resolveVariables(block.audioRedirectUrl, variables);
         }
         if (link.startsWith('/')) {
@@ -666,7 +666,7 @@ export function renderBlocksToHtml(
         const thumbnailUrl = resolveVariables(block.videoThumbnailUrl || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80', variables);
         
         let link = videoUrl;
-        if (block.videoAction === 'redirect' && block.videoRedirectUrl) {
+        if ((block.videoAction === 'redirect' || block.videoAction === 'play_inline') && block.videoRedirectUrl) {
             link = resolveVariables(block.videoRedirectUrl, variables);
         }
         if (link.startsWith('/')) {
