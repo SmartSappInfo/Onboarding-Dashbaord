@@ -1088,6 +1088,7 @@ service cloud.firestore {
       // Special case: admin@smartsapp.com always has access
       allow read: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
       allow read: if isAuthorized();
+      allow get: if true;
       
       // Allow create if user has schools_edit permission and workspace access
       // Enforce ScopeGuard: entity.entityType must match workspace.contactScope
