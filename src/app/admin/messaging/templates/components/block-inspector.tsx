@@ -806,7 +806,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                             {/* Play Action Behavior */}
                             <div className="space-y-2 pt-2 border-t">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video Action Behavior</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Play Action Behavior</Label>
                                 <select
                                     value={block.videoAction || 'play_inline'}
                                     onChange={e => onUpdate({ videoAction: e.target.value as 'download' | 'play_inline' | 'redirect' })}
@@ -818,11 +818,11 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                 </select>
                             </div>
 
-                            {/* Redirect Destination URL */}
+                            {/* Redirect Page URL */}
                             {(block.videoAction === 'redirect' || block.videoAction === 'play_inline') && (
                                 <div className="space-y-2 pt-2 border-t">
                                     <div className="flex justify-between items-center px-1">
-                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Destination URL</Label>
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Page URL</Label>
                                         <button 
                                             type="button"
                                             onClick={() => setShowVideoLinkPicker(prev => !prev)}
