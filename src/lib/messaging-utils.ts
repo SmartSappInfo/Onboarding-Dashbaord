@@ -639,8 +639,8 @@ export function renderBlocksToHtml(
                             <td style="padding: 16px 12px 16px 20px; width: 40px; vertical-align: middle;">
                                 <table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin: 0;">
                                     <tr>
-                                        <td align="center" valign="middle" style="width: 40px; height: 40px; border-radius: 20px; background-color: ${primaryColor}; text-align: center;">
-                                            <span style="color: #ffffff; font-size: 14px; font-weight: bold; line-height: 40px; font-family: Helvetica, Arial, sans-serif;">▶</span>
+                                        <td align="center" valign="middle" style="width: 40px; height: 40px; border-radius: 20px; background-color: ${primaryColor}; text-align: center; font-size: 0; line-height: 0;">
+                                            <div style="width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent #ffffff; margin-left: 3px; display: inline-block; vertical-align: middle;"></div>
                                         </td>
                                     </tr>
                                 </table>
@@ -699,8 +699,8 @@ export function renderBlocksToHtml(
                                     
                                     <!-- Centered Play Button Overlay (Hidden in Outlook which doesn't support positioning) -->
                                     <!--[if !mso]><!-->
-                                    <div style="position: absolute; top: 50%; left: 50%; margin-top: -30px; margin-left: -30px; width: 60px; height: 60px; border-radius: 30px; background-color: rgba(255, 255, 255, 0.25); text-align: center;">
-                                        <span style="color: #ffffff; font-size: 20px; font-weight: bold; line-height: 60px; font-family: Helvetica, Arial, sans-serif; display: inline-block;">▶</span>
+                                    <div style="position: absolute; top: 50%; left: 50%; margin-top: -30px; margin-left: -30px; width: 60px; height: 60px; border-radius: 30px; background-color: rgba(255, 255, 255, 0.25); text-align: center; font-size: 0; line-height: 0;">
+                                        <div style="width: 0; height: 0; border-style: solid; border-width: 10px 0 10px 16px; border-color: transparent transparent transparent #ffffff; margin-top: 20px; margin-left: 4px; display: inline-block; vertical-align: middle;"></div>
                                     </div>
                                     <!--<![endif]-->
                                 </div>
