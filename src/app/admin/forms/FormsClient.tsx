@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, doc, addDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Form } from '@/lib/types';
+import type { Form, AppField } from '@/lib/types';
+import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { createFormAction, deleteFormAction, cloneFormAction, toggleFormStatusAction } from '@/lib/forms-actions';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -104,6 +105,13 @@ export default function FormsClient() {
   }, [firestore, activeWorkspaceId]);
 
   const { data: forms, isLoading } = useCollection<Form>(formsQuery);
+
+  const fieldsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'app_fields'), orderBy('order', 'asc'));
+  }, [firestore]);
+
+  const { data: appFields } = useCollection<AppField>(fieldsQuery);
 
   // Actions
   const handleDelete = async () => {
@@ -506,6 +514,19 @@ export default function FormsClient() {
           resourceName="Form"
           publicUrl={`${window.location.origin}/p/f/${shareForm.slug}`}
           embedUrl={`${window.location.origin}/f/${shareForm.id}`}
+          fields={(shareForm.fields || []).map((f) => {
+            const appField = appFields?.find((af) => af.id === f.appFieldId);
+            return {
+              id: f.id,
+              label: f.labelOverride || appField?.label || 'Field',
+              type: appField?.type || 'text',
+              required: f.required,
+              placeholder: f.placeholderOverride || appField?.placeholder || '',
+            };
+          })}
+          formId={shareForm.id}
+          workspaceId={shareForm.workspaceId}
+          organizationId={shareForm.organizationId}
         />
       )}
             </PageContainer>

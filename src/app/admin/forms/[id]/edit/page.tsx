@@ -6,6 +6,7 @@ import { doc, collection, query, where, orderBy, updateDoc, addDoc } from 'fireb
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions, SeoConfig, UserProfile } from '@/lib/types';
+import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -1479,6 +1480,19 @@ export default function EditFormPage() {
           resourceName="Form"
           publicUrl={typeof window !== 'undefined' ? `${window.location.origin}/p/f/${formData.slug}` : `/p/f/${formData.slug}`}
           embedUrl={typeof window !== 'undefined' ? `${window.location.origin}/f/${formId}` : `/f/${formId}`}
+          fields={(formData.fields || []).map((f) => {
+            const appField = getAppField(f.appFieldId);
+            return {
+              id: f.id,
+              label: f.labelOverride || appField?.label || 'Field',
+              type: appField?.type || 'text',
+              required: f.required,
+              placeholder: f.placeholderOverride || appField?.placeholder || '',
+            };
+          })}
+          formId={formId}
+          workspaceId={formData.workspaceId}
+          organizationId={formData.organizationId}
         />
       )}
 
