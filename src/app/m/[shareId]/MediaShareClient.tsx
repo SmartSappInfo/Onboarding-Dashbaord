@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface MediaShareClientProps {
     asset: MediaAsset;
@@ -303,17 +304,16 @@ export default function MediaShareClient({
 
                 {/* Render the iframe modal inside embed frame */}
                 {isCtaModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-                        <div className="relative w-full max-w-4xl h-[90vh] bg-[#070913] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-                            <div className="p-4 border-b border-slate-900 flex justify-between items-center bg-[#070913]">
-                                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Target Action Window</h3>
-                                <button
-                                    onClick={() => setIsCtaModalOpen(false)}
-                                    className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl transition-all cursor-pointer text-slate-400 hover:text-slate-100 text-[10px] font-bold flex items-center gap-1"
-                                >
-                                    <X className="h-3.5 w-3.5" /> Close
-                                </button>
-                            </div>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+                        <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+                            {/* Absolute positioned close button at top-right corner */}
+                            <button
+                                onClick={() => setIsCtaModalOpen(false)}
+                                className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100 dark:bg-slate-950/70 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-lg hover:scale-105 active:scale-95"
+                                aria-label="Close Modal"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
                             <div className="flex-1 w-full bg-white relative">
                                 <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
                             </div>
@@ -326,9 +326,9 @@ export default function MediaShareClient({
 
     // Render 2: Premium Public Media Viewing Page Layout
     return (
-        <div className="min-h-screen bg-[#070913] text-slate-100 flex flex-col font-sans selection:bg-primary selection:text-white">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#070913] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-primary selection:text-white transition-colors duration-300">
             {/* Header Banner */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-900 bg-[#070913]/80 backdrop-blur-md">
+            <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-[#070913]/80 backdrop-blur-md">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
                     <a
                         href={orgBranding?.website || '#'}
@@ -337,7 +337,7 @@ export default function MediaShareClient({
                         className="flex items-center gap-3 hover:opacity-85 transition-opacity"
                     >
                         {orgBranding?.logoUrl ? (
-                            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-800">
+                            <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-white">
                                 <img
                                     src={orgBranding.logoUrl}
                                     alt={orgBranding.name || 'Organization Logo'}
@@ -345,47 +345,50 @@ export default function MediaShareClient({
                                 />
                             </div>
                         ) : (
-                            <div className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-primary font-black text-xs">
+                            <div className="p-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-primary font-black text-xs">
                                 {fallbackInitials}
                             </div>
                         )}
-                        <span className="font-extrabold text-sm tracking-tight text-slate-200">
+                        <span className="font-extrabold text-sm tracking-tight text-slate-700 dark:text-slate-200">
                             {orgBranding?.name || 'Workspace Media Hub'}
                         </span>
                     </a>
 
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(asset.url, '_blank')}
-                        className="rounded-xl text-xs font-black text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-slate-800/40 gap-1.5 h-9 cursor-pointer"
-                    >
-                        <Download className="h-3.5 w-3.5" /> Direct Download
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <ThemeToggle />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(asset.url, '_blank')}
+                            className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer"
+                        >
+                            <Download className="h-3.5 w-3.5" /> Direct Download
+                        </Button>
+                    </div>
                 </div>
             </header>
 
             {/* Main Visual Arena */}
-            <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 md:py-12 flex flex-col items-center gap-8 text-center">
+            <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 md:py-12 flex flex-col items-center gap-8 text-center animate-in fade-in slide-in-from-bottom-3 duration-500">
                 {/* 1. Typography and Meta Context - NOW AT THE TOP */}
                 <div className="w-full max-w-3xl space-y-3">
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-50 leading-tight whitespace-pre-line">
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
                         {title}
                     </h1>
                     {description && (
-                        <p className="text-sm md:text-base text-slate-400 font-medium leading-relaxed whitespace-pre-line">
+                        <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
                             {description}
                         </p>
                     )}
                 </div>
 
                 {/* 2. Media Presentation Viewport - IN THE MIDDLE */}
-                <div className="w-full relative rounded-[2rem] border border-slate-900 bg-slate-950/40 shadow-2xl overflow-hidden min-h-[300px] md:min-h-[500px] flex items-center justify-center">
+                <div className="w-full relative rounded-[2rem] border border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-950/40 shadow-2xl dark:shadow-none overflow-hidden min-h-[300px] md:min-h-[500px] flex items-center justify-center">
                     {/* Glowing Accent Backdrop */}
                     <div className="absolute -inset-10 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 blur-3xl opacity-40 pointer-events-none" />
 
                     {asset.type === 'image' && (
-                        <div className="relative w-full aspect-video md:aspect-[16/9] group/view flex items-center justify-center bg-slate-950">
+                        <div className="relative w-full aspect-video md:aspect-[16/9] group/view flex items-center justify-center bg-slate-50 dark:bg-slate-950">
                             <img
                                 src={asset.url}
                                 alt={title}
@@ -398,7 +401,7 @@ export default function MediaShareClient({
                         !isVideoPlaying ? (
                             <div 
                                 onClick={() => setIsVideoPlaying(true)}
-                                className="relative w-full aspect-video md:aspect-[16/9] bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
+                                className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
                             >
                                 {thumbUrl ? (
                                     <img
@@ -485,7 +488,7 @@ export default function MediaShareClient({
                                 ))}
                             </div>
 
-                            <div className="flex items-center gap-4 bg-slate-900/40 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-md">
+                            <div className="flex items-center gap-4 bg-slate-100/50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 p-4 rounded-2xl backdrop-blur-md">
                                 <button
                                     onClick={toggleAudioPlay}
                                     className="p-3 bg-primary text-white rounded-xl active:scale-95 transition-all hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
@@ -494,19 +497,19 @@ export default function MediaShareClient({
                                 </button>
 
                                 <div className="flex-1 space-y-2 text-left">
-                                    <div className="relative w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="relative w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                                         <div 
                                             className="absolute left-0 top-0 h-full bg-primary transition-all duration-100"
                                             style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
                                         />
                                     </div>
-                                    <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                                    <div className="flex justify-between text-[10px] font-bold text-slate-550">
                                         <span>{formatTime(currentTime)}</span>
                                         <span>{formatTime(duration)}</span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 border-l border-slate-800 pl-3">
+                                <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-3">
                                     <Volume2 className="h-4 w-4 text-slate-500" />
                                     <input
                                         type="range"
@@ -515,7 +518,7 @@ export default function MediaShareClient({
                                         step="0.05"
                                         value={volume}
                                         onChange={handleVolumeChange}
-                                        className="w-16 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                                        className="w-16 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
                                     />
                                 </div>
                             </div>
@@ -537,15 +540,15 @@ export default function MediaShareClient({
 
                     {asset.type === 'link' && (
                         <div className="p-8 md:p-12 w-full max-w-md relative z-10 space-y-6">
-                            <div className="mx-auto w-16 h-16 bg-muted rounded-2xl flex items-center justify-center text-primary shadow-lg border border-border">
+                            <div className="mx-auto w-16 h-16 bg-slate-100 dark:bg-muted rounded-2xl flex items-center justify-center text-primary shadow-lg border border-slate-200 dark:border-border">
                                 <Link2 className="h-7 w-7" />
                             </div>
                             <div className="space-y-1.5">
-                                <p className="text-xs text-slate-400 font-medium truncate w-full px-4">{asset.url}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate w-full px-4">{asset.url}</p>
                             </div>
                             <Button 
                                 onClick={() => window.open(asset.url, '_blank')} 
-                                className="w-full h-11 rounded-xl text-xs font-bold gap-2 bg-slate-900 border hover:bg-slate-800 cursor-pointer"
+                                className="w-full h-11 rounded-xl text-xs font-bold gap-2 bg-slate-100 dark:bg-slate-900 border hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer"
                             >
                                 Navigate to Link <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
@@ -557,7 +560,7 @@ export default function MediaShareClient({
                 {ctaType !== 'none' && (
                     <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2">
                         {ctaPretext && (
-                            <p className="text-sm md:text-base text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
+                            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
                                 {ctaPretext}
                             </p>
                         )}
@@ -577,17 +580,16 @@ export default function MediaShareClient({
 
             {/* Render the iframe modal inside public landing layout */}
             {isCtaModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-                    <div className="relative w-full max-w-4xl h-[90vh] bg-[#070913] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-                        <div className="p-4 border-b border-slate-900 flex justify-between items-center bg-[#070913]">
-                            <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Action View</h3>
-                            <button
-                                onClick={() => setIsCtaModalOpen(false)}
-                                className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl transition-all cursor-pointer text-slate-400 hover:text-slate-100 text-xs font-bold flex items-center gap-1"
-                            >
-                                <X className="h-4 w-4" /> Close Window
-                            </button>
-                        </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+                    <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+                        {/* Absolute positioned close button at top-right corner */}
+                        <button
+                            onClick={() => setIsCtaModalOpen(false)}
+                            className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100 dark:bg-slate-950/70 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-lg hover:scale-105 active:scale-95"
+                            aria-label="Close Modal"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                         <div className="flex-1 w-full bg-white relative">
                             <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
                         </div>
