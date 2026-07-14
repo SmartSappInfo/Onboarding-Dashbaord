@@ -365,6 +365,13 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
 
+    match /media_shares/{shareId} {
+      allow get: if true; // Public access for reading shared media pages
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId);
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     match /media_categories/{categoryId} {
       allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized();

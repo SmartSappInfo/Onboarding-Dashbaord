@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "media_shares",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "assetId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "thumbnail_designs",
       "queryScope": "COLLECTION",
       "fields": [

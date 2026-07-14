@@ -7,7 +7,7 @@ import type {
 } from '../types/variables';
 import { STATIC_VARIABLES } from '../template-variable-registry-data';
 import { getEffectiveContactTypes } from '../contact-type-actions';
-import type { EntityContact } from '../types';
+import type { EntityContact, Entity } from '../types';
 import { getBaseUrl } from '../utils/url-helpers';
 import { resolveTextWithMap } from '../utils/variable-replacer';
 

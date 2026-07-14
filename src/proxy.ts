@@ -32,6 +32,7 @@ export function proxy(request: NextRequest) {
     '/book/',
     '/q/',
     '/p/',
+    '/m/',
     '/go/',
     '/unsubscribe/'
   ];
@@ -41,8 +42,8 @@ export function proxy(request: NextRequest) {
   // Allow public routes to pass through
   if (isPublicRoute) {
     const response = NextResponse.next();
-    // Allow framing on public embedded routes (surveys, forms, meetings, qr, preferences, pages)
-    if (pathname.startsWith('/surveys') || pathname.startsWith('/f/') || pathname.startsWith('/meetings') || pathname.startsWith('/book') || pathname.startsWith('/q/') || pathname.startsWith('/p/')) {
+    // Allow framing on public embedded routes (surveys, forms, meetings, qr, preferences, pages, media)
+    if (pathname.startsWith('/surveys') || pathname.startsWith('/f/') || pathname.startsWith('/meetings') || pathname.startsWith('/book') || pathname.startsWith('/q/') || pathname.startsWith('/p/') || pathname.startsWith('/m/')) {
       response.headers.set('Content-Security-Policy', "frame-ancestors *");
       response.headers.delete('x-frame-options');
     }

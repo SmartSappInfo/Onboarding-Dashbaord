@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getStorage, ref, deleteObject } from 'firebase/storage';
-import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 import type { MediaAsset } from '@/lib/types';
@@ -39,6 +39,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import RenameMediaDialog from './rename-media-dialog';
+import ShareMediaDialog from './share-media-dialog';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
@@ -92,6 +93,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const [localWorkspaceIds, setLocalWorkspaceIds] = useState<string[]>(asset.workspaceIds || []);
@@ -144,6 +146,20 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
         } catch (error: any) {
             console.error("Error deleting from storage: ", error);
         }
+    }
+
+    // Purge associated sharing configurations in firestore
+    try {
+        const sharesQuery = query(
+            collection(firestore, 'media_shares'),
+            where('assetId', '==', asset.id)
+        );
+        const sharesSnap = await getDocs(sharesQuery);
+        for (const docMatch of sharesSnap.docs) {
+            await deleteDoc(doc(firestore, 'media_shares', docMatch.id));
+        }
+    } catch (err) {
+        console.warn('Error purging associated media_shares configs:', err);
     }
 
     const docRef = doc(firestore, 'media', asset.id);
@@ -272,6 +288,17 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
 
   <div className="absolute top-2 right-2 flex items-center gap-1.5">
             <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsShareOpen(true)}
+              className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500"
+              title="Share / Embed"
+            >
+              <Share2 size={16} />
+            </Button>
+            <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={handleCopyUrl}
@@ -293,6 +320,11 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
  <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Full Preview</span>
                 </DropdownMenuItem>
+
+ <DropdownMenuItem onClick={() => setIsShareOpen(true)} className="rounded-xl p-2.5 gap-3">
+ <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><Share2 className="h-4 w-4" /></div>
+ <span className="font-bold text-sm">Share & Embed</span>
+ </DropdownMenuItem>
 
  <DropdownMenuItem onClick={() => setIsVisibilityOpen(true)} className="rounded-xl p-2.5 gap-3">
  <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><Share2 className="h-4 w-4" /></div>
@@ -392,6 +424,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
 
       <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
       <RenameMediaDialog asset={asset} open={isRenameOpen} onOpenChange={setIsRenameOpen} />
+      <ShareMediaDialog asset={asset} open={isShareOpen} onOpenChange={setIsShareOpen} />
     </>
   );
 }
