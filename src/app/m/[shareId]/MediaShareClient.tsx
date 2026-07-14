@@ -4,16 +4,11 @@ import * as React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { 
-    Video, Music, FileText, Link2, Download, ExternalLink, 
-    Play, Pause, Volume2, Sparkles, ArrowRight, ChevronRight, X 
+    Music, Link2, Download, ExternalLink, 
+    Play, Pause, Volume2, ArrowRight, ChevronRight, X 
 } from 'lucide-react';
-import type { MediaAsset } from '@/lib/types';
-
-interface OrgBranding {
-    name: string;
-    logoUrl?: string | null;
-    primaryColor?: string | null;
-}
+import type { MediaAsset, OrgBranding } from '@/lib/types';
+import Footer from '@/components/footer';
 
 interface MediaShareClientProps {
     asset: MediaAsset;
@@ -48,6 +43,7 @@ export default function MediaShareClient({
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(0.8);
     const [isCtaModalOpen, setIsCtaModalOpen] = React.useState(false);
+    const [isVideoPlaying, setIsVideoPlaying] = React.useState(false);
 
     // Audio handlers
     const toggleAudioPlay = () => {
@@ -141,6 +137,8 @@ export default function MediaShareClient({
         }
     };
 
+    const fallbackInitials = (orgBranding?.name || 'Workspace').substring(0, 2).toUpperCase();
+
     // Render 1: Chromeless Iframe Embed Mode
     if (isEmbed) {
         return (
@@ -160,19 +158,49 @@ export default function MediaShareClient({
                     )}
 
                     {asset.type === 'video' && (
-                        isEmbeddable && embedUrl ? (
-                            <iframe
-                                src={embedUrl}
-                                className="w-full h-full border-none"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
+                        !isVideoPlaying ? (
+                            <div 
+                                onClick={() => setIsVideoPlaying(true)}
+                                className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center cursor-pointer overflow-hidden"
+                            >
+                                {asset.previewImageUrl ? (
+                                    <Image
+                                        src={asset.previewImageUrl}
+                                        alt={title}
+                                        fill
+                                        sizes="100vw"
+                                        className="object-contain opacity-80"
+                                        priority
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 bg-slate-950 flex items-center justify-center" />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                        <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                        <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
+                                            <Play className="w-8 h-8 fill-current ml-1" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         ) : (
-                            <video
-                                src={asset.url}
-                                controls
-                                className="w-full h-full object-contain"
-                            />
+                            isEmbeddable && embedUrl ? (
+                                <iframe
+                                    src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                    className="w-full h-full border-none"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            ) : (
+                                <video
+                                    src={asset.url}
+                                    controls
+                                    autoPlay
+                                    className="w-full h-full object-contain"
+                                />
+                            )
                         )
                     )}
 
@@ -282,26 +310,31 @@ export default function MediaShareClient({
             {/* Header Banner */}
             <header className="sticky top-0 z-50 w-full border-b border-slate-900 bg-[#070913]/80 backdrop-blur-md">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <a
+                        href={orgBranding?.website || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 hover:opacity-85 transition-opacity"
+                    >
                         {orgBranding?.logoUrl ? (
                             <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-800">
                                 <Image
                                     src={orgBranding.logoUrl}
-                                    alt={orgBranding.name}
+                                    alt={orgBranding.name || 'Organization Logo'}
                                     fill
                                     className="object-contain"
                                     sizes="32px"
                                 />
                             </div>
                         ) : (
-                            <div className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-primary font-black text-sm">
-                                SS
+                            <div className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-primary font-black text-xs">
+                                {fallbackInitials}
                             </div>
                         )}
                         <span className="font-extrabold text-sm tracking-tight text-slate-200">
                             {orgBranding?.name || 'Workspace Media Hub'}
                         </span>
-                    </div>
+                    </a>
 
                     <Button
                         variant="ghost"
@@ -347,23 +380,62 @@ export default function MediaShareClient({
                     )}
 
                     {asset.type === 'video' && (
-                        isEmbeddable && embedUrl ? (
-                            <div className="w-full aspect-video md:aspect-[16/9] relative z-10">
-                                <iframe
-                                    src={embedUrl}
-                                    className="w-full h-full border-none"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                />
+                        !isVideoPlaying ? (
+                            <div 
+                                onClick={() => setIsVideoPlaying(true)}
+                                className="relative w-full aspect-video md:aspect-[16/9] bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
+                            >
+                                {asset.previewImageUrl ? (
+                                    <Image
+                                        src={asset.previewImageUrl}
+                                        alt={title}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 80vw"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-105 opacity-80"
+                                        priority
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-950 flex items-center justify-center">
+                                        <div className="absolute -top-12 -left-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+                                        <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+                                    </div>
+                                )}
+                                
+                                {/* Animated Premium Play Button */}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                    <div className="relative">
+                                        <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                        <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                        <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)] transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_60px_rgba(59,95,255,0.6)]">
+                                            <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="absolute bottom-6 left-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <p className="text-white text-xs font-black uppercase tracking-wider drop-shadow-md">Click to play video</p>
+                                </div>
                             </div>
                         ) : (
-                            <div className="w-full aspect-video md:aspect-[16/9] relative z-10 flex items-center justify-center bg-slate-950">
-                                <video
-                                    src={asset.url}
-                                    controls
-                                    className="w-full h-full object-contain"
-                                />
-                            </div>
+                            isEmbeddable && embedUrl ? (
+                                <div className="w-full aspect-video md:aspect-[16/9] relative z-10">
+                                    <iframe
+                                        src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                        className="w-full h-full border-none"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-full aspect-video md:aspect-[16/9] relative z-10 flex items-center justify-center bg-slate-950">
+                                    <video
+                                        src={asset.url}
+                                        controls
+                                        autoPlay
+                                        className="w-full h-full object-contain"
+                                    />
+                                </div>
+                            )
                         )
                     )}
 
@@ -489,14 +561,7 @@ export default function MediaShareClient({
             </main>
 
             {/* Custom Brand Footer */}
-            <footer className="w-full border-t border-slate-900/60 py-6 mt-auto">
-                <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-[10px] font-bold tracking-wider uppercase">
-                    <span>© {new Date().getFullYear()} {orgBranding?.name || 'SmartSapp'}. All rights reserved.</span>
-                    <span className="flex items-center gap-1">
-                        Powered by <Sparkles className="h-3 w-3 text-primary animate-pulse" /> SmartSapp Engine
-                    </span>
-                </div>
-            </footer>
+            <Footer orgBranding={orgBranding} className="w-full mt-auto" />
 
             {/* Render the iframe modal inside public landing layout */}
             {isCtaModalOpen && (

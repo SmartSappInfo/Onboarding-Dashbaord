@@ -129,7 +129,17 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 const freshId = doc(collection(firestore, 'media_shares')).id;
                 setShareId(freshId);
                 setTitle(asset.name);
-                setDescription('');
+                
+                let defaultDesc = '';
+                if (asset.type === 'video') {
+                    defaultDesc = "Click to watch this video. It's Super Important";
+                } else if (asset.type === 'audio') {
+                    defaultDesc = "Click to listen to this audio, It's Super Important";
+                } else if (asset.type === 'document') {
+                    defaultDesc = "Kindly find document below for your perusal";
+                }
+                
+                setDescription(defaultDesc);
                 setCtaText('');
                 setCtaType('none');
                 setCtaTargetId('');
