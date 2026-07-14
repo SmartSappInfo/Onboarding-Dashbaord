@@ -38,7 +38,8 @@
     "migrate:cleanup-logs": "tsx scripts/cleanup-migration-logs.ts",
     "fix:org-admin-perms": "tsx scripts/fix-org-admin-permissions.ts",
     "backfill:note-index": "tsx scripts/backfill-note-index.ts",
-    "migrate:media-categories": "tsx scripts/migrate-media-categories.ts"
+    "migrate:media-categories": "tsx scripts/migrate-media-categories.ts",
+    "migrate:workspace-fields": "tsx src/app/seeds/migrate-workspace-fields.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
