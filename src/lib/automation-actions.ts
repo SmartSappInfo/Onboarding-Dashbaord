@@ -495,6 +495,7 @@ export async function bulkCleanContactsAction(
     });
 
     let count = 0;
+    const suppressionsToClear: Array<{ email: string; workspaceId: string }> = [];
 
     // Process each entity transactionally
     for (const [entityId, targets] of entityGroups.entries()) {
@@ -558,15 +559,8 @@ export async function bulkCleanContactsAction(
                 updatedContacts[0].isSignatory = true;
               }
             }
-          }
+        }
 
-          if (target.email && mode === 'archive') {
-            try {
-              await removeSuppression(target.email, workspaceId);
-            } catch (err) {
-              console.warn(`[BulkClean] Suppression removal failed for ${target.email}:`, err);
-            }
-          }
         }
 
         if (updatedContacts.length === 0) {
@@ -580,7 +574,25 @@ export async function bulkCleanContactsAction(
             transaction.update(wsRef, { entityContacts: updatedContacts });
           }
         }
+
+        // Collect suppressions to remove after transaction commits
+        if (mode === 'archive') {
+          for (const target of targets) {
+            if (target.email) {
+              suppressionsToClear.push({ email: target.email, workspaceId });
+            }
+          }
+        }
       });
+    }
+
+    // Call suppressions outside transaction blocks
+    for (const item of suppressionsToClear) {
+      try {
+        await removeSuppression(item.email, item.workspaceId);
+      } catch (err) {
+        console.warn(`[BulkClean] Suppression removal failed for ${item.email}:`, err);
+      }
     }
 
     return { success: true, count };
