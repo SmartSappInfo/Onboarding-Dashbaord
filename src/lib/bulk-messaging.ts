@@ -56,6 +56,17 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
       );
     }
 
+    // De-duplicate recipients by recipient endpoint and entity ID
+    const uniqueRecipients: { recipient: string; variables: Record<string, unknown>; entityId?: string; displayName?: string; campaignVariantId?: 'A' | 'B' }[] = [];
+    const seenMap = new Set<string>();
+    for (const r of recipients) {
+      const recipientKey = `${r.recipient.toLowerCase().trim()}_${(r.entityId || 'no-entity').trim()}`;
+      if (!seenMap.has(recipientKey)) {
+        seenMap.add(recipientKey);
+        uniqueRecipients.push(r);
+      }
+    }
+
     // 2. Initialize Job record
     const jobData: Omit<MessageJob, 'id'> = {
       templateId,
@@ -63,7 +74,7 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
       channel: template.channel,
       createdBy: userId,
       status: 'queued',
-      totalRecipients: recipients.length,
+      totalRecipients: uniqueRecipients.length,
       processed: 0,
       success: 0,
       failed: 0,
@@ -76,8 +87,8 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
 
     // 3. Task Fan-out (Batched for Firestore limits)
     const taskChunks = [];
-    for (let i = 0; i < recipients.length; i += 450) {
-      taskChunks.push(recipients.slice(i, i + 450));
+    for (let i = 0; i < uniqueRecipients.length; i += 450) {
+      taskChunks.push(uniqueRecipients.slice(i, i + 450));
     }
 
     for (const chunk of taskChunks) {

@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, MessageLog } from './types';
+import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, MessageLog, EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
@@ -1119,20 +1119,20 @@ export async function resolveRecipientContacts(params: {
     if (!contact) return [];
 
     const entityName = contact.name || 'Unknown Entity';
-    const sourceContacts = contact.entityContacts || contact.contacts || [];
+    const sourceContacts = (contact.entityContacts || contact.contacts || []) as EntityContact[];
 
     // Map source contacts to resolved recipients
-    const mapContacts = (list: any[]): ResolvedRecipient[] => {
-      return list.map((c: any) => ({
-        contact: channel === 'email' ? c.email : (c.phone || ''),
-        contactName: c.name || c.displayName || entityName,
+    const mapContacts = (list: EntityContact[]): ResolvedRecipient[] => {
+      return list.map((c: EntityContact) => ({
+        contact: channel === 'email' ? (c.email || '') : (c.phone || ''),
+        contactName: c.name || entityName,
         entityName
       })).filter(r => !!r.contact);
     };
 
-    const resolvedList: ResolvedRecipient[] = (() => {
+    let resolvedList: ResolvedRecipient[] = (() => {
       if (contactRoles && contactRoles.length > 0) {
-        const matched = sourceContacts.filter((c: any) => {
+        const matched = sourceContacts.filter((c: EntityContact) => {
           return contactRoles.some(role => {
             if (role === 'primary') return !!c.isPrimary;
             if (role === 'signatories' || role === 'signatory') return !!c.isSignatory;
@@ -1153,18 +1153,18 @@ export async function resolveRecipientContacts(params: {
       }
 
       if (contactTypeFilter && contactTypeFilter.length > 0) {
-        const typed = sourceContacts.filter((c: any) => contactTypeFilter.includes(c.typeKey));
+        const typed = sourceContacts.filter((c: EntityContact) => contactTypeFilter.includes(c.typeKey));
         return mapContacts(typed);
       }
 
       if (contactScope.startsWith('role:')) {
         const targetRole = contactScope.split(':')[1];
-        const typed = sourceContacts.filter((c: any) => c.typeKey === targetRole);
+        const typed = sourceContacts.filter((c: EntityContact) => c.typeKey === targetRole);
         return mapContacts(typed);
       }
 
       if (contactScope === 'primary') {
-        const primary = sourceContacts.find((c: any) => c.isPrimary) || sourceContacts[0];
+        const primary = sourceContacts.find((c: EntityContact) => c.isPrimary) || sourceContacts[0];
         if (!primary) {
           // Fallback to direct entity fields if no contact objects exist
           const email = getContactEmail(contact);
@@ -1174,7 +1174,7 @@ export async function resolveRecipientContacts(params: {
         }
         return mapContacts([primary]);
       } else if (contactScope === 'signatories') {
-        const signatories = sourceContacts.filter((c: any) => c.isSignatory);
+        const signatories = sourceContacts.filter((c: EntityContact) => c.isSignatory);
         return mapContacts(signatories);
       } else if (contactScope === 'all') {
         return mapContacts(sourceContacts);
@@ -1182,6 +1182,20 @@ export async function resolveRecipientContacts(params: {
 
       return [];
     })();
+
+    // Fallback logic: if the resolved list for the requested scope/role is empty, fall back to the primary contact
+    if (resolvedList.length === 0) {
+      const primary = sourceContacts.find((c: EntityContact) => c.isPrimary) || sourceContacts[0];
+      if (primary) {
+        resolvedList = mapContacts([primary]);
+      } else {
+        // Fallback to direct entity fields if no contact objects exist at all
+        const email = getContactEmail(contact);
+        const phone = getContactPhone(contact);
+        const val = channel === 'email' ? email : phone;
+        resolvedList = val ? [{ contact: val, contactName: entityName, entityName }] : [];
+      }
+    }
 
     const seen = new Set<string>();
     return resolvedList.filter(r => {
