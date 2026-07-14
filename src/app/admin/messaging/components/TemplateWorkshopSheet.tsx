@@ -165,11 +165,11 @@ export function TemplateWorkshopSheet({
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 
-    const handleSave = async (data: any) => {
+    const handleSave = async (data: Partial<MessageTemplate>) => {
         if (!firestore) return;
         setIsSaving(true);
 
-        const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
+        const contentForExtraction = `${data.subject || ''} ${data.body || ''} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches
             ? [...new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim()))]
@@ -185,9 +185,9 @@ export function TemplateWorkshopSheet({
             scope: data.scope || 'organization',
             variables: variableList,
             status: data.status || 'active',
-            isActive: (data.status || 'active') !== 'archived',
+            isActive: data.channel === 'whatsapp' ? false : ((data.status || 'active') !== 'archived'),
             target: data.target || 'external_client',
-            contentMode: data.contentMode || (data.channel === 'sms' ? 'plain_text' : 'rich_builder'),
+            contentMode: data.contentMode || (data.channel === 'sms' || data.channel === 'whatsapp' ? 'plain_text' : 'rich_builder'),
             templateType: data.templateType || `custom_${data.category || 'general'}_${Date.now()}`,
             updatedAt: new Date().toISOString(),
         };

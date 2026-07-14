@@ -74,7 +74,7 @@ const WhatsAppSendTestDialog = dynamic(() => import('./components/whatsapp/Whats
 const WhatsAppAdoptDialog = dynamic(() => import('./components/whatsapp/WhatsAppAdoptDialog'), { ssr: false });
 
 /** Channel chosen from the "New Template" menu (drives the workshop seed). */
-type NewTemplateChannel = 'email' | 'sms';
+type NewTemplateChannel = 'email' | 'sms' | 'whatsapp';
 /** Which WhatsApp dialog (if any) is currently open. */
 type ActiveWhatsAppDialog =
     | { kind: 'create'; draft?: TemplateDraft }
@@ -420,10 +420,10 @@ export default function MessageTemplatesPage() {
         }
     };
 
-    const handleSave = async (data: any) => {
+    const handleSave = async (data: Partial<MessageTemplate>) => {
         if (!firestore || !user) return;
 
-        const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
+        const contentForExtraction = `${data.subject || ''} ${data.body || ''} ${JSON.stringify(data.blocks || [])}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
@@ -439,9 +439,9 @@ export default function MessageTemplatesPage() {
             scope: data.scope || 'organization',
             variables: variableList,
             status: data.status || 'active',
-            isActive: (data.status || 'active') !== 'archived', // backward compat
+            isActive: data.channel === 'whatsapp' ? false : ((data.status || 'active') !== 'archived'),
             target: data.target || 'external_client',
-            contentMode: data.contentMode || (data.channel === 'sms' ? 'plain_text' : 'rich_builder'),
+            contentMode: data.contentMode || (data.channel === 'sms' || data.channel === 'whatsapp' ? 'plain_text' : 'rich_builder'),
             templateType: data.templateType || `custom_${data.category || 'general'}_${Date.now()}`,
             updatedAt: new Date().toISOString(),
         };
@@ -598,7 +598,7 @@ export default function MessageTemplatesPage() {
                                                 <Mail className="h-4 w-4 text-blue-500" /> Email Template
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
-                                                onClick={() => setActiveWaDialog({ kind: 'create' })}
+                                                onClick={() => openWorkshop('whatsapp')}
                                                 disabled={!activeOrganizationId}
                                                 className="font-semibold gap-2 cursor-pointer"
                                             >

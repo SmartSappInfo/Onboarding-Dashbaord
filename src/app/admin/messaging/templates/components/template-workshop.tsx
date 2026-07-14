@@ -92,7 +92,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIn
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel } from '@/lib/types';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import { SortableBlockItem } from './visual-block';
@@ -2051,7 +2051,7 @@ interface TemplateWorkshopProps {
     meetings?: Meeting[];
     surveys?: Survey[];
     pdfs?: PDFForm[];
-    onSave: (data: any) => Promise<void>;
+    onSave: (data: Partial<MessageTemplate>) => Promise<void>;
     onCancel: () => void;
     isSaving: boolean;
     initialContext?: {
@@ -2301,9 +2301,10 @@ export function TemplateWorkshop({
     const [name, setName] = React.useState(initialTemplate?.name || '');
     const [isEditingName, setIsEditingName] = React.useState(false);
     const [category, setCategory] = React.useState(initialTemplate?.category || initialContext?.category || 'general');
-    const [channel, setChannel] = React.useState(initialTemplate?.channel || initialContext?.channel || 'email');
+    const [channel, setChannel] = React.useState<MessageChannel>((initialTemplate?.channel || initialContext?.channel || 'email') as MessageChannel);
     const [contentMode, setContentMode] = React.useState<ContentMode>(
-        initialTemplate?.contentMode || ((initialTemplate?.channel || initialContext?.channel) === 'sms' ? 'plain_text' : 'rich_builder')
+        initialTemplate?.contentMode || 
+        (((initialTemplate?.channel || initialContext?.channel) === 'sms' || (initialTemplate?.channel || initialContext?.channel) === 'whatsapp') ? 'plain_text' : 'rich_builder')
     );
     const [target, setTarget] = React.useState<TemplateTarget>(initialTemplate?.target || 'external_client');
     const [templateType, setTemplateType] = React.useState<string>(initialTemplate?.templateType || initialContext?.templateType || '');
@@ -3325,8 +3326,8 @@ export function TemplateWorkshop({
             // body is source of truth — clear blocks
             saveData.blocks = [];
         }
-        // SMS is always plain_text
-        if (channel === 'sms') {
+        // SMS and WhatsApp are always plain_text
+        if (channel === 'sms' || channel === 'whatsapp') {
             saveData.contentMode = 'plain_text';
             saveData.blocks = [];
         }
@@ -3512,7 +3513,7 @@ export function TemplateWorkshop({
         const activeStyle = styleId !== 'none'
             ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
             : null;
-        const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+        const effectiveMode = (channel === 'sms' || channel === 'whatsapp') ? 'plain_text' : contentMode;
         
         let styleWrapper = activeStyle
             ? (target === 'internal_team'
@@ -3898,7 +3899,7 @@ export function TemplateWorkshop({
                                                 <CardDescription className="text-xs">Specify communication channel and format mode.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-5 text-left">
-                                                <div className={cn("grid grid-cols-2 gap-3", initialContext?.channel ? "opacity-70 pointer-events-none" : "")}>
+                                                <div className={cn("grid grid-cols-1 sm:grid-cols-3 gap-3", initialContext?.channel ? "opacity-70 pointer-events-none" : "")}>
                                                     <button
                                                         type="button"
                                                         onClick={() => { setChannel('email'); }}
@@ -3933,6 +3934,24 @@ export function TemplateWorkshop({
                                                         <div>
                                                             <p className="text-xs font-bold">SMS Text</p>
                                                             <p className="text-[9px] text-muted-foreground">Plain text alerts</p>
+                                                        </div>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setChannel('whatsapp'); setContentMode('plain_text'); }}
+                                                        className={cn(
+                                                            "flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-200",
+                                                            channel === 'whatsapp'
+                                                                ? "border-primary bg-primary/5 text-primary shadow-sm"
+                                                                : "border-border/40 bg-card text-muted-foreground hover:border-primary/20 hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        <div className={cn("p-2 rounded-lg transition-colors", channel === 'whatsapp' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                                                            <MessageSquare className="h-4 w-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold">WhatsApp</p>
+                                                            <p className="text-[9px] text-muted-foreground">WhatsApp templates</p>
                                                         </div>
                                                     </button>
                                                 </div>
@@ -4836,7 +4855,7 @@ export function TemplateWorkshop({
                                 const activeStyle = styleId !== 'none'
                                     ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
                                     : null;
-                                const effectiveMode = channel === 'sms' ? 'plain_text' : contentMode;
+                                const effectiveMode = (channel === 'sms' || channel === 'whatsapp') ? 'plain_text' : contentMode;
                                 
                                 const styleWrapper = activeStyle
                                     ? (target === 'internal_team'
