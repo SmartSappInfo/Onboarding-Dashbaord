@@ -42,10 +42,11 @@ import {
   AlertTriangle,
   ArrowRight,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Wand2
 } from 'lucide-react';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
-import { verifySingleContactAction, deleteContactAction } from '@/lib/automation-actions';
+import { verifySingleContactAction, deleteContactAction, bulkCleanContactsAction } from '@/lib/automation-actions';
 import type { 
   WorkspaceEntity, 
   EntityContact, 
@@ -65,6 +66,15 @@ import {
 } from '@/lib/scoring-performance-engine';
 import { cn } from '@/lib/utils';
 import { BentoPagination } from '../components/BentoPagination';
+
+function MagicTrashIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <Trash2 className={className} />
+      <Sparkles className="h-2 w-2 text-indigo-400 absolute -top-0.5 -right-0.5 animate-pulse" />
+    </div>
+  );
+}
 
 const DEFAULT_SCORING_SETTINGS: LeadScoringSettings = {
   emailVerificationRules: [
@@ -725,6 +735,11 @@ export default function LeadScoringCleanupPage() {
   const [isCleanDialogOpen, setIsCleanDialogOpen] = useState(false);
   const [verifyingContactId, setVerifyingContactId] = useState<string | null>(null);
 
+  // Bulk Clean Contacts state
+  const [isBulkCleanOpen, setIsBulkCleanOpen] = useState(false);
+  const [bulkCleanMode, setBulkCleanMode] = useState<'archive' | 'delete'>('archive');
+  const [isBulkCleaning, setIsBulkCleaning] = useState(false);
+
   interface FlatHygieneContact {
     id: string;
     entityId: string;
@@ -825,6 +840,41 @@ export default function LeadScoringCleanupPage() {
       });
     } finally {
       setVerifyingContactId(null);
+    }
+  };
+
+  const handleBulkClean = async () => {
+    if (hygieneContacts.length === 0) return;
+    setIsBulkCleaning(true);
+    try {
+      const targets = hygieneContacts.map(c => ({
+        entityId: c.entityId,
+        email: c.email || undefined,
+        phone: c.phone || undefined
+      }));
+      const res = await bulkCleanContactsAction(targets, bulkCleanMode);
+      if (res.success) {
+        toast({
+          title: 'Bulk Clean Success',
+          description: `Successfully cleaned ${res.count} contacts in bulk.`,
+        });
+        setIsBulkCleanOpen(false);
+      } else {
+        toast({
+          title: 'Bulk Clean Failed',
+          description: res.error || 'Clean failed',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        title: 'Error',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkCleaning(false);
     }
   };
 
@@ -1357,6 +1407,15 @@ export default function LeadScoringCleanupPage() {
                 <Button variant="outline" size="sm" onClick={handleExportHygieneCSV} className="h-9 rounded-lg font-bold text-xs active:scale-[0.97]">
                   <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsBulkCleanOpen(true)} 
+                  className="h-9 rounded-lg font-bold text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 border-indigo-500/20 active:scale-[0.97]" 
+                  disabled={hygieneContacts.length === 0}
+                >
+                  <MagicTrashIcon className="h-3.5 w-3.5 mr-1 animate-pulse" /> Bulk Clean
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setIsBulkHygieneArchiveOpen(true)} className="h-9 rounded-lg font-bold text-xs text-rose-500 hover:bg-rose-500/5 active:scale-[0.97]" disabled={hygieneContacts.length === 0}>
                   <Archive className="h-3.5 w-3.5 mr-1" /> Archive All
                 </Button>
@@ -1466,7 +1525,7 @@ export default function LeadScoringCleanupPage() {
                                     }}
                                     className="h-8 w-8 p-0 rounded-lg hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300"
                                   >
-                                    <Sparkles className="h-3.5 w-3.5" />
+                                    <MagicTrashIcon className="h-3.5 w-3.5" />
                                   </Button>
                                 )}
 
@@ -1573,7 +1632,7 @@ export default function LeadScoringCleanupPage() {
                               }}
                               className="h-8 text-xs px-2.5 rounded-lg border-slate-800 text-indigo-400 hover:text-indigo-300 bg-indigo-500/5"
                             >
-                              <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
+                              <MagicTrashIcon className="h-3 w-3 mr-1 animate-pulse" />
                               Clean
                             </Button>
                           )}
@@ -2024,6 +2083,86 @@ export default function LeadScoringCleanupPage() {
             <DialogFooter className="mt-4">
               <Button variant="ghost" onClick={() => setIsBulkHygieneDeleteOpen(false)} className="h-9 rounded-lg text-xs font-bold active:scale-[0.97]">Cancel</Button>
               <Button onClick={handleBulkDeleteHygiene} className="h-9 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white active:scale-[0.97]">Permanently Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Clean Contacts Dialog */}
+        <Dialog open={isBulkCleanOpen} onOpenChange={setIsBulkCleanOpen}>
+          <DialogContent className="rounded-2xl max-w-md bg-slate-900 border border-slate-800 text-slate-100">
+            <DialogHeader>
+              <DialogTitle className="text-base font-extrabold text-indigo-400 flex items-center gap-2">
+                <MagicTrashIcon className="h-5 w-5 text-indigo-400" />
+                <span>Bulk Clean Contacts</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                You are about to perform a bulk cleanup for <span className="font-bold text-slate-200">{hygieneContacts.length}</span> filtered contacts.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-3 text-xs text-slate-300">
+              <p>
+                Choose how you want to handle these contacts. This will process all contacts matching the current hygiene filters:
+              </p>
+
+              <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="bulkCleanMode"
+                    value="archive"
+                    checked={bulkCleanMode === 'archive'}
+                    onChange={() => setBulkCleanMode('archive')}
+                    className="mt-1 accent-indigo-500"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-200 block">Bulk Archive Contacts (Recommended)</span>
+                    <span className="text-[10px] text-slate-400">Mark contact status as archived to prevent future automation sends, keeping contact records in history.</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="bulkCleanMode"
+                    value="delete"
+                    checked={bulkCleanMode === 'delete'}
+                    onChange={() => setBulkCleanMode('delete')}
+                    className="mt-1 accent-red-500"
+                  />
+                  <div>
+                    <span className="font-bold text-red-400 block">Bulk Delete Contacts</span>
+                    <span className="text-[10px] text-slate-400">Permanently delete these contact records from their respective companies. If no contacts remain, the company itself is deleted.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => setIsBulkCleanOpen(false)} 
+                className="h-9 rounded-lg text-xs font-bold active:scale-[0.97] hover:bg-slate-800 text-slate-400"
+                disabled={isBulkCleaning}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkClean} 
+                className={`h-9 rounded-lg text-xs font-bold text-white active:scale-[0.97] ${bulkCleanMode === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                disabled={isBulkCleaning}
+              >
+                {isBulkCleaning ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    Cleaning...
+                  </>
+                ) : (
+                  'Confirm Cleanup'
+                )}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

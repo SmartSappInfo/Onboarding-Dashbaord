@@ -470,3 +470,124 @@ export async function verifySingleContactAction(
   }
 }
 
+export async function bulkCleanContactsAction(
+  contactsToClean: Array<{ entityId: string; email?: string; phone?: string }>,
+  mode: 'archive' | 'delete'
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const { adminDb } = await import('./firebase-admin');
+    const { removeSuppression } = await import('./suppression-service');
+
+    if (!contactsToClean || contactsToClean.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // Group contacts by entityId
+    const entityGroups = new Map<string, Array<{ email?: string; phone?: string }>>();
+    contactsToClean.forEach(c => {
+      if (!entityGroups.has(c.entityId)) {
+        entityGroups.set(c.entityId, []);
+      }
+      entityGroups.get(c.entityId)!.push({
+        email: c.email?.toLowerCase().trim(),
+        phone: c.phone?.toLowerCase().trim()
+      });
+    });
+
+    let count = 0;
+
+    // Process each entity transactionally
+    for (const [entityId, targets] of entityGroups.entries()) {
+      await adminDb.runTransaction(async (transaction) => {
+        const entityRef = adminDb.collection('entities').doc(entityId);
+        const wsRef = adminDb.collection('workspace_entities').doc(entityId);
+
+        const entityDoc = await transaction.get(entityRef);
+        const wsDoc = await transaction.get(wsRef);
+
+        if (!entityDoc.exists) return;
+
+        const data = entityDoc.data() || {};
+        const workspaceId = data.workspaceId || 'default';
+        const entityContacts = (data.entityContacts || []) as ContactItem[];
+
+        let updatedContacts = [...entityContacts];
+
+        for (const target of targets) {
+          if (mode === 'archive') {
+            updatedContacts = updatedContacts.map(c => {
+              const matchesEmail = target.email && c.email?.toLowerCase().trim() === target.email;
+              const matchesPhone = target.phone && c.phone?.toLowerCase().trim() === target.phone;
+              if (matchesEmail || matchesPhone) {
+                count++;
+                return {
+                  ...c,
+                  emailStatus: matchesEmail ? 'archived' : c.emailStatus,
+                  phoneStatus: matchesPhone ? 'failed' : c.phoneStatus,
+                };
+              }
+              return c;
+            });
+          } else if (mode === 'delete') {
+            const initialLen = updatedContacts.length;
+            updatedContacts = updatedContacts.filter(c => {
+              const matchesEmail = target.email && c.email?.toLowerCase().trim() === target.email;
+              const matchesPhone = target.phone && c.phone?.toLowerCase().trim() === target.phone;
+              return !(matchesEmail || matchesPhone);
+            });
+            const removedCount = initialLen - updatedContacts.length;
+            count += removedCount;
+
+            // Handle primary/signatory preservation
+            const wasPrimaryDeleted = entityContacts.some(c => {
+              const matchesEmail = target.email && c.email?.toLowerCase().trim() === target.email;
+              const matchesPhone = target.phone && c.phone?.toLowerCase().trim() === target.phone;
+              return (matchesEmail || matchesPhone) && c.isPrimary;
+            });
+            const wasSignatoryDeleted = entityContacts.some(c => {
+              const matchesEmail = target.email && c.email?.toLowerCase().trim() === target.email;
+              const matchesPhone = target.phone && c.phone?.toLowerCase().trim() === target.phone;
+              return (matchesEmail || matchesPhone) && c.isSignatory;
+            });
+
+            if (updatedContacts.length > 0) {
+              if (wasPrimaryDeleted) {
+                updatedContacts[0].isPrimary = true;
+              }
+              if (wasSignatoryDeleted) {
+                updatedContacts[0].isSignatory = true;
+              }
+            }
+          }
+
+          if (target.email && mode === 'archive') {
+            try {
+              await removeSuppression(target.email, workspaceId);
+            } catch (err) {
+              console.warn(`[BulkClean] Suppression removal failed for ${target.email}:`, err);
+            }
+          }
+        }
+
+        if (updatedContacts.length === 0) {
+          transaction.delete(entityRef);
+          if (wsDoc.exists) {
+            transaction.delete(wsRef);
+          }
+        } else {
+          transaction.update(entityRef, { entityContacts: updatedContacts });
+          if (wsDoc.exists) {
+            transaction.update(wsRef, { entityContacts: updatedContacts });
+          }
+        }
+      });
+    }
+
+    return { success: true, count };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[bulkCleanContactsAction] Error:', err);
+    return { success: false, count: 0, error: errorMsg };
+  }
+}
+

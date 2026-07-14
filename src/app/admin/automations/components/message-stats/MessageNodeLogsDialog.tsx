@@ -6,7 +6,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription 
+  DialogDescription,
+  DialogFooter 
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -35,9 +36,11 @@ import {
   FileSpreadsheet,
   FileText,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { getMessageNodeLogsAction } from '@/lib/automation-actions';
 import type { MessageLog } from '@/lib/types';
@@ -137,6 +140,15 @@ function MessageContactRowDetails({ log, workspaceId }: MessageContactRowDetails
   );
 }
 
+function MagicTrashIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <Trash2 className={className} />
+      <Sparkles className="h-2 w-2 text-indigo-400 absolute -top-0.5 -right-0.5 animate-pulse" />
+    </div>
+  );
+}
+
 export function MessageNodeLogsDialog({
   isOpen,
   onClose,
@@ -146,6 +158,7 @@ export function MessageNodeLogsDialog({
   channel,
   initialTab = 'sent'
 }: MessageNodeLogsDialogProps) {
+  const { toast } = useToast();
   const { activeWorkspaceId, activeOrganization } = useTenant();
   const [logs, setLogs] = React.useState<MessageLog[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -156,6 +169,11 @@ export function MessageNodeLogsDialog({
   const [selectedCleanEmail, setSelectedCleanEmail] = React.useState('');
   const [selectedCleanEntityId, setSelectedCleanEntityId] = React.useState('');
   const [isCleanDialogOpen, setIsCleanDialogOpen] = React.useState(false);
+  
+  // Bulk clean state
+  const [isBulkCleanConfirmOpen, setIsBulkCleanConfirmOpen] = React.useState(false);
+  const [isBulkCleaning, setIsBulkCleaning] = React.useState(false);
+  const [bulkCleanMode, setBulkCleanMode] = React.useState<'archive' | 'delete'>('archive');
 
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
@@ -656,6 +674,48 @@ export function MessageNodeLogsDialog({
     }
   };
 
+  const handleBulkCleanLogs = async () => {
+    const failedTargets = filteredLogs
+      .filter(log => log.entityId && log.recipient)
+      .map(log => ({
+        entityId: log.entityId!,
+        email: log.recipient
+      }));
+
+    if (failedTargets.length === 0) return;
+
+    setIsBulkCleaning(true);
+    try {
+      const { bulkCleanContactsAction } = await import('@/lib/automation-actions');
+      const res = await bulkCleanContactsAction(failedTargets, bulkCleanMode);
+      if (res.success) {
+        toast({
+          title: 'Bulk Clean Success',
+          description: `Successfully cleaned ${res.count} bounced contacts.`,
+        });
+        setIsBulkCleanConfirmOpen(false);
+        // Refresh logs list
+        const updated = await getMessageNodeLogsAction(automationId, nodeId);
+        setLogs(updated);
+      } else {
+        toast({
+          title: 'Bulk Clean Failed',
+          description: res.error || 'Clean failed',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        title: 'Error',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkCleaning(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 overflow-hidden bg-background border border-border/80 shadow-2xl rounded-2xl">
@@ -872,14 +932,28 @@ export function MessageNodeLogsDialog({
             </TabsList>
           </Tabs>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by recipient, entity or contact..."
-              className="pl-9 h-9 rounded-lg text-xs border border-border/80 bg-background"
-            />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {activeTab === 'bounced' && filteredLogs.length > 0 && channel === 'email' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBulkCleanConfirmOpen(true)}
+                className="h-9 px-3 rounded-lg text-xs font-bold border-indigo-500/20 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 transition-all duration-150 active:scale-95 flex items-center gap-1.5 shrink-0"
+              >
+                <MagicTrashIcon className="h-3.5 w-3.5 animate-pulse" />
+                <span>Bulk Clean Bounced</span>
+              </Button>
+            )}
+
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by recipient, entity or contact..."
+                className="pl-9 h-9 rounded-lg text-xs border border-border/80 bg-background"
+              />
+            </div>
           </div>
         </div>
 
@@ -991,7 +1065,7 @@ export function MessageNodeLogsDialog({
                               }}
                               title="Clean Bounced Email"
                             >
-                              <Sparkles className="h-3.5 w-3.5" />
+                              <MagicTrashIcon className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           {entityId && (
@@ -1056,6 +1130,86 @@ export function MessageNodeLogsDialog({
             })();
           }}
         />
+
+        {/* Bulk Clean Bounced Confirmation Dialog */}
+        <Dialog open={isBulkCleanConfirmOpen} onOpenChange={setIsBulkCleanConfirmOpen}>
+          <DialogContent className="rounded-2xl max-w-md bg-slate-900 border border-slate-800 text-slate-100 z-[300]">
+            <DialogHeader>
+              <DialogTitle className="text-base font-extrabold text-indigo-400 flex items-center gap-2">
+                <MagicTrashIcon className="h-5 w-5 text-indigo-400" />
+                <span>Bulk Clean Bounced Emails</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                You are about to perform a bulk cleanup for <span className="font-bold text-slate-200">{filteredLogs.length}</span> bounced emails in this log.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-3 text-xs text-slate-300">
+              <p>
+                Choose how you want to handle these bounced contacts:
+              </p>
+
+              <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="bulkCleanLogsMode"
+                    value="archive"
+                    checked={bulkCleanMode === 'archive'}
+                    onChange={() => setBulkCleanMode('archive')}
+                    className="mt-1 accent-indigo-500"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-200 block">Bulk Archive Contacts (Recommended)</span>
+                    <span className="text-[10px] text-slate-400">Mark contact status as archived to prevent future sends, keeping logs.</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="space-y-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="bulkCleanLogsMode"
+                    value="delete"
+                    checked={bulkCleanMode === 'delete'}
+                    onChange={() => setBulkCleanMode('delete')}
+                    className="mt-1 accent-red-500"
+                  />
+                  <div>
+                    <span className="font-bold text-red-400 block">Bulk Delete Contacts</span>
+                    <span className="text-[10px] text-slate-400">Permanently delete these contact records from their respective companies.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => setIsBulkCleanConfirmOpen(false)} 
+                className="h-9 rounded-lg text-xs font-bold active:scale-[0.97] hover:bg-slate-800 text-slate-400"
+                disabled={isBulkCleaning}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkCleanLogs} 
+                className={`h-9 rounded-lg text-xs font-bold text-white active:scale-[0.97] ${bulkCleanMode === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                disabled={isBulkCleaning}
+              >
+                {isBulkCleaning ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    Cleaning...
+                  </>
+                ) : (
+                  'Confirm Cleanup'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

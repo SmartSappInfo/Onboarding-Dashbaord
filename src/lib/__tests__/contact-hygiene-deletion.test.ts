@@ -3,6 +3,7 @@ import {
   cleanContactEmailAction,
   deleteContactAction,
   verifySingleContactAction,
+  bulkCleanContactsAction,
 } from '../automation-actions';
 import { adminDb } from '../firebase-admin';
 
@@ -181,6 +182,70 @@ describe('Contact Hygiene & Deletion Server Actions', () => {
               isSignatory: true,
             },
           ],
+        })
+      );
+    });
+  });
+
+  describe('bulkCleanContactsAction', () => {
+    it('should bulk archive contacts and set emailStatus to archived', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          workspaceId: 'ws_123',
+          entityContacts: [
+            { email: 'bounce1@example.com', emailStatus: 'bounced', isPrimary: true },
+            { email: 'bounce2@example.com', emailStatus: 'bounced', isPrimary: false }
+          ]
+        })
+      });
+      // Mock workspace doc
+      mockGet.mockResolvedValueOnce({ exists: true });
+
+      const result = await bulkCleanContactsAction([
+        { entityId: 'entity_1', email: 'bounce1@example.com' },
+        { entityId: 'entity_1', email: 'bounce2@example.com' }
+      ], 'archive');
+
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entityContacts: [
+            { email: 'bounce1@example.com', emailStatus: 'archived', isPrimary: true },
+            { email: 'bounce2@example.com', emailStatus: 'archived', isPrimary: false }
+          ]
+        })
+      );
+    });
+
+    it('should bulk delete contacts and handle role reassignment', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          workspaceId: 'ws_123',
+          entityContacts: [
+            { email: 'delete-primary@example.com', isPrimary: true },
+            { email: 'keep@example.com', isPrimary: false }
+          ]
+        })
+      });
+      // Mock workspace doc
+      mockGet.mockResolvedValueOnce({ exists: true });
+
+      const result = await bulkCleanContactsAction([
+        { entityId: 'entity_1', email: 'delete-primary@example.com' }
+      ], 'delete');
+
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          entityContacts: [
+            { email: 'keep@example.com', isPrimary: true }
+          ]
         })
       );
     });
