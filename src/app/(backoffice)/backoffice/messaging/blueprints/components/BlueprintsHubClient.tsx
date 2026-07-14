@@ -61,7 +61,7 @@ export default function BlueprintsHubClient() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [newTriggerId, setNewTriggerId] = React.useState('');
-  const [newChannel, setNewChannel] = React.useState<'email' | 'sms' | ''>('');
+  const [newChannel, setNewChannel] = React.useState<MessageChannel | ''>('');
   const [newName, setNewName] = React.useState('');
 
   const selectedTriggerForCreate = React.useMemo(() => {
@@ -70,9 +70,10 @@ export default function BlueprintsHubClient() {
 
   React.useEffect(() => {
     if (selectedTriggerForCreate) {
-      const defaultChannel = (selectedTriggerForCreate.supportedChannels[0] as 'email' | 'sms') || 'email';
+      const defaultChannel = (selectedTriggerForCreate.supportedChannels[0] as MessageChannel) || 'email';
       setNewChannel(defaultChannel);
-      setNewName(`Global ${selectedTriggerForCreate.name} (${defaultChannel === 'email' ? 'Email' : 'SMS'})`);
+      const chanLabel = defaultChannel === 'email' ? 'Email' : defaultChannel === 'whatsapp' ? 'WhatsApp' : defaultChannel.toUpperCase();
+      setNewName(`Global ${selectedTriggerForCreate.name} (${chanLabel})`);
     } else {
       setNewChannel('');
       setNewName('');
@@ -81,7 +82,8 @@ export default function BlueprintsHubClient() {
 
   React.useEffect(() => {
     if (selectedTriggerForCreate && newChannel) {
-      setNewName(`Global ${selectedTriggerForCreate.name} (${newChannel === 'email' ? 'Email' : 'SMS'})`);
+      const chanLabel = newChannel === 'email' ? 'Email' : newChannel === 'whatsapp' ? 'WhatsApp' : newChannel.toUpperCase();
+      setNewName(`Global ${selectedTriggerForCreate.name} (${chanLabel})`);
     }
   }, [newChannel, selectedTriggerForCreate]);
 
@@ -548,6 +550,7 @@ export default function BlueprintsHubClient() {
                                 <SelectItem value="all">All Channels</SelectItem>
                                 <SelectItem value="email">Email</SelectItem>
                                 <SelectItem value="sms">SMS</SelectItem>
+                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
                                 <SelectItem value="push">Push</SelectItem>
                                 <SelectItem value="in_app">In-App</SelectItem>
                               </SelectContent>
@@ -659,7 +662,7 @@ export default function BlueprintsHubClient() {
                   <label className="text-xs font-semibold text-muted-foreground">Select Channel</label>
                   <Select 
                     value={newChannel} 
-                    onValueChange={(val) => setNewChannel(val as 'email' | 'sms')}
+                    onValueChange={(val) => setNewChannel(val as MessageChannel)}
                   >
                     <SelectTrigger className="w-full rounded-xl bg-background border text-xs h-10">
                       <SelectValue placeholder="Choose a channel..." />

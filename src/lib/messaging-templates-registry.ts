@@ -4,7 +4,7 @@ export interface TemplateDef {
   name: string;
   category: TemplateCategory;
   templateType: string;
-  channel: 'email' | 'sms' | 'in_app' | 'push';
+  channel: 'email' | 'sms' | 'whatsapp' | 'in_app' | 'push';
   recipientType?: string;
   subject?: string;
   body: string;
@@ -36,6 +36,12 @@ export const TEMPLATES: TemplateDef[] = [
     body: `Hi {{contact_name}}, here is your link to join {{meeting_title}}: {{registrant_join_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'org_name'],
   },
+  {
+    name: 'Resend Join Link (WhatsApp)', category: 'meetings', templateType: 'meeting_resend_join_link', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, here is your link to join {{meeting_title}}: {{registrant_join_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'registrant_join_link', 'org_name'],
+  },
   // ══════════════════════════════════════════════════════════════════════════
   // ── MEETING LIFECYCLE TEMPLATES (24 total: 12 email + 12 SMS) ──────────
   // ══════════════════════════════════════════════════════════════════════════
@@ -56,6 +62,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
+    name: 'Initial Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_initial', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, you're invited to {{meeting_title}} on {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Register: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
     name: '1 Month Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_1_month', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Upcoming in 1 Month: {{meeting_title}}',
@@ -64,6 +76,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: '1 Month Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_1_month', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} is coming up in a month on {{meeting_date}}. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '1 Month Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_1_month', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: `Hi {{contact_name}}, {{meeting_title}} is coming up in a month on {{meeting_date}}. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_registrant_one_click_link', 'org_name'],
@@ -82,6 +100,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
+    name: '1 Week Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_1_week', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Next week: {{meeting_title}}. Don't miss out, register today: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
     name: '5 Days Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_5_days', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Only 5 Days Away: {{meeting_title}}',
@@ -90,6 +114,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: '5 Days Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_5_days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Only 5 days until {{meeting_title}}! Register now: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '5 Days Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_5_days', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: `Only 5 days until {{meeting_title}}! Register now: {{meeting_registrant_one_click_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
@@ -108,6 +138,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
+    name: '3 Days Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_3_days', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `3 days left until {{meeting_title}}! Register today: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
     name: '2 Days Before Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_2_days', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Approaching: {{meeting_title}} in 2 Days',
@@ -116,6 +152,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: '2 Days Before Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_2_days', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `{{meeting_title}} is in 2 days. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: '2 Days Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_2_days', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: `{{meeting_title}} is in 2 days. Secure your spot: {{meeting_registrant_one_click_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
@@ -134,6 +176,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
+    name: '1 Day Before Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_1_day', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Tomorrow: {{meeting_title}}. Register now: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
     name: 'Happening Today Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Today: {{meeting_title}}',
@@ -147,6 +195,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],
   },
   {
+    name: 'Happening Today Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_today', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `{{meeting_title}} is today at {{meeting_time}}. Register to join: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
     name: 'Last Chance Invitation (Email)', category: 'meetings', templateType: 'meeting_invitation_last_chance', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Last Chance to Join: {{meeting_title}}',
@@ -155,6 +209,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Last Chance Invitation (SMS)', category: 'meetings', templateType: 'meeting_invitation_last_chance', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Last chance to join {{meeting_title}}! Register here: {{meeting_registrant_one_click_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
+  },
+  {
+    name: 'Last Chance Invitation (WhatsApp)', category: 'meetings', templateType: 'meeting_invitation_last_chance', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: `Last chance to join {{meeting_title}}! Register here: {{meeting_registrant_one_click_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_registrant_one_click_link', 'org_name'],
@@ -173,6 +233,12 @@ export const TEMPLATES: TemplateDef[] = [
     body: `Hi {{contact_name}}, your registration for {{meeting_title}} is confirmed. {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}} — {{org_name}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'org_name'],
   },
+  {
+    name: 'Registration Acknowledgement (WhatsApp)', category: 'meetings', templateType: 'meeting_registration_ack', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, your registration for {{meeting_title}} is confirmed. {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}} — {{org_name}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link', 'org_name'],
+  },
 
   // ── 2. Facilitator: New Registration Alert ─────────────────────────────
   {
@@ -184,6 +250,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'New Registration Alert (SMS)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `New registration for {{meeting_title}}: {{contact_name}} ({{contact_email}}). Total: {{registrant_count}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'contact_name', 'contact_email', 'registrant_count'],
+  },
+  {
+    name: 'New Registration Alert (WhatsApp)', category: 'meetings', templateType: 'meeting_facilitator_new_registration', channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: `New registration for {{meeting_title}}: {{contact_name}} ({{contact_email}}). Total: {{registrant_count}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'contact_name', 'contact_email', 'registrant_count'],
@@ -207,6 +279,13 @@ export const TEMPLATES: TemplateDef[] = [
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 2880, offsetLabel: '2 days before', eventType: 'meeting' },
   },
   {
+    name: 'Meeting Reminder – 2 Days (WhatsApp)', category: 'meetings', templateType: 'meeting_reminder_2days', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: '📅 Reminder: {{meeting_title}} is in 2 days — {{meeting_date}} at {{meeting_time}}. Join: {{registrant_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time', 'registrant_join_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 2880, offsetLabel: '2 days before', eventType: 'meeting' },
+  },
+  {
     name: 'Meeting Reminder – 1 Day (Email)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Tomorrow: {{meeting_title}}',
@@ -216,6 +295,13 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Meeting Reminder – 1 Day (SMS)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'sms',
+    recipientType: 'external_alert',
+    body: '📅 Reminder: {{meeting_title}} is tomorrow at {{meeting_time}}. Join: {{registrant_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_join_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 1440, offsetLabel: '1 day before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Reminder – 1 Day (WhatsApp)', category: 'meetings', templateType: 'meeting_reminder_1day', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: '📅 Reminder: {{meeting_title}} is tomorrow at {{meeting_time}}. Join: {{registrant_join_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_join_link'],
@@ -237,6 +323,13 @@ export const TEMPLATES: TemplateDef[] = [
     reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
   },
   {
+    name: 'Meeting Reminder – 1 Hour (WhatsApp)', category: 'meetings', templateType: 'meeting_reminder_1hour', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: '⏰ {{meeting_title}} starts in 1 hour at {{meeting_time}}. Join: {{registrant_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_join_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 60, offsetLabel: '1 hour before', eventType: 'meeting' },
+  },
+  {
     name: 'Meeting Reminder – 15 Minutes (Email)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Starting in 15 minutes: {{meeting_title}}',
@@ -246,6 +339,13 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Meeting Reminder – 15 Minutes (SMS)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'sms',
+    recipientType: 'external_alert',
+    body: '⏰ {{meeting_title}} starts in 15 minutes. Join: {{registrant_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'registrant_join_link'],
+    reminderConfig: { triggerType: 'before_event', offsetMinutes: 15, offsetLabel: '15 minutes before', eventType: 'meeting' },
+  },
+  {
+    name: 'Meeting Reminder – 15 Minutes (WhatsApp)', category: 'meetings', templateType: 'meeting_reminder_15min', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: '⏰ {{meeting_title}} starts in 15 minutes. Join: {{registrant_join_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'registrant_join_link'],
@@ -266,6 +366,13 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'registrant_join_link'],
     reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
   },
+  {
+    name: 'Meeting Starting Now (WhatsApp)', category: 'meetings', templateType: 'meeting_time_up', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: '🔔 {{meeting_title}} is starting now! Join: {{registrant_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'registrant_join_link'],
+    reminderConfig: { triggerType: 'on_deadline', offsetMinutes: 0, offsetLabel: 'At event time', eventType: 'meeting' },
+  },
 
   // ── 4. Post-Event: Thank You (Attendees) ────────────────────────────────
   {
@@ -277,6 +384,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Post-Event Thank You (SMS)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'sms',
+    recipientType: 'external_alert',
+    body: 'Thank you for attending {{meeting_title}}! Recording: {{recording_link}} — {{org_name}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'recording_link', 'org_name'],
+  },
+  {
+    name: 'Post-Event Thank You (WhatsApp)', category: 'meetings', templateType: 'meeting_post_event_thankyou', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: 'Thank you for attending {{meeting_title}}! Recording: {{recording_link}} — {{org_name}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'recording_link', 'org_name'],
@@ -296,6 +409,12 @@ export const TEMPLATES: TemplateDef[] = [
     body: 'Hi {{contact_name}}, we missed you at {{meeting_title}}. Catch the recording: {{recording_link}} — {{org_name}}',
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'org_name'],
   },
+  {
+    name: 'Absentee Follow-Up (WhatsApp)', category: 'meetings', templateType: 'meeting_post_event_absentee', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: 'Hi {{contact_name}}, we missed you at {{meeting_title}}. Catch the recording: {{recording_link}} — {{org_name}}',
+    variableContext: 'contact_name', declaredVariables: ['contact_name', 'meeting_title', 'recording_link', 'org_name'],
+  },
 
   // ── 6. Facilitator: Pre-Event Briefing ──────────────────────────────────
   {
@@ -307,6 +426,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Facilitator Pre-Event Briefing (SMS)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: 'Facilitator alert: {{meeting_title}} starts at {{meeting_time}}. {{registrant_count}} registered. Join: {{facilitator_join_link}}',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_count', 'facilitator_join_link'],
+  },
+  {
+    name: 'Facilitator Pre-Event Briefing (WhatsApp)', category: 'meetings', templateType: 'meeting_facilitator_pre_event', channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: 'Facilitator alert: {{meeting_title}} starts at {{meeting_time}}. {{registrant_count}} registered. Join: {{facilitator_join_link}}',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_time', 'registrant_count', 'facilitator_join_link'],
@@ -326,6 +451,12 @@ export const TEMPLATES: TemplateDef[] = [
     body: '{{meeting_title}} complete. Attended: {{attendee_count}}/{{registrant_count}}. No-shows: {{no_show_count}}.',
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'attendee_count', 'registrant_count', 'no_show_count'],
   },
+  {
+    name: 'Facilitator Post-Event Debrief (WhatsApp)', category: 'meetings', templateType: 'meeting_facilitator_post_event', channel: 'whatsapp',
+    recipientType: 'internal_alert',
+    body: '{{meeting_title}} complete. Attended: {{attendee_count}}/{{registrant_count}}. No-shows: {{no_show_count}}.',
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'attendee_count', 'registrant_count', 'no_show_count'],
+  },
 
   // ── Forms ────────────────────────────────═════════════════════════════════
   {
@@ -336,6 +467,11 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Form Invitation (SMS)', category: 'forms', templateType: 'form_invitation', channel: 'sms',
+    body: 'Hi {{respondent_name}}, thanks for your interest in {{org_name}}! 🚀 We\'ve received your request. A team member will call you shortly to assist you with your next steps.',
+    variableContext: 'form', declaredVariables: ['respondent_name', 'org_name'],
+  },
+  {
+    name: 'Form Invitation (WhatsApp)', category: 'forms', templateType: 'form_invitation', channel: 'whatsapp',
     body: 'Hi {{respondent_name}}, thanks for your interest in {{org_name}}! 🚀 We\'ve received your request. A team member will call you shortly to assist you with your next steps.',
     variableContext: 'form', declaredVariables: ['respondent_name', 'org_name'],
   },
@@ -356,6 +492,11 @@ export const TEMPLATES: TemplateDef[] = [
     body: 'Reminder: {{form_name}} is due in {{days_remaining}} day(s). Complete it: {{form_link}}',
     variableContext: 'form', declaredVariables: ['form_name', 'days_remaining', 'form_link'],
   },
+  {
+    name: 'Form Submission Reminder (WhatsApp)', category: 'forms', templateType: 'submission_reminder', channel: 'whatsapp',
+    body: 'Reminder: {{form_name}} is due in {{days_remaining}} day(s). Complete it: {{form_link}}',
+    variableContext: 'form', declaredVariables: ['form_name', 'days_remaining', 'form_link'],
+  },
 
   // ── Surveys ───────────────────────────────────────────────────────────────
   {
@@ -370,6 +511,11 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link'],
   },
   {
+    name: 'Survey Invitation (WhatsApp)', category: 'surveys', templateType: 'survey_invitation', channel: 'whatsapp',
+    body: "Hi {{respondent_name}}, we'd love your feedback on {{survey_title}}. Take the survey: {{survey_link}}",
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'survey_link'],
+  },
+  {
     name: 'Survey Invitation Alert (Email) for Team', category: 'surveys', templateType: 'survey_invitation_team', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Survey Invitation Sent: {{survey_title}}',
@@ -378,6 +524,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Survey Invitation Alert (SMS) for Team', category: 'surveys', templateType: 'survey_invitation_team', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, survey invitation for {{survey_title}} has been sent to {{respondent_name}}.`,
+    variableContext: 'survey', declaredVariables: ['user_name', 'survey_title', 'respondent_name'],
+  },
+  {
+    name: 'Survey Invitation Alert (WhatsApp) for Team', category: 'surveys', templateType: 'survey_invitation_team', channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: `Hi {{user_name}}, survey invitation for {{survey_title}} has been sent to {{respondent_name}}.`,
     variableContext: 'survey', declaredVariables: ['user_name', 'survey_title', 'respondent_name'],
@@ -402,6 +554,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'survey', declaredVariables: ['user_name', 'survey_title', 'respondent_name', 'score'],
   },
   {
+    name: 'Survey Completion Alert (WhatsApp) for Team', category: 'surveys', templateType: 'survey_completion_team', channel: 'whatsapp',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, survey {{survey_title}} has been completed by {{respondent_name}}. Score: {{score}}.`,
+    variableContext: 'survey', declaredVariables: ['user_name', 'survey_title', 'respondent_name', 'score'],
+  },
+  {
     name: 'Survey Reminder (Email)', category: 'surveys', templateType: 'survey_reminder', channel: 'email',
     subject: "Reminder: {{survey_title}} — still waiting for your response",
     body: `Hi {{respondent_name}},\n\nWe noticed you haven't completed {{survey_title}} yet.\n\n🔗 Complete the survey: [Start Survey]({{survey_link}})\n📅 Days remaining: {{days_remaining}}\n\n{{org_name}}`,
@@ -409,6 +567,11 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Survey Reminder (SMS)', category: 'surveys', templateType: 'survey_reminder', channel: 'sms',
+    body: "Hi {{respondent_name}}, don't forget to complete {{survey_title}}. {{days_remaining}} day(s) left: {{survey_link}}",
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'days_remaining', 'survey_link'],
+  },
+  {
+    name: 'Survey Reminder (WhatsApp)', category: 'surveys', templateType: 'survey_reminder', channel: 'whatsapp',
     body: "Hi {{respondent_name}}, don't forget to complete {{survey_title}}. {{days_remaining}} day(s) left: {{survey_link}}",
     variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'days_remaining', 'survey_link'],
   },
@@ -438,6 +601,11 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link'],
   },
   {
+    name: 'Contract Pending (WhatsApp)', category: 'agreements', templateType: 'contract_pending', channel: 'whatsapp',
+    body: 'Hi {{signatory_name}}, {{contract_name}} is awaiting your signature. Deadline: {{deadline}}. Sign: {{contract_link}}',
+    variableContext: 'agreement', declaredVariables: ['signatory_name', 'contract_name', 'deadline', 'contract_link'],
+  },
+  {
     name: 'Contract Reminder (Email)', category: 'agreements', templateType: 'contract_reminder', channel: 'email',
     subject: 'Reminder: {{contract_name}} expires soon',
     body: `Hi {{signatory_name}},\n\nThis is a reminder that {{contract_name}} requires your signature before the deadline.\n\n⏰ Deadline: {{deadline}}\n🔗 Sign here: [Review and Sign]({{contract_link}})\n\n{{org_name}}`,
@@ -447,6 +615,11 @@ export const TEMPLATES: TemplateDef[] = [
     name: 'Contract Reminder (SMS)', category: 'agreements', templateType: 'contract_reminder', channel: 'sms',
     body: 'Reminder: {{contract_name}} deadline is {{deadline}}. Sign here: {{contract_link}}',
     variableContext: 'agreement', declaredVariables: ['contract_name', 'deadline', 'contract_link'],
+  },
+  {
+    name: 'Contract Reminder (WhatsApp)', category: 'agreements', templateType: 'contract_reminder', channel: 'whatsapp',
+    body: 'Reminder: {{contract_name}} deadline is {{deadline}}. Sign here: {{contract_link}}',
+    variableContext: 'contract_name', declaredVariables: ['contract_name', 'deadline', 'contract_link'],
   },
 
   // ── General ───────────────────────────────────────────────────────────────
@@ -468,6 +641,11 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'entity', declaredVariables: ['entity_name', 'old_stage', 'new_stage', 'assigned_to'],
   },
   {
+    name: 'Stage Change (WhatsApp)', category: 'general', templateType: 'stage_change', channel: 'whatsapp',
+    body: '{{entity_name}} moved from {{old_stage}} to {{new_stage}}. Assigned to: {{assigned_to}}.',
+    variableContext: 'entity', declaredVariables: ['entity_name', 'old_stage', 'new_stage', 'assigned_to'],
+  },
+  {
     name: 'Assignment Notification (Email)', category: 'general', templateType: 'assignment_notification', channel: 'email',
     subject: '{{entity_name}} has been assigned to you',
     body: `Hi {{assigned_to}},\n\n{{entity_name}} has been assigned to you by {{assigner_name}}.\n\nPlease log in to review the details and take the next steps.\n\n{{org_name}}`,
@@ -481,6 +659,11 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Status Update (SMS)', category: 'general', templateType: 'status_update', channel: 'sms',
+    body: '{{entity_name}} status changed from {{old_status}} to {{new_status}}.',
+    variableContext: 'entity', declaredVariables: ['entity_name', 'old_status', 'new_status'],
+  },
+  {
+    name: 'Status Update (WhatsApp)', category: 'general', templateType: 'status_update', channel: 'whatsapp',
     body: '{{entity_name}} status changed from {{old_status}} to {{new_status}}.',
     variableContext: 'entity', declaredVariables: ['entity_name', 'old_status', 'new_status'],
   },
@@ -600,6 +783,16 @@ export const TEMPLATES: TemplateDef[] = [
     declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
   },
   {
+    name: 'User Invitation (WhatsApp)',
+    category: 'users',
+    templateType: 'user_invitation',
+    channel: 'whatsapp',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, you've been invited to join {{org_name}}. Email: {{user_email}}, Temp Password: {{temp_password}}. Login: {{login_link}}`,
+    variableContext: 'users',
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
+  },
+  {
     name: 'User Password Reset (Email)',
     category: 'users',
     templateType: 'user_password_reset',
@@ -615,6 +808,16 @@ export const TEMPLATES: TemplateDef[] = [
     category: 'users',
     templateType: 'user_password_reset',
     channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, your password for {{org_name}} has been reset. Temp Password: {{temp_password}}. Login: {{login_link}}`,
+    variableContext: 'users',
+    declaredVariables: ['user_name', 'user_email', 'temp_password', 'login_link', 'org_name'],
+  },
+  {
+    name: 'User Password Reset (WhatsApp)',
+    category: 'users',
+    templateType: 'user_password_reset',
+    channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: `Hi {{user_name}}, your password for {{org_name}} has been reset. Temp Password: {{temp_password}}. Login: {{login_link}}`,
     variableContext: 'users',
@@ -641,6 +844,16 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'users',
     declaredVariables: ['user_name', 'org_name'],
   },
+  {
+    name: 'Access Cancellation (WhatsApp)',
+    category: 'users',
+    templateType: 'user_access_cancellation',
+    channel: 'whatsapp',
+    recipientType: 'internal_alert',
+    body: `Hi {{user_name}}, your access to {{org_name}} has been deactivated. Please contact your administrator if you have questions.`,
+    variableContext: 'users',
+    declaredVariables: ['user_name', 'org_name'],
+  },
   // ── Meeting Reschedule & Cancellation Templates ──
   {
     name: 'Meeting Rescheduled (Email) for Guests', category: 'meetings', templateType: 'meeting_rescheduled_guest', channel: 'email',
@@ -651,6 +864,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Meeting Rescheduled (SMS) for Guests', category: 'meetings', templateType: 'meeting_rescheduled_guest', channel: 'sms',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} has been rescheduled to {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link'],
+  },
+  {
+    name: 'Meeting Rescheduled (WhatsApp) for Guests', category: 'meetings', templateType: 'meeting_rescheduled_guest', channel: 'whatsapp',
     recipientType: 'external_alert',
     body: `Hi {{contact_name}}, {{meeting_title}} has been rescheduled to {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}}`,
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link'],
@@ -669,6 +888,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link'],
   },
   {
+    name: 'Meeting Rescheduled (WhatsApp) for Registrants', category: 'meetings', templateType: 'meeting_rescheduled_registrant', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} has been rescheduled to {{meeting_date}} at {{meeting_time}} ({{meeting_timezone}}). Join: {{registrant_join_link}}`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time', 'meeting_timezone', 'registrant_join_link'],
+  },
+  {
     name: 'Facilitator Rescheduled Alert (Email)', category: 'meetings', templateType: 'meeting_rescheduled_facilitator', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Rescheduled: {{meeting_title}}',
@@ -677,6 +902,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Facilitator Rescheduled Alert (SMS)', category: 'meetings', templateType: 'meeting_rescheduled_facilitator', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Facilitator alert: {{meeting_title}} rescheduled to {{meeting_date}} at {{meeting_time}}. Join: {{facilitator_join_link}}`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time', 'facilitator_join_link'],
+  },
+  {
+    name: 'Facilitator Rescheduled Alert (WhatsApp)', category: 'meetings', templateType: 'meeting_rescheduled_facilitator', channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: `Facilitator alert: {{meeting_title}} rescheduled to {{meeting_date}} at {{meeting_time}}. Join: {{facilitator_join_link}}`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time', 'facilitator_join_link'],
@@ -695,6 +926,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time'],
   },
   {
+    name: 'Meeting Cancelled (WhatsApp) for Guests', category: 'meetings', templateType: 'meeting_cancelled_guest', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} scheduled for {{meeting_date}} at {{meeting_time}} has been cancelled.`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time'],
+  },
+  {
     name: 'Meeting Cancelled (Email) for Registrants', category: 'meetings', templateType: 'meeting_cancelled_registrant', channel: 'email',
     recipientType: 'external_alert',
     subject: 'Cancelled: {{meeting_title}}',
@@ -708,6 +945,12 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time'],
   },
   {
+    name: 'Meeting Cancelled (WhatsApp) for Registrants', category: 'meetings', templateType: 'meeting_cancelled_registrant', channel: 'whatsapp',
+    recipientType: 'external_alert',
+    body: `Hi {{contact_name}}, {{meeting_title}} scheduled for {{meeting_date}} at {{meeting_time}} has been cancelled.`,
+    variableContext: 'meeting', declaredVariables: ['contact_name', 'meeting_title', 'meeting_date', 'meeting_time'],
+  },
+  {
     name: 'Facilitator Cancellation Alert (Email)', category: 'meetings', templateType: 'meeting_cancelled_facilitator', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Cancelled: {{meeting_title}}',
@@ -716,6 +959,12 @@ export const TEMPLATES: TemplateDef[] = [
   },
   {
     name: 'Facilitator Cancellation Alert (SMS)', category: 'meetings', templateType: 'meeting_cancelled_facilitator', channel: 'sms',
+    recipientType: 'internal_alert',
+    body: `Facilitator alert: {{meeting_title}} scheduled for {{meeting_date}} at {{meeting_time}} has been cancelled.`,
+    variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time'],
+  },
+  {
+    name: 'Facilitator Cancellation Alert (WhatsApp)', category: 'meetings', templateType: 'meeting_cancelled_facilitator', channel: 'whatsapp',
     recipientType: 'internal_alert',
     body: `Facilitator alert: {{meeting_title}} scheduled for {{meeting_date}} at {{meeting_time}} has been cancelled.`,
     variableContext: 'meeting', declaredVariables: ['meeting_title', 'meeting_date', 'meeting_time'],

@@ -288,6 +288,7 @@ export default function OrgTemplateListClient() {
               <SelectItem value="all">All Channels</SelectItem>
               <SelectItem value="email">Email</SelectItem>
               <SelectItem value="sms">SMS</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp</SelectItem>
               <SelectItem value="in_app">In-App</SelectItem>
               <SelectItem value="push">Push</SelectItem>
             </SelectContent>

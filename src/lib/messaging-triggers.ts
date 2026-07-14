@@ -9,7 +9,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_initial',
@@ -18,7 +18,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_1_month',
@@ -27,7 +27,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_1_week',
@@ -36,7 +36,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_5_days',
@@ -45,7 +45,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_3_days',
@@ -54,7 +54,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_2_days',
@@ -63,7 +63,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_1_day',
@@ -72,7 +72,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_today',
@@ -81,7 +81,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_invitation_last_chance',
@@ -90,7 +90,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
 
   // ── Meetings: Core ────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_facilitator_new_registration',
@@ -119,7 +119,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_reminder_1day',
@@ -128,7 +128,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_reminder_1hour',
@@ -137,7 +137,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_reminder_15min',
@@ -146,7 +146,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_time_up',
@@ -155,7 +155,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_post_event_thankyou',
@@ -164,7 +164,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_post_event_absentee',
@@ -173,7 +173,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_facilitator_pre_event',
@@ -202,7 +202,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'forms',
     target: 'external_client',
     recipientType: 'respondent',
-    supportedChannels: ['email', 'sms', 'push'],
+    supportedChannels: ['email', 'sms', 'whatsapp', 'push'],
   },
   {
     id: 'submission_confirmation',
@@ -220,7 +220,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'forms',
     target: 'external_client',
     recipientType: 'respondent',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
 
   // ── Surveys ───────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'surveys',
     target: 'external_client',
     recipientType: 'respondent',
-    supportedChannels: ['email', 'sms', 'push'],
+    supportedChannels: ['email', 'sms', 'whatsapp', 'push'],
   },
   {
     id: 'survey_invitation_team',
@@ -267,7 +267,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'surveys',
     target: 'external_client',
     recipientType: 'respondent',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
 
   // ── Agreements ────────────────────────────────────────────────────────────
@@ -296,7 +296,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'agreements',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'contract_reminder',
@@ -305,7 +305,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'agreements',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
 
   // ── General / Entities ────────────────────────────────────────────────────
@@ -325,7 +325,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'general',
     target: 'external_client',
     recipientType: 'entity',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'assignment_notification',
@@ -343,7 +343,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'general',
     target: 'external_client',
     recipientType: 'entity',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
 
   // ── Tasks ─────────────────────────────────────────────────────────────────
@@ -451,7 +451,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_rescheduled_registrant',
@@ -460,7 +460,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_rescheduled_facilitator',
@@ -478,7 +478,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_cancelled_registrant',
@@ -487,7 +487,7 @@ export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
     category: 'meetings',
     target: 'external_client',
     recipientType: 'external_alert',
-    supportedChannels: ['email', 'sms'],
+    supportedChannels: ['email', 'sms', 'whatsapp'],
   },
   {
     id: 'meeting_cancelled_facilitator',
