@@ -826,16 +826,62 @@ export function VisualBlock({
         }
         case 'divider':
             return <hr className="w-full my-6 border-slate-200" />;
-        case 'score-card':
+        case 'score-card': {
+            const pillTextVal = block.pillText || 'Assessment Result';
+            const subtitleVal = block.content || 'Total Points Recorded';
             return (
                 <div className="w-full py-6">
-                    <Card className="bg-blue-600 text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
-                        <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase ">Assessment Result</Badge>
-                        <span className="text-6xl font-semibold tabular-nums tracking-tighter">{(simulationVars.score as string | number) || 0}</span>
-                        <span className="text-[10px] font-bold opacity-60 mt-1">Total Points Recorded</span>
+                    <Card 
+                        className={cn(
+                            "text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center",
+                            !s.backgroundColor && "bg-blue-600"
+                        )}
+                        style={{
+                            backgroundColor: s.backgroundColor || undefined,
+                            borderRadius: s.borderRadius ? ensureUnit(s.borderRadius) : undefined,
+                            borderWidth: s.borderWidth ? ensureUnit(s.borderWidth) : undefined,
+                            borderStyle: s.borderStyle || undefined,
+                            borderColor: s.borderColor || undefined,
+                        }}
+                    >
+                        {isEditing ? (
+                            <div className="mb-4">
+                                <SlashInput
+                                    value={block.pillText || ''}
+                                    onChange={(val) => onContentUpdate?.({ pillText: val })}
+                                    variables={autocompleteVariables}
+                                    className="bg-white/10 text-white border-white/20 border rounded-full px-3 py-1 text-[8px] font-semibold uppercase text-center w-auto focus:ring-0 focus:outline-none h-auto"
+                                    placeholder="Assessment Result"
+                                    style={{ width: `${Math.max(pillTextVal.length || 18, 4)}ch` }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        ) : (
+                            <Badge variant="outline" className="mb-4 bg-card/10 text-white border-white/20 px-3 py-1 text-[8px] font-semibold uppercase">
+                                {renderTextWithVariablePills(pillTextVal)}
+                            </Badge>
+                        )}
+                        <span className="text-6xl font-semibold tabular-nums tracking-tighter" style={{ fontFamily: s.fontFamily, color: s.color }}>{(simulationVars.score as string | number) || 0}</span>
+                        {isEditing ? (
+                            <div className="mt-1 w-full">
+                                <SlashInput
+                                    value={block.content || ''}
+                                    onChange={(val) => onContentUpdate?.({ content: val })}
+                                    variables={autocompleteVariables}
+                                    className="bg-transparent border-none outline-none font-bold text-[10px] text-white opacity-60 text-center w-full focus:ring-0 focus:outline-none h-auto"
+                                    placeholder="Total Points Recorded"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        ) : (
+                            <span className="text-[10px] font-bold opacity-60 mt-1">
+                                {renderTextWithVariablePills(subtitleVal)}
+                            </span>
+                        )}
                     </Card>
                 </div>
             );
+        }
         case 'logo': {
             const logoUrl = resolveVariables(block.url || '{{org_logo_url}}', simulationVars);
             return (

@@ -90,6 +90,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const headingUrlRef = React.useRef<HTMLInputElement>(null);
     const headingRsvpDateRef = React.useRef<HTMLInputElement>(null);
     const headingRsvpTimeRef = React.useRef<HTMLInputElement>(null);
+    const scoreCardPillRef = React.useRef<HTMLInputElement>(null);
+    const scoreCardSubRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -147,7 +149,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     };
 
     // Relevance Flags for Accordion panels
-    const hasTypography = ['heading', 'text', 'quote', 'list', 'button', 'header', 'footer', 'rsvp'].includes(block.type);
+    const hasTypography = ['heading', 'text', 'quote', 'list', 'button', 'header', 'footer', 'rsvp', 'score-card'].includes(block.type);
     const hasSpacing = true; // Spacing is universally applicable
     const hasBorders = ['heading', 'text', 'quote', 'button', 'image', 'video', 'columns', 'score-card', 'rsvp'].includes(block.type);
     const hasBackground = ['heading', 'text', 'quote', 'button', 'list', 'columns', 'score-card', 'logo', 'rsvp'].includes(block.type);
@@ -1103,6 +1105,51 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                             <p className="text-[10px] font-medium leading-relaxed">
                                 Select blocks nested inside the column cells directly on the canvas to configure their individual content and styling parameters.
                             </p>
+                        </div>
+                    )}
+
+                    {/* Score Card Settings */}
+                    {block.type === 'score-card' && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Badge / Pill Text</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={scoreCardPillRef} 
+                                        currentValue={block.pillText || ''} 
+                                        onFieldChange={val => onUpdate({ pillText: val })} 
+                                    />
+                                </div>
+                                <SlashInput 
+                                    ref={scoreCardPillRef}
+                                    value={block.pillText || ''} 
+                                    onChange={val => onUpdate({ pillText: val })} 
+                                    variables={autocompleteVariables}
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="e.g. Assessment Result"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Subtitle / Subtext</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={scoreCardSubRef} 
+                                        currentValue={block.content || ''} 
+                                        onFieldChange={val => onUpdate({ content: val })} 
+                                    />
+                                </div>
+                                <SlashInput 
+                                    ref={scoreCardSubRef}
+                                    value={block.content || ''} 
+                                    onChange={val => onUpdate({ content: val })} 
+                                    variables={autocompleteVariables}
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
+                                    placeholder="e.g. Total Points Recorded"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>

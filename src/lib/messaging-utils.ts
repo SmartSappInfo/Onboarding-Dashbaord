@@ -588,11 +588,18 @@ export function renderBlocksToHtml(
       case 'score-card': {
         const score = variables.score || 0;
         const maxScore = variables.max_score || 100;
+        const pillTextVal = resolveVariables(block.pillText || 'Assessment Result', variables);
+        const subtitleVal = resolveVariables(block.content || `OUT OF ${maxScore} POINTS`, variables);
+        
+        const scoreBg = s.backgroundColor || options?.style?.primaryColor || '#3B5FFF';
+        const scoreColor = s.color || '#ffffff';
+        const scoreRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '24px';
+        
         blockHtml = `
-          <div style="background-color: ${options?.style?.primaryColor || '#3B5FFF'}; color: #ffffff; padding: 48px 32px; border-radius: 24px; text-align: center; margin: 32px 0; font-family: '${fontFam}', sans-serif; box-shadow: 0 20px 25px -5px rgba(59, 95, 255, 0.2);">
-            <div style="text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; margin-bottom: 16px; opacity: 0.8;">Assessment Result</div>
-            <div style="font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.05em;">${score}</div>
-            <div style="font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 8px; letter-spacing: 0.1em;">OUT OF ${maxScore} POINTS</div>
+          <div style="background-color: ${scoreBg}; color: ${scoreColor}; ${paddingStyles ? '' : 'padding: 48px 32px;'} border-radius: ${scoreRadius}; text-align: center; margin: 32px 0; font-family: '${fontFam}', sans-serif; box-shadow: 0 20px 25px -5px rgba(59, 95, 255, 0.2); ${wrapperStyle}">
+            <div style="text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; margin-bottom: 16px; opacity: 0.8; color: ${scoreColor};">${pillTextVal}</div>
+            <div style="font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.05em; color: ${scoreColor};">${score}</div>
+            <div style="font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 8px; letter-spacing: 0.1em; color: ${scoreColor};">${subtitleVal}</div>
           </div>
         `;
         break;
