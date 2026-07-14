@@ -257,6 +257,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
     const watchedCustomBody = watch('customBody');
     const watchedMessageSourceType = watch('messageSourceType');
+    const watchedSenderProfileId = watch('senderProfileId');
 
     const [audienceSource, setAudienceSource] = React.useState<'individual' | 'manual' | 'saved'>('individual');
     const [savedAudienceId, setSavedAudienceId] = React.useState('');
@@ -408,6 +409,26 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     React.useEffect(() => {
         fetchSmsBalanceAction(activeOrganizationId).then(r => { if (r.success) setSmsBalance(r.balance ?? 0); });
     }, [activeOrganizationId]);
+
+    // Auto-select default sender profile on Publish step load
+    React.useEffect(() => {
+        if (step !== 5) return;
+        if (watchedChannel === 'whatsapp') {
+            if (watchedSenderProfileId !== 'whatsapp') {
+                setValue('senderProfileId', 'whatsapp');
+            }
+            return;
+        }
+        if (!profiles || profiles.length === 0) return;
+        
+        const isValidSelected = profiles.some(p => p.id === watchedSenderProfileId);
+        if (!isValidSelected) {
+            const defaultProfile = profiles.find(p => p.isDefault) || profiles[0];
+            if (defaultProfile) {
+                setValue('senderProfileId', defaultProfile.id);
+            }
+        }
+    }, [step, watchedChannel, profiles, watchedSenderProfileId, setValue]);
 
     React.useEffect(() => {
         if (!searchParams) return;
