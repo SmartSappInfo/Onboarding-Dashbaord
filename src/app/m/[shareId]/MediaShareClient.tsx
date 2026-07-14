@@ -5,8 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { 
     Video, Music, FileText, Link2, Download, ExternalLink, 
-    Maximize2, Play, Pause, Volume2, Sparkles, ArrowRight, 
-    ChevronRight, Eye 
+    Play, Pause, Volume2, Sparkles, ArrowRight, ChevronRight, X 
 } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
 
@@ -23,6 +22,8 @@ interface MediaShareClientProps {
     ctaText: string;
     ctaTargetUrl: string;
     ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaMode: 'modal' | 'redirect' | 'replace';
+    ctaPretext: string;
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
@@ -35,6 +36,8 @@ export default function MediaShareClient({
     ctaText,
     ctaTargetUrl,
     ctaType,
+    ctaMode,
+    ctaPretext,
     orgBranding,
     isEmbed,
     searchParams,
@@ -44,6 +47,7 @@ export default function MediaShareClient({
     const [currentTime, setCurrentTime] = React.useState(0);
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(0.8);
+    const [isCtaModalOpen, setIsCtaModalOpen] = React.useState(false);
 
     // Audio handlers
     const toggleAudioPlay = () => {
@@ -104,11 +108,9 @@ export default function MediaShareClient({
     const { isEmbeddable, embedUrl } = parseEmbedUrl(asset.url);
 
     // Call-To-Action Link Resolver with query params propagation
-    const handleCtaClick = () => {
-        if (ctaType === 'none' || !ctaTargetUrl) return;
-
+    const getFinalCtaUrl = () => {
+        if (!ctaTargetUrl) return '';
         try {
-            // Build the target URL
             const urlObj = ctaTargetUrl.startsWith('http')
                 ? new URL(ctaTargetUrl)
                 : new URL(ctaTargetUrl, window.location.origin);
@@ -120,10 +122,22 @@ export default function MediaShareClient({
                 }
             });
 
-            window.open(urlObj.toString(), '_blank');
+            return urlObj.toString();
         } catch {
-            // Fallback direct open
-            window.open(ctaTargetUrl, '_blank');
+            return ctaTargetUrl;
+        }
+    };
+
+    const handleCtaClick = () => {
+        if (ctaType === 'none' || !ctaTargetUrl) return;
+        const finalUrl = getFinalCtaUrl();
+
+        if (ctaMode === 'modal') {
+            setIsCtaModalOpen(true);
+        } else if (ctaMode === 'replace') {
+            window.location.href = finalUrl;
+        } else {
+            window.open(finalUrl, '_blank');
         }
     };
 
@@ -224,7 +238,7 @@ export default function MediaShareClient({
 
                 {/* Overlaid Title/CTA Bar on Hover */}
                 <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
-                    <div className="truncate pr-4">
+                    <div className="truncate pr-4 text-left">
                         <p className="text-xs font-bold truncate">{title}</p>
                         <p className="text-[10px] text-muted-foreground truncate mt-0.5">{description}</p>
                     </div>
@@ -232,12 +246,32 @@ export default function MediaShareClient({
                         <Button 
                             size="sm" 
                             onClick={handleCtaClick} 
-                            className="rounded-xl text-[10px] font-black h-8 px-4 bg-primary text-white hover:bg-primary/90 flex items-center gap-1 shrink-0"
+                            className="rounded-xl text-[10px] font-black h-8 px-4 bg-primary text-white hover:bg-primary/90 flex items-center gap-1 shrink-0 cursor-pointer"
                         >
                             {ctaText || 'Get Started'} <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                     )}
                 </div>
+
+                {/* Render the iframe modal inside embed frame */}
+                {isCtaModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+                        <div className="relative w-full max-w-4xl h-[90vh] bg-[#070913] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                            <div className="p-4 border-b border-slate-900 flex justify-between items-center bg-[#070913]">
+                                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Target Action Window</h3>
+                                <button
+                                    onClick={() => setIsCtaModalOpen(false)}
+                                    className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl transition-all cursor-pointer text-slate-400 hover:text-slate-100 text-[10px] font-bold flex items-center gap-1"
+                                >
+                                    <X className="h-3.5 w-3.5" /> Close
+                                </button>
+                            </div>
+                            <div className="flex-1 w-full bg-white relative">
+                                <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -273,7 +307,7 @@ export default function MediaShareClient({
                         variant="ghost"
                         size="sm"
                         onClick={() => window.open(asset.url, '_blank')}
-                        className="rounded-xl text-xs font-black text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-slate-800/40 gap-1.5 h-9"
+                        className="rounded-xl text-xs font-black text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-slate-800/40 gap-1.5 h-9 cursor-pointer"
                     >
                         <Download className="h-3.5 w-3.5" /> Direct Download
                     </Button>
@@ -282,7 +316,19 @@ export default function MediaShareClient({
 
             {/* Main Visual Arena */}
             <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 md:py-12 flex flex-col items-center gap-8 text-center">
-                {/* Media Presentation Viewport */}
+                {/* 1. Typography and Meta Context - NOW AT THE TOP */}
+                <div className="w-full max-w-3xl space-y-3">
+                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-50 leading-tight whitespace-pre-line">
+                        {title}
+                    </h1>
+                    {description && (
+                        <p className="text-sm md:text-base text-slate-400 font-medium leading-relaxed whitespace-pre-line">
+                            {description}
+                        </p>
+                    )}
+                </div>
+
+                {/* 2. Media Presentation Viewport - IN THE MIDDLE */}
                 <div className="w-full relative rounded-[2rem] border border-slate-900 bg-slate-950/40 shadow-2xl overflow-hidden min-h-[300px] md:min-h-[500px] flex items-center justify-center">
                     {/* Glowing Accent Backdrop */}
                     <div className="absolute -inset-10 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 blur-3xl opacity-40 pointer-events-none" />
@@ -357,7 +403,7 @@ export default function MediaShareClient({
                             <div className="flex items-center gap-4 bg-slate-900/40 border border-slate-800/60 p-4 rounded-2xl backdrop-blur-md">
                                 <button
                                     onClick={toggleAudioPlay}
-                                    className="p-3 bg-primary text-white rounded-xl active:scale-95 transition-all hover:bg-primary/90 shadow-lg shadow-primary/20"
+                                    className="p-3 bg-primary text-white rounded-xl active:scale-95 transition-all hover:bg-primary/90 shadow-lg shadow-primary/20 cursor-pointer"
                                 >
                                     {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                                 </button>
@@ -415,7 +461,7 @@ export default function MediaShareClient({
                             </div>
                             <Button 
                                 onClick={() => window.open(asset.url, '_blank')} 
-                                className="w-full h-11 rounded-xl text-xs font-bold gap-2 bg-slate-900 border hover:bg-slate-800"
+                                className="w-full h-11 rounded-xl text-xs font-bold gap-2 bg-slate-900 border hover:bg-slate-800 cursor-pointer"
                             >
                                 Navigate to Link <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
@@ -423,32 +469,23 @@ export default function MediaShareClient({
                     )}
                 </div>
 
-                {/* Typography and Meta Context */}
-                <div className="w-full max-w-3xl space-y-6 mt-4">
-                    <div className="space-y-3">
-                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-50 leading-tight whitespace-pre-line">
-                            {title}
-                        </h1>
-                        {description && (
-                            <p className="text-sm md:text-base text-slate-400 font-medium leading-relaxed whitespace-pre-line">
-                                {description}
+                {/* 3. CTA Pre-text & CTA Button Layout - AT THE BOTTOM */}
+                {ctaType !== 'none' && (
+                    <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2">
+                        {ctaPretext && (
+                            <p className="text-sm md:text-base text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
+                                {ctaPretext}
                             </p>
                         )}
+                        <Button
+                            onClick={handleCtaClick}
+                            className="rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer"
+                        >
+                            {ctaText || 'Get Started'}
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </Button>
                     </div>
-
-                    {/* Dynamic Call To Action Trigger */}
-                    {ctaType !== 'none' && (
-                        <div className="pt-4 flex justify-center">
-                            <Button
-                                onClick={handleCtaClick}
-                                className="rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer"
-                            >
-                                {ctaText || 'Get Started'}
-                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                )}
             </main>
 
             {/* Custom Brand Footer */}
@@ -460,6 +497,26 @@ export default function MediaShareClient({
                     </span>
                 </div>
             </footer>
+
+            {/* Render the iframe modal inside public landing layout */}
+            {isCtaModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+                    <div className="relative w-full max-w-4xl h-[90vh] bg-[#070913] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="p-4 border-b border-slate-900 flex justify-between items-center bg-[#070913]">
+                            <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Action View</h3>
+                            <button
+                                onClick={() => setIsCtaModalOpen(false)}
+                                className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-xl transition-all cursor-pointer text-slate-400 hover:text-slate-100 text-xs font-bold flex items-center gap-1"
+                            >
+                                <X className="h-4 w-4" /> Close Window
+                            </button>
+                        </div>
+                        <div className="flex-1 w-full bg-white relative">
+                            <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

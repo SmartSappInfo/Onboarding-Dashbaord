@@ -43,6 +43,8 @@ interface ShareConfig {
     ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
     ctaTargetId: string;
     ctaTargetUrl: string;
+    ctaMode?: 'modal' | 'redirect' | 'replace';
+    ctaPretext?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -77,6 +79,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaType, setCtaType] = React.useState<'none' | 'survey' | 'form' | 'page' | 'external'>('none');
     const [ctaTargetId, setCtaTargetId] = React.useState<string>('');
     const [ctaTargetUrl, setCtaTargetUrl] = React.useState<string>('');
+    const [ctaMode, setCtaMode] = React.useState<'modal' | 'redirect' | 'replace'>('redirect');
+    const [ctaPretext, setCtaPretext] = React.useState<string>('');
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -117,6 +121,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaType(data.ctaType || 'none');
                 setCtaTargetId(data.ctaTargetId || '');
                 setCtaTargetUrl(data.ctaTargetUrl || '');
+                setCtaMode(data.ctaMode || 'redirect');
+                setCtaPretext(data.ctaPretext || '');
                 setIsSaved(true);
             } else {
                 // Generate a fresh random doc ID
@@ -128,6 +134,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaType('none');
                 setCtaTargetId('');
                 setCtaTargetUrl('');
+                setCtaMode('redirect');
+                setCtaPretext('');
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -240,6 +248,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaType,
                 ctaTargetId,
                 ctaTargetUrl,
+                ctaMode,
+                ctaPretext: ctaPretext.trim(),
                 updatedAt: new Date().toISOString(),
             };
 
@@ -371,36 +381,64 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                 </div>
 
                                 {ctaType !== 'none' && (
-                                    <div className="space-y-1.5 text-left">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                                            {ctaType === 'external' ? 'Destination URL' : 'Target Resource'}
-                                        </Label>
-                                        {ctaType === 'external' ? (
-                                            <Input
-                                                value={ctaTargetId}
-                                                onChange={(e) => setCtaTargetId(e.target.value)}
-                                                placeholder="https://example.com"
-                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                    <>
+                                        <div className="space-y-1.5 text-left">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                {ctaType === 'external' ? 'Destination URL' : 'Target Resource'}
+                                            </Label>
+                                            {ctaType === 'external' ? (
+                                                <Input
+                                                    value={ctaTargetId}
+                                                    onChange={(e) => setCtaTargetId(e.target.value)}
+                                                    placeholder="https://example.com"
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                                />
+                                            ) : (
+                                                <select
+                                                    value={ctaTargetId}
+                                                    onChange={(e) => setCtaTargetId(e.target.value)}
+                                                    className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                >
+                                                    <option value="">Select resource...</option>
+                                                    {ctaType === 'survey' && surveys.map((s) => (
+                                                        <option key={s.id} value={s.id}>{s.internalName}</option>
+                                                    ))}
+                                                    {ctaType === 'form' && pdfs.map((f) => (
+                                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                                    ))}
+                                                    {ctaType === 'page' && pages.map((p) => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div className="space-y-1.5 text-left">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Action Behavior</Label>
+                                                <select
+                                                    value={ctaMode}
+                                                    onChange={(e) => setCtaMode(e.target.value as any)}
+                                                    className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                >
+                                                    <option value="redirect">Redirect (New Tab - _blank)</option>
+                                                    <option value="modal">Show inside Modal Dialog</option>
+                                                    <option value="replace">Reload Current Page (Same Tab)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Pretext (Above Button)</Label>
+                                            <SlashTextarea 
+                                                value={ctaPretext}
+                                                onChange={setCtaPretext}
+                                                variables={variables}
+                                                placeholder="Enter pretext layout above button supporting variables..."
+                                                className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
                                             />
-                                        ) : (
-                                            <select
-                                                value={ctaTargetId}
-                                                onChange={(e) => setCtaTargetId(e.target.value)}
-                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
-                                            >
-                                                <option value="">Select resource...</option>
-                                                {ctaType === 'survey' && surveys.map((s) => (
-                                                    <option key={s.id} value={s.id}>{s.internalName}</option>
-                                                ))}
-                                                {ctaType === 'form' && pdfs.map((f) => (
-                                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                                ))}
-                                                {ctaType === 'page' && pages.map((p) => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </div>

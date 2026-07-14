@@ -20,6 +20,8 @@ interface ShareConfig {
     ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
     ctaTargetId: string;
     ctaTargetUrl: string;
+    ctaMode?: 'modal' | 'redirect' | 'replace';
+    ctaPretext?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -140,6 +142,7 @@ export default async function PublicMediaShareRoute({
     // Resolve personalization variables
     let resolvedTitle = config.title || asset.name;
     let resolvedDescription = config.description || '';
+    let resolvedCtaPretext = config.ctaPretext || '';
 
     try {
         const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
@@ -156,6 +159,7 @@ export default async function PublicMediaShareRoute({
 
         resolvedTitle = await FieldsVariablesService.resolveTemplateVariables(resolvedTitle, context);
         resolvedDescription = await FieldsVariablesService.resolveTemplateVariables(resolvedDescription, context);
+        resolvedCtaPretext = await FieldsVariablesService.resolveTemplateVariables(resolvedCtaPretext, context);
     } catch (err) {
         console.warn('[PublicMediaShareRoute] Failed to compile variables:', err);
     }
@@ -170,6 +174,8 @@ export default async function PublicMediaShareRoute({
             ctaText={config.ctaText}
             ctaTargetUrl={config.ctaTargetUrl}
             ctaType={config.ctaType}
+            ctaMode={config.ctaMode || 'redirect'}
+            ctaPretext={resolvedCtaPretext}
             orgBranding={orgBranding}
             isEmbed={isEmbed}
             searchParams={resolvedSearchParams}
