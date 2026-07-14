@@ -70,4 +70,17 @@ describe('Link Picker & Encrypted Tracking Tests', () => {
     expect(compiledHtml).toContain('href="https://google.com"');
     expect(compiledHtml).not.toContain('https://go.smartsapp.comhttps://google.com');
   });
+
+  it('should support composite tracking tokens and format them as contactId:entityId', () => {
+    const contactId = 'ec_test123';
+    const entityId = 'entity_test456';
+    const token = encryptToken(`${contactId}:${entityId}`);
+    
+    const decrypted = decryptToken(token);
+    expect(decrypted).toBe(`${contactId}:${entityId}`);
+    
+    const [decryptedContactId, decryptedEntityId] = decrypted.split(':');
+    expect(decryptedContactId).toBe(contactId);
+    expect(decryptedEntityId).toBe(entityId);
+  });
 });

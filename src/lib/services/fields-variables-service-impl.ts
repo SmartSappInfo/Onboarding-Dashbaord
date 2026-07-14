@@ -959,6 +959,17 @@ export class FieldsVariablesService {
           targetEntityId = parts[1];
         }
 
+        if (!targetEntityId) {
+          try {
+            const contactSnap = await adminDb.collection('contacts').doc(targetContactId).get();
+            if (contactSnap.exists) {
+              targetEntityId = contactSnap.data()?.entityId || null;
+            }
+          } catch (cErr) {
+            console.warn('[FieldsVariablesService] Contacts collection lookup failed:', cErr);
+          }
+        }
+
         if (targetEntityId) {
           const weSnap = await adminDb.collection('workspace_entities')
             .where('workspaceId', 'in', workspaceIds)
