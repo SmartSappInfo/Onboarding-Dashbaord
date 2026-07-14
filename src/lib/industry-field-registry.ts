@@ -311,34 +311,133 @@ export const INDUSTRY_FIELD_REGISTRY: Record<IndustryVertical, IndustryGroupDef[
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
-  // ── Entity Identity ───────────────────────────────────────────────────────
+  // ── General Identity ──────────────────────────────────────────────────────
   {
-    slug: 'entity_identity',
-    name: 'Entity Identity',
-    description: 'Core entity and contact identity fields available across the platform',
+    slug: 'entity_details',
+    name: 'General Identity',
+    description: 'Core entity and contact identity fields',
     entityTypes: ['institution', 'person', 'family'],
     order: 1,
     fields: [
       { name: 'Entity Name', variableName: 'entity_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the entity (school, company, person, or family)' },
-      { name: 'Contact Name (Primary)', variableName: 'contact_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Full name of the primary contact' },
-      { name: 'Contact Email (Primary)', variableName: 'contact_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email address of the primary contact' },
-      { name: 'Contact Phone (Primary)', variableName: 'contact_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone number of the primary contact' },
-      { name: 'Signatory Name', variableName: 'signatory_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Full name of the designated signatory' },
-      { name: 'Signatory Email', variableName: 'signatory_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email address of the designated signatory' },
-      { name: 'Signatory Phone', variableName: 'signatory_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone number of the designated signatory' },
-      { name: 'Initials', variableName: 'initials', type: 'short_text', compatibilityScope: ['common'] },
-      { name: 'Referee', variableName: 'referee', type: 'short_text', compatibilityScope: ['common'] },
-      { name: 'Location String', variableName: 'location_string', type: 'short_text', compatibilityScope: ['common'] },
-      { name: 'Zone Name', variableName: 'zone_name', type: 'short_text', compatibilityScope: ['common'] },
+      { name: 'Initials', variableName: 'initials', type: 'short_text', compatibilityScope: ['common'], helpText: 'Entity initials or short code' },
+      { name: 'Vision / Slogan', variableName: 'slogan', type: 'short_text', compatibilityScope: ['common'], helpText: 'Entity vision statement or slogan' },
       { name: 'Organization Name', variableName: 'org_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the organization' },
       { name: 'Workspace Name', variableName: 'workspace_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the current workspace' },
       { name: 'User Name', variableName: 'user_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the logged-in user sending the message' },
-      // Recipient-aware variables
-      { name: 'Recipient Name', variableName: 'recipient_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the specific contact receiving the message' },
-      { name: 'Recipient Email', variableName: 'recipient_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email of the specific contact receiving the message' },
-      { name: 'Recipient Phone', variableName: 'recipient_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone of the specific contact receiving the message' },
-      { name: 'Recipient Role', variableName: 'recipient_role', type: 'short_text', compatibilityScope: ['common'], helpText: 'Role of the specific contact receiving the message' },
-      { name: 'Recipient First Name', variableName: 'recipient_first_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'First name of the specific contact receiving the message' },
+      { name: 'Referee', variableName: 'referee', type: 'short_text', compatibilityScope: ['common'], helpText: 'Referral source or referee name' },
+    ]
+  },
+
+  // ── Location Data ─────────────────────────────────────────────────────────
+  {
+    slug: 'location_data',
+    name: 'Location Data',
+    description: 'Geographical and address details',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 2,
+    fields: [
+      { name: 'Location String', variableName: 'location_string', type: 'short_text', compatibilityScope: ['common'], helpText: 'Physical location of the entity' },
+      { name: 'Zone Name', variableName: 'zone_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Operational zone or area' },
+      { name: 'Billing Address', variableName: 'billingAddress', type: 'address', compatibilityScope: ['common'], helpText: 'Primary billing address' },
+    ]
+  },
+
+  // ── Billing Profile ───────────────────────────────────────────────────────
+  {
+    slug: 'billing_profile',
+    name: 'Billing Profile',
+    description: 'Billing rates, packages, and transaction balances',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 3,
+    fields: [
+      { name: 'Subscription Package', variableName: 'subscriptionPackageId', type: 'select', compatibilityScope: ['common'], helpText: 'Active subscription tier or package key' },
+      { name: 'Billing Currency', variableName: 'currency', type: 'select', compatibilityScope: ['common'], helpText: 'Default billing currency (e.g. GHS, USD)' },
+      { name: 'Preferred Grant / Discount %', variableName: 'discountPercentage', type: 'number', compatibilityScope: ['common'], helpText: 'Applicable percentage discount' },
+      { name: 'Expected Net Rate', variableName: 'subscriptionRate', type: 'currency', compatibilityScope: ['common'], helpText: 'Calculated expected rate' },
+      { name: 'Capacity', variableName: 'capacity', type: 'number', compatibilityScope: ['common'], helpText: 'Seat or student capacity limit' },
+      { name: 'Arrears Balance', variableName: 'arrearsBalance', type: 'currency', compatibilityScope: ['common'], helpText: 'Current outstanding arrears' },
+      { name: 'Credit Balance', variableName: 'creditBalance', type: 'currency', compatibilityScope: ['common'], helpText: 'Current credit balance' },
+    ]
+  },
+
+  // ── Account Ownership ─────────────────────────────────────────────────────
+  {
+    slug: 'account_ownership',
+    name: 'Account Ownership',
+    description: 'Primary owner and assigned sales representative',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 4,
+    fields: [
+      { name: 'Assigned Representative', variableName: 'assigned_to', type: 'short_text', compatibilityScope: ['common'], helpText: 'Full name of the primary assignee or account manager' },
+    ]
+  },
+
+  // ── Contacts ──────────────────────────────────────────────────────────────
+  {
+    slug: 'entity_contacts',
+    name: 'Contacts',
+    description: 'Primary contact, signatory, and recipient identifiers',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 5,
+    fields: [
+      { name: 'Primary Contact Name', variableName: 'contact_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Full name of the primary contact' },
+      { name: 'Primary Contact Email', variableName: 'contact_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email of the primary contact' },
+      { name: 'Primary Contact Phone', variableName: 'contact_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone number of the primary contact' },
+      { name: 'Signatory Name', variableName: 'signatory_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Full name of the designated signatory' },
+      { name: 'Signatory Email', variableName: 'signatory_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email of the designated signatory' },
+      { name: 'Signatory Phone', variableName: 'signatory_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone number of the designated signatory' },
+      { name: 'Recipient Name', variableName: 'recipient_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the specific message recipient' },
+      { name: 'Recipient Email', variableName: 'recipient_email', type: 'email', compatibilityScope: ['common'], helpText: 'Email of the specific message recipient' },
+      { name: 'Recipient Phone', variableName: 'recipient_phone', type: 'phone', compatibilityScope: ['common'], helpText: 'Phone of the specific message recipient' },
+      { name: 'Recipient Role', variableName: 'recipient_role', type: 'short_text', compatibilityScope: ['common'], helpText: 'Role of the specific message recipient' },
+      { name: 'Recipient First Name', variableName: 'recipient_first_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'First name of the specific recipient' },
+    ]
+  },
+
+  // ── Interests ─────────────────────────────────────────────────────────────
+  {
+    slug: 'interests',
+    name: 'Interests',
+    description: 'Selected interests and program preferences',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 6,
+    fields: [
+      { name: 'Interests / Modules', variableName: 'interests', type: 'multi_select', compatibilityScope: ['common'], helpText: 'Topics or modules the entity is interested in' },
+    ]
+  },
+
+  // ── Current Situation ─────────────────────────────────────────────────────
+  {
+    slug: 'current_situation',
+    name: 'Current Situation',
+    description: 'Needs, challenges, and objectives details',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 7,
+    fields: [
+      { name: 'Current Needs', variableName: 'currentNeeds', type: 'long_text', compatibilityScope: ['common'], helpText: 'Active requirements or needs' },
+      { name: 'Current Challenges', variableName: 'currentChallenges', type: 'long_text', compatibilityScope: ['common'], helpText: 'Pain points or obstacles faced' },
+    ]
+  },
+
+  // ── Online Presence ───────────────────────────────────────────────────────
+  {
+    slug: 'online_presence',
+    name: 'Online Presence',
+    description: 'Digital presence, websites, and social handles',
+    entityTypes: ['institution', 'person', 'family'],
+    order: 8,
+    fields: [
+      { name: 'Website', variableName: 'website', type: 'url', compatibilityScope: ['common'], helpText: 'Official website URL' },
+      { name: 'Digital Address', variableName: 'digitalAddress', type: 'short_text', compatibilityScope: ['common'], helpText: 'National digital address code' },
+      { name: 'Google Map Location', variableName: 'googleMapLocation', type: 'url', compatibilityScope: ['common'], helpText: 'Google Maps directions link' },
+      { name: 'Google Business Profile', variableName: 'googleBusinessProfile', type: 'url', compatibilityScope: ['common'], helpText: 'Google Business profile page' },
+      { name: 'Facebook', variableName: 'facebook', type: 'url', compatibilityScope: ['common'], helpText: 'Facebook page link' },
+      { name: 'WhatsApp', variableName: 'whatsapp', type: 'phone', compatibilityScope: ['common'], helpText: 'WhatsApp contact link or number' },
+      { name: 'Instagram', variableName: 'instagram', type: 'url', compatibilityScope: ['common'], helpText: 'Instagram handle link' },
+      { name: 'LinkedIn', variableName: 'linkedin', type: 'url', compatibilityScope: ['common'], helpText: 'LinkedIn company or profile page' },
+      { name: 'YouTube', variableName: 'youtube', type: 'url', compatibilityScope: ['common'], helpText: 'YouTube channel page' },
+      { name: 'TikTok', variableName: 'tiktok', type: 'url', compatibilityScope: ['common'], helpText: 'TikTok profile link' },
     ]
   },
 
@@ -348,7 +447,7 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
     name: 'System & Date/Time',
     description: 'Auto-computed date and time variables',
     entityTypes: ['institution', 'person', 'family'],
-    order: 2,
+    order: 9,
     fields: [
       { name: 'Current Date', variableName: 'current_date', type: 'date', compatibilityScope: ['common'], helpText: "Today's date (auto-computed)" },
       { name: 'Current Time', variableName: 'current_time', type: 'short_text', compatibilityScope: ['common'], helpText: 'Current time of day (auto-computed)' },
@@ -367,11 +466,11 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Meeting Link', variableName: 'meeting_link', type: 'url', compatibilityScope: ['common'], helpText: 'URL to join the meeting' },
       { name: 'Meeting Time', variableName: 'meeting_time', type: 'datetime', compatibilityScope: ['common'], helpText: 'Scheduled time of the meeting' },
       { name: 'Meeting Title', variableName: 'meeting_title', type: 'short_text', compatibilityScope: ['common'], helpText: 'Title or name of the meeting' },
-      { name: 'Meeting Type', variableName: 'meeting_type', type: 'short_text', compatibilityScope: ['common'], helpText: 'Type/category of the meeting (e.g. Webinar, 1:1)' },
+      { name: 'Meeting Type', variableName: 'meeting_type', type: 'short_text', compatibilityScope: ['common'], helpText: 'Type/category of the meeting' },
       { name: 'Organizer Name', variableName: 'organizer_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the meeting organizer' },
-      { name: 'Attendee Names', variableName: 'attendee_names', type: 'short_text', compatibilityScope: ['common'], helpText: 'Comma-separated list of attendee names' },
+      { name: 'Attendee Names', variableName: 'attendee_names', type: 'short_text', compatibilityScope: ['common'], helpText: 'List of attendee names' },
       { name: 'Meeting Date', variableName: 'meeting_date', type: 'date', compatibilityScope: ['common'], helpText: 'Date of the meeting' },
-      { name: 'Meeting Duration', variableName: 'meeting_duration', type: 'short_text', compatibilityScope: ['common'], helpText: 'Duration of the meeting (e.g. 60 minutes)' },
+      { name: 'Meeting Duration', variableName: 'meeting_duration', type: 'short_text', compatibilityScope: ['common'], helpText: 'Duration of the meeting' },
     ]
   },
 
@@ -388,8 +487,8 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Submission Deadline', variableName: 'submission_deadline', type: 'date', compatibilityScope: ['common'], helpText: 'Deadline for form submission' },
       { name: 'Respondent Name', variableName: 'respondent_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the person filling out the form' },
       { name: 'Submission Date', variableName: 'submission_date', type: 'date', compatibilityScope: ['common'], helpText: 'Date the form was submitted' },
-      { name: 'Days Remaining (Form)', variableName: 'form_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until the submission deadline' },
-      { name: 'Agreement URL', variableName: 'agreement_url', type: 'url', compatibilityScope: ['common'], helpText: 'Direct link to the contract/agreement PDF' },
+      { name: 'Days Remaining (Form)', variableName: 'form_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until submission deadline' },
+      { name: 'Agreement URL', variableName: 'agreement_url', type: 'url', compatibilityScope: ['common'], helpText: 'Direct link to contract/agreement PDF' },
     ]
   },
 
@@ -407,7 +506,7 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Score', variableName: 'score', type: 'number', compatibilityScope: ['common'], helpText: 'Score achieved on the survey' },
       { name: 'Result Message', variableName: 'result_message', type: 'short_text', compatibilityScope: ['common'], helpText: 'Message based on survey result/score' },
       { name: 'Completion Date', variableName: 'completion_date', type: 'date', compatibilityScope: ['common'], helpText: 'Date the survey was completed' },
-      { name: 'Days Remaining (Survey)', variableName: 'survey_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until the survey deadline' },
+      { name: 'Days Remaining (Survey)', variableName: 'survey_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until survey deadline' },
     ]
   },
 
@@ -423,9 +522,9 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
       { name: 'Contract Link', variableName: 'contract_link', type: 'url', compatibilityScope: ['common'], helpText: 'URL to view or sign the contract' },
       { name: 'Signatory Name', variableName: 'signatory_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the person who signs the contract' },
       { name: 'Signing Deadline', variableName: 'signing_deadline', type: 'date', compatibilityScope: ['common'], helpText: 'Deadline for signing the contract' },
-      { name: 'Contract Status', variableName: 'contract_status', type: 'short_text', compatibilityScope: ['common'], helpText: 'Current status of the contract (e.g. Pending Signature)' },
+      { name: 'Contract Status', variableName: 'contract_status', type: 'short_text', compatibilityScope: ['common'], helpText: 'Current status of the contract' },
       { name: 'Signing Date', variableName: 'signing_date', type: 'date', compatibilityScope: ['common'], helpText: 'Date the contract was signed' },
-      { name: 'Days Remaining (Contract)', variableName: 'contract_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until the signing deadline' },
+      { name: 'Days Remaining (Contract)', variableName: 'contract_days_remaining', type: 'number', compatibilityScope: ['common'], helpText: 'Number of days until signing deadline' },
     ]
   },
 
@@ -439,8 +538,8 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
     fields: [
       { name: 'Old Stage', variableName: 'old_stage', type: 'short_text', compatibilityScope: ['common'], helpText: 'Previous pipeline stage of the entity' },
       { name: 'New Stage', variableName: 'new_stage', type: 'short_text', compatibilityScope: ['common'], helpText: 'New pipeline stage of the entity' },
-      { name: 'Assigned To', variableName: 'assigned_to', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the user assigned to this entity' },
-      { name: 'Assigner Name', variableName: 'assigner_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of the user who made the assignment' },
+      { name: 'Assigned To', variableName: 'assigned_to', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of user assigned to this entity' },
+      { name: 'Assigner Name', variableName: 'assigner_name', type: 'short_text', compatibilityScope: ['common'], helpText: 'Name of user who made the assignment' },
       { name: 'Old Status', variableName: 'old_status', type: 'short_text', compatibilityScope: ['common'], helpText: 'Previous status of the entity' },
       { name: 'New Status', variableName: 'new_status', type: 'short_text', compatibilityScope: ['common'], helpText: 'New status of the entity' },
     ]
@@ -454,39 +553,11 @@ export const PLATFORM_FIELD_GROUPS: IndustryGroupDef[] = [
     entityTypes: ['institution', 'person', 'family'],
     order: 55,
     fields: [
-      { name: 'First Name', variableName: 'first_name', type: 'short_text', compatibilityScope: ['person', 'common'], helpText: 'First name of the contact (derived from contact_name)' },
+      { name: 'First Name', variableName: 'first_name', type: 'short_text', compatibilityScope: ['person', 'common'], helpText: 'First name of the contact' },
       { name: 'Link', variableName: 'link', type: 'url', compatibilityScope: ['common'], helpText: 'Generic action link for the message' },
       { name: 'ID', variableName: 'id', type: 'short_text', compatibilityScope: ['common'], helpText: 'Entity identifier' },
     ]
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Marketplace Field Packs
-//
-// These are not seeded by default but are available for users to install
-// from the Field Group Marketplace.
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const MARKETPLACE_FIELD_PACKS: IndustryGroupDef[] = [
-  {
-    slug: 'online_presence',
-    name: 'Online Presence',
-    description: 'Digital footprint and social media profiles',
-    entityTypes: ['institution', 'person', 'family'],
-    order: 100,
-    fields: [
-      { name: 'Website', variableName: 'website', type: 'url', compatibilityScope: ['common'] },
-      { name: 'Digital Address', variableName: 'digital_address', type: 'short_text', compatibilityScope: ['common'] },
-      { name: 'Google Map Location', variableName: 'google_map_location', type: 'url', compatibilityScope: ['common'] },
-      { name: 'Google Business Profile', variableName: 'google_business_profile', type: 'url', compatibilityScope: ['common'] },
-      { name: 'LinkedIn', variableName: 'linkedin', type: 'url', compatibilityScope: ['common'] },
-      { name: 'Facebook', variableName: 'facebook', type: 'url', compatibilityScope: ['common'] },
-      { name: 'X (Twitter)', variableName: 'x_twitter', type: 'url', compatibilityScope: ['common'] },
-      { name: 'Instagram', variableName: 'instagram', type: 'url', compatibilityScope: ['common'] },
-      { name: 'TikTok', variableName: 'tiktok', type: 'url', compatibilityScope: ['common'] },
-      { name: 'YouTube', variableName: 'youtube', type: 'url', compatibilityScope: ['common'] },
-      { name: 'WhatsApp', variableName: 'whatsapp', type: 'phone', compatibilityScope: ['common'] },
-    ]
-  }
-];
+export const MARKETPLACE_FIELD_PACKS: IndustryGroupDef[] = [];
