@@ -62,9 +62,9 @@ describe('STATIC_VARIABLES', () => {
     expect(contexts).toContain('entity');
   });
 
-  it('has 31 common variables', () => {
+  it('has 30 common variables', () => {
     const common = STATIC_VARIABLES.filter((v) => v.context === 'common');
-    expect(common).toHaveLength(31);
+    expect(common).toHaveLength(30);
   });
 
   it('every variable has required fields', () => {
