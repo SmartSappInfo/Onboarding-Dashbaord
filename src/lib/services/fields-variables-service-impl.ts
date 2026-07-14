@@ -479,38 +479,49 @@ export class FieldsVariablesService {
       entityData = entitySnap.data();
     }
 
+    interface ExtendedEntity extends Entity {
+      currentNeeds?: string;
+      currentChallenges?: string;
+      assignedTo?: {
+        userId?: string | null;
+        name?: string;
+        email?: string | null;
+      } | null;
+    }
+
     if (context.entityId || entityData) {
       try {
         if (entityData) {
-          valuesMap.set('entity_name', entityData.name ?? '');
+          const extEntity = entityData as ExtendedEntity;
+          valuesMap.set('entity_name', extEntity.name ?? '');
 
           // Resolve entity fields if initials or geographical info are present
-          if (entityData.initials) valuesMap.set('entity_initials', entityData.initials);
+          if (extEntity.initials) valuesMap.set('entity_initials', extEntity.initials);
 
           // Resolve current situation (needs, challenges) explicitly from root
-          if (entityData.currentNeeds !== undefined) {
-            valuesMap.set('currentNeeds', String(entityData.currentNeeds));
+          if (extEntity.currentNeeds !== undefined) {
+            valuesMap.set('currentNeeds', String(extEntity.currentNeeds));
           }
-          if (entityData.currentChallenges !== undefined) {
-            valuesMap.set('currentChallenges', String(entityData.currentChallenges));
+          if (extEntity.currentChallenges !== undefined) {
+            valuesMap.set('currentChallenges', String(extEntity.currentChallenges));
           }
 
           // Format interests as comma-separated string if stored as array
-          if (entityData.interests) {
-            const interestsVal = Array.isArray(entityData.interests)
-              ? entityData.interests.join(', ')
-              : String(entityData.interests);
+          if (extEntity.interests) {
+            const interestsVal = Array.isArray(extEntity.interests)
+              ? extEntity.interests.join(', ')
+              : String(extEntity.interests);
             valuesMap.set('interests', interestsVal);
           }
 
           // Flatten sub-buckets for custom fields, online presence, and financial/industry variables
           const buckets = [
-            entityData.financeData,
-            entityData.industryData,
-            entityData.personData,
-            entityData.familyData,
-            entityData.onlinePresence,
-            entityData.customData
+            extEntity.financeData,
+            extEntity.industryData,
+            extEntity.personData,
+            extEntity.familyData,
+            extEntity.onlinePresence,
+            extEntity.customData
           ];
 
           buckets.forEach((bucket) => {
@@ -522,9 +533,11 @@ export class FieldsVariablesService {
           });
 
           // Resolve assigned_to (account manager / representative) name dynamically
-          if (entityData.assignedToId) {
+          if (extEntity.assignedTo?.name) {
+            valuesMap.set('assigned_to', extEntity.assignedTo.name);
+          } else if (extEntity.assignedTo?.userId) {
             try {
-              const repSnap = await getUserDocCached(entityData.assignedToId);
+              const repSnap = await getUserDocCached(extEntity.assignedTo.userId);
               if (repSnap?.exists) {
                 const repData = repSnap.data();
                 if (repData) {

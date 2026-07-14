@@ -58,7 +58,7 @@ export async function executeSeedAllWorkspacesFieldsFerAction(userId: string): P
     }
 
     const success = stats.failed === 0;
-    const finalStatus = success ? 'done' : 'error';
+    const finalStatus = success ? 'completed' : 'failed';
     const summary = success
       ? `Successfully restructured and seeded fields for ${stats.workspacesSeeded} workspaces.`
       : `Restructured fields seeding completed with ${stats.failed} errors.`;
@@ -81,7 +81,7 @@ export async function executeSeedAllWorkspacesFieldsFerAction(userId: string): P
     const errMsg = error instanceof Error ? error.message : String(error);
     await migrationRef.set({
       id: migrationId,
-      status: 'error',
+      status: 'failed',
       lastRunAt: new Date().toISOString(),
       executedBy: userId,
       summary: `Critical migration failure: ${errMsg}`,
