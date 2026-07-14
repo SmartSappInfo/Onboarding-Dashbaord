@@ -487,12 +487,29 @@ export class FieldsVariablesService {
           // Resolve entity fields if initials or geographical info are present
           if (entityData.initials) valuesMap.set('entity_initials', entityData.initials);
 
-          // Flatten sub-buckets for custom fields and industry vertical variables
+          // Resolve current situation (needs, challenges) explicitly from root
+          if (entityData.currentNeeds !== undefined) {
+            valuesMap.set('currentNeeds', String(entityData.currentNeeds));
+          }
+          if (entityData.currentChallenges !== undefined) {
+            valuesMap.set('currentChallenges', String(entityData.currentChallenges));
+          }
+
+          // Format interests as comma-separated string if stored as array
+          if (entityData.interests) {
+            const interestsVal = Array.isArray(entityData.interests)
+              ? entityData.interests.join(', ')
+              : String(entityData.interests);
+            valuesMap.set('interests', interestsVal);
+          }
+
+          // Flatten sub-buckets for custom fields, online presence, and financial/industry variables
           const buckets = [
             entityData.financeData,
             entityData.industryData,
             entityData.personData,
             entityData.familyData,
+            entityData.onlinePresence,
             entityData.customData
           ];
 
@@ -503,6 +520,22 @@ export class FieldsVariablesService {
               });
             }
           });
+
+          // Resolve assigned_to (account manager / representative) name dynamically
+          if (entityData.assignedToId) {
+            try {
+              const repSnap = await getUserDocCached(entityData.assignedToId);
+              if (repSnap?.exists) {
+                const repData = repSnap.data();
+                if (repData) {
+                  const repName = repData.name || repData.fullName || repData.displayName || '';
+                  valuesMap.set('assigned_to', String(repName));
+                }
+              }
+            } catch (err) {
+              console.warn('[FieldsVariablesService] Error fetching representative user details:', err);
+            }
+          }
 
           // Resolve tag computed variables (avoiding school/entity renaming errors)
           const targetEntityId = context.entityId || entityData.id;
