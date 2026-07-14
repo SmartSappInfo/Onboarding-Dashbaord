@@ -184,7 +184,7 @@ export default function ShareEmbedDialog({
         if (field.type === 'textarea') {
           inputHtml = `<textarea name="${field.id}" id="${field.id}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box; resize: vertical; min-height: 100px;" onfocus="this.style.borderColor='${accentColor}'" onblur="this.style.borderColor='#cbd5e1'"></textarea>`;
         } else if (field.type === 'select') {
-          inputHtml = `<select name="${field.id}" id="${field.id}" ${field.required ? 'required' : ''} style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; background: #ffffff; box-sizing: border-box;" onfocus="this.style.borderColor='${accentColor}'" onblur="this.style.borderColor='#cbd5e1'"><option value="">Select option...</option></select>`;
+          inputHtml = `<select name="${field.id}" id="${field.id}" ${field.required ? 'required' : ''} style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; background: #ffffff; box-sizing: border-box;" onfocus="this.style.borderColor='${accentColor}'" onblur="this.style.borderColor='#cbd5e1'"><option value="">Select option…</option></select>`;
         } else {
           inputHtml = `<input type="${field.type || 'text'}" name="${field.id}" id="${field.id}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} style="width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='${accentColor}'" onblur="this.style.borderColor='#cbd5e1'" />`;
         }
@@ -407,7 +407,7 @@ ${fieldsHtml}
                   type="button"
                   onClick={() => setEmbedStyle('inline-widget')}
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer",
+                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     embedStyle === 'inline-widget'
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border/40 hover:bg-muted/30"
@@ -419,7 +419,7 @@ ${fieldsHtml}
                   type="button"
                   onClick={() => setEmbedStyle('popup-modal')}
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer",
+                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     embedStyle === 'popup-modal'
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border/40 hover:bg-muted/30"
@@ -431,7 +431,7 @@ ${fieldsHtml}
                   type="button"
                   onClick={() => setEmbedStyle('slide-drawer')}
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer",
+                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     embedStyle === 'slide-drawer'
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border/40 hover:bg-muted/30"
@@ -444,7 +444,7 @@ ${fieldsHtml}
                   disabled={resourceName !== 'Form' || !fields}
                   onClick={() => setEmbedStyle('raw-html')}
                   className={cn(
-                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
+                    "flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     embedStyle === 'raw-html'
                       ? "border-primary bg-primary/5 text-primary"
                       : "border-border/40 hover:bg-muted/30"
