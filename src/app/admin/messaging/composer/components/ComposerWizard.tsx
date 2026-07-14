@@ -877,7 +877,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     // ── RENDER ─────────────────────────────────────────────────────────────────
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className={cn("space-y-6 mx-auto transition-all duration-300 w-full", step === 5 ? "max-w-7xl" : "max-w-4xl")}>
             <Stepper currentStep={step} onStepClick={setStep} />
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
 
@@ -1364,9 +1364,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
                                 {/* Left: config */}
-                                <div className="space-y-5">
+                                <div className="space-y-5 lg:col-span-3">
                                     {/* Sender profile */}
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Sender Profile</Label>
@@ -1449,7 +1449,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 </div>
 
                                 {/* Right: preview */}
-                                <div className="space-y-2">
+                                <div className="space-y-2 lg:col-span-7">
                                     <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
                                         <Eye className="h-3 w-3" /> Live Preview
                                     </Label>
