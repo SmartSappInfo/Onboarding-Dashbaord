@@ -2951,15 +2951,27 @@ export function TemplateWorkshop({
                 { width: '50%', blocks: [] }
             ];
         }
-        setBlocks(prev => [...prev, newBlock]);
+        setBlocks(prev => {
+            if (selectedBlockId) {
+                return insertBlocksRecursively(prev, selectedBlockId, [newBlock]);
+            }
+            return [...prev, newBlock];
+        });
         setSelectedBlockId(id);
+        setSelectedBlockIds([id]);
         setSidebarTab('blocks');
     };
 
     const handleAddTemplateBlock = (createFn: () => MessageBlock) => {
         const newBlock = createFn();
-        setBlocks(prev => [...prev, newBlock]);
+        setBlocks(prev => {
+            if (selectedBlockId) {
+                return insertBlocksRecursively(prev, selectedBlockId, [newBlock]);
+            }
+            return [...prev, newBlock];
+        });
         setSelectedBlockId(newBlock.id);
+        setSelectedBlockIds([newBlock.id]);
         setSidebarTab('blocks');
     };
 
