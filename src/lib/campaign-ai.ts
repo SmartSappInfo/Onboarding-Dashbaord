@@ -559,6 +559,14 @@ Mode Guidelines:
 - "layout_analysis": Analyze the provided visual mockup/inspiration image and recreate its core grid, headers, and text structure in blocks.
 - "direct_placement": Include the provided image URL directly in an image block, generating copywriting and paragraphs around it.
 
+EMAIL HEADER RULES (CRITICAL COMPLIANCE):
+1. The generated 'subject' line MUST be between 30 and 60 characters long.
+2. The generated 'subject' line MUST use Title Case (e.g. Capitalize First Letters) and MUST NOT be written in all-caps or all CAPITAL letters.
+3. The generated 'subject' and 'previewText' MUST NOT contain spam trigger phrases (such as "guaranteed", "100% free", "risk free", "make money", "cash", "earn money").
+4. The generated 'subject' and 'previewText' should naturally incorporate personalization variables like "{{contact_name}}" or "{{org_name}}" if applicable.
+5. The generated 'subject' line must not contain more than 1 exclamation mark (!).
+6. Propose exactly two alternative 'subjectOptions' matching these rules.
+
 BLOCK COMPOSITION RULES:
 1. DO NOT merge the entire text into a single block. Segment the content logically.
 2. Top-Branding: Place a 'logo' or 'header' block at the very top (utilizing '{{org_logo_url}}' for logo url).
