@@ -174,7 +174,7 @@ describe('validateTemplateVariables', () => {
         channel: 'email' as const,
         styleId: 'none',
         subject: 'Subject Line',
-        body: 'All rights reserved. Unsubscribe here: {{unsubscribe_url}}',
+        body: 'All rights reserved. Unsubscribe here: {{unsubscribe_link}}',
         blocks: [],
       };
 

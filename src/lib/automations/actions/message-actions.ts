@@ -390,8 +390,7 @@ export async function handleDirectMessage(
             : `<h2 style="color: ${primaryColor}; margin: 0 0 24px 0; font-family: Figtree, sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">${orgName}</h2>`;
 
           const processedBodyContent = resolvedBodyContent
-            .replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink)
-            .replace(/\{\{unsubscribe_url\}\}/g, recipientUnsubLink);
+            .replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
 
           // Resolve the org-configured footer (replaces hardcoded inline footer)
           const { resolveOrgFooter, buildOrgFooterVars } = await import('../../services/org-footer-service');
@@ -440,8 +439,7 @@ export async function handleDirectMessage(
           `;
         } else if (channel === 'email') {
           finalBody = resolvedBodyContent
-            .replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink)
-            .replace(/\{\{unsubscribe_url\}\}/g, recipientUnsubLink);
+            .replace(/\{\{unsubscribe_link\}\}/g, recipientUnsubLink);
         }
 
 
@@ -454,8 +452,7 @@ export async function handleDirectMessage(
           organizationId: context.organizationId,
           variables: { 
             ...context.payload, 
-            unsubscribe_link: recipientUnsubLink,
-            unsubscribe_url: recipientUnsubLink 
+            unsubscribe_link: recipientUnsubLink
           },
           workspaceIds: [context.workspaceId],
           messageType: 'transactional',

@@ -47,12 +47,12 @@ export function validateTemplateVariables(
 
       // Check for unsubscribe variable token
       const content = `${template.subject || ''} ${template.previewText || ''} ${template.body || ''} ${JSON.stringify(template.blocks || [])}`;
-      const hasUnsubscribe = content.includes('{{unsubscribe_link}}') || content.includes('{{unsubscribe_url}}');
+      const hasUnsubscribe = content.includes('{{unsubscribe_link}}');
       if (!hasUnsubscribe) {
         errors.push({
           type: 'error',
           variable: 'unsubscribe_link',
-          message: 'No style wrapper is selected. You must include the "{{unsubscribe_link}}" or "{{unsubscribe_url}}" variable to allow recipients to opt out.',
+          message: 'No style wrapper is selected. You must include the "{{unsubscribe_link}}" variable to allow recipients to opt out.',
         });
       }
     }

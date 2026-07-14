@@ -718,7 +718,7 @@ ${
 }
 
 CRITICAL RULES:
-1. Preserve all template variables (such as {{contact_name}}, {{entity_name}}, {{org_name}}, {{unsubscribe_url}} etc.) exactly as they appear in the original headline or preview text. Do NOT modify the spelling, spacing, or capitalization inside double-braces (e.g. do NOT change {{contact_name}} to {{ContactName}}).
+1. Preserve all template variables (such as {{contact_name}}, {{entity_name}}, {{org_name}}, {{unsubscribe_link}} etc.) exactly as they appear in the original headline or preview text. Do NOT modify the spelling, spacing, or capitalization inside double-braces (e.g. do NOT change {{contact_name}} to {{ContactName}}).
 2. Keep all generated variation titles strictly under 60 characters.
 3. Keep preview texts strictly under 100 characters.
 4. Output must be plain text. Do NOT use HTML tags or markdown formatting.`;

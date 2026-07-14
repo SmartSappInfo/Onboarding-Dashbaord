@@ -73,7 +73,7 @@ describe('Direct SMS and Email Automation Actions', () => {
       recipient: '+233240000000',
       body: 'Hello John Doe',
       senderProfileId: 'sms-profile-1',
-      variables: { name: 'John Doe', unsubscribe_link: '', unsubscribe_url: '' },
+      variables: { name: 'John Doe', unsubscribe_link: '' },
       workspaceIds: ['ws-1'],
       messageType: 'transactional',
       entityId: 'ent-1',

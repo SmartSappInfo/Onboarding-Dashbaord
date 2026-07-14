@@ -245,7 +245,6 @@ export async function processBulkJobChunk(jobId: string) {
                 unsubUrl += `&v=${encodeURIComponent(task.campaignVariantId)}`;
             }
             mergedVars.unsubscribe_link = unsubUrl;
-            mergedVars.unsubscribe_url = unsubUrl;
 
             let html = '';
             let currentSubject = template.subject || '';
@@ -613,7 +612,6 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
         unsubUrl += `&v=${encodeURIComponent(task.campaignVariantId)}`;
       }
       mergedVars.unsubscribe_link = unsubUrl;
-      mergedVars.unsubscribe_url = unsubUrl;
 
       let html = '';
       let currentSubject = template.subject || '';
