@@ -857,6 +857,8 @@ const blockTypeTemplates: Record<string, Array<{
                 id: `blk_video_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'video',
                 url: '',
+                videoAction: 'play_inline',
+                videoRedirectUrl: '',
                 style: {
                     borderRadius: '12px',
                     paddingTop: '8px',
