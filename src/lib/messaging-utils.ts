@@ -641,13 +641,17 @@ export function renderBlocksToHtml(
             </style>
         ` : '';
 
-        blockHtml = `
-            ${styleBlock}
+        const nativePlayer = action === 'play_inline' ? `
             <!--[if !mso]><!-->
             <div class="audio-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
                 <audio src="${audioUrl}" controls style="width: 100%;"></audio>
             </div>
             <!--<![endif]-->
+        ` : '';
+
+        blockHtml = `
+            ${styleBlock}
+            ${nativePlayer}
 
             <div class="audio-card-${block.id}" style="margin: 16px 0; ${marginStyles}">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
@@ -714,13 +718,17 @@ export function renderBlocksToHtml(
             </style>
         ` : '';
 
-        blockHtml = `
-            ${styleBlock}
+        const nativePlayer = action === 'play_inline' ? `
             <!--[if !mso]><!-->
             <div class="video-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
                 <video src="${videoUrl}" poster="${thumbnailUrl}" controls style="width: 100%; border-radius: ${imgRadius};"></video>
             </div>
             <!--<![endif]-->
+        ` : '';
+
+        blockHtml = `
+            ${styleBlock}
+            ${nativePlayer}
 
             <div class="video-card-${block.id}" style="margin: 16px 0; ${marginStyles} text-align: ${align};">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
