@@ -41,6 +41,9 @@ export default function MediaShareClient({
 }: MediaShareClientProps) {
     const [isPlaying, setIsPlaying] = React.useState(false);
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
+    const videoRef = React.useRef<HTMLVideoElement | null>(null);
+    const embedVideoRef = React.useRef<HTMLVideoElement | null>(null);
+    
     const [currentTime, setCurrentTime] = React.useState(0);
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(0.8);
@@ -182,58 +185,88 @@ export default function MediaShareClient({
                     )}
 
                     {asset.type === 'video' && (
-                        !isVideoPlaying ? (
-                            <div 
-                                onClick={() => {
-                                    setIsPlaybackFinished(false);
-                                    setIsVideoPlaying(true);
-                                }}
-                                className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center cursor-pointer overflow-hidden"
-                            >
-                                {thumbUrl ? (
-                                    <img
-                                        src={thumbUrl}
-                                        alt={title}
-                                        className="absolute inset-0 w-full h-full object-cover opacity-80"
-                                    />
-                                ) : (
-                                    <video
-                                        src={asset.url}
-                                        preload="metadata"
-                                        className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
-                                    />
-                                )}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
-                                        <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                        <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
-                                            <Play className="w-8 h-8 fill-current ml-1" />
+                        <div className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center overflow-hidden">
+                            {isEmbeddable && embedUrl ? (
+                                !isVideoPlaying ? (
+                                    <div 
+                                        onClick={() => {
+                                            setIsPlaybackFinished(false);
+                                            setIsVideoPlaying(true);
+                                        }}
+                                        className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-black/35 z-20"
+                                    >
+                                        {thumbUrl && (
+                                            <img
+                                                src={thumbUrl}
+                                                alt={title}
+                                                className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                            />
+                                        )}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                            <div className="relative">
+                                                <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
+                                                    <Play className="w-8 h-8 fill-current ml-1" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        ) : (
-                            isEmbeddable && embedUrl ? (
-                                <iframe
-                                    src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
-                                    className="w-full h-full border-none"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                />
+                                ) : (
+                                    <iframe
+                                        src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                        className="w-full h-full border-none"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                )
                             ) : (
-                                <video
-                                    src={asset.url}
-                                    controls
-                                    autoPlay
-                                    onEnded={() => {
-                                        setIsPlaybackFinished(true);
-                                        setIsVideoPlaying(false);
-                                    }}
-                                    className="w-full h-full object-contain"
-                                />
-                            )
-                        )
+                                <>
+                                    <video
+                                        ref={embedVideoRef}
+                                        src={asset.url}
+                                        controls
+                                        preload="metadata"
+                                        onEnded={() => {
+                                            setIsPlaybackFinished(true);
+                                            setIsVideoPlaying(false);
+                                        }}
+                                        className="w-full h-full object-contain"
+                                    />
+                                    {!isVideoPlaying && !isPlaybackFinished && (
+                                        <div 
+                                            onClick={() => {
+                                                setIsPlaybackFinished(false);
+                                                setIsVideoPlaying(true);
+                                                if (embedVideoRef.current) {
+                                                    embedVideoRef.current.play().catch(err => {
+                                                        console.warn('Autoplay blocked:', err);
+                                                    });
+                                                }
+                                            }}
+                                            className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-black/30 z-20"
+                                        >
+                                            {thumbUrl && (
+                                                <img
+                                                    src={thumbUrl}
+                                                    alt={title}
+                                                    className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none"
+                                                />
+                                            )}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                    <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                    <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-8 h-8 fill-current ml-1" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     )}
 
                     {asset.type === 'audio' && (
@@ -318,6 +351,12 @@ export default function MediaShareClient({
                                             setIsPlaybackFinished(false);
                                             if (asset.type === 'video') {
                                                 setIsVideoPlaying(true);
+                                                if (embedVideoRef.current) {
+                                                    embedVideoRef.current.currentTime = 0;
+                                                    embedVideoRef.current.play().catch(err => {
+                                                        console.warn('Playback block:', err);
+                                                    });
+                                                }
                                             } else if (asset.type === 'audio' && audioRef.current) {
                                                 audioRef.current.currentTime = 0;
                                                 audioRef.current.play();
@@ -447,68 +486,90 @@ export default function MediaShareClient({
                     )}
 
                     {asset.type === 'video' && (
-                        !isVideoPlaying ? (
-                            <div 
-                                onClick={() => {
-                                    setIsPlaybackFinished(false);
-                                    setIsVideoPlaying(true);
-                                }}
-                                className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 group cursor-pointer flex items-center justify-center overflow-hidden z-10"
-                            >
-                                {thumbUrl ? (
-                                    <img
-                                        src={thumbUrl}
-                                        alt={title}
-                                        className="absolute inset-0 w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <video
-                                        src={asset.url}
-                                        preload="metadata"
-                                        className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
-                                    />
-                                )}
-                                
-                                {/* Animated Premium Play Button */}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                    <div className="relative">
-                                        <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
-                                        <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                        <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)] transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_60px_rgba(59,95,255,0.6)]">
-                                            <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                        <div className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 flex items-center justify-center overflow-hidden z-10">
+                            {isEmbeddable && embedUrl ? (
+                                !isVideoPlaying ? (
+                                    <div 
+                                        onClick={() => {
+                                            setIsPlaybackFinished(false);
+                                            setIsVideoPlaying(true);
+                                        }}
+                                        className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-slate-950 z-20"
+                                    >
+                                        {thumbUrl && (
+                                            <img
+                                                src={thumbUrl}
+                                                alt={title}
+                                                className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                            />
+                                        )}
+                                        {/* Play Overlay */}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                                            <div className="relative">
+                                                <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
+                                                    <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="absolute bottom-6 left-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-left">
-                                    <p className="text-white text-xs font-black uppercase tracking-wider drop-shadow-md">Click to play video</p>
-                                </div>
-                            </div>
-                        ) : (
-                            isEmbeddable && embedUrl ? (
-                                <div className="w-full aspect-video md:aspect-[16/9] relative z-10">
+                                ) : (
                                     <iframe
                                         src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
                                         className="w-full h-full border-none"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
                                     />
-                                </div>
+                                )
                             ) : (
-                                <div className="w-full aspect-video md:aspect-[16/9] relative z-10 flex items-center justify-center bg-slate-950">
+                                <>
                                     <video
+                                        ref={videoRef}
                                         src={asset.url}
                                         controls
-                                        autoPlay
+                                        preload="metadata"
                                         onEnded={() => {
                                             setIsPlaybackFinished(true);
                                             setIsVideoPlaying(false);
                                         }}
                                         className="w-full h-full object-contain"
                                     />
-                                </div>
-                            )
-                        )
+                                    {!isVideoPlaying && !isPlaybackFinished && (
+                                        <div 
+                                            onClick={() => {
+                                                setIsPlaybackFinished(false);
+                                                setIsVideoPlaying(true);
+                                                if (videoRef.current) {
+                                                    videoRef.current.play().catch(err => {
+                                                        console.warn('Autoplay blocked:', err);
+                                                    });
+                                                }
+                                            }}
+                                            className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-slate-950/45 z-20"
+                                        >
+                                            {thumbUrl && (
+                                                <img
+                                                    src={thumbUrl}
+                                                    alt={title}
+                                                    className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none"
+                                                />
+                                            )}
+                                            {/* Play Overlay */}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                    <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     )}
 
                     {asset.type === 'audio' && (
@@ -633,6 +694,13 @@ export default function MediaShareClient({
                                             setIsPlaybackFinished(false);
                                             if (asset.type === 'video') {
                                                 setIsVideoPlaying(true);
+                                                const activeVideoRef = isEmbed ? embedVideoRef : videoRef;
+                                                if (activeVideoRef.current) {
+                                                    activeVideoRef.current.currentTime = 0;
+                                                    activeVideoRef.current.play().catch(err => {
+                                                        console.warn('Playback block:', err);
+                                                    });
+                                                }
                                             } else if (asset.type === 'audio' && audioRef.current) {
                                                 audioRef.current.currentTime = 0;
                                                 audioRef.current.play();
