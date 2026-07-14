@@ -395,6 +395,17 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     isDynamic: false,
     isComputed: false,
   },
+  {
+    id: 'meeting_timezone',
+    name: 'meeting_timezone',
+    label: 'Meeting Timezone',
+    description: 'Timezone of the scheduled meeting',
+    dataType: 'string',
+    context: 'meeting',
+    exampleValue: 'Africa/Accra',
+    isDynamic: false,
+    isComputed: false,
+  },
 
   // ── Meeting: Registrant Variables ────────────────────────────────────────
   {
