@@ -59,9 +59,10 @@ interface TemplateCardProps {
     onClone: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
+    onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateCardProps) {
+function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onWhatsAppPushSkeleton }: TemplateCardProps) {
     const router = useRouter();
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
@@ -164,21 +165,32 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                     <span className="text-[8px] font-semibold text-muted-foreground opacity-60">{template.channel} Template</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
-                                <Send className="h-4 w-4 text-primary" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl w-44">
-                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
-                                <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
-                                <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {template.channel === 'whatsapp' && !template.whatsappTemplateName ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onWhatsAppPushSkeleton?.(template)}
+                            className="rounded-xl font-bold h-8 text-[10px] text-primary border-primary/20 hover:bg-primary/5 mr-2"
+                        >
+                            Push to Meta
+                        </Button>
+                    ) : (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
+                                    <Send className="h-4 w-4 text-primary" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl w-44">
+                                <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                    <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                    <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onPreview}><Eye className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", cloningId === template.id ? "animate-spin" : "")} onClick={onClone} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button>
@@ -260,6 +272,9 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                         </Select>
                         <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[7px] font-bold">{template.contentMode === 'html_code' ? 'HTML' : template.contentMode === 'rich_builder' ? 'Builder' : 'Text'}</Badge>
                         <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[7px] font-bold">{template.target === 'internal_team' ? 'Team' : 'Client'}</Badge>
+                        {template.channel === 'whatsapp' && !template.whatsappTemplateName && (
+                            <Badge variant="outline" className="rounded-full h-4 px-1.5 text-[7px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20">Skeleton (Draft)</Badge>
+                        )}
                     </div>
                 </div>
             </CardHeader>
@@ -275,9 +290,10 @@ interface TemplateRowProps {
     onClone: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
+    onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus }: TemplateRowProps) {
+function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onWhatsAppPushSkeleton }: TemplateRowProps) {
     const router = useRouter();
     const previewTitle = React.useMemo(() => {
         if (template.channel === 'email') {
@@ -379,25 +395,39 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
                 <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold">
                     {template.contentMode === 'html_code' ? 'HTML' : template.contentMode === 'rich_builder' ? 'Builder' : 'Text'}
                 </Badge>
+                {template.channel === 'whatsapp' && !template.whatsappTemplateName && (
+                    <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[8px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20">Skeleton (Draft)</Badge>
+                )}
             </div>
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-1.5 shrink-0 border-t pt-3 md:border-none md:pt-0">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
-                            <Send className="h-4 w-4 text-primary" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-xl w-44">
-                        <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
-                            <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
-                            <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {template.channel === 'whatsapp' && !template.whatsappTemplateName ? (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onWhatsAppPushSkeleton?.(template)}
+                        className="rounded-xl font-bold h-8 text-[10px] text-primary border-primary/20 hover:bg-primary/5 mr-2"
+                    >
+                        Push to Meta
+                    </Button>
+                ) : (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" title="Use Template">
+                                <Send className="h-4 w-4 text-primary" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl w-44">
+                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/composer?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                <Send className="h-3.5 w-3.5 text-blue-500" /> Send as Message
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/messaging/campaigns?templateId=${template.id}`)} className="font-semibold gap-2 cursor-pointer text-xs">
+                                <Megaphone className="h-3.5 w-3.5 text-purple-500" /> Send as Campaign
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" onClick={onPreview} title="Preview">
                     <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                 </Button>
@@ -572,6 +602,7 @@ interface TemplateGalleryProps {
     onUpdateStatus: (tmpl: MessageTemplate, status: TemplateStatus) => void;
     onWhatsAppSendTest?: (tmpl: WhatsAppDisplayTemplate) => void;
     onWhatsAppAdopt?: (tmpl: WhatsAppDisplayTemplate) => void;
+    onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
 export function TemplateGallery({
@@ -585,7 +616,8 @@ export function TemplateGallery({
     onPreview,
     onUpdateStatus,
     onWhatsAppSendTest,
-    onWhatsAppAdopt
+    onWhatsAppAdopt,
+    onWhatsAppPushSkeleton
 }: TemplateGalleryProps) {
     // 1. Initial State Definition with Requested Default Configurations
     const [searchTerm, setSearchTerm] = React.useState('');
@@ -816,6 +848,7 @@ export function TemplateGallery({
                                                 onClone={() => onClone(template)}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                                onWhatsAppPushSkeleton={onWhatsAppPushSkeleton}
                                             />
                                         )
                                     ))}
@@ -841,6 +874,7 @@ export function TemplateGallery({
                                                 onClone={() => onClone(template)}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                                onWhatsAppPushSkeleton={onWhatsAppPushSkeleton}
                                             />
                                         )
                                     ))}

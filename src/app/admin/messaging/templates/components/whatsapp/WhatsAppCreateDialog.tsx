@@ -18,6 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle2, FilePlus2, Loader2 } from 'lucide-react';
 import { createWhatsAppTemplate } from '@/lib/whatsapp-template-actions';
+import { registerSkeletonWhatsAppAction } from '@/app/actions/register-skeleton-whatsapp-action';
 import { extractParamCount } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateButtonInput } from '@/lib/whatsapp/whatsapp-domain';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
@@ -56,12 +57,13 @@ export default function WhatsAppCreateDialog({
   const { user } = useUser();
   const { toast } = useToast();
   const [name, setName] = React.useState(initialDraft?.name ?? '');
+  const [skeletonId] = React.useState(initialDraft?.skeletonId ?? '');
   const [language, setLanguage] = React.useState('en_US');
   const [category, setCategory] = React.useState<CreateCategory>(initialDraft?.category ?? 'UTILITY');
   const [appCategory, setAppCategory] = React.useState<StorableTemplateCategory>(initialDraft?.appCategory ?? 'general');
   const [templateType, setTemplateType] = React.useState(initialDraft?.templateType ?? '');
   // Positional {{n}} → variable-key mapping, keyed by index (derived list below).
-  const [paramVarsByIndex, setParamVarsByIndex] = React.useState<Record<number, string>>({});
+  const [paramVarsByIndex, setParamVarsByIndex] = React.useState<Record<number, string>>(() => initialDraft?.paramVars ?? {});
   const [headerMode, setHeaderMode] = React.useState<HeaderMode>(initialDraft?.headerText ? 'text' : 'none');
   const [headerText, setHeaderText] = React.useState(initialDraft?.headerText ?? '');
   const [media, setMedia] = React.useState<UploadedMedia | null>(null);
@@ -160,8 +162,14 @@ export default function WhatsAppCreateDialog({
         templateType: templateType.trim() || undefined,
         paramMap,
       });
-      if (res.success) onCreated(res.data);
-      else toast({ variant: 'destructive', title: 'Create failed', description: res.error });
+      if (res.success) {
+        if (skeletonId) {
+          await registerSkeletonWhatsAppAction(idToken, organizationId, skeletonId, name.trim(), language, paramMap ?? []);
+        }
+        onCreated(res.data);
+      } else {
+        toast({ variant: 'destructive', title: 'Create failed', description: res.error });
+      }
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: e instanceof Error ? e.message : 'Unknown error' });
     } finally {

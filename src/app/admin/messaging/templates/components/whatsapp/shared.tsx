@@ -41,6 +41,8 @@ export interface TemplateDraft {
   appCategory?: StorableTemplateCategory;
   /** Sub-type label (e.g. status_update). */
   templateType?: string;
+  skeletonId?: string;
+  paramVars?: Record<number, string>;
 }
 
 /**

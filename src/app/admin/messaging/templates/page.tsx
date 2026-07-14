@@ -539,6 +539,33 @@ export default function MessageTemplatesPage() {
     const handleWaSendTest = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'sendTest', template: t.raw });
     const handleWaAdopt = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'adopt', template: t.raw });
 
+    const handlePushSkeleton = (template: MessageTemplate) => {
+        const matches = (template.body || '').match(/\{\{([^{}]+?)\}\}/g);
+        const vars = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
+        
+        let bodyText = template.body || '';
+        const paramVars: Record<number, string> = {};
+        vars.forEach((v, index) => {
+            const escapedVar = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(`\\{\\{\\s*${escapedVar}\\s*\\}\\}`, 'g');
+            bodyText = bodyText.replace(regex, `{{${index + 1}}}`);
+            paramVars[index] = v;
+        });
+
+        const draft: TemplateDraft = {
+            name: toWhatsAppTemplateName(template.name) || undefined,
+            category: 'UTILITY',
+            bodyText,
+            bodyExamples: Array(vars.length).fill(''),
+            skeletonId: template.id,
+            paramVars,
+            appCategory: template.category === 'all' ? 'general' : template.category,
+            templateType: template.templateType,
+        };
+
+        setActiveWaDialog({ kind: 'create', draft });
+    };
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
@@ -628,6 +655,7 @@ export default function MessageTemplatesPage() {
                                 onUpdateStatus={handleUpdateStatus}
                                 onWhatsAppSendTest={handleWaSendTest}
                                 onWhatsAppAdopt={handleWaAdopt}
+                                onWhatsAppPushSkeleton={handlePushSkeleton}
                             />
                             </div>
                         </PageContainer>
