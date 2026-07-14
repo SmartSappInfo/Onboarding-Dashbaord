@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { interpolateWithMap } from '@/lib/survey-variable-utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Quote, Trophy, Building2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,8 @@ interface ResultRendererProps {
     resultPages?: SurveyResultPage[];
     preview?: boolean;
     workspaceId?: string;
+    resolvedThankYouTitle?: string;
+    resolvedThankYouDescription?: string;
 }
 
 function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: { animate?: boolean }, displayMode?: 'points' | 'percentage' }) {
@@ -237,14 +240,7 @@ function BlockRenderer({
     );
 
     const interpolateText = (text: string | undefined | null): string => {
-        if (!text) return '';
-        if (simulatedValues && Object.keys(simulatedValues).length > 0) {
-            return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-                const trimmed = key.trim();
-                return simulatedValues[trimmed] !== undefined ? simulatedValues[trimmed] : match;
-            });
-        }
-        return text;
+        return interpolateWithMap(text, simulatedValues || {}, true);
     };
 
     const interpolateArray = (items: string[] | undefined | null): string[] => {
@@ -392,7 +388,9 @@ export default function ResultRenderer({
     allowResubmission, 
     resultPages,
     preview = false,
-    workspaceId = ''
+    workspaceId = '',
+    resolvedThankYouTitle,
+    resolvedThankYouDescription
 }: ResultRendererProps) {
     const [entities, setEntities] = React.useState<any[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
@@ -583,11 +581,11 @@ export default function ResultRenderer({
                     </div>
                     <div className="space-y-6 max-w-2xl mx-auto">
                         <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground leading-tight whitespace-pre-wrap">
-                            {survey.thankYouTitle || 'Thank you!'}
+                            {preview ? interpolateWithMap(survey.thankYouTitle || 'Thank you!', simulatedValues, true) : (resolvedThankYouTitle || survey.thankYouTitle || 'Thank you!')}
                         </h1>
                         <div 
                             className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-medium whitespace-pre-wrap prose prose-slate max-w-none" 
-                            dangerouslySetInnerHTML={{ __html: survey.thankYouDescription || 'Your submission has been securely processed.' }} 
+                            dangerouslySetInnerHTML={{ __html: preview ? interpolateWithMap(survey.thankYouDescription || 'Your submission has been securely processed.', simulatedValues, true) : (resolvedThankYouDescription || survey.thankYouDescription || 'Your submission has been securely processed.') }} 
                         />
                     </div>
                     <ResubmitButton />

@@ -1,11 +1,13 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useCallback, Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CheckCircle2, Play } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Play, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
@@ -699,13 +701,42 @@ export default function SchoolEnrollmentClient() {
           <DialogDescription className="sr-only">
             Please fill out the survey to request your free consultation roadmap.
           </DialogDescription>
-          <ResizableIFrame 
-            slug="collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0"
-            src="/surveys/collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0?embed=true&theme=dark"
-            className="w-full border-none bg-transparent"
-          />
+          <Suspense fallback={
+            <div className="h-96 flex items-center justify-center bg-slate-950 rounded-3xl">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          }>
+            <SurveyDialogIFrame 
+              slug="collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0"
+              baseSrc="/surveys/collect-your-fees-within-4-weeks-of-reopening-copy-2s0p0?embed=true&theme=dark"
+            />
+          </Suspense>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SurveyDialogIFrame({ slug, baseSrc }: { slug: string; baseSrc: string }) {
+  const searchParams = useSearchParams();
+  const ref = searchParams?.get('ref');
+  const ch = searchParams?.get('ch');
+
+  const src = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (ref) params.set('ref', ref);
+    if (ch) params.set('ch', ch);
+    const [baseUrl, query] = baseSrc.split('?');
+    const existing = new URLSearchParams(query || '');
+    existing.forEach((v, k) => params.set(k, v));
+    return `${baseUrl}?${params.toString()}`;
+  }, [baseSrc, ref, ch]);
+
+  return (
+    <ResizableIFrame
+      slug={slug}
+      src={src}
+      className="w-full border-none bg-transparent"
+    />
   );
 }

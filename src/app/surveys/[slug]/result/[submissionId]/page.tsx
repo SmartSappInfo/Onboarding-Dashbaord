@@ -52,7 +52,7 @@ async function getResultData(slug: string, submissionId: string) {
         // 2. Fetch Submission
         const subSnap = await adminDb.collection('surveys').doc(survey.id).collection('responses').doc(submissionId).get();
         if (!subSnap.exists) return null;
-        const response = { id: subSnap.id, ...subSnap.data() } as SurveyResponse;
+        const response = { id: subSnap.id, ...subSnap.data() } as SurveyResponse & { respondentEntityId?: string | null; contactEmail?: string | null };
 
         // 3. Resolve Result Page
         let resolvedPage: SurveyResultPage | null = null;
@@ -109,73 +109,140 @@ async function getResultData(slug: string, submissionId: string) {
         const resultPagesSnap = await adminDb.collection('surveys').doc(survey.id).collection('resultPages').get();
         const resultPages = resultPagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SurveyResultPage));
 
-        if (redirectUrl) {
-            const variables: Record<string, string | number | boolean | null | undefined> = {
-                submission_id: response.id,
-                survey_title: survey.title,
-                score: score,
-                max_score: survey.maxScore || 100,
-                submission_date: response.submittedAt,
-                entityId: survey.entityId || '',
-                entityName: survey.entityName || 'SmartSapp'
-            };
-            
-            const questions = (survey.elements || []).filter(el => 
-                el && 
-                typeof el === 'object' && 
-                'type' in el && 
-                !['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section', 'logic'].includes(el.type)
-            );
-            
-            questions.forEach(q => {
-                const ans = (response.answers || []).find(a => a.questionId === q.id);
-                if (ans) {
-                    const valStr = String(ans.value);
-                    variables[q.id] = valStr;
-                    
-                    const titleLower = (q.title || '').toLowerCase();
-                    if (titleLower.includes('name') && !variables.contact_name) variables.contact_name = valStr;
-                    if ((titleLower.includes('phone') || titleLower.includes('contact')) && !variables.contact_phone) variables.contact_phone = valStr;
-                    if (titleLower.includes('email') && !variables.contact_email) variables.contact_email = valStr;
+        // Load contact/entity
+        let resolvedRespondentEntityId = response.respondentEntityId || null;
+        let resolvedRecipientContact = response.contactEmail || null;
+
+        // Fallback for older responses or URL-based mapping
+        if (!resolvedRespondentEntityId && !resolvedRecipientContact) {
+            const refParam = response.assignedUserId;
+            if (refParam && survey.workspaceIds?.length) {
+                const isEncrypted = refParam.split(':').length === 3;
+                let resolvedRef = refParam;
+                if (isEncrypted) {
+                    try {
+                        const { decryptToken } = await import('@/lib/crypto');
+                        const decrypted = decryptToken(refParam);
+                        if (decrypted) {
+                            const [contactId, entityId] = decrypted.split(':');
+                            resolvedRespondentEntityId = entityId || null;
+                            
+                            if (entityId) {
+                                const weSnap = await adminDb.collection('workspace_entities')
+                                    .where('workspaceId', 'in', survey.workspaceIds)
+                                    .where('entityId', '==', entityId)
+                                    .limit(1)
+                                    .get();
+                                if (!weSnap.empty) {
+                                    const contacts = (weSnap.docs[0].data().entityContacts || []) as any[];
+                                    const found = contacts.find(c => c.id === contactId);
+                                    if (found) {
+                                        resolvedRecipientContact = found.email || null;
+                                    }
+                                }
+                            } else {
+                                const contactSnap = await adminDb.collection('contacts').doc(contactId).get();
+                                if (contactSnap.exists) {
+                                    resolvedRecipientContact = String(contactSnap.data()?.email || '') || null;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('[ResultPage] Error decrypting assignedUserId fallback:', err);
+                    }
+                } else {
+                    // Plain ref = entityId
+                    resolvedRespondentEntityId = refParam;
                 }
-            });
-            
-            const finalRedirectUrl = replaceVariablesInUrl(redirectUrl, variables);
-            return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: finalRedirectUrl, resultPages };
+            }
+        }
+
+        const varContext = {
+            workspaceId: survey.workspaceIds?.[0] || '',
+            entityId: resolvedRespondentEntityId || response.entityId || undefined,
+            recipientContact: resolvedRecipientContact || undefined,
+            surveyId: survey.id
+        };
+
+        const valuesMap = await FieldsVariablesService.getVariableValuesMap(varContext);
+
+        // Add scoring and base submission variables to valuesMap
+        valuesMap.set('score', String(response.score ?? 0));
+        valuesMap.set('survey_score', String(response.score ?? 0));
+        valuesMap.set('max_score', String(survey.maxScore || 100));
+        valuesMap.set('survey_title', survey.title || '');
+        valuesMap.set('submission_id', response.id);
+        valuesMap.set('submission_date', response.submittedAt ? new Date(response.submittedAt).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        }) : '');
+        valuesMap.set('entityId', resolvedRespondentEntityId || response.entityId || '');
+        valuesMap.set('entityName', survey.entityName || 'SmartSapp');
+
+        // Extract answers and heuristic fields into valuesMap
+        const questions = (survey.elements || []).filter(el => 
+            el && 
+            typeof el === 'object' && 
+            'type' in el && 
+            !['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section', 'logic'].includes(el.type)
+        );
+        
+        questions.forEach(q => {
+            const ans = (response.answers || []).find(a => a.questionId === q.id);
+            if (ans) {
+                const valStr = String(ans.value);
+                valuesMap.set(q.id, valStr);
+                
+                const titleLower = (q.title || '').toLowerCase();
+                if (titleLower.includes('name') && !valuesMap.has('contact_name')) valuesMap.set('contact_name', valStr);
+                if ((titleLower.includes('phone') || titleLower.includes('contact')) && !valuesMap.has('contact_phone')) valuesMap.set('contact_phone', valStr);
+                if (titleLower.includes('email') && !valuesMap.has('contact_email')) valuesMap.set('contact_email', valStr);
+            }
+        });
+
+        // Resolve thank you title & description server-side
+        const resolvedThankYouTitle = FieldsVariablesService.resolveTextWithMap(survey.thankYouTitle || 'Thank you!', valuesMap);
+        const resolvedThankYouDescription = FieldsVariablesService.resolveTextWithMap(survey.thankYouDescription || 'Your submission has been securely processed.', valuesMap);
+
+        if (redirectUrl) {
+            const finalRedirectUrl = FieldsVariablesService.resolveTextWithMap(redirectUrl, valuesMap);
+            return { 
+                survey, 
+                response, 
+                page: resolvedPage, 
+                logoUrl, 
+                orgBranding, 
+                redirectUrl: finalRedirectUrl, 
+                resultPages, 
+                resolvedThankYouTitle, 
+                resolvedThankYouDescription 
+            };
         }
 
         // Compile variables on resolvedPage blocks
         if (resolvedPage && resolvedPage.blocks) {
-            // Load contact/entity
             let workspaceEntity: WorkspaceEntity | null = null;
-            if (response.entityId) {
-                const weSnap = await adminDb.collection('workspace_entities').doc(response.entityId).get();
+            const targetEntityId = resolvedRespondentEntityId || response.entityId;
+            if (targetEntityId) {
+                const weSnap = await adminDb.collection('workspace_entities').doc(targetEntityId).get();
                 if (weSnap.exists) {
                     workspaceEntity = { id: weSnap.id, ...weSnap.data() } as WorkspaceEntity;
                 }
             }
 
-            const varContext = {
-                workspaceId: survey.workspaceIds?.[0] || '',
-                entityId: response.entityId || undefined,
-                submissionId: response.id,
-                surveyId: survey.id
-            };
-
             const compiledBlocks: SurveyResultBlock[] = [];
             for (const block of resolvedPage.blocks) {
                 const newBlock = { ...block };
                 
-                // Resolve text fields
+                // Resolve text fields synchronously using unified valuesMap
                 if (newBlock.title) {
-                    newBlock.title = await FieldsVariablesService.resolveTemplateVariables(newBlock.title, varContext);
+                    newBlock.title = FieldsVariablesService.resolveTextWithMap(newBlock.title, valuesMap);
                 }
                 if (newBlock.content) {
-                    newBlock.content = await FieldsVariablesService.resolveTemplateVariables(newBlock.content, varContext);
+                    newBlock.content = FieldsVariablesService.resolveTextWithMap(newBlock.content, valuesMap);
                 }
                 if (newBlock.items && newBlock.items.length > 0) {
-                    newBlock.items = await Promise.all(
-                        newBlock.items.map(item => FieldsVariablesService.resolveTemplateVariables(item, varContext))
+                    newBlock.items = newBlock.items.map(item => 
+                        FieldsVariablesService.resolveTextWithMap(item, valuesMap)
                     );
                 }
 
@@ -232,7 +299,17 @@ async function getResultData(slug: string, submissionId: string) {
             resolvedPage.blocks = compiledBlocks;
         }
 
-        return { survey, response, page: resolvedPage, logoUrl, orgBranding, redirectUrl: null, resultPages };
+        return { 
+            survey, 
+            response, 
+            page: resolvedPage, 
+            logoUrl, 
+            orgBranding, 
+            redirectUrl: null, 
+            resultPages, 
+            resolvedThankYouTitle, 
+            resolvedThankYouDescription 
+        };
     } catch (error) {
         console.error("Error fetching result data:", error);
         return null;
@@ -386,6 +463,8 @@ export default async function SurveyResultPage({
                         resultPages={data.resultPages}
                         preview={preview === 'true'}
                         workspaceId={resolvedWorkspaceId}
+                        resolvedThankYouTitle={data.resolvedThankYouTitle}
+                        resolvedThankYouDescription={data.resolvedThankYouDescription}
                     />
                 </main>
                 <footer className={cn(

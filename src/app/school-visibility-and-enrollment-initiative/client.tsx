@@ -1,6 +1,8 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useCallback, Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,7 @@ import {
   Code2,
   Briefcase,
   CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
@@ -394,14 +397,44 @@ export default function SchoolVisibilityClient() {
             Fill in details to reserve your school&apos;s slot in the SmartSapp Visibility Initiative.
           </DialogDescription>
           {isSurveyOpen && (
-            <ResizableIFrame
-              src={TRIAL_URL}
-              slug="school-visiblity"
-              fallbackHeight={720}
-            />
+            <Suspense fallback={
+              <div className="h-96 flex items-center justify-center bg-white rounded-3xl">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <SurveyDialogIFrame 
+                slug="school-visiblity"
+                baseSrc={TRIAL_URL}
+              />
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SurveyDialogIFrame({ slug, baseSrc }: { slug: string; baseSrc: string }) {
+  const searchParams = useSearchParams();
+  const ref = searchParams?.get('ref');
+  const ch = searchParams?.get('ch');
+
+  const src = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (ref) params.set('ref', ref);
+    if (ch) params.set('ch', ch);
+    const [baseUrl, query] = baseSrc.split('?');
+    const existing = new URLSearchParams(query || '');
+    existing.forEach((v, k) => params.set(k, v));
+    return `${baseUrl}?${params.toString()}`;
+  }, [baseSrc, ref, ch]);
+
+  return (
+    <ResizableIFrame
+      slug={slug}
+      src={src}
+      className="w-full border-none bg-transparent"
+      fallbackHeight={720}
+    />
   );
 }

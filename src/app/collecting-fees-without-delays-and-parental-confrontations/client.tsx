@@ -1,11 +1,13 @@
 'use client';
 
+import * as React from 'react';
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, CheckCircle2, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Play, RotateCcw, Sparkles, Loader2 } from 'lucide-react';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
 import type { PageEventChannel } from '@/lib/types';
@@ -352,14 +354,44 @@ export default function CollectingFeesClient() {
             Please fill out this quick survey to book your free consultation.
           </DialogDescription>
           {isSurveyModalOpen && (
-            <ResizableIFrame
-              src="/surveys/collect-your-fees-within-4-weeks-of-reopening?embed=true&theme=light"
-              slug="collect-your-fees-within-4-weeks-of-reopening"
-              fallbackHeight={720}
-            />
+            <Suspense fallback={
+              <div className="h-96 flex items-center justify-center bg-white rounded-3xl">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <SurveyDialogIFrame 
+                slug="collect-your-fees-within-4-weeks-of-reopening"
+                baseSrc="/surveys/collect-your-fees-within-4-weeks-of-reopening?embed=true&theme=light"
+              />
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SurveyDialogIFrame({ slug, baseSrc }: { slug: string; baseSrc: string }) {
+  const searchParams = useSearchParams();
+  const ref = searchParams?.get('ref');
+  const ch = searchParams?.get('ch');
+
+  const src = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (ref) params.set('ref', ref);
+    if (ch) params.set('ch', ch);
+    const [baseUrl, query] = baseSrc.split('?');
+    const existing = new URLSearchParams(query || '');
+    existing.forEach((v, k) => params.set(k, v));
+    return `${baseUrl}?${params.toString()}`;
+  }, [baseSrc, ref, ch]);
+
+  return (
+    <ResizableIFrame
+      slug={slug}
+      src={src}
+      className="w-full border-none bg-transparent"
+      fallbackHeight={720}
+    />
   );
 }

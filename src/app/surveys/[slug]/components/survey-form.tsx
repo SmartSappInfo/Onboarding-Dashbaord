@@ -27,6 +27,7 @@ import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
+import { interpolateWithMap } from '@/lib/survey-variable-utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
@@ -52,6 +53,9 @@ interface SurveyFormProps {
     assignedUserId?: string;
     resolvedLogoUrl?: string | null;
     simulatedValues?: Record<string, string>;
+    resolvedRecipientContact?: string | null;
+    respondentEntityId?: string | null;
+    channel?: 'email' | 'sms' | 'whatsapp' | 'direct';
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -372,12 +376,7 @@ const ElementRenderer = ({
 }) => {
 
     const interpolateText = (text: string | undefined | null): string => {
-        if (!text) return '';
-        if (!simulatedValues || Object.keys(simulatedValues).length === 0) return text;
-        return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-            const trimmed = key.trim();
-            return simulatedValues[trimmed] !== undefined ? simulatedValues[trimmed] : match;
-        });
+        return interpolateWithMap(text, simulatedValues || {}, false);
     };
 
     const interpolateArray = (items: string[] | undefined | null): string[] => {
@@ -951,7 +950,10 @@ export default function SurveyForm({
     sourcePageId, 
     assignedUserId, 
     resolvedLogoUrl,
-    simulatedValues
+    simulatedValues = {},
+    resolvedRecipientContact = null,
+    respondentEntityId = null,
+    channel = 'direct'
 }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
@@ -959,13 +961,8 @@ export default function SurveyForm({
     const { toast } = useToast();
 
     const interpolateText = React.useCallback((text: string | undefined | null): string => {
-        if (!text) return '';
-        if (!simulatedValues || Object.keys(simulatedValues).length === 0) return text;
-        return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-            const trimmed = key.trim();
-            return simulatedValues[trimmed] !== undefined ? simulatedValues[trimmed] : match;
-        });
-    }, [simulatedValues]);
+        return interpolateWithMap(text, simulatedValues, isPreview);
+    }, [simulatedValues, isPreview]);
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
     
@@ -1424,6 +1421,9 @@ export default function SurveyForm({
             entityType: survey.entityId ? 'institution' as const : undefined,
             workspaceId: survey.workspaceIds?.[0] || null,
             assignedUserId: assignedUserId || null,
+            contactEmail: resolvedRecipientContact || null,
+            respondentEntityId: respondentEntityId || null,
+            channel: channel || 'direct',
         };
         setIsSubmitting(true);
 

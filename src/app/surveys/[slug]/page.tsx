@@ -100,12 +100,17 @@ export default async function PublicSurveyPage({
 }) {
     const { slug } = await params;
     const resolvedSearchParams = await searchParams;
-    const { sourcePageId, ref, preview, workspaceId, ws, embed } = resolvedSearchParams;
+    const { sourcePageId, ref, preview, workspaceId, ws, embed, ch } = resolvedSearchParams;
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
         return <SurveyUnavailable status="not_found" />;
     }
+
+    const channelRaw = (ch || (ref ? 'email' : 'direct')).toLowerCase();
+    const channel = (['email', 'sms', 'whatsapp', 'direct'] as const).includes(
+        channelRaw as any
+    ) ? channelRaw as 'email' | 'sms' | 'whatsapp' | 'direct' : 'direct';
 
     let resolvedWorkspaceId = survey.workspaceIds?.[0] || '';
     const incomingWs = workspaceId || ws;
@@ -331,6 +336,8 @@ export default async function PublicSurveyPage({
                 preloadedVariables={preloadedVariables}
                 resolvedEntityId={resolvedEntityId}
                 resolvedRecipientContact={resolvedRecipientContact}
+                respondentEntityId={resolvedEntityId}
+                channel={channel}
             />
         </>
     );

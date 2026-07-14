@@ -2,12 +2,14 @@
 
 import * as React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { Survey, OrgBranding } from '@/lib/types';
+import type { Survey, OrgBranding, WorkspaceEntity } from '@/lib/types';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
 import { Building2, RotateCcw, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { interpolateWithMap } from '@/lib/survey-variable-utils';
+import { SurveyVariableProvider } from '../context/SurveyVariableContext';
 import SurveyLoader from '../../components/survey-loader';
 import { useTheme } from 'next-themes';
 import Footer from '@/components/footer';
@@ -37,6 +39,8 @@ interface SurveyDisplayProps {
     preloadedVariables?: Record<string, string>;
     resolvedEntityId?: string | null;
     resolvedRecipientContact?: string | null;
+    respondentEntityId?: string | null;
+    channel?: 'email' | 'sms' | 'whatsapp' | 'direct';
 }
 
 export default function SurveyDisplay({ 
@@ -49,7 +53,9 @@ export default function SurveyDisplay({
     resolvedWorkspaceId = '',
     preloadedVariables = {},
     resolvedEntityId = null,
-    resolvedRecipientContact = null
+    resolvedRecipientContact = null,
+    respondentEntityId = null,
+    channel = 'direct'
 }: SurveyDisplayProps) {
     useIframeHeightReporter(survey.slug);
 
@@ -63,10 +69,30 @@ export default function SurveyDisplay({
     const { resolvedTheme, setTheme } = useTheme();
     const themeParam = searchParams?.get('theme');
 
-    const [entities, setEntities] = React.useState<any[]>([]);
+    interface SimulationEntity {
+        id: string;
+        name: string;
+        contacts: {
+            name: string;
+            email: string;
+            phone: string;
+            typeLabel?: string;
+            typeKey?: string;
+        }[];
+    }
+
+    const [entities, setEntities] = React.useState<SimulationEntity[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
     const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
     const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>(preloadedVariables);
+
+    const initialIdentity = React.useMemo(() => ({
+        respondentEntityId,
+        recipientContact: resolvedRecipientContact,
+        trackingRef: assignedUserId || null,
+        channel,
+        variableMap: preloadedVariables
+    }), [respondentEntityId, resolvedRecipientContact, assignedUserId, channel, preloadedVariables]);
     const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
 
     const isPreviewMode = searchParams?.get('preview') === 'true';
@@ -220,7 +246,8 @@ export default function SurveyDisplay({
 
     if (isSubmitted) {
         return (
-            <div className={cn("min-h-screen flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+            <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
+                <div className={cn("min-h-screen flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
                 {isPreviewMode && (
                     <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
@@ -297,10 +324,10 @@ export default function SurveyDisplay({
                                 />
                             </div>
                         )}
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{interpolateWithMap(survey.thankYouTitle || 'Thank You!', simulatedValues, isPreviewMode)}</h1>
                         <div 
                             className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap prose prose-slate max-w-none mx-auto" 
-                            dangerouslySetInnerHTML={{ __html: survey.thankYouDescription || 'Your response has been recorded.' }} 
+                            dangerouslySetInnerHTML={{ __html: interpolateWithMap(survey.thankYouDescription || 'Your response has been recorded.', simulatedValues, isPreviewMode) }} 
                         />
                         
                         {survey.allowResubmission && (
@@ -325,6 +352,7 @@ export default function SurveyDisplay({
                       <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
                   )}
             </div>
+            </SurveyVariableProvider>
         )
     }
 
@@ -332,7 +360,8 @@ export default function SurveyDisplay({
     const showHeader = !!survey.showSurveyTitles;
 
     return (
-        <div className={cn("min-h-screen flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+        <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
+            <div className={cn("min-h-screen flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
             {isPreviewMode && (
                 <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -425,6 +454,9 @@ export default function SurveyDisplay({
                                     assignedUserId={assignedUserId}
                                     resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}
                                     simulatedValues={simulatedValues}
+                                    resolvedRecipientContact={resolvedRecipientContact}
+                                    respondentEntityId={respondentEntityId}
+                                    channel={channel}
                                 />
                             </motion.div>
                         )}
@@ -435,6 +467,7 @@ export default function SurveyDisplay({
                   <Footer orgBranding={orgBranding} className="bg-transparent text-slate-500 pt-8" />
               )}
         </div>
+        </SurveyVariableProvider>
     );
 }
 
