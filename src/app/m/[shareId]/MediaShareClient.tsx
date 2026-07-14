@@ -65,6 +65,11 @@ export default function MediaShareClient({
         setDuration(audioRef.current.duration);
     };
 
+    const handleAudioEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+    };
+
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseFloat(e.target.value);
         setVolume(val);
@@ -225,6 +230,7 @@ export default function MediaShareClient({
                                 src={asset.url}
                                 onTimeUpdate={handleAudioTimeUpdate}
                                 onLoadedMetadata={handleAudioLoadedMetadata}
+                                onEnded={handleAudioEnded}
                             />
                             <div className="p-4 bg-primary/10 rounded-2xl text-primary">
                                 <Music className="h-8 w-8" />
@@ -453,6 +459,7 @@ export default function MediaShareClient({
                                 src={asset.url}
                                 onTimeUpdate={handleAudioTimeUpdate}
                                 onLoadedMetadata={handleAudioLoadedMetadata}
+                                onEnded={handleAudioEnded}
                             />
                             
                             <div className="mx-auto w-24 h-24 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center text-primary shadow-xl shadow-primary/5 relative">
@@ -461,7 +468,6 @@ export default function MediaShareClient({
                             </div>
 
                             <div className="space-y-1">
-                                <h3 className="text-lg font-black tracking-tight text-slate-100">{title}</h3>
                                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Audio Broadcast File</p>
                             </div>
 
@@ -535,7 +541,6 @@ export default function MediaShareClient({
                                 <Link2 className="h-7 w-7" />
                             </div>
                             <div className="space-y-1.5">
-                                <h3 className="text-lg font-black text-slate-100 leading-tight">{title}</h3>
                                 <p className="text-xs text-slate-400 font-medium truncate w-full px-4">{asset.url}</p>
                             </div>
                             <Button 
