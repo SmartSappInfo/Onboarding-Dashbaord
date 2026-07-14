@@ -288,10 +288,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         // Populate encrypted recipient token (Task 2)
         if (signatory?.id) {
             const { encryptToken } = await import('@/lib/crypto');
-            unifiedMap.set('encrypted_recipient_token', encryptToken(signatory.id));
+            const tokenValue = resolvedEntityId ? `${signatory.id}:${resolvedEntityId}` : signatory.id;
+            unifiedMap.set('encrypted_recipient_token', encryptToken(tokenValue));
         } else if (resolvedContact?.id) {
             const { encryptToken } = await import('@/lib/crypto');
-            unifiedMap.set('encrypted_recipient_token', encryptToken(resolvedContact.id));
+            const tokenValue = resolvedEntityId ? `${resolvedContact.id}:${resolvedEntityId}` : resolvedContact.id;
+            unifiedMap.set('encrypted_recipient_token', encryptToken(tokenValue));
         } else {
             unifiedMap.set('encrypted_recipient_token', '');
         }

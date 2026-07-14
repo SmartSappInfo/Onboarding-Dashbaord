@@ -951,18 +951,48 @@ export class FieldsVariablesService {
     // 1. Direct Contact ID lookup
     if (contactIdParam) {
       try {
-        const allSnaps = await adminDb.collection('workspace_entities')
-          .where('workspaceId', 'in', workspaceIds)
-          .get();
-        for (const doc of allSnaps.docs) {
-          const data = doc.data();
-          const contacts = (data.entityContacts || []) as EntityContact[];
-          const found = contacts.find(c => c.id === contactIdParam);
-          if (found) {
-            return { 
-              entityId: (data.entityId as string) || null, 
-              recipientContact: found.email || found.phone || null 
-            };
+        let targetContactId = contactIdParam;
+        let targetEntityId: string | null = null;
+        if (contactIdParam.includes(':')) {
+          const parts = contactIdParam.split(':');
+          targetContactId = parts[0];
+          targetEntityId = parts[1];
+        }
+
+        if (targetEntityId) {
+          const weSnap = await adminDb.collection('workspace_entities')
+            .where('workspaceId', 'in', workspaceIds)
+            .where('entityId', '==', targetEntityId)
+            .limit(1)
+            .get();
+          if (!weSnap.empty) {
+            const doc = weSnap.docs[0];
+            const data = doc.data();
+            const contacts = (data.entityContacts || []) as EntityContact[];
+            const found = contacts.find(c => c.id === targetContactId);
+            if (found) {
+              return { 
+                entityId: (data.entityId as string) || null, 
+                recipientContact: found.email || found.phone || null 
+              };
+            }
+          }
+        } else {
+          // Fallback capped scan to avoid hanging the server when database size is huge
+          const allSnaps = await adminDb.collection('workspace_entities')
+            .where('workspaceId', 'in', workspaceIds)
+            .limit(200)
+            .get();
+          for (const doc of allSnaps.docs) {
+            const data = doc.data();
+            const contacts = (data.entityContacts || []) as EntityContact[];
+            const found = contacts.find(c => c.id === contactIdParam);
+            if (found) {
+              return { 
+                entityId: (data.entityId as string) || null, 
+                recipientContact: found.email || found.phone || null 
+              };
+            }
           }
         }
       } catch (err) {

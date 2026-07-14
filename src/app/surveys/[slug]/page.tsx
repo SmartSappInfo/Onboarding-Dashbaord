@@ -1,6 +1,6 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import { cache } from 'react';
-import type { Survey } from '@/lib/types';
+import type { Survey, EntityContact } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import SurveyUnavailable from '../components/survey-unavailable';
 import { notFound } from 'next/navigation';
@@ -123,33 +123,35 @@ export default async function PublicSurveyPage({
 
     if (ref && isEncrypted) {
         try {
-            const { decryptRecipientAction } = await import('@/app/actions/recipient-tracking-actions');
-            const decryptRes = await decryptRecipientAction(ref);
-            console.log('[PublicSurveyPage] Decryption result:', decryptRes);
-            if (decryptRes.success && decryptRes.contactId) {
-                resolvedContactId = decryptRes.contactId;
-                resolvedRecipientContact = decryptRes.contactEmail || null;
-            } else {
-                console.warn('[PublicSurveyPage] Decryption failed or yielded empty contactId:', decryptRes.error);
-                // telemetry diagnostic logging for tracking broken or tampered campaign links
-                try {
-                    const { headers } = await import('next/headers');
-                    const reqHeaders = await headers();
-                    await adminDb.collection('telemetry_link_errors').add({
-                        surveyId: survey.id,
-                        surveySlug: survey.slug,
-                        token: ref,
-                        error: decryptRes.error || 'Decryption yielded empty contact ID.',
-                        userAgent: reqHeaders.get('user-agent') || 'Unknown',
-                        referer: reqHeaders.get('referer') || 'Unknown',
-                        timestamp: new Date()
-                    });
-                } catch (telemetryErr) {
-                    console.error('[PublicSurveyPage] Failed to write telemetry link error:', telemetryErr);
+            const { decryptToken } = await import('@/lib/crypto');
+            const decrypted = decryptToken(ref);
+            if (decrypted) {
+                const [contactId, entityId] = decrypted.split(':');
+                resolvedContactId = contactId;
+                
+                if (entityId && survey.workspaceIds && survey.workspaceIds.length > 0) {
+                    const weSnap = await adminDb.collection('workspace_entities')
+                        .where('workspaceId', 'in', survey.workspaceIds)
+                        .where('entityId', '==', entityId)
+                        .limit(1)
+                        .get();
+                    if (!weSnap.empty) {
+                        const contacts = (weSnap.docs[0].data().entityContacts || []) as EntityContact[];
+                        const found = contacts.find(c => c.id === contactId);
+                        if (found) {
+                            resolvedRecipientContact = found.email || null;
+                        }
+                    }
+                } else {
+                    const contactSnap = await adminDb.collection('contacts').doc(contactId).get();
+                    if (contactSnap.exists) {
+                        const data = contactSnap.data() || {};
+                        resolvedRecipientContact = String(data.email || '') || null;
+                    }
                 }
             }
         } catch (err) {
-            console.error('[PublicSurveyPage] Error executing decryptRecipientAction:', err);
+            console.error('[PublicSurveyPage] Error executing direct token decryption:', err);
         }
     }
 
