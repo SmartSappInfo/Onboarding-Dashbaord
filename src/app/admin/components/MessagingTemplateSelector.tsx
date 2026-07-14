@@ -551,6 +551,7 @@ export function MessagingTemplateSelector({
     const [pickerOpen, setPickerOpen] = React.useState(false);
     const [creatorOpen, setCreatorOpen] = React.useState(false);
     const [editingTemplateId, setEditingTemplateId] = React.useState<string | undefined>();
+    const [cloningTemplateId, setCloningTemplateId] = React.useState<string | undefined>();
     const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
 
     const handlePreviewClick = React.useCallback(() => {
@@ -633,16 +634,22 @@ export function MessagingTemplateSelector({
 
     const handleCreateNewClick = React.useCallback(() => {
         setEditingTemplateId(undefined);
+        setCloningTemplateId(undefined);
         setPickerOpen(false);
         setTimeout(() => setCreatorOpen(true), 150);
     }, []);
 
     const handleEditClick = React.useCallback(() => {
-        if (value) { setEditingTemplateId(value); setCreatorOpen(true); }
+        if (value) {
+            setEditingTemplateId(value);
+            setCloningTemplateId(undefined);
+            setCreatorOpen(true);
+        }
     }, [value]);
 
     const handleCloneAndEdit = React.useCallback((tmpl: MessageTemplate) => {
         // Open creator pre-populated with a clone context
+        setCloningTemplateId(tmpl.id);
         setEditingTemplateId(undefined);
         setPickerOpen(false);
         setTimeout(() => setCreatorOpen(true), 150);
@@ -1082,14 +1089,20 @@ export function MessagingTemplateSelector({
             {creatorOpen && allowInlineCreate && (
                 <TemplateWorkshopSheet
                     open={creatorOpen}
-                    onOpenChange={setCreatorOpen}
+                    onOpenChange={(open) => {
+                        setCreatorOpen(open);
+                        if (!open) {
+                            setCloningTemplateId(undefined);
+                        }
+                    }}
                     onCreated={handleTemplateCreated}
                     templateId={editingTemplateId}
+                    cloneTemplateId={cloningTemplateId}
                     initialContext={{
                         category: category === 'all' ? undefined : category,
                         channel,
                         recipientType: recipientType === 'all' ? undefined : recipientType,
-                        templateType: editingTemplateId
+                        templateType: (editingTemplateId || cloningTemplateId)
                             ? undefined
                             : templateTypePrefix ? `${templateTypePrefix}_${Date.now()}` : undefined,
                     }}

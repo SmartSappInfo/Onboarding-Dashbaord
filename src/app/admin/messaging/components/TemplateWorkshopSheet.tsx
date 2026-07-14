@@ -32,6 +32,7 @@ interface TemplateWorkshopSheetProps {
     onOpenChange: (open: boolean) => void;
     onCreated?: (template: MessageTemplate) => void;
     templateId?: string; // If provided, fetches and edits this template
+    cloneTemplateId?: string; // If provided, fetches and clones this template
     initialContext?: {
         category?: MessageTemplate['category'];
         channel?: MessageTemplate['channel'];
@@ -45,6 +46,7 @@ export function TemplateWorkshopSheet({
     onOpenChange,
     onCreated,
     templateId,
+    cloneTemplateId,
     initialContext
 }: TemplateWorkshopSheetProps) {
     const firestore = useFirestore();
@@ -108,11 +110,37 @@ export function TemplateWorkshopSheet({
                     }
                 };
                 fetchTemplate();
+            } else if (cloneTemplateId && firestore) {
+                const fetchTemplateForClone = async () => {
+                    setIsLoadingTemplate(true);
+                    try {
+                        const { getDoc, doc } = await import('firebase/firestore');
+                        const docSnap = await getDoc(doc(firestore, 'message_templates', cloneTemplateId));
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            setInitialTemplate({
+                                ...data,
+                                id: '',
+                                name: `${data.name || ''} - Copy`,
+                                templateType: `custom_${data.category || 'general'}_${Date.now()}`,
+                                createdAt: undefined,
+                                updatedAt: undefined,
+                            } as unknown as MessageTemplate);
+                        } else {
+                            toast({ variant: 'destructive', title: 'Error', description: 'Source template not found.' });
+                        }
+                    } catch (e) {
+                        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template to clone.' });
+                    } finally {
+                        setIsLoadingTemplate(false);
+                    }
+                };
+                fetchTemplateForClone();
             } else {
                 setInitialTemplate(null);
             }
         }
-    }, [open, templateId, firestore, toast]);
+    }, [open, templateId, cloneTemplateId, firestore, toast]);
 
     // Data subscriptions — only active while dialog is mounted
     const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables'), orderBy('category', 'asc')) : null, [firestore]);

@@ -330,14 +330,14 @@ export const TEMPLATES: TemplateDef[] = [
   // ── Forms ────────────────────────────────═════════════════════════════════
   {
     name: 'Form Invitation (Email)', category: 'forms', templateType: 'form_invitation', channel: 'email',
-    subject: 'Action required: {{form_name}}',
-    body: `Hi {{respondent_name}},\n\nYou have been invited to complete: {{form_name}}.\n\n🔗 Access the form: [Complete Form]({{form_link}})\n⏰ Deadline: {{submission_deadline}}\n\nPlease complete it at your earliest convenience.\n\n{{org_name}}`,
-    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'form_link', 'submission_deadline', 'org_name'],
+    subject: 'Great to connect, {{contact_name}}! Here is what\'s next.',
+    body: `Hi {{contact_name}},\n\nThanks so much for reaching out to {{org_name}}! We’ve received your information and am currently reviewing it to see how we can best help you. As a next step, A team member will call you to discuss how best we can assist you. \n\nIn the meantime, simply reply to this email if you have any immediate questions. Looking forward to speaking with you!\n\nBest regards`,
+    variableContext: 'form', declaredVariables: ['contact_name', 'org_name'],
   },
   {
     name: 'Form Invitation (SMS)', category: 'forms', templateType: 'form_invitation', channel: 'sms',
-    body: 'Hi {{respondent_name}}, please complete {{form_name}} by {{submission_deadline}}: {{form_link}}',
-    variableContext: 'form', declaredVariables: ['respondent_name', 'form_name', 'submission_deadline', 'form_link'],
+    body: 'Hi {{respondent_name}}, thanks for your interest in {{org_name}}! 🚀 We\'ve received your request. A team member will call you shortly to assist you with your next steps.',
+    variableContext: 'form', declaredVariables: ['respondent_name', 'org_name'],
   },
   {
     name: 'Form Submission Confirmation (Email)', category: 'forms', templateType: 'submission_confirmation', channel: 'email',
