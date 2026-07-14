@@ -602,9 +602,10 @@ export function renderBlocksToHtml(
         const audioTitle = resolveVariables(block.audioTitle || 'Listen to Audio', variables);
         const audioDuration = resolveVariables(block.audioDuration || '0:00', variables);
         const audioUrl = resolveVariables(block.url || '#', variables);
+        const action = block.audioAction || 'play_inline';
         
         let link = audioUrl;
-        if ((block.audioAction === 'redirect' || block.audioAction === 'play_inline') && block.audioRedirectUrl) {
+        if ((action === 'redirect' || action === 'play_inline') && block.audioRedirectUrl) {
             link = resolveVariables(block.audioRedirectUrl, variables);
         }
         if (link.startsWith('/')) {
@@ -623,16 +624,32 @@ export function renderBlocksToHtml(
 
         const cardTextColor = s.color || textColor;
         const subTextColor = isDark ? '#9ca3af' : '#64748b';
-        const actionText = block.audioAction === 'download' ? 'Download Note' : 'Listen Now';
+        const actionText = action === 'download' ? 'Download Note' : 'Listen Now';
+
+        const styleBlock = action === 'play_inline' ? `
+            <style>
+              @media screen and (-webkit-min-device-pixel-ratio: 0) {
+                .audio-native-${block.id} {
+                  display: block !important;
+                  max-height: none !important;
+                  overflow: visible !important;
+                }
+                .audio-card-${block.id} {
+                  display: none !important;
+                }
+              }
+            </style>
+        ` : '';
 
         blockHtml = `
+            ${styleBlock}
             <!--[if !mso]><!-->
-            <div class="audio-native-player" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
+            <div class="audio-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
                 <audio src="${audioUrl}" controls style="width: 100%;"></audio>
             </div>
             <!--<![endif]-->
 
-            <div style="margin: 16px 0; ${marginStyles}">
+            <div class="audio-card-${block.id}" style="margin: 16px 0; ${marginStyles}">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
                     <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background-color: ${cardBg}; border: ${borderConfig}; border-radius: ${cardRadius}; overflow: hidden;">
                         <tr>
@@ -664,9 +681,10 @@ export function renderBlocksToHtml(
       case 'video': {
         const videoUrl = resolveVariables(block.url || '#', variables);
         const thumbnailUrl = resolveVariables(block.videoThumbnailUrl || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80', variables);
+        const action = block.videoAction || 'play_inline';
         
         let link = videoUrl;
-        if ((block.videoAction === 'redirect' || block.videoAction === 'play_inline') && block.videoRedirectUrl) {
+        if ((action === 'redirect' || action === 'play_inline') && block.videoRedirectUrl) {
             link = resolveVariables(block.videoRedirectUrl, variables);
         }
         if (link.startsWith('/')) {
@@ -681,14 +699,30 @@ export function renderBlocksToHtml(
             ? `${ensureUnit(s.borderWidth)} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
             : `1px solid ${dividerColor}`;
 
+        const styleBlock = action === 'play_inline' ? `
+            <style>
+              @media screen and (-webkit-min-device-pixel-ratio: 0) {
+                .video-native-${block.id} {
+                  display: block !important;
+                  max-height: none !important;
+                  overflow: visible !important;
+                }
+                .video-card-${block.id} {
+                  display: none !important;
+                }
+              }
+            </style>
+        ` : '';
+
         blockHtml = `
+            ${styleBlock}
             <!--[if !mso]><!-->
-            <div class="video-native-player" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
+            <div class="video-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
                 <video src="${videoUrl}" poster="${thumbnailUrl}" controls style="width: 100%; border-radius: ${imgRadius};"></video>
             </div>
             <!--<![endif]-->
 
-            <div style="margin: 16px 0; ${marginStyles} text-align: ${align};">
+            <div class="video-card-${block.id}" style="margin: 16px 0; ${marginStyles} text-align: ${align};">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
                     <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; border-collapse: collapse; border-radius: ${imgRadius}; border: ${borderConfig}; overflow: hidden; background-color: #000000; margin: 0 auto;">
                         <tr>
