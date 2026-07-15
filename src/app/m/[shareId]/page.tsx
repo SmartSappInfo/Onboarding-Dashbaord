@@ -24,6 +24,7 @@ interface ShareConfig {
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
     ctaActivationGate?: 'immediate' | 'half' | 'complete';
+    slug?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -35,6 +36,18 @@ const getShareConfig = cache(async function getShareConfig(shareId: string): Pro
         if (snap.exists) {
             return { id: snap.id, ...snap.data() } as ShareConfig;
         }
+
+        // Fallback: Query by slug
+        const slugSnap = await adminDb.collection('media_shares')
+            .where('slug', '==', shareId)
+            .limit(1)
+            .get();
+        
+        if (!slugSnap.empty) {
+            const doc = slugSnap.docs[0];
+            return { id: doc.id, ...doc.data() } as ShareConfig;
+        }
+
         return null;
     } catch {
         return null;

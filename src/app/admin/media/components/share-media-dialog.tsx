@@ -47,6 +47,7 @@ interface ShareConfig {
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
     ctaActivationGate?: 'immediate' | 'half' | 'complete';
+    slug?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -85,6 +86,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaPretext, setCtaPretext] = React.useState<string>('');
     const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
     const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'half' | 'complete'>('immediate');
+    const [slug, setSlug] = React.useState<string>('');
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -129,6 +131,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaPretext(data.ctaPretext || '');
                 setCtaPopoverEnabled(data.ctaPopoverEnabled || false);
                 setCtaActivationGate(data.ctaActivationGate || 'immediate');
+                setSlug(data.slug || '');
                 setIsSaved(true);
             } else {
                 // Generate a fresh random doc ID
@@ -154,6 +157,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaPretext('');
                 setCtaPopoverEnabled(false);
                 setCtaActivationGate('immediate');
+                setSlug('');
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -256,6 +260,45 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
         setIsSaving(true);
         try {
+            const sanitizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+
+            if (sanitizedSlug) {
+                // 1. Conflict Check: check if another document in media_shares has this ID as its document ID
+                const directSnap = await getDocs(
+                    query(
+                        collection(firestore, 'media_shares'),
+                        where('__name__', '==', sanitizedSlug)
+                    )
+                );
+                if (!directSnap.empty && directSnap.docs[0].id !== shareId) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Conflict Detected',
+                        description: 'This URL slug conflicts with an existing shared link ID.',
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+
+                // 2. Conflict Check: check if another document has this slug field
+                const slugSnap = await getDocs(
+                    query(
+                        collection(firestore, 'media_shares'),
+                        where('slug', '==', sanitizedSlug)
+                    )
+                );
+                const conflictDoc = slugSnap.docs.find((d) => d.id !== shareId);
+                if (conflictDoc) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Conflict Detected',
+                        description: 'This URL slug is already in use by another media share page.',
+                    });
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
             const shareConfig: ShareConfig = {
                 id: shareId,
                 assetId: asset.id,
@@ -270,6 +313,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaPretext: ctaPretext.trim(),
                 ctaPopoverEnabled,
                 ctaActivationGate,
+                slug: sanitizedSlug,
                 updatedAt: new Date().toISOString(),
             };
 
@@ -291,8 +335,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
     // Public links
     const publicUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/m/${shareId}` 
-        : `/m/${shareId}`;
+        ? `${window.location.origin}/m/${slug.trim() || shareId}` 
+        : `/m/${slug.trim() || shareId}`;
 
     const iframeCode = `<iframe src="${publicUrl}?embed=true" width="100%" height="500px" frameborder="0" allowfullscreen></iframe>`;
 
@@ -361,6 +405,20 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                         placeholder="Add descriptive content supporting variables..."
                                         className="min-h-[100px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
                                     />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom URL Slug (Optional)</Label>
+                                    <div className="flex gap-2 items-center">
+                                        <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
+                                        <Input 
+                                            value={slug}
+                                            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                                            placeholder="custom-link-name"
+                                            className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 w-full"
+                                        />
+                                    </div>
+                                    <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
                                 </div>
                             </div>
 
