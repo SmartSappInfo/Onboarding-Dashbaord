@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
     Music, Link2, Download, ExternalLink, 
-    Play, Pause, Volume2, ArrowRight, ChevronRight, X 
+    Play, Pause, Volume2, ArrowRight, ChevronRight, X, Lock 
 } from 'lucide-react';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
@@ -20,6 +20,7 @@ interface MediaShareClientProps {
     ctaMode: 'modal' | 'redirect' | 'replace';
     ctaPretext: string;
     ctaPopoverEnabled: boolean;
+    ctaActivationGate?: 'immediate' | 'half' | 'complete';
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
@@ -35,6 +36,7 @@ export default function MediaShareClient({
     ctaMode,
     ctaPretext,
     ctaPopoverEnabled,
+    ctaActivationGate = 'immediate',
     orgBranding,
     isEmbed,
     searchParams,
@@ -65,7 +67,11 @@ export default function MediaShareClient({
 
     const handleAudioTimeUpdate = () => {
         if (!audioRef.current) return;
-        setCurrentTime(audioRef.current.currentTime);
+        const curr = audioRef.current.currentTime;
+        setCurrentTime(curr);
+        if (ctaActivationGate === 'half' && duration > 0 && curr >= duration / 2) {
+            setIsCtaUnlocked(true);
+        }
     };
 
     const handleAudioLoadedMetadata = () => {
@@ -77,6 +83,9 @@ export default function MediaShareClient({
         setIsPlaying(false);
         setCurrentTime(0);
         setIsPlaybackFinished(true);
+        if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
+            setIsCtaUnlocked(true);
+        }
     };
 
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +124,42 @@ export default function MediaShareClient({
     };
 
     const { isEmbeddable, embedUrl } = parseEmbedUrl(asset.url);
+
+    const [isCtaUnlocked, setIsCtaUnlocked] = React.useState(false);
+
+    const shouldUnlockImmediately = React.useMemo(() => {
+        return (
+            ctaActivationGate === 'immediate' ||
+            (asset.type !== 'video' && asset.type !== 'audio') ||
+            (asset.type === 'video' && isEmbeddable)
+        );
+    }, [ctaActivationGate, asset.type, isEmbeddable]);
+
+    React.useEffect(() => {
+        if (shouldUnlockImmediately) {
+            setIsCtaUnlocked(true);
+        } else {
+            setIsCtaUnlocked(false);
+        }
+    }, [shouldUnlockImmediately]);
+
+    const handleVideoTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+        const video = e.currentTarget;
+        const curr = video.currentTime;
+        const dur = video.duration || 0;
+        
+        if (ctaActivationGate === 'half' && dur > 0 && curr >= dur / 2) {
+            setIsCtaUnlocked(true);
+        }
+    };
+
+    const handleVideoEnded = () => {
+        setIsPlaybackFinished(true);
+        setIsVideoPlaying(false);
+        if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
+            setIsCtaUnlocked(true);
+        }
+    };
 
     // YouTube / Vimeo preview image resolve
     const videoId = React.useMemo(() => {
@@ -227,10 +272,8 @@ export default function MediaShareClient({
                                         src={asset.url}
                                         controls
                                         preload="metadata"
-                                        onEnded={() => {
-                                            setIsPlaybackFinished(true);
-                                            setIsVideoPlaying(false);
-                                        }}
+                                        onTimeUpdate={handleVideoTimeUpdate}
+                                        onEnded={handleVideoEnded}
                                         className="w-full h-full object-contain"
                                     />
                                     {!isVideoPlaying && !isPlaybackFinished && (
@@ -378,14 +421,25 @@ export default function MediaShareClient({
                     <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
                         <div className="truncate pr-4 text-left">
                             <p className="text-xs font-bold truncate">{title}</p>
-                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{description}</p>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                                {!isCtaUnlocked 
+                                    ? (ctaActivationGate === 'half' ? '🔒 Unlocks halfway through' : '🔒 Unlocks on playback complete') 
+                                    : description}
+                            </p>
                         </div>
                         <Button 
+                            disabled={!isCtaUnlocked}
                             size="sm" 
                             onClick={handleCtaClick} 
-                            className="rounded-xl text-[10px] font-black h-8 px-4 bg-primary text-white hover:bg-primary/90 flex items-center gap-1 shrink-0 cursor-pointer"
+                            className={`rounded-xl text-[10px] font-black h-8 px-4 flex items-center gap-1 shrink-0 cursor-pointer ${
+                                !isCtaUnlocked 
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60 border border-slate-700' 
+                                    : 'bg-primary text-white hover:bg-primary/90'
+                            }`}
                         >
-                            {ctaText || 'Get Started'} <ChevronRight className="h-3.5 w-3.5" />
+                            {!isCtaUnlocked && <Lock className="h-3.5 w-3.5" />}
+                            {ctaText || 'Get Started'} 
+                            {isCtaUnlocked && <ChevronRight className="h-3.5 w-3.5" />}
                         </Button>
                     </div>
                 )}
@@ -529,10 +583,8 @@ export default function MediaShareClient({
                                         src={asset.url}
                                         controls
                                         preload="metadata"
-                                        onEnded={() => {
-                                            setIsPlaybackFinished(true);
-                                            setIsVideoPlaying(false);
-                                        }}
+                                        onTimeUpdate={handleVideoTimeUpdate}
+                                        onEnded={handleVideoEnded}
                                         className="w-full h-full object-contain"
                                     />
                                     {!isVideoPlaying && !isPlaybackFinished && (
@@ -719,19 +771,30 @@ export default function MediaShareClient({
 
                 {/* 3. CTA Pre-text & CTA Button Layout - AT THE BOTTOM */}
                 {ctaType !== 'none' && !(ctaPopoverEnabled && isPlaybackFinished) && (
-                    <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2">
+                    <div className="w-full max-w-2xl space-y-5 flex flex-col items-center pt-2 animate-in fade-in duration-300">
                         {ctaPretext && (
-                            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
+                            <p className="text-sm md:text-base text-slate-750 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line text-center max-w-xl">
                                 {ctaPretext}
                             </p>
                         )}
                         <Button
+                            disabled={!isCtaUnlocked}
                             onClick={handleCtaClick}
-                            className="rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer"
+                            className={`rounded-2xl font-extrabold h-12 px-8 shadow-xl transition-all flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer ${
+                                !isCtaUnlocked 
+                                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-75 shadow-none border border-slate-300 dark:border-slate-800' 
+                                    : 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white hover:shadow-primary/10 active:scale-[0.97]'
+                            }`}
                         >
+                            {!isCtaUnlocked && <Lock className="h-4 w-4 mr-0.5 animate-pulse" />}
                             {ctaText || 'Get Started'}
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            {isCtaUnlocked && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
                         </Button>
+                        {!isCtaUnlocked && (
+                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-450 flex items-center gap-1">
+                                {ctaActivationGate === 'half' ? 'Unlocks halfway through playback' : 'Unlocks on playback complete'}
+                            </p>
+                        )}
                     </div>
                 )}
             </main>

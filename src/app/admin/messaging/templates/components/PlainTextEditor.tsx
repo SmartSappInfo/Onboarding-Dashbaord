@@ -6,8 +6,10 @@ import type { VariableDefinition, TemplateVariable } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Link as LinkIcon } from 'lucide-react';
 import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LinkPicker } from './link-picker';
 
 interface PlainTextEditorProps {
     value: string;
@@ -40,6 +42,8 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
     contextLabels
 }: PlainTextEditorProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const [showLinkPicker, setShowLinkPicker] = React.useState(false);
+    const [trackVisitor, setTrackVisitor] = React.useState(false);
 
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 

@@ -18,10 +18,18 @@ import {
     AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon,
     AlignJustify, Database, Mail, Phone, Hash, Link as LinkIcon, Settings
 } from 'lucide-react';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset, TemplateVariable } from '@/lib/types';
 import * as React from 'react';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
+import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-autocomplete';
+import { sanitizeHtml } from '@/lib/survey-variable-utils';
+import { createPortal } from 'react-dom';
+import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
+
+const QuestionVariablesContext = React.createContext<TemplateVariable[]>([]);
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -49,6 +57,42 @@ const stripHtml = (html: string) => {
 /**
  * A simple Rich Text Editor using contenteditable that integrates with react-hook-form.
  */
+const contextLabels: Record<string, string> = {
+  entity: 'Entity',
+  deal: 'Deal',
+  agent: 'Agent',
+  core: 'General Identity & Contacts',
+  contact: 'General Identity & Contacts',
+  contact_specific: 'Contact Specific Role',
+  general: 'General Variables',
+  common: 'Common Variables',
+  custom: 'Custom Variables',
+  regional: 'Regional Metadata',
+  financial: 'Financial Configuration',
+  interests: 'Interests',
+  survey: 'Survey Metadata',
+};
+
+function convertToVisualHtml(text: string): string {
+  if (!text) return '';
+  const parsed = text.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
+    const parts = rawKey.split(/\|\||\|/);
+    const varName = parts[0].trim();
+    const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
+    const fallbackText = fallback ? ` (${fallback})` : '';
+
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all">
+      <span>${varName}${fallbackText}</span>
+      <button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent" title="Configure fallback">⚙️</button>
+    </span>`;
+  });
+  return parsed;
+}
+
+/**
+ * A simple Rich Text Editor using contenteditable that integrates with react-hook-form
+ * and supports slash commands for unified variables.
+ */
 const RichTextEditor = ({ 
     value, 
     onChange, 
@@ -62,42 +106,219 @@ const RichTextEditor = ({
     className?: string;
     textAlign?: 'left' | 'center' | 'right' | 'justify';
 }) => {
+    const variables = React.useContext(QuestionVariablesContext);
     const editorRef = React.useRef<HTMLDivElement>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
 
-    // Sync external value to editor (only if different)
+    const [modalOpen, setModalOpen] = React.useState(false);
+    const [editingVarKey, setEditingVarKey] = React.useState('');
+    const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+    const [activePillElement, setActivePillElement] = React.useState<HTMLElement | null>(null);
+
+    const handleSaveFallback = React.useCallback((fallbackVal: string) => {
+      if (!activePillElement) return;
+      const cleanFallback = fallbackVal.trim();
+      activePillElement.setAttribute('data-fallback', cleanFallback);
+      
+      const labelSpan = activePillElement.querySelector('span');
+      const varName = activePillElement.getAttribute('data-variable') || '';
+      if (labelSpan) {
+        labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+      }
+      
+      const el = editorRef.current;
+      if (el) {
+        const cleanVal = convertToCleanHtml(el);
+        onChange(cleanVal);
+      }
+      
+      setModalOpen(false);
+      setActivePillElement(null);
+    }, [activePillElement, onChange]);
+
+    const {
+      showAutocomplete,
+      autocompleteCoords,
+      autocompleteIndex,
+      filteredVars,
+      handleKeyDown: hookKeyDown,
+      handleInputChange,
+      handleSelectChange,
+      selectAndInsert,
+      setShowAutocomplete,
+    } = useSlashAutocomplete({
+      variables,
+      value,
+      onChange,
+    });
+
+    const updateCoords = React.useCallback(() => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+        const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+        const width = Math.max(250, rect.width);
+        
+        let left = rect.left + window.scrollX;
+        if (left + width > screenWidth - 16) {
+          left = Math.max(8, screenWidth - width - 16);
+        }
+        
+        const dropdownHeight = 240;
+        let top = rect.bottom + window.scrollY;
+        if (rect.bottom + dropdownHeight > screenHeight - 16) {
+          top = Math.max(8, rect.top + window.scrollY - dropdownHeight - 8);
+        }
+
+        setCoords({ top, left, width });
+      }
+    }, []);
+
     React.useEffect(() => {
-        if (editorRef.current && editorRef.current.innerHTML !== value) {
-            editorRef.current.innerHTML = value || '';
+      if (showAutocomplete) {
+        updateCoords();
+        window.addEventListener('resize', updateCoords);
+        window.addEventListener('scroll', updateCoords, { capture: true });
+      }
+      return () => {
+        window.removeEventListener('resize', updateCoords);
+        window.removeEventListener('scroll', updateCoords, { capture: true });
+      };
+    }, [showAutocomplete, updateCoords]);
+
+    // Sync external value to editor (only if visual representation differs)
+    React.useEffect(() => {
+        if (editorRef.current) {
+            const visualHtml = convertToVisualHtml(value);
+            if (editorRef.current.innerHTML !== visualHtml) {
+                editorRef.current.innerHTML = visualHtml || '';
+            }
         }
     }, [value]);
 
     const handleInput = () => {
         if (editorRef.current) {
-            onChange(editorRef.current.innerHTML);
+            const cleanVal = convertToCleanHtml(editorRef.current);
+            const sanitized = sanitizeHtml(cleanVal);
+            onChange(sanitized);
+            handleInputChange({ target: editorRef.current } as unknown as React.ChangeEvent<HTMLDivElement>);
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Enter') {
+          if (showAutocomplete && filteredVars.length > 0) {
+            e.preventDefault();
+            const selectedVar = filteredVars[autocompleteIndex];
+            if (selectedVar) {
+              selectAndInsert(selectedVar.name, e.currentTarget);
+            }
+            return;
+          }
+        }
         if (e.ctrlKey || e.metaKey) {
             if (e.key === 'b') { e.preventDefault(); document.execCommand('bold', false); }
             if (e.key === 'i') { e.preventDefault(); document.execCommand('italic', false); }
             if (e.key === 'u') { e.preventDefault(); document.execCommand('underline', false); }
         }
+        hookKeyDown(e);
+    };
+
+    const handleBlur = () => {
+        setShowAutocomplete(false);
     };
 
     return (
-        <div
-            ref={editorRef}
-            contentEditable
-            onInput={handleInput}
-            onKeyDown={handleKeyDown}
-            className={cn(
-                "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap [&_*]:!text-inherit",
-                textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
-                className
+        <div ref={containerRef} className="relative w-full">
+            <div
+                ref={editorRef}
+                contentEditable
+                onInput={handleInput}
+                onKeyDown={handleKeyDown}
+                onBlur={handleBlur}
+                onKeyUp={(e) => handleSelectChange(e as unknown as React.SyntheticEvent<HTMLDivElement>)}
+                onMouseUp={(e) => handleSelectChange(e as unknown as React.SyntheticEvent<HTMLDivElement>)}
+                onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    const settingsBtn = target.closest('[data-variable-settings]');
+                    if (settingsBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const pill = settingsBtn.closest('[data-variable]');
+                        if (pill) {
+                            const varName = pill.getAttribute('data-variable') || '';
+                            const fallback = pill.getAttribute('data-fallback') || '';
+                            setEditingVarKey(varName);
+                            setEditingVarCurrentFallback(fallback);
+                            setActivePillElement(pill as HTMLElement);
+                            setModalOpen(true);
+                        }
+                    }
+                }}
+                className={cn(
+                    "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap [&_*]:!text-inherit focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-lg px-1",
+                    textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
+                    className
+                )}
+                data-placeholder={placeholder}
+            />
+
+            {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        position: 'absolute',
+                        top: `${coords.top}px`,
+                        left: `${coords.left}px`,
+                        width: `${coords.width}px`,
+                        marginTop: '4px',
+                        zIndex: 100000,
+                    }}
+                    className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+                >
+                    {filteredVars.map((v, idx) => {
+                        const labelText = contextLabels[v.context] || String(v.context);
+                        const isSelected = idx === autocompleteIndex;
+
+                        return (
+                            <button
+                                key={v.id}
+                                type="button"
+                                data-active={isSelected ? 'true' : 'false'}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    if (editorRef.current) {
+                                        selectAndInsert(v.name, editorRef.current);
+                                    }
+                                }}
+                                className={cn(
+                                    "w-full text-left px-2.5 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] sm:min-h-0 justify-center cursor-pointer",
+                                    isSelected
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-foreground hover:bg-muted"
+                                )}
+                            >
+                                <span className="truncate w-full">{v.label}</span>
+                                <span className={cn("text-[9px] font-mono truncate w-full", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                    {`{{${v.name}}}`} • {labelText}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>,
+                document.body
             )}
-            data-placeholder={placeholder}
-        />
+
+            <FallbackEditorModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                variableKey={editingVarKey}
+                currentFallback={editingVarCurrentFallback}
+                onSave={handleSaveFallback}
+            />
+        </div>
     );
 };
 
@@ -386,51 +607,175 @@ function OptionInput({
   onChange,
   onPasteAppend,
 }: OptionInputProps) {
+  const variables = React.useContext(QuestionVariablesContext);
   const [localVal, setLocalVal] = React.useState(value || '');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 250 });
 
   React.useEffect(() => {
     setLocalVal(value || '');
   }, [value]);
 
+  const {
+    showAutocomplete,
+    autocompleteIndex,
+    filteredVars,
+    handleKeyDown: hookKeyDown,
+    handleInputChange,
+    handleSelectChange,
+    selectAndInsert,
+    setShowAutocomplete,
+  } = useSlashAutocomplete({
+    variables,
+    value: localVal,
+    onChange: (newVal) => {
+      setLocalVal(newVal);
+      onChange(newVal);
+    },
+  });
+
+  const updateCoords = React.useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+      const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+      const width = Math.max(250, rect.width);
+      
+      let left = rect.left + window.scrollX;
+      if (left + width > screenWidth - 16) {
+        left = Math.max(8, screenWidth - width - 16);
+      }
+      
+      const dropdownHeight = 240;
+      let top = rect.bottom + window.scrollY;
+      if (rect.bottom + dropdownHeight > screenHeight - 16) {
+        top = Math.max(8, rect.top + window.scrollY - dropdownHeight - 8);
+      }
+
+      setCoords({ top, left, width });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (showAutocomplete) {
+      updateCoords();
+      window.addEventListener('resize', updateCoords);
+      window.addEventListener('scroll', updateCoords, { capture: true });
+    }
+    return () => {
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, { capture: true });
+    };
+  }, [showAutocomplete, updateCoords]);
+
   const handleBlur = () => {
     if (localVal !== value) {
       onChange(localVal);
     }
+    setTimeout(() => setShowAutocomplete(false), 200);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      if (showAutocomplete && filteredVars.length > 0) {
+        e.preventDefault();
+        const selectedVar = filteredVars[autocompleteIndex];
+        if (selectedVar) {
+          selectAndInsert(selectedVar.name, e.currentTarget);
+        }
+        return;
+      }
       onChange(localVal);
       onKeyDown(e);
     } else {
+      hookKeyDown(e);
       onKeyDown(e);
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setLocalVal(newVal);
+    handleInputChange(e);
+  };
+
   return (
-    <Input
-      name={name}
-      value={localVal}
-      onChange={(e) => setLocalVal(e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      placeholder={placeholder}
-      className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all"
-      onPaste={(e) => {
-        const pastedText = e.clipboardData.getData('Text');
-        if (pastedText && pastedText.includes('\n')) {
-          e.preventDefault();
-          const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-          if (lines.length > 0) {
-            setLocalVal(lines[0]);
-            onChange(lines[0]);
-            if (lines.length > 1) {
-              onPasteAppend(lines.slice(1));
+    <div ref={containerRef} className="relative w-full">
+      <Input
+        ref={inputRef}
+        name={name}
+        value={localVal}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        onKeyUp={(e) => handleSelectChange(e as unknown as React.SyntheticEvent<HTMLInputElement>)}
+        onMouseUp={(e) => handleSelectChange(e as unknown as React.SyntheticEvent<HTMLInputElement>)}
+        className="bg-card h-11 rounded-xl border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 transition-all w-full"
+        onPaste={(e) => {
+          const pastedText = e.clipboardData.getData('Text');
+          if (pastedText && pastedText.includes('\n')) {
+            e.preventDefault();
+            const lines = pastedText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            if (lines.length > 0) {
+              setLocalVal(lines[0]);
+              onChange(lines[0]);
+              if (lines.length > 1) {
+                onPasteAppend(lines.slice(1));
+              }
             }
           }
-        }
-      }}
-    />
+        }}
+      />
+
+      {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'absolute',
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            marginTop: '4px',
+            zIndex: 100000,
+          }}
+          className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+        >
+          {filteredVars.map((v, idx) => {
+            const labelText = contextLabels[v.context] || String(v.context);
+            const isSelected = idx === autocompleteIndex;
+
+            return (
+              <button
+                key={v.id}
+                type="button"
+                data-active={isSelected ? 'true' : 'false'}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (inputRef.current) {
+                    selectAndInsert(v.name, inputRef.current);
+                  }
+                }}
+                className={cn(
+                  "w-full text-left px-2.5 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] sm:min-h-0 justify-center cursor-pointer",
+                  isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                )}
+              >
+                <span className="truncate w-full">{v.label}</span>
+                <span className={cn("text-[9px] font-mono truncate w-full", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  {`{{${v.name}}}`} • {labelText}
+                </span>
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </div>
   );
 }
 
@@ -1577,6 +1922,33 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     setLastSelectedId: (id: string | null) => void;
     isAccordion: boolean;
 }) {
+  const { activeWorkspaceId } = useWorkspace();
+  const workspaceId = activeWorkspaceId;
+  const [variables, setVariables] = React.useState<TemplateVariable[]>([]);
+
+  React.useEffect(() => {
+    if (!workspaceId) return;
+    getVariablesAction({
+      workspaceId,
+      featureContext: 'survey',
+    }).then((data) => {
+      const mapped: TemplateVariable[] = data.map((v) => ({
+        id: v.key,
+        name: v.key,
+        label: v.label,
+        context: v.category,
+        description: v.description || '',
+        dataType: v.dataType === 'boolean' ? 'string' : v.dataType,
+        exampleValue: v.exampleValue || '',
+        isDynamic: false,
+        isComputed: false
+      }));
+      setVariables(mapped);
+    }).catch((err) => {
+      console.error('[QuestionEditor] Failed to fetch survey variables:', err);
+    });
+  }, [workspaceId]);
+
   const { formState: { errors } } = useFormContext();
   const formErrors = errors.elements as any[] | undefined;
   
@@ -1623,54 +1995,56 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
   };
 
   return (
-    <div onClickCapture={(e) => {
-        if(e.target === e.currentTarget) {
-            setSelectedBlockIds([]);
-            setLastSelectedId(null);
-        }
-    }}>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-6">
-                    {fields.map((field, index) => (
-                        <SortableSurveyElement 
-                            key={field.id} 
-                            id={field.id} 
-                            index={index} 
-                            remove={remove} 
-                            swap={swap} 
-                            insert={insert}
-                            requestAddElement={requestAddElement}
-                            selectedBlockIds={selectedBlockIds}
-                            setSelectedBlockIds={setSelectedBlockIds}
-                            setLastSelectedId={setLastSelectedId}
-                            onSelect={handleSelect}
-                            isAccordion={isAccordion}
-                        />
-                    ))}
-                </div>
-            </SortableContext>
-        </DndContext>
-        <div className="mt-8 flex justify-center">
-            <Button
-                data-marquee-ignore="true"
-                type="button"
-                variant="outline"
-                className="rounded-xl border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary gap-2 h-12 px-8"
-                onClick={() => requestAddElement(fields.length - 1)}
-            >
-                <PlusCircle className="h-4 w-4" />
-                <span className="font-bold">Add New Block</span>
-            </Button>
-        </div>
-        <div className="mt-8">
-            {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
-                <FormMessage className="text-sm font-bold bg-destructive/10 p-4 rounded-xl flex items-center gap-3 border border-destructive/20 shadow-sm">
-                    <X className="h-5 w-5 text-destructive" />
-                    {(formErrors as any).message}
-                </FormMessage>
-            )}
-        </div>
-    </div>
+    <QuestionVariablesContext.Provider value={variables}>
+      <div onClickCapture={(e) => {
+          if(e.target === e.currentTarget) {
+              setSelectedBlockIds([]);
+              setLastSelectedId(null);
+          }
+      }}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-6">
+                      {fields.map((field, index) => (
+                          <SortableSurveyElement 
+                              key={field.id} 
+                              id={field.id} 
+                              index={index} 
+                              remove={remove} 
+                              swap={swap} 
+                              insert={insert}
+                              requestAddElement={requestAddElement}
+                              selectedBlockIds={selectedBlockIds}
+                              setSelectedBlockIds={setSelectedBlockIds}
+                              setLastSelectedId={setLastSelectedId}
+                              onSelect={handleSelect}
+                              isAccordion={isAccordion}
+                          />
+                      ))}
+                  </div>
+              </SortableContext>
+          </DndContext>
+          <div className="mt-8 flex justify-center">
+              <Button
+                  data-marquee-ignore="true"
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary gap-2 h-12 px-8"
+                  onClick={() => requestAddElement(fields.length - 1)}
+              >
+                  <PlusCircle className="h-4 w-4" />
+                  <span className="font-bold">Add New Block</span>
+              </Button>
+          </div>
+          <div className="mt-8">
+              {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
+                  <FormMessage className="text-sm font-bold bg-destructive/10 p-4 rounded-xl flex items-center gap-3 border border-destructive/20 shadow-sm">
+                      <X className="h-5 w-5 text-destructive" />
+                      {(formErrors as any).message}
+                  </FormMessage>
+              )}
+          </div>
+      </div>
+    </QuestionVariablesContext.Provider>
   );
 }

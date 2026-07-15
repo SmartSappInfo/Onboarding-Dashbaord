@@ -46,6 +46,7 @@ interface ShareConfig {
     ctaMode?: 'modal' | 'redirect' | 'replace';
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
+    ctaActivationGate?: 'immediate' | 'half' | 'complete';
     createdAt?: string;
     updatedAt?: string;
 }
@@ -83,6 +84,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaMode, setCtaMode] = React.useState<'modal' | 'redirect' | 'replace'>('redirect');
     const [ctaPretext, setCtaPretext] = React.useState<string>('');
     const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
+    const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'half' | 'complete'>('immediate');
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -126,6 +128,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaMode(data.ctaMode || 'redirect');
                 setCtaPretext(data.ctaPretext || '');
                 setCtaPopoverEnabled(data.ctaPopoverEnabled || false);
+                setCtaActivationGate(data.ctaActivationGate || 'immediate');
                 setIsSaved(true);
             } else {
                 // Generate a fresh random doc ID
@@ -150,6 +153,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaMode('redirect');
                 setCtaPretext('');
                 setCtaPopoverEnabled(false);
+                setCtaActivationGate('immediate');
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -265,6 +269,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaMode,
                 ctaPretext: ctaPretext.trim(),
                 ctaPopoverEnabled,
+                ctaActivationGate,
                 updatedAt: new Date().toISOString(),
             };
 
@@ -428,7 +433,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 gap-4">
+                                        <div className={`grid gap-4 ${asset.type === 'video' || asset.type === 'audio' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                                             <div className="space-y-1.5 text-left">
                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Action Behavior</Label>
                                                 <select
@@ -441,6 +446,20 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     <option value="replace">Reload Current Page (Same Tab)</option>
                                                 </select>
                                             </div>
+                                            {(asset.type === 'video' || asset.type === 'audio') && (
+                                                <div className="space-y-1.5 text-left">
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Activation Gate</Label>
+                                                    <select
+                                                        value={ctaActivationGate}
+                                                        onChange={(e) => setCtaActivationGate(e.target.value as any)}
+                                                        className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                    >
+                                                        <option value="immediate">Active Immediately (Before play)</option>
+                                                        <option value="half">Unlock Halfway Through Playback</option>
+                                                        <option value="complete">Unlock on Playback Complete</option>
+                                                    </select>
+                                                </div>
+                                            )}
                                         </div>
 
                                          <div className="space-y-3 text-left">

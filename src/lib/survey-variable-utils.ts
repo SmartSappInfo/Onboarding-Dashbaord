@@ -40,6 +40,37 @@ const VARIABLE_TOKEN_REGEX = /\{\{([^}]+)\}\}/g;
  * interpolateWithMap('Hello {{contact_name}}!', {})                        // → 'Hello !'
  * interpolateWithMap('Hello {{contact_name}}!', {}, true)                  // → 'Hello {{contact_name}}!'
  */
+export function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') return html;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  const sanitizeNode = (node: Node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      const tagName = el.tagName.toLowerCase();
+      
+      if (['script', 'iframe', 'object', 'embed', 'link', 'style', 'form', 'input', 'button', 'textarea'].includes(tagName)) {
+        el.parentNode?.removeChild(el);
+        return;
+      }
+      
+      const attrs = Array.from(el.attributes);
+      attrs.forEach(attr => {
+        if (attr.name.startsWith('on') || attr.value.toLowerCase().includes('javascript:')) {
+          el.removeAttribute(attr.name);
+        }
+      });
+    }
+    
+    const children = Array.from(node.childNodes);
+    children.forEach(sanitizeNode);
+  };
+  
+  sanitizeNode(doc.body);
+  return doc.body.innerHTML.replace(/&amp;/g, '&');
+}
+
 export function interpolateWithMap(
   text: string | undefined | null,
   valuesMap: VariableValuesMap,
@@ -48,23 +79,30 @@ export function interpolateWithMap(
   // Fast path: null/undefined → empty string
   if (!text) return '';
 
-  // Fast path: no tokens present → return unchanged (avoids regex engine entirely)
-  if (!text.includes('{{')) return text;
+  const hasHtml = text.includes('<');
+  let result = text;
 
-  // Fast path: empty map → strip all tokens (or keep if keepMissing)
-  if (Object.keys(valuesMap).length === 0) {
-    return keepMissing ? text : text.replace(VARIABLE_TOKEN_REGEX, '');
+  if (text.includes('{{')) {
+    // Fast path: empty map → strip all tokens (or keep if keepMissing)
+    if (Object.keys(valuesMap).length === 0) {
+      result = keepMissing ? text : text.replace(VARIABLE_TOKEN_REGEX, '');
+    } else {
+      // Reset lastIndex before each use (regex has global flag)
+      VARIABLE_TOKEN_REGEX.lastIndex = 0;
+
+      result = text.replace(VARIABLE_TOKEN_REGEX, (_match: string, key: string) => {
+        const trimmed = key.trim();
+        const value = valuesMap[trimmed];
+        if (value !== undefined) return value;
+        return keepMissing ? _match : '';
+      });
+    }
   }
 
-  // Reset lastIndex before each use (regex has global flag)
-  VARIABLE_TOKEN_REGEX.lastIndex = 0;
-
-  return text.replace(VARIABLE_TOKEN_REGEX, (_match: string, key: string) => {
-    const trimmed = key.trim();
-    const value = valuesMap[trimmed];
-    if (value !== undefined) return value;
-    return keepMissing ? _match : '';
-  });
+  if (hasHtml || result.includes('<')) {
+    return sanitizeHtml(result);
+  }
+  return result;
 }
 
 /**
