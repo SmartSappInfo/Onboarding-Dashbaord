@@ -660,12 +660,12 @@ export function renderBlocksToHtml(
             ${styleBlock}
             ${nativePlayer}
 
-            <div class="audio-card-${block.id}" style="margin: 16px 0; ${marginStyles}">
+            <div class="audio-card-${block.id}" style="margin: 16px 0; ${marginStyles} background-color: ${cardBg}; border: ${borderConfig}; border-radius: ${cardRadius}; overflow: hidden;">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
-                    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border-collapse: collapse; background-color: ${cardBg}; border: ${borderConfig}; border-radius: ${cardRadius}; overflow: hidden;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; background-color: transparent;">
                         <tr>
                             <td style="padding: 16px 12px 16px 20px; width: 40px; vertical-align: middle;">
-                                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; margin: 0;">
+                                <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin: 0;">
                                     <tr>
                                         <td align="center" valign="middle" style="width: 40px; height: 40px; border-radius: 20px; background-color: ${primaryColor}; text-align: center; font-size: 0; line-height: 0;">
                                             <div style="width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent #ffffff; margin-left: 3px; display: inline-block; vertical-align: middle;"></div>
@@ -673,13 +673,26 @@ export function renderBlocksToHtml(
                                     </tr>
                                 </table>
                             </td>
-                            <td style="padding: 16px 20px 16px 12px; vertical-align: middle; text-align: left;">
+                            <td style="padding: 16px 12px; vertical-align: middle; text-align: left;">
                                 <div style="font-size: 14px; font-weight: bold; color: ${cardTextColor}; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; line-height: 1.3; margin-bottom: 4px;">
                                     ${audioTitle}
                                 </div>
                                 <div style="font-size: 11px; font-weight: 600; color: ${subTextColor}; font-family: ${s.fontFamily || "'" + fontFam + "', Helvetica, Arial, sans-serif"}; line-height: 1; text-transform: uppercase; letter-spacing: 0.05em;">
                                     ${audioDuration} &bull; ${actionText}
                                 </div>
+                            </td>
+                            <td style="padding: 16px 20px 16px 12px; vertical-align: middle; text-align: right; width: 60px; opacity: 0.35;">
+                                <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse: collapse; display: inline-block; margin: 0;">
+                                    <tr>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 10px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 16px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 12px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 20px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 10px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 16px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                        <td style="padding: 0 1px; vertical-align: middle;"><div style="width: 2px; height: 6px; background-color: ${cardTextColor}; border-radius: 1px;"></div></td>
+                                    </tr>
+                                </table>
                             </td>
                         </tr>
                     </table>
