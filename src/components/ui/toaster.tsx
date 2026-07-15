@@ -29,6 +29,7 @@ function CopyButton({ text, isDestructive }: { text: string; isDestructive: bool
     <button
       onClick={handleCopy}
       title="Copy message"
+      aria-label="Copy message"
       className={
         isDestructive
           ? "rounded-md p-1 text-red-300 opacity-60 transition-opacity hover:opacity-100 hover:text-red-50 focus:outline-none focus:ring-2 focus:ring-red-400"
@@ -128,7 +129,7 @@ export function Toaster() {
                     dismiss(id)
                   }}
                   className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-lg px-4 py-2 text-xs font-bold shadow-sm transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                    "inline-flex h-10 items-center justify-center rounded-lg px-4 py-2 text-xs font-bold shadow-sm transition-[transform,background-color,color] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                     isDestructive
                       ? "bg-white text-red-600 hover:bg-red-50 focus-visible:ring-white focus-visible:ring-offset-red-600"
                       : "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500 focus-visible:ring-offset-background"
