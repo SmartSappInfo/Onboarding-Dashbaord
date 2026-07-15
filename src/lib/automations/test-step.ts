@@ -13,6 +13,7 @@ import { evaluateConditionNode } from '../automation-condition';
 import { adminDb } from '../firebase-admin';
 import { enrichExecutionContext } from './nodes/traverse';
 import type { TagConditionNode } from '../types';
+import { nodeChecksMessageActions } from './payload-enricher';
 
 export interface TestAutomationStepInput {
   workspaceId: string;
@@ -122,9 +123,21 @@ export async function testAutomationStep(
       await processTagActionNode(testNode, context);
       executionResult = { message: 'Tag action executed successfully.' };
     } else if (testNode.type === 'conditionNode') {
+      let evalPayload = payload;
+      if (context.entityId && context.workspaceId && nodeChecksMessageActions(testNode)) {
+        const logsSnap = await adminDb.collection('message_logs')
+          .where('entityId', '==', context.entityId)
+          .where('workspaceId', '==', context.workspaceId)
+          .get();
+        const messageLogs: any[] = [];
+        logsSnap.forEach((doc) => {
+          messageLogs.push({ id: doc.id, ...doc.data() });
+        });
+        evalPayload = { ...payload, messageLogs };
+      }
       evaluation = await evaluateConditionNode(
         testNode,
-        payload,
+        evalPayload,
         async (audienceId) => {
           const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
           return snap.exists ? snap.data() : null;
@@ -179,9 +192,21 @@ export async function testAutomationStep(
         delay: `${config.value || 5} ${config.unit || 'Minutes'}`,
       };
     } else if (testNode.type === 'jumpToNode') {
+      let evalPayload = payload;
+      if (context.entityId && context.workspaceId && nodeChecksMessageActions(testNode as any)) {
+        const logsSnap = await adminDb.collection('message_logs')
+          .where('entityId', '==', context.entityId)
+          .where('workspaceId', '==', context.workspaceId)
+          .get();
+        const messageLogs: any[] = [];
+        logsSnap.forEach((doc) => {
+          messageLogs.push({ id: doc.id, ...doc.data() });
+        });
+        evalPayload = { ...payload, messageLogs };
+      }
       evaluation = await evaluateConditionNode(
         testNode as unknown as Parameters<typeof evaluateConditionNode>[0],
-        payload,
+        evalPayload,
         async (audienceId) => {
           const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
           return snap.exists ? snap.data() : null;

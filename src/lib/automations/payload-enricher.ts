@@ -75,9 +75,9 @@ export async function enrichPayloadWithLiveBehavioralData(
     enriched.__liveTags = liveTags;
   }
 
-  // 2. Fetch activities if campaign_action, landing_page_action, scanned_qr, or short_link is checked
+  // 2. Fetch activities if campaign_action, landing_page_action, scanned_qr, short_link, or message actions are checked
   const checksActivity = conditions.some((c) =>
-    ['campaign_action', 'landing_page_action', 'scanned_qr', 'short_link'].includes(c.field)
+    ['campaign_action', 'landing_page_action', 'scanned_qr', 'short_link', 'email_action', 'sms_action', 'whatsapp_action'].includes(c.field)
   );
 
   if (checksActivity) {
@@ -272,5 +272,41 @@ export async function enrichPayloadWithLiveBehavioralData(
     }
   }
 
+  // 7. Fetch message logs if message action fields are checked
+  const checksMessageAction = conditions.some((c) =>
+    ['email_action', 'sms_action', 'whatsapp_action'].includes(c.field)
+  );
+  if (checksMessageAction) {
+    const logsSnap = await adminDb.collection('message_logs')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    const messageLogs: Array<Record<string, unknown>> = [];
+    logsSnap.forEach((doc) => {
+      messageLogs.push({ id: doc.id, ...doc.data() });
+    });
+    enriched.messageLogs = messageLogs;
+  }
+
   return enriched;
+}
+
+export function nodeChecksMessageActions(
+  node: { data?: { config?: Record<string, unknown> } }
+): boolean {
+  const config = node.data?.config;
+  if (!config) return false;
+
+  const targetFields = ['email_action', 'sms_action', 'whatsapp_action'];
+  if (targetFields.includes(String(config.field))) return true;
+
+  const groups = config.groups as Array<{ conditions?: Array<{ field?: string }> }> | undefined;
+  if (groups && Array.isArray(groups)) {
+    return groups.some((g) =>
+      (g.conditions || []).some((c) => targetFields.includes(String(c.field)))
+    );
+  }
+
+  return false;
 }

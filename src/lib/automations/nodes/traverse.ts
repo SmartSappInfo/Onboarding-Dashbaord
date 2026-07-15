@@ -7,6 +7,7 @@ import { evaluateTagConditionNode, processTagActionNode } from './tag-nodes';
 import { adminDb } from '../../firebase-admin';
 import { logStepExecution } from '../step-logger';
 import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
+import { nodeChecksMessageActions } from '../payload-enricher';
 import { notifyAutomationFailed } from '../automation-lifecycle-notify';
 import * as crypto from 'crypto';
 
@@ -189,6 +190,18 @@ export async function traverseNodes(
       const liveTags = await fetchLiveEntityTags(context.entityId, context.workspaceId);
       // __liveTags (double-underscore) signals internal enrichment, never collides with user data
       evalPayload = { ...context.payload, __liveTags: liveTags };
+    }
+
+    if (context.entityId && context.workspaceId && nodeChecksMessageActions(currentNode)) {
+      const logsSnap = await adminDb.collection('message_logs')
+        .where('entityId', '==', context.entityId)
+        .where('workspaceId', '==', context.workspaceId)
+        .get();
+      const messageLogs: any[] = [];
+      logsSnap.forEach((doc) => {
+        messageLogs.push({ id: doc.id, ...doc.data() });
+      });
+      evalPayload = { ...evalPayload, messageLogs };
     }
 
     const isTrue = await evaluateConditionNode(
