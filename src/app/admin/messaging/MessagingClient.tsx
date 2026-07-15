@@ -24,6 +24,7 @@ import {
     Layers,
     Target,
     MessageSquare,
+    MessageCircle,
     ShieldCheck,
     Zap,
     Database,
@@ -34,6 +35,8 @@ import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-actions';
+import { getWhatsAppConnection } from '@/lib/whatsapp-actions';
+import type { WhatsAppConnectionPublic } from '@/lib/whatsapp/whatsapp-types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
@@ -41,7 +44,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell }
 import { subDays, format, isValid } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageJobsView from './jobs/page';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
 import { PageContainerFluid } from '@/components/ui/page-container';
@@ -62,6 +65,36 @@ export default function MessagingClient() {
     const [reportData, setReportData] = React.useState<SmsReportItem[]>([]);
     const [isLoadingReport, setIsLoadingReport] = React.useState(false);
     const { singular } = useTerminology();
+
+    const [waConnection, setWaConnection] = React.useState<WhatsAppConnectionPublic | null>(null);
+    const [isLoadingWa, setIsLoadingWa] = React.useState(false);
+    const auth = useAuth();
+
+    const loadWaConnection = React.useCallback(async () => {
+        if (!auth?.currentUser || !activeOrganizationId) {
+            setWaConnection(null);
+            return;
+        }
+        setIsLoadingWa(true);
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            const res = await getWhatsAppConnection(idToken, activeOrganizationId);
+            if (res.success) {
+                setWaConnection(res.data);
+            } else {
+                setWaConnection(null);
+            }
+        } catch (err) {
+            console.error('Failed to fetch WhatsApp connection:', err);
+            setWaConnection(null);
+        } finally {
+            setIsLoadingWa(false);
+        }
+    }, [auth, activeOrganizationId]);
+
+    React.useEffect(() => {
+        loadWaConnection();
+    }, [loadWaConnection]);
 
     // Fetch logs for analytics
     const logsCol = useMemoFirebase(() => {
@@ -363,7 +396,7 @@ export default function MessagingClient() {
                                         <Activity className="h-4 w-4" /> Provider Status
                                     </CardTitle>
                                 </CardHeader>
-                                 <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
+                                 <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-8 pt-0">
                                     <div className="flex items-center gap-5 p-6 rounded-2xl bg-background border border-border shadow-sm transition-all hover:shadow-md">
                                         <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0 shadow-sm border border-blue-500/20">
                                             <Mail className="h-6 w-6" />
@@ -389,6 +422,33 @@ export default function MessagingClient() {
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
                                             <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
+                                        </div>
+                                    </div>
+
+                                     <div className="flex items-center gap-5 p-6 rounded-2xl bg-background border border-border shadow-sm transition-all hover:shadow-md">
+                                        <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-500 shrink-0 shadow-sm border border-emerald-500/20">
+                                            <MessageCircle className="h-6 w-6" />
+                                         </div>
+                                         <div className="flex-1 min-w-0">
+                                             <p className="font-semibold text-sm text-foreground tracking-tight">WhatsApp (Meta)</p>
+                                             <p className="text-[9px] text-muted-foreground font-semibold tracking-tight mt-1 opacity-60">
+                                                 {isLoadingWa ? 'Checking connection...' : waConnection ? `WABA: ${waConnection.wabaId || 'Connected'}` : 'Status: Disconnected'}
+                                             </p>
+                                         </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {isLoadingWa ? (
+                                                <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                                            ) : waConnection ? (
+                                                <>
+                                                    <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+                                                    <Badge className="bg-emerald-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Live</Badge>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="h-2 w-2 rounded-full bg-rose-500" />
+                                                    <Badge className="bg-rose-500 text-white border-none text-[8px] font-semibold uppercase px-2.5 h-5">Inactive</Badge>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </CardContent>
