@@ -61,6 +61,28 @@ describe('Automation Delay Calculator (calculateExecuteAt)', () => {
     expect(res.getDate()).toBe(25);
     expect(res.getHours()).toBe(18);
     expect(res.getMinutes()).toBe(30);
+
+    // Test omitted date with future time today (baseTime is 12:00 PM, target is 3:00 PM / 15:00)
+    const configTimeOnlyFuture = {
+      waitType: 'specific_date',
+      specificTime: '15:00',
+    };
+    const resFuture = await calculateExecuteAt(configTimeOnlyFuture, dummyContext, baseTime);
+    expect(resFuture.getFullYear()).toBe(2026);
+    expect(resFuture.getMonth()).toBe(6); // July
+    expect(resFuture.getDate()).toBe(10); // Today
+    expect(resFuture.getHours()).toBe(15);
+    expect(resFuture.getMinutes()).toBe(0);
+
+    // Test omitted date with past time today (baseTime is 12:00 PM, target is 9:00 AM / 09:00 -> should roll to tomorrow July 11)
+    const configTimeOnlyPast = {
+      waitType: 'specific_date',
+      specificTime: '09:00',
+    };
+    const resPast = await calculateExecuteAt(configTimeOnlyPast, dummyContext, baseTime);
+    expect(resPast.getDate()).toBe(11); // Tomorrow
+    expect(resPast.getHours()).toBe(9);
+    expect(resPast.getMinutes()).toBe(0);
   });
 
   it('handles scheduled day of week delay (scheduled_day)', async () => {

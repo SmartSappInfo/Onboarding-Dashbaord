@@ -12,10 +12,21 @@ export async function calculateExecuteAt(
   const waitType = config.waitType || 'period';
 
   // 1. Until a Specific Day and/or Time
-  if (waitType === 'specific_date' && config.specificDate) {
-    const [year, month, day] = String(config.specificDate).split('-').map(Number);
-    const [hour, minute] = String(config.specificTime || '09:00').split(':').map(Number);
-    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (waitType === 'specific_date') {
+    if (config.specificDate) {
+      const [year, month, day] = String(config.specificDate).split('-').map(Number);
+      const [hour, minute] = String(config.specificTime || '09:00').split(':').map(Number);
+      return new Date(year, month - 1, day, hour, minute, 0, 0);
+    } else if (config.specificTime) {
+      // Omitted target date: schedule for the next occurrence of this specific time
+      const [hour, minute] = String(config.specificTime).split(':').map(Number);
+      const executeAt = new Date(now);
+      executeAt.setHours(hour, minute, 0, 0);
+      if (executeAt.getTime() <= now.getTime()) {
+        executeAt.setDate(executeAt.getDate() + 1);
+      }
+      return executeAt;
+    }
   }
 
   // 2. On a Specific Day of Week
