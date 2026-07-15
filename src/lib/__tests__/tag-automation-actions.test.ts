@@ -146,6 +146,18 @@ const mockTriggerAutomationProtocols = vi.fn();
 vi.mock('../automation-processor', () => ({
     triggerAutomationProtocols: (...args: unknown[]) => mockTriggerAutomationProtocols(...args),
 }));
+vi.mock('../automations/orchestrator', () => ({
+    triggerAutomationProtocolsBulk: vi.fn(async (event: string, workspaceId: string, items: Array<{ entityId: string; payload?: any }>) => {
+        for (const item of items) {
+            mockTriggerAutomationProtocols(event, {
+                tagId: item.payload?.tagId || item.payload?.tag,
+                entityId: item.entityId,
+                workspaceId: workspaceId,
+                organizationId: item.payload?.organizationId || 'org_456',
+            });
+        }
+    }),
+}));
 
 let afterPromises: Promise<unknown>[] = [];
 vi.mock('next/server', () => ({

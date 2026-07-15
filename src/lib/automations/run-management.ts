@@ -151,7 +151,7 @@ export async function retryFailedStep(
     };
 
     try {
-      await traverseNodes(nodeId, automation, context);
+      await traverseNodes(nodeId, automation, context, true);
 
       // Check if all jobs are done
       const pendingJobs = await adminDb

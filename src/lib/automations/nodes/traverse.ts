@@ -148,13 +148,111 @@ function getStepNumbers(automation: Automation): Record<string, number> {
 export async function traverseNodes(
   nodeId: string,
   automation: Automation,
-  context: ExecutionContext
+  context: ExecutionContext,
+  executeCurrentAction = false
 ): Promise<void> {
   const currentNode = automation.nodes.find((n) => n.id === nodeId);
   if (!currentNode) return;
 
   // Enrich context details at the start of node traversal
   await enrichExecutionContext(context);
+
+  if (executeCurrentAction) {
+    const stepStart = Date.now();
+    try {
+      if (currentNode.type === 'actionNode') {
+        const output = await processActionNode(currentNode, context);
+
+        const stepNumbers = getStepNumbers(automation);
+        const stepNum = stepNumbers[currentNode.id];
+        if (stepNum && output && typeof output === 'object') {
+          for (const [key, val] of Object.entries(output)) {
+            context.payload[`${stepNum}.${key}`] = val;
+            context.payload[`${currentNode.id}.${key}`] = val;
+          }
+        }
+
+        const resendConfig = (currentNode.data?.config as { resendConfig?: MessageResendConfig } | undefined)?.resendConfig;
+        const nextActionType = currentNode.data?.actionType?.toUpperCase();
+        const isResendMessage =
+          (nextActionType === 'SEND_MESSAGE' ||
+           nextActionType === 'SEND_EMAIL' ||
+           nextActionType === 'SEND_SMS' ||
+           nextActionType === 'SEND_WHATSAPP') &&
+          !!resendConfig?.enabled &&
+          (resendConfig?.maxResends ?? 0) > 0;
+
+        if (isResendMessage && resendConfig) {
+          const { scheduleResendCheck } = await import('../resend-jobs');
+          const nextCheckAt = await scheduleResendCheck({
+            context,
+            nodeId: currentNode.id,
+            config: resendConfig,
+            attempt: 1,
+          });
+          logStepExecution(context.runId, {
+            nodeId: currentNode.id,
+            nodeType: 'actionNode',
+            nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Action'),
+            status: 'waiting',
+            executedAt: new Date().toISOString(),
+            durationMs: Date.now() - stepStart,
+            metadata: { actionType: currentNode.data?.actionType, delayUntil: nextCheckAt },
+          });
+          return;
+        }
+
+        logStepExecution(context.runId, {
+          nodeId: currentNode.id,
+          nodeType: 'actionNode',
+          nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Action'),
+          status: 'success',
+          executedAt: new Date().toISOString(),
+          durationMs: Date.now() - stepStart,
+          metadata: { actionType: currentNode.data?.actionType },
+        });
+      } else if (currentNode.type === 'tagActionNode') {
+        await processTagActionNode(currentNode, context);
+        logStepExecution(context.runId, {
+          nodeId: currentNode.id,
+          nodeType: 'tagActionNode',
+          nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Tag Action'),
+          status: 'success',
+          executedAt: new Date().toISOString(),
+          durationMs: Date.now() - stepStart,
+          metadata: { actionType: currentNode.data?.action },
+        });
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      const label = getNodeLabelWithStep(currentNode, automation.nodes, currentNode.id);
+      logStepExecution(context.runId, {
+        nodeId: currentNode.id,
+        nodeType: currentNode.type || 'unknown',
+        nodeLabel: label,
+        status: 'failed',
+        executedAt: new Date().toISOString(),
+        durationMs: Date.now() - stepStart,
+        error: message,
+      });
+
+      if (context.runId) {
+        try {
+          const runRef = adminDb.collection('automation_runs').doc(context.runId);
+          await runRef.update({
+            status: 'failed',
+            finishedAt: new Date().toISOString(),
+            error: `Node [${label}] failed: ${message}`,
+            currentNodeId: currentNode.id,
+            currentNodeLabel: label,
+          });
+        } catch (updateErr) {
+          console.error('[TRAVERSE] Failed to mark run as failed (non-fatal):', updateErr);
+        }
+      }
+      throw e;
+    }
+  }
 
   // Log trigger node execution or delay node resumption
   if (currentNode.type === 'triggerNode') {
