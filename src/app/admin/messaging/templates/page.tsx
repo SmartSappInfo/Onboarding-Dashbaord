@@ -591,10 +591,18 @@ export default function MessageTemplatesPage() {
             // Trigger WhatsApp status sync
             await whatsapp.sync();
         } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'An error occurred while pushing templates to Meta.';
+            const isDecryptionError = message.includes('decryption failed') || message.includes('WHATSAPP_ENCRYPTION_KEY');
             toast({
                 variant: 'destructive',
                 title: 'Bulk Push Failed',
-                description: e instanceof Error ? e.message : 'An error occurred while pushing templates to Meta.',
+                description: message,
+                ...(isDecryptionError ? {
+                    actionConfig: {
+                        path: '/admin/settings/whatsapp',
+                        label: 'Go to WhatsApp Setup'
+                    }
+                } : {})
             });
         } finally {
             setIsBulkPushing(false);
