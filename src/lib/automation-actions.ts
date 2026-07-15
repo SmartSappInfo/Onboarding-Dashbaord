@@ -586,13 +586,19 @@ export async function bulkCleanContactsAction(
       });
     }
 
-    // Call suppressions outside transaction blocks
-    for (const item of suppressionsToClear) {
-      try {
-        await removeSuppression(item.email, item.workspaceId);
-      } catch (err) {
-        console.warn(`[BulkClean] Suppression removal failed for ${item.email}:`, err);
-      }
+    // Call suppressions outside transaction blocks in parallel batches of 10
+    const batchSize = 10;
+    for (let i = 0; i < suppressionsToClear.length; i += batchSize) {
+      const batch = suppressionsToClear.slice(i, i + batchSize);
+      await Promise.allSettled(
+        batch.map(async (item) => {
+          try {
+            await removeSuppression(item.email, item.workspaceId);
+          } catch (err) {
+            console.warn(`[BulkClean] Suppression removal failed for ${item.email}:`, err);
+          }
+        })
+      );
     }
 
     return { success: true, count };
