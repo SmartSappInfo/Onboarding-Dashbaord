@@ -43,7 +43,9 @@ export async function bulkPushWhatsAppSkeletonsAction(
 
       let processedBody = bodyText;
       paramMap.forEach((v: string, idx: number) => {
-        processedBody = processedBody.replaceAll(`{{${v}}}`, `{{${idx + 1}}}`);
+        const escaped = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const regex = new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g');
+        processedBody = processedBody.replace(regex, `{{${idx + 1}}}`);
       });
 
       const cleanName = toWhatsAppTemplateName(data.name || '');
