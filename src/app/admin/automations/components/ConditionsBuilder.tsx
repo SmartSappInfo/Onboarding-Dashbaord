@@ -15,6 +15,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
 import type { ConditionGroup, ConditionItem } from '@/lib/automation-condition';
 import type { Pipeline } from '@/lib/types';
+import type { Node } from 'reactflow';
 
 // Grouped Condition Fields definition
 const CONDITION_FIELDS = [
@@ -241,7 +242,7 @@ interface ConditionsBuilderProps {
   relation: 'and' | 'or' | 'AND' | 'OR';
   onChange: (relation: 'and' | 'or', groups: ConditionGroup[]) => void;
   accentColor?: 'amber' | 'purple' | 'violet';
-  nodes?: any[];
+  nodes?: Node[];
 }
 
 export function ConditionsBuilder({
@@ -994,7 +995,7 @@ export function ConditionsBuilder({
                                         const expectedChannel = cond.field === 'email_action' ? 'email' :
                                                               cond.field === 'sms_action' ? 'sms' : 'whatsapp';
                                         const filtered = automationTemplates.filter(t => t.channel === expectedChannel);
-                                        return filtered.map((t: any) => (
+                                        return filtered.map((t) => (
                                           <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">
                                             {t.name}
                                           </SelectItem>
@@ -1189,7 +1190,7 @@ export function ConditionsBuilder({
                           <button
                             type="button"
                             onClick={() => removeCondition(group.id, cond.id)}
-                            className="absolute right-0 top-6 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-rose-500 transition-colors opacity-0 group-hover/row:opacity-100"
+                            className="absolute right-0 top-[18px] lg:top-6 p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-rose-500 transition-colors lg:opacity-0 lg:group-hover/row:opacity-100"
                           >
                             <Trash className="h-3.5 w-3.5" />
                           </button>

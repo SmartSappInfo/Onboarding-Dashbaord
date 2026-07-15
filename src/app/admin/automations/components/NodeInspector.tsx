@@ -45,7 +45,7 @@ interface NodeInspectorProps {
     onApply?: (nodeId: string, nodeData: any, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
     onTest?: (nodeId: string, nodeData: any) => void;
     onCancel?: () => void;
-    nodes?: any[];
+    nodes?: import('reactflow').Node[];
 }
 
 const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; label: string; icon: typeof Building; desc: string }[] }[] = [

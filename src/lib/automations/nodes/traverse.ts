@@ -197,7 +197,7 @@ export async function traverseNodes(
         .where('entityId', '==', context.entityId)
         .where('workspaceId', '==', context.workspaceId)
         .get();
-      const messageLogs: any[] = [];
+      const messageLogs: Array<Record<string, unknown>> = [];
       logsSnap.forEach((doc) => {
         messageLogs.push({ id: doc.id, ...doc.data() });
       });

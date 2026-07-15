@@ -298,7 +298,7 @@ export function nodeChecksMessageActions(
   const config = node.data?.config;
   if (!config) return false;
 
-  const targetFields = ['email_action', 'sms_action', 'whatsapp_action'];
+  const targetFields = ['email_action', 'sms_action', 'whatsapp_action', 'saved_audience', 'audience'];
   if (targetFields.includes(String(config.field))) return true;
 
   const groups = config.groups as Array<{ conditions?: Array<{ field?: string }> }> | undefined;
