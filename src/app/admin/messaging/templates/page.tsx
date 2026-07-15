@@ -581,6 +581,9 @@ export default function MessageTemplatesPage() {
             const idToken = await auth.currentUser?.getIdToken();
             if (!idToken) throw new Error('Not authenticated');
             const res = await bulkPushWhatsAppSkeletonsAction(idToken, activeOrganizationId, skeletonIds);
+            if (!res.success) {
+                throw new Error(res.error);
+            }
             toast({
                 title: 'Bulk Push Successful',
                 description: `Successfully pushed ${res.count} skeleton templates to Meta.`,
