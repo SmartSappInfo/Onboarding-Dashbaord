@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { adminDb, FieldValue } from './firebase-admin';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export interface MediaSessionRecord {
   maxProgress: number;
   sessionTimeSeconds: number;
   updatedAt: string;
+  userAgents?: string[];
 }
 
 export interface MediaSessionRecordWithContact extends MediaSessionRecord {
@@ -128,6 +130,14 @@ export async function recordMediaPageEventAction(params: {
   }
 
   try {
+    let userAgent = 'Unknown';
+    try {
+      const headersList = await headers();
+      userAgent = headersList.get('user-agent') || 'Unknown';
+    } catch {
+      // Safe fallback for testing or non-request contexts
+    }
+
     const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(shareId);
     const now = new Date().toISOString();
 
@@ -188,6 +198,7 @@ export async function recordMediaPageEventAction(params: {
           maxProgress: 0,
           sessionTimeSeconds: 0,
           updatedAt: now,
+          userAgents: [userAgent],
         });
 
         transaction.set(
@@ -211,6 +222,11 @@ export async function recordMediaPageEventAction(params: {
         const updates: Partial<MediaSessionRecord> = {
           updatedAt: now,
         };
+
+        const oldAgents = data.userAgents || [];
+        if (!oldAgents.includes(userAgent)) {
+          updates.userAgents = [...oldAgents, userAgent];
+        }
 
         if (type === 'cta_click') updates.ctaClicked = true;
         if (type === 'download') updates.downloaded = true;
@@ -444,4 +460,40 @@ async function buildContactNameMap(contactIds: string[]): Promise<Map<string, st
   });
 
   return map;
+}
+
+/**
+ * Checks if a custom slug is available for a media share page.
+ * Returns true if available (no conflict), false if already taken.
+ */
+export async function checkSlugAvailabilityAction(slug: string, shareId: string): Promise<boolean> {
+  const sanitizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+  if (!sanitizedSlug) return true;
+
+  try {
+    // 1. Check if direct doc ID matches
+    const directSnap = await adminDb
+      .collection('media_shares')
+      .doc(sanitizedSlug)
+      .get();
+    if (directSnap.exists && directSnap.id !== shareId) {
+      return false;
+    }
+
+    // 2. Check if another document has this slug field
+    const slugSnap = await adminDb
+      .collection('media_shares')
+      .where('slug', '==', sanitizedSlug)
+      .limit(1)
+      .get();
+    
+    if (!slugSnap.empty && slugSnap.docs[0].id !== shareId) {
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[checkSlugAvailabilityAction] Error checking slug:', err);
+    return false;
+  }
 }

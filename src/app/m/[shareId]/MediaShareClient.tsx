@@ -103,6 +103,43 @@ export default function MediaShareClient({
         return () => clearInterval(interval);
     }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId]);
 
+    React.useEffect(() => {
+        const sendBeacon = () => {
+            const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            const payload = JSON.stringify({
+                shareId,
+                sessionId,
+                elapsed,
+                contactId: contactId || null,
+            });
+            
+            if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                navigator.sendBeacon('/api/media-tracker', new Blob([payload], { type: 'application/json' }));
+            } else {
+                fetch('/api/media-tracker', {
+                    method: 'POST',
+                    body: payload,
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
+                }).catch(() => {});
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                sendBeacon();
+            }
+        };
+
+        window.addEventListener('beforeunload', sendBeacon);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener('beforeunload', sendBeacon);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [shareId, sessionId, contactId]);
+
     // Audio handlers
     const toggleAudioPlay = () => {
         if (!audioRef.current) return;

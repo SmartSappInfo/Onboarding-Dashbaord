@@ -26,6 +26,8 @@ import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { MediaAsset } from '@/lib/types';
 import type { TemplateVariable } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { checkSlugAvailabilityAction } from '@/lib/media-analytics-actions';
 
 interface ShareMediaDialogProps {
     asset: MediaAsset;
@@ -87,6 +89,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
     const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'half' | 'complete'>('immediate');
     const [slug, setSlug] = React.useState<string>('');
+    const [isSlugChecking, setIsSlugChecking] = React.useState<boolean>(false);
+    const [slugStatus, setSlugStatus] = React.useState<'idle' | 'available' | 'conflict'>('idle');
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -166,6 +170,27 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             setIsLoading(false);
         }
     }, [firestore, activeWorkspaceId, asset.id, asset.name]);
+
+    React.useEffect(() => {
+        if (!slug.trim()) {
+            setSlugStatus('idle');
+            return;
+        }
+
+        setIsSlugChecking(true);
+        const delay = setTimeout(async () => {
+            try {
+                const available = await checkSlugAvailabilityAction(slug, shareId);
+                setSlugStatus(available ? 'available' : 'conflict');
+            } catch {
+                setSlugStatus('conflict');
+            } finally {
+                setIsSlugChecking(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(delay);
+    }, [slug, shareId]);
 
     // Fetch surveys, forms, pages, variables
     const loadResources = React.useCallback(async () => {
@@ -408,14 +433,35 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom URL Slug (Optional)</Label>
+                                    <div className="flex justify-between items-center ml-1">
+                                        <Label className="text-[10px] font-semibold text-muted-foreground">Custom URL Slug (Optional)</Label>
+                                        {isSlugChecking && (
+                                            <span className="text-[9px] font-bold text-primary flex items-center gap-1">
+                                                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying...
+                                            </span>
+                                        )}
+                                        {!isSlugChecking && slugStatus === 'available' && (
+                                            <span className="text-[9px] font-bold text-emerald-500">
+                                                ✓ Slug available
+                                            </span>
+                                        )}
+                                        {!isSlugChecking && slugStatus === 'conflict' && (
+                                            <span className="text-[9px] font-bold text-destructive">
+                                                ✗ Slug already in use
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex gap-2 items-center">
                                         <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
                                         <Input 
                                             value={slug}
                                             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
                                             placeholder="custom-link-name"
-                                            className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 w-full"
+                                            className={cn(
+                                                "h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 w-full",
+                                                slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border border-emerald-500/20 bg-emerald-500/5",
+                                                slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5"
+                                            )}
                                         />
                                     </div>
                                     <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
@@ -659,7 +705,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8 cursor-pointer">Discard</Button>
                                 <Button 
                                     type="submit" 
-                                    disabled={isSaving || !title.trim()} 
+                                    disabled={isSaving || !title.trim() || isSlugChecking || slugStatus === 'conflict'} 
                                     className="rounded-xl font-bold h-12 px-10 shadow-lg cursor-pointer transition-all active:scale-95 gap-2"
                                 >
                                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
