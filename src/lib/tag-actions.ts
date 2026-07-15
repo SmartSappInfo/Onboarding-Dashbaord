@@ -1027,6 +1027,8 @@ export async function bulkApplyTagsAction(
     // and ensuring every contact's automation is triggered even for 10k+ bulk ops.
     if (allContactNewTags.length > 0) {
       const runActivityLogs = async () => {
+        const logsToCreate: Array<Parameters<typeof logActivity>[0]> = [];
+
         for (const item of allContactNewTags) {
           const resolvedEntityId =
             contactType === 'workspace_entity'
@@ -1065,39 +1067,79 @@ export async function bulkApplyTagsAction(
             }
 
             if (resolvedWorkspaceId) {
-              try {
-                await logActivity({
-                  organizationId: resolvedOrganizationId || 'default',
-                  workspaceId: resolvedWorkspaceId,
-                  entityId: resolvedEntityId,
-                  entityType:
-                    contactType === 'workspace_entity'
-                      ? ((item.contactData.entityType as EntityType) || 'institution')
-                      : (contactType as EntityType),
-                  displayName:
-                    (item.contactData.displayName as string) ||
-                    (item.contactData.name as string),
-                  type: 'tag_added',
-                  source: 'activity',
-                  userId,
-                  description: `Tag "${tag?.name || tagId}" applied.`,
-                  metadata: {
-                    tagId,
-                    tagName: tag?.name,
-                    contactType,
-                    appliedBy: userId,
-                    isAutomation:
-                      userId.startsWith('automation:') ||
-                      userId.startsWith('system-') ||
-                      userId === 'system',
-                  },
-                });
-              } catch (activityErr) {
-                console.error(
-                  `[BULK_TAG_ADDED] logActivity failed for entity=${resolvedEntityId} tag=${tagId}:`,
-                  activityErr
-                );
-              }
+              logsToCreate.push({
+                organizationId: resolvedOrganizationId || 'default',
+                workspaceId: resolvedWorkspaceId,
+                entityId: resolvedEntityId,
+                entityType:
+                  contactType === 'workspace_entity'
+                    ? ((item.contactData.entityType as EntityType) || 'institution')
+                    : (contactType as EntityType),
+                displayName:
+                  (item.contactData.displayName as string) ||
+                  (item.contactData.name as string),
+                type: 'tag_added',
+                source: 'activity',
+                userId,
+                description: `Tag "${tag?.name || tagId}" applied.`,
+                metadata: {
+                  tagId,
+                  tagName: tag?.name,
+                  contactType,
+                  appliedBy: userId,
+                  isAutomation:
+                    userId.startsWith('automation:') ||
+                    userId.startsWith('system-') ||
+                    userId === 'system',
+                  skipAutomationTrigger: true,
+                },
+              });
+            }
+          }
+        }
+
+        // Process logging in chunks of 100 concurrently to prevent OOM
+        const logChunkSize = 100;
+        for (let i = 0; i < logsToCreate.length; i += logChunkSize) {
+          const chunk = logsToCreate.slice(i, i + logChunkSize);
+          await Promise.all(chunk.map(log => logActivity(log).catch(e => console.error('[BULK_TAG_ADDED] Activity log failed:', e))));
+        }
+
+        // Group by workspaceId to trigger bulk automations
+        const workspaceGroups = new Map<string, Array<{ entityId: string; entityType: string; payload: Record<string, unknown> }>>();
+        for (const log of logsToCreate) {
+          const wsId = log.workspaceId;
+          if (!workspaceGroups.has(wsId)) {
+            workspaceGroups.set(wsId, []);
+          }
+          workspaceGroups.get(wsId)!.push({
+            entityId: log.entityId!,
+            entityType: log.entityType!,
+            payload: {
+              workspaceId: wsId,
+              tagId: log.metadata?.tagId,
+              tagName: log.metadata?.tagName,
+            },
+          });
+        }
+
+        // Call triggerAutomationProtocolsBulk for each workspace
+        const { triggerAutomationProtocolsBulk } = await import('@/lib/automations/orchestrator');
+        for (const [wsId, targets] of workspaceGroups.entries()) {
+          const tagGroups = new Map<string, typeof targets>();
+          for (const target of targets) {
+            const tagId = target.payload.tagId as string;
+            if (!tagGroups.has(tagId)) {
+              tagGroups.set(tagId, []);
+            }
+            tagGroups.get(tagId)!.push(target);
+          }
+
+          for (const [tagId, tagTargets] of tagGroups.entries()) {
+            try {
+              await triggerAutomationProtocolsBulk('TAG_ADDED', wsId, tagTargets);
+            } catch (err) {
+              console.error(`[BULK_TAG_ADDED] Bulk trigger failed for workspace=${wsId} tag=${tagId}:`, err);
             }
           }
         }
@@ -1106,7 +1148,6 @@ export async function bulkApplyTagsAction(
       try {
         after(runActivityLogs);
       } catch (err) {
-        // Fallback for non-request context (e.g. testing)
         console.warn('[BULK_TAG_ADDED] after() called outside Next.js request context. Executing in background promise.');
         runActivityLogs().catch(err => {
           console.error('[BULK_TAG_ADDED] Fallback runActivityLogs failed:', err);
@@ -1199,6 +1240,8 @@ export async function bulkRemoveTagsAction(
     const errors: string[] = [];
     const total = contactIds.length;
     const partialFailures: string[] = [];
+    const weToResync: Array<Record<string, unknown>> = [];
+    const allContactRemovedTags: BulkTagChange[] = [];
 
     // Pre-fetch all tag documents in parallel to construct an in-memory O(1) map
     const tagsSnap = await Promise.all(
@@ -1264,8 +1307,24 @@ export async function bulkRemoveTagsAction(
         await batch.commit();
         processedCount += chunkProcessed.length;
 
-        // After successful commit, log activities to trigger automations asynchronously
-        for (const item of contactRemovedTags) {
+        // Accumulate removed tag events for after() dispatching
+        allContactRemovedTags.push(...contactRemovedTags);
+      } catch (commitErr: unknown) {
+        const commitError = commitErr as Error;
+        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
+        console.error('bulkRemoveTagsAction batch error:', commitErr);
+        errors.push(msg);
+        failedCount += chunkProcessed.length;
+        partialFailures.push(...chunkProcessed);
+      }
+    }
+
+    // Dispatch tag removed activities and bulk automations asynchronously post-response
+    if (allContactRemovedTags.length > 0) {
+      const runActivityLogs = async () => {
+        const logsToCreate: Array<Parameters<typeof logActivity>[0]> = [];
+
+        for (const item of allContactRemovedTags) {
           const resolvedEntityId = contactType === 'workspace_entity' ? ((item.contactData.entityId as string) || item.contactId) : item.contactId;
           for (const tagId of item.tagIds) {
             const tag = tagsMap.get(tagId);
@@ -1292,7 +1351,7 @@ export async function bulkRemoveTagsAction(
             }
 
             if (resolvedWorkspaceId) {
-              await logActivity({
+              logsToCreate.push({
                 organizationId: resolvedOrganizationId || 'default',
                 workspaceId: resolvedWorkspaceId,
                 entityId: resolvedEntityId,
@@ -1308,18 +1367,67 @@ export async function bulkRemoveTagsAction(
                   contactType,
                   appliedBy: userId,
                   isAutomation: userId.startsWith('automation:') || userId.startsWith('system-') || userId === 'system',
+                  skipAutomationTrigger: true,
                 }
               });
             }
           }
         }
-      } catch (commitErr: unknown) {
-        const commitError = commitErr as Error;
-        const msg = `Batch commit failed for contacts ${i}–${i + chunk.length - 1}: ${commitError.message}`;
-        console.error('bulkRemoveTagsAction batch error:', commitErr);
-        errors.push(msg);
-        failedCount += chunkProcessed.length;
-        partialFailures.push(...chunkProcessed);
+
+        // Process logging in chunks of 100 concurrently to prevent OOM
+        const logChunkSize = 100;
+        for (let i = 0; i < logsToCreate.length; i += logChunkSize) {
+          const chunk = logsToCreate.slice(i, i + logChunkSize);
+          await Promise.all(chunk.map(log => logActivity(log).catch(e => console.error('[BULK_TAG_REMOVED] Activity log failed:', e))));
+        }
+
+        // Group by workspaceId to trigger bulk automations
+        const workspaceGroups = new Map<string, Array<{ entityId: string; entityType: string; payload: Record<string, unknown> }>>();
+        for (const log of logsToCreate) {
+          const wsId = log.workspaceId;
+          if (!workspaceGroups.has(wsId)) {
+            workspaceGroups.set(wsId, []);
+          }
+          workspaceGroups.get(wsId)!.push({
+            entityId: log.entityId!,
+            entityType: log.entityType!,
+            payload: {
+              workspaceId: wsId,
+              tagId: log.metadata?.tagId,
+              tagName: log.metadata?.tagName,
+            },
+          });
+        }
+
+        // Call triggerAutomationProtocolsBulk for each workspace
+        const { triggerAutomationProtocolsBulk } = await import('@/lib/automations/orchestrator');
+        for (const [wsId, targets] of workspaceGroups.entries()) {
+          const tagGroups = new Map<string, typeof targets>();
+          for (const target of targets) {
+            const tagId = target.payload.tagId as string;
+            if (!tagGroups.has(tagId)) {
+              tagGroups.set(tagId, []);
+            }
+            tagGroups.get(tagId)!.push(target);
+          }
+
+          for (const [tagId, tagTargets] of tagGroups.entries()) {
+            try {
+              await triggerAutomationProtocolsBulk('TAG_REMOVED', wsId, tagTargets);
+            } catch (err) {
+              console.error(`[BULK_TAG_REMOVED] Bulk trigger failed for workspace=${wsId} tag=${tagId}:`, err);
+            }
+          }
+        }
+      };
+
+      try {
+        after(runActivityLogs);
+      } catch (err) {
+        console.warn('[BULK_TAG_REMOVED] after() called outside Next.js request context. Executing in background promise.');
+        runActivityLogs().catch(err => {
+          console.error('[BULK_TAG_REMOVED] Fallback runActivityLogs failed:', err);
+        });
       }
     }
 
