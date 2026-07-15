@@ -931,6 +931,19 @@ export class FieldsVariablesService {
       });
     }
 
+    // 9.5. Populate encrypted_recipient_token
+    if (context.recipientContact) {
+      try {
+        const { encryptToken } = await import('../crypto');
+        valuesMap.set('encrypted_recipient_token', encryptToken(context.recipientContact));
+      } catch (err) {
+        console.warn('Failed to encrypt recipientContact:', err);
+        valuesMap.set('encrypted_recipient_token', '');
+      }
+    } else {
+      valuesMap.set('encrypted_recipient_token', 'mock_encrypted_token_123');
+    }
+
     return valuesMap;
   }
 

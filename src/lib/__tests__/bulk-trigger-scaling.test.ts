@@ -43,11 +43,11 @@ describe('Automation Ingestion Trigger Scaling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Simulate production environment to test queueing logic
-    process.env.NODE_ENV = 'production';
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+    (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
   });
 
   it('queues bulk triggers when the batch size exceeds 5 items', async () => {
