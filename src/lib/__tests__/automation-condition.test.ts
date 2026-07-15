@@ -204,4 +204,111 @@ describe('evaluateConditionNode (Advanced Segment Logic)', () => {
       )
     ).toBe(false);
   });
+
+  describe('Messaging Engagement Conditions', () => {
+    it('evaluates email_action operators against messageLogs and activities', async () => {
+      const emailNode = {
+        data: {
+          config: {
+            field: 'email_action',
+            operator: 'opened',
+            emailTemplateId: 'tmpl-welcome-email',
+          },
+        },
+      };
+
+      // Scenario 1: Email opened activity exists
+      expect(
+        await evaluateConditionNode(emailNode, {
+          openedEmails: ['tmpl-welcome-email'],
+        })
+      ).toBe(true);
+
+      // Scenario 2: Email opened log exists
+      expect(
+        await evaluateConditionNode(emailNode, {
+          messageLogs: [
+            { templateId: 'tmpl-welcome-email', channel: 'email', status: 'opened' },
+          ],
+        })
+      ).toBe(true);
+
+      // Scenario 3: Email not opened
+      const notOpenedNode = {
+        data: {
+          config: {
+            field: 'email_action',
+            operator: 'not_opened',
+            emailTemplateId: 'tmpl-welcome-email',
+          },
+        },
+      };
+      expect(
+        await evaluateConditionNode(notOpenedNode, {
+          openedEmails: ['other-email'],
+          messageLogs: [
+            { templateId: 'tmpl-welcome-email', channel: 'email', status: 'sent' },
+          ],
+        })
+      ).toBe(true);
+    });
+
+    it('evaluates sms_action operators correctly', async () => {
+      const smsNode = {
+        data: {
+          config: {
+            field: 'sms_action',
+            operator: 'received',
+            emailTemplateId: 'tmpl-sms-alert',
+          },
+        },
+      };
+
+      expect(
+        await evaluateConditionNode(smsNode, {
+          messageLogs: [
+            { templateId: 'tmpl-sms-alert', channel: 'sms', status: 'delivered' },
+          ],
+        })
+      ).toBe(true);
+
+      expect(
+        await evaluateConditionNode(smsNode, {
+          messageLogs: [
+            { templateId: 'tmpl-sms-alert', channel: 'sms', status: 'failed' },
+          ],
+        })
+      ).toBe(false);
+    });
+
+    it('evaluates whatsapp_action operators correctly', async () => {
+      const waNode = {
+        data: {
+          config: {
+            field: 'whatsapp_action',
+            operator: 'opened',
+            emailTemplateId: 'tmpl-wa-hello',
+          },
+        },
+      };
+
+      // WhatsApp status 'read' counts as opened
+      expect(
+        await evaluateConditionNode(waNode, {
+          messageLogs: [
+            { templateId: 'tmpl-wa-hello', channel: 'whatsapp', status: 'read' },
+          ],
+        })
+      ).toBe(true);
+
+      // WhatsApp status 'sent' does not count as opened
+      expect(
+        await evaluateConditionNode(waNode, {
+          messageLogs: [
+            { templateId: 'tmpl-wa-hello', channel: 'whatsapp', status: 'sent' },
+          ],
+        })
+      ).toBe(false);
+    });
+  });
 });
