@@ -1,0 +1,447 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { adminDb, FieldValue } from './firebase-admin';
+
+// ─── Types & Interfaces ──────────────────────────────────────────────────────
+
+export type MediaPageEventType =
+  | 'view'
+  | 'cta_click'
+  | 'download'
+  | 'media_play'
+  | 'media_progress'
+  | 'media_complete';
+
+export interface MediaPageEvent {
+  id?: string;
+  type: MediaPageEventType;
+  sessionId: string;
+  timestamp: string;
+  contactId: string | null;
+  progressPercent: number | null;
+  sessionTimeSeconds: number | null;
+}
+
+export interface MediaPageEventWithContact extends MediaPageEvent {
+  contactName?: string;
+}
+
+export interface MediaPageStats {
+  views: number;
+  uniqueViews: number;
+  ctaClicks: number;
+  downloads: number;
+  mediaPlays: number;
+  mediaCompletions: number;
+  mediaHalfway: number;
+}
+
+export interface MediaSessionRecord {
+  sessionId: string;
+  contactId: string | null;
+  firstSeen: string;
+  ctaClicked: boolean;
+  downloaded: boolean;
+  maxProgress: number;
+  sessionTimeSeconds: number;
+  updatedAt: string;
+}
+
+export interface MediaSessionRecordWithContact extends MediaSessionRecord {
+  contactName?: string;
+}
+
+export interface MediaShareAnalyticsDoc {
+  shareId: string;
+  workspaceId: string;
+  assetId: string;
+  stats: MediaPageStats;
+  updatedAt: string;
+}
+
+export interface MediaAnalyticsResult {
+  stats: MediaPageStats;
+  recentEvents: MediaPageEventWithContact[];
+  sessions: MediaSessionRecordWithContact[];
+  anonymousCount: number;
+  totalKnownContacts: number;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ANALYTICS_COLLECTION = 'media_share_analytics';
+
+const DEFAULT_STATS: MediaPageStats = {
+  views: 0,
+  uniqueViews: 0,
+  ctaClicks: 0,
+  downloads: 0,
+  mediaPlays: 0,
+  mediaCompletions: 0,
+  mediaHalfway: 0,
+};
+
+// ─── Helper Functions ─────────────────────────────────────────────────────────
+
+function statFieldForEvent(type: MediaPageEventType): keyof MediaPageStats | null {
+  const map: Record<MediaPageEventType, keyof MediaPageStats | null> = {
+    view: 'views',
+    cta_click: 'ctaClicks',
+    download: 'downloads',
+    media_play: 'mediaPlays',
+    media_progress: null, // Custom handled
+    media_complete: 'mediaCompletions',
+  };
+  return map[type] ?? null;
+}
+
+// ─── Write Actions ────────────────────────────────────────────────────────────
+
+/**
+ * Records a single media page tracking event.
+ * Appends the event to events subcollection and atomically increments parent aggregates.
+ */
+export async function recordMediaPageEventAction(params: {
+  shareId: string;
+  workspaceId: string;
+  assetId: string;
+  type: MediaPageEventType;
+  sessionId: string;
+  contactId?: string | null;
+  progressPercent?: number;
+  sessionTimeSeconds?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  const {
+    shareId,
+    workspaceId,
+    assetId,
+    type,
+    sessionId,
+    contactId = null,
+    progressPercent = null,
+    sessionTimeSeconds = null,
+  } = params;
+
+  if (!shareId || !workspaceId || !assetId) {
+    return { success: false, error: 'Missing required configuration parameters.' };
+  }
+
+  try {
+    const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(shareId);
+    const now = new Date().toISOString();
+
+    const event: MediaPageEvent = {
+      type,
+      sessionId,
+      timestamp: now,
+      contactId: contactId || null,
+      progressPercent: progressPercent !== null && progressPercent !== undefined ? Number(progressPercent) : null,
+      sessionTimeSeconds: sessionTimeSeconds !== null && sessionTimeSeconds !== undefined ? Number(sessionTimeSeconds) : null,
+    };
+
+    const batch = adminDb.batch();
+
+    // 1. Log event
+    const eventRef = pageRef.collection('events').doc();
+    batch.set(eventRef, event);
+
+    // 2. Increment stats counters
+    const statsUpdate: Record<string, unknown> = {};
+    const primaryStat = statFieldForEvent(type);
+    if (primaryStat) {
+      statsUpdate[`stats.${primaryStat}`] = FieldValue.increment(1);
+    }
+
+    if (type === 'media_progress' && progressPercent === 50) {
+      statsUpdate['stats.mediaHalfway'] = FieldValue.increment(1);
+    }
+
+    // Set document meta and aggregate counters
+    batch.set(
+      pageRef,
+      {
+        shareId,
+        workspaceId,
+        assetId,
+        updatedAt: now,
+        ...statsUpdate,
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
+
+    // 3. Track unique views session transaction
+    if (type === 'view') {
+      const sessionRef = pageRef.collection('sessions').doc(sessionId);
+      await adminDb.runTransaction(async (transaction) => {
+        const sessionSnap = await transaction.get(sessionRef);
+        if (sessionSnap.exists) return;
+
+        transaction.set(sessionRef, {
+          sessionId,
+          contactId: contactId || null,
+          firstSeen: now,
+          ctaClicked: false,
+          downloaded: false,
+          maxProgress: 0,
+          sessionTimeSeconds: 0,
+          updatedAt: now,
+        });
+
+        transaction.set(
+          pageRef,
+          {
+            stats: {
+              uniqueViews: FieldValue.increment(1),
+            },
+          },
+          { merge: true }
+        );
+      });
+    } else {
+      // Keep session record state matching current updates
+      const sessionRef = pageRef.collection('sessions').doc(sessionId);
+      await adminDb.runTransaction(async (transaction) => {
+        const sessionSnap = await transaction.get(sessionRef);
+        if (!sessionSnap.exists) return;
+
+        const data = sessionSnap.data() as MediaSessionRecord;
+        const updates: Partial<MediaSessionRecord> = {
+          updatedAt: now,
+        };
+
+        if (type === 'cta_click') updates.ctaClicked = true;
+        if (type === 'download') updates.downloaded = true;
+        if (progressPercent !== null && progressPercent !== undefined) {
+          updates.maxProgress = Math.max(data.maxProgress || 0, progressPercent);
+        }
+        if (sessionTimeSeconds !== null && sessionTimeSeconds !== undefined) {
+          updates.sessionTimeSeconds = Math.max(data.sessionTimeSeconds || 0, sessionTimeSeconds);
+        }
+
+        transaction.update(sessionRef, updates);
+      });
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[recordMediaPageEventAction] Error recording event:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown database error' };
+  }
+}
+
+// ─── Read Actions ─────────────────────────────────────────────────────────────
+
+/**
+ * Returns all media shares and their pre-aggregated stats for a specific workspace.
+ */
+export async function listMediaSharesWithStatsAction(
+  workspaceId: string
+): Promise<{ shareId: string; title: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
+  if (!workspaceId) return [];
+
+  try {
+    // 1. Fetch configs
+    const configsSnap = await adminDb
+      .collection('media_shares')
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    if (configsSnap.empty) return [];
+
+    const shareIds = configsSnap.docs.map((d) => d.id);
+    const configMap = new Map(
+      configsSnap.docs.map((d) => {
+        const data = d.data();
+        return [d.id, { title: String(data.title || ''), assetId: String(data.assetId || '') }];
+      })
+    );
+
+    // Fetch corresponding assets in chunks of 30
+    const assetIds = configsSnap.docs.map((d) => d.data().assetId).filter(Boolean);
+    const assetTypeMap = new Map<string, string>();
+
+    if (assetIds.length > 0) {
+      const CHUNK = 30;
+      for (let i = 0; i < assetIds.length; i += CHUNK) {
+        const chunk = assetIds.slice(i, i + CHUNK);
+        const assetsSnap = await adminDb
+          .collection('media')
+          .where('__name__', 'in', chunk)
+          .select('type')
+          .get();
+        assetsSnap.docs.forEach((doc) => {
+          assetTypeMap.set(doc.id, String(doc.data().type || ''));
+        });
+      }
+    }
+
+    // 2. Fetch stats doc summaries in chunks of 30
+    const statsMap = new Map<string, MediaPageStats>();
+    const CHUNK = 30;
+    for (let i = 0; i < shareIds.length; i += CHUNK) {
+      const chunk = shareIds.slice(i, i + CHUNK);
+      const statsSnap = await adminDb
+        .collection(ANALYTICS_COLLECTION)
+        .where('shareId', 'in', chunk)
+        .get();
+      statsSnap.docs.forEach((doc) => {
+        const data = doc.data() as MediaShareAnalyticsDoc;
+        statsMap.set(doc.id, { ...DEFAULT_STATS, ...(data.stats || {}) });
+      });
+    }
+
+    return configsSnap.docs.map((d) => {
+      const config = configMap.get(d.id);
+      const assetId = config?.assetId || '';
+      return {
+        shareId: d.id,
+        title: config?.title || d.id,
+        type: assetTypeMap.get(assetId) || 'video',
+        stats: statsMap.get(d.id) || { ...DEFAULT_STATS },
+        updatedAt: d.data().updatedAt || d.data().createdAt || '',
+      };
+    });
+  } catch (err) {
+    console.error('[listMediaSharesWithStatsAction] Error listing stats:', err);
+    return [];
+  }
+}
+
+/**
+ * Returns detailed analytics drilldown reports for a single shared media page.
+ */
+export async function getMediaShareDrilldownAction(
+  shareId: string,
+  workspaceId: string
+): Promise<MediaAnalyticsResult | null> {
+  if (!shareId || !workspaceId) return null;
+
+  try {
+    const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(shareId);
+    
+    // Authorization Check
+    const configSnap = await adminDb.collection('media_shares').doc(shareId).get();
+    let finalShareId = shareId;
+    if (!configSnap.exists) {
+      // Fallback lookup by slug
+      const slugSnap = await adminDb
+        .collection('media_shares')
+        .where('slug', '==', shareId)
+        .limit(1)
+        .get();
+      if (slugSnap.empty) return null;
+      const data = slugSnap.docs[0].data();
+      if (data.workspaceId !== workspaceId) return null;
+      finalShareId = slugSnap.docs[0].id;
+    } else {
+      const data = configSnap.data();
+      if (data?.workspaceId !== workspaceId) return null;
+    }
+
+    const finalPageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(finalShareId);
+
+    // Fetch aggregates, sessions and recent event logs in parallel
+    const [pageSnap, eventsSnap, sessionsSnap] = await Promise.all([
+      finalPageRef.get(),
+      finalPageRef.collection('events').orderBy('timestamp', 'desc').limit(100).get(),
+      finalPageRef.collection('sessions').orderBy('updatedAt', 'desc').limit(100).get(),
+    ]);
+
+    const pageData = pageSnap.exists ? (pageSnap.data() as MediaShareAnalyticsDoc) : null;
+    const stats: MediaPageStats = { ...DEFAULT_STATS, ...(pageData?.stats || {}) };
+
+    const rawEvents = eventsSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<MediaPageEvent, 'id'>),
+    })) as MediaPageEvent[];
+
+    const rawSessions = sessionsSnap.docs.map((doc) => ({
+      sessionId: doc.id,
+      ...(doc.data() as Omit<MediaSessionRecord, 'sessionId'>),
+    })) as MediaSessionRecord[];
+
+    // Extract unique contact IDs to resolve profiles
+    const contactIds = [
+      ...new Set([
+        ...rawEvents.map((e) => e.contactId).filter(Boolean),
+        ...rawSessions.map((s) => s.contactId).filter(Boolean),
+      ]),
+    ] as string[];
+
+    const contactNameMap = await buildContactNameMap(contactIds);
+
+    const recentEvents: MediaPageEventWithContact[] = rawEvents.map((event) => ({
+      ...event,
+      ...(event.contactId && {
+        contactName: contactNameMap.get(event.contactId),
+      }),
+    }));
+
+    const sessions: MediaSessionRecordWithContact[] = rawSessions.map((session) => ({
+      ...session,
+      ...(session.contactId && {
+        contactName: contactNameMap.get(session.contactId),
+      }),
+    }));
+
+    const anonymousCount = rawSessions.filter((s) => !s.contactId).length;
+    const totalKnownContacts = contactIds.length;
+
+    return {
+      stats,
+      recentEvents,
+      sessions,
+      anonymousCount,
+      totalKnownContacts,
+    };
+  } catch (err) {
+    console.error('[getMediaShareDrilldownAction] Error:', err);
+    return null;
+  }
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+async function buildContactNameMap(contactIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (contactIds.length === 0) return map;
+
+  const CHUNK = 30;
+  const chunks: string[][] = [];
+  for (let i = 0; i < contactIds.length; i += CHUNK) {
+    chunks.push(contactIds.slice(i, i + CHUNK));
+  }
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const snaps = await adminDb
+        .collection('contacts')
+        .where('__name__', 'in', chunk)
+        .select('name', 'displayName', 'firstName', 'lastName')
+        .get();
+
+      snaps.docs.forEach((doc) => {
+        const data = doc.data() as {
+          name?: string;
+          displayName?: string;
+          firstName?: string;
+          lastName?: string;
+        };
+        const fullName =
+          data.displayName ??
+          data.name ??
+          ([data.firstName, data.lastName].filter(Boolean).join(' ') || doc.id);
+        map.set(doc.id, fullName);
+      });
+    })
+  );
+
+  contactIds.forEach((id) => {
+    if (!map.has(id)) map.set(id, id);
+  });
+
+  return map;
+}

@@ -9,8 +9,11 @@ import {
 import type { MediaAsset, OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { nanoid } from 'nanoid';
+import { recordMediaPageEventAction } from '@/lib/media-analytics-actions';
 
 interface MediaShareClientProps {
+    shareId: string;
     asset: MediaAsset;
     title: string;
     description: string;
@@ -24,9 +27,11 @@ interface MediaShareClientProps {
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
+    contactId?: string;
 }
 
 export default function MediaShareClient({
+    shareId,
     asset,
     title,
     description,
@@ -40,6 +45,7 @@ export default function MediaShareClient({
     orgBranding,
     isEmbed,
     searchParams,
+    contactId,
 }: MediaShareClientProps) {
     const [isPlaying, setIsPlaying] = React.useState(false);
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -53,6 +59,50 @@ export default function MediaShareClient({
     const [isVideoPlaying, setIsVideoPlaying] = React.useState(false);
     const [isPlaybackFinished, setIsPlaybackFinished] = React.useState(false);
 
+    const sessionId = React.useMemo(() => nanoid(), []);
+    const startTimeRef = React.useRef<number>(Date.now());
+    const loggedPlay = React.useRef(false);
+    const loggedHalf = React.useRef(false);
+    const loggedComplete = React.useRef(false);
+
+    const logEvent = React.useCallback(async (
+        type: 'view' | 'cta_click' | 'download' | 'media_play' | 'media_progress' | 'media_complete',
+        progressPercent?: number
+    ) => {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        await recordMediaPageEventAction({
+            shareId,
+            workspaceId: asset.workspaceIds?.[0] || 'default',
+            assetId: asset.id,
+            type,
+            sessionId,
+            contactId,
+            progressPercent,
+            sessionTimeSeconds: elapsed,
+        });
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId]);
+
+    React.useEffect(() => {
+        logEvent('view');
+    }, [logEvent]);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            recordMediaPageEventAction({
+                shareId,
+                workspaceId: asset.workspaceIds?.[0] || 'default',
+                assetId: asset.id,
+                type: 'media_progress',
+                sessionId,
+                contactId,
+                sessionTimeSeconds: elapsed,
+            }).catch(() => {});
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId]);
+
     // Audio handlers
     const toggleAudioPlay = () => {
         if (!audioRef.current) return;
@@ -61,6 +111,10 @@ export default function MediaShareClient({
         } else {
             setIsPlaybackFinished(false);
             audioRef.current.play();
+            if (!loggedPlay.current) {
+                loggedPlay.current = true;
+                logEvent('media_play');
+            }
         }
         setIsPlaying(!isPlaying);
     };
@@ -68,9 +122,22 @@ export default function MediaShareClient({
     const handleAudioTimeUpdate = () => {
         if (!audioRef.current) return;
         const curr = audioRef.current.currentTime;
+        const dur = audioRef.current.duration || 0;
         setCurrentTime(curr);
-        if (ctaActivationGate === 'half' && duration > 0 && curr >= duration / 2) {
-            setIsCtaUnlocked(true);
+
+        if (!loggedPlay.current && curr > 0) {
+            loggedPlay.current = true;
+            logEvent('media_play');
+        }
+
+        if (dur > 0 && curr >= dur / 2) {
+            if (ctaActivationGate === 'half') {
+                setIsCtaUnlocked(true);
+            }
+            if (!loggedHalf.current) {
+                loggedHalf.current = true;
+                logEvent('media_progress', 50);
+            }
         }
     };
 
@@ -85,6 +152,11 @@ export default function MediaShareClient({
         setIsPlaybackFinished(true);
         if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
             setIsCtaUnlocked(true);
+        }
+        if (!loggedComplete.current) {
+            loggedComplete.current = true;
+            logEvent('media_complete');
+            logEvent('media_progress', 100);
         }
     };
 
@@ -148,8 +220,19 @@ export default function MediaShareClient({
         const curr = video.currentTime;
         const dur = video.duration || 0;
         
-        if (ctaActivationGate === 'half' && dur > 0 && curr >= dur / 2) {
-            setIsCtaUnlocked(true);
+        if (!loggedPlay.current && curr > 0) {
+            loggedPlay.current = true;
+            logEvent('media_play');
+        }
+
+        if (dur > 0 && curr >= dur / 2) {
+            if (ctaActivationGate === 'half') {
+                setIsCtaUnlocked(true);
+            }
+            if (!loggedHalf.current) {
+                loggedHalf.current = true;
+                logEvent('media_progress', 50);
+            }
         }
     };
 
@@ -158,6 +241,11 @@ export default function MediaShareClient({
         setIsVideoPlaying(false);
         if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
             setIsCtaUnlocked(true);
+        }
+        if (!loggedComplete.current) {
+            loggedComplete.current = true;
+            logEvent('media_complete');
+            logEvent('media_progress', 100);
         }
     };
 
@@ -200,6 +288,7 @@ export default function MediaShareClient({
     };
 
     const handleCtaClick = () => {
+        logEvent('cta_click');
         if (ctaType === 'none' || !ctaTargetUrl) return;
         const finalUrl = getFinalCtaUrl();
 
@@ -501,7 +590,10 @@ export default function MediaShareClient({
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => window.open(asset.url, '_blank')}
+                            onClick={() => {
+                                logEvent('download');
+                                window.open(asset.url, '_blank');
+                            }}
                             className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer"
                         >
                             <Download className="h-3.5 w-3.5" /> Save

@@ -240,6 +240,7 @@ export default async function PublicMediaShareRoute({
     let resolvedTitle = config.title || asset.name;
     let resolvedDescription = config.description || '';
     let resolvedCtaPretext = config.ctaPretext || '';
+    let resolvedContactId = '';
 
     try {
         const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
@@ -255,7 +256,6 @@ export default async function PublicMediaShareRoute({
         const ref = resolvedSearchParams.ref;
         const isEncrypted = ref ? ref.split(':').length === 3 : false;
         
-        let resolvedContactId = '';
         let resolvedRecipientContact = '';
 
         if (ref && isEncrypted) {
@@ -325,6 +325,7 @@ export default async function PublicMediaShareRoute({
 
     return (
         <MediaShareClient
+            shareId={shareId}
             asset={asset}
             title={resolvedTitle}
             description={resolvedDescription}
@@ -338,6 +339,7 @@ export default async function PublicMediaShareRoute({
             orgBranding={orgBranding}
             isEmbed={isEmbed}
             searchParams={resolvedSearchParams}
+            contactId={resolvedContactId || undefined}
         />
     );
 }

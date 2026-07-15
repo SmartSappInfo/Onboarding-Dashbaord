@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Film, LayoutList, Layers, Cpu, Settings, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Film, LayoutList, Layers, Cpu, Settings, Plus, X, Loader2, BarChart3 } from 'lucide-react';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
@@ -19,6 +19,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import PdfCompressorView from './components/PdfCompressorView';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -51,6 +52,7 @@ const TABS = [
 ];
 
 export default function MediaClient() {
+  const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
   const { activeWorkspaceId, isLoading: isWorkspaceLoading } = useWorkspace();
@@ -244,6 +246,12 @@ export default function MediaClient() {
               )}
             >
               <Cpu className="h-3.5 w-3.5" /> PDF Compressor
+            </button>
+            <button
+              onClick={() => router.push('/admin/media/analytics')}
+              className="pb-3 font-bold text-xs uppercase tracking-wider border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-all active:scale-97 outline-none flex items-center gap-1.5"
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Share Analytics
             </button>
           </div>
 
