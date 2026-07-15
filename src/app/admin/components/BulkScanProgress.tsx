@@ -22,7 +22,7 @@ export function BulkScanProgress({ isScanning, total, processed, onCancel }: Pro
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-6 right-6 z-50 w-[400px]"
+          className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[400px]"
         >
           <div className="bg-slate-900 border border-slate-700 shadow-2xl shadow-black rounded-2xl overflow-hidden p-5 backdrop-blur-xl bg-opacity-95">
             

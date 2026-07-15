@@ -265,3 +265,90 @@ export async function rescheduleDelayTask(options: ScheduleTaskOptions): Promise
   await cancelDelayTask(options.runId, options.nodeId, options.channel).catch(() => {});
   return scheduleDelayTask(options);
 }
+
+export interface BulkTriggerTaskOptions {
+  automationId: string;
+  workspaceId: string;
+  organizationId: string;
+  trigger: string;
+  targets: Array<{
+    entityId: string;
+    entityType: 'contact' | 'deal' | 'company';
+    payload: Record<string, unknown>;
+  }>;
+}
+
+/**
+ * Schedules a bulk automation trigger task (used for fanning out 10,000+ contact triggers).
+ */
+export async function scheduleBulkTriggerTask({
+  automationId,
+  workspaceId,
+  organizationId,
+  trigger,
+  targets,
+}: BulkTriggerTaskOptions): Promise<string> {
+  const uuid = Math.random().toString(36).substring(2, 15);
+  const taskKey = `bulk_trigger_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  const queue = getQueueName();
+  const client = await getCloudTasksClient();
+
+  if (isEmulator || !client) {
+    console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk trigger task ${taskKey} on queue "${queue}"`);
+    
+    // Trigger immediately in a macro-task to let request thread finish
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/api/automations/bulk-trigger`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify({ automationId, workspaceId, organizationId, trigger, targets }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`[GCP-TASKS-EMULATOR] Bulk worker returned error: ${response.status} - ${text}`);
+        } else {
+          console.info(`[GCP-TASKS-EMULATOR] Bulk worker executed task ${taskKey} successfully.`);
+        }
+      } catch (err) {
+        console.error(`[GCP-TASKS-EMULATOR] Network error executing bulk task ${taskKey}:`, err);
+      }
+    }, 10);
+
+    return taskKey;
+  }
+
+  // Production GCP Cloud Tasks Mode
+  const parent = client.queuePath(PROJECT, LOCATION, queue);
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+
+  const taskPayload = {
+    automationId,
+    workspaceId,
+    organizationId,
+    trigger,
+    targets,
+  };
+
+  const task = {
+    name: formattedTaskName,
+    httpRequest: {
+      httpMethod: 'POST' as const,
+      url: `${BASE_URL}/api/automations/bulk-trigger`,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+    },
+  };
+
+  const [response] = await client.createTask({ parent, task });
+  console.info(`[GCP-TASKS] Scheduled bulk trigger task ${response.name}`);
+
+  return response.name || taskKey;
+}
