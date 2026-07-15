@@ -732,7 +732,7 @@ export class FieldsVariablesService {
           console.warn('[FieldsVariablesService] Error fetching dynamic survey variables:', err);
         }
 
-        let responseId = context.responseId;
+        let responseId = context.responseId || context.submissionId;
         let responseData: Record<string, unknown> | null = null;
 
         if (responseId) {

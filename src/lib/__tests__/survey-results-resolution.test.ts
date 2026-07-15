@@ -276,4 +276,43 @@ describe('Survey Results Variable Resolution', () => {
     expect(vars.get('score')).toBe(0);
     expect(vars.get('completion_status')).toBe('Pending');
   });
+
+  it('correctly resolves respondent_name and survey_results_link when using submissionId instead of responseId', async () => {
+    // 1. Workspace mock
+    dbMocks().docRegistry.set('workspaces/ws-123', {
+      exists: true,
+      data: () => ({ name: 'Default Workspace', organizationId: 'org-123' }),
+    });
+
+    // 2. Survey mock
+    dbMocks().docRegistry.set('surveys/survey-123', {
+      exists: true,
+      data: () => ({ title: 'Satisfaction Survey', slug: 'sat-survey', maxScore: 100 }),
+    });
+
+    // 3. Response mock
+    dbMocks().docRegistry.set('surveys/survey-123/responses/resp-999', {
+      exists: true,
+      data: () => ({
+        respondentName: 'Test Respondent',
+        submittedAt: '2026-07-15T00:00:00Z',
+        score: 85,
+        maxScore: 100,
+        status: 'Completed',
+        answers: [],
+      }),
+    });
+
+    const ctx = {
+      workspaceId: 'ws-123',
+      surveyId: 'survey-123',
+      submissionId: 'resp-999',
+    };
+
+    const vars = await FieldsVariablesService.getVariableValuesMap(ctx);
+
+    expect(vars.get('respondent_name')).toBe('Test Respondent');
+    expect(vars.get('survey_results_link')).toContain('/surveys/sat-survey/result/resp-999');
+    expect(vars.get('score')).toBe(85);
+  });
 });

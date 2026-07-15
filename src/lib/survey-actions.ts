@@ -1160,7 +1160,7 @@ export async function finalizeSurveySubmission(
     if (!surveySnap.exists) {
       return { success: false, error: 'Survey not found' };
     }
-    const surveyData = surveySnap.data() as Survey;
+    const surveyData = { id: surveySnap.id, ...surveySnap.data() } as Survey;
     const organizationId = surveyData.organizationId || 'default';
 
     const responseRef = surveyRef.collection('responses').doc(responseId);
@@ -1498,7 +1498,7 @@ export async function executeSurveyResultButtonActions(params: {
   try {
     const surveySnap = await adminDb.collection('surveys').doc(surveyId).get();
     if (!surveySnap.exists) throw new Error('Survey not found');
-    const surveyData = surveySnap.data() as Survey;
+    const surveyData = { id: surveySnap.id, ...surveySnap.data() } as Survey;
     const organizationId = surveyData.organizationId || 'default';
     const workspaceId = surveyData.workspaceIds?.[0] || '';
 
@@ -1632,7 +1632,7 @@ export async function logSurveyStartedAction(params: {
     if (!surveySnap.exists) {
       return { success: false, error: 'Survey not found' };
     }
-    const surveyData = surveySnap.data() as Survey;
+    const surveyData = { id: surveySnap.id, ...surveySnap.data() } as Survey;
 
     await logActivity({
       entityId: entityId || undefined,
