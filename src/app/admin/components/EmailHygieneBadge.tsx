@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, AlertCircle, XCircle, Circle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, Circle, Archive } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-type Status = 'verified' | 'likely_valid' | 'risky' | 'invalid' | 'unchecked';
+type Status = 'verified' | 'likely_valid' | 'risky' | 'invalid' | 'unchecked' | 'archived';
 
 interface Props {
   status?: Status;
@@ -24,7 +24,8 @@ export function EmailHygieneBadge({ status, size = 'sm' }: Props) {
     likely_valid: { icon: CheckCircle2, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Likely Valid' },
     risky: { icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/10', label: 'Risky (Burner/Catch-all)' },
     invalid: { icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-500/10', label: 'Invalid (Bounce)' },
-    unchecked: { icon: Circle, color: 'text-slate-500', bg: 'bg-slate-500/10', label: 'Unchecked' }
+    unchecked: { icon: Circle, color: 'text-slate-500', bg: 'bg-slate-500/10', label: 'Unchecked' },
+    archived: { icon: Archive, color: 'text-slate-400', bg: 'bg-slate-800', label: 'Archived (Automated Sends Suspended)' }
   };
 
   const { icon: Icon, color, bg, label } = config[currentStatus];

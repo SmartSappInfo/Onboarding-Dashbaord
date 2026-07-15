@@ -28,7 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall, Download } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
@@ -2170,7 +2170,7 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
                         delayDuration={100}
                     >
                         <TooltipTrigger asChild>
-                            <div className="relative cursor-pointer hover:-translate-y-1 transition-transform relative z-0 hover:z-10">
+                            <div className={`relative cursor-pointer hover:-translate-y-1 transition-all duration-300 relative z-0 hover:z-10 ${contact.emailStatus === 'archived' ? 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}>
                                 <Avatar className="inline-block h-8 w-8 rounded-full ring-2 ring-background bg-background border-none">
                                     <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
                                         {getInitials(contact.name)}
@@ -2182,9 +2182,16 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
 
                         <TooltipContent className="p-3 text-left z-50">
                             <p className="font-bold text-sm tracking-tight">{contact.name}</p>
-                            <Badge variant="outline" className="text-[8px] uppercase tracking-tighter mt-1 mb-2">
-                                {contact.typeLabel || contact.typeKey || contact.type}
-                            </Badge>
+                            <div className="flex items-center gap-1.5 mt-1 mb-2">
+                                <Badge variant="outline" className="text-[8px] uppercase tracking-tighter">
+                                    {contact.typeLabel || contact.typeKey || contact.type}
+                                </Badge>
+                                {contact.emailStatus === 'archived' && (
+                                    <Badge variant="outline" className="text-[8px] bg-slate-800 text-slate-400 border-slate-700 uppercase tracking-tighter flex items-center gap-0.5 font-bold">
+                                        <Archive className="h-2 w-2" /> Archived
+                                    </Badge>
+                                )}
+                            </div>
                             <div className="space-y-1">
                                 {contact.email && <p className="text-[10px] flex items-center gap-1.5"><Mail className="h-3 w-3 text-muted-foreground" /> {contact.email}</p>}
                                 {contact.phone && <p className="text-[10px] flex items-center gap-1.5"><Phone className="h-3 w-3 text-muted-foreground" /> {contact.phone}</p>}

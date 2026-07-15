@@ -3,7 +3,7 @@
 import React from 'react';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { Mail, Phone, MessageCircle, CheckCircle2, XCircle, AlertCircle, RotateCw, Loader2 } from 'lucide-react';
+import { Mail, Phone, MessageCircle, CheckCircle2, XCircle, AlertCircle, RotateCw, Loader2, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { EmailHygieneBadge } from './EmailHygieneBadge';
@@ -14,6 +14,7 @@ export interface VerificationPanelContact {
   email?: string;
   phone?: string;
   hasWhatsapp?: boolean;
+  emailStatus?: string;
   phoneStatus?: PhoneStatus;
   phoneType?: string;
   lastSmsDeliveredAt?: string;
@@ -211,6 +212,12 @@ export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPho
               )}
             </div>
             <RecheckButton onClick={recheckEmail} busy={emailBusy} />
+          </div>
+        )}
+        {contact.email && contact.emailStatus === 'archived' && (
+          <div className="mx-[21px] p-2 bg-slate-900 border border-slate-800/80 rounded-xl flex items-center gap-2 text-[10px] text-slate-400">
+            <Archive className="h-3.5 w-3.5 text-slate-400 shrink-0 animate-pulse" />
+            <span>This contact's email is archived. Automated sends are disabled.</span>
           </div>
         )}
       </div>
