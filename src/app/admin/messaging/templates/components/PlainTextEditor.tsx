@@ -352,6 +352,52 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                 </div>
             </div>
 
+            {/* Link Picker section */}
+            <div className="border border-border/80 rounded-2xl p-4 bg-muted/5 space-y-4 text-left mt-4 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <LinkIcon className="h-3.5 w-3.5 text-primary" /> Insert Link with Tracking
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setShowLinkPicker(prev => !prev)}
+                        className={cn(
+                            "flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                            showLinkPicker
+                                ? "text-white bg-primary border-primary/20 hover:bg-primary/95"
+                                : "text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]"
+                        )}
+                    >
+                        {showLinkPicker ? 'Hide Link Picker' : 'Choose Link Target'}
+                    </button>
+                </div>
+
+                {showLinkPicker && (
+                    <div className="space-y-4 p-4 bg-background border border-border rounded-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex items-center space-x-2 px-1">
+                            <Checkbox
+                                id="sms-track-visitor"
+                                checked={trackVisitor}
+                                onCheckedChange={(checked) => setTrackVisitor(Boolean(checked))}
+                                className="rounded-md"
+                            />
+                            <label
+                                htmlFor="sms-track-visitor"
+                                className="text-[10px] font-semibold text-muted-foreground cursor-pointer select-none leading-none"
+                            >
+                                Track Visitor Identity (Encrypt Recipient Details)
+                            </label>
+                        </div>
+                        <LinkPicker
+                            onSelect={(url) => {
+                                insertLink(url, trackVisitor);
+                                setShowLinkPicker(false);
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+
             {/* Variable insertion via VariablePicker removed as we now use Slash commands autocomplete */}
         </div>
     );
