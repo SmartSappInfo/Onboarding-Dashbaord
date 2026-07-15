@@ -49,30 +49,29 @@ export async function POST(request: NextRequest) {
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    // 4. Security Check: Validate tenant isolation for all targets
-    const validatedTargets = await Promise.all(
-      targets.map(async (target) => {
-        try {
-          const docRef = adminDb.collection('entities').doc(target.entityId);
-          const docSnap = await docRef.get();
-          if (!docSnap.exists) {
-            console.warn(`[BULK-TRIGGER-WORKER] Target entity ${target.entityId} does not exist. Skipping.`);
-            return null;
-          }
-          const data = docSnap.data();
-          if (data?.workspaceId !== workspaceId) {
-            console.warn(`[SecurityAlert] Tenant mismatch for entity ${target.entityId}. Expected workspace ${workspaceId}, found ${data?.workspaceId}. Skipping.`);
-            return null;
-          }
-          return target;
-        } catch (err) {
-          console.error(`[BULK-TRIGGER-WORKER] Failed to validate target ${target.entityId}:`, err);
-          return null;
-        }
-      })
-    );
+    // Security Check: Validate automation tenant ownership
+    if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
+      console.warn(`[SecurityAlert] Automation ${automationId} is not associated with workspace ${workspaceId}.`);
+      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
+    }
 
-    const finalTargets = validatedTargets.filter((t): t is TargetPayload => t !== null);
+    // 4. Security Check: Validate tenant isolation for all targets in a single database batch read
+    const docRefs = targets.map((t) => adminDb.collection('entities').doc(t.entityId));
+    const docSnaps = docRefs.length > 0 ? await adminDb.getAll(...docRefs) : [];
+
+    const finalTargets = targets.map((target, idx) => {
+      const snap = docSnaps[idx];
+      if (!snap || !snap.exists) {
+        console.warn(`[BULK-TRIGGER-WORKER] Target entity ${target.entityId} does not exist. Skipping.`);
+        return null;
+      }
+      const data = snap.data();
+      if (data?.workspaceId !== workspaceId) {
+        console.warn(`[SecurityAlert] Tenant mismatch for entity ${target.entityId}. Expected workspace ${workspaceId}, found ${data?.workspaceId}. Skipping.`);
+        return null;
+      }
+      return target;
+    }).filter((t): t is TargetPayload => t !== null);
 
     if (finalTargets.length === 0) {
       return NextResponse.json({ success: true, processedCount: 0, warning: 'No valid targets matched the requested workspace tenant.' });

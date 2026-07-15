@@ -11,8 +11,7 @@ import {
 export async function executeAutomation(
   automation: Automation,
   triggerPayload: Record<string, unknown>,
-  chainDepth = 0,
-  batch?: FirebaseFirestore.WriteBatch
+  chainDepth = 0
 ): Promise<void> {
   const timestamp = new Date().toISOString();
   let organizationId = '';
@@ -40,9 +39,7 @@ export async function executeAutomation(
     }
   }
 
-  const runsCollection = adminDb.collection('automation_runs');
-  let runRef;
-  const runData = {
+  const runRef = await adminDb.collection('automation_runs').add({
     automationId: automation.id,
     automationName: automation.name,
     triggerData: {
@@ -54,14 +51,7 @@ export async function executeAutomation(
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as string | undefined,
     workspaceId: triggerPayload.workspaceId as string | undefined,
-  };
-
-  if (batch) {
-    runRef = runsCollection.doc();
-    batch.set(runRef, runData);
-  } else {
-    runRef = await runsCollection.add(runData);
-  }
+  });
 
   // Log contact enrolled/added to automation
   if (triggerPayload.entityId) {
@@ -136,17 +126,10 @@ export async function executeAutomation(
       .get();
 
     if (activeJobs.empty) {
-      if (batch) {
-        batch.update(runRef, {
-          status: 'completed',
-          finishedAt: new Date().toISOString(),
-        });
-      } else {
-        await runRef.update({
-          status: 'completed',
-          finishedAt: new Date().toISOString(),
-        });
-      }
+      await runRef.update({
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+      });
       // Fire aggregated completed notification (fire-and-forget)
       notifyAutomationCompleted({
         automationId: automation.id,
@@ -163,18 +146,10 @@ export async function executeAutomation(
       workspaceId: triggerPayload.workspaceId as string,
       entityId: triggerPayload.entityId as string | undefined,
     });
-    if (batch) {
-      batch.update(runRef, {
-        status: 'failed',
-        finishedAt: new Date().toISOString(),
-        error: message,
-      });
-    } else {
-      await runRef.update({
-        status: 'failed',
-        finishedAt: new Date().toISOString(),
-        error: message,
-      });
-    }
+    await runRef.update({
+      status: 'failed',
+      finishedAt: new Date().toISOString(),
+      error: message,
+    });
   }
 }

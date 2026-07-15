@@ -113,31 +113,42 @@ async function enqueueBulkTriggers(
 
     if (targets.length === 0) continue;
 
-    // Split targets into batches of 100
+    // Split targets into batches of 100 and schedule concurrently
     const batchSize = 100;
+    const taskPromises = [];
     for (let i = 0; i < targets.length; i += batchSize) {
       const batch = targets.slice(i, i + batchSize);
-      await scheduleBulkTriggerTask({
-        automationId: automation.id,
-        workspaceId,
-        organizationId,
-        trigger,
-        targets: batch,
-      });
+      taskPromises.push(
+        scheduleBulkTriggerTask({
+          automationId: automation.id,
+          workspaceId,
+          organizationId,
+          trigger,
+          targets: batch,
+        })
+      );
     }
+    await Promise.all(taskPromises);
   }
 
   runAfter(async () => {
     try {
       const { dispatchWebhooksByTrigger } = await import('../webhook-engine');
-      for (const item of groupItems) {
-        await dispatchWebhooksByTrigger({
-          trigger,
-          payload: item.payload,
-          workspaceId,
-          organizationId,
-          entityId: (item.payload.entityId as string) || null,
-        }).catch(e => console.error('[BulkTriggerWebhooks] Individual webhook dispatch error:', e));
+      // Chunk concurrent dispatching to avoid long execution times or socket starvation
+      const chunkSize = 20;
+      for (let i = 0; i < groupItems.length; i += chunkSize) {
+        const chunk = groupItems.slice(i, i + chunkSize);
+        await Promise.all(
+          chunk.map((item) =>
+            dispatchWebhooksByTrigger({
+              trigger,
+              payload: item.payload,
+              workspaceId,
+              organizationId,
+              entityId: (item.payload.entityId as string) || null,
+            }).catch(e => console.error('[BulkTriggerWebhooks] Individual webhook dispatch error:', e))
+          )
+        );
       }
     } catch (err) {
       console.error('[BulkTriggerWebhooks] Webhook dispatch error:', err);

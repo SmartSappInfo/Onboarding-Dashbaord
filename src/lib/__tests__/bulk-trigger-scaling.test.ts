@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { NextRequest } from 'next/server';
 import { triggerAutomationProtocols } from '../automations/orchestrator';
 import { scheduleBulkTriggerTask } from '../gcp-tasks-client';
 
@@ -85,5 +86,69 @@ describe('Automation Ingestion Trigger Scaling', () => {
     expect(callArgs.trigger).toBe('ENTITY_CREATED');
     expect(callArgs.targets.length).toBe(10);
     expect(callArgs.targets[0].entityId).toBe('contact-0');
+  });
+});
+
+describe('Bulk Trigger API Endpoint', () => {
+  const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
+
+  it('rejects requests with invalid secret signature', async () => {
+    const req = new NextRequest('http://localhost/api/automations/bulk-trigger', {
+      method: 'POST',
+      headers: {
+        'x-cloud-tasks-secret': 'invalid',
+      },
+      body: JSON.stringify({}),
+    });
+    const { POST } = await import('../../app/api/automations/bulk-trigger/route');
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('verifies automation tenant mapping and blocks execution if mismatch', async () => {
+    const mockAutomationData = {
+      workspaceIds: ['ws-correct'],
+    };
+    const mockGet = vi.fn().mockResolvedValue({
+      exists: true,
+      id: 'auto-111',
+      data: () => mockAutomationData,
+    });
+    
+    const { adminDb } = await import('../firebase-admin');
+    vi.mocked(adminDb.collection).mockImplementation((name: string) => {
+      if (name === 'automations') {
+        return {
+          doc: vi.fn(() => ({
+            get: mockGet,
+          })),
+        } as any;
+      }
+      return {
+        doc: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({ exists: false }),
+        })),
+      } as any;
+    });
+
+    const req = new NextRequest('http://localhost/api/automations/bulk-trigger', {
+      method: 'POST',
+      headers: {
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: JSON.stringify({
+        automationId: 'auto-111',
+        workspaceId: 'ws-mismatch',
+        organizationId: 'org-123',
+        trigger: 'ENTITY_CREATED',
+        targets: [{ entityId: 'entity-1', entityType: 'contact', payload: {} }],
+      }),
+    });
+
+    const { POST } = await import('../../app/api/automations/bulk-trigger/route');
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toContain('Unauthorized automation-workspace mapping');
   });
 });

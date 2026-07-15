@@ -54,7 +54,7 @@ export function BulkScanProgress({ isScanning, total, processed, onCancel }: Pro
               {onCancel && percentage < 100 && (
                 <button 
                   onClick={onCancel}
-                  className="text-rose-400 hover:text-rose-300 hover:underline underline-offset-2 transition-all"
+                  className="text-rose-400 hover:text-rose-300 hover:underline underline-offset-2 transition-all active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500 rounded-sm px-1"
                 >
                   Cancel Batch
                 </button>
