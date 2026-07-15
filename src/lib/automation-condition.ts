@@ -382,6 +382,57 @@ async function evaluateSingleCondition(
     }
   }
 
+  // Case C.2: Email, SMS, and WhatsApp engagement conditions
+  if (field === 'email_action' || field === 'sms_action' || field === 'whatsapp_action') {
+    const targetTemplateId = cond.emailTemplateId || cond.value || '';
+    if (!targetTemplateId) return false;
+
+    const channel = field === 'email_action' ? 'email' : field === 'sms_action' ? 'sms' : 'whatsapp';
+    const logs = (payload.messageLogs || []) as Array<Record<string, unknown>>;
+    
+    // Filter matching logs for this channel and template
+    const matchingLogs = logs.filter(
+      (log) => String(log.templateId || '') === String(targetTemplateId) && log.channel === channel
+    );
+
+    const hasReceived = matchingLogs.some((log) => log.status !== 'failed' && log.status !== 'bounced');
+
+    if (operator === 'received') return hasReceived;
+    if (operator === 'not_received') return !hasReceived;
+
+    if (operator === 'opened') {
+      const hasOpenedLog = matchingLogs.some((log) => log.status === 'opened' || log.status === 'read');
+      const openedEmails = (payload.openedEmails || []) as string[];
+      const openedTemplates = (payload.openedTemplates || []) as string[];
+      const hasOpenedActivity = openedEmails.includes(String(targetTemplateId)) || openedTemplates.includes(String(targetTemplateId));
+      return hasOpenedLog || hasOpenedActivity;
+    }
+    if (operator === 'not_opened') {
+      const hasOpenedLog = matchingLogs.some((log) => log.status === 'opened' || log.status === 'read');
+      const openedEmails = (payload.openedEmails || []) as string[];
+      const openedTemplates = (payload.openedTemplates || []) as string[];
+      const hasOpenedActivity = openedEmails.includes(String(targetTemplateId)) || openedTemplates.includes(String(targetTemplateId));
+      return !(hasOpenedLog || hasOpenedActivity);
+    }
+
+    if (operator === 'clicked') {
+      const hasClickedLog = matchingLogs.some((log) => log.status === 'clicked');
+      const clickedLinks = (payload.clickedLinks || {}) as Record<string, string[]>;
+      const urls = clickedLinks[String(targetTemplateId)] || [];
+      const hasClickedActivity = urls.length > 0;
+      return hasClickedLog || hasClickedActivity;
+    }
+    if (operator === 'not_clicked') {
+      const hasClickedLog = matchingLogs.some((log) => log.status === 'clicked');
+      const clickedLinks = (payload.clickedLinks || {}) as Record<string, string[]>;
+      const urls = clickedLinks[String(targetTemplateId)] || [];
+      const hasClickedActivity = urls.length > 0;
+      return !(hasClickedLog || hasClickedActivity);
+    }
+
+    return false;
+  }
+
   // Case D: General comparisons
   let actualValue = payload[field];
   if (field === 'primaryEmail') {
