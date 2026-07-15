@@ -233,3 +233,27 @@ export async function triggerAutomationProtocols(
     }
   });
 }
+
+export async function triggerAutomationProtocolsBulk(
+  trigger: AutomationTrigger,
+  workspaceId: string,
+  items: Array<{ entityId: string; entityType: string; payload: Record<string, unknown> }>
+): Promise<void> {
+  if (items.length === 0) return;
+
+  const groupItems: BufferedTriggerItem[] = items.map((item) => ({
+    trigger,
+    payload: {
+      ...item.payload,
+      entityId: item.entityId,
+      entityType: item.entityType,
+      workspaceId,
+    },
+    resolve: () => {},
+    reject: (err) => {
+      console.error(`[triggerAutomationProtocolsBulk] Target reject for entity ${item.entityId}:`, err);
+    },
+  }));
+
+  await enqueueBulkTriggers(trigger, workspaceId, groupItems);
+}

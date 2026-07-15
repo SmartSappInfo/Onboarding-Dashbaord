@@ -6,6 +6,7 @@ export {
   MAX_AUTOMATION_CHAIN_DEPTH,
   type ExecutionContext,
   triggerAutomationProtocols,
+  triggerAutomationProtocolsBulk,
   processScheduledJobsAction,
   runAutomationById,
   executeAutomation,
