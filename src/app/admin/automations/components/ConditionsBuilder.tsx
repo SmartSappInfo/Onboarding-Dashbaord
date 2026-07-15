@@ -79,6 +79,14 @@ const CONDITION_FIELDS = [
       { value: 'automation', label: 'Automation Status' },
     ],
   },
+  {
+    group: 'Automation Message Actions',
+    items: [
+      { value: 'email_action', label: 'Email Action' },
+      { value: 'sms_action', label: 'SMS Action' },
+      { value: 'whatsapp_action', label: 'WhatsApp Action' },
+    ],
+  },
 ];
 
 // Flat field mapping helper for checking types
@@ -105,6 +113,9 @@ const FIELD_TYPE_MAP: Record<string, string> = {
   short_link: 'short_link',
   saved_audience: 'audience',
   automation: 'automation',
+  email_action: 'email_action',
+  sms_action: 'sms_action',
+  whatsapp_action: 'whatsapp_action',
 };
 
 // Operators by Field type
@@ -201,6 +212,28 @@ const OPERATORS_BY_TYPE: Record<string, { value: string; label: string }[]> = {
     { value: 'has_completed', label: 'Has completed' },
     { value: 'not_entered', label: 'Has not entered' },
   ],
+  email_action: [
+    { value: 'received', label: 'Received email' },
+    { value: 'not_received', label: 'Has not received email' },
+    { value: 'opened', label: 'Opened email' },
+    { value: 'not_opened', label: 'Has not opened email' },
+    { value: 'clicked', label: 'Clicked link in email' },
+    { value: 'not_clicked', label: 'Has not clicked link in email' },
+  ],
+  sms_action: [
+    { value: 'received', label: 'Received SMS' },
+    { value: 'not_received', label: 'Has not received SMS' },
+    { value: 'clicked', label: 'Clicked link in SMS' },
+    { value: 'not_clicked', label: 'Has not clicked link in SMS' },
+  ],
+  whatsapp_action: [
+    { value: 'received', label: 'Received WhatsApp message' },
+    { value: 'not_received', label: 'Has not received WhatsApp message' },
+    { value: 'opened', label: 'Opened / Read WhatsApp' },
+    { value: 'not_opened', label: 'Has not opened / read WhatsApp' },
+    { value: 'clicked', label: 'Clicked button / link in WhatsApp' },
+    { value: 'not_clicked', label: 'Has not clicked button / link in WhatsApp' },
+  ],
 };
 
 interface ConditionsBuilderProps {
@@ -208,6 +241,7 @@ interface ConditionsBuilderProps {
   relation: 'and' | 'or' | 'AND' | 'OR';
   onChange: (relation: 'and' | 'or', groups: ConditionGroup[]) => void;
   accentColor?: 'amber' | 'purple' | 'violet';
+  nodes?: any[];
 }
 
 export function ConditionsBuilder({
@@ -215,6 +249,7 @@ export function ConditionsBuilder({
   relation = 'and',
   onChange,
   accentColor = 'purple',
+  nodes = [],
 }: ConditionsBuilderProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId: string; activeOrganizationId: string };
@@ -295,6 +330,29 @@ export function ConditionsBuilder({
     );
   }, [firestore, activeWorkspaceId]);
   const { data: allWorkspaceAutomations } = useCollection<any>(automationsQuery);
+
+  // Extract only templates in the current automation from the nodes list
+  const automationTemplates = React.useMemo(() => {
+    if (!nodes || !Array.isArray(nodes)) return [];
+    const templates: { id: string; name: string; channel: 'email' | 'sms' | 'whatsapp' }[] = [];
+    nodes.forEach((node) => {
+      if (node.type === 'actionNode' && node.data?.actionType === 'SEND_MESSAGE') {
+        const templateId = node.data?.config?.templateId;
+        const channel = node.data?.config?.channel || 'email';
+        if (templateId) {
+          const matchedTpl = allTemplates?.find(t => t.id === templateId);
+          if (!templates.some(t => t.id === templateId)) {
+            templates.push({
+              id: templateId,
+              name: matchedTpl?.name || node.data?.config?.templateName || `Template (${templateId})`,
+              channel: channel as 'email' | 'sms' | 'whatsapp',
+            });
+          }
+        }
+      }
+    });
+    return templates;
+  }, [nodes, allTemplates]);
 
   // Initialize with at least one group and condition if empty
   const activeGroups = React.useMemo(() => {
@@ -918,6 +976,45 @@ export function ConditionsBuilder({
                                       />
                                     </div>
                                   )}
+                                </div>
+                              )}
+
+                              {/* 9.2. Automation Message Action template selection */}
+                              {(cond.field === 'email_action' || cond.field === 'sms_action' || cond.field === 'whatsapp_action') && (
+                                <div className="space-y-2 w-full min-w-0">
+                                  <Select
+                                    value={cond.emailTemplateId || cond.value || ''}
+                                    onValueChange={(val) => updateConditionValue(group.id, cond.id, { emailTemplateId: val, value: val })}
+                                  >
+                                    <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full text-left truncate">
+                                      <SelectValue placeholder="Select template in current automation..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl max-w-[calc(100vw-4rem)]">
+                                      {(() => {
+                                        const expectedChannel = cond.field === 'email_action' ? 'email' :
+                                                              cond.field === 'sms_action' ? 'sms' : 'whatsapp';
+                                        const filtered = automationTemplates.filter(t => t.channel === expectedChannel);
+                                        return filtered.map((t: any) => (
+                                          <SelectItem key={t.id} value={t.id} className="text-[10px] font-bold">
+                                            {t.name}
+                                          </SelectItem>
+                                        ));
+                                      })()}
+                                      {(() => {
+                                        const expectedChannel = cond.field === 'email_action' ? 'email' :
+                                                              cond.field === 'sms_action' ? 'sms' : 'whatsapp';
+                                        const filtered = automationTemplates.filter(t => t.channel === expectedChannel);
+                                        if (filtered.length === 0) {
+                                          return (
+                                            <SelectItem value="none" disabled className="text-[10px] text-muted-foreground italic">
+                                              No {expectedChannel} templates in this automation
+                                            </SelectItem>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
                               )}
 

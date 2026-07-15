@@ -1673,6 +1673,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                             {selectedNode ? (
                                 <NodeInspector 
                                     node={selectedNode} 
+                                    nodes={nodes}
                                     onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)}
                                     triggers={triggers}
                                     onTriggersChange={onTriggersChange}

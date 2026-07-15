@@ -45,6 +45,7 @@ interface NodeInspectorProps {
     onApply?: (nodeId: string, nodeData: any, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
     onTest?: (nodeId: string, nodeData: any) => void;
     onCancel?: () => void;
+    nodes?: any[];
 }
 
 const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; label: string; icon: typeof Building; desc: string }[] }[] = [
@@ -463,7 +464,8 @@ export function NodeInspector({
     onDirtyChange,
     onApply,
     onTest,
-    onCancel
+    onCancel,
+    nodes = []
 }: NodeInspectorProps) {
     const { singular } = useTerminology();
     const params = useParams();
@@ -966,6 +968,7 @@ export function NodeInspector({
                                     }));
                                 }}
                                 accentColor="amber"
+                                nodes={nodes}
                             />
                         </div>
                     ) : null}
@@ -1006,6 +1009,7 @@ export function NodeInspector({
                                         }));
                                     }}
                                     accentColor="purple"
+                                    nodes={nodes}
                                 />
                             </div>
 
@@ -1252,6 +1256,7 @@ export function NodeInspector({
                                             }));
                                         }}
                                         accentColor="purple"
+                                        nodes={nodes}
                                     />
 
                                     <div className="flex items-center gap-2 px-1">
