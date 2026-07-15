@@ -68,6 +68,32 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         });
     }, [value, onChange]);
 
+    const insertLink = React.useCallback((url: string, track: boolean) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        let finalUrl = url;
+        if (track) {
+            const joiner = finalUrl.includes('?') ? '&' : '?';
+            finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const before = value.slice(0, start);
+        const after = value.slice(end);
+        const newValue = before + finalUrl + after;
+
+        onChange(newValue);
+
+        // Restore cursor position after the inserted URL
+        requestAnimationFrame(() => {
+            const newPos = start + finalUrl.length;
+            textarea.setSelectionRange(newPos, newPos);
+            textarea.focus();
+        });
+    }, [value, onChange]);
+
     React.useEffect(() => {
         if (registerInsertCallback) {
             registerInsertCallback(insertVariable);
