@@ -149,4 +149,39 @@ describe('Automation Message Guard', () => {
     );
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it('should skip email if contact emailStatus is archived', async () => {
+    vi.mocked(resolveContact).mockResolvedValue({
+      id: 'entity_123',
+      name: 'Test Entity',
+      entityContacts: [
+        {
+          email: 'archived@example.com',
+          isPrimary: true,
+          emailStatus: 'archived',
+          emailVerificationScore: 100,
+        },
+      ],
+    } as any);
+
+    const runCall = () =>
+      handleSendMessage(
+        {
+          channel: 'email',
+          recipientTargets: ['primary'],
+          templateCategory: 'general',
+          templateType: 'custom',
+        },
+        {
+          entityId: 'entity_123',
+          workspaceId: 'ws_123',
+          payload: {},
+        } as any
+      );
+
+    await expect(runCall()).rejects.toThrow(
+      'Message action could not resolve any recipients to send to.'
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
 });

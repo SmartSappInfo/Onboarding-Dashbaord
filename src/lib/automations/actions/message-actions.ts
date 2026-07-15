@@ -136,17 +136,19 @@ export async function handleSendMessage(
       );
       if (matchedContact) {
         if (usePhone) {
-          const isBounced = matchedContact.phoneStatus === 'failed';
+          const phoneStatus = matchedContact.phoneStatus;
+          const isBouncedOrSuspended = phoneStatus && ['failed', 'archived', 'unsubscribed'].includes(phoneStatus);
           const isLowScore = typeof matchedContact.phoneVerificationScore === 'number' && matchedContact.phoneVerificationScore < 40;
-          if (isBounced || isLowScore) {
-            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/low verification phone status.`);
+          if (isBouncedOrSuspended || isLowScore) {
+            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to failed/archived/low verification phone status (${phoneStatus}).`);
             continue;
           }
         } else {
-          const isBounced = matchedContact.emailStatus === 'bounced';
+          const emailStatus = matchedContact.emailStatus;
+          const isBouncedOrSuspended = emailStatus && ['bounced', 'archived', 'unsubscribed', 'complained'].includes(emailStatus);
           const isLowScore = typeof matchedContact.emailVerificationScore === 'number' && matchedContact.emailVerificationScore < 40;
-          if (isBounced || isLowScore) {
-            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/low verification email status.`);
+          if (isBouncedOrSuspended || isLowScore) {
+            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to bounced/archived/unsubscribed/low verification email status (${emailStatus}).`);
             continue;
           }
         }
