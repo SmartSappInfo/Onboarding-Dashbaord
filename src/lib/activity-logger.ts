@@ -128,14 +128,17 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 displayName: finalData.displayName,
             });
 
-            // non-blocking automation triggers via runAfter
-            runAfter(async () => {
-                try {
-                    await triggerAutomationProtocols(triggerType, payload);
-                } catch (err: any) {
-                    console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
-                }
-            });
+            const skipTrigger = activityData.metadata?.skipAutomationTrigger === true;
+            if (!skipTrigger) {
+                // non-blocking automation triggers via runAfter
+                runAfter(async () => {
+                    try {
+                        await triggerAutomationProtocols(triggerType, payload);
+                    } catch (err: any) {
+                        console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
+                    }
+                });
+            }
         }
         
         // Recalculate score asynchronously on any logged activity
