@@ -95,8 +95,9 @@ export async function bulkPushWhatsAppSkeletonsAction(
     }
 
     return { success: true, count };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[bulkPushWhatsAppSkeletonsAction] Error:', e);
-    return { success: false, count: 0, error: e.message || 'An unexpected error occurred.' };
+    const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred.';
+    return { success: false, count: 0, error: errorMessage };
   }
 }

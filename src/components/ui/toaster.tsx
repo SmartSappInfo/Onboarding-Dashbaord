@@ -30,11 +30,12 @@ function CopyButton({ text, isDestructive }: { text: string; isDestructive: bool
       onClick={handleCopy}
       title="Copy message"
       aria-label="Copy message"
-      className={
+      className={cn(
+        "rounded-md p-2 flex items-center justify-center min-h-[44px] min-w-[44px] opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2",
         isDestructive
-          ? "rounded-md p-1 text-red-300 opacity-60 transition-opacity hover:opacity-100 hover:text-red-50 focus:outline-none focus:ring-2 focus:ring-red-400"
-          : "rounded-md p-1 text-foreground/50 opacity-60 transition-opacity hover:opacity-100 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      }
+          ? "text-red-300 hover:text-red-50 focus-visible:ring-red-400"
+          : "text-foreground/50 hover:text-foreground focus-visible:ring-ring"
+      )}
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
@@ -47,7 +48,8 @@ function sanitizeRoutePath(path: string): string | null {
   }
   try {
     const url = new URL(path, 'http://localhost')
-    if (url.pathname !== path.split('?')[0]) {
+    const pathWithoutQueryOrHash = path.split(/[?#]/)[0]
+    if (url.pathname !== pathWithoutQueryOrHash) {
       return null
     }
     return path
@@ -129,7 +131,7 @@ export function Toaster() {
                     dismiss(id)
                   }}
                   className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-lg px-4 py-2 text-xs font-bold shadow-sm transition-[transform,background-color,color] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                    "inline-flex h-11 items-center justify-center rounded-lg px-4 py-2 text-xs font-bold shadow-sm transition-[transform,background-color,color] duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                     isDestructive
                       ? "bg-white text-red-600 hover:bg-red-50 focus-visible:ring-white focus-visible:ring-offset-red-600"
                       : "bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500 focus-visible:ring-offset-background"
@@ -151,7 +153,7 @@ export function Toaster() {
               {isDestructive && copyText && (
                 <CopyButton text={copyText} isDestructive={isDestructive} />
               )}
-              <ToastClose className="rounded-full hover:bg-background/20 transition-colors" />
+              <ToastClose className="rounded-full hover:bg-background/20 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center" />
             </div>
           </Toast>
         )
