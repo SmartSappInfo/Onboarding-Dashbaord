@@ -182,4 +182,26 @@ describe('validateTemplateVariables', () => {
       expect(errors).toEqual([]);
     });
   });
+
+  describe('context compatibility mapping', () => {
+    it('should allow respondent_name (form context) and completion_date (survey context) in surveys template category', () => {
+      const template = {
+        category: 'surveys' as const,
+        subject: 'Survey Alert',
+        body: 'Hello {{respondent_name}}, you completed {{completion_date}} and scored {{score}} with message: {{result_message}}',
+        blocks: [],
+      };
+
+      // Set up variables registry variables mock
+      const vars: VariableDefinition[] = [
+        { key: 'respondent_name', name: 'respondent_name', category: 'forms' } as any,
+        { key: 'completion_date', name: 'completion_date', category: 'surveys' } as any,
+        { key: 'score', name: 'score', category: 'surveys' } as any,
+        { key: 'result_message', name: 'result_message', category: 'surveys' } as any,
+      ];
+
+      const errors = validateTemplateVariables(template, vars);
+      expect(errors.filter(e => e.type === 'warning')).toHaveLength(0);
+    });
+  });
 });

@@ -99,6 +99,21 @@ export function validateTemplateVariables(
       if (existsElsewhere.context === 'common') {
         continue;
       }
+
+      // Context compatibility mapping (plural category -> allowed singular contexts)
+      const contextMap: Record<string, string[]> = {
+        meetings: ['meeting', 'meetings'],
+        surveys: ['survey', 'surveys', 'form', 'forms'], // surveys can access form context vars too
+        forms: ['form', 'forms'],
+        agreements: ['agreement', 'agreements'],
+        general: []
+      };
+
+      const allowedContexts = contextMap[template.category || 'general'] || [];
+      if (allowedContexts.includes(existsElsewhere.context)) {
+        continue;
+      }
+
       errors.push({
         type: 'warning',
         variable: rawVarName,
