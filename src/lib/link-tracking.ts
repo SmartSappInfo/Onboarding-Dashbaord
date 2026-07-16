@@ -123,18 +123,47 @@ export async function recordLinkClickAsync(linkId: string): Promise<void> {
   }
 }
 
-async function resolveContactSerial(contactId: string): Promise<number | null> {
+async function resolveContactSerial(contactId: string, entityId?: string): Promise<number | null> {
   if (!contactId) return null;
   try {
     const docRef = adminDb.collection('contacts').doc(contactId);
     const snap = await docRef.get();
+    
+    let email = '';
+    let displayName = '';
+    let workspaceId = '';
+
+    // Fetch contact details from workspace_entities if entityId is available
+    if (entityId) {
+      const weSnap = await adminDb.collection('workspace_entities')
+        .where('entityId', '==', entityId)
+        .limit(1)
+        .get();
+      if (!weSnap.empty) {
+        const weData = weSnap.docs[0].data();
+        workspaceId = weData.workspaceId || '';
+        const contacts = (weData.entityContacts || []) as { id: string; email?: string; name?: string }[];
+        const found = contacts.find(c => c.id === contactId);
+        if (found) {
+          email = found.email || '';
+          displayName = found.name || '';
+        }
+      }
+    }
+
     if (snap.exists) {
       const data = snap.data()!;
       let serial = data.contact_serial;
       if (serial === undefined || serial === null) {
         const { getNextSerial } = await import('./services/serial-allocator');
         serial = await getNextSerial('contacts');
-        await docRef.update({ contact_serial: serial });
+        await docRef.update({ 
+          contact_serial: serial,
+          ...(email && !data.email && { email }),
+          ...(displayName && !data.displayName && { displayName }),
+          ...(entityId && !data.entityId && { entityId }),
+          ...(workspaceId && !data.workspaceId && { workspaceId })
+        });
       }
       return serial as number;
     } else {
@@ -143,6 +172,10 @@ async function resolveContactSerial(contactId: string): Promise<number | null> {
       const serial = await getNextSerial('contacts');
       await docRef.set({
         contact_serial: serial,
+        email,
+        displayName,
+        entityId: entityId || '',
+        workspaceId,
         createdAt: new Date().toISOString()
       }, { merge: true });
       return serial;
@@ -272,7 +305,7 @@ export async function transformBodyWithTracking(params: {
       // If contactId is provided, check if it's an internal page we can shorten statelessly to 11 chars
       if (contactId) {
         try {
-          const contactSerial = await resolveContactSerial(contactId);
+          const contactSerial = await resolveContactSerial(contactId, entityId);
           const pageInfo = await resolvePageSerialAndType(url);
           
           if (contactSerial !== null && pageInfo !== null) {
