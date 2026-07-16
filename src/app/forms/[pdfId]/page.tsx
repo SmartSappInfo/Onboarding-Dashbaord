@@ -124,7 +124,21 @@ import { getOrgBranding } from '@/lib/org-branding';
 export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }) {
     const { pdfId } = await params;
     const sParams = await searchParams;
-    const data = await getPdfFormData(pdfId, sParams.entityId);
+
+    // Check secure context cookie first
+    let cookieEntityId: string | undefined = undefined;
+    try {
+        const { resolveOnboardingContext } = await import('@/lib/utils/context-resolver');
+        const cookieCtx = await resolveOnboardingContext();
+        if (cookieCtx.entityId) {
+            cookieEntityId = cookieCtx.entityId;
+        }
+    } catch (cookieErr) {
+        console.warn('[PublicPdfFormPage] Failed to parse context cookie:', cookieErr);
+    }
+
+    const finalEntityId = sParams.entityId || cookieEntityId;
+    const data = await getPdfFormData(pdfId, finalEntityId);
 
     if (!data) notFound();
     

@@ -167,7 +167,7 @@ async function resolvePageSerialAndType(urlStr: string): Promise<{ pageSerial: n
           .where('slug', '==', slug)
           .limit(1)
           .get();
-        let doc = snap.empty ? null : snap.docs[0];
+        let doc: FirebaseFirestore.DocumentSnapshot | null = snap.empty ? null : snap.docs[0];
         if (!doc) {
           // Fallback: check document ID
           const directSnap = await adminDb.collection('surveys').doc(slug).get();

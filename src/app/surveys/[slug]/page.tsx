@@ -123,6 +123,14 @@ export default async function PublicSurveyPage({
     let resolvedRecipientContact: string | null = null;
     let resolvedContactId: string | null = null;
 
+    // Check secure context cookie first
+    const { resolveOnboardingContext } = await import('@/lib/utils/context-resolver');
+    const cookieCtx = await resolveOnboardingContext();
+    if (cookieCtx.contactId) {
+        resolvedContactId = cookieCtx.contactId;
+        resolvedEntityId = cookieCtx.entityId || resolvedEntityId;
+    }
+
     const isEncrypted = ref ? ref.split(':').length === 3 : false;
     console.log('[PublicSurveyPage] Incoming ref:', ref, 'isEncrypted:', isEncrypted);
 
@@ -133,30 +141,49 @@ export default async function PublicSurveyPage({
             if (decrypted) {
                 const [contactId, entityId] = decrypted.split(':');
                 resolvedContactId = contactId;
-                
-                if (entityId && survey.workspaceIds && survey.workspaceIds.length > 0) {
-                    const weSnap = await adminDb.collection('workspace_entities')
-                        .where('workspaceId', 'in', survey.workspaceIds)
-                        .where('entityId', '==', entityId)
-                        .limit(1)
-                        .get();
-                    if (!weSnap.empty) {
-                        const contacts = (weSnap.docs[0].data().entityContacts || []) as EntityContact[];
-                        const found = contacts.find(c => c.id === contactId);
-                        if (found) {
-                            resolvedRecipientContact = found.email || null;
-                        }
-                    }
-                } else {
-                    const contactSnap = await adminDb.collection('contacts').doc(contactId).get();
-                    if (contactSnap.exists) {
-                        const data = contactSnap.data() || {};
-                        resolvedRecipientContact = String(data.email || '') || null;
-                    }
-                }
+                resolvedEntityId = entityId || resolvedEntityId;
             }
         } catch (err) {
             console.error('[PublicSurveyPage] Error executing direct token decryption:', err);
+        }
+    } else if (ref && !isEncrypted) {
+        // Fallback for raw legacy IDs
+        resolvedContactId = ref;
+    }
+
+    // Load contact email if contactId is resolved (cookie or ref)
+    if (resolvedContactId) {
+        const targetEntity = resolvedEntityId;
+        if (targetEntity && survey.workspaceIds && survey.workspaceIds.length > 0) {
+            try {
+                const weSnap = await adminDb.collection('workspace_entities')
+                    .where('workspaceId', 'in', survey.workspaceIds)
+                    .where('entityId', '==', targetEntity)
+                    .limit(1)
+                    .get();
+                if (!weSnap.empty) {
+                    const contacts = (weSnap.docs[0].data().entityContacts || []) as EntityContact[];
+                    const found = contacts.find(c => c.id === resolvedContactId);
+                    if (found) {
+                        resolvedRecipientContact = found.email || null;
+                    }
+                }
+            } catch (weErr) {
+                console.warn('[PublicSurveyPage] Workspace entity lookup failed:', weErr);
+            }
+        }
+
+        if (!resolvedRecipientContact) {
+            try {
+                const contactSnap = await adminDb.collection('contacts').doc(resolvedContactId).get();
+                if (contactSnap.exists) {
+                    const data = contactSnap.data() || {};
+                    resolvedRecipientContact = String(data.email || '') || null;
+                    resolvedEntityId = resolvedEntityId || data.entityId || null;
+                }
+            } catch (cErr) {
+                console.warn('[PublicSurveyPage] Contacts collection lookup failed:', cErr);
+            }
         }
     }
 

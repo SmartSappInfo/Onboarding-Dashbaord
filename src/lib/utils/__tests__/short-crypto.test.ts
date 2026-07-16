@@ -45,7 +45,7 @@ describe('Short Cryptography Engine', () => {
   });
 
   it('correctly encodes and decodes Base58 to exactly 11 characters', () => {
-    const val = 18446744073709551615n; // Max 64-bit unsigned integer
+    const val = BigInt('18446744073709551615'); // Max 64-bit unsigned integer
     const encoded = encodeBase58(val);
 
     expect(encoded).toHaveLength(11);
@@ -67,6 +67,6 @@ describe('Short Cryptography Engine', () => {
 
   it('throws error for invalid Base58 character or length', () => {
     expect(() => decodeBase58('1234567890')).toThrow('Base58 short link token must be exactly 11 characters');
-    expect(() => decodeBase58('1234567890!').toThrow());
+    expect(() => decodeBase58('1234567890!')).toThrow();
   });
 });
