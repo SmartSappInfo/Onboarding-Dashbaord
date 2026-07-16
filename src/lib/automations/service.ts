@@ -18,6 +18,7 @@ import {
   setAutomationActive,
 } from './repository';
 import { adminDb } from '../firebase-admin';
+import { scheduleBulkTriggerTask } from '../gcp-tasks-client';
 import { reschedulePendingJobs, purgePendingJobsForNode, purgeAllPendingJobsForAutomation } from './reschedule';
 import { resumeAutomationRun } from './resume';
 
@@ -494,3 +495,103 @@ export async function deleteAllArchivedAutomations(
     return { success: false, error: toAutomationClientError(error) };
   }
 }
+
+export async function enrollContactsInAutomation(
+  entityIds: string[],
+  automationId: string,
+  workspaceId: string,
+  userId: string
+): Promise<AutomationActionResult & { enrolledCount?: number }> {
+  try {
+    assertAutomationUserId(userId);
+
+    // 1. Fetch and validate the automation
+    const autoRef = adminDb.collection('automations').doc(automationId);
+    const autoSnap = await autoRef.get();
+    if (!autoSnap.exists) {
+      return { success: false, error: 'Automation not found' };
+    }
+    const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
+
+    if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
+      return { success: false, error: 'Unauthorized workspace mapping for this automation' };
+    }
+
+    if (!automation.isActive) {
+      return { success: false, error: 'Cannot enroll in an inactive automation' };
+    }
+
+    // 2. Fetch the workspace to resolve organizationId
+    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (!wsSnap.exists) {
+      return { success: false, error: 'Workspace not found' };
+    }
+    const organizationId = wsSnap.data()?.organizationId || 'default';
+
+    // 3. Query contacts to validate they belong to the workspace in batches of 500
+    const fetchedContacts: Array<{ id: string; entityId: string; entityType: string }> = [];
+    const readChunkSize = 500;
+    for (let i = 0; i < entityIds.length; i += readChunkSize) {
+      const chunkIds = entityIds.slice(i, i + readChunkSize);
+      const refs = chunkIds.map(id => adminDb.collection('workspace_entities').doc(id));
+      const snaps = await adminDb.getAll(...refs);
+      snaps.forEach(snap => {
+        if (snap.exists) {
+          const data = snap.data()!;
+          if (data.workspaceId === workspaceId) {
+            fetchedContacts.push({
+              id: snap.id,
+              entityId: data.entityId || snap.id,
+              entityType: data.entityType || 'institution',
+            });
+          }
+        }
+      });
+    }
+
+    if (fetchedContacts.length === 0) {
+      return { success: false, error: 'No valid contacts found matching the active workspace tenant.' };
+    }
+
+    // 4. Transform into target payloads
+    const targets = fetchedContacts.map(c => ({
+      entityId: c.entityId,
+      entityType: c.entityType,
+      payload: {
+        workspaceId,
+        startedBy: userId,
+        manualEnrollment: true,
+      }
+    }));
+
+    // 5. Split targets into chunks of 100 and schedule bulk tasks
+    const scheduleChunkSize = 100;
+    const taskPromises = [];
+    for (let i = 0; i < targets.length; i += scheduleChunkSize) {
+      const chunk = targets.slice(i, i + scheduleChunkSize);
+      taskPromises.push(
+        scheduleBulkTriggerTask({
+          automationId,
+          workspaceId,
+          organizationId,
+          trigger: 'MANUAL_ENROLLMENT',
+          targets: chunk,
+        })
+      );
+    }
+    await Promise.all(taskPromises);
+
+    logAutomationEvent('info', 'manual_enrollment_scheduled', {
+      automationId,
+      workspaceId,
+      enrolledCount: targets.length,
+      userId,
+    });
+
+    return { success: true, enrolledCount: targets.length };
+  } catch (error) {
+    logAutomationEvent('error', 'manual_enrollment_failed', { automationId, workspaceId, error });
+    return { success: false, error: toAutomationClientError(error) };
+  }
+}
+
