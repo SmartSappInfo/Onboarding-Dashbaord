@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction, retryFailedStepAction } from '@/lib/automation-actions';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface DiagnosticsPanelProps {
   automationId: string;
@@ -56,6 +57,7 @@ export function DiagnosticsPanel({
   const { user } = useUser();
   const { toast } = useToast();
   const confirm = useConfirm();
+  const { activeWorkspaceId } = useWorkspace();
   const [statusFilter, setStatusFilter] = React.useState<FilterStatus>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [jsonExpanded, setJsonExpanded] = React.useState(false);
@@ -65,27 +67,29 @@ export function DiagnosticsPanel({
 
   // Memoized query to fetch automation runs in real-time
   const runsQuery = useMemoFirebase(() => {
-    if (!firestore || !automationId) return null;
+    if (!firestore || !automationId || !activeWorkspaceId) return null;
     return query(
       collection(firestore, 'automation_runs'),
       where('automationId', '==', automationId),
+      where('workspaceId', '==', activeWorkspaceId),
       orderBy('startedAt', 'desc'),
       limit(50)
     );
-  }, [firestore, automationId]);
+  }, [firestore, automationId, activeWorkspaceId]);
 
   const { data: runs, isLoading, error } = useCollection<AutomationRun>(runsQuery);
 
   // Memoized query to fetch pending jobs for filtered node
   const pendingJobsQuery = useMemoFirebase(() => {
-    if (!firestore || !automationId || !filterNodeId) return null;
+    if (!firestore || !automationId || !filterNodeId || !activeWorkspaceId) return null;
     return query(
       collection(firestore, 'automation_jobs'),
       where('automationId', '==', automationId),
       where('targetNodeId', '==', filterNodeId),
-      where('status', '==', 'pending')
+      where('status', '==', 'pending'),
+      where('workspaceId', '==', activeWorkspaceId)
     );
-  }, [firestore, automationId, filterNodeId]);
+  }, [firestore, automationId, filterNodeId, activeWorkspaceId]);
 
   const { data: pendingJobs } = useCollection<any>(pendingJobsQuery);
 
@@ -106,13 +110,14 @@ export function DiagnosticsPanel({
 
   // Query jobs for currently selected run to locate wait step ids
   const selectedRunJobsQuery = useMemoFirebase(() => {
-    if (!firestore || !selectedRun) return null;
+    if (!firestore || !selectedRun || !activeWorkspaceId) return null;
     return query(
       collection(firestore, 'automation_jobs'),
       where('runId', '==', selectedRun.id),
-      where('status', '==', 'pending')
+      where('status', '==', 'pending'),
+      where('workspaceId', '==', activeWorkspaceId)
     );
-  }, [firestore, selectedRun]);
+  }, [firestore, selectedRun, activeWorkspaceId]);
 
   const { data: selectedRunJobs } = useCollection<any>(selectedRunJobsQuery);
   const activeWaitJob = selectedRunJobs?.find((j: any) => j.status === 'pending');
