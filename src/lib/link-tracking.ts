@@ -123,27 +123,139 @@ export async function recordLinkClickAsync(linkId: string): Promise<void> {
   }
 }
 
-// ─── Body transformation ───────────────────────────────────────────────────────
+async function resolveContactSerial(contactId: string): Promise<number | null> {
+  if (!contactId) return null;
+  try {
+    const docRef = adminDb.collection('contacts').doc(contactId);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      const data = snap.data()!;
+      let serial = data.contact_serial;
+      if (serial === undefined || serial === null) {
+        const { getNextSerial } = await import('./services/serial-allocator');
+        serial = await getNextSerial('contacts');
+        await docRef.update({ contact_serial: serial });
+      }
+      return serial as number;
+    } else {
+      // Lazy initialize contact document in root contacts collection
+      const { getNextSerial } = await import('./services/serial-allocator');
+      const serial = await getNextSerial('contacts');
+      await docRef.set({
+        contact_serial: serial,
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+      return serial;
+    }
+  } catch (err) {
+    console.error('[resolveContactSerial] Failed:', err);
+  }
+  return null;
+}
 
-/**
- * Rewrites all URLs in an email body to tracked short links.
- *
- * Performance: deduplicates URLs with a Set then creates all tracked links in
- * parallel with Promise.all. A Map is used for O(1) replacement lookups.
- * This avoids the prior O(n) series-await pattern.
- *
- * @param entityId - Forwarded to createTrackedLink so the destination page
- *   can identify the visitor via ?ref=<entityId>.
- */
+async function resolvePageSerialAndType(urlStr: string): Promise<{ pageSerial: number; type: string; id: string } | null> {
+  try {
+    const url = new URL(urlStr);
+    const pathname = url.pathname;
+
+    // 1. Survey matching (/surveys/[slug])
+    if (pathname.includes('/surveys/')) {
+      const parts = pathname.split('/');
+      const slug = parts[parts.indexOf('surveys') + 1];
+      if (slug) {
+        const snap = await adminDb.collection('surveys')
+          .where('slug', '==', slug)
+          .limit(1)
+          .get();
+        let doc = snap.empty ? null : snap.docs[0];
+        if (!doc) {
+          // Fallback: check document ID
+          const directSnap = await adminDb.collection('surveys').doc(slug).get();
+          if (directSnap.exists) doc = directSnap;
+        }
+        if (doc) {
+          let serial = doc.data()?.page_serial;
+          if (serial === undefined || serial === null) {
+            const { getNextSerial } = await import('./services/serial-allocator');
+            serial = await getNextSerial('pages');
+            await doc.ref.update({ page_serial: serial });
+          }
+          return { pageSerial: serial, type: 'survey', id: doc.id };
+        }
+      }
+    }
+
+    // 2. Forms matching (/forms/[pdfId] or /f/[pdfId])
+    if (pathname.includes('/forms/') || pathname.includes('/f/')) {
+      const parts = pathname.split('/');
+      const trigger = pathname.includes('/forms/') ? 'forms' : 'f';
+      const pdfId = parts[parts.indexOf(trigger) + 1];
+      if (pdfId) {
+        const snap = await adminDb.collection('pdfs').doc(pdfId).get();
+        if (snap.exists) {
+          let serial = snap.data()?.page_serial;
+          if (serial === undefined || serial === null) {
+            const { getNextSerial } = await import('./services/serial-allocator');
+            serial = await getNextSerial('pages');
+            await snap.ref.update({ page_serial: serial });
+          }
+          return { pageSerial: serial, type: 'pdf', id: snap.id };
+        }
+      }
+    }
+
+    // 3. Media matching (/m/[shareId])
+    if (pathname.includes('/m/')) {
+      const parts = pathname.split('/');
+      const shareId = parts[parts.indexOf('m') + 1];
+      if (shareId) {
+        const snap = await adminDb.collection('media_shares').doc(shareId).get();
+        if (snap.exists) {
+          let serial = snap.data()?.page_serial;
+          if (serial === undefined || serial === null) {
+            const { getNextSerial } = await import('./services/serial-allocator');
+            serial = await getNextSerial('pages');
+            await snap.ref.update({ page_serial: serial });
+          }
+          return { pageSerial: serial, type: 'media', id: snap.id };
+        }
+      }
+    }
+
+    // 4. Booking matching (/book/[bookingId] or /meetings/[bookingId])
+    if (pathname.includes('/book/') || pathname.includes('/meetings/')) {
+      const parts = pathname.split('/');
+      const trigger = pathname.includes('/book/') ? 'book' : 'meetings';
+      const bookingId = parts[parts.indexOf(trigger) + 1];
+      if (bookingId && bookingId !== 'parent-engagement') {
+        const snap = await adminDb.collection('booking_pages').doc(bookingId).get();
+        if (snap.exists) {
+          let serial = snap.data()?.page_serial;
+          if (serial === undefined || serial === null) {
+            const { getNextSerial } = await import('./services/serial-allocator');
+            serial = await getNextSerial('pages');
+            await snap.ref.update({ page_serial: serial });
+          }
+          return { pageSerial: serial, type: 'booking', id: snap.id };
+        }
+      }
+    }
+  } catch (err) {
+    // URL parsing failed or Firestore query failed
+  }
+  return null;
+}
+
 export async function transformBodyWithTracking(params: {
   body: string;
   campaignId: string;
   jobId: string;
   taskId: string;
   entityId?: string;
+  contactId?: string;
   channel?: PageEventChannel;
 }): Promise<string> {
-  const { body, campaignId, jobId, taskId, entityId, channel } = params;
+  const { body, campaignId, jobId, taskId, entityId, contactId, channel } = params;
 
   // URL regex — matches http(s) URLs, stops at whitespace and common HTML terminators
   const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
@@ -156,9 +268,26 @@ export async function transformBodyWithTracking(params: {
 
   // Create all tracked links in parallel
   const trackedUrls = await Promise.all(
-    uniqueUrls.map((url) =>
-      createTrackedLink({ originalUrl: url, campaignId, jobId, taskId, entityId, channel })
-    )
+    uniqueUrls.map(async (url) => {
+      // If contactId is provided, check if it's an internal page we can shorten statelessly to 11 chars
+      if (contactId) {
+        try {
+          const contactSerial = await resolveContactSerial(contactId);
+          const pageInfo = await resolvePageSerialAndType(url);
+          
+          if (contactSerial !== null && pageInfo !== null) {
+            const { encrypt64, packSerials, encodeBase58 } = await import('./utils/short-crypto');
+            const cipher = encrypt64(packSerials(contactSerial, pageInfo.pageSerial));
+            const token = encodeBase58(cipher);
+            const baseUrl = getBaseUrl();
+            return `${baseUrl}/go/${token}`;
+          }
+        } catch (err) {
+          console.warn('[transformBodyWithTracking] Failed stateless link resolution:', err);
+        }
+      }
+      return createTrackedLink({ originalUrl: url, campaignId, jobId, taskId, entityId, channel });
+    })
   );
 
   // Build O(1) lookup map

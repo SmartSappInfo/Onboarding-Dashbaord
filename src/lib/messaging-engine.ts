@@ -663,6 +663,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         // Find jobId and taskId from tags to associate the link
         const jobId = tags?.find(t => t.name === 'jobId')?.value || 'manual';
         const taskId = tags?.find(t => t.name === 'taskId')?.value || 'manual';
+        const contactId = signatory?.id || resolvedContact?.id || undefined;
         
         resolvedBody = await transformBodyWithTracking({
             body: resolvedBody,
@@ -670,6 +671,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             jobId,
             taskId,
             entityId: entityId || undefined,
+            contactId,
             channel: (['email', 'sms', 'whatsapp'].includes(template.channel) ? template.channel : 'direct') as 'email' | 'sms' | 'whatsapp' | 'direct'
         });
     }
