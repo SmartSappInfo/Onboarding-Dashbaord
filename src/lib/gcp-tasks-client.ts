@@ -8,6 +8,22 @@ const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 const BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
+async function resolveRequestBaseUrl(): Promise<string> {
+  try {
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    const host = headersList.get('x-forwarded-host') || headersList.get('host');
+    if (host) {
+      const proto = headersList.get('x-forwarded-proto') || 'https';
+      const cleanProto = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : proto;
+      return `${cleanProto}://${host}`;
+    }
+  } catch {
+    // Fallback when called outside Next.js request context (e.g. background scripts)
+  }
+  return BASE_URL;
+}
+
 // Global cache for local mock timers in emulator mode (Next.js HMR-resilient)
 const globalRef = globalThis as unknown as { localTimers?: Map<string, NodeJS.Timeout> };
 if (!globalRef.localTimers) {
@@ -98,6 +114,7 @@ export async function scheduleDelayTask({
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
   const client = await getCloudTasksClient();
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
 
   if (isEmulator || !client) {
     // Emulator mode: Schedule using Node setTimeout
@@ -114,7 +131,7 @@ export async function scheduleDelayTask({
       localTimers.delete(taskKey);
       console.info(`[GCP-TASKS-EMULATOR] Triggering execution for task ${taskKey}`);
       try {
-        const response = await fetch(`${BASE_URL}/api/automations/resume`, {
+        const response = await fetch(`${resolvedBaseUrl}/api/automations/resume`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -170,7 +187,7 @@ export async function scheduleDelayTask({
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${BASE_URL}/api/automations/resume`,
+      url: `${resolvedBaseUrl}/api/automations/resume`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
@@ -292,6 +309,7 @@ export async function scheduleBulkTriggerTask({
   const taskKey = `bulk_trigger_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
   const queue = getQueueName();
   const client = await getCloudTasksClient();
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
 
   if (isEmulator || !client) {
     console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk trigger task ${taskKey} on queue "${queue}"`);
@@ -299,7 +317,7 @@ export async function scheduleBulkTriggerTask({
     // Trigger immediately in a macro-task to let request thread finish
     setTimeout(async () => {
       try {
-        const response = await fetch(`${BASE_URL}/api/automations/bulk-trigger`, {
+        const response = await fetch(`${resolvedBaseUrl}/api/automations/bulk-trigger`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -338,7 +356,7 @@ export async function scheduleBulkTriggerTask({
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${BASE_URL}/api/automations/bulk-trigger`,
+      url: `${resolvedBaseUrl}/api/automations/bulk-trigger`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
