@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { enrollContactsInAutomationAction } from '@/lib/automation-actions';
 import type { Automation } from '@/lib/types';
@@ -51,7 +51,7 @@ export function AddToAutomationDialog({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // 1. Query automations for the workspace
-  const automationsQuery = React.useMemo(() => {
+  const automationsQuery = useMemoFirebase(() => {
     if (!firestore || !workspaceId) return null;
     // Bypasses composite index requirements by filtering archived/active status in-memory
     return query(
