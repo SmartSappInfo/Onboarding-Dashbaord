@@ -102,6 +102,11 @@ const AddToCampaignDialog = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
 );
 
+const AddToAutomationDialog = dynamic(
+  () => import('./components/AddToAutomationDialog').then(m => m.AddToAutomationDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
+
 const getInitials = (name?: string) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -159,6 +164,8 @@ export default function EntitiesClient() {
   const [taggingEntity, setTaggingEntity] = useState<WorkspaceEntity | null>(null);
   const [managingWorkspacesEntity, setManagingWorkspacesEntity] = useState<WorkspaceEntity | null>(null);
   const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
+  const [isAddToAutomationOpen, setIsAddToAutomationOpen] = useState(false);
+  const [addToAutomationEntityIds, setAddToAutomationEntityIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!entityToDelete) setArchiveAllWorkspaces(false);
@@ -1685,6 +1692,13 @@ export default function EntitiesClient() {
                                                                 <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><PhoneCall className="h-3.5 w-3.5" /></div>
                                                                 <span className="font-bold text-sm">Add to Call Campaign</span>
                                                             </DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl p-2.5 gap-3 cursor-pointer" onClick={() => {
+                                                                 setAddToAutomationEntityIds([entity.id]);
+                                                                 setIsAddToAutomationOpen(true);
+                                                            }}>
+                                                                <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Sparkles className="h-3.5 w-3.5" /></div>
+                                                                <span className="font-bold text-sm">Add to Automation</span>
+                                                            </DropdownMenuItem>
                                                             
                                                             <DropdownMenuSeparator className="my-2" />
                                                             <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setManagingWorkspacesEntity(entity)}>
@@ -1936,6 +1950,16 @@ export default function EntitiesClient() {
               />
             )}
 
+            {isAddToAutomationOpen && (
+              <AddToAutomationDialog
+                open={isAddToAutomationOpen}
+                onOpenChange={setIsAddToAutomationOpen}
+                entityIds={addToAutomationEntityIds}
+                workspaceId={activeWorkspaceId}
+                onComplete={() => clearSelection()}
+              />
+            )}
+
             {/* Reassignment modal with bulk support */}
             <AssignUserModal 
               entity={assigningEntity} 
@@ -1963,6 +1987,10 @@ export default function EntitiesClient() {
               onAddToCampaign={() => {
                 setCampaignEntityIds(selectedEntities.map(e => e.entityId));
                 setIsCampaignDialogOpen(true);
+              }}
+              onAddToAutomation={() => {
+                setAddToAutomationEntityIds(selectedEntityIds);
+                setIsAddToAutomationOpen(true);
               }}
               onArchive={() => setIsBulkArchiveOpen(true)}
               onDelete={() => setIsBulkDeleteOpen(true)}

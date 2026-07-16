@@ -17,7 +17,8 @@ import {
   Archive,
   Trash2,
   PhoneCall,
-  Download
+  Download,
+  Sparkles,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ interface BulkActionDockProps {
   onCreateTasks: () => void;
   onInviteMeetings: () => void;
   onAddToCampaign: () => void;
+  onAddToAutomation?: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onExport: () => void;
@@ -56,6 +58,7 @@ export function BulkActionDock({
   onCreateTasks,
   onInviteMeetings,
   onAddToCampaign,
+  onAddToAutomation,
   onArchive,
   onDelete,
   onExport,
@@ -171,6 +174,16 @@ export function BulkActionDock({
                   <ClipboardList className="h-3.5 w-3.5" />
                 </div>
                 <span className="font-bold text-sm">Create CRM Tasks</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem 
+                onClick={onAddToAutomation}
+                className="rounded-xl p-2.5 gap-3 hover:bg-slate-800 cursor-pointer focus:bg-primary/25 focus:text-white"
+              >
+                <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-bold text-sm">Add to Automation</span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="my-2 border-slate-800" />
