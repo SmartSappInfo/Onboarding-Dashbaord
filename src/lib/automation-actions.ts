@@ -12,6 +12,7 @@ import {
   archiveAutomation,
   restoreAutomation,
   deleteAllArchivedAutomations,
+  enrollContactsInAutomation,
 } from './automations/service';
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
@@ -607,5 +608,14 @@ export async function bulkCleanContactsAction(
     console.error('[bulkCleanContactsAction] Error:', err);
     return { success: false, count: 0, error: errorMsg };
   }
+}
+
+export async function enrollContactsInAutomationAction(
+  entityIds: string[],
+  automationId: string,
+  workspaceId: string,
+  userId: string
+) {
+  return enrollContactsInAutomation(entityIds, automationId, workspaceId, userId);
 }
 
