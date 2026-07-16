@@ -18,7 +18,7 @@ import { handleUpdateLeadScore } from './score-automation-actions';
 export async function processActionNode(
   node: { id?: string; data?: { actionType?: string; config?: Record<string, unknown> } },
   context: ExecutionContext
-): Promise<any> {
+): Promise<Record<string, unknown> | void> {
   const rawActionType = node.data?.actionType;
   const config = node.data?.config || {};
   if (!rawActionType) return;
@@ -145,6 +145,6 @@ export async function processActionNode(
       } catch (err) {
         console.error('Failed to trigger AUTOMATION_COMPLETED:', err);
       }
-      break;
+      return { __halt: true };
   }
 }

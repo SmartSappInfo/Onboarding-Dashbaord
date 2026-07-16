@@ -10,6 +10,7 @@ export interface ExecutionContext {
   automationId: string;
   runId: string;
   chainDepth?: number;
+  isTerminated?: boolean;
 }
 
 export const MAX_AUTOMATION_CHAIN_DEPTH = 5;

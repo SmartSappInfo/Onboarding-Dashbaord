@@ -180,10 +180,23 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
         });
 
         // D. Traverse nodes downstream starting from this milestone node
+        let organizationId: string | undefined;
+        if (workspaceId) {
+          try {
+            const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+            if (wsSnap.exists) {
+              organizationId = (wsSnap.data()?.organizationId as string) || undefined;
+            }
+          } catch (e) {
+            console.warn('[JUMP:ENGINE] Failed to resolve organizationId:', e);
+          }
+        }
+
         const context = {
           entityId,
-          entityType: (runData.entityType as EntityType) || 'institution',
+          entityType: (runData.entityType as EntityType) || 'contact',
           workspaceId,
+          organizationId,
           payload,
           automationId,
           runId,

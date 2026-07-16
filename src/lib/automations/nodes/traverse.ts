@@ -151,6 +151,9 @@ export async function traverseNodes(
   context: ExecutionContext,
   executeCurrentAction = false
 ): Promise<void> {
+  if (context.isTerminated) {
+    return;
+  }
   const currentNode = automation.nodes.find((n) => n.id === nodeId);
   if (!currentNode) return;
 
@@ -162,6 +165,11 @@ export async function traverseNodes(
     try {
       if (currentNode.type === 'actionNode') {
         const output = await processActionNode(currentNode, context);
+
+        if (output && typeof output === 'object' && '__halt' in output) {
+          context.isTerminated = true;
+          return;
+        }
 
         const stepNumbers = getStepNumbers(automation);
         const stepNum = stepNumbers[currentNode.id];
@@ -224,6 +232,7 @@ export async function traverseNodes(
         });
       }
     } catch (e: unknown) {
+      context.isTerminated = true;
       const message = e instanceof Error ? e.message : String(e);
       const label = getNodeLabelWithStep(currentNode, automation.nodes, currentNode.id);
       logStepExecution(context.runId, {
@@ -395,6 +404,11 @@ export async function traverseNodes(
       if (nextNode.type === 'actionNode') {
         const output = await processActionNode(nextNode, context);
 
+        if (output && typeof output === 'object' && '__halt' in output) {
+          context.isTerminated = true;
+          return;
+        }
+
         // Enrich context payload with action output
         const stepNumbers = getStepNumbers(automation);
         const stepNum = stepNumbers[nextNode.id];
@@ -538,6 +552,7 @@ export async function traverseNodes(
 
       await traverseNodes(nextNode.id, automation, context);
     } catch (e: unknown) {
+      context.isTerminated = true;
       const message = e instanceof Error ? e.message : String(e);
       const label = getNodeLabelWithStep(nextNode, automation.nodes, nextNode.id);
       logStepExecution(context.runId, {

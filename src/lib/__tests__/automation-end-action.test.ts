@@ -40,8 +40,9 @@ describe('END_AUTOMATION step', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('marks the run completed and fires AUTOMATION_COMPLETED', async () => {
-    await processActionNode({ id: 'node-end', data: { actionType: 'END_AUTOMATION', config: {} } }, ctx);
+    const result = await processActionNode({ id: 'node-end', data: { actionType: 'END_AUTOMATION', config: {} } }, ctx);
 
+    expect(result).toEqual({ __halt: true });
     expect(runUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
     expect(mockTriggerProtocols).toHaveBeenCalledWith(
       'AUTOMATION_COMPLETED',
@@ -50,7 +51,8 @@ describe('END_AUTOMATION step', () => {
   });
 
   it('accepts a lower-cased actionType (dispatch normalizes casing)', async () => {
-    await processActionNode({ id: 'node-end', data: { actionType: 'end_automation', config: {} } }, ctx);
+    const result = await processActionNode({ id: 'node-end', data: { actionType: 'end_automation', config: {} } }, ctx);
+    expect(result).toEqual({ __halt: true });
     expect(runUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
   });
 });
