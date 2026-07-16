@@ -42,7 +42,7 @@ interface AddToAutomationDialogProps {
 }
 
 type Step = 'pick-contacts' | 'pick-automation';
-type BulkScope = 'primary' | 'signatories' | 'roles' | 'all';
+type BulkScope = 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
 
 const EMPTY_CONTACTS: EntityContact[] = [];
 
@@ -98,7 +98,7 @@ export function AddToAutomationDialog({
     if (open) {
       setSelectedAutomationId(null);
       setIsSubmitting(false);
-      setBulkScope('primary');
+      setBulkScope(isSingleEntity ? 'custom' : 'primary');
       setRolesInput('');
       setStep('pick-automation');
 
@@ -273,49 +273,49 @@ export function AddToAutomationDialog({
               </div>
             )}
 
-            {/* Bulk scope selection (Bulk mode only) */}
-            {!isSingleEntity && (
-              <div className="shrink-0 space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1 block text-left">
-                  Target Scope (All {entityIds.length} {plural})
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { key: 'primary', label: 'Primary Only' },
-                    { key: 'signatories', label: 'Signatories' },
-                    { key: 'all', label: 'All Contacts' },
-                    { key: 'roles', label: 'By Role(s)' },
-                  ] as const).map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setBulkScope(opt.key)}
-                      className={cn(
-                        'px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all text-center',
-                        bulkScope === opt.key
-                          ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
-                          : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {bulkScope === 'roles' && (
-                  <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
-                    <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground px-1">
-                      Roles filter (comma-separated)
-                    </label>
-                    <Input
-                      value={rolesInput}
-                      onChange={(e) => setRolesInput(e.target.value)}
-                      placeholder="e.g. Finance, Director, Owner"
-                      className="h-10 rounded-xl bg-background border-border text-foreground text-xs font-semibold focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-transparent placeholder:text-muted-foreground/50"
-                    />
-                  </div>
-                )}
+            {/* Target Scope selection */}
+            <div className="shrink-0 space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1 block text-left">
+                Target Scope {isSingleEntity ? '' : `(All ${entityIds.length} ${plural})`}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: 'primary' as BulkScope, label: 'Primary Only' },
+                  { key: 'signatories' as BulkScope, label: 'Signatories' },
+                  { key: 'all' as BulkScope, label: 'All Contacts' },
+                  { key: 'roles' as BulkScope, label: 'By Role(s)' },
+                  ...(isSingleEntity ? [{ key: 'custom' as BulkScope, label: 'Select Contacts' }] : []),
+                ]).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setBulkScope(opt.key)}
+                    className={cn(
+                      'px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all text-center',
+                      bulkScope === opt.key
+                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
+                        : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            )}
+
+              {bulkScope === 'roles' && (
+                <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                    Roles filter (comma-separated)
+                  </label>
+                  <Input
+                    value={rolesInput}
+                    onChange={(e) => setRolesInput(e.target.value)}
+                    placeholder="e.g. Finance, Director, Owner"
+                    className="h-10 rounded-xl bg-background border-border text-foreground text-xs font-semibold focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-transparent placeholder:text-muted-foreground/50"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Automation Selection Selector */}
             <div className="space-y-1.5 text-left shrink-0">
@@ -368,7 +368,7 @@ export function AddToAutomationDialog({
               >
                 Cancel
               </Button>
-              {isSingleEntity ? (
+              {isSingleEntity && bulkScope === 'custom' ? (
                 <Button
                   onClick={() => setStep('pick-contacts')}
                   disabled={!selectedAutomationId}
