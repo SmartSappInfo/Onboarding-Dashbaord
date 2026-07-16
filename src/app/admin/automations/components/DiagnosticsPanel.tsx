@@ -198,7 +198,7 @@ export function DiagnosticsPanel({
     if (!user || !filterNodeId) return;
     setIsBulkResuming(true);
     try {
-      const res = await manuallyReleaseAllWaitJobsAction(automationId, filterNodeId, user.uid);
+      const res = await manuallyReleaseAllWaitJobsAction(automationId, filterNodeId, user.uid, activeWorkspaceId);
       if (res.success) {
         toast({
           title: 'Bulk Resumption Complete',

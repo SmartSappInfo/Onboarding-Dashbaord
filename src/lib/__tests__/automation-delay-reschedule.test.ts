@@ -283,7 +283,7 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
       // 5. Mock resumeAutomationRun to return true
       vi.mocked(resumeAutomationRun).mockResolvedValueOnce(true);
 
-      const result = await manuallyReleaseAllWaitJobs('auto-1', 'node-delay-1', 'user-1', 'workspace-1');
+      const result = await manuallyReleaseAllWaitJobs('auto-1', 'node-delay-1', 'user-1', 'onboarding');
 
       // Verify success status and correct resume counts
       expect(result.success).toBe(true);

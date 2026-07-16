@@ -1,11 +1,29 @@
 import type { ExecutionContext } from '../execution-types';
 import { scheduleDelayTask } from '../../gcp-tasks-client';
 
+export interface DelayNodeConfig {
+  waitType?: string;
+  value?: number;
+  unit?: string;
+  periods?: Array<{ value: number; unit: string }>;
+  specificDate?: string;
+  specificTime?: string;
+  scheduledDay?: string;
+  scheduledTime?: string;
+  scheduledYear?: string;
+  scheduledMonth?: string;
+  scheduledDayOfMonth?: string;
+  dateField?: string;
+  offsetDays?: number;
+  offsetDirection?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Calculates the exact execution date/time for a delay node based on its configuration.
  */
 export async function calculateExecuteAt(
-  config: Record<string, any>,
+  config: DelayNodeConfig,
   context: ExecutionContext,
   now: Date = new Date()
 ): Promise<Date> {
