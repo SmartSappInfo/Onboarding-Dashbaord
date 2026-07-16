@@ -31,6 +31,31 @@ if (!globalRef.localTimers) {
 }
 const localTimers = globalRef.localTimers;
 
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  initialDelayMs = 200
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await operation();
+    } catch (err: any) {
+      attempt++;
+      const code = err.code ?? 0;
+      const status = err.status ?? 0;
+      // Transient codes: 8 (RESOURCE_EXHAUSTED), 14 (UNAVAILABLE). Statuses: 429, 503
+      const isTransient = code === 8 || code === 14 || status === 429 || status === 503;
+      if (!isTransient || attempt >= maxRetries) {
+        throw err;
+      }
+      const delay = initialDelayMs * Math.pow(2, attempt) * (0.8 + Math.random() * 0.4);
+      console.warn(`[GCP-TASKS] Transient error (code: ${code || status}), retrying attempt ${attempt} in ${Math.round(delay)}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 // Instantiate Cloud Tasks Client safely and dynamically to prevent bundler errors
 let clientInstance: CloudTasksClient | null = null;
 let isInitialized = false;
@@ -66,6 +91,7 @@ export interface ScheduleTaskOptions {
   workspaceId: string;
   channel?: QueueChannel;
   payload?: Record<string, unknown>;
+  skipDbUpdate?: boolean;
 }
 
 /**
@@ -107,6 +133,7 @@ export async function scheduleDelayTask({
   workspaceId,
   channel,
   payload = {},
+  skipDbUpdate = false,
 }: ScheduleTaskOptions): Promise<string> {
   if (!workspaceId) {
     throw new Error(`Cannot schedule delay task for run ${runId}: workspaceId is required.`);
@@ -154,19 +181,21 @@ export async function scheduleDelayTask({
     localTimers.set(taskKey, timer);
 
     // Save job audit reference in Firestore
-    await adminDb.collection('automation_jobs').doc(taskKey).set({
-      id: taskKey,
-      runId,
-      automationId,
-      targetNodeId: nodeId,
-      payload,
-      workspaceId,
-      status: 'pending',
-      executeAt,
-      queue,
-      type: 'gcp_task_mock',
-      createdAt: new Date().toISOString(),
-    });
+    if (!skipDbUpdate) {
+      await adminDb.collection('automation_jobs').doc(taskKey).set({
+        id: taskKey,
+        runId,
+        automationId,
+        targetNodeId: nodeId,
+        payload,
+        workspaceId,
+        status: 'pending',
+        executeAt,
+        queue,
+        type: 'gcp_task_mock',
+        createdAt: new Date().toISOString(),
+      });
+    }
 
     return taskKey;
   }
@@ -201,29 +230,31 @@ export async function scheduleDelayTask({
 
   try {
     // Delete existing task if present to enforce reschedule idempotence
-    await cancelDelayTask(runId, nodeId, channel);
+    await cancelDelayTask(runId, nodeId, channel, skipDbUpdate);
   } catch {
     // Non-fatal if the task did not exist
   }
 
-  const [response] = await client.createTask({ parent, task });
+  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
   console.info(`[GCP-TASKS] Scheduled task ${response.name} for ${executeAt}`);
 
   // Create audit log job document in Firestore
-  await adminDb.collection('automation_jobs').doc(taskKey).set({
-    id: taskKey,
-    runId,
-    automationId,
-    targetNodeId: nodeId,
-    payload,
-    workspaceId,
-    status: 'pending',
-    executeAt,
-    queue,
-    type: 'gcp_task',
-    gcpTaskName: response.name,
-    createdAt: new Date().toISOString(),
-  });
+  if (!skipDbUpdate) {
+    await adminDb.collection('automation_jobs').doc(taskKey).set({
+      id: taskKey,
+      runId,
+      automationId,
+      targetNodeId: nodeId,
+      payload,
+      workspaceId,
+      status: 'pending',
+      executeAt,
+      queue,
+      type: 'gcp_task',
+      gcpTaskName: response.name,
+      createdAt: new Date().toISOString(),
+    });
+  }
 
   return response.name || taskKey;
 }
@@ -234,7 +265,8 @@ export async function scheduleDelayTask({
 export async function cancelDelayTask(
   runId: string,
   nodeId: string,
-  channel?: QueueChannel
+  channel?: QueueChannel,
+  skipDbUpdate = false
 ): Promise<void> {
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
@@ -249,16 +281,18 @@ export async function cancelDelayTask(
 
   if (isEmulator || !client) {
     // Update audit state
-    await adminDb.collection('automation_jobs').doc(taskKey).update({
-      status: 'cancelled',
-      cancelledAt: new Date().toISOString(),
-    }).catch(() => {});
+    if (!skipDbUpdate) {
+      await adminDb.collection('automation_jobs').doc(taskKey).update({
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
     return;
   }
 
   const taskPath = client.taskPath(PROJECT, LOCATION, queue, taskKey);
   try {
-    await client.deleteTask({ name: taskPath });
+    await executeWithRetry(() => client.deleteTask({ name: taskPath }));
     console.info(`[GCP-TASKS] Deleted remote task: ${taskPath}`);
   } catch (err: any) {
     // code 5 corresponds to NOT_FOUND
@@ -268,10 +302,12 @@ export async function cancelDelayTask(
   }
 
   // Update audit state
-  await adminDb.collection('automation_jobs').doc(taskKey).update({
-    status: 'cancelled',
-    cancelledAt: new Date().toISOString(),
-  }).catch(() => {});
+  if (!skipDbUpdate) {
+    await adminDb.collection('automation_jobs').doc(taskKey).update({
+      status: 'cancelled',
+      cancelledAt: new Date().toISOString(),
+    }).catch(() => {});
+  }
 }
 
 /**
@@ -279,7 +315,7 @@ export async function cancelDelayTask(
  */
 export async function rescheduleDelayTask(options: ScheduleTaskOptions): Promise<string> {
   // Safe cancel, then schedule new
-  await cancelDelayTask(options.runId, options.nodeId, options.channel).catch(() => {});
+  await cancelDelayTask(options.runId, options.nodeId, options.channel, options.skipDbUpdate).catch(() => {});
   return scheduleDelayTask(options);
 }
 

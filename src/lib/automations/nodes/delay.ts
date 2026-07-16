@@ -125,15 +125,35 @@ export async function calculateExecuteAt(
     return executeAt;
   }
 
-  // Fallback: 5. Period (relative duration) Wait
+  interface DelayPeriod {
+    value: number;
+    unit: string;
+  }
+
+  // 5. Period (relative duration) Wait
+  if (config.periods && Array.isArray(config.periods)) {
+    const executeAt = new Date(now);
+    const periods = config.periods as DelayPeriod[];
+    for (const period of periods) {
+      const newVal = Number(period.value) || 0;
+      const newUnit = String(period.unit || 'Minutes').toLowerCase();
+      if (newUnit === 'minutes') executeAt.setMinutes(executeAt.getMinutes() + newVal);
+      else if (newUnit === 'hours') executeAt.setHours(executeAt.getHours() + newVal);
+      else if (newUnit === 'days') executeAt.setDate(executeAt.getDate() + newVal);
+      else if (newUnit === 'weeks') executeAt.setDate(executeAt.getDate() + newVal * 7);
+    }
+    return executeAt;
+  }
+
+  // Fallback: Legacy Single Period (relative duration) Wait
   const newVal = Number(config.value) || 5;
-  const newUnit = String(config.unit || 'Minutes');
+  const newUnit = String(config.unit || 'Minutes').toLowerCase();
   const executeAt = new Date(now);
 
-  if (newUnit === 'Minutes') executeAt.setMinutes(executeAt.getMinutes() + newVal);
-  else if (newUnit === 'Hours') executeAt.setHours(executeAt.getHours() + newVal);
-  else if (newUnit === 'Days') executeAt.setDate(executeAt.getDate() + newVal);
-  else if (newUnit === 'Weeks') executeAt.setDate(executeAt.getDate() + newVal * 7);
+  if (newUnit === 'minutes') executeAt.setMinutes(executeAt.getMinutes() + newVal);
+  else if (newUnit === 'hours') executeAt.setHours(executeAt.getHours() + newVal);
+  else if (newUnit === 'days') executeAt.setDate(executeAt.getDate() + newVal);
+  else if (newUnit === 'weeks') executeAt.setDate(executeAt.getDate() + newVal * 7);
 
   return executeAt;
 }

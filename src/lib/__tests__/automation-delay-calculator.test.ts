@@ -197,4 +197,24 @@ describe('Automation Delay Calculator (calculateExecuteAt)', () => {
     const resBefore = await calculateExecuteAt(configBefore, dummyContext, baseTime);
     expect(resBefore.toISOString()).toBe('2026-05-30T12:00:00.000Z');
   });
+
+  it('handles concatenated delay periods (e.g. 1 Week, 3 Hours, 15 Minutes)', async () => {
+    const baseTime = new Date('2026-07-10T12:00:00.000Z');
+
+    const config = {
+      waitType: 'period',
+      periods: [
+        { value: 1, unit: 'Weeks' },
+        { value: 3, unit: 'Hours' },
+        { value: 15, unit: 'Minutes' }
+      ]
+    };
+
+    const res = await calculateExecuteAt(config, dummyContext, baseTime);
+    // Base: 2026-07-10T12:00:00.000Z
+    // + 1 week: 2026-07-17T12:00:00.000Z
+    // + 3 hours: 2026-07-17T15:00:00.000Z
+    // + 15 minutes: 2026-07-17T15:15:00.000Z
+    expect(res.toISOString()).toBe('2026-07-17T15:15:00.000Z');
+  });
 });

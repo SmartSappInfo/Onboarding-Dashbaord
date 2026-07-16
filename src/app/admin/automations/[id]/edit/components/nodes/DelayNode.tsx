@@ -42,6 +42,10 @@ export function DelayNode({ id, data, selected }: any) {
     const getWaitLabel = () => {
         const type = config.waitType || 'period';
         if (type === 'period') {
+            const periods = config.periods as { value: number; unit: string }[] | undefined;
+            if (periods && periods.length > 0) {
+                return `Wait for ` + periods.map((p) => `${p.value ?? 1} ${p.unit || 'Minutes'}`).join(', ');
+            }
             return `Wait for ${config.value ?? 5} ${config.unit || 'Minutes'}`;
         }
         if (type === 'specific_date') {

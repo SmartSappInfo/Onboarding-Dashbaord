@@ -7,6 +7,7 @@ import {
     ArrowRightLeft, 
     Timer, 
     PlusCircle,
+    Plus,
     Tag,
     X,
     ChevronLeft,
@@ -1101,34 +1102,101 @@ export function NodeInspector({
 
                             {/* 1. Set Period of Time */}
                             {config.waitType === 'period' || !config.waitType ? (
-                                <div className="grid grid-cols-2 gap-3 pt-2">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Amount</Label>
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            value={config.value ?? 5}
-                                            onChange={(e) => updateConfig({ value: Number(e.target.value) || 1 })}
-                                            className="h-10 rounded-xl bg-background border-none shadow-inner"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
-                                        <Select
-                                            value={config.unit || 'Minutes'}
-                                            onValueChange={(v) => updateConfig({ unit: v })}
-                                        >
-                                            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                <SelectItem value="Minutes">Minutes</SelectItem>
-                                                <SelectItem value="Hours">Hours</SelectItem>
-                                                <SelectItem value="Days">Days</SelectItem>
-                                                <SelectItem value="Weeks">Weeks</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                <div className="space-y-4 pt-2">
+                                    {/* List of periods */}
+                                    {((config.periods as { value: number; unit: string }[] | undefined) || [
+                                        { value: config.value ?? 5, unit: config.unit || 'Minutes' }
+                                    ]).map((period, index: number) => (
+                                        <div key={index} className="flex items-end gap-2 animate-fade-in">
+                                            <div className="space-y-2 flex-1">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Amount</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={period.value ?? 1}
+                                                    onChange={(e) => {
+                                                        const newVal = Number(e.target.value) || 1;
+                                                        const currentPeriods = config.periods 
+                                                            ? [...(config.periods as { value: number; unit: string }[])] 
+                                                            : [{ value: config.value ?? 5, unit: config.unit || 'Minutes' }];
+                                                        currentPeriods[index] = { ...currentPeriods[index], value: newVal };
+                                                        updateConfig({
+                                                            periods: currentPeriods,
+                                                            value: currentPeriods[0].value,
+                                                            unit: currentPeriods[0].unit,
+                                                        });
+                                                    }}
+                                                    className="h-10 rounded-xl bg-background border-none shadow-inner"
+                                                />
+                                            </div>
+                                            <div className="space-y-2 flex-1">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
+                                                <Select
+                                                    value={period.unit || 'Minutes'}
+                                                    onValueChange={(v) => {
+                                                        const currentPeriods = config.periods 
+                                                            ? [...(config.periods as { value: number; unit: string }[])] 
+                                                            : [{ value: config.value ?? 5, unit: config.unit || 'Minutes' }];
+                                                        currentPeriods[index] = { ...currentPeriods[index], unit: v };
+                                                        updateConfig({
+                                                            periods: currentPeriods,
+                                                            value: currentPeriods[0].value,
+                                                            unit: currentPeriods[0].unit,
+                                                        });
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="Minutes">Minutes</SelectItem>
+                                                        <SelectItem value="Hours">Hours</SelectItem>
+                                                        <SelectItem value="Days">Days</SelectItem>
+                                                        <SelectItem value="Weeks">Weeks</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            {config.periods && (config.periods as { value: number; unit: string }[]).length > 1 ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        const currentPeriods = [...(config.periods as { value: number; unit: string }[])];
+                                                        currentPeriods.splice(index, 1);
+                                                        updateConfig({
+                                                            periods: currentPeriods,
+                                                            value: currentPeriods[0].value,
+                                                            unit: currentPeriods[0].unit,
+                                                        });
+                                                    }}
+                                                    className="h-10 w-10 p-0 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50/10 flex-shrink-0 flex items-center justify-center border-none"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    ))}
+
+                                    {/* Add Period Button */}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                            const currentPeriods = config.periods 
+                                                ? [...(config.periods as { value: number; unit: string }[])] 
+                                                : [{ value: config.value ?? 5, unit: config.unit || 'Minutes' }];
+                                            currentPeriods.push({ value: 1, unit: 'Minutes' });
+                                            updateConfig({
+                                                periods: currentPeriods,
+                                                value: currentPeriods[0].value,
+                                                unit: currentPeriods[0].unit,
+                                            });
+                                        }}
+                                        className="w-full h-9 rounded-xl border border-dashed border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-500/40 text-[10px] font-bold uppercase tracking-wider gap-1.5 active:scale-[0.97] transition-all"
+                                    >
+                                        <Plus className="h-3.5 w-3.5" />
+                                        Add Another Period
+                                    </Button>
                                 </div>
                             ) : null}
 
@@ -1824,10 +1892,37 @@ export function NodeInspector({
                                 : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                         )}
                         onClick={() => {
+                            let finalData = { ...data };
+                            if (node.type === 'delayNode') {
+                                const type = config?.waitType || 'period';
+                                let computedLabel = 'Wait Period';
+                                if (type === 'period') {
+                                    const periods = config?.periods as { value: number; unit: string }[] | undefined;
+                                    if (periods && periods.length > 0) {
+                                        computedLabel = `Wait for ` + periods.map((p) => `${p.value ?? 1} ${p.unit || 'Minutes'}`).join(', ');
+                                    } else {
+                                        computedLabel = `Wait for ${config?.value ?? 5} ${config?.unit || 'Minutes'}`;
+                                    }
+                                } else if (type === 'specific_date') {
+                                    computedLabel = `Until ${config?.specificDate || 'date'} at ${config?.specificTime || '09:00'}`;
+                                } else if (type === 'date_field') {
+                                    const offset = config?.offsetDirection === 'current_date' 
+                                        ? 'On' 
+                                        : `${config?.offsetDays ?? 1}d ${config?.offsetDirection}`;
+                                    computedLabel = `Wait until ${offset} of ${config?.dateField || 'field'}`;
+                                } else if (type === 'conditions_met') {
+                                    const limitStr = config?.hasTimeLimit 
+                                        ? ` (max ${config?.timeLimitValue ?? 30} ${config?.timeLimitUnit || 'Days'})` 
+                                        : '';
+                                    computedLabel = `Until conditions are met${limitStr}`;
+                                }
+                                finalData.label = computedLabel;
+                            }
+
                             if (node.type === 'triggerNode') {
-                                onApply?.(node.id, data, draftTriggers);
+                                onApply?.(node.id, finalData, draftTriggers);
                             } else {
-                                onApply?.(node.id, data);
+                                onApply?.(node.id, finalData);
                             }
                         }}
                     >

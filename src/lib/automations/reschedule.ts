@@ -49,29 +49,42 @@ export function calculateNewExecuteAt(
 export async function reschedulePendingJobs(
   automationId: string,
   nodeId: string,
-  newConfig: Record<string, any>,
-  oldConfig: Record<string, any>
+  newConfig: Record<string, unknown>,
+  oldConfig: Record<string, unknown>
 ): Promise<void> {
-  const oldVal = oldConfig.value ?? 5;
-  const oldUnit = oldConfig.unit ?? 'Minutes';
-
-  const snap = await adminDb
-    .collection('automation_jobs')
-    .where('automationId', '==', automationId)
-    .where('targetNodeId', '==', nodeId)
-    .where('status', '==', 'pending')
-    .get();
-
-  if (snap.empty) return;
+  const oldVal = (oldConfig.value as number) ?? 5;
+  const oldUnit = (oldConfig.unit as string) ?? 'Minutes';
 
   const BATCH_LIMIT = 500;
-  const docs = snap.docs;
-
-  // Process rescheduling concurrently in batches of 50 tasks to optimize performance
   const CONCURRENCY_LIMIT = 50;
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
+  let hasMore = true;
 
-  for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
-    const chunk = docs.slice(i, i + BATCH_LIMIT);
+  while (hasMore) {
+    let query = adminDb
+      .collection('automation_jobs')
+      .where('automationId', '==', automationId)
+      .where('targetNodeId', '==', nodeId)
+      .where('status', '==', 'pending')
+      .orderBy('__name__')
+      .limit(BATCH_LIMIT);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snap = await query.get();
+    if (snap.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const chunk = snap.docs;
+    lastDoc = chunk[chunk.length - 1];
+    if (chunk.length < BATCH_LIMIT) {
+      hasMore = false;
+    }
+
     const batch = adminDb.batch();
 
     for (let j = 0; j < chunk.length; j += CONCURRENCY_LIMIT) {
@@ -82,15 +95,15 @@ export async function reschedulePendingJobs(
           let startedAt: Date;
 
           if (data.createdAt) {
-            startedAt = new Date(data.createdAt);
+            startedAt = new Date(data.createdAt as string);
           } else {
-            startedAt = estimateStartedAt(data.executeAt, oldVal, oldUnit);
+            startedAt = estimateStartedAt(data.executeAt as string, oldVal, oldUnit);
           }
 
-          let workspaceId = data.workspaceId || (data.payload?.workspaceId as string);
+          let workspaceId = (data.workspaceId as string) || (data.payload?.workspaceId as string);
           if (!workspaceId) {
             const autoSnap = await adminDb.collection('automations').doc(automationId).get();
-            workspaceId = autoSnap.data()?.workspaceIds?.[0];
+            workspaceId = autoSnap.data()?.workspaceIds?.[0] as string;
           }
           if (!workspaceId) {
             console.warn(`[RESCHEDULE] Skipping reschedule for job ${doc.id}: missing workspaceId.`);
@@ -98,13 +111,13 @@ export async function reschedulePendingJobs(
           }
 
           const context = {
-            runId: data.runId,
+            runId: data.runId as string,
             automationId,
             workspaceId,
-            organizationId: data.payload?.organizationId,
-            entityId: data.payload?.entityId,
-            entityType: data.payload?.entityType || 'contacts',
-            payload: data.payload || {},
+            organizationId: data.payload?.organizationId as string | undefined,
+            entityId: data.payload?.entityId as string | undefined,
+            entityType: (data.payload?.entityType as import('../types').EntityType) || 'contacts',
+            payload: (data.payload as Record<string, unknown>) || {},
           };
 
           const newExecuteAt = await calculateExecuteAt(
@@ -120,13 +133,14 @@ export async function reschedulePendingJobs(
 
           try {
             await rescheduleDelayTask({
-              runId: data.runId,
+              runId: data.runId as string,
               nodeId,
               automationId,
               executeAt: newExecuteAt.toISOString(),
               workspaceId,
               channel: parseQueueChannel(data.payload?.channel),
-              payload: data.payload,
+              payload: data.payload as Record<string, unknown>,
+              skipDbUpdate: true, // Bypass redundant individual writes!
             });
           } catch (err) {
             console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
@@ -146,26 +160,46 @@ export async function purgePendingJobsForNode(
   automationId: string,
   nodeId: string
 ): Promise<void> {
-  const snap = await adminDb
-    .collection('automation_jobs')
-    .where('automationId', '==', automationId)
-    .where('targetNodeId', '==', nodeId)
-    .where('status', '==', 'pending')
-    .get();
-
-  if (snap.empty) return;
-
   const BATCH_LIMIT = 500;
-  const docs = snap.docs;
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
+  let hasMore = true;
 
-  for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
-    const chunk = docs.slice(i, i + BATCH_LIMIT);
+  while (hasMore) {
+    let query = adminDb
+      .collection('automation_jobs')
+      .where('automationId', '==', automationId)
+      .where('targetNodeId', '==', nodeId)
+      .where('status', '==', 'pending')
+      .orderBy('__name__')
+      .limit(BATCH_LIMIT);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snap = await query.get();
+    if (snap.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const chunk = snap.docs;
+    lastDoc = chunk[chunk.length - 1];
+    if (chunk.length < BATCH_LIMIT) {
+      hasMore = false;
+    }
+
     const batch = adminDb.batch();
     for (const doc of chunk) {
       batch.delete(doc.ref);
       const data = doc.data();
       try {
-        await cancelDelayTask(data.runId, nodeId, parseQueueChannel(data.payload?.channel));
+        await cancelDelayTask(
+          data.runId as string,
+          nodeId,
+          parseQueueChannel(data.payload?.channel),
+          true // Bypass redundant update since the doc is being deleted!
+        );
       } catch (err) {
         console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
       }
@@ -180,26 +214,46 @@ export async function purgePendingJobsForNode(
 export async function purgeAllPendingJobsForAutomation(
   automationId: string
 ): Promise<void> {
-  const snap = await adminDb
-    .collection('automation_jobs')
-    .where('automationId', '==', automationId)
-    .where('status', '==', 'pending')
-    .get();
-
-  if (snap.empty) return;
-
   const BATCH_LIMIT = 500;
-  const docs = snap.docs;
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
+  let hasMore = true;
 
-  for (let i = 0; i < docs.length; i += BATCH_LIMIT) {
-    const chunk = docs.slice(i, i + BATCH_LIMIT);
+  while (hasMore) {
+    let query = adminDb
+      .collection('automation_jobs')
+      .where('automationId', '==', automationId)
+      .where('status', '==', 'pending')
+      .orderBy('__name__')
+      .limit(BATCH_LIMIT);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snap = await query.get();
+    if (snap.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const chunk = snap.docs;
+    lastDoc = chunk[chunk.length - 1];
+    if (chunk.length < BATCH_LIMIT) {
+      hasMore = false;
+    }
+
     const batch = adminDb.batch();
     for (const doc of chunk) {
       batch.delete(doc.ref);
       const data = doc.data();
       if (data.targetNodeId) {
         try {
-          await cancelDelayTask(data.runId, data.targetNodeId, parseQueueChannel(data.payload?.channel));
+          await cancelDelayTask(
+            data.runId as string,
+            data.targetNodeId as string,
+            parseQueueChannel(data.payload?.channel),
+            true // Bypass redundant update since the doc is being deleted!
+          );
         } catch (err) {
           console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
         }
