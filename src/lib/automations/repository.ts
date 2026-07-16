@@ -129,4 +129,44 @@ export async function documentsExist(
   return existing;
 }
 
+export async function findOrphanedProcessingJobs(olderThanMinutes = 30): Promise<AutomationJob[]> {
+  const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000).toISOString();
+  const snap = await adminDb
+    .collection(AUTOMATION_JOBS)
+    .where('status', '==', 'processing')
+    .where('updatedAt', '<', cutoff)
+    .limit(100)
+    .get();
+
+  return snap.docs.map((doc) => ({ ...doc.data(), id: doc.id } as AutomationJob));
+}
+
+export async function reclaimOrphanedJobTransaction(jobId: string): Promise<boolean> {
+  return adminDb.runTransaction(async (tx) => {
+    const ref = adminDb.collection(AUTOMATION_JOBS).doc(jobId);
+    const snap = await tx.get(ref);
+    if (!snap.exists) return false;
+
+    const data = snap.data() as AutomationJob;
+    if (data.status !== 'processing') return false;
+
+    const retryCount = (data.retryCount || 0) + 1;
+    if (retryCount >= 3) {
+      tx.update(ref, {
+        status: 'failed',
+        error: 'Execution timed out or worker crashed repeatedly.',
+        finishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      tx.update(ref, {
+        status: 'pending',
+        retryCount,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    return true;
+  });
+}
+
 export { AUTOMATION_RUNS };

@@ -111,6 +111,26 @@ export async function processScheduledJobsAction(): Promise<{
 }> {
   logAutomationEvent('info', 'heartbeat_scan_start');
 
+  // Reclaim stuck processing jobs to ensure self-cleaning safety
+  try {
+    const { findOrphanedProcessingJobs, reclaimOrphanedJobTransaction } = await import('./repository');
+    const orphaned = await findOrphanedProcessingJobs(30);
+    if (orphaned.length > 0) {
+      let reclaimedCount = 0;
+      await Promise.all(
+        orphaned.map(async (job) => {
+          const success = await reclaimOrphanedJobTransaction(job.id);
+          if (success) reclaimedCount++;
+        })
+      );
+      if (reclaimedCount > 0) {
+        console.info(`[RECLAIMER] Reclaimed ${reclaimedCount} stuck processing jobs.`);
+      }
+    }
+  } catch (reclaimErr) {
+    console.error('Failed to sweep orphaned processing jobs:', reclaimErr);
+  }
+
   try {
     // Preload dynamic modules to prevent load blocks during concurrent operations
     const [

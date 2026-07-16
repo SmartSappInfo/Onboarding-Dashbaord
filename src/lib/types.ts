@@ -2526,6 +2526,8 @@ export interface AutomationJob {
   executeAt: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'paused';
   workspaceId?: string;
+  retryCount?: number;
+  error?: string;
 }
 
 export type WebhookType = 'inbound' | 'outbound';
