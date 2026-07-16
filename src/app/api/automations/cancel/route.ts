@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { cancelDelayTask, parseQueueChannel } from '@/lib/gcp-tasks-client';
+import { terminateAutomationRunInternal } from '@/lib/automations/run-management';
 
 export async function POST(req: Request) {
   try {
@@ -22,35 +22,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized: Entity ID mismatch for target run.' }, { status: 403 });
     }
 
-    // 2. Fetch and cancel pending jobs
-    const jobsSnap = await adminDb.collection('automation_jobs')
-      .where('runId', '==', runId)
-      .where('entityId', '==', entityId)
-      .where('status', '==', 'pending')
-      .get();
-
-    const batch = adminDb.batch();
-
-    for (const doc of jobsSnap.docs) {
-      const jobData = doc.data();
-      if (jobData.targetNodeId) {
-        // Execute cancellation in the background, logging any non-fatal errors
-        cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel))
-          .catch((err: unknown) => {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.warn(`[CANCEL_AUTOMATION_ROUTE] Non-fatal task deletion failure for run ${runId}:`, msg);
-          });
-      }
-      batch.delete(doc.ref);
-    }
-
-    // 3. Mark run as cancelled
-    batch.update(runRef, {
-      status: 'cancelled',
-      finishedAt: new Date().toISOString(),
-    });
-
-    await batch.commit();
+    // 2. Perform unified execution termination
+    await terminateAutomationRunInternal(runId, 'cancelled', true);
 
     return NextResponse.json({ success: true, message: 'Entity successfully removed from automation execution.' });
   } catch (error: any) {

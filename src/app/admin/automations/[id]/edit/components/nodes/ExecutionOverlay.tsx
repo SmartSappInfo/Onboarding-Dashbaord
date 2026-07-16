@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Check, X, Clock, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ExecutionStatus = 'success' | 'failed' | 'waiting' | 'skipped' | null;
+export type ExecutionStatus = 'success' | 'failed' | 'waiting' | 'skipped' | 'cancelled' | null;
 
 interface ExecutionOverlayProps {
   executionStatus?: ExecutionStatus;
@@ -35,6 +35,12 @@ export function useExecutionOverlay(data: ExecutionOverlayProps) {
       opacityClass: '',
       badgeIcon: 'clock' as const,
     },
+    cancelled: {
+      borderClass: 'border-amber-500 ring-2 ring-amber-500/20 dark:ring-amber-500/10',
+      glowClass: 'shadow-[0_0_12px_rgba(245,158,11,0.25)]',
+      opacityClass: '',
+      badgeIcon: 'minus' as const,
+    },
     skipped: {
       borderClass: 'border-muted bg-muted/40',
       glowClass: '',
@@ -58,6 +64,7 @@ export function ExecutionBadge({ status, icon }: ExecutionBadgeProps) {
     success: "bg-emerald-500 border-emerald-600",
     failed: "bg-rose-500 border-rose-600",
     waiting: "bg-purple-500 border-purple-600",
+    cancelled: "bg-amber-500 border-amber-600",
     skipped: "bg-muted border-border text-muted-foreground",
   };
 

@@ -190,6 +190,76 @@ export async function retryFailedStep(
   }
 }
 
+export async function terminateAutomationRunInternal(
+  runId: string,
+  targetStatus: 'cancelled' | 'completed',
+  terminatedManually: boolean
+): Promise<void> {
+  const runRef = adminDb.collection('automation_runs').doc(runId);
+  const runSnap = await runRef.get();
+  if (!runSnap.exists) return;
+
+  const runData = runSnap.data() as AutomationRun;
+  const now = new Date().toISOString();
+
+  // 1. Update the steps map: find any steps with status 'waiting' and mark them 'cancelled'
+  const steps = { ...(runData.steps || {}) };
+  Object.keys(steps).forEach((nodeId) => {
+    if (steps[nodeId].status === 'waiting') {
+      steps[nodeId] = {
+        ...steps[nodeId],
+        status: 'cancelled',
+        metadata: {
+          ...(steps[nodeId].metadata || {}),
+          cancelledAt: now,
+          resumedAt: now,
+        },
+      };
+    }
+  });
+
+  // 2. Update run document (clear currentNodeId)
+  const runUpdatePayload: any = {
+    status: targetStatus,
+    finishedAt: now,
+    steps,
+    currentNodeId: null,
+  };
+  if (terminatedManually) {
+    runUpdatePayload.terminatedManually = true;
+  }
+  await runRef.update(runUpdatePayload);
+
+  // 3. Cancel and update jobs to 'cancelled' (not deleted, for traceability)
+  const jobsSnap = await adminDb
+    .collection('automation_jobs')
+    .where('runId', '==', runId)
+    .where('status', 'in', ['pending', 'paused'])
+    .get();
+
+  if (!jobsSnap.empty) {
+    const batch = adminDb.batch();
+    for (const jobDoc of jobsSnap.docs) {
+      batch.update(jobDoc.ref, {
+        status: 'cancelled',
+        cancelledAt: now,
+        finishedAt: now,
+      });
+
+      const jobData = jobDoc.data();
+      if (jobData.targetNodeId) {
+        try {
+          // Delete from GCP Tasks queue
+          await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel), true);
+        } catch (err) {
+          console.error(`[TERMINATE] Failed to cancel task from queue for run ${runId}:`, err);
+        }
+      }
+    }
+    await batch.commit();
+  }
+}
+
 // ── 3. Force End Run ────────────────────────────────────────────────────────────
 
 /**
@@ -202,19 +272,13 @@ export async function forceEndRun(
 ): Promise<RunManagementResult> {
   try {
     if (!userId) throw new Error('User ID is required.');
-    const { ref, data: run } = await assertRunExists(runId);
+    const { data: run } = await assertRunExists(runId);
 
     if (run.status === 'completed' || run.status === 'failed') {
       throw new Error('Run is already finished.');
     }
 
-    await ref.update({
-      status: 'completed',
-      finishedAt: new Date().toISOString(),
-      terminatedManually: true,
-    });
-
-    await purgeRunPendingJobs(runId);
+    await terminateAutomationRunInternal(runId, 'completed', true);
 
     logAutomationEvent('info', 'run_force_ended', {
       runId,

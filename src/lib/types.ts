@@ -2478,7 +2478,7 @@ export interface StepExecution {
   nodeId: string;
   nodeType: string;
   nodeLabel: string;
-  status: 'success' | 'failed' | 'waiting' | 'skipped';
+  status: 'success' | 'failed' | 'waiting' | 'skipped' | 'cancelled';
   executedAt: string;
   durationMs?: number;
   error?: string;
@@ -2487,6 +2487,7 @@ export interface StepExecution {
     actionType?: string;
     delayUntil?: string;
     resumedAt?: string;
+    cancelledAt?: string;
     output?: Record<string, unknown>;
   };
 }

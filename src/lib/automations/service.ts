@@ -399,27 +399,8 @@ export async function manuallyEndAutomationRun(
 
     await assertAutomationManagePermission(userId, workspaceIds, 'edit');
 
-    // Terminate run
-    await runRef.update({
-      status: 'completed',
-      finishedAt: new Date().toISOString(),
-      terminatedManually: true,
-    });
-
-    // Delete all pending scheduled jobs for this run
-    const pendingJobsSnap = await adminDb
-      .collection('automation_jobs')
-      .where('runId', '==', runId)
-      .where('status', '==', 'pending')
-      .get();
-
-    if (!pendingJobsSnap.empty) {
-      const batch = adminDb.batch();
-      pendingJobsSnap.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-    }
+    const { terminateAutomationRunInternal } = await import('./run-management');
+    await terminateAutomationRunInternal(runId, 'completed', true);
 
     revalidateAutomationsHub();
     return { success: true };

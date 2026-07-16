@@ -76,6 +76,14 @@ const getStatusStyles = (status: StepExecution['status']) => {
         icon: Clock,
         iconColor: 'text-purple-500 animate-pulse',
       };
+    case 'cancelled':
+      return {
+        bg: 'bg-amber-50 dark:bg-amber-950/20',
+        text: 'text-amber-700 dark:text-amber-400',
+        border: 'border-amber-200 dark:border-amber-800',
+        icon: AlertCircle,
+        iconColor: 'text-amber-500',
+      };
     case 'skipped':
     default:
       return {
