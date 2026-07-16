@@ -60,7 +60,7 @@ export function AddToAutomationDialog({
     );
   }, [firestore, workspaceId]);
 
-  const { data: rawAutomations, loading: isLoading } = useCollection<Automation>(automationsQuery);
+  const { data: rawAutomations, isLoading } = useCollection<Automation>(automationsQuery);
 
   // 2. Filter active and unarchived automations in-memory to prevent composite index errors
   const activeAutomations = React.useMemo(() => {

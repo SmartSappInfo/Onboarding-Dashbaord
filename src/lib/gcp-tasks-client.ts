@@ -290,7 +290,7 @@ export interface BulkTriggerTaskOptions {
   trigger: string;
   targets: Array<{
     entityId: string;
-    entityType: 'contact' | 'deal' | 'company';
+    entityType: string;
     payload: Record<string, unknown>;
   }>;
 }
