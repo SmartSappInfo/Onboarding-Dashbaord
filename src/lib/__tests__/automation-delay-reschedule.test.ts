@@ -42,10 +42,11 @@ const mockCollection = {
   limit: vi.fn().mockReturnThis(),
   startAfter: vi.fn().mockReturnThis(),
   get: vi.fn(),
+  update: vi.fn().mockResolvedValue(undefined),
   doc: vi.fn().mockImplementation((docId: string) => ({
     id: docId,
     get: mockCollection.get,
-    update: mockCollection.get,
+    update: mockCollection.update,
   })),
 };
 
@@ -54,11 +55,25 @@ const mockTx = {
   update: vi.fn(),
 };
 
+const mockAutomationsCollection = {
+  doc: vi.fn().mockImplementation(() => ({
+    get: vi.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ workspaceIds: ['onboarding'] }),
+    }),
+  })),
+};
+
 // Mock Firebase Admin
 vi.mock('../firebase-admin', () => {
   return {
     adminDb: {
-      collection: vi.fn(() => mockCollection),
+      collection: vi.fn((name) => {
+        if (name === 'automations') {
+          return mockAutomationsCollection;
+        }
+        return mockCollection;
+      }),
       batch: vi.fn(() => mockBatch),
       runTransaction: vi.fn((cb) => cb(mockTx)),
     },
@@ -73,6 +88,7 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
     mockBatch.commit.mockReset();
     mockBatch.commit.mockResolvedValue(undefined);
     mockCollection.get.mockReset();
+    mockCollection.update.mockReset();
     mockTx.get.mockReset();
     mockTx.update.mockReset();
     vi.mocked(resumeAutomationRun).mockReset();
@@ -187,7 +203,7 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
       await purgePendingJobsForNode('auto-1', 'node-delay-1');
 
       expect(mockBatch.delete).toHaveBeenCalledWith(mockJobs[0].ref);
-      expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-delay-1', 'default', true);
+      expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-delay-1', 'default', true, undefined);
       expect(mockBatch.commit).toHaveBeenCalled();
     });
   });
@@ -212,8 +228,8 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
 
       expect(mockBatch.delete).toHaveBeenCalledWith(mockJobs[0].ref);
       expect(mockBatch.delete).toHaveBeenCalledWith(mockJobs[1].ref);
-      expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-1', 'default', true);
-      expect(cancelDelayTask).toHaveBeenCalledWith('run-2', 'node-2', 'default', true);
+      expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-1', 'default', true, undefined);
+      expect(cancelDelayTask).toHaveBeenCalledWith('run-2', 'node-2', 'default', true, undefined);
       expect(mockBatch.commit).toHaveBeenCalled();
     });
   });
@@ -234,10 +250,11 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
         },
       ];
 
-      // 1. Mock query for automation snapshot
-      mockCollection.get.mockResolvedValueOnce({
-        exists: true,
-        data: () => ({ workspaceIds: ['onboarding'] }),
+      // 1. Mock loadAutomationForAuth
+      const { loadAutomationForAuth } = await import('../automation-permissions');
+      vi.mocked(loadAutomationForAuth).mockResolvedValueOnce({
+        id: 'auto-1',
+        workspaceIds: ['onboarding'],
       } as any);
 
       // 2. Mock query for pending jobs at wait step (Call 1)
@@ -287,6 +304,11 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
           id: 'job-1',
           status: 'pending',
         })
+      );
+
+      // Verify final status update to completed
+      expect(mockCollection.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'completed' })
       );
     });
   });

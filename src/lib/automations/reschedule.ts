@@ -55,6 +55,13 @@ export async function reschedulePendingJobs(
   const oldVal = (oldConfig.value as number) ?? 5;
   const oldUnit = (oldConfig.unit as string) ?? 'Minutes';
 
+  // Pre-cache parent automation workspaceIds to avoid N+1 query hotspots in loops
+  let cachedWorkspaceId: string | undefined;
+  const autoSnap = await adminDb.collection('automations').doc(automationId).get();
+  if (autoSnap.exists) {
+    cachedWorkspaceId = autoSnap.data()?.workspaceIds?.[0] as string;
+  }
+
   const BATCH_LIMIT = 500;
   const CONCURRENCY_LIMIT = 50;
   let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
@@ -100,11 +107,11 @@ export async function reschedulePendingJobs(
             startedAt = estimateStartedAt(data.executeAt as string, oldVal, oldUnit);
           }
 
-          let workspaceId = (data.workspaceId as string) || (data.payload?.workspaceId as string);
-          if (!workspaceId) {
-            const autoSnap = await adminDb.collection('automations').doc(automationId).get();
-            workspaceId = autoSnap.data()?.workspaceIds?.[0] as string;
-          }
+          const workspaceId =
+            (data.workspaceId as string) ||
+            (data.payload?.workspaceId as string) ||
+            cachedWorkspaceId;
+
           if (!workspaceId) {
             console.warn(`[RESCHEDULE] Skipping reschedule for job ${doc.id}: missing workspaceId.`);
             return;
@@ -141,6 +148,7 @@ export async function reschedulePendingJobs(
               channel: parseQueueChannel(data.payload?.channel),
               payload: data.payload as Record<string, unknown>,
               skipDbUpdate: true, // Bypass redundant individual writes!
+              gcpTaskName: data.gcpTaskName as string | undefined, // Pass gcpTaskName for collision safety!
             });
           } catch (err) {
             console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
@@ -161,6 +169,7 @@ export async function purgePendingJobsForNode(
   nodeId: string
 ): Promise<void> {
   const BATCH_LIMIT = 500;
+  const CONCURRENCY_LIMIT = 50;
   let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
   let hasMore = true;
 
@@ -190,20 +199,28 @@ export async function purgePendingJobsForNode(
     }
 
     const batch = adminDb.batch();
-    for (const doc of chunk) {
-      batch.delete(doc.ref);
-      const data = doc.data();
-      try {
-        await cancelDelayTask(
-          data.runId as string,
-          nodeId,
-          parseQueueChannel(data.payload?.channel),
-          true // Bypass redundant update since the doc is being deleted!
-        );
-      } catch (err) {
-        console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
-      }
+
+    for (let j = 0; j < chunk.length; j += CONCURRENCY_LIMIT) {
+      const taskSlice = chunk.slice(j, j + CONCURRENCY_LIMIT);
+      await Promise.all(
+        taskSlice.map(async (doc) => {
+          batch.delete(doc.ref);
+          const data = doc.data();
+          try {
+            await cancelDelayTask(
+              data.runId as string,
+              nodeId,
+              parseQueueChannel(data.payload?.channel),
+              true, // Bypass redundant update since the doc is being deleted!
+              data.gcpTaskName as string | undefined // Pass gcpTaskName for collision safety!
+            );
+          } catch (err) {
+            console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
+          }
+        })
+      );
     }
+
     await batch.commit();
   }
 }
@@ -215,6 +232,7 @@ export async function purgeAllPendingJobsForAutomation(
   automationId: string
 ): Promise<void> {
   const BATCH_LIMIT = 500;
+  const CONCURRENCY_LIMIT = 50;
   let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
   let hasMore = true;
 
@@ -243,22 +261,30 @@ export async function purgeAllPendingJobsForAutomation(
     }
 
     const batch = adminDb.batch();
-    for (const doc of chunk) {
-      batch.delete(doc.ref);
-      const data = doc.data();
-      if (data.targetNodeId) {
-        try {
-          await cancelDelayTask(
-            data.runId as string,
-            data.targetNodeId as string,
-            parseQueueChannel(data.payload?.channel),
-            true // Bypass redundant update since the doc is being deleted!
-          );
-        } catch (err) {
-          console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
-        }
-      }
+
+    for (let j = 0; j < chunk.length; j += CONCURRENCY_LIMIT) {
+      const taskSlice = chunk.slice(j, j + CONCURRENCY_LIMIT);
+      await Promise.all(
+        taskSlice.map(async (doc) => {
+          batch.delete(doc.ref);
+          const data = doc.data();
+          if (data.targetNodeId) {
+            try {
+              await cancelDelayTask(
+                data.runId as string,
+                data.targetNodeId as string,
+                parseQueueChannel(data.payload?.channel),
+                true, // Bypass redundant update since the doc is being deleted!
+                data.gcpTaskName as string | undefined // Pass gcpTaskName for collision safety!
+              );
+            } catch (err) {
+              console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
+            }
+          }
+        })
+      );
     }
+
     await batch.commit();
   }
 }
@@ -278,16 +304,9 @@ export async function rescheduleMilestoneJobs(
   // We only transition contacts away if they were waiting
   if (oldBehavior !== 'wait') return;
 
-  const snap = await adminDb
-    .collection('automation_jobs')
-    .where('automationId', '==', automationId)
-    .where('targetNodeId', '==', nodeId)
-    .where('status', '==', 'pending')
-    .get();
-
-  if (snap.empty) return;
-
-  console.log(`[rescheduleMilestoneJobs] Found ${snap.size} parked contacts at milestone ${nodeId}. Transitioning to behavior: ${newBehavior}`);
+  const BATCH_LIMIT = 500;
+  let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
+  let hasMore = true;
 
   const { traverseNodes } = await import('./nodes/traverse');
   const { loadAutomationForAuth } = await import('../automation-permissions');
@@ -295,51 +314,91 @@ export async function rescheduleMilestoneJobs(
   const automation = await loadAutomationForAuth(automationId);
   if (!automation) return;
 
-  for (const doc of snap.docs) {
-    const jobData = doc.data();
-    const runId = jobData.runId as string;
-    if (!runId) continue;
+  while (hasMore) {
+    let query = adminDb
+      .collection('automation_jobs')
+      .where('automationId', '==', automationId)
+      .where('targetNodeId', '==', nodeId)
+      .where('status', '==', 'pending')
+      .orderBy('__name__')
+      .limit(BATCH_LIMIT);
 
-    const runRef = adminDb.collection('automation_runs').doc(runId);
-    const runSnap = await runRef.get();
-    if (!runSnap.exists) continue;
-    const runData = runSnap.data();
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
 
-    if (newBehavior === 'proceed') {
-      // 1. Cancel the parked job in Firestore and GCP Tasks
-      await doc.ref.update({
-        status: 'cancelled',
-        cancelledAt: new Date().toISOString(),
-        reason: 'Milestone sequential entry behavior changed to Proceed Immediately',
-      });
-      await cancelDelayTask(runId, nodeId, parseQueueChannel(jobData.payload?.channel)).catch(() => {});
+    const snap = await query.get();
+    if (snap.empty) {
+      hasMore = false;
+      break;
+    }
 
-      // 2. Traverse downstream past this milestone node
-      const context = {
-        entityId: runData?.entityId || '',
-        entityType: runData?.entityType || 'institution',
-        workspaceId: jobData.workspaceId || runData?.workspaceId || 'prospect',
-        payload: jobData.payload || runData?.payload || {},
-        automationId,
-        runId,
-        chainDepth: ((runData?.chainDepth as number) || 0) + 1,
-      };
+    const chunk = snap.docs;
+    lastDoc = chunk[chunk.length - 1];
+    if (chunk.length < BATCH_LIMIT) {
+      hasMore = false;
+    }
 
-      await traverseNodes(nodeId, automation, context);
-    } else if (newBehavior === 'exit') {
-      // 1. Cancel the parked job
-      await doc.ref.update({
-        status: 'cancelled',
-        cancelledAt: new Date().toISOString(),
-        reason: 'Milestone sequential entry behavior changed to End Sequence',
-      });
-      await cancelDelayTask(runId, nodeId, parseQueueChannel(jobData.payload?.channel)).catch(() => {});
+    console.log(`[rescheduleMilestoneJobs] Processing ${chunk.length} parked contacts at milestone ${nodeId}. Transitioning to behavior: ${newBehavior}`);
 
-      // 2. Complete the run
-      await runRef.update({
-        status: 'completed',
-        finishedAt: new Date().toISOString(),
-      });
+    for (const doc of chunk) {
+      const jobData = doc.data();
+      const runId = jobData.runId as string;
+      if (!runId) continue;
+
+      const runRef = adminDb.collection('automation_runs').doc(runId);
+      const runSnap = await runRef.get();
+      if (!runSnap.exists) continue;
+      const runData = runSnap.data();
+
+      if (newBehavior === 'proceed') {
+        // 1. Cancel the parked job in Firestore and GCP Tasks
+        await doc.ref.update({
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString(),
+          reason: 'Milestone sequential entry behavior changed to Proceed Immediately',
+        });
+        await cancelDelayTask(
+          runId,
+          nodeId,
+          parseQueueChannel(jobData.payload?.channel),
+          true, // skipDbUpdate
+          jobData.gcpTaskName as string | undefined // Pass gcpTaskName
+        ).catch(() => {});
+
+        // 2. Traverse downstream past this milestone node
+        const context = {
+          entityId: runData?.entityId || '',
+          entityType: runData?.entityType || 'institution',
+          workspaceId: jobData.workspaceId || runData?.workspaceId || 'prospect',
+          payload: jobData.payload || runData?.payload || {},
+          automationId,
+          runId,
+          chainDepth: ((runData?.chainDepth as number) || 0) + 1,
+        };
+
+        await traverseNodes(nodeId, automation, context);
+      } else if (newBehavior === 'exit') {
+        // 1. Cancel the parked job
+        await doc.ref.update({
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString(),
+          reason: 'Milestone sequential entry behavior changed to End Sequence',
+        });
+        await cancelDelayTask(
+          runId,
+          nodeId,
+          parseQueueChannel(jobData.payload?.channel),
+          true, // skipDbUpdate
+          jobData.gcpTaskName as string | undefined // Pass gcpTaskName
+        ).catch(() => {});
+
+        // 2. Complete the run
+        await runRef.update({
+          status: 'completed',
+          finishedAt: new Date().toISOString(),
+        });
+      }
     }
   }
 }

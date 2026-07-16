@@ -92,6 +92,7 @@ export interface ScheduleTaskOptions {
   channel?: QueueChannel;
   payload?: Record<string, unknown>;
   skipDbUpdate?: boolean;
+  gcpTaskName?: string;
 }
 
 /**
@@ -134,6 +135,7 @@ export async function scheduleDelayTask({
   channel,
   payload = {},
   skipDbUpdate = false,
+  gcpTaskName,
 }: ScheduleTaskOptions): Promise<string> {
   if (!workspaceId) {
     throw new Error(`Cannot schedule delay task for run ${runId}: workspaceId is required.`);
@@ -202,7 +204,8 @@ export async function scheduleDelayTask({
 
   // Production GCP Cloud Tasks Mode
   const parent = client.queuePath(PROJECT, LOCATION, queue);
-  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+  const uniqueTaskKey = `${taskKey}_${Date.now()}`;
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, uniqueTaskKey);
   const scheduleTimeSeconds = Math.floor(new Date(executeAt).getTime() / 1000);
 
   const taskPayload = {
@@ -230,7 +233,7 @@ export async function scheduleDelayTask({
 
   try {
     // Delete existing task if present to enforce reschedule idempotence
-    await cancelDelayTask(runId, nodeId, channel, skipDbUpdate);
+    await cancelDelayTask(runId, nodeId, channel, skipDbUpdate, gcpTaskName);
   } catch {
     // Non-fatal if the task did not exist
   }
@@ -266,7 +269,8 @@ export async function cancelDelayTask(
   runId: string,
   nodeId: string,
   channel?: QueueChannel,
-  skipDbUpdate = false
+  skipDbUpdate = false,
+  gcpTaskName?: string
 ): Promise<void> {
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
@@ -290,7 +294,21 @@ export async function cancelDelayTask(
     return;
   }
 
-  const taskPath = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+  let taskPath: string;
+  if (gcpTaskName) {
+    taskPath = gcpTaskName;
+  } else {
+    // Attempt lookup from DB
+    let resolvedTaskName: string | undefined;
+    try {
+      const snap = await adminDb.collection('automation_jobs').doc(taskKey).get();
+      if (snap.exists) {
+        resolvedTaskName = snap.data()?.gcpTaskName as string | undefined;
+      }
+    } catch {}
+    taskPath = resolvedTaskName || client.taskPath(PROJECT, LOCATION, queue, taskKey);
+  }
+
   try {
     await executeWithRetry(() => client.deleteTask({ name: taskPath }));
     console.info(`[GCP-TASKS] Deleted remote task: ${taskPath}`);
@@ -315,7 +333,7 @@ export async function cancelDelayTask(
  */
 export async function rescheduleDelayTask(options: ScheduleTaskOptions): Promise<string> {
   // Safe cancel, then schedule new
-  await cancelDelayTask(options.runId, options.nodeId, options.channel, options.skipDbUpdate).catch(() => {});
+  await cancelDelayTask(options.runId, options.nodeId, options.channel, options.skipDbUpdate, options.gcpTaskName).catch(() => {});
   return scheduleDelayTask(options);
 }
 
@@ -401,7 +419,7 @@ export async function scheduleBulkTriggerTask({
     },
   };
 
-  const [response] = await client.createTask({ parent, task });
+  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
   console.info(`[GCP-TASKS] Scheduled bulk trigger task ${response.name}`);
 
   return response.name || taskKey;

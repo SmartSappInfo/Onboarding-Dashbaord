@@ -42,6 +42,7 @@ vi.mock('../firebase-admin', () => {
         };
       }),
       where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
       startAfter: vi.fn().mockReturnThis(),
       get: mockGet,
@@ -220,7 +221,7 @@ describe('Milestone Behavior Transition Handling', () => {
     await rescheduleMilestoneJobs('auto_123', 'milestone_1', 'proceed', 'wait');
 
     // Verify it cancelled the pending job
-    expect(cancelDelayTask).toHaveBeenCalledWith('run_123', 'milestone_1', 'default');
+    expect(cancelDelayTask).toHaveBeenCalledWith('run_123', 'milestone_1', 'default', true, undefined);
 
     // Verify downstream traverse started (logged action_1 success)
     expect(logStepExecution).toHaveBeenCalledWith(

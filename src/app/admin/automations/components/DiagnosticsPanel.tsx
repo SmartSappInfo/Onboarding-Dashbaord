@@ -31,10 +31,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction, retryFailedStepAction, manuallyReleaseAllWaitJobsAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import type { AutomationJob } from '@/lib/types';
+
+interface DiagnosticNode {
+  id: string;
+  type?: string;
+  data?: {
+    label?: string;
+    config?: Record<string, unknown>;
+  };
+}
 
 interface DiagnosticsPanelProps {
   automationId: string;
-  nodes: any[];
+  nodes: DiagnosticNode[];
   onSelectRun: (run: AutomationRun | null) => void;
   selectedRun: AutomationRun | null;
   onClose: () => void;
@@ -90,11 +100,12 @@ export function DiagnosticsPanel({
       where('automationId', '==', automationId),
       where('targetNodeId', '==', filterNodeId),
       where('status', '==', 'pending'),
-      where('workspaceId', '==', activeWorkspaceId)
+      where('workspaceId', '==', activeWorkspaceId),
+      limit(100)
     );
   }, [firestore, automationId, filterNodeId, activeWorkspaceId]);
 
-  const { data: pendingJobs } = useCollection<any>(pendingJobsQuery);
+  const { data: pendingJobs } = useCollection<AutomationJob>(pendingJobsQuery);
 
   // Reset selected run on unmount or automationId change
   React.useEffect(() => {
@@ -122,8 +133,8 @@ export function DiagnosticsPanel({
     );
   }, [firestore, selectedRun, activeWorkspaceId]);
 
-  const { data: selectedRunJobs } = useCollection<any>(selectedRunJobsQuery);
-  const activeWaitJob = selectedRunJobs?.find((j: any) => j.status === 'pending');
+  const { data: selectedRunJobs } = useCollection<AutomationJob>(selectedRunJobsQuery);
+  const activeWaitJob = selectedRunJobs?.find((j: AutomationJob) => j.status === 'pending');
 
   // Filter runs based on status, search query, and node filter list
   const filteredRuns = React.useMemo(() => {
@@ -692,7 +703,7 @@ export function DiagnosticsPanel({
                   setIsConfirmModalOpen(false);
                   setIsIrreversibleChecked(false);
                 }}
-                className="h-8 text-[10px] font-bold rounded-xl border-border/60 hover:bg-muted"
+                className="h-8 text-[10px] font-bold rounded-xl border-border/60 hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-1 transition-all"
               >
                 Cancel
               </Button>
@@ -700,7 +711,7 @@ export function DiagnosticsPanel({
                 type="button"
                 disabled={!isIrreversibleChecked || isBulkResuming}
                 onClick={handleBulkForceResume}
-                className="h-8 text-[10px] font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-50"
+                className="h-8 text-[10px] font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:ring-offset-1 transition-all"
               >
                 {isBulkResuming ? 'Resuming...' : 'Confirm Force Resume'}
               </Button>
