@@ -195,18 +195,23 @@ export async function getModel(params: {
             return await originalGenerate(options);
           } catch (error: unknown) {
             const errorMsg = error instanceof Error ? error.message : String(error);
-            const isAuthError = errorMsg.includes('401') || 
-                                errorMsg.includes('UNAUTHENTICATED') || 
-                                errorMsg.includes('x-api-key') || 
-                                errorMsg.includes('authentication_error') ||
-                                errorMsg.includes('permission_denied') ||
-                                errorMsg.includes('403');
+            const lowerError = errorMsg.toLowerCase();
+            const isAuthOrNotFoundError = 
+              errorMsg.includes('401') || 
+              errorMsg.includes('UNAUTHENTICATED') || 
+              errorMsg.includes('x-api-key') || 
+              errorMsg.includes('authentication_error') ||
+              errorMsg.includes('permission_denied') ||
+              errorMsg.includes('403') ||
+              errorMsg.includes('404') ||
+              lowerError.includes('not_found') ||
+              lowerError.includes('not found') ||
+              lowerError.includes('no model') ||
+              lowerError.includes('notfound');
                                 
-            if (isAuthError) {
-              console.warn(`[AI] Custom API key generation failed with auth error: "${errorMsg}". Falling back to system default instance.`);
-              const defaultModel = provider === 'googleai' 
-                ? 'googleai/gemini-2.5-flash' 
-                : 'anthropic/claude-3-5-sonnet-20241022';
+            if (isAuthOrNotFoundError) {
+              console.warn(`[AI] Custom API key generation failed with error: "${errorMsg}". Falling back to system default instance/Gemini.`);
+              const defaultModel = 'googleai/gemini-2.5-flash';
               
               // Non-blocking telemetry log
               logBackofficeAction(
@@ -224,6 +229,20 @@ export async function getModel(params: {
                   }
                 }
               ).catch((e) => console.error('[AI] Telemetry logging failed:', e));
+
+              try {
+                const globalKeys = await getGlobalBackofficeKeys();
+                const geminiKey = globalKeys.geminiApiKey || process.env.GEMINI_API_KEY;
+                if (geminiKey) {
+                  const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
+                  return await fallbackInstance.generate({
+                    ...options,
+                    model: defaultModel
+                  } as Parameters<typeof fallbackInstance.generate>[0]);
+                }
+              } catch (fallbackErr) {
+                console.error('[AI] Resolved Gemini fallback failed:', fallbackErr);
+              }
 
               return await ai.generate({
                 ...options,

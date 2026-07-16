@@ -238,20 +238,26 @@ Rules:
     text = res.text;
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const lowerError = errorMsg.toLowerCase();
     const isAuthError = errorMsg.includes('401') || 
                         errorMsg.includes('UNAUTHENTICATED') || 
                         errorMsg.includes('x-api-key') || 
                         errorMsg.includes('authentication_error') ||
                         errorMsg.includes('permission_denied') ||
                         errorMsg.includes('403');
-    const isConnectionError = errorMsg.toLowerCase().includes('connection') ||
-                              errorMsg.toLowerCase().includes('fetch') ||
-                              errorMsg.toLowerCase().includes('timeout') ||
-                              errorMsg.toLowerCase().includes('econnrefused') ||
-                              errorMsg.toLowerCase().includes('enotfound') ||
-                              errorMsg.toLowerCase().includes('network');
+    const isConnectionError = lowerError.includes('connection') ||
+                              lowerError.includes('fetch') ||
+                              lowerError.includes('timeout') ||
+                              lowerError.includes('econnrefused') ||
+                              lowerError.includes('enotfound') ||
+                              lowerError.includes('network');
+    const isModelNotFoundError = errorMsg.includes('404') ||
+                                 lowerError.includes('not_found') ||
+                                 lowerError.includes('not found') ||
+                                 lowerError.includes('no model') ||
+                                 lowerError.includes('notfound');
     
-    if ((isAuthError || isConnectionError) && isAnthropic) {
+    if ((isAuthError || isConnectionError || isModelNotFoundError) && isAnthropic) {
       console.warn(`[CAMPAIGN-AI] Anthropic generate failed with error: "${errorMsg}". Trying Gemini fallback.`);
       try {
         const geminiModel = await getModel({
