@@ -26,8 +26,9 @@ export async function POST(req: Request) {
     await terminateAutomationRunInternal(runId, 'cancelled', true);
 
     return NextResponse.json({ success: true, message: 'Entity successfully removed from automation execution.' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[CANCEL_AUTOMATION_ROUTE] Error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to cancel automation' }, { status: 500 });
+    return NextResponse.json({ error: errMsg || 'Failed to cancel automation' }, { status: 500 });
   }
 }

@@ -6,14 +6,27 @@ import {
   purgePendingJobsForNode,
   purgeAllPendingJobsForAutomation,
 } from '../automations/reschedule';
+import { manuallyReleaseAllWaitJobs } from '../automations/service';
 import { adminDb } from '../firebase-admin';
 import { rescheduleDelayTask, cancelDelayTask } from '../gcp-tasks-client';
+import { resumeAutomationRun } from '../automations/resume';
 
 // Mock GCP tasks client
 vi.mock('../gcp-tasks-client', () => ({
   rescheduleDelayTask: vi.fn().mockResolvedValue('task_rescheduled'),
   cancelDelayTask: vi.fn().mockResolvedValue(undefined),
   parseQueueChannel: vi.fn().mockReturnValue('default'),
+}));
+
+// Mock Resume module
+vi.mock('../automations/resume', () => ({
+  resumeAutomationRun: vi.fn(),
+}));
+
+// Mock Permissions
+vi.mock('../automation-permissions', () => ({
+  assertAutomationManagePermission: vi.fn().mockResolvedValue(true),
+  loadAutomationForAuth: vi.fn(),
 }));
 
 // Define mock objects in outer scope
@@ -29,6 +42,16 @@ const mockCollection = {
   limit: vi.fn().mockReturnThis(),
   startAfter: vi.fn().mockReturnThis(),
   get: vi.fn(),
+  doc: vi.fn().mockImplementation((docId: string) => ({
+    id: docId,
+    get: mockCollection.get,
+    update: mockCollection.get,
+  })),
+};
+
+const mockTx = {
+  get: vi.fn(),
+  update: vi.fn(),
 };
 
 // Mock Firebase Admin
@@ -37,11 +60,12 @@ vi.mock('../firebase-admin', () => {
     adminDb: {
       collection: vi.fn(() => mockCollection),
       batch: vi.fn(() => mockBatch),
+      runTransaction: vi.fn((cb) => cb(mockTx)),
     },
   };
 });
 
-describe('Automation Delay Rescheduling Utilities', () => {
+describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBatch.update.mockReset();
@@ -49,6 +73,9 @@ describe('Automation Delay Rescheduling Utilities', () => {
     mockBatch.commit.mockReset();
     mockBatch.commit.mockResolvedValue(undefined);
     mockCollection.get.mockReset();
+    mockTx.get.mockReset();
+    mockTx.update.mockReset();
+    vi.mocked(resumeAutomationRun).mockReset();
   });
 
   describe('estimateStartedAt', () => {
@@ -99,7 +126,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
         },
       ];
 
-      const mockCollection = adminDb.collection('automation_jobs');
       vi.mocked(mockCollection.get)
         .mockResolvedValueOnce({
           empty: false,
@@ -108,8 +134,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
         .mockResolvedValueOnce({
           empty: true,
         } as any);
-
-      const mockBatch = adminDb.batch();
 
       await reschedulePendingJobs(
         'auto-1',
@@ -151,7 +175,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
         { id: 'job-1', ref: { id: 'job-1' }, data: () => ({ runId: 'run-1', payload: {} }) },
       ];
 
-      const mockCollection = adminDb.collection('automation_jobs');
       vi.mocked(mockCollection.get)
         .mockResolvedValueOnce({
           empty: false,
@@ -160,8 +183,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
         .mockResolvedValueOnce({
           empty: true,
         } as any);
-
-      const mockBatch = adminDb.batch();
 
       await purgePendingJobsForNode('auto-1', 'node-delay-1');
 
@@ -178,7 +199,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
         { id: 'job-2', ref: { id: 'job-2' }, data: () => ({ runId: 'run-2', targetNodeId: 'node-2', payload: {} }) },
       ];
 
-      const mockCollection = adminDb.collection('automation_jobs');
       vi.mocked(mockCollection.get)
         .mockResolvedValueOnce({
           empty: false,
@@ -188,8 +208,6 @@ describe('Automation Delay Rescheduling Utilities', () => {
           empty: true,
         } as any);
 
-      const mockBatch = adminDb.batch();
-
       await purgeAllPendingJobsForAutomation('auto-1');
 
       expect(mockBatch.delete).toHaveBeenCalledWith(mockJobs[0].ref);
@@ -197,6 +215,79 @@ describe('Automation Delay Rescheduling Utilities', () => {
       expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-1', 'default', true);
       expect(cancelDelayTask).toHaveBeenCalledWith('run-2', 'node-2', 'default', true);
       expect(mockBatch.commit).toHaveBeenCalled();
+    });
+  });
+
+  describe('manuallyReleaseAllWaitJobs', () => {
+    it('claims pending wait jobs transactionally, cancels GCP Cloud Tasks, and resumes runs downstream', async () => {
+      const mockJobs = [
+        {
+          id: 'job-1',
+          ref: { id: 'job-1' },
+          data: () => ({
+            runId: 'run-1',
+            automationId: 'auto-1',
+            targetNodeId: 'node-delay-1',
+            status: 'pending',
+            payload: {},
+          }),
+        },
+      ];
+
+      // 1. Mock query for automation snapshot
+      mockCollection.get.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ workspaceIds: ['onboarding'] }),
+      } as any);
+
+      // 2. Mock query for pending jobs at wait step (Call 1)
+      mockCollection.get.mockResolvedValueOnce({
+        empty: false,
+        docs: mockJobs,
+      } as any);
+
+      // 3. Mock query for subsequent pending jobs (Call 2)
+      mockCollection.get.mockResolvedValueOnce({
+        empty: true,
+      } as any);
+
+      // 4. Mock Transaction get to return the job data
+      mockTx.get.mockResolvedValueOnce({
+        id: 'job-1',
+        data: () => ({
+          runId: 'run-1',
+          automationId: 'auto-1',
+          targetNodeId: 'node-delay-1',
+          status: 'pending',
+          payload: {},
+        }),
+      } as any);
+
+      // 5. Mock resumeAutomationRun to return true
+      vi.mocked(resumeAutomationRun).mockResolvedValueOnce(true);
+
+      const result = await manuallyReleaseAllWaitJobs('auto-1', 'node-delay-1', 'user-1');
+
+      // Verify success status and correct resume counts
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(1);
+
+      // Verify transactional claiming
+      expect(mockTx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'job-1' }),
+        expect.objectContaining({ status: 'processing' })
+      );
+
+      // Verify GCP Task cancellation occurred
+      expect(cancelDelayTask).toHaveBeenCalledWith('run-1', 'node-delay-1', 'default', true);
+
+      // Verify resumeAutomationRun was called with the claimed job data
+      expect(resumeAutomationRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'job-1',
+          status: 'pending',
+        })
+      );
     });
   });
 });

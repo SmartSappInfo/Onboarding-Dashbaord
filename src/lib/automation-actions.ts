@@ -621,3 +621,12 @@ export async function enrollContactsInAutomationAction(
   return enrollContactsInAutomation(entityIds, automationId, workspaceId, userId, options);
 }
 
+export async function manuallyReleaseAllWaitJobsAction(
+  automationId: string,
+  nodeId: string,
+  userId: string
+) {
+  const { manuallyReleaseAllWaitJobs } = await import('./automations/service');
+  return manuallyReleaseAllWaitJobs(automationId, nodeId, userId);
+}
+

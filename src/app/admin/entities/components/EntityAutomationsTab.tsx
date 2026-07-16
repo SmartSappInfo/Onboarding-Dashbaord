@@ -25,6 +25,7 @@ import {
 import { StepTimeline } from '@/app/admin/automations/components/StepTimeline';
 import { cn } from '@/lib/utils';
 import { AddToAutomationDialog } from './AddToAutomationDialog';
+import type { AutomationRun } from '@/lib/types';
 
 interface EntityAutomationsTabProps {
     entityId: string;
@@ -55,12 +56,12 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
         );
     }, [firestore, activeWorkspaceId, entityId]);
 
-    const { data: runs, isLoading: isLoadingRuns } = useCollection<any>(runsQuery);
+    const { data: runs, isLoading: isLoadingRuns } = useCollection<AutomationRun>(runsQuery);
 
     // Sort runs in-memory: active running first, then newest startedAt first
     const sortedRuns = React.useMemo(() => {
         if (!runs) return [];
-        return [...runs].sort((a: any, b: any) => {
+        return [...runs].sort((a: AutomationRun, b: AutomationRun) => {
             if (a.status === 'running' && b.status !== 'running') return -1;
             if (a.status !== 'running' && b.status === 'running') return 1;
             const dateA = a.startedAt ? new Date(a.startedAt).getTime() : 0;
@@ -69,8 +70,8 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
         });
     }, [runs]);
 
-    const activeRuns = React.useMemo(() => sortedRuns.filter((r: any) => r.status === 'running'), [sortedRuns]);
-    const completedRuns = React.useMemo(() => sortedRuns.filter((r: any) => r.status !== 'running'), [sortedRuns]);
+    const activeRuns = React.useMemo(() => sortedRuns.filter((r: AutomationRun) => r.status === 'running'), [sortedRuns]);
+    const completedRuns = React.useMemo(() => sortedRuns.filter((r: AutomationRun) => r.status !== 'running'), [sortedRuns]);
 
     // Handle Cancelling/Removing a contact from active run
     const handleCancel = async (runId: string) => {
@@ -90,11 +91,12 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                 title: 'Contact Removed',
                 description: 'Pending jobs deleted and run status marked as cancelled.'
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
             toast({
                 variant: 'destructive',
                 title: 'Cancellation Failed',
-                description: err.message || 'An error occurred during cancellation.'
+                description: errMsg || 'An error occurred during cancellation.'
             });
         } finally {
             setIsMutating(null);
@@ -141,7 +143,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                 </h4>
                 {activeRuns.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
-                        {activeRuns.map((run: any) => {
+                        {activeRuns.map((run: AutomationRun) => {
                             const isExpanded = !!expandedRunIds[run.id];
                             return (
                                 <Card key={run.id} className="border-emerald-100 bg-emerald-50/10 dark:bg-emerald-950/5 rounded-2xl shadow-sm hover:shadow-md transition-all text-left">
@@ -222,7 +224,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                 </h4>
                 {completedRuns.length > 0 ? (
                     <div className="divide-y divide-border/40 border rounded-2xl bg-card overflow-hidden">
-                        {completedRuns.map((run: any) => {
+                        {completedRuns.map((run: AutomationRun) => {
                             const isCompleted = run.status === 'completed';
                             const isCancelled = run.status === 'cancelled';
                             const isFailed = run.status === 'failed';

@@ -29,7 +29,7 @@ import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction, retryFailedStepAction } from '@/lib/automation-actions';
+import { manuallyReleaseWaitJobAction, manuallyEndAutomationRunAction, retryFailedStepAction, manuallyReleaseAllWaitJobsAction } from '@/lib/automation-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface DiagnosticsPanelProps {
@@ -64,6 +64,9 @@ export function DiagnosticsPanel({
   const [triggerDataView, setTriggerDataView] = React.useState<'table' | 'json'>('table');
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [isProcessingAction, setIsProcessingAction] = React.useState<string | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = React.useState(false);
+  const [isIrreversibleChecked, setIsIrreversibleChecked] = React.useState(false);
+  const [isBulkResuming, setIsBulkResuming] = React.useState(false);
 
   // Memoized query to fetch automation runs in real-time
   const runsQuery = useMemoFirebase(() => {
@@ -179,6 +182,36 @@ export function DiagnosticsPanel({
       setIsProcessingAction(null);
     }
   };
+  
+  const handleBulkForceResume = async () => {
+    if (!user || !filterNodeId) return;
+    setIsBulkResuming(true);
+    try {
+      const res = await manuallyReleaseAllWaitJobsAction(automationId, filterNodeId, user.uid);
+      if (res.success) {
+        toast({
+          title: 'Bulk Resumption Complete',
+          description: `Successfully force-resumed ${res.count || 0} parked contacts downstream.`,
+        });
+        setIsConfirmModalOpen(false);
+        setIsIrreversibleChecked(false);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Resumption Failed',
+          description: res.error || 'Failed to force-resume parked contacts.',
+        });
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Server action failure.',
+      });
+    } finally {
+      setIsBulkResuming(false);
+    }
+  };
 
   const handleEndAutomation = async (runId: string) => {
     if (!user) return;
@@ -273,15 +306,29 @@ export function DiagnosticsPanel({
           <div className="p-3 border-b border-border/40 space-y-2 shrink-0">
             {/* Filter Node Warning Tag */}
             {filterNodeId && (
-              <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-xl p-2 text-[10px] font-semibold text-purple-800">
-                <span>Filtering by: <span className="font-bold text-purple-900">{filterNode?.data?.label || 'Target Node'}</span></span>
-                <button
-                  type="button"
-                  onClick={onClearFilterNodeId}
-                  className="p-1 rounded bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
-                >
-                  Clear filter
-                </button>
+              <div className="space-y-2 text-left">
+                <div className="flex items-center justify-between bg-purple-50 border border-purple-100 rounded-xl p-2 text-[10px] font-semibold text-purple-800">
+                  <span>Filtering by: <span className="font-bold text-purple-900">{filterNode?.data?.label || 'Target Node'}</span></span>
+                  <button
+                    type="button"
+                    onClick={onClearFilterNodeId}
+                    className="p-1 rounded bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
+                  >
+                    Clear filter
+                  </button>
+                </div>
+                {pendingJobs && pendingJobs.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isBulkResuming}
+                    onClick={() => setIsConfirmModalOpen(true)}
+                    className="w-full h-8 text-[10px] font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm transition-all active:scale-[0.97] flex items-center justify-center gap-1.5"
+                  >
+                    {isBulkResuming && <Loader2 size={12} className="animate-spin" />}
+                    <span>Force Resume All {pendingJobs.length} Parked Contacts</span>
+                  </Button>
+                )}
               </div>
             )}
 
@@ -605,6 +652,61 @@ export function DiagnosticsPanel({
             </div>
           </ScrollArea>
         </>
+      )}
+
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border/80 rounded-[1.5rem] shadow-2xl max-w-sm w-full overflow-hidden flex flex-col p-5 space-y-4 text-left animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-2.5 text-orange-600">
+              <AlertCircle size={20} className="shrink-0" />
+              <h3 className="text-sm font-bold text-foreground">Double Confirmation Required</h3>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                You are about to force resume <strong className="text-foreground">{pendingJobs?.length || 0}</strong> contacts currently parked at the step <strong className="text-foreground">"{filterNode?.data?.label || 'Target Node'}"</strong>.
+              </p>
+              <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 font-semibold leading-normal flex items-start gap-1.5">
+                <Info size={12} className="shrink-0 mt-0.5" />
+                <span>This action is completely irreversible. All affected contacts will be advanced to the next step immediately.</span>
+              </p>
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none py-1">
+              <input
+                type="checkbox"
+                checked={isIrreversibleChecked}
+                onChange={(e) => setIsIrreversibleChecked(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 rounded border-border text-purple-600 focus:ring-purple-500/25"
+              />
+              <span className="text-[10px] text-foreground font-semibold leading-normal">
+                I understand that this action is irreversible and confirm that I want to resume all parked contacts.
+              </span>
+            </label>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsConfirmModalOpen(false);
+                  setIsIrreversibleChecked(false);
+                }}
+                className="h-8 text-[10px] font-bold rounded-xl border-border/60 hover:bg-muted"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={!isIrreversibleChecked || isBulkResuming}
+                onClick={handleBulkForceResume}
+                className="h-8 text-[10px] font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm disabled:opacity-50"
+              >
+                {isBulkResuming ? 'Resuming...' : 'Confirm Force Resume'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </Card>
   );

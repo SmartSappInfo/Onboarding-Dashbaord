@@ -160,7 +160,7 @@ export function AddToAutomationDialog({
       roles?: string[];
     };
 
-    if (isSingleEntity) {
+    if (isSingleEntity && bulkScope === 'custom') {
       if (selectedContactIds.size === 0) {
         toast({
           variant: 'destructive',

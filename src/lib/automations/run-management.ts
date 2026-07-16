@@ -219,7 +219,7 @@ export async function terminateAutomationRunInternal(
   });
 
   // 2. Update run document (clear currentNodeId)
-  const runUpdatePayload: any = {
+  const runUpdatePayload: Record<string, unknown> = {
     status: targetStatus,
     finishedAt: now,
     steps,

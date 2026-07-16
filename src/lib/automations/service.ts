@@ -646,3 +646,114 @@ export async function enrollContactsInAutomation(
   }
 }
 
+export async function manuallyReleaseAllWaitJobs(
+  automationId: string,
+  nodeId: string,
+  userId: string
+): Promise<AutomationActionResult & { count?: number }> {
+  try {
+    assertAutomationUserId(userId);
+
+    const autoSnap = await adminDb.collection('automations').doc(automationId).get();
+    if (!autoSnap.exists) throw new Error('Target automation does not exist.');
+    const workspaceIds = autoSnap.data()?.workspaceIds || ['onboarding'];
+
+    await assertAutomationManagePermission(userId, workspaceIds, 'edit');
+
+    logAutomationEvent('info', 'manual_release_all_started', { automationId, nodeId, userId });
+
+    const BATCH_LIMIT = 500;
+    const CONCURRENCY_LIMIT = 50;
+    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
+    let hasMore = true;
+    let totalResumed = 0;
+
+    const { cancelDelayTask, parseQueueChannel } = await import('../gcp-tasks-client');
+    const { resumeAutomationRun } = await import('./resume');
+
+    while (hasMore) {
+      let query = adminDb
+        .collection('automation_jobs')
+        .where('automationId', '==', automationId)
+        .where('targetNodeId', '==', nodeId)
+        .where('status', '==', 'pending')
+        .orderBy('__name__')
+        .limit(BATCH_LIMIT);
+
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
+      }
+
+      const snap = await query.get();
+      if (snap.empty) {
+        hasMore = false;
+        break;
+      }
+
+      const chunk = snap.docs;
+      lastDoc = chunk[chunk.length - 1];
+      if (chunk.length < BATCH_LIMIT) {
+        hasMore = false;
+      }
+
+      for (let j = 0; j < chunk.length; j += CONCURRENCY_LIMIT) {
+        const taskSlice = chunk.slice(j, j + CONCURRENCY_LIMIT);
+        await Promise.all(
+          taskSlice.map(async (doc) => {
+            const jobId = doc.id;
+            const jobData = doc.data();
+
+            // Claim atomically inside transaction to prevent heartbeat race condition
+            const claimedJob = await adminDb.runTransaction(async (tx) => {
+              const ref = adminDb.collection('automation_jobs').doc(jobId);
+              const jobSnap = await tx.get(ref);
+              const data = jobSnap.data();
+              if (!data || data.status !== 'pending') return null;
+
+              tx.update(ref, {
+                status: 'processing',
+                claimedAt: new Date().toISOString(),
+              });
+              return { ...data, id: jobSnap.id } as any;
+            });
+
+            if (!claimedJob) return;
+
+            // Cancel remote GCP Task to avoid queue clutter
+            await cancelDelayTask(
+              claimedJob.runId,
+              nodeId,
+              parseQueueChannel(claimedJob.payload?.channel),
+              true // skipDbUpdate: true since we update the status next
+            ).catch(() => {});
+
+            const success = await resumeAutomationRun(claimedJob);
+
+            await adminDb.collection('automation_jobs').doc(jobId).update({
+              status: success ? 'completed' : 'failed',
+              finishedAt: new Date().toISOString(),
+            });
+
+            if (success) {
+              totalResumed++;
+            }
+          })
+        );
+      }
+    }
+
+    logAutomationEvent('info', 'manual_release_all_completed', {
+      automationId,
+      nodeId,
+      totalResumed,
+      userId,
+    });
+
+    revalidateAutomationsHub();
+    return { success: true, count: totalResumed };
+  } catch (error: any) {
+    logAutomationEvent('error', 'manual_release_all_failed', { automationId, nodeId, error });
+    return { success: false, error: error.message || String(error) };
+  }
+}
+
