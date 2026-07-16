@@ -1695,7 +1695,7 @@ export default function EntitiesClient() {
                                                                 <span className="font-bold text-sm">Add to Call Campaign</span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem className="rounded-xl p-2.5 gap-3 cursor-pointer" onClick={() => {
-                                                                 setAddToAutomationEntityIds([entity.id]);
+                                                                 setAddToAutomationEntityIds([entity.entityId]);
                                                                  setAddToAutomationContacts(entity.entityContacts);
                                                                  setAddToAutomationName(entity.displayName || entity.entityName);
                                                                  setIsAddToAutomationOpen(true);
@@ -1995,7 +1995,7 @@ export default function EntitiesClient() {
                 setIsCampaignDialogOpen(true);
               }}
               onAddToAutomation={() => {
-                setAddToAutomationEntityIds(selectedEntityIds);
+                setAddToAutomationEntityIds(selectedEntities.map(e => e.entityId));
                 setIsAddToAutomationOpen(true);
               }}
               onArchive={() => setIsBulkArchiveOpen(true)}
