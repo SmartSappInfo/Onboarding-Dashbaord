@@ -157,14 +157,14 @@ export async function recordMediaPageEventAction(params: {
     batch.set(eventRef, event);
 
     // 2. Increment stats counters
-    const statsUpdate: Record<string, unknown> = {};
+    const stats: Record<string, unknown> = {};
     const primaryStat = statFieldForEvent(type);
     if (primaryStat) {
-      statsUpdate[`stats.${primaryStat}`] = FieldValue.increment(1);
+      stats[primaryStat] = FieldValue.increment(1);
     }
 
     if (type === 'media_progress' && progressPercent === 50) {
-      statsUpdate['stats.mediaHalfway'] = FieldValue.increment(1);
+      stats.mediaHalfway = FieldValue.increment(1);
     }
 
     // Set document meta and aggregate counters
@@ -175,7 +175,7 @@ export async function recordMediaPageEventAction(params: {
         workspaceId,
         assetId,
         updatedAt: now,
-        ...statsUpdate,
+        ...(Object.keys(stats).length > 0 ? { stats } : {}),
       },
       { merge: true }
     );

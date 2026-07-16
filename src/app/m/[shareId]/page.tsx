@@ -325,7 +325,7 @@ export default async function PublicMediaShareRoute({
 
     return (
         <MediaShareClient
-            shareId={shareId}
+            shareId={config.id}
             asset={asset}
             title={resolvedTitle}
             description={resolvedDescription}
