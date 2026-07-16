@@ -245,17 +245,27 @@ export async function terminateAutomationRunInternal(
         cancelledAt: now,
         finishedAt: now,
       });
+    }
 
+    // Trigger GCP Task cancellations in parallel to avoid delaying database commits
+    const cancelPromises = jobsSnap.docs.map(async (jobDoc) => {
       const jobData = jobDoc.data();
       if (jobData.targetNodeId) {
         try {
-          // Delete from GCP Tasks queue
-          await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel), true);
+          await cancelDelayTask(
+            runId,
+            jobData.targetNodeId,
+            parseQueueChannel(jobData.payload?.channel),
+            true,
+            jobData.gcpTaskName as string | undefined
+          );
         } catch (err) {
           console.error(`[TERMINATE] Failed to cancel task from queue for run ${runId}:`, err);
         }
       }
-    }
+    });
+
+    await Promise.allSettled(cancelPromises);
     await batch.commit();
   }
 }

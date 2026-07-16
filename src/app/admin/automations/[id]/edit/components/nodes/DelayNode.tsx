@@ -17,7 +17,43 @@ import { useWorkspace } from '@/context/WorkspaceContext';
  * @fileOverview Temporal Delay Node for Automation Canvas.
  * Introduces a wait period into the protocol.
  */
-export function DelayNode({ id, data, selected }: any) {
+interface DelayNodeProps {
+    id: string;
+    data: {
+        config?: {
+            waitType?: string;
+            value?: number;
+            unit?: string;
+            periods?: { value: number; unit: string }[];
+            specificDate?: string;
+            specificTime?: string;
+            offsetDirection?: string;
+            offsetDays?: number;
+            dateField?: string;
+            hasTimeLimit?: boolean;
+            timeLimitValue?: number;
+            timeLimitUnit?: string;
+        };
+        stepNumber?: number;
+        executionStatus?: string;
+        isDefaultConnected?: boolean;
+        note?: string;
+        canMoveUp?: boolean;
+        canMoveDown?: boolean;
+        hasNote?: boolean;
+        onAddStep?: (id: string) => void;
+        onAddAbove?: () => void;
+        onMoveUp?: () => void;
+        onMoveDown?: () => void;
+        onDuplicate?: () => void;
+        onDelete?: () => void;
+        onToggleNote?: () => void;
+        onFilterDiagnostics?: (id: string) => void;
+    };
+    selected?: boolean;
+}
+
+export function DelayNode({ id, data, selected }: DelayNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
     const params = useParams();
@@ -78,20 +114,20 @@ export function DelayNode({ id, data, selected }: any) {
                 nodeId={id}
                 isVisible={selected || isHovered}
                 isTrigger={false}
-                canMoveUp={data.canMoveUp}
-                canMoveDown={data.canMoveDown}
-                hasNote={data.hasNote}
-                onAddAbove={data.onAddAbove}
-                onAddBelow={() => data.onAddStep(id)}
-                onMoveUp={data.onMoveUp}
-                onMoveDown={data.onMoveDown}
-                onDuplicate={data.onDuplicate}
-                onDelete={data.onDelete}
-                onToggleNote={data.onToggleNote}
+                canMoveUp={!!data.canMoveUp}
+                canMoveDown={!!data.canMoveDown}
+                hasNote={!!data.hasNote}
+                onAddAbove={data.onAddAbove || (() => {})}
+                onAddBelow={() => data.onAddStep?.(id) || (() => {})}
+                onMoveUp={data.onMoveUp || (() => {})}
+                onMoveDown={data.onMoveDown || (() => {})}
+                onDuplicate={data.onDuplicate || (() => {})}
+                onDelete={data.onDelete || (() => {})}
+                onToggleNote={data.onToggleNote || (() => {})}
             />
             {overlay.badgeIcon && (
                 <div className="absolute -top-2.5 -right-2.5 z-50">
-                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus} />
+                    <ExecutionBadge icon={overlay.badgeIcon} status={data.executionStatus || null} />
                 </div>
             )}
             <Handle 

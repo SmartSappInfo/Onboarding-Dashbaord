@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import type { Automation, EntityContact } from '../types';
+import type { Automation, EntityContact, AutomationJob } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';
 import { validateAutomationBlueprint } from '../automation-validation';
 import { assertAutomationManagePermission } from '../automation-permissions';
@@ -513,6 +513,7 @@ export async function enrollContactsInAutomation(
 ): Promise<AutomationActionResult & { enrolledCount?: number }> {
   try {
     assertAutomationUserId(userId);
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
 
     // 1. Fetch and validate the automation
     const autoRef = adminDb.collection('automations').doc(automationId);
@@ -569,18 +570,22 @@ export async function enrollContactsInAutomation(
             let matchedContacts: EntityContact[] = [];
             const scope = options?.contactScope;
 
-            if (scope === 'custom' && options?.selectedContactIds?.length) {
-              matchedContacts = contacts.filter(c => options.selectedContactIds!.includes(c.id));
+            if (scope === 'custom') {
+              if (options?.selectedContactIds?.length) {
+                matchedContacts = contacts.filter(c => options.selectedContactIds!.includes(c.id));
+              }
             } else if (scope === 'primary') {
               const primary = contacts.find(c => c.isPrimary) || contacts[0];
               if (primary) matchedContacts = [primary];
             } else if (scope === 'signatories') {
               matchedContacts = contacts.filter(c => c.isSignatory);
-            } else if (scope === 'roles' && options?.roles?.length) {
-              const normalizedRoles = options.roles.map(r => r.toLowerCase().trim());
-              matchedContacts = contacts.filter(c =>
-                c.typeLabel && normalizedRoles.some(r => r === c.typeLabel?.toLowerCase().trim() || r === c.typeKey?.toLowerCase().trim())
-              );
+            } else if (scope === 'roles') {
+              if (options?.roles?.length) {
+                const normalizedRoles = options.roles.map(r => r.toLowerCase().trim());
+                matchedContacts = contacts.filter(c =>
+                  c.typeLabel && normalizedRoles.some(r => r === c.typeLabel?.toLowerCase().trim() || r === c.typeKey?.toLowerCase().trim())
+                );
+              }
             } else if (scope === 'all') {
               matchedContacts = contacts;
             } else {
@@ -649,7 +654,8 @@ export async function enrollContactsInAutomation(
 export async function manuallyReleaseAllWaitJobs(
   automationId: string,
   nodeId: string,
-  userId: string
+  userId: string,
+  workspaceId: string
 ): Promise<AutomationActionResult & { count?: number }> {
   try {
     assertAutomationUserId(userId);
@@ -658,12 +664,18 @@ export async function manuallyReleaseAllWaitJobs(
     if (!autoSnap.exists) throw new Error('Target automation does not exist.');
     const workspaceIds = autoSnap.data()?.workspaceIds || ['onboarding'];
 
-    await assertAutomationManagePermission(userId, workspaceIds, 'edit');
+    // Verify that the requested workspace is actually one of the automation's authorized workspaces
+    if (!workspaceIds.includes(workspaceId)) {
+      throw new Error('Tenant authorization mismatch.');
+    }
 
-    logAutomationEvent('info', 'manual_release_all_started', { automationId, nodeId, userId });
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
 
-    const BATCH_LIMIT = 500;
-    const CONCURRENCY_LIMIT = 50;
+    logAutomationEvent('info', 'manual_release_all_started', { automationId, nodeId, userId, workspaceId });
+
+    const BATCH_LIMIT = 100;
+    const CONCURRENCY_LIMIT = 5;
+    const MAX_TOTAL_PROCESS = 250;
     let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
     let hasMore = true;
     let totalResumed = 0;
@@ -671,14 +683,16 @@ export async function manuallyReleaseAllWaitJobs(
     const { cancelDelayTask, parseQueueChannel } = await import('../gcp-tasks-client');
     const { resumeAutomationRun } = await import('./resume');
 
-    while (hasMore) {
+    while (hasMore && totalResumed < MAX_TOTAL_PROCESS) {
+      const remainingLimit = MAX_TOTAL_PROCESS - totalResumed;
       let query = adminDb
         .collection('automation_jobs')
         .where('automationId', '==', automationId)
         .where('targetNodeId', '==', nodeId)
+        .where('workspaceId', '==', workspaceId)
         .where('status', '==', 'pending')
         .orderBy('__name__')
-        .limit(BATCH_LIMIT);
+        .limit(Math.min(BATCH_LIMIT, remainingLimit));
 
       if (lastDoc) {
         query = query.startAfter(lastDoc);
@@ -701,7 +715,6 @@ export async function manuallyReleaseAllWaitJobs(
         await Promise.all(
           taskSlice.map(async (doc) => {
             const jobId = doc.id;
-            const jobData = doc.data();
 
             // Claim atomically inside transaction to prevent heartbeat race condition
             const claimedJob = await adminDb.runTransaction(async (tx) => {
@@ -714,7 +727,7 @@ export async function manuallyReleaseAllWaitJobs(
                 status: 'processing',
                 claimedAt: new Date().toISOString(),
               });
-              return { ...data, id: jobSnap.id } as any;
+              return { ...data, id: jobSnap.id } as unknown as AutomationJob;
             });
 
             if (!claimedJob) return;
@@ -747,6 +760,7 @@ export async function manuallyReleaseAllWaitJobs(
       nodeId,
       totalResumed,
       userId,
+      workspaceId,
     });
 
     revalidateAutomationsHub();

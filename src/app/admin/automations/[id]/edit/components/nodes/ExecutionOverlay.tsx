@@ -7,13 +7,13 @@ import { cn } from '@/lib/utils';
 export type ExecutionStatus = 'success' | 'failed' | 'waiting' | 'skipped' | 'cancelled' | null;
 
 interface ExecutionOverlayProps {
-  executionStatus?: ExecutionStatus;
+  executionStatus?: string | null;
   executionError?: string | null;
   executionMeta?: any;
 }
 
 export function useExecutionOverlay(data: ExecutionOverlayProps) {
-  const status = data.executionStatus;
+  const status = data.executionStatus as ExecutionStatus;
   if (!status) return { borderClass: '', badgeIcon: null, glowClass: '', opacityClass: '' };
 
   const map = {
@@ -53,7 +53,7 @@ export function useExecutionOverlay(data: ExecutionOverlayProps) {
 }
 
 interface ExecutionBadgeProps {
-  status: ExecutionStatus;
+  status: string | null | undefined;
   icon: 'check' | 'x' | 'clock' | 'minus';
 }
 
@@ -76,9 +76,10 @@ export function ExecutionBadge({ status, icon }: ExecutionBadgeProps) {
   };
 
   const IconComponent = IconMap[icon] || Minus;
+  const resolvedStatus = (status as ExecutionStatus) || 'skipped';
 
   return (
-    <div className={cn(baseClasses, styles[status || 'skipped'])}>
+    <div className={cn(baseClasses, styles[resolvedStatus])}>
       <IconComponent size={10} strokeWidth={3} />
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
     const firestore = useFirestore();
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
+    const { user } = useUser();
 
     const [isMutating, setIsMutating] = React.useState<string | null>(null);
     const [isEnrollDialogOpen, setIsEnrollDialogOpen] = React.useState(false);
@@ -47,11 +48,12 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
         }));
     };
 
-    // 1. Fetch all runs for this entity in the workspace
+    // 1. Fetch all runs for this entity in the workspace (safely scoped)
     const runsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId || !entityId) return null;
         return query(
             collection(firestore, 'automation_runs'),
+            where('workspaceId', '==', activeWorkspaceId),
             where('entityId', '==', entityId)
         );
     }, [firestore, activeWorkspaceId, entityId]);
@@ -75,17 +77,12 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
 
     // Handle Cancelling/Removing a contact from active run
     const handleCancel = async (runId: string) => {
-        if (isMutating) return;
+        if (isMutating || !user) return;
         setIsMutating(runId);
         try {
-            const res = await fetch('/api/automations/cancel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ runId, entityId })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to remove');
+            const { cancelAutomationRunAction } = await import('@/lib/automation-actions');
+            const res = await cancelAutomationRunAction(runId, entityId, user.uid);
+            if (!res.success) throw new Error(res.error || 'Failed to remove');
 
             toast({
                 title: 'Contact Removed',

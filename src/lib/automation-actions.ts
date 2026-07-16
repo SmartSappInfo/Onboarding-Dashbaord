@@ -624,9 +624,55 @@ export async function enrollContactsInAutomationAction(
 export async function manuallyReleaseAllWaitJobsAction(
   automationId: string,
   nodeId: string,
-  userId: string
+  userId: string,
+  workspaceId: string
 ) {
   const { manuallyReleaseAllWaitJobs } = await import('./automations/service');
-  return manuallyReleaseAllWaitJobs(automationId, nodeId, userId);
+  return manuallyReleaseAllWaitJobs(automationId, nodeId, userId, workspaceId);
+}
+
+export async function cancelAutomationRunAction(
+  runId: string,
+  entityId: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required and must be a string.');
+    }
+
+    const { adminDb } = await import('./firebase-admin');
+    const runRef = adminDb.collection('automation_runs').doc(runId);
+    const runSnap = await runRef.get();
+    if (!runSnap.exists) {
+      throw new Error('Automation run not found.');
+    }
+
+    const runData = runSnap.data();
+    if (runData?.entityId !== entityId) {
+      throw new Error('Unauthorized: Entity ID mismatch for target run.');
+    }
+
+    // Resolve workspace permissions check
+    let workspaceIds = runData?.workspaceIds;
+    if (!workspaceIds || workspaceIds.length === 0) {
+      const autoSnap = await adminDb.collection('automations').doc(runData.automationId).get();
+      workspaceIds = autoSnap.data()?.workspaceIds || (runData.workspaceId ? [runData.workspaceId] : null);
+    }
+    if (!workspaceIds || workspaceIds.length === 0) {
+      workspaceIds = [runData?.workspaceId || 'onboarding'];
+    }
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, workspaceIds, 'edit');
+
+    const { terminateAutomationRunInternal } = await import('./automations/run-management');
+    await terminateAutomationRunInternal(runId, 'cancelled', true);
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
 }
 

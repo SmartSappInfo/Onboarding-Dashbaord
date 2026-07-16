@@ -210,7 +210,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         const failedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'failed'));
         const completedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'completed'));
         const cancelledQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'cancelled'));
-        const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('status', '==', 'pending'));
+        const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'pending'));
 
         const [
           totalSnap,
