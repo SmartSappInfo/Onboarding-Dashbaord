@@ -42,6 +42,8 @@ vi.mock('../firebase-admin', () => {
         };
       }),
       where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      startAfter: vi.fn().mockReturnThis(),
       get: mockGet,
     };
   });
@@ -227,6 +229,138 @@ describe('Milestone Behavior Transition Handling', () => {
         nodeId: 'action_1',
         nodeType: 'actionNode',
       })
+    );
+  });
+});
+
+describe('Milestone Condition Change Re-evaluation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGet.mockReset();
+    mockUpdate.mockReset();
+    mockBatch.update.mockReset();
+    mockBatch.commit.mockReset();
+  });
+
+  it('should evaluate parked runs and advance matching runs when config/conditions change', async () => {
+    // 1. Mock loadAutomationForAuth
+    const mockAutomation = {
+      id: 'auto_123',
+      isActive: true,
+      nodes: [
+        { 
+          id: 'milestone_1', 
+          type: 'jumpToNode', 
+          data: { 
+            label: 'Goal Milestone',
+            config: { 
+              sequentialBehavior: 'wait',
+              jumpFromAnywhere: false,
+              field: 'tags',
+              operator: 'exists',
+              value: 'test_tag'
+            } 
+          } 
+        },
+        { id: 'action_1', type: 'actionNode', data: { actionType: 'SEND_EMAIL' } },
+      ],
+      edges: [
+        { id: 'e2', source: 'milestone_1', target: 'action_1' },
+      ],
+    };
+    vi.mocked(loadAutomationForAuth).mockResolvedValue(mockAutomation as any);
+
+    // 2. Mock query for active runs parked at this node (Call 1)
+    mockGet.mockResolvedValueOnce({
+      empty: false,
+      docs: [
+        {
+          id: 'run_123',
+          data: () => ({
+            entityId: 'ent_123',
+            workspaceId: 'prospect',
+            currentNodeId: 'milestone_1',
+            status: 'running',
+            payload: {},
+            chainDepth: 1,
+          }),
+        },
+      ],
+    });
+
+    // 3. Mock query for fetchLiveEntityTags (Call 2)
+    mockGet.mockResolvedValueOnce({
+      empty: false,
+      docs: [
+        {
+          data: () => ({ workspaceTags: ['test_tag'] }),
+        },
+      ],
+    });
+
+    const mockJobRef = { id: 'job_ref_123', update: mockUpdate };
+
+    // 4. Mock retrieve pending jobs (Call 3)
+    mockGet.mockResolvedValueOnce({
+      empty: false,
+      docs: [
+        {
+          id: 'job_milestone_wait',
+          data: () => ({
+            runId: 'run_123',
+            targetNodeId: 'milestone_1',
+            payload: {},
+          }),
+          ref: mockJobRef,
+        },
+      ],
+    });
+
+    // 5. Mock workspaces doc get for orgId resolution (Call 4)
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ organizationId: 'org_123' }),
+    });
+
+    // 6. Mock retrieve subsequent pending jobs to see if run is complete (Call 5)
+    mockGet.mockResolvedValueOnce({
+      empty: true,
+    });
+
+    // 7. Mock tags check (contact tags)
+    const { resolveContact } = await import('../contact-adapter');
+    vi.mocked(resolveContact).mockResolvedValueOnce({
+      id: 'ent_123',
+      name: 'KAI Test',
+      workspaceIds: ['prospect'],
+      tags: ['test_tag'],
+    } as any);
+
+    // Call re-evaluation
+    const { evaluateMilestoneNodeForParkedRuns } = await import('../automations/jump-engine');
+    await evaluateMilestoneNodeForParkedRuns('auto_123', 'milestone_1');
+
+    // Verify it cancelled the pending delay job
+    expect(mockBatch.update).toHaveBeenCalledWith(
+      mockJobRef,
+      expect.objectContaining({ status: 'cancelled' })
+    );
+
+    // Verify it cancelled the GCP Task
+    expect(cancelDelayTask).toHaveBeenCalledWith('run_123', 'milestone_1');
+
+    // Verify downstream traverse started (logged action_1 success)
+    expect(logStepExecution).toHaveBeenCalledWith(
+      'run_123',
+      expect.objectContaining({
+        nodeId: 'action_1',
+        status: 'success',
+      })
+    );
+
+    // Verify run was updated to completed because pending jobs were empty after traversal
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'completed' })
     );
   });
 });

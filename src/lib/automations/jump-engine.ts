@@ -73,7 +73,9 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
       }
 
       // 2. Skip if jumpFromAnywhere is explicitly disabled
-      if (jumpNode.data?.config?.jumpFromAnywhere === false) continue;
+      if (runData.currentNodeId !== jumpNode.id && jumpNode.data?.config?.jumpFromAnywhere === false) {
+        continue;
+      }
 
       // 3. Evaluate the goal conditions for the contact using live tags/fields payload
       let payload = (runData.payload as Record<string, unknown>) || {};
@@ -234,5 +236,207 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
         break;
       }
     }
+  }
+}
+
+/**
+ * Sweeps and re-evaluates all active automation runs parked at a specific milestone node.
+ * Evaluates the new conditions and teleports matching contacts downstream immediately.
+ * Chunk-processes active runs in batches of 100 using Promise.allSettled to handle high load.
+ */
+export async function evaluateMilestoneNodeForParkedRuns(
+  automationId: string,
+  nodeId: string
+): Promise<void> {
+  const automation = await loadAutomationForAuth(automationId);
+  if (!automation || !automation.isActive || !automation.nodes) return;
+
+  const jumpNode = (automation.nodes as unknown as GoalConditionNode[]).find(
+    (n) => n.id === nodeId && n.type === 'jumpToNode'
+  );
+  if (!jumpNode) return;
+
+  const LIMIT = 100;
+  let lastDoc: typeof activeRunsSnap.docs[0] | null = null;
+  let hasMore = true;
+
+  // Declare local activeRunsSnap type reference dynamically
+  let activeRunsSnap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> };
+
+  while (hasMore) {
+    let query = adminDb.collection('automation_runs')
+      .where('automationId', '==', automationId)
+      .where('currentNodeId', '==', nodeId)
+      .where('status', '==', 'running')
+      .limit(LIMIT);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc as FirebaseFirestore.QueryDocumentSnapshot);
+    }
+
+    const currentSnap = await query.get();
+    if (currentSnap.empty) {
+      hasMore = false;
+      break;
+    }
+
+    lastDoc = currentSnap.docs[currentSnap.docs.length - 1];
+    if (currentSnap.docs.length < LIMIT) {
+      hasMore = false;
+    }
+
+    const evaluateRun = async (runDoc: typeof currentSnap.docs[0]) => {
+      const runData = runDoc.data();
+      const entityId = runData.entityId as string;
+      const workspaceId = runData.workspaceId as string;
+      if (!entityId || !workspaceId) return;
+
+      // Evaluate the goal conditions using live data
+      let payload = (runData.payload as Record<string, unknown>) || {};
+      payload = await enrichPayloadWithLiveBehavioralData(entityId, workspaceId, jumpNode, payload);
+
+      const isTrue = await evaluateConditionNode(
+        jumpNode as unknown as Parameters<typeof evaluateConditionNode>[0],
+        payload,
+        async (audienceId: string) => {
+          const snap = await adminDb.collection('message_audiences').doc(audienceId).get();
+          return snap.exists ? (snap.data() as Record<string, unknown>) : null;
+        },
+        async (eId: string, aId: string, operator: string) => {
+          if (operator === 'currently_in') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .where('status', '==', 'running')
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'has_entered') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'has_completed') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .where('status', '==', 'completed')
+              .limit(1)
+              .get();
+            return !snap.empty;
+          }
+          if (operator === 'not_entered') {
+            const snap = await adminDb.collection('automation_runs')
+              .where('entityId', '==', eId)
+              .where('automationId', '==', aId)
+              .limit(1)
+              .get();
+            return snap.empty;
+          }
+          return false;
+        }
+      );
+
+      if (isTrue) {
+        // Goal achieved! Reschedule/advance the run past this node
+        const pendingJobsSnap = await adminDb.collection('automation_jobs')
+          .where('runId', '==', runDoc.id)
+          .where('status', '==', 'pending')
+          .get();
+
+        const batch = adminDb.batch();
+
+        for (const doc of pendingJobsSnap.docs) {
+          const jobData = doc.data();
+          const targetNodeId = jobData.targetNodeId as string;
+
+          batch.update(doc.ref, {
+            status: 'cancelled',
+            cancelledAt: new Date().toISOString(),
+            reason: 'Milestone conditions updated and met during save re-evaluation.',
+          });
+
+          if (targetNodeId) {
+            await cancelDelayTask(runDoc.id, targetNodeId).catch((err: unknown) => {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.warn(`[JUMP:RE-EVAL] Failed to cancel task for run ${runDoc.id}:`, msg);
+            });
+          }
+        }
+
+        const jumpLabel = jumpNode.data?.label || 'Milestone Met';
+        const currentChainDepth = (runData.chainDepth as number) || 0;
+        batch.update(runDoc.ref, {
+          currentNodeId: jumpNode.id,
+          currentNodeLabel: jumpLabel,
+          chainDepth: currentChainDepth + 1,
+          updatedAt: new Date().toISOString(),
+        });
+
+        await batch.commit();
+
+        logStepExecution(runDoc.id, {
+          nodeId: jumpNode.id,
+          nodeType: 'jumpToNode',
+          nodeLabel: jumpLabel,
+          status: 'success',
+          executedAt: new Date().toISOString(),
+          metadata: { conditionMet: true, triggerByConfigChange: true },
+        });
+
+        let organizationId: string | undefined;
+        try {
+          const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+          if (wsSnap.exists) {
+            organizationId = (wsSnap.data()?.organizationId as string) || undefined;
+          }
+        } catch (e) {
+          console.warn('[JUMP:RE-EVAL] Failed to resolve organizationId:', e);
+        }
+
+        const context = {
+          entityId,
+          entityType: (runData.entityType as EntityType) || 'contact',
+          workspaceId,
+          organizationId,
+          payload,
+          automationId,
+          runId: runDoc.id,
+          chainDepth: currentChainDepth + 1,
+        };
+
+        await traverseNodes(jumpNode.id, automation, context);
+
+        const pendingJobs = await adminDb
+          .collection('automation_jobs')
+          .where('runId', '==', runDoc.id)
+          .where('status', '==', 'pending')
+          .get();
+
+        if (pendingJobs.empty) {
+          await adminDb.collection('automation_runs').doc(runDoc.id).update({
+            status: 'completed',
+            finishedAt: new Date().toISOString(),
+          });
+          try {
+            const { notifyAutomationCompleted } = await import('./automation-lifecycle-notify');
+            await notifyAutomationCompleted({
+              automationId,
+              automationName: automation.name ?? automationId,
+              workspaceId: workspaceId ?? '',
+            }).catch(() => {});
+          } catch (e) {
+            console.error('[JUMP:RE-EVAL] Failed to notify automation completed:', e);
+          }
+        }
+      }
+    };
+
+    // Process chunk concurrently using Promise.allSettled to prevent socket overload
+    await Promise.allSettled(currentSnap.docs.map((doc) => evaluateRun(doc)));
   }
 }

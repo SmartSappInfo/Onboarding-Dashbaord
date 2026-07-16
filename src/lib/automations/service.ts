@@ -152,6 +152,27 @@ export async function saveAutomation(
             const { rescheduleMilestoneJobs } = await import('./reschedule');
             runAfter(() => rescheduleMilestoneJobs(id, newMilestone.id, newBehavior, oldBehavior));
           }
+
+          // Re-evaluate parked contacts if conditions changed while sequentialBehavior is 'wait'
+          const newConfig = newMilestone.data?.config || {};
+          const oldConfig = oldMilestone.data?.config || {};
+          const newCondStr = JSON.stringify({
+            field: newConfig.field,
+            operator: newConfig.operator,
+            value: newConfig.value,
+            groups: newConfig.groups,
+          });
+          const oldCondStr = JSON.stringify({
+            field: oldConfig.field,
+            operator: oldConfig.operator,
+            value: oldConfig.value,
+            groups: oldConfig.groups,
+          });
+
+          if (newBehavior === 'wait' && newCondStr !== oldCondStr) {
+            const { evaluateMilestoneNodeForParkedRuns } = await import('./jump-engine');
+            runAfter(() => evaluateMilestoneNodeForParkedRuns(id, newMilestone.id));
+          }
         }
       }
     }
