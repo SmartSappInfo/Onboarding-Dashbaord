@@ -2496,7 +2496,7 @@ export interface AutomationRun {
   id: string;
   automationId: string;
   automationName: string;
-  status: 'running' | 'completed' | 'failed' | 'paused';
+  status: 'running' | 'completed' | 'failed' | 'paused' | 'cancelled';
   startedAt: string;
   finishedAt?: string;
   triggerData: Record<string, unknown>;
@@ -2513,6 +2513,8 @@ export interface AutomationRun {
   pausedBy?: string;
   /** True when run was force-ended by an admin */
   terminatedManually?: boolean;
+  contactName?: string;
+  contactEmail?: string;
 }
 
 export interface AutomationJob {

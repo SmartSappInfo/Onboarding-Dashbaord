@@ -58,7 +58,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
-type StatusFilter = 'ALL' | 'running' | 'completed' | 'failed' | 'paused' | 'waiting';
+type StatusFilter = 'ALL' | 'running' | 'completed' | 'failed' | 'paused' | 'waiting' | 'cancelled';
 
 interface AutomationActivityLogProps {
   automationId: string;
@@ -128,6 +128,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   paused: { label: 'Paused', color: 'bg-orange-500', icon: Pause },
   failed: { label: 'Failed', color: 'bg-rose-500', icon: XCircle },
   completed: { label: 'Completed', color: 'bg-emerald-500', icon: CheckCircle2 },
+  cancelled: { label: 'Cancelled', color: 'bg-amber-600', icon: AlertCircle },
 };
 
 // ── Component ───────────────────────────────────────────────────────────────────
@@ -160,7 +161,8 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     paused: number;
     failed: number;
     completed: number;
-  }>({ total: 0, running: 0, waiting: 0, paused: 0, failed: 0, completed: 0 });
+    cancelled: number;
+  }>({ total: 0, running: 0, waiting: 0, paused: 0, failed: 0, completed: 0, cancelled: 0 });
 
   // Reset limit when filters change
   React.useEffect(() => {
@@ -202,11 +204,12 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         const runsCol = collection(firestore!, 'automation_runs');
         const jobsCol = collection(firestore!, 'automation_jobs');
 
-        const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
+         const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
         const runningQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'running'));
         const pausedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'paused'));
         const failedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'failed'));
         const completedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'completed'));
+        const cancelledQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'cancelled'));
         const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('status', '==', 'pending'));
 
         const [
@@ -215,6 +218,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           pausedSnap,
           failedSnap,
           completedSnap,
+          cancelledSnap,
           waitingSnap,
         ] = await Promise.all([
           getCountFromServer(totalQuery),
@@ -222,6 +226,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           getCountFromServer(pausedQuery),
           getCountFromServer(failedQuery),
           getCountFromServer(completedQuery),
+          getCountFromServer(cancelledQuery),
           getCountFromServer(waitingQuery),
         ]);
 
@@ -231,6 +236,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           const pausedVal = pausedSnap.data().count;
           const failedVal = failedSnap.data().count;
           const completedVal = completedSnap.data().count;
+          const cancelledVal = cancelledSnap.data().count;
           const waitingVal = waitingSnap.data().count;
 
           const activeVal = Math.max(0, runningVal - waitingVal);
@@ -242,6 +248,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             paused: pausedVal,
             failed: failedVal,
             completed: completedVal,
+            cancelled: cancelledVal,
           });
         }
       } catch (err) {
@@ -763,12 +770,13 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     <div className="h-full flex flex-col bg-background">
       {/* Stats Bar */}
       <div className="border-b border-border/50 px-6 py-4 bg-muted/5">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {[
             { label: 'Total', value: stats.total, color: 'text-foreground', bgColor: 'bg-muted/20' },
             { label: 'Active', value: stats.running, color: 'text-blue-600', bgColor: 'bg-blue-500/10' },
             { label: 'Waiting', value: stats.waiting, color: 'text-amber-600', bgColor: 'bg-amber-500/10' },
             { label: 'Paused', value: stats.paused, color: 'text-orange-600', bgColor: 'bg-orange-500/10' },
+            { label: 'Cancelled', value: stats.cancelled, color: 'text-amber-700 dark:text-amber-400', bgColor: 'bg-amber-500/5' },
             { label: 'Failed', value: stats.failed, color: 'text-rose-600', bgColor: 'bg-rose-500/10' },
             { label: 'Completed', value: stats.completed, color: 'text-emerald-600', bgColor: 'bg-emerald-500/10' },
           ].map((stat) => (
