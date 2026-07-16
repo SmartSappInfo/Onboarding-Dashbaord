@@ -15,6 +15,8 @@ vi.mock('../gcp-tasks-client', () => ({
   getQueueName: () => 'default-delivery-queue',
 }));
 
+const mockGetAll = vi.fn().mockResolvedValue([]);
+
 vi.mock('../firebase-admin', () => ({
   adminDb: {
     collection: vi.fn((name: string) => {
@@ -31,6 +33,7 @@ vi.mock('../firebase-admin', () => ({
         })),
       };
     }),
+    getAll: (...args: unknown[]) => mockGetAll(...args),
   },
 }));
 
@@ -150,5 +153,66 @@ describe('Bulk Trigger API Endpoint', () => {
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toContain('Unauthorized automation-workspace mapping');
+  });
+
+  it('filters out targets that do not exist or belong to a different workspace', async () => {
+    const mockAutomationData = {
+      workspaceIds: ['ws-correct'],
+      nodes: [{ id: 'start-1', type: 'triggerNode' }],
+      edges: [],
+    };
+    const mockGet = vi.fn().mockResolvedValue({
+      exists: true,
+      id: 'auto-111',
+      data: () => mockAutomationData,
+    });
+    
+    const { adminDb } = await import('../firebase-admin');
+    vi.mocked(adminDb.collection).mockImplementation((name: string) => {
+      if (name === 'automations') {
+        return {
+          doc: vi.fn(() => ({
+            get: mockGet,
+          })),
+        } as any;
+      }
+      return {
+        doc: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({ exists: false }),
+        })),
+      } as any;
+    });
+
+    mockGetAll.mockResolvedValue([
+      { exists: true, data: () => ({ workspaceId: 'ws-correct' }) },
+      { exists: true, data: () => ({ workspaceId: 'ws-mismatch' }) },
+    ]);
+
+    const req = new NextRequest('http://localhost/api/automations/bulk-trigger', {
+      method: 'POST',
+      headers: {
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: JSON.stringify({
+        automationId: 'auto-111',
+        workspaceId: 'ws-correct',
+        organizationId: 'org-123',
+        trigger: 'ENTITY_CREATED',
+        targets: [
+          { entityId: 'entity-correct', entityType: 'contact', payload: {} },
+          { entityId: 'entity-mismatch', entityType: 'contact', payload: {} },
+        ],
+      }),
+    });
+
+    const { POST } = await import('../../app/api/automations/bulk-trigger/route');
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+
+    const { executeAutomation } = await import('../automations/executor');
+    expect(executeAutomation).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(executeAutomation).mock.calls[0][1].entityId).toBe('entity-correct');
   });
 });

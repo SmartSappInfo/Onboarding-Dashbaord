@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import type { Automation } from '../types';
+import type { Automation, EntityContact } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';
 import { validateAutomationBlueprint } from '../automation-validation';
 import { assertAutomationManagePermission } from '../automation-permissions';
@@ -496,11 +496,18 @@ export async function deleteAllArchivedAutomations(
   }
 }
 
+export interface EnrollContactsOptions {
+  contactScope?: 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
+  selectedContactIds?: string[];
+  roles?: string[];
+}
+
 export async function enrollContactsInAutomation(
   entityIds: string[],
   automationId: string,
   workspaceId: string,
-  userId: string
+  userId: string,
+  options?: EnrollContactsOptions
 ): Promise<AutomationActionResult & { enrolledCount?: number }> {
   try {
     assertAutomationUserId(userId);
@@ -529,40 +536,82 @@ export async function enrollContactsInAutomation(
     const organizationId = wsSnap.data()?.organizationId || 'default';
 
     // 3. Query contacts to validate they belong to the workspace in batches of 500
-    const fetchedContacts: Array<{ id: string; entityId: string; entityType: string }> = [];
+    const targets: Array<{
+      entityId: string;
+      entityType: string;
+      payload: {
+        workspaceId: string;
+        startedBy: string;
+        manualEnrollment: boolean;
+        contactId: string;
+        contactName: string;
+        email: string;
+        phone: string;
+        name: string;
+      };
+    }> = [];
     const readChunkSize = 500;
     for (let i = 0; i < entityIds.length; i += readChunkSize) {
       const chunkIds = entityIds.slice(i, i + readChunkSize);
-      const refs = chunkIds.map(id => adminDb.collection('workspace_entities').doc(id));
+      const refs = chunkIds.map(id => adminDb.collection('workspace_entities').doc(`${workspaceId}_${id}`));
       const snaps = await adminDb.getAll(...refs);
       snaps.forEach(snap => {
         if (snap.exists) {
           const data = snap.data()!;
           if (data.workspaceId === workspaceId) {
-            fetchedContacts.push({
-              id: snap.id,
-              entityId: data.entityId || snap.id,
-              entityType: data.entityType || 'institution',
+            const contacts = (data.entityContacts || []) as EntityContact[];
+            const entityId = data.entityId || snap.id.split('_').slice(1).join('_');
+            const entityType = data.entityType || 'institution';
+
+            // Resolve which contacts to target based on scope options
+            let matchedContacts: EntityContact[] = [];
+            const scope = options?.contactScope;
+
+            if (scope === 'custom' && options?.selectedContactIds?.length) {
+              matchedContacts = contacts.filter(c => options.selectedContactIds!.includes(c.id));
+            } else if (scope === 'primary') {
+              const primary = contacts.find(c => c.isPrimary) || contacts[0];
+              if (primary) matchedContacts = [primary];
+            } else if (scope === 'signatories') {
+              matchedContacts = contacts.filter(c => c.isSignatory);
+            } else if (scope === 'roles' && options?.roles?.length) {
+              const normalizedRoles = options.roles.map(r => r.toLowerCase().trim());
+              matchedContacts = contacts.filter(c =>
+                c.typeLabel && normalizedRoles.some(r => r === c.typeLabel?.toLowerCase().trim() || r === c.typeKey?.toLowerCase().trim())
+              );
+            } else if (scope === 'all') {
+              matchedContacts = contacts;
+            } else {
+              // Default fallback: primary contact
+              const primary = contacts.find(c => c.isPrimary) || contacts[0];
+              if (primary) matchedContacts = [primary];
+            }
+
+            // Map each matched contact into a target enrollment payload
+            matchedContacts.forEach(contact => {
+              targets.push({
+                entityId,
+                entityType,
+                payload: {
+                  workspaceId,
+                  startedBy: userId,
+                  manualEnrollment: true,
+                  contactId: contact.id,
+                  contactName: contact.name,
+                  email: contact.email || '',
+                  phone: contact.phone || '',
+                  name: contact.name,
+                }
+              });
             });
           }
         }
       });
     }
 
-    if (fetchedContacts.length === 0) {
-      return { success: false, error: 'No valid contacts found matching the active workspace tenant.' };
+    if (targets.length === 0) {
+      return { success: false, error: 'No valid contacts found matching the active workspace tenant and selection filters.' };
     }
-
-    // 4. Transform into target payloads
-    const targets = fetchedContacts.map(c => ({
-      entityId: c.entityId,
-      entityType: c.entityType,
-      payload: {
-        workspaceId,
-        startedBy: userId,
-        manualEnrollment: true,
-      }
-    }));
 
     // 5. Split targets into chunks of 100 and schedule bulk tasks
     const scheduleChunkSize = 100;

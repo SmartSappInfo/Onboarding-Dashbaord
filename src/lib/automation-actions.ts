@@ -13,6 +13,7 @@ import {
   restoreAutomation,
   deleteAllArchivedAutomations,
   enrollContactsInAutomation,
+  type EnrollContactsOptions,
 } from './automations/service';
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
@@ -614,8 +615,9 @@ export async function enrollContactsInAutomationAction(
   entityIds: string[],
   automationId: string,
   workspaceId: string,
-  userId: string
+  userId: string,
+  options?: EnrollContactsOptions
 ) {
-  return enrollContactsInAutomation(entityIds, automationId, workspaceId, userId);
+  return enrollContactsInAutomation(entityIds, automationId, workspaceId, userId, options);
 }
 

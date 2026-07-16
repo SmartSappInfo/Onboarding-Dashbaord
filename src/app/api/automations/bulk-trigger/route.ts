@@ -56,13 +56,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Security Check: Validate tenant isolation for all targets in a single database batch read
-    const docRefs = targets.map((t) => adminDb.collection('entities').doc(t.entityId));
+    const docRefs = targets.map((t) => adminDb.collection('workspace_entities').doc(`${workspaceId}_${t.entityId}`));
     const docSnaps = docRefs.length > 0 ? await adminDb.getAll(...docRefs) : [];
 
     const finalTargets = targets.map((target, idx) => {
       const snap = docSnaps[idx];
       if (!snap || !snap.exists) {
-        console.warn(`[BULK-TRIGGER-WORKER] Target entity ${target.entityId} does not exist. Skipping.`);
+        console.warn(`[SecurityAlert] Tenant association ${workspaceId}_${target.entityId} does not exist. Skipping.`);
         return null;
       }
       const data = snap.data();

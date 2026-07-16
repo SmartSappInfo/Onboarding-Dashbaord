@@ -51,6 +51,8 @@ export async function executeAutomation(
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as string | undefined,
     workspaceId: triggerPayload.workspaceId as string | undefined,
+    contactId: triggerPayload.contactId as string | undefined,
+    contactName: triggerPayload.contactName as string | undefined || (triggerPayload.contactId ? entityName : undefined),
   });
 
   // Log contact enrolled/added to automation

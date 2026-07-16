@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc, getDocs } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
-import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory, Module } from '@/lib/types';
+import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory, Module, EntityContact } from '@/lib/types';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
@@ -166,6 +166,8 @@ export default function EntitiesClient() {
   const [isAiArchitectOpen, setIsAiArchitectOpen] = useState(false);
   const [isAddToAutomationOpen, setIsAddToAutomationOpen] = useState(false);
   const [addToAutomationEntityIds, setAddToAutomationEntityIds] = useState<string[]>([]);
+  const [addToAutomationContacts, setAddToAutomationContacts] = useState<EntityContact[] | undefined>(undefined);
+  const [addToAutomationName, setAddToAutomationName] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!entityToDelete) setArchiveAllWorkspaces(false);
@@ -1694,6 +1696,8 @@ export default function EntitiesClient() {
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem className="rounded-xl p-2.5 gap-3 cursor-pointer" onClick={() => {
                                                                  setAddToAutomationEntityIds([entity.id]);
+                                                                 setAddToAutomationContacts(entity.entityContacts);
+                                                                 setAddToAutomationName(entity.displayName || entity.entityName);
                                                                  setIsAddToAutomationOpen(true);
                                                             }}>
                                                                 <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Sparkles className="h-3.5 w-3.5" /></div>
@@ -1956,6 +1960,8 @@ export default function EntitiesClient() {
                 onOpenChange={setIsAddToAutomationOpen}
                 entityIds={addToAutomationEntityIds}
                 workspaceId={activeWorkspaceId}
+                entityContacts={addToAutomationContacts}
+                entityName={addToAutomationName}
                 onComplete={() => clearSelection()}
               />
             )}

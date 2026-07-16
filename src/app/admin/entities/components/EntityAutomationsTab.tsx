@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { 
-    Play, 
     XCircle, 
     CheckCircle2, 
     AlertCircle, 
     Clock, 
     Zap, 
-    Settings,
     Activity,
     PlusCircle,
     UserCheck,
@@ -26,7 +24,7 @@ import {
 } from 'lucide-react';
 import { StepTimeline } from '@/app/admin/automations/components/StepTimeline';
 import { cn } from '@/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AddToAutomationDialog } from './AddToAutomationDialog';
 
 interface EntityAutomationsTabProps {
     entityId: string;
@@ -38,7 +36,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
     const { toast } = useToast();
 
     const [isMutating, setIsMutating] = React.useState<string | null>(null);
-    const [selectedAutomationId, setSelectedAutomationId] = React.useState<string>('');
+    const [isEnrollDialogOpen, setIsEnrollDialogOpen] = React.useState(false);
     const [expandedRunIds, setExpandedRunIds] = React.useState<Record<string, boolean>>({});
 
     const toggleRunExpanded = (runId: string) => {
@@ -48,25 +46,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
         }));
     };
 
-    // 1. Fetch all automations in this workspace (for enrolling)
-    const automationsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automations'),
-            where('workspaceIds', 'array-contains', activeWorkspaceId)
-        );
-    }, [firestore, activeWorkspaceId]);
-
-    const { data: automations, isLoading: isLoadingAutos } = useCollection<any>(automationsQuery);
-
-    // Filter to only active automations to allow enrollment
-    const activeWorkspaceAutomations = React.useMemo(() => {
-        if (!automations) return [];
-        return automations.filter((a: any) => a.isActive);
-    }, [automations]);
-
-    // 2. Fetch all runs for this entity in the workspace
-    // We order in memory or simple filter to avoid composite index requirements
+    // 1. Fetch all runs for this entity in the workspace
     const runsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId || !entityId) return null;
         return query(
@@ -91,41 +71,6 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
 
     const activeRuns = React.useMemo(() => sortedRuns.filter((r: any) => r.status === 'running'), [sortedRuns]);
     const completedRuns = React.useMemo(() => sortedRuns.filter((r: any) => r.status !== 'running'), [sortedRuns]);
-
-    // Handle Enrolling a contact manually
-    const handleEnroll = async () => {
-        if (!selectedAutomationId || isMutating) return;
-        setIsMutating('enroll');
-        try {
-            const res = await fetch('/api/automations/enroll', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    automationId: selectedAutomationId,
-                    entityId,
-                    workspaceId: activeWorkspaceId,
-                    payload: {} // Empty payload will auto-resolve entity
-                })
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to enroll');
-
-            toast({
-                title: 'Enrolled Successfully',
-                description: 'The contact is now running through the automation flow.'
-            });
-            setSelectedAutomationId('');
-        } catch (err: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Enrollment Failed',
-                description: err.message || 'An error occurred during enrollment.'
-            });
-        } finally {
-            setIsMutating(null);
-        }
-    };
 
     // Handle Cancelling/Removing a contact from active run
     const handleCancel = async (runId: string) => {
@@ -156,7 +101,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
         }
     };
 
-    if (isLoadingAutos || isLoadingRuns) {
+    if (isLoadingRuns) {
         return (
             <div className="space-y-4">
                 <Skeleton className="h-28 w-full rounded-2xl" />
@@ -176,38 +121,15 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                     <p className="text-[10px] text-muted-foreground font-semibold mt-1">Manage current workflows and enrollment lifecycle logs.</p>
                 </div>
                 
-                {/* Manual Enrollment Select */}
+                {/* Unified Enrollment Trigger */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <Select value={selectedAutomationId} onValueChange={setSelectedAutomationId}>
-                        <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold w-64 text-left">
-                            <SelectValue placeholder="Select active automation..." />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[250px] rounded-xl border bg-card/95 backdrop-blur-md">
-                            {activeWorkspaceAutomations.length > 0 ? (
-                                activeWorkspaceAutomations.map((auto: any) => (
-                                    <SelectItem key={auto.id} value={auto.id} className="rounded-lg text-xs font-semibold">
-                                        {auto.name}
-                                    </SelectItem>
-                                ))
-                            ) : (
-                                <SelectItem value="none" disabled className="text-xs">
-                                    No active automations
-                                </SelectItem>
-                            )}
-                        </SelectContent>
-                    </Select>
                     <Button 
                         size="sm" 
-                        onClick={handleEnroll} 
-                        disabled={!selectedAutomationId || isMutating !== null}
+                        onClick={() => setIsEnrollDialogOpen(true)}
                         className="rounded-xl font-bold h-10 px-4 shadow-md bg-violet-600 text-white hover:bg-violet-700 transition-all flex items-center gap-1.5"
                     >
-                        {isMutating === 'enroll' ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <PlusCircle className="h-4 w-4" />
-                        )}
-                        Enroll
+                        <PlusCircle className="h-4 w-4" />
+                        Enroll in Automation
                     </Button>
                 </div>
             </div>
@@ -233,7 +155,14 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                                                     <Activity className="h-5 w-5 animate-pulse" />
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-sm font-bold text-foreground leading-tight">{run.automationName || 'Unnamed Automation'}</p>
+                                                    <p className="text-sm font-bold text-foreground leading-tight">
+                                                        {run.automationName || 'Unnamed Automation'}
+                                                        {run.contactName && (
+                                                            <span className="text-xs text-muted-foreground font-normal ml-2">
+                                                                ({run.contactName})
+                                                            </span>
+                                                        )}
+                                                    </p>
                                                     <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
                                                         <span>Enrolled {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
                                                         <span>•</span>
@@ -315,7 +244,14 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                                                  isCancelled ? <XCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                                             </div>
                                             <div className="min-w-0 text-left">
-                                                <p className="text-xs font-bold text-foreground truncate leading-tight">{run.automationName || 'Unnamed Automation'}</p>
+                                                <p className="text-xs font-bold text-foreground truncate leading-tight">
+                                                    {run.automationName || 'Unnamed Automation'}
+                                                    {run.contactName && (
+                                                        <span className="text-xs text-muted-foreground font-normal ml-2">
+                                                            ({run.contactName})
+                                                        </span>
+                                                    )}
+                                                </p>
                                                 <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold mt-1 flex-wrap">
                                                     <span>Ran {run.startedAt ? new Date(run.startedAt).toLocaleString() : 'recently'}</span>
                                                     {run.finishedAt && (
@@ -369,6 +305,16 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                     </div>
                 )}
             </div>
+
+            {/* Unified Enrollment Dialog Container */}
+            {isEnrollDialogOpen && activeWorkspaceId && (
+                <AddToAutomationDialog
+                    open={isEnrollDialogOpen}
+                    onOpenChange={setIsEnrollDialogOpen}
+                    entityIds={[entityId]}
+                    workspaceId={activeWorkspaceId}
+                />
+            )}
         </div>
     );
 }
