@@ -164,6 +164,11 @@ export default function MediaShareClient({
         const dur = audioRef.current.duration || 0;
         setCurrentTime(curr);
 
+        if (!loggedPlay.current && curr > 0) {
+            loggedPlay.current = true;
+            logEvent('media_play');
+        }
+
         if (dur > 0) {
             // 25% milestone
             if (curr >= dur * 0.25) {
@@ -277,6 +282,11 @@ export default function MediaShareClient({
         const curr = video.currentTime;
         const dur = video.duration || 0;
         
+        if (!loggedPlay.current && curr > 0) {
+            loggedPlay.current = true;
+            logEvent('media_play');
+        }
+
         if (dur > 0) {
             // 25% milestone
             if (curr >= dur * 0.25) {
