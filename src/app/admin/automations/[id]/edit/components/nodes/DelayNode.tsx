@@ -27,6 +27,8 @@ interface DelayNodeProps {
             periods?: { value: number; unit: string }[];
             specificDate?: string;
             specificTime?: string;
+            scheduledDayPreset?: string;
+            scheduledTime?: string;
             offsetDirection?: string;
             offsetDays?: number;
             dateField?: string;
@@ -84,8 +86,14 @@ export function DelayNode({ id, data, selected }: DelayNodeProps) {
             }
             return `Wait for ${config.value ?? 5} ${config.unit || 'Minutes'}`;
         }
+        if (type === 'scheduled_day') {
+            const dayPreset = config.scheduledDayPreset || 'monday';
+            const time = config.scheduledTime || '09:00';
+            const dayLabel = dayPreset.charAt(0).toUpperCase() + dayPreset.slice(1);
+            return `Wait until ${dayLabel} at ${time}`;
+        }
         if (type === 'specific_date') {
-            return `Until ${config.specificDate || 'date'} at ${config.specificTime || '09:00'}`;
+            return `Wait until ${config.specificDate || 'date'} at ${config.specificTime || '09:00'}`;
         }
         if (type === 'date_field') {
             const offset = config.offsetDirection === 'current_date' 
@@ -97,7 +105,7 @@ export function DelayNode({ id, data, selected }: DelayNodeProps) {
             const limitStr = config.hasTimeLimit 
                 ? ` (max ${config.timeLimitValue ?? 30} ${config.timeLimitUnit || 'Days'})` 
                 : '';
-            return `Until conditions are met${limitStr}`;
+            return `Wait until conditions are met${limitStr}`;
         }
         return 'Awaiting wait time';
     };

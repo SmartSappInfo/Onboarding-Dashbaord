@@ -1,5 +1,5 @@
 import { adminDb } from '../firebase-admin';
-import { getSmsStatus } from '../mnotify-service';
+import { getSmsStatus, MNotifyResponse } from '../mnotify-service';
 import { incrementMessageNodeStat } from '../messaging/message-node-stats';
 import { assertAutomationManagePermission } from '../automation-permissions';
 import type { MessageLog } from '../types';
@@ -33,15 +33,10 @@ async function resolveMnotifyApiKey(organizationId?: string): Promise<string | u
   return undefined;
 }
 
-interface SmsReportItem {
+interface GatewayReportItem {
   recipient?: string;
   to?: string;
   status?: string;
-}
-
-interface MnotifyStatusResponse {
-  status?: string;
-  report?: SmsReportItem[];
 }
 
 export async function reconcilePendingSmsLogs(
@@ -84,7 +79,7 @@ export async function reconcilePendingSmsLogs(
 
   // Deduplicate calls by unique providerId
   const uniqueProviderIds = Array.from(new Set(logs.map((l) => l.providerId).filter(Boolean)));
-  const statusMap: Record<string, MnotifyStatusResponse> = {};
+  const statusMap: Record<string, MNotifyResponse> = {};
 
   for (const providerId of uniqueProviderIds) {
     if (!providerId) continue;
@@ -112,13 +107,13 @@ export async function reconcilePendingSmsLogs(
     const cleanRecipient = cleanPhoneSuffix(log.recipient);
 
     if (gatewayData.report && Array.isArray(gatewayData.report)) {
-      const reportList = gatewayData.report as SmsReportItem[];
+      const reportList = gatewayData.report as unknown as GatewayReportItem[];
       const matchedItem = reportList.find(
         (item) => cleanPhoneSuffix(item.recipient || item.to || '') === cleanRecipient
       );
-      rawStatus = matchedItem?.status || gatewayData.status || '';
+      rawStatus = String(matchedItem?.status || gatewayData.status || '');
     } else {
-      rawStatus = gatewayData.status || '';
+      rawStatus = String(gatewayData.status || '');
     }
 
     const targetStatus = normalizeMnotifyStatus(rawStatus);
