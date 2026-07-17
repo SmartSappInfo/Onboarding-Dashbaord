@@ -1916,7 +1916,7 @@ export function NodeInspector({
                                         : '';
                                     computedLabel = `Until conditions are met${limitStr}`;
                                 } else if (type === 'scheduled_day') {
-                                    const dayPreset = (config?.scheduledDayPreset as string) || 'monday';
+                                    const dayPreset = (config?.scheduledDay || config?.scheduledDayPreset as string) || 'monday';
                                     const time = (config?.scheduledTime as string) || '09:00';
                                     const dayLabel = dayPreset.charAt(0).toUpperCase() + dayPreset.slice(1);
                                     computedLabel = `Wait until ${dayLabel} at ${time}`;

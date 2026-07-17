@@ -95,11 +95,18 @@ export async function calculateExecuteAt(
       };
       const targetDay = dayOfWeekMap[dayVal] ?? Number(dayVal);
       const currentDay = now.getDay();
-      let daysToAdd = (targetDay - currentDay + 7) % 7;
-      if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
-        daysToAdd = 7;
+      if (isNaN(targetDay)) {
+        console.warn(`[DelayNode] Invalid scheduledDay value: ${dayVal}. Falling back to Monday.`);
+        // Fallback to Monday (1)
+        const daysToAdd = (1 - currentDay + 7) % 7 || 7;
+        executeAt.setDate(executeAt.getDate() + daysToAdd);
+      } else {
+        let daysToAdd = (targetDay - currentDay + 7) % 7;
+        if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
+          daysToAdd = 7;
+        }
+        executeAt.setDate(executeAt.getDate() + daysToAdd);
       }
-      executeAt.setDate(executeAt.getDate() + daysToAdd);
     }
     return executeAt;
   }

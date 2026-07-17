@@ -250,4 +250,19 @@ describe('Automation Delay Calculator (calculateExecuteAt)', () => {
     const resWeekday = await calculateExecuteAt(configWeekday, dummyContext, saturdayBase);
     expect(resWeekday.getDate()).toBe(13); // Monday
   });
+
+  it('falls back to Monday if scheduledDay parses to NaN', async () => {
+    // Friday July 10, 2026
+    const baseTime = new Date('2026-07-10T12:00:00.000Z');
+    const configInvalid = {
+      waitType: 'scheduled_day',
+      scheduledDay: 'invalid_day_value',
+      scheduledTime: '09:00',
+    };
+    const resInvalid = await calculateExecuteAt(configInvalid, dummyContext, baseTime);
+    // Since Friday (10th) target Monday (13th)
+    expect(resInvalid.getFullYear()).toBe(2026);
+    expect(resInvalid.getMonth()).toBe(6);
+    expect(resInvalid.getDate()).toBe(13);
+  });
 });
