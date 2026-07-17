@@ -553,18 +553,21 @@ export async function enrollContactsInAutomation(
         name: string;
       };
     }> = [];
-    const readChunkSize = 500;
+    const readChunkSize = 30; // Firestore 'in' limit is 30
     for (let i = 0; i < entityIds.length; i += readChunkSize) {
       const chunkIds = entityIds.slice(i, i + readChunkSize);
-      const refs = chunkIds.map(id => adminDb.collection('workspace_entities').doc(`${workspaceId}_${id}`));
-      const snaps = await adminDb.getAll(...refs);
-      snaps.forEach(snap => {
-        if (snap.exists) {
-          const data = snap.data()!;
-          if (data.workspaceId === workspaceId) {
-            const contacts = (data.entityContacts || []) as EntityContact[];
-            const entityId = data.entityId || snap.id.split('_').slice(1).join('_');
-            const entityType = data.entityType || 'institution';
+      if (chunkIds.length === 0) continue;
+      
+      const snap = await adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', 'in', chunkIds)
+        .get();
+
+      snap.forEach(doc => {
+        const data = doc.data()!;
+        const contacts = (data.entityContacts || []) as EntityContact[];
+        const entityId = data.entityId;
+        const entityType = data.entityType || 'institution';
 
             // Resolve which contacts to target based on scope options
             let matchedContacts: EntityContact[] = [];
@@ -611,8 +614,6 @@ export async function enrollContactsInAutomation(
                 }
               });
             });
-          }
-        }
       });
     }
 

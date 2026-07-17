@@ -63,22 +63,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
     }
 
-    // 4. Security Check: Validate tenant isolation for all targets in a single database batch read
-    const docRefs = targets.map((t) => {
-      return adminDb.collection('workspace_entities').doc(`${workspaceId}_${t.entityId}`);
-    });
-    
-    const docSnaps = docRefs.length > 0 ? await adminDb.getAll(...docRefs) : [];
+    // 4. Security Check: Validate tenant isolation for all targets in batches
+    // We cannot assume the document ID format is `${workspaceId}_${entityId}`
+    // We must query by `entityId` in batches of 30 (Firestore 'in' limit is 30)
+    const validEntityIds = new Set<string>();
+    const entityIdChunks = chunkArray(targets.map(t => t.entityId), 30);
 
-    const finalTargets = targets.map((target, idx) => {
-      const snap = docSnaps[idx];
-      if (!snap || !snap.exists) {
-        console.warn(`[SecurityAlert] Tenant association for ${target.entityId} does not exist. Skipping.`);
-        return null;
-      }
-      const data = snap.data();
-      if (data?.workspaceId !== workspaceId) {
-        console.warn(`[SecurityAlert] Tenant mismatch for entity ${target.entityId}. Expected workspace ${workspaceId}, found ${data?.workspaceId}. Skipping.`);
+    for (const chunk of entityIdChunks) {
+      if (chunk.length === 0) continue;
+      const snap = await adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', 'in', chunk)
+        .get();
+        
+      snap.forEach(doc => {
+        const data = doc.data();
+        if (data.entityId) {
+          validEntityIds.add(data.entityId);
+        }
+      });
+    }
+
+    const finalTargets = targets.map((target) => {
+      if (!validEntityIds.has(target.entityId)) {
+        console.error(`[SecurityAlert] Tenant association or document for entityId ${target.entityId} does not exist in workspace ${workspaceId}. Dropping contact from automation.`);
         return null;
       }
       return target;
