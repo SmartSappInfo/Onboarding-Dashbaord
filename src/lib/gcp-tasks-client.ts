@@ -5,7 +5,7 @@ import { adminDb } from './firebase-admin';
 const PROJECT = process.env.GCP_PROJECT || '';
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
-const BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.APP_BASE_URL || 'http://127.0.0.1:3000';
 const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
 async function resolveRequestBaseUrl(): Promise<string> {
@@ -16,7 +16,8 @@ async function resolveRequestBaseUrl(): Promise<string> {
     if (host) {
       const proto = headersList.get('x-forwarded-proto') || 'https';
       const cleanProto = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : proto;
-      return `${cleanProto}://${host}`;
+      const cleanHost = host.replace('localhost', '127.0.0.1');
+      return `${cleanProto}://${cleanHost}`;
     }
   } catch {
     // Fallback when called outside Next.js request context (e.g. background scripts)
