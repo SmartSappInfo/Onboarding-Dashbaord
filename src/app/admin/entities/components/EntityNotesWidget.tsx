@@ -152,32 +152,32 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                     ) : displayNotes && displayNotes.length > 0 ? (
                         displayNotes.map(note => (
                             <div key={note.id} className={cn(
-                                "p-3 rounded-xl transition-shadow duration-200 border border-slate-800/60 bg-slate-900/30 hover:bg-slate-900/50 relative",
-                                note.noteType === 'call' ? "border-l-2 border-l-blue-500/70" :
-                                note.noteType === 'meeting' ? "border-l-2 border-l-purple-500/70" :
-                                note.noteType === 'escalation' ? "border-l-2 border-l-red-500/70" :
-                                note.noteType === 'followup' ? "border-l-2 border-l-amber-500/70" :
-                                "border-l-2 border-l-slate-600/40",
+                                "p-3 rounded-xl transition-all duration-200 border border-border/60 bg-card hover:bg-muted/30 relative",
+                                note.noteType === 'call' ? "border-l-[3px] border-l-blue-500/70" :
+                                note.noteType === 'meeting' ? "border-l-[3px] border-l-purple-500/70" :
+                                note.noteType === 'escalation' ? "border-l-[3px] border-l-red-500/70" :
+                                note.noteType === 'followup' ? "border-l-[3px] border-l-amber-500/70" :
+                                "border-l-[3px] border-l-border",
                                 note.isPinned && "shadow-md ring-1 ring-amber-500/10"
                             )}>
                                 {note.isPinned && (
                                     <Pin className="absolute -top-1.5 -right-1.5 h-3 w-3 text-amber-500 fill-current" />
                                 )}
                                 <div className="flex items-center gap-1.5 mb-1.5">
-                                    <div className="h-4 w-4 rounded-full bg-slate-850 flex items-center justify-center text-[8px] font-bold text-slate-350">
+                                    <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground">
                                         {note.createdByName ? note.createdByName.charAt(0).toUpperCase() : '?'}
                                     </div>
-                                    <span className="text-[9px] font-bold text-slate-400 truncate max-w-[80px]">{note.createdByName || 'Unknown User'}</span>
+                                    <span className="text-[9px] font-bold text-foreground/70 truncate max-w-[80px]">{note.createdByName || 'Unknown User'}</span>
                                     {note.noteType && note.noteType !== 'general' && (
-                                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">
+                                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">
                                             • {note.noteType}
                                         </span>
                                     )}
-                                    <span className="text-[8px] text-slate-500 ml-auto">
+                                    <span className="text-[8px] text-muted-foreground ml-auto">
                                         {format(new Date(note.createdAt), 'MMM d')}
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-300 line-clamp-3 leading-tight whitespace-pre-wrap font-normal">{note.content}</p>
+                                <p className="text-xs text-foreground/80 line-clamp-3 leading-tight whitespace-pre-wrap font-normal">{note.content}</p>
                             </div>
                         ))
                     ) : (
@@ -190,9 +190,9 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
 
             {/* Add Note Modal Dialog */}
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-                <DialogContent className="w-[90%] sm:max-w-[425px] bg-slate-950 border border-slate-800 text-slate-100 backdrop-blur-xl shadow-2xl rounded-2xl p-6 transition-all duration-300 mx-auto overflow-visible">
+                <DialogContent className="w-[90%] sm:max-w-[425px] shadow-2xl rounded-2xl p-6 transition-all duration-300 mx-auto overflow-visible">
                     <DialogHeader className="space-y-1.5 text-left">
-                        <DialogTitle className="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                        <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2">
                             Add Note
                         </DialogTitle>
                     </DialogHeader>
@@ -200,20 +200,20 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                     <div className="space-y-4 py-3 overflow-visible">
                         <div className="space-y-1.5">
                             <Textarea 
-                                placeholder={noteType === 'call' ? "Call outcome details…" : "Type your note content here…"}
+                                placeholder={(noteType || 'general') === 'call' ? "Call outcome details…" : "Type your note content here…"}
                                 value={newNote}
                                 onChange={(e) => setNewNote(e.target.value)}
-                                className="min-h-[100px] text-xs resize-none rounded-xl bg-slate-900 border-slate-800 placeholder:text-slate-650 focus-visible:ring-1 focus-visible:ring-primary/20"
+                                className="min-h-[100px] text-xs resize-none"
                                 autoFocus
                             />
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-850 overflow-visible">
+                        <div className="flex items-center justify-between pt-2 border-t border-border/30 overflow-visible">
                             {/* Note Type select dropdown pill */}
                             <div className="relative">
                                 <button
                                     onClick={() => setComposerDropdownOpen(!composerDropdownOpen)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border border-border/50 bg-slate-900/60 text-slate-300 hover:text-slate-100 transition-all select-none"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border border-border/50 bg-muted text-foreground hover:bg-muted/80 transition-all select-none"
                                 >
                                     {React.createElement(noteTypes.find(t => t.id === noteType)?.icon || MessageSquare, { className: "h-3.5 w-3.5 opacity-60" })}
                                     <span>{(noteType || 'general').charAt(0).toUpperCase() + (noteType || 'general').slice(1)}</span>
@@ -221,7 +221,7 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                                 </button>
 
                                 {composerDropdownOpen && (
-                                    <div className="absolute top-full left-0 mt-1.5 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute top-full left-0 mt-1.5 w-36 bg-popover border border-border rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         {noteTypes.map((t) => {
                                             const Icon = t.icon;
                                             return (
@@ -232,8 +232,8 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
                                                         setComposerDropdownOpen(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-slate-800 transition-colors",
-                                                        noteType === t.id ? "text-primary bg-slate-800/40" : "text-slate-400 hover:text-slate-200"
+                                                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-muted transition-colors",
+                                                        noteType === t.id ? "text-primary bg-muted/50" : "text-muted-foreground hover:text-foreground"
                                                     )}
                                                 >
                                                     <Icon className="h-3.5 w-3.5" />

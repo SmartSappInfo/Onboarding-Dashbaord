@@ -269,7 +269,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                         placeholder="Search notes history..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-900/50 border border-border/40 text-slate-100 placeholder:text-slate-650 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/30"
+                        className="w-full bg-background border border-border/40 text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/30"
                     />
                 </div>
                 <div className="flex items-center gap-2 relative overflow-visible">
@@ -280,7 +280,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                 setFilterDropdownOpen(!filterDropdownOpen);
                                 setComposerDropdownOpen(false);
                             }}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-border/40 bg-slate-900/50 text-slate-300 hover:text-slate-100 transition-all select-none"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-border/40 bg-background text-foreground hover:bg-muted transition-all select-none"
                         >
                             <Filter className="h-3.5 w-3.5 opacity-60" />
                             <span>
@@ -293,16 +293,16 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                             <ChevronDown className="h-3.5 w-3.5 opacity-45" />
                         </button>
                         {filterDropdownOpen && (
-                            <div className="absolute right-0 top-full mt-1.5 w-40 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute right-0 top-full mt-1.5 w-40 bg-popover border border-border rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <button
                                     onClick={() => { setFilterType('all'); setFilterDropdownOpen(false); }}
-                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === 'all' ? "text-primary" : "text-slate-400")}
+                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-muted transition-colors", filterType === 'all' ? "text-primary" : "text-muted-foreground")}
                                 >
                                     All Notes
                                 </button>
                                 <button
                                     onClick={() => { setFilterType('pinned'); setFilterDropdownOpen(false); }}
-                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === 'pinned' ? "text-amber-400" : "text-slate-400")}
+                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-muted transition-colors", filterType === 'pinned' ? "text-amber-500" : "text-muted-foreground")}
                                 >
                                     Pinned Notes
                                 </button>
@@ -311,7 +311,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                     <button
                                         key={t.id}
                                         onClick={() => { setFilterType(t.id as EntityNote['noteType']); setFilterDropdownOpen(false); }}
-                                        className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === t.id ? "text-primary" : "text-slate-400")}
+                                        className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-muted transition-colors", filterType === t.id ? "text-primary" : "text-muted-foreground")}
                                     >
                                         {t.label}
                                     </button>
@@ -338,13 +338,13 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                 showAddNote ? "grid-rows-[1fr] opacity-100 mb-4" : "grid-rows-[0fr] opacity-0 pointer-events-none"
             )}>
                 <div className="min-h-0 overflow-visible">
-                    <div className="bg-card/45 rounded-2xl p-4 border border-border/40 shadow-sm space-y-3 relative overflow-visible">
+                    <div className="bg-card rounded-2xl p-4 border border-border/40 shadow-sm space-y-3 relative overflow-visible">
                         <div className="flex-1">
                             <Textarea 
                                 placeholder={noteType === 'call' ? "Summarize the call outcome…" : "Type a new note…"}
                                 value={newNote}
                                 onChange={(e) => setNewNote(e.target.value)}
-                                className="w-full bg-slate-900/40 border border-border/30 rounded-xl text-xs p-3 text-slate-200 placeholder:text-slate-650 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 min-h-[80px] resize-none"
+                                className="w-full min-h-[80px] resize-none text-xs"
                                 autoFocus={compact}
                             />
                         </div>
@@ -356,7 +356,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                         setComposerDropdownOpen(!composerDropdownOpen);
                                         setFilterDropdownOpen(false);
                                     }}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border border-border/50 bg-slate-900/60 text-slate-300 hover:text-slate-100 transition-all select-none"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border border-border/50 bg-muted text-foreground hover:bg-muted/80 transition-all select-none"
                                 >
                                     {React.createElement(noteTypes.find(t => t.id === noteType)?.icon || MessageSquare, { className: "h-3.5 w-3.5 opacity-60" })}
                                     <span>{noteTypes.find(t => t.id === noteType)?.label || noteType}</span>
@@ -364,7 +364,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                 </button>
 
                                 {composerDropdownOpen && (
-                                    <div className="absolute top-full left-0 mt-1.5 w-40 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="absolute top-full left-0 mt-1.5 w-40 bg-popover border border-border rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                         {noteTypes.map((t) => {
                                             const Icon = t.icon;
                                             return (
@@ -375,8 +375,8 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                         setComposerDropdownOpen(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-slate-800 transition-colors",
-                                                        noteType === t.id ? "text-primary bg-slate-900" : "text-slate-400 hover:text-slate-200"
+                                                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-muted transition-colors",
+                                                        noteType === t.id ? "text-primary bg-muted/50" : "text-muted-foreground hover:text-foreground"
                                                     )}
                                                 >
                                                     <Icon className="h-3.5 w-3.5" />
@@ -538,12 +538,12 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                         return (
                             <div key={note.id} className="space-y-3">
                                 <div className={cn(
-                                    "rounded-xl p-4 transition-all duration-200 group relative border border-slate-800/60 bg-slate-900/30 hover:bg-slate-900/50 shadow-sm",
-                                    note.noteType === 'call' ? "border-l-2 border-l-blue-500/70" :
-                                    note.noteType === 'meeting' ? "border-l-2 border-l-purple-500/70" :
-                                    note.noteType === 'escalation' ? "border-l-2 border-l-red-500/70" :
-                                    note.noteType === 'followup' ? "border-l-2 border-l-amber-500/70" :
-                                    "border-l-2 border-l-slate-600/40",
+                                    "rounded-xl p-4 transition-all duration-200 group relative border border-border/60 bg-card hover:bg-muted/30 shadow-sm",
+                                    note.noteType === 'call' ? "border-l-[3px] border-l-blue-500/70" :
+                                    note.noteType === 'meeting' ? "border-l-[3px] border-l-purple-500/70" :
+                                    note.noteType === 'escalation' ? "border-l-[3px] border-l-red-500/70" :
+                                    note.noteType === 'followup' ? "border-l-[3px] border-l-amber-500/70" :
+                                    "border-l-[3px] border-l-border",
                                     note.isPinned && "shadow-md ring-1 ring-amber-500/10"
                                 )}>
                                     {note.isPinned && (
@@ -553,14 +553,14 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                     )}
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-350">
+                                            <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                                                 {note.createdByName ? note.createdByName.charAt(0).toUpperCase() : '?'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-xs font-semibold text-slate-200 leading-none">{note.createdByName || 'Unknown User'}</p>
+                                                    <p className="text-xs font-semibold text-foreground leading-none">{note.createdByName || 'Unknown User'}</p>
                                                     {note.noteType && note.noteType !== 'general' && (
-                                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                                                             • {note.noteType}
                                                         </span>
                                                     )}
@@ -575,7 +575,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                         </Link>
                                                     )}
                                                 </div>
-                                                <p className="text-[9px] text-slate-500 mt-0.5">
+                                                <p className="text-[9px] text-muted-foreground mt-0.5">
                                                     {format(new Date(note.createdAt), 'MMM d, yyyy h:mm a')}
                                                     {note.updatedAt !== note.createdAt && ' (edited)'}
                                                 </p>
@@ -621,7 +621,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                             <Textarea 
                                                 value={editContent}
                                                 onChange={(e) => setEditContent(e.target.value)}
-                                                className="min-h-[80px] text-xs resize-none rounded-xl bg-slate-900 border-slate-800"
+                                                className="min-h-[80px] text-xs resize-none"
                                                 autoFocus
                                             />
                                             <div className="flex justify-end gap-2">
@@ -634,7 +634,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed font-normal">{note.content}</p>
+                                        <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed font-normal">{note.content}</p>
                                     )}
                                 </div>
 
@@ -642,16 +642,16 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                 {replies.length > 0 && (
                                     <div className="ml-8 space-y-3 border-l-2 border-border/30 pl-4 py-1">
                                         {replies.map(reply => (
-                                            <div key={reply.id} className="bg-slate-900/20 rounded-xl p-4 border border-slate-800/40 relative">
+                                            <div key={reply.id} className="bg-muted/30 rounded-xl p-4 border border-border/40 relative">
                                                 <CornerDownRight className="absolute -left-5 top-4 h-4 w-4 text-border/30" />
                                                 <div className="flex items-start justify-between mb-2">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-350">
+                                                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                                                             {reply.createdByName?.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-semibold text-slate-200">{reply.createdByName}</p>
-                                                            <p className="text-[9px] text-slate-500">{format(new Date(reply.createdAt), 'MMM d, h:mm a')}</p>
+                                                            <p className="text-xs font-semibold text-foreground">{reply.createdByName}</p>
+                                                            <p className="text-[9px] text-muted-foreground">{format(new Date(reply.createdAt), 'MMM d, h:mm a')}</p>
                                                         </div>
                                                     </div>
                                                     {user?.uid === reply.createdBy && (
@@ -665,7 +665,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                         </Button>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-slate-300 whitespace-pre-wrap">{reply.content}</p>
+                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{reply.content}</p>
                                             </div>
                                         ))}
                                     </div>
