@@ -217,4 +217,37 @@ describe('Automation Delay Calculator (calculateExecuteAt)', () => {
     // + 15 minutes: 2026-07-17T15:15:00.000Z
     expect(res.toISOString()).toBe('2026-07-17T15:15:00.000Z');
   });
+
+  it('handles scheduledDayPreset and weekend/weekday logic', async () => {
+    // Friday July 10, 2026
+    const baseTime = new Date('2026-07-10T12:00:00.000Z');
+
+    // 1. Using scheduledDayPreset instead of scheduledDay
+    const configPreset = {
+      waitType: 'scheduled_day',
+      scheduledDayPreset: 'Monday',
+      scheduledTime: '09:00',
+    };
+    const resPreset = await calculateExecuteAt(configPreset, dummyContext, baseTime);
+    expect(resPreset.getDate()).toBe(13); // Monday
+
+    // 2. Weekend target: today is Friday, target is weekend. Should map to Saturday July 11
+    const configWeekend = {
+      waitType: 'scheduled_day',
+      scheduledDayPreset: 'weekend',
+      scheduledTime: '09:00',
+    };
+    const resWeekend = await calculateExecuteAt(configWeekend, dummyContext, baseTime);
+    expect(resWeekend.getDate()).toBe(11); // Saturday
+
+    // 3. Weekday target: today is Saturday July 11, target is weekday. Should map to Monday July 13
+    const saturdayBase = new Date('2026-07-11T12:00:00.000Z');
+    const configWeekday = {
+      waitType: 'scheduled_day',
+      scheduledDayPreset: 'weekday',
+      scheduledTime: '09:00',
+    };
+    const resWeekday = await calculateExecuteAt(configWeekday, dummyContext, saturdayBase);
+    expect(resWeekday.getDate()).toBe(13); // Monday
+  });
 });

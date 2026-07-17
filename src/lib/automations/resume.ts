@@ -62,7 +62,15 @@ export async function resumeAutomationRun(job: AutomationJob): Promise<boolean> 
       payload: job.payload,
     };
 
-    await traverseNodes(job.targetNodeId, automation, context);
+    let targetNodeId = job.targetNodeId;
+    if (targetNodeId === '__resend_check__') {
+      const meta = (job.payload as Record<string, unknown>)?.__resend as { nodeId?: string } | undefined;
+      if (meta?.nodeId) {
+        targetNodeId = meta.nodeId;
+      }
+    }
+
+    await traverseNodes(targetNodeId, automation, context);
 
     const pendingJobs = await adminDb
       .collection('automation_jobs')

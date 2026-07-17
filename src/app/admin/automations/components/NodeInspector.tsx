@@ -1915,6 +1915,21 @@ export function NodeInspector({
                                         ? ` (max ${config?.timeLimitValue ?? 30} ${config?.timeLimitUnit || 'Days'})` 
                                         : '';
                                     computedLabel = `Until conditions are met${limitStr}`;
+                                } else if (type === 'scheduled_day') {
+                                    const dayPreset = (config?.scheduledDayPreset as string) || 'monday';
+                                    const time = (config?.scheduledTime as string) || '09:00';
+                                    const dayLabel = dayPreset.charAt(0).toUpperCase() + dayPreset.slice(1);
+                                    computedLabel = `Wait until ${dayLabel} at ${time}`;
+                                } else if (type === 'scheduled_month') {
+                                    const year = (config?.scheduledYear as string) || 'any';
+                                    const month = (config?.scheduledMonth as string) || 'any';
+                                    const day = (config?.scheduledDayOfMonth as string) || 'any';
+                                    const time = (config?.scheduledTime as string) || '09:00';
+                                    
+                                    const yearStr = year === 'any' ? '' : ` of ${year}`;
+                                    const monthStr = month === 'any' ? 'every month' : ` of ${month}`;
+                                    const dayStr = day === 'any' ? 'any day' : `on day ${day}`;
+                                    computedLabel = `Wait until ${dayStr}${monthStr}${yearStr} at ${time}`;
                                 }
                                 finalData.label = computedLabel;
                             }

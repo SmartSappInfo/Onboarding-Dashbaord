@@ -48,22 +48,59 @@ export async function calculateExecuteAt(
   }
 
   // 2. On a Specific Day of Week
-  if (waitType === 'scheduled_day' && config.scheduledDay) {
-    const dayOfWeekMap: Record<string, number> = {
-      sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
-    };
-    const targetDay = dayOfWeekMap[String(config.scheduledDay).toLowerCase()] ?? Number(config.scheduledDay);
+  if (waitType === 'scheduled_day' && (config.scheduledDay || config.scheduledDayPreset)) {
+    const dayVal = String(config.scheduledDay || config.scheduledDayPreset).toLowerCase();
     const [hour, minute] = String(config.scheduledTime || '09:00').split(':').map(Number);
-
     const executeAt = new Date(now);
     executeAt.setHours(hour, minute, 0, 0);
 
-    const currentDay = now.getDay();
-    let daysToAdd = (targetDay - currentDay + 7) % 7;
-    if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
-      daysToAdd = 7;
+    if (dayVal === 'weekend') {
+      const currentDay = now.getDay();
+      const isWeekend = currentDay === 0 || currentDay === 6;
+      if (isWeekend && executeAt.getTime() > now.getTime()) {
+        // Use today
+      } else {
+        let daysToAdd = 1;
+        while (daysToAdd <= 14) {
+          const nextDay = new Date(now);
+          nextDay.setDate(now.getDate() + daysToAdd);
+          if (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+            executeAt.setDate(now.getDate() + daysToAdd);
+            break;
+          }
+          daysToAdd++;
+        }
+      }
+    } else if (dayVal === 'weekday') {
+      const currentDay = now.getDay();
+      const isWeekday = currentDay >= 1 && currentDay <= 5;
+      if (isWeekday && executeAt.getTime() > now.getTime()) {
+        // Use today
+      } else {
+        let daysToAdd = 1;
+        while (daysToAdd <= 14) {
+          const nextDay = new Date(now);
+          nextDay.setDate(now.getDate() + daysToAdd);
+          const nextD = nextDay.getDay();
+          if (nextD >= 1 && nextD <= 5) {
+            executeAt.setDate(now.getDate() + daysToAdd);
+            break;
+          }
+          daysToAdd++;
+        }
+      }
+    } else {
+      const dayOfWeekMap: Record<string, number> = {
+        sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
+      };
+      const targetDay = dayOfWeekMap[dayVal] ?? Number(dayVal);
+      const currentDay = now.getDay();
+      let daysToAdd = (targetDay - currentDay + 7) % 7;
+      if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
+        daysToAdd = 7;
+      }
+      executeAt.setDate(executeAt.getDate() + daysToAdd);
     }
-    executeAt.setDate(executeAt.getDate() + daysToAdd);
     return executeAt;
   }
 
