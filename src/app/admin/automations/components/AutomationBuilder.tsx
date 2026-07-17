@@ -17,8 +17,9 @@ import ReactFlow, {
     ConnectionLineType,
     getSmoothStepPath
 } from 'reactflow';
-import { DeletableEdge } from '../[id]/edit/components/edges/DeletableEdge';
-import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap } from '@/lib/automations/graph-rewriter';
+import { WorkflowEdge } from '../[id]/edit/components/edges/WorkflowEdge';
+import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap, type SplicingOptions } from '@/lib/automations/graph-rewriter';
+import { ReconcileDropDialog } from './ReconcileDropDialog';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
@@ -97,7 +98,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-    deletable: DeletableEdge,
+    deletable: WorkflowEdge,
 };
 
 const AutomationStepLibraryModal = dynamic(() => import('./AutomationStepLibraryModal'), { ssr: false });
@@ -1486,6 +1487,34 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         onNodesChange([...changes, ...downstreamChanges]);
     }, [onNodesChange]);
 
+    const handleReconcileConfirm = React.useCallback((options: SplicingOptions) => {
+        if (!dropReconciliation) return;
+        const { draggedNodeId, targetEdgeId } = dropReconciliation;
+
+        const { nodes: newNodes, edges: newEdges } = spliceNodeOnEdge(
+            nodes,
+            edges,
+            draggedNodeId,
+            targetEdgeId,
+            options
+        );
+
+        setNodes(newNodes);
+        setEdges(newEdges);
+        setDropReconciliation(null);
+        preDragGraphRef.current = null; // Clear cached graph
+    }, [dropReconciliation, nodes, edges, setNodes, setEdges]);
+
+    const handleReconcileCancel = React.useCallback(() => {
+        // Rollback graph coordinates/state
+        if (preDragGraphRef.current) {
+            setNodes(preDragGraphRef.current.nodes);
+            setEdges(preDragGraphRef.current.edges);
+        }
+        setDropReconciliation(null);
+        preDragGraphRef.current = null;
+    }, [setNodes, setEdges]);
+
     return (
         <div className={cn(
             "h-full w-full bg-background relative group/builder",
@@ -1864,6 +1893,19 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 onOpenChange={setIsLibraryOpen} 
                 onSelect={addLibraryNode} 
                 hasParentSelected={!!selectedNodeId} 
+            />
+
+            <ReconcileDropDialog
+                open={!!dropReconciliation}
+                onOpenChange={(open) => {
+                    if (!open) handleReconcileCancel();
+                }}
+                draggedNodeLabel={
+                    nodes.find((n) => n.id === dropReconciliation?.draggedNodeId)?.data?.label || 'Step'
+                }
+                targetEdgeLabel="connection edge"
+                onConfirm={handleReconcileConfirm}
+                onCancel={handleReconcileCancel}
             />
 
             {/* Note Editing Dialog */}
