@@ -65,13 +65,6 @@ export async function POST(request: NextRequest) {
 
     // 4. Security Check: Validate tenant isolation for all targets in a single database batch read
     const docRefs = targets.map((t) => {
-      if (t.entityType === 'school') {
-        return adminDb.collection('schools').doc(t.entityId);
-      }
-      if (t.entityType === 'prospect') {
-        return adminDb.collection('prospects').doc(t.entityId);
-      }
-      // Default to workspace_entities for 'contact', 'company', 'deal', 'institution'
       return adminDb.collection('workspace_entities').doc(`${workspaceId}_${t.entityId}`);
     });
     
