@@ -849,7 +849,7 @@ export function MessageNodeLogsDialog({
             <button 
               type="button" 
               onClick={() => setReconcileResult(null)} 
-              className="text-[10px] text-emerald-500/80 hover:text-emerald-500 underline font-medium cursor-pointer shrink-0"
+              className="text-[10px] text-emerald-500/80 hover:text-emerald-500 underline font-medium cursor-pointer shrink-0 active:scale-[0.97] focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded px-1 transition-all"
             >
               Dismiss
             </button>

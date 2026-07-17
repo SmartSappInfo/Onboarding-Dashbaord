@@ -39,6 +39,11 @@ interface SmsReportItem {
   status?: string;
 }
 
+interface MnotifyStatusResponse {
+  status?: string;
+  report?: SmsReportItem[];
+}
+
 export async function reconcilePendingSmsLogs(
   automationId: string,
   nodeId: string,
@@ -55,6 +60,7 @@ export async function reconcilePendingSmsLogs(
     .where('nodeId', '==', nodeId)
     .where('channel', '==', 'sms')
     .where('status', 'in', ['sent', 'pending'])
+    .limit(100)
     .get();
 
   if (snap.empty) {
@@ -78,7 +84,7 @@ export async function reconcilePendingSmsLogs(
 
   // Deduplicate calls by unique providerId
   const uniqueProviderIds = Array.from(new Set(logs.map((l) => l.providerId).filter(Boolean)));
-  const statusMap: Record<string, any> = {};
+  const statusMap: Record<string, MnotifyStatusResponse> = {};
 
   for (const providerId of uniqueProviderIds) {
     if (!providerId) continue;

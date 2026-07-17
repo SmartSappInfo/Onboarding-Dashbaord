@@ -163,4 +163,57 @@ describe('mNotify Delivery Status Callback Webhook', () => {
       })
     );
   });
+
+  it('updates message log on form-urlencoded status callback', async () => {
+    const mockLog = {
+      id: 'log-1',
+      ref: { id: 'log-1' },
+      data: () => ({
+        automationId: 'auto-1',
+        nodeId: 'node-msg-1',
+        recipient: '233241234567',
+        providerId: 'sms-123',
+        workspaceId: 'onboarding',
+      }),
+    };
+
+    mockCollection.get.mockResolvedValueOnce({
+      empty: false,
+      docs: [mockLog],
+    } as any);
+
+    mockTx.get.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        providerStatus: 'pending',
+      }),
+    } as any);
+
+    const formData = new URLSearchParams();
+    formData.append('sms_id', 'sms-123');
+    formData.append('to', '233241234567');
+    formData.append('status', 'DELIVRD');
+
+    const req = new NextRequest(
+      'http://localhost/api/webhooks/messaging/mnotify?secret=local-secret',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      }
+    );
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    expect(mockTx.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'log-1' }),
+      expect.objectContaining({
+        providerStatus: 'delivered',
+        status: 'delivered',
+      })
+    );
+  });
 });

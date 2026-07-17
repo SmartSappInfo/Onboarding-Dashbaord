@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { incrementMessageNodeStat } from '@/lib/messaging/message-node-stats';
 import type { MessageLog } from '@/lib/types';
 
-const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
+const SECRET = process.env.CLOUD_TASKS_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-secret');
 
 function cleanPhoneSuffix(phone: string): string {
   const digits = phone.replace(/\D/g, '');
@@ -28,6 +28,10 @@ export async function GET(request: NextRequest) {
 async function handleCallback(request: NextRequest) {
   try {
     // 1. Security Handshake Check
+    if (!SECRET) {
+      console.error('[MNOTIFY-WEBHOOK] CLOUD_TASKS_SECRET environment variable is missing.');
+      return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
+    }
     const { searchParams } = new URL(request.url);
     const requestSecret = searchParams.get('secret') || request.headers.get('x-mnotify-secret');
     if (!requestSecret || requestSecret !== SECRET) {
@@ -39,7 +43,16 @@ async function handleCallback(request: NextRequest) {
     let body: Record<string, unknown> = {};
     if (request.method === 'POST') {
       try {
-        body = (await request.json()) as Record<string, unknown>;
+        const contentType = request.headers.get('content-type') || '';
+        if (
+          contentType.includes('application/x-www-form-urlencoded') ||
+          contentType.includes('multipart/form-data')
+        ) {
+          const formData = await request.formData();
+          body = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+        } else {
+          body = (await request.json()) as Record<string, unknown>;
+        }
       } catch {
         // Fallback to URL search parameters if POST body is empty or not JSON
       }
@@ -80,10 +93,11 @@ async function handleCallback(request: NextRequest) {
       return NextResponse.json({ message: 'No matching message log found' }, { status: 200 });
     }
 
-    // Find the log matching our recipient's phone number suffix
+    // Find the log matching our recipient's phone number suffix (skipping already finalized logs)
     const matchedDoc = logsSnap.docs.find((doc) => {
       const data = doc.data() as MessageLog;
-      return cleanPhoneSuffix(data.recipient) === cleanTo;
+      const isFinalized = data.providerStatus === 'delivered' || data.providerStatus === 'bounced';
+      return cleanPhoneSuffix(data.recipient) === cleanTo && !isFinalized;
     });
 
     if (!matchedDoc) {
@@ -144,6 +158,6 @@ async function handleCallback(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[MNOTIFY-WEBHOOK] Critical error processing callback:', message);
-    return NextResponse.json({ error: message || 'Webhook internal failure' }, { status: 500 });
+    return NextResponse.json({ error: 'Webhook internal failure' }, { status: 500 });
   }
 }

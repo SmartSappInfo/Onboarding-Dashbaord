@@ -7,6 +7,7 @@ import { assertAutomationManagePermission } from '../automation-permissions';
 // Mock Firebase Admin
 const mockCollection = {
   where: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
   get: vi.fn(),
 };
 
