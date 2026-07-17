@@ -212,32 +212,71 @@ export async function recordMediaPageEventAction(params: {
         );
       });
     } else {
-      // Keep session record state matching current updates
+      // Keep session record state matching current updates (self-healing for out-of-order logs)
       const sessionRef = pageRef.collection('sessions').doc(sessionId);
       await adminDb.runTransaction(async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
-        if (!sessionSnap.exists) return;
 
-        const data = sessionSnap.data() as MediaSessionRecord;
         const updates: Partial<MediaSessionRecord> = {
           updatedAt: now,
         };
 
-        const oldAgents = data.userAgents || [];
+        const oldAgents = sessionSnap.exists
+          ? ((sessionSnap.data() as MediaSessionRecord).userAgents || [])
+          : [];
         if (!oldAgents.includes(userAgent)) {
           updates.userAgents = [...oldAgents, userAgent];
         }
 
         if (type === 'cta_click') updates.ctaClicked = true;
         if (type === 'download') updates.downloaded = true;
+
+        const currentMaxProgress = sessionSnap.exists
+          ? ((sessionSnap.data() as MediaSessionRecord).maxProgress || 0)
+          : 0;
         if (progressPercent !== null && progressPercent !== undefined) {
-          updates.maxProgress = Math.max(data.maxProgress || 0, progressPercent);
-        }
-        if (sessionTimeSeconds !== null && sessionTimeSeconds !== undefined) {
-          updates.sessionTimeSeconds = Math.max(data.sessionTimeSeconds || 0, sessionTimeSeconds);
+          updates.maxProgress = Math.max(currentMaxProgress, progressPercent);
+        } else {
+          updates.maxProgress = currentMaxProgress;
         }
 
-        transaction.update(sessionRef, updates);
+        const currentSessionTime = sessionSnap.exists
+          ? ((sessionSnap.data() as MediaSessionRecord).sessionTimeSeconds || 0)
+          : 0;
+        if (sessionTimeSeconds !== null && sessionTimeSeconds !== undefined) {
+          updates.sessionTimeSeconds = Math.max(currentSessionTime, sessionTimeSeconds);
+        } else {
+          updates.sessionTimeSeconds = currentSessionTime;
+        }
+
+        if (!sessionSnap.exists) {
+          // Initialize session record
+          transaction.set(sessionRef, {
+            sessionId,
+            contactId: contactId || null,
+            firstSeen: now,
+            ctaClicked: updates.ctaClicked || false,
+            downloaded: updates.downloaded || false,
+            maxProgress: updates.maxProgress || 0,
+            sessionTimeSeconds: updates.sessionTimeSeconds || 0,
+            updatedAt: now,
+            userAgents: updates.userAgents || [userAgent],
+          });
+
+          // Increment uniqueViews on parent page record since this is a new session
+          transaction.set(
+            pageRef,
+            {
+              stats: {
+                uniqueViews: FieldValue.increment(1),
+              },
+            },
+            { merge: true }
+          );
+        } else {
+          // Update existing session record
+          transaction.update(sessionRef, updates);
+        }
       });
     }
 

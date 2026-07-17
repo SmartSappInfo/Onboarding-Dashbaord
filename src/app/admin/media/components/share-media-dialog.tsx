@@ -90,7 +90,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete'>('immediate');
     const [slug, setSlug] = React.useState<string>('');
     const [isSlugChecking, setIsSlugChecking] = React.useState<boolean>(false);
-    const [slugStatus, setSlugStatus] = React.useState<'idle' | 'available' | 'conflict'>('idle');
+    const [slugStatus, setSlugStatus] = React.useState<'idle' | 'available' | 'conflict' | 'too-short'>('idle');
     
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -176,7 +176,10 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             setSlugStatus('idle');
             return;
         }
-
+        if (slug.trim().length < 3) {
+            setSlugStatus('too-short');
+            return;
+        }
         setIsSlugChecking(true);
         const delay = setTimeout(async () => {
             try {
@@ -450,6 +453,11 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 ✗ Slug already in use
                                             </span>
                                         )}
+                                        {!isSlugChecking && slugStatus === 'too-short' && (
+                                            <span className="text-[9px] font-bold text-amber-500">
+                                                ⚠ Too short (min 3 chars)
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex gap-2 items-center">
                                         <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
@@ -460,7 +468,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                             className={cn(
                                                 "h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 w-full",
                                                 slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border border-emerald-500/20 bg-emerald-500/5",
-                                                slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5"
+                                                slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5",
+                                                slugStatus === 'too-short' && "focus:ring-amber-500/20 focus:border-amber-500 border border-amber-500/20 bg-amber-500/5"
                                             )}
                                         />
                                     </div>
@@ -707,7 +716,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8 cursor-pointer">Discard</Button>
                                 <Button 
                                     type="submit" 
-                                    disabled={isSaving || !title.trim() || isSlugChecking || slugStatus === 'conflict'} 
+                                    disabled={isSaving || !title.trim() || isSlugChecking || slugStatus === 'conflict' || slugStatus === 'too-short'} 
                                     className="rounded-xl font-bold h-12 px-10 shadow-lg cursor-pointer transition-all active:scale-95 gap-2"
                                 >
                                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}

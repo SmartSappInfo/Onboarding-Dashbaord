@@ -88,7 +88,11 @@ export default function MediaShareClient({
         logEvent('view');
     }, [logEvent]);
 
+    const isAnyPlaying = isPlaying || isVideoPlaying;
+
     React.useEffect(() => {
+        if (!isAnyPlaying) return;
+
         const interval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
             recordMediaPageEventAction({
@@ -103,7 +107,7 @@ export default function MediaShareClient({
         }, 15000);
 
         return () => clearInterval(interval);
-    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId]);
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, isAnyPlaying]);
 
     React.useEffect(() => {
         const sendBeacon = () => {

@@ -14,9 +14,11 @@ import ReactFlow, {
     Edge,
     Node,
     NodeChange,
-    ConnectionLineType
+    ConnectionLineType,
+    getSmoothStepPath
 } from 'reactflow';
 import { DeletableEdge } from '../[id]/edit/components/edges/DeletableEdge';
+import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap } from '@/lib/automations/graph-rewriter';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
@@ -156,6 +158,9 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
     // Insert-above mode: when set, the next library step gets inserted above this node
     const insertAboveRef = React.useRef<string | null>(null);
 
+    // Insert-on-edge mode: when set, the next library step gets spliced onto this edge
+    const insertOnEdgeRef = React.useRef<string | null>(null);
+
     // Step action confirmation dialog (clone / delete)
     const [stepActionDialog, setStepActionDialog] = React.useState<{
         action: 'clone' | 'delete';
@@ -176,6 +181,38 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         }
         return false;
     });
+
+    // Cache graph state for rollback on drop cancel
+    const preDragGraphRef = React.useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
+    const validEdgesMidpointsRef = React.useRef<Map<string, { x: number; y: number }>>(new Map());
+    const [dragOverEdgeId, setDragOverEdgeId] = React.useState<string | null>(null);
+    const [dropReconciliation, setDropReconciliation] = React.useState<{
+        draggedNodeId: string;
+        targetEdgeId: string;
+    } | null>(null);
+
+    // Midpoint helper
+    const getEdgeMidpoint = React.useCallback((edge: Edge, currentNodes: Node[]) => {
+        const sourceNode = currentNodes.find(n => n.id === edge.source);
+        const targetNode = currentNodes.find(n => n.id === edge.target);
+        if (!sourceNode || !targetNode) return { x: 0, y: 0 };
+        
+        const sourceX = sourceNode.position.x + 110;
+        const sourceY = sourceNode.position.y + 80;
+        const targetX = targetNode.position.x + 110;
+        const targetY = targetNode.position.y;
+        
+        const [_, labelX, labelY] = getSmoothStepPath({
+            sourceX,
+            sourceY,
+            sourcePosition: 'bottom' as any,
+            targetX,
+            targetY,
+            targetPosition: 'top' as any,
+        });
+        
+        return { x: labelX, y: labelY };
+    }, []);
     
     // Store target operations when switching nodes or pane click
     const nextActionRef = React.useRef<{
@@ -1045,6 +1082,27 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             y = targetY;
         }
 
+        // If inserting on an edge, position at midpoint and push downstream of target down
+        const insertOnEdgeId = insertOnEdgeRef.current;
+        if (insertOnEdgeId) {
+            const targetEdge = edges.find(e => e.id === insertOnEdgeId);
+            if (targetEdge) {
+                const sNode = nodes.find(n => n.id === targetEdge.source);
+                const tNode = nodes.find(n => n.id === targetEdge.target);
+                if (sNode && tNode) {
+                    x = (sNode.position.x + tNode.position.x) / 2;
+                    y = (sNode.position.y + tNode.position.y) / 2;
+
+                    // Shift T and descendants down
+                    const downstreamIds = getDownstreamNodeIds(targetEdge.target);
+                    const shiftIds = new Set([targetEdge.target, ...downstreamIds]);
+                    setNodes(nds => nds.map(n =>
+                        shiftIds.has(n.id) ? { ...n, position: { ...n.position, y: n.position.y + 140 } } : n
+                    ));
+                }
+            }
+        }
+
         // If inserting above a specific node, position above it and push it down
         if (insertAboveId) {
             const belowNode = nodes.find(n => n.id === insertAboveId);
@@ -1091,8 +1149,40 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
         setNodes(nds => [...nds, newNode]);
 
-        // Handle insert-above wiring: parent→NEW→target (was parent→target)
-        if (insertAboveId && nodeType !== 'triggerNode') {
+        // Handle insert-on-edge wiring: parent -> NEW -> target
+        if (insertOnEdgeId && nodeType !== 'triggerNode') {
+            insertOnEdgeRef.current = null; // clear immediately
+            const targetEdge = edges.find(e => e.id === insertOnEdgeId);
+            if (targetEdge) {
+                const S = targetEdge.source;
+                const T = targetEdge.target;
+                const sHandle = targetEdge.sourceHandle;
+
+                setEdges(eds => {
+                    let updated = eds.filter(e => e.id !== insertOnEdgeId);
+                    // Add S -> NEW
+                    updated.push({
+                        id: `edge_${S}_to_${id}_${Date.now()}`,
+                        source: S,
+                        sourceHandle: sHandle,
+                        target: id,
+                        type: 'deletable',
+                        animated: false,
+                        data: { onDelete: deleteEdge },
+                    });
+                    // Add NEW -> T
+                    updated.push({
+                        id: `edge_${id}_to_${T}_${Date.now()}`,
+                        source: id,
+                        target: T,
+                        type: 'deletable',
+                        animated: false,
+                        data: { onDelete: deleteEdge },
+                    });
+                    return updated;
+                });
+            }
+        } else if (insertAboveId && nodeType !== 'triggerNode') {
             const incomingEdge = edges.find(e => e.target === insertAboveId);
             setEdges(eds => {
                 let updated = [...eds];
@@ -1168,10 +1258,18 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     : edgeExecutionStatus === 'not-traversed'
                     ? { stroke: '#d1d5db', strokeWidth: 1, opacity: 0.3 }
                     : undefined,
-                data: { ...e.data, onDelete: deleteEdge },
+                data: { 
+                    ...e.data, 
+                    onDelete: deleteEdge,
+                    isDragOver: dragOverEdgeId === e.id,
+                    onAddNode: () => {
+                        insertOnEdgeRef.current = e.id;
+                        setIsLibraryOpen(true);
+                    }
+                },
             };
         });
-    }, [edges, deleteEdge, selectedRun]);
+    }, [edges, deleteEdge, selectedRun, dragOverEdgeId]);
 
     // --- Note editing state ---
     const [noteDialogNodeId, setNoteDialogNodeId] = React.useState<string | null>(null);
@@ -1280,6 +1378,20 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
     // --- Group drag handlers ---
     const onNodeDragStart = React.useCallback((_event: React.MouseEvent, node: Node) => {
+        // Cache initial graph state for rollback
+        preDragGraphRef.current = { nodes, edges };
+
+        // Pre-calculate valid target edge midpoints
+        const midpoints = new Map<string, { x: number; y: number }>();
+        edges.forEach(e => {
+            // Treat as subtree check for safety
+            const isValid = canInsertNodeOnEdge(nodes, edges, node.id, e.id, false, true);
+            if (isValid) {
+                midpoints.set(e.id, getEdgeMidpoint(e, nodes));
+            }
+        });
+        validEdgesMidpointsRef.current = midpoints;
+
         const downstreamIds = getDownstreamNodeIds(node.id);
         if (downstreamIds.length === 0) {
             dragStartRef.current = null;
@@ -1296,11 +1408,45 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             startPos: { x: node.position.x, y: node.position.y },
             downstreamPositions,
         };
-    }, [nodes, getDownstreamNodeIds]);
+    }, [nodes, edges, getDownstreamNodeIds, getEdgeMidpoint]);
 
-    const onNodeDragStop = React.useCallback(() => {
-        dragStartRef.current = null;
+    const lastDragCheckRef = React.useRef<number>(0);
+    const onNodeDrag = React.useCallback((_event: React.MouseEvent, node: Node) => {
+        const now = Date.now();
+        if (now - lastDragCheckRef.current < 16) return;
+        lastDragCheckRef.current = now;
+
+        const nodeCenter = {
+            x: node.position.x + 110,
+            y: node.position.y + 40,
+        };
+
+        let closestEdgeId: string | null = null;
+        let minDistance = 60; // 60px proximity threshold
+
+        validEdgesMidpointsRef.current.forEach((midpoint, edgeId) => {
+            const distance = Math.hypot(nodeCenter.x - midpoint.x, nodeCenter.y - midpoint.y);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestEdgeId = edgeId;
+            }
+        });
+
+        setDragOverEdgeId(closestEdgeId);
     }, []);
+
+    const onNodeDragStop = React.useCallback((_event: React.MouseEvent, node: Node) => {
+        dragStartRef.current = null;
+        
+        if (dragOverEdgeId) {
+            setDropReconciliation({
+                draggedNodeId: node.id,
+                targetEdgeId: dragOverEdgeId,
+            });
+        }
+        
+        setDragOverEdgeId(null);
+    }, [dragOverEdgeId]);
 
     // Wrap onNodesChange so downstream nodes move in the exact same batch
     const handleNodesChange = React.useCallback((changes: NodeChange[]) => {
@@ -1353,6 +1499,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 onConnect={onConnect}
                 onEdgeUpdate={onEdgeUpdate}
                 onNodeDragStart={onNodeDragStart}
+                onNodeDrag={onNodeDrag}
                 onNodeDragStop={onNodeDragStop}
                 onNodeClick={(e, node) => { setContextMenu(null); onNodeClick(e, node); }}
                 onEdgeClick={(e, edge) => { setContextMenu(null); onEdgeClick(e, edge); }}
