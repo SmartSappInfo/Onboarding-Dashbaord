@@ -10,8 +10,16 @@ const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 
 interface TargetPayload {
   entityId: string;
-  entityType: 'contact' | 'deal' | 'company';
+  entityType: string;
   payload: Record<string, unknown>;
+}
+
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunked: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunked.push(array.slice(i, i + size));
+  }
+  return chunked;
 }
 
 export async function POST(request: NextRequest) {
@@ -56,13 +64,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Security Check: Validate tenant isolation for all targets in a single database batch read
-    const docRefs = targets.map((t) => adminDb.collection('workspace_entities').doc(`${workspaceId}_${t.entityId}`));
+    const docRefs = targets.map((t) => {
+      if (t.entityType === 'school') {
+        return adminDb.collection('schools').doc(t.entityId);
+      }
+      if (t.entityType === 'prospect') {
+        return adminDb.collection('prospects').doc(t.entityId);
+      }
+      // Default to workspace_entities for 'contact', 'company', 'deal', 'institution'
+      return adminDb.collection('workspace_entities').doc(`${workspaceId}_${t.entityId}`);
+    });
+    
     const docSnaps = docRefs.length > 0 ? await adminDb.getAll(...docRefs) : [];
 
     const finalTargets = targets.map((target, idx) => {
       const snap = docSnaps[idx];
       if (!snap || !snap.exists) {
-        console.warn(`[SecurityAlert] Tenant association ${workspaceId}_${target.entityId} does not exist. Skipping.`);
+        console.warn(`[SecurityAlert] Tenant association for ${target.entityId} does not exist. Skipping.`);
         return null;
       }
       const data = snap.data();
@@ -79,24 +97,29 @@ export async function POST(request: NextRequest) {
 
     console.info(`[BULK-TRIGGER-WORKER] Enrolling ${finalTargets.length} contacts into automation ${automationId}`);
 
-    // 5. Enroll validated targets concurrently
-    await Promise.all(
-      finalTargets.map(async (target) => {
-        const enrichedPayload = {
-          ...target.payload,
-          entityId: target.entityId,
-          entityType: target.entityType,
-          workspaceId,
-          organizationId,
-          _firingTrigger: trigger,
-        };
-        try {
-          await executeAutomation(automation, enrichedPayload);
-        } catch (err) {
-          console.error(`[BULK-TRIGGER-WORKER] Execution failed for contact ${target.entityId} in automation ${automationId}:`, err);
-        }
-      })
-    );
+    // 5. Enroll validated targets in concurrent micro-batches
+    const CONCURRENCY_LIMIT = 15;
+    const targetChunks = chunkArray(finalTargets, CONCURRENCY_LIMIT);
+    
+    for (const chunk of targetChunks) {
+      await Promise.all(
+        chunk.map(async (target) => {
+          const enrichedPayload = {
+            ...target.payload,
+            entityId: target.entityId,
+            entityType: target.entityType,
+            workspaceId,
+            organizationId,
+            _firingTrigger: trigger,
+          };
+          try {
+            await executeAutomation(automation, enrichedPayload);
+          } catch (err) {
+            console.error(`[BULK-TRIGGER-WORKER] Execution failed for contact ${target.entityId} in automation ${automationId}:`, err);
+          }
+        })
+      );
+    }
 
     return NextResponse.json({ success: true, processedCount: finalTargets.length });
   } catch (err: unknown) {
