@@ -42,8 +42,8 @@ import {
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { getMessageNodeLogsAction } from '@/lib/automation-actions';
-import type { MessageLog } from '@/lib/types';
+import { getMessageNodeLogsAction, getMessageNodeStatsAction } from '@/lib/automation-actions';
+import type { MessageLog, MessageNodeStats } from '@/lib/types';
 import { 
   ResponsiveContainer, 
   PieChart, 
@@ -175,6 +175,8 @@ export function MessageNodeLogsDialog({
   const [isBulkCleaning, setIsBulkCleaning] = React.useState(false);
   const [bulkCleanMode, setBulkCleanMode] = React.useState<'archive' | 'delete'>('archive');
 
+  const [nodeStats, setNodeStats] = React.useState<MessageNodeStats | null>(null);
+  
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
     if (!isOpen || !automationId || !nodeId) return;
@@ -183,8 +185,12 @@ export function MessageNodeLogsDialog({
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getMessageNodeLogsAction(automationId, nodeId);
-        setLogs(data);
+        const [logsData, statsData] = await Promise.all([
+          getMessageNodeLogsAction(automationId, nodeId),
+          getMessageNodeStatsAction(automationId, nodeId)
+        ]);
+        setLogs(logsData);
+        setNodeStats(statsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load delivery logs');
       } finally {
@@ -204,6 +210,19 @@ export function MessageNodeLogsDialog({
 
   // Counts and metrics
   const stats = React.useMemo(() => {
+    if (nodeStats) {
+      return {
+        sent: nodeStats.sent ?? 0,
+        delivered: nodeStats.delivered ?? 0,
+        opened: nodeStats.opened ?? 0,
+        clicked: nodeStats.clicked ?? 0,
+        bounced: nodeStats.bounced ?? 0,
+        unsubscribed: nodeStats.unsubscribed ?? 0,
+        replied: nodeStats.replied ?? 0,
+        pending: Math.max(0, (nodeStats.sent ?? 0) - ((nodeStats.delivered ?? 0) + (nodeStats.bounced ?? 0)))
+      };
+    }
+
     const res = {
       sent: logs.length,
       delivered: 0,
@@ -235,7 +254,7 @@ export function MessageNodeLogsDialog({
     });
 
     return res;
-  }, [logs]);
+  }, [logs, nodeStats]);
 
   // Chart data distribution (mutually exclusive slices)
   const chartData = React.useMemo(() => {

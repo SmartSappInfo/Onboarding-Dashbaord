@@ -3330,6 +3330,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "message_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "providerId", "order": "ASCENDING" },
+        { "fieldPath": "recipient", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
