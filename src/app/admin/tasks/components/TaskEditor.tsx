@@ -115,9 +115,11 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 interface TaskEditorProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    task?: Task | null;
+    task?: Partial<Task> | null;
     onSave: (data: any) => Promise<void>;
     isSaving: boolean;
+    disableEntitySelect?: boolean;
+    preFilledEntityName?: string;
 }
 
 const PRESET_TEMPLATES = [
@@ -183,7 +185,7 @@ const PRESET_TEMPLATES = [
     }
 ];
 
-export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving }: TaskEditorProps) {
+export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving, disableEntitySelect, preFilledEntityName }: TaskEditorProps) {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
@@ -276,16 +278,16 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                 if (task.id) {
                     setActiveStep(2);
                     reset({
-                        title: task.title,
-                        description: task.description,
-                        priority: task.priority,
-                        category: task.category,
-                        status: task.status,
+                        title: task.title || '',
+                        description: task.description || '',
+                        priority: task.priority || 'medium',
+                        category: task.category || 'general',
+                        status: task.status || 'todo',
                         assignedTo: normalizeAssignees(task.assignedTo),
                         entityId: task.entityId || '',
                         entityType: (task.entityType as any) || undefined,
                         startDate: task.startDate ? new Date(task.startDate) : undefined,
-                        dueDate: new Date(task.dueDate),
+                        dueDate: task.dueDate ? new Date(task.dueDate) : new Date(),
                         reminders: (task.reminders || []).map(r => ({ ...r, reminderTime: new Date(r.reminderTime) })),
                         notes: task.notes || [],
                         attachments: task.attachments || [],
@@ -317,7 +319,22 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     } else {
                         setActiveStep(1);
                         reset({
-                            title: '', description: '', priority: 'medium', category: 'general', status: task.status || 'todo', assignedTo: currentUser?.uid ? [currentUser.uid] : [], entityId: '', entityType: undefined, startDate: task.startDate ? new Date(task.startDate) : new Date(), dueDate: task.dueDate ? new Date(task.dueDate) : new Date(), reminders: [], notes: [], attachments: [], relatedEntityType: null, relatedParentId: null, relatedEntityId: null,
+                            title: '', 
+                            description: '', 
+                            priority: 'medium', 
+                            category: 'general', 
+                            status: task.status || 'todo', 
+                            assignedTo: currentUser?.uid ? [currentUser.uid] : [], 
+                            entityId: task.entityId || '', 
+                            entityType: (task.entityType as any) || undefined, 
+                            startDate: task.startDate ? new Date(task.startDate) : new Date(), 
+                            dueDate: task.dueDate ? new Date(task.dueDate) : new Date(), 
+                            reminders: [], 
+                            notes: [], 
+                            attachments: [], 
+                            relatedEntityType: null, 
+                            relatedParentId: null, 
+                            relatedEntityId: null,
                         });
                     }
                 }
@@ -573,14 +590,24 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         </div>
                                         <div className="space-y-2 text-left">
                                             <Label className="text-xs font-semibold text-foreground/90 ml-1 flex items-center gap-2 text-left"><Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Link to {singular}</Label>
-                                            <Controller name="entityId" control={control} render={({ field }) => (
-                                                <EntityCombobox
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    placeholder="General (Unlinked)"
-                                                    noneLabel="General / Unlinked"
-                                                />
-                                            )} />
+                                            {disableEntitySelect ? (
+                                                <div className="flex items-center justify-between h-12 w-full rounded-xl bg-muted/30 border border-border px-4 py-2 text-sm text-muted-foreground select-none cursor-not-allowed">
+                                                    <span className="flex items-center gap-2 font-medium">
+                                                        <Building2 className="h-4 w-4 text-muted-foreground/60" />
+                                                        {preFilledEntityName || 'Linked Entity'}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-primary/10 text-primary">Locked</span>
+                                                </div>
+                                            ) : (
+                                                <Controller name="entityId" control={control} render={({ field }) => (
+                                                    <EntityCombobox
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        placeholder="General (Unlinked)"
+                                                        noneLabel="General / Unlinked"
+                                                    />
+                                                )} />
+                                            )}
                                         </div>
                                     </div>
 

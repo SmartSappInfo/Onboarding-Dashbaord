@@ -93,6 +93,8 @@ import EntityContactDirectory from '../components/EntityContactDirectory';
 import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import TaskEditor from '../../tasks/components/TaskEditor';
+import { createTaskAction } from '@/lib/task-server-actions';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -141,6 +143,8 @@ export default function EntityDetailPage() {
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
     const [isManageWorkspacesOpen, setIsManageWorkspacesOpen] = React.useState(false);
     const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
+    const [isTaskEditorOpen, setIsTaskEditorOpen] = React.useState(false);
+    const [isSavingTask, setIsSavingTask] = React.useState(false);
 
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
@@ -263,6 +267,32 @@ export default function EntityDetailPage() {
         if (firestore) {
             completeTaskNonBlocking(firestore, taskId);
             toast({ title: 'Task Completed' });
+        }
+    };
+
+    const handleSaveTask = async (payload: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+        if (!currentUser) return;
+        setIsSavingTask(true);
+        try {
+            const finalPayload = {
+                ...payload,
+                workspaceId: activeWorkspaceId,
+                entityId: entityId,
+                entityName: displayName,
+                entityType: entityData.entityType
+            };
+            const res = await createTaskAction(finalPayload, currentUser.uid);
+            if (res.success) {
+                toast({ title: 'Task Initialized', description: `Task "${payload.title}" created successfully.` });
+                setIsTaskEditorOpen(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
+            }
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Failed to create task.';
+            toast({ variant: 'destructive', title: 'Error', description: errorMessage });
+        } finally {
+            setIsSavingTask(false);
         }
     };
 
@@ -477,11 +507,14 @@ export default function EntityDetailPage() {
  <TabsContent value="tasks" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
  <div className="flex justify-between items-center mb-2 px-2">
  <h3 className="text-xl font-semibold tracking-tight">Pending Actions</h3>
- <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
-                                <Link href={`/admin/tasks?entityId=${entityId}`}>
- <Plus className="h-4 w-4" /> Create Task
-                                </Link>
-                            </Button>
+  <Button 
+      size="sm" 
+      variant="outline" 
+      className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2 transition-all active:scale-[0.97]" 
+      onClick={() => setIsTaskEditorOpen(true)}
+  >
+      <Plus className="h-4 w-4" /> Create Task
+  </Button>
                         </div>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                             {isLoadingTasks ? (
@@ -719,6 +752,22 @@ export default function EntityDetailPage() {
                 entityContacts={resolveEntityContacts(entityData)}
                 entityName={entityData.name}
               />
+            )}
+
+            {entityData && (
+                <TaskEditor
+                    open={isTaskEditorOpen}
+                    onOpenChange={setIsTaskEditorOpen}
+                    task={{
+                        entityId: entityId,
+                        entityType: entityData.entityType,
+                        entityName: displayName
+                    } as Partial<Task>}
+                    onSave={handleSaveTask}
+                    isSaving={isSavingTask}
+                    disableEntitySelect={true}
+                    preFilledEntityName={displayName}
+                />
             )}
         </PageContainerFluid>
     );
