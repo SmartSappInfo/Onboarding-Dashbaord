@@ -597,9 +597,9 @@ export function renderBlocksToHtml(
         
         blockHtml = `
           <div style="background-color: ${scoreBg}; color: ${scoreColor}; ${paddingStyles ? '' : 'padding: 48px 32px;'} border-radius: ${scoreRadius}; text-align: center; margin: 32px 0; font-family: '${fontFam}', sans-serif; box-shadow: 0 20px 25px -5px rgba(59, 95, 255, 0.2); ${wrapperStyle}">
-            <div style="text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; margin-bottom: 16px; opacity: 0.8; color: ${scoreColor};">${pillTextVal}</div>
-            <div style="font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.05em; color: ${scoreColor};">${score}</div>
-            <div style="font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 8px; letter-spacing: 0.1em; color: ${scoreColor};">${subtitleVal}</div>
+            <div style="text-align: center; text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; margin-bottom: 16px; opacity: 0.8; color: ${scoreColor};">${pillTextVal}</div>
+            <div style="text-align: center; font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.05em; color: ${scoreColor};">${score}</div>
+            <div style="text-align: center; font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 8px; letter-spacing: 0.1em; color: ${scoreColor};">${subtitleVal}</div>
           </div>
         `;
         break;
