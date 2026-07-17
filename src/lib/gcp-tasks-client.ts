@@ -5,7 +5,7 @@ import { adminDb } from './firebase-admin';
 const PROJECT = process.env.GCP_PROJECT || '';
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
-const BASE_URL = process.env.APP_BASE_URL || 'http://127.0.0.1:3000';
+const BASE_URL = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
 const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
 async function resolveRequestBaseUrl(): Promise<string> {
