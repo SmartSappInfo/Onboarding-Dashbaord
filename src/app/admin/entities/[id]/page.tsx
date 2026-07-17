@@ -49,6 +49,7 @@ import {
     Save,
     Hash,
     PhoneCall,
+    Tag as TagIcon,
     Download,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
@@ -393,9 +394,7 @@ export default function EntityDetailPage() {
                                   {displayLocation}
                                 </span>
                             </div>
-                            <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <TagSelector contactId={workspaceEntityId} contactType="workspace_entity" currentTagIds={weData.workspaceTags || []} />
-                            </div>
+
                             {/* Summary Metrics Row */}
                             <div className="pt-3 flex flex-wrap items-center gap-3">
                                 {capacity > 0 && (
@@ -648,10 +647,29 @@ export default function EntityDetailPage() {
               </Card>
              </div>
              <div className="lg:col-span-1 space-y-6">
-                 {/* Quick Notes Widget */}
-                 <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
+                  {/* Quick Notes Widget */}
+                  <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
 
-                 {/* Workspaces Panel */}
+                  {/* Tags Widget */}
+                  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                      <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left flex flex-row items-center justify-between">
+                          <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                              <TagIcon className="h-4 w-4 text-primary" /> Tags
+                              <span className="ml-1 bg-primary/10 text-primary text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                  {(weData.workspaceTags || []).length}
+                              </span>
+                          </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 text-left">
+                          <TagSelector 
+                              contactId={workspaceEntityId} 
+                              contactType="workspace_entity" 
+                              currentTagIds={weData.workspaceTags || []} 
+                          />
+                      </CardContent>
+                  </Card>
+
+                  {/* Workspaces Panel */}
                  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
                      <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left flex flex-row items-center justify-between">
                          <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Network className="h-4 w-4" /> Workspaces</CardTitle>
