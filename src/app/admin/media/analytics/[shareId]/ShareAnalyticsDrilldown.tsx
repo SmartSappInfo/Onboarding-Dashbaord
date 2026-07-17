@@ -59,21 +59,25 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
   const getEventDescription = (event: MediaPageEventWithContact) => {
     const name = event.contactName || 'Anonymous Visitor';
+    const elapsed = event.sessionTimeSeconds ? ` (at ${formatSessionTime(event.sessionTimeSeconds)})` : '';
     switch (event.type) {
       case 'view':
         return `${name} loaded the shared page`;
       case 'media_play':
         return `${name} clicked play`;
       case 'media_progress':
-        return `${name} reached ${event.progressPercent}% completion`;
+        if (event.progressPercent !== null && event.progressPercent !== undefined) {
+          return `${name} reached ${event.progressPercent}% completion${elapsed}`;
+        }
+        return `${name} watched up to ${formatSessionTime(event.sessionTimeSeconds || 0)}`;
       case 'media_complete':
-        return `${name} watched the entire media`;
+        return `${name} watched the entire media${elapsed}`;
       case 'cta_click':
-        return `${name} clicked the Call-To-Action button`;
+        return `${name} clicked the Call-To-Action button${elapsed}`;
       case 'download':
-        return `${name} clicked the Download/Save button`;
+        return `${name} clicked the Download/Save button${elapsed}`;
       default:
-        return `${name} triggered event: ${event.type}`;
+        return `${name} triggered event: ${event.type}${elapsed}`;
     }
   };
 

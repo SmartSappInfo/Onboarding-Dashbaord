@@ -676,3 +676,21 @@ export async function cancelAutomationRunAction(
   }
 }
 
+export async function reconcilePendingSmsLogsAction(
+  automationId: string,
+  nodeId: string,
+  userId: string,
+  workspaceId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required and must be a string.');
+    }
+    const { reconcilePendingSmsLogs } = await import('./automations/reconciliation');
+    return await reconcilePendingSmsLogs(automationId, nodeId, userId, workspaceId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+

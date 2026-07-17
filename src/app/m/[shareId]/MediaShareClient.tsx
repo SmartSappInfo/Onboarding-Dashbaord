@@ -23,7 +23,7 @@ interface MediaShareClientProps {
     ctaMode: 'modal' | 'redirect' | 'replace';
     ctaPretext: string;
     ctaPopoverEnabled: boolean;
-    ctaActivationGate?: 'immediate' | 'half' | 'complete';
+    ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
@@ -62,7 +62,9 @@ export default function MediaShareClient({
     const sessionId = React.useMemo(() => nanoid(), []);
     const startTimeRef = React.useRef<number>(Date.now());
     const loggedPlay = React.useRef(false);
+    const loggedQuarter = React.useRef(false);
     const loggedHalf = React.useRef(false);
+    const loggedThreeQuarters = React.useRef(false);
     const loggedComplete = React.useRef(false);
 
     const logEvent = React.useCallback(async (
@@ -162,18 +164,36 @@ export default function MediaShareClient({
         const dur = audioRef.current.duration || 0;
         setCurrentTime(curr);
 
-        if (!loggedPlay.current && curr > 0) {
-            loggedPlay.current = true;
-            logEvent('media_play');
-        }
-
-        if (dur > 0 && curr >= dur / 2) {
-            if (ctaActivationGate === 'half') {
-                setIsCtaUnlocked(true);
+        if (dur > 0) {
+            // 25% milestone
+            if (curr >= dur * 0.25) {
+                if (ctaActivationGate === 'quarter') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedQuarter.current) {
+                    loggedQuarter.current = true;
+                    logEvent('media_progress', 25);
+                }
             }
-            if (!loggedHalf.current) {
-                loggedHalf.current = true;
-                logEvent('media_progress', 50);
+            // 50% milestone
+            if (curr >= dur * 0.5) {
+                if (ctaActivationGate === 'half') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedHalf.current) {
+                    loggedHalf.current = true;
+                    logEvent('media_progress', 50);
+                }
+            }
+            // 75% milestone
+            if (curr >= dur * 0.75) {
+                if (ctaActivationGate === 'threequarters') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedThreeQuarters.current) {
+                    loggedThreeQuarters.current = true;
+                    logEvent('media_progress', 75);
+                }
             }
         }
     };
@@ -187,7 +207,7 @@ export default function MediaShareClient({
         setIsPlaying(false);
         setCurrentTime(0);
         setIsPlaybackFinished(true);
-        if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
+        if (ctaActivationGate === 'complete' || ctaActivationGate === 'threequarters' || ctaActivationGate === 'half' || ctaActivationGate === 'quarter') {
             setIsCtaUnlocked(true);
         }
         if (!loggedComplete.current) {
@@ -257,18 +277,36 @@ export default function MediaShareClient({
         const curr = video.currentTime;
         const dur = video.duration || 0;
         
-        if (!loggedPlay.current && curr > 0) {
-            loggedPlay.current = true;
-            logEvent('media_play');
-        }
-
-        if (dur > 0 && curr >= dur / 2) {
-            if (ctaActivationGate === 'half') {
-                setIsCtaUnlocked(true);
+        if (dur > 0) {
+            // 25% milestone
+            if (curr >= dur * 0.25) {
+                if (ctaActivationGate === 'quarter') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedQuarter.current) {
+                    loggedQuarter.current = true;
+                    logEvent('media_progress', 25);
+                }
             }
-            if (!loggedHalf.current) {
-                loggedHalf.current = true;
-                logEvent('media_progress', 50);
+            // 50% milestone
+            if (curr >= dur * 0.5) {
+                if (ctaActivationGate === 'half') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedHalf.current) {
+                    loggedHalf.current = true;
+                    logEvent('media_progress', 50);
+                }
+            }
+            // 75% milestone
+            if (curr >= dur * 0.75) {
+                if (ctaActivationGate === 'threequarters') {
+                    setIsCtaUnlocked(true);
+                }
+                if (!loggedThreeQuarters.current) {
+                    loggedThreeQuarters.current = true;
+                    logEvent('media_progress', 75);
+                }
             }
         }
     };
@@ -276,7 +314,7 @@ export default function MediaShareClient({
     const handleVideoEnded = () => {
         setIsPlaybackFinished(true);
         setIsVideoPlaying(false);
-        if (ctaActivationGate === 'complete' || ctaActivationGate === 'half') {
+        if (ctaActivationGate === 'complete' || ctaActivationGate === 'threequarters' || ctaActivationGate === 'half' || ctaActivationGate === 'quarter') {
             setIsCtaUnlocked(true);
         }
         if (!loggedComplete.current) {
@@ -549,7 +587,12 @@ export default function MediaShareClient({
                             <p className="text-xs font-bold truncate">{title}</p>
                             <p className="text-[10px] text-muted-foreground truncate mt-0.5">
                                 {!isCtaUnlocked 
-                                    ? (ctaActivationGate === 'half' ? '🔒 Unlocks halfway through' : '🔒 Unlocks on playback complete') 
+                                    ? (
+                                        ctaActivationGate === 'quarter' ? '🔒 Unlocks 25% through playback' :
+                                        ctaActivationGate === 'half' ? '🔒 Unlocks halfway through' :
+                                        ctaActivationGate === 'threequarters' ? '🔒 Unlocks 75% through playback' :
+                                        '🔒 Unlocks on playback complete'
+                                      ) 
                                     : description}
                             </p>
                         </div>
@@ -921,7 +964,10 @@ export default function MediaShareClient({
                         </Button>
                         {!isCtaUnlocked && (
                             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-450 flex items-center gap-1">
-                                {ctaActivationGate === 'half' ? 'Unlocks halfway through playback' : 'Unlocks on playback complete'}
+                                {ctaActivationGate === 'quarter' && 'Unlocks 25% through playback'}
+                                {ctaActivationGate === 'half' && 'Unlocks halfway through playback'}
+                                {ctaActivationGate === 'threequarters' && 'Unlocks 75% through playback'}
+                                {ctaActivationGate === 'complete' && 'Unlocks on playback complete'}
                             </p>
                         )}
                     </div>

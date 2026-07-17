@@ -48,7 +48,7 @@ interface ShareConfig {
     ctaMode?: 'modal' | 'redirect' | 'replace';
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
-    ctaActivationGate?: 'immediate' | 'half' | 'complete';
+    ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
     slug?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -87,7 +87,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaMode, setCtaMode] = React.useState<'modal' | 'redirect' | 'replace'>('redirect');
     const [ctaPretext, setCtaPretext] = React.useState<string>('');
     const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
-    const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'half' | 'complete'>('immediate');
+    const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete'>('immediate');
     const [slug, setSlug] = React.useState<string>('');
     const [isSlugChecking, setIsSlugChecking] = React.useState<boolean>(false);
     const [slugStatus, setSlugStatus] = React.useState<'idle' | 'available' | 'conflict'>('idle');
@@ -558,9 +558,11 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         onChange={(e) => setCtaActivationGate(e.target.value as any)}
                                                         className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
                                                     >
-                                                        <option value="immediate">Active Immediately (Before play)</option>
-                                                        <option value="half">Unlock Halfway Through Playback</option>
-                                                        <option value="complete">Unlock on Playback Complete</option>
+                                                         <option value="immediate">Active Immediately (Before play)</option>
+                                                         <option value="quarter">Unlock 25% (Quarter) Through</option>
+                                                         <option value="half">Unlock halfway (50%) Through</option>
+                                                         <option value="threequarters">Unlock 75% (Three-quarters) Through</option>
+                                                         <option value="complete">Unlock on Playback Complete (100%)</option>
                                                     </select>
                                                 </div>
                                             )}

@@ -42,8 +42,9 @@ import {
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { getMessageNodeLogsAction, getMessageNodeStatsAction } from '@/lib/automation-actions';
+import { getMessageNodeLogsAction, getMessageNodeStatsAction, reconcilePendingSmsLogsAction } from '@/lib/automation-actions';
 import type { MessageLog, MessageNodeStats } from '@/lib/types';
+import { useUser } from '@/firebase';
 import { 
   ResponsiveContainer, 
   PieChart, 
@@ -176,6 +177,9 @@ export function MessageNodeLogsDialog({
   const [bulkCleanMode, setBulkCleanMode] = React.useState<'archive' | 'delete'>('archive');
 
   const [nodeStats, setNodeStats] = React.useState<MessageNodeStats | null>(null);
+  const { user } = useUser();
+  const [isReconciling, setIsReconciling] = React.useState(false);
+  const [reconcileResult, setReconcileResult] = React.useState<{ updatedCount: number } | null>(null);
   
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
@@ -200,6 +204,39 @@ export function MessageNodeLogsDialog({
 
     void loadLogs();
   }, [isOpen, automationId, nodeId]);
+
+  // Background reconciliation on mount/open
+  React.useEffect(() => {
+    const uid = user?.uid;
+    const wsId = activeWorkspaceId;
+    if (!isOpen || !automationId || !nodeId || channel !== 'sms' || !uid || !wsId) return;
+
+    async function triggerReconciliation() {
+      if (!uid || !wsId) return;
+      setIsReconciling(true);
+      try {
+        const res = await reconcilePendingSmsLogsAction(automationId, nodeId, uid, wsId);
+        if (res && res.success && 'updatedCount' in res) {
+          const count = res.updatedCount || 0;
+          setReconcileResult({ updatedCount: count });
+          if (count > 0) {
+            const [logsData, statsData] = await Promise.all([
+              getMessageNodeLogsAction(automationId, nodeId),
+              getMessageNodeStatsAction(automationId, nodeId)
+            ]);
+            setLogs(logsData);
+            setNodeStats(statsData);
+          }
+        }
+      } catch (err) {
+        console.warn('[RECONCILIATION] Failed background reconciliation sync:', err);
+      } finally {
+        setIsReconciling(false);
+      }
+    }
+
+    void triggerReconciliation();
+  }, [isOpen, automationId, nodeId, channel, user?.uid, activeWorkspaceId]);
 
   // Sync active tab to initialTab if dialog opens with a specific metric clicked
   React.useEffect(() => {
@@ -793,8 +830,34 @@ export function MessageNodeLogsDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {isReconciling && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-2.5 text-xs text-indigo-700 animate-pulse my-1 dark:border-indigo-950 dark:bg-indigo-950/20 dark:text-indigo-300 transition-all shrink-0">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+              <span className="font-semibold">Reconciling live SMS delivery statuses from gateway...</span>
+            </div>
+            <span className="text-[10px] text-indigo-500/70 font-medium text-right whitespace-nowrap">Please wait</span>
+          </div>
+        )}
+
+        {reconcileResult && reconcileResult.updatedCount > 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-2.5 text-xs text-emerald-700 my-1 dark:border-emerald-950 dark:bg-emerald-950/20 dark:text-emerald-300 transition-all shrink-0">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <span className="font-semibold">Reconciliation complete! Updated {reconcileResult.updatedCount} pending messages.</span>
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setReconcileResult(null)} 
+              className="text-[10px] text-emerald-500/80 hover:text-emerald-500 underline font-medium cursor-pointer shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {error && (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive my-2">
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive my-2 shrink-0">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
