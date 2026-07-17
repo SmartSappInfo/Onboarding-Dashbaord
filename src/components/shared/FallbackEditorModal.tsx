@@ -49,7 +49,7 @@ export function FallbackEditorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[90%] sm:max-w-[425px] bg-slate-900/95 border-slate-800 text-slate-100 backdrop-blur-xl shadow-2xl rounded-2xl p-6 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 mx-auto">
+      <DialogContent className="w-[90%] sm:max-w-[425px] bg-slate-900/95 border-slate-800 text-slate-100 backdrop-blur-xl shadow-2xl rounded-2xl p-6 transition-all duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95 mx-auto">
         <DialogHeader className="space-y-1.5 text-left">
           <DialogTitle className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             Configure Variable Fallback

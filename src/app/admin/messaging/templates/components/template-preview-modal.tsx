@@ -213,7 +213,7 @@ export function TemplatePreviewModal({
                                 <Button 
                                     variant={viewMode === 'desktop' ? 'secondary' : 'ghost'} 
                                     size="sm" 
-                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
+                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => setViewMode('desktop')}
                                 >
                                     <Monitor className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Desktop</span>
@@ -221,7 +221,7 @@ export function TemplatePreviewModal({
                                 <Button 
                                     variant={viewMode === 'mobile' ? 'secondary' : 'ghost'} 
                                     size="sm" 
-                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
+                                    className="h-8 gap-2 rounded-lg font-semibold text-[10px] px-2.5 md:px-3 transition-all duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => setViewMode('mobile')}
                                 >
                                     <Smartphone className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Mobile</span>
@@ -237,7 +237,7 @@ export function TemplatePreviewModal({
                                 <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    className="h-9 gap-2 rounded-xl font-bold text-xs bg-background hover:bg-muted border shadow-sm transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
+                                    className="h-9 gap-2 rounded-xl font-bold text-xs bg-background hover:bg-muted border shadow-sm transition-all duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]"
                                     onClick={() => {
                                         onEdit?.(template);
                                         onClose();
@@ -249,7 +249,7 @@ export function TemplatePreviewModal({
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-9 w-9 rounded-xl border hover:bg-muted transition-all duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] text-muted-foreground hover:text-foreground"
+                                className="h-9 w-9 rounded-xl border hover:bg-muted transition-all duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] text-muted-foreground hover:text-foreground"
                                 onClick={onClose}
                             >
                                 <X className="h-4 w-4" />

@@ -629,7 +629,7 @@ export function VisualBlock({
 
                             {/* Play Button Overlay */}
                             <div 
-                                className="w-16 h-16 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg cursor-pointer bg-white/20 backdrop-blur-md group-hover:scale-110 active:scale-95 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                                className="w-16 h-16 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg cursor-pointer bg-white/20 backdrop-blur-md group-hover:scale-110 active:scale-95 duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]"
                             >
                                 <span className="text-xl ml-1">▶</span>
                             </div>

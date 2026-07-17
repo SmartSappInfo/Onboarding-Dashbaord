@@ -955,7 +955,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     {/* 2. Slide-out panel drawer */}
                     <div
                         className={cn(
-                            "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden",
+                            "flex flex-col bg-slate-900/90 border-r border-slate-700/50 backdrop-blur-md transition-all duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] overflow-hidden",
                             isLeftSidebarExpanded ? "w-72 opacity-100" : "w-0 opacity-0 border-r-0"
                         )}
                     >
@@ -1141,7 +1141,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 {/* ─── PROPERTIES PANEL ON THE RIGHT ─── */}
                 <div
                     className={cn(
-                        "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 ease-[0.32,0.72,0,1] overflow-hidden shrink-0",
+                        "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] overflow-hidden shrink-0",
                         isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0",
                         resolvedTheme === 'dark' && "dark"
                     )}
