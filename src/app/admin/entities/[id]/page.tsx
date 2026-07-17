@@ -51,6 +51,9 @@ import {
     PhoneCall,
     Tag as TagIcon,
     Download,
+    BarChart3,
+    Handshake,
+    ListTodo,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -447,13 +450,13 @@ export default function EntityDetailPage() {
  <Card className="rounded-2xl border-border bg-card overflow-visible">
  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
  <TabsList className="w-full justify-start bg-muted/30 rounded-none border-b border-border p-0 h-12 overflow-x-auto hide-scrollbar flex-nowrap">
- <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Insights</TabsTrigger>
- <TabsTrigger value="deals" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider shrink-0">Deals</TabsTrigger>
+ <TabsTrigger value="overview" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0"><BarChart3 className="h-3 w-3" /> Insights</TabsTrigger>
+ <TabsTrigger value="deals" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0"><Handshake className="h-3 w-3" /> Deals</TabsTrigger>
  <TabsTrigger value="meetings" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
   <Video className="h-3 w-3" /> Meetings
  </TabsTrigger>
  <TabsTrigger value="tasks" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
-                            Tasks
+                            <ListTodo className="h-3 w-3" /> Tasks
                             {tasks && tasks.length > 0 && (
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.length}</Badge>
                             )}
@@ -461,17 +464,12 @@ export default function EntityDetailPage() {
  <TabsTrigger value="billing" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
  <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
- <TabsTrigger value="presence" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
-                            <Share2 className="h-3 w-3" /> Online Presence
-                        </TabsTrigger>
+
                         <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <MessageSquarePlus className="h-3 w-3" /> Notes
                         </TabsTrigger>
                         <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Zap className="h-3 w-3" /> Automations
-                        </TabsTrigger>
-                        <TabsTrigger value="lead-intel" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
-                            <Sparkles className="h-3 w-3" /> Lead Intel
                         </TabsTrigger>
                     </TabsList>
 
@@ -482,6 +480,8 @@ export default function EntityDetailPage() {
                                     organizationId={entityData.organizationId} 
                                     workspaceId={activeWorkspaceId} 
                                 />
+                                <Separator className="bg-border/40" />
+                                <EntityLeadIntelTab entityId={entityId} />
                                 {entityData && activeWorkspaceId && (
                                     <>
                                         <Separator className="bg-border/40" />
@@ -493,6 +493,87 @@ export default function EntityDetailPage() {
                                         />
                                     </>
                                 )}
+                                <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                                    <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Share2 className="h-4 w-4" /> Digital Presence & Social Media</CardTitle>
+                                        <Button
+                                            variant={isEditingPresence ? 'default' : 'outline'}
+                                            size="sm"
+                                            className="rounded-xl font-bold h-8 px-4 text-xs"
+                                            onClick={() => {
+                                                if (isEditingPresence) {
+                                                    handleSavePresence();
+                                                } else {
+                                                    setIsEditingPresence(true);
+                                                }
+                                            }}
+                                            disabled={isSavingPresence}
+                                        >
+                                            {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : isEditingPresence ? <Save className="h-3 w-3 mr-1.5" /> : <Pencil className="h-3 w-3 mr-1.5" />}
+                                            {isEditingPresence ? 'Save' : 'Edit'}
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {([
+                                                { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
+                                                { key: 'digitalAddress', label: 'Digital Address', icon: MapPin, placeholder: 'GA-XXX-XXXX' },
+                                                { key: 'googleMapLocation', label: 'Google Map', icon: MapPin, placeholder: 'https://maps.google.com/...' },
+                                                { key: 'googleBusinessProfile', label: 'Google Business', icon: Building2, placeholder: 'https://business.google.com/...' },
+                                                { key: 'facebook', label: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/...' },
+                                                { key: 'whatsapp', label: 'WhatsApp', icon: Phone, placeholder: '+233...' },
+                                                { key: 'linkedin', label: 'LinkedIn', icon: Network, placeholder: 'https://linkedin.com/in/...' },
+                                                { key: 'pinterest', label: 'Pinterest', icon: Share2, placeholder: 'https://pinterest.com/...' },
+                                                { key: 'instagram', label: 'Instagram', icon: Camera, placeholder: '@username' },
+                                                { key: 'tiktok', label: 'TikTok', icon: Zap, placeholder: '@username' },
+                                                { key: 'youtube', label: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/...' },
+                                                { key: 'x', label: 'X (Twitter)', icon: Hash, placeholder: '@username' },
+                                            ] as const).map(({ key, label, icon: FieldIcon, placeholder }) => {
+                                                const value = presenceForm[key as keyof OnlinePresence] || '';
+                                                return (
+                                                    <div key={key} className={cn("flex items-start gap-3 p-4 rounded-xl border border-border/50 transition-all", isEditingPresence ? 'bg-muted/20' : 'bg-card hover:bg-muted/10')}>
+                                                        <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50">
+                                                            <FieldIcon className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
+                                                            {isEditingPresence ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={value}
+                                                                    onChange={e => setPresenceForm(prev => ({ ...prev, [key]: e.target.value }))}
+                                                                    placeholder={placeholder}
+                                                                    className="w-full text-sm font-medium bg-transparent border-b border-primary/20 focus:border-primary outline-none py-1 transition-colors placeholder:text-muted-foreground/40"
+                                                                />
+                                                            ) : value ? (
+                                                                <a
+                                                                    href={value.startsWith('http') || value.startsWith('+') ? value : `https://${value}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-sm font-bold text-foreground hover:text-primary flex items-center gap-1.5 truncate underline-offset-4 hover:underline"
+                                                                >
+                                                                    {value}
+                                                                    <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                                                </a>
+                                                            ) : (
+                                                                <p className="text-sm text-muted-foreground/50 italic">Not set</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {isEditingPresence && (
+                                            <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-border/50">
+                                                <Button variant="ghost" size="sm" className="rounded-xl font-bold" onClick={() => { setIsEditingPresence(false); setPresenceForm(entityData?.onlinePresence || {}); }}>Cancel</Button>
+                                                <Button size="sm" className="rounded-xl font-bold" onClick={handleSavePresence} disabled={isSavingPresence}>
+                                                    {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
+                                                    Save Changes
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
                     </TabsContent>
 
  <TabsContent value="deals" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -548,90 +629,7 @@ export default function EntityDetailPage() {
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
                     </TabsContent>
 
-                    {/* Online Presence Tab */}
-                    <TabsContent value="presence" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                            <CardHeader className="border-b bg-card/20 pb-5 px-8 pt-8 flex flex-row items-center justify-between">
-                                <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Share2 className="h-4 w-4" /> Digital Presence & Social Media</CardTitle>
-                                <Button
-                                    variant={isEditingPresence ? 'default' : 'outline'}
-                                    size="sm"
-                                    className="rounded-xl font-bold h-8 px-4 text-xs"
-                                    onClick={() => {
-                                        if (isEditingPresence) {
-                                            handleSavePresence();
-                                        } else {
-                                            setIsEditingPresence(true);
-                                        }
-                                    }}
-                                    disabled={isSavingPresence}
-                                >
-                                    {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : isEditingPresence ? <Save className="h-3 w-3 mr-1.5" /> : <Pencil className="h-3 w-3 mr-1.5" />}
-                                    {isEditingPresence ? 'Save' : 'Edit'}
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {([
-                                        { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
-                                        { key: 'digitalAddress', label: 'Digital Address', icon: MapPin, placeholder: 'GA-XXX-XXXX' },
-                                        { key: 'googleMapLocation', label: 'Google Map', icon: MapPin, placeholder: 'https://maps.google.com/...' },
-                                        { key: 'googleBusinessProfile', label: 'Google Business', icon: Building2, placeholder: 'https://business.google.com/...' },
-                                        { key: 'facebook', label: 'Facebook', icon: Globe, placeholder: 'https://facebook.com/...' },
-                                        { key: 'whatsapp', label: 'WhatsApp', icon: Phone, placeholder: '+233...' },
-                                        { key: 'linkedin', label: 'LinkedIn', icon: Network, placeholder: 'https://linkedin.com/in/...' },
-                                        { key: 'pinterest', label: 'Pinterest', icon: Share2, placeholder: 'https://pinterest.com/...' },
-                                        { key: 'instagram', label: 'Instagram', icon: Camera, placeholder: '@username' },
-                                        { key: 'tiktok', label: 'TikTok', icon: Zap, placeholder: '@username' },
-                                        { key: 'youtube', label: 'YouTube', icon: Globe, placeholder: 'https://youtube.com/...' },
-                                        { key: 'x', label: 'X (Twitter)', icon: Hash, placeholder: '@username' },
-                                    ] as const).map(({ key, label, icon: FieldIcon, placeholder }) => {
-                                        const value = presenceForm[key as keyof OnlinePresence] || '';
-                                        return (
-                                            <div key={key} className={cn("flex items-start gap-3 p-4 rounded-xl border border-border/50 transition-all", isEditingPresence ? 'bg-muted/20' : 'bg-card hover:bg-muted/10')}>
-                                                <div className="p-2 bg-muted rounded-lg shrink-0 mt-0.5 border border-border/50">
-                                                    <FieldIcon className="h-4 w-4 text-muted-foreground" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[10px] font-semibold text-muted-foreground leading-none mb-1.5">{label}</p>
-                                                    {isEditingPresence ? (
-                                                        <input
-                                                            type="text"
-                                                            value={value}
-                                                            onChange={e => setPresenceForm(prev => ({ ...prev, [key]: e.target.value }))}
-                                                            placeholder={placeholder}
-                                                            className="w-full text-sm font-medium bg-transparent border-b border-primary/20 focus:border-primary outline-none py-1 transition-colors placeholder:text-muted-foreground/40"
-                                                        />
-                                                    ) : value ? (
-                                                        <a
-                                                            href={value.startsWith('http') || value.startsWith('+') ? value : `https://${value}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-sm font-bold text-foreground hover:text-primary flex items-center gap-1.5 truncate underline-offset-4 hover:underline"
-                                                        >
-                                                            {value}
-                                                            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                                        </a>
-                                                    ) : (
-                                                        <p className="text-sm text-muted-foreground/50 italic">Not set</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {isEditingPresence && (
-                                    <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-border/50">
-                                        <Button variant="ghost" size="sm" className="rounded-xl font-bold" onClick={() => { setIsEditingPresence(false); setPresenceForm(entityData?.onlinePresence || {}); }}>Cancel</Button>
-                                        <Button size="sm" className="rounded-xl font-bold" onClick={handleSavePresence} disabled={isSavingPresence}>
-                                            {isSavingPresence ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
-                                            Save Changes
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+
                     
                     <TabsContent value="notes" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityNotesTab entityId={entityId} />
@@ -640,9 +638,7 @@ export default function EntityDetailPage() {
                     <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityAutomationsTab entityId={entityId} />
                     </TabsContent>
-                    <TabsContent value="lead-intel" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <EntityLeadIntelTab entityId={entityId} />
-                    </TabsContent>
+
                 </Tabs>
               </Card>
              </div>
