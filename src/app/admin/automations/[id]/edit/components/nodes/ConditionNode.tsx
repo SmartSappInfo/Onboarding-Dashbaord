@@ -3,14 +3,13 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import { ArrowRightLeft, Plus, StickyNote } from 'lucide-react';
+import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -18,33 +17,48 @@ import { useWorkspace } from '@/context/WorkspaceContext';
  * @fileOverview High-fidelity Condition Node for Automation Canvas.
  * Represents a logical fork in the operational protocol.
  */
-export function ConditionNode({ id, data, selected }: any) {
+interface CommonNodeData {
+  config?: any;
+  stepNumber?: number;
+  executionStatus?: string;
+  isDefaultConnected?: boolean;
+  note?: string;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  hasNote?: boolean;
+  onAddStep?: (id: string, branch?: string | boolean) => void;
+  onAddAbove?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+  onToggleNote?: () => void;
+  onFilterDiagnostics?: (id: string) => void;
+  isTrueConnected?: boolean;
+  isFalseConnected?: boolean;
+  relation?: string;
+  [key: string]: any;
+}
+
+interface ConditionNodeProps {
+  id: string;
+  data: CommonNodeData;
+  selected?: boolean;
+}
+
+export function ConditionNode({ id, data, selected }: ConditionNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
     const params = useParams();
-    const automationId = params?.id as string;
-    const firestore = useFirestore();
+    const { countsBySourceNodeId } = usePendingJobs();
+    const waitingCount = countsBySourceNodeId[id] || 0;
+
     const { allTags } = useWorkspaceScopedQueries();
-    const { activeWorkspaceId } = useWorkspace();
-
-    const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automation_jobs'),
-            where('automationId', '==', automationId),
-            where('targetNodeId', '==', id),
-            where('status', '==', 'pending'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, automationId, id, activeWorkspaceId]);
-
-    const { data: jobs } = useCollection<any>(jobsQuery);
-    const waitingCount = jobs?.length || 0;
 
     const groups = config.groups || [];
     
     const getConditionDescription = () => {
-        const getFormattedValue = (field: string, val: any) => {
+        const getFormattedValue = (field: string, val: unknown) => {
             if (field === 'tags' && Array.isArray(val)) {
                 return val.map((id: string) => {
                     const tag = allTags?.find((t) => t.id === id);
@@ -99,16 +113,16 @@ export function ConditionNode({ id, data, selected }: any) {
                 nodeId={id}
                 isVisible={selected || isHovered}
                 isTrigger={false}
-                canMoveUp={data.canMoveUp}
-                canMoveDown={data.canMoveDown}
-                hasNote={data.hasNote}
-                onAddAbove={data.onAddAbove}
-                onAddBelow={() => data.onAddStep(id)}
-                onMoveUp={data.onMoveUp}
-                onMoveDown={data.onMoveDown}
-                onDuplicate={data.onDuplicate}
-                onDelete={data.onDelete}
-                onToggleNote={data.onToggleNote}
+                canMoveUp={!!data.canMoveUp}
+                canMoveDown={!!data.canMoveDown}
+                hasNote={!!data.hasNote}
+                onAddAbove={data.onAddAbove ?? (() => {})}
+                onAddBelow={() => data.onAddStep?.(id)}
+                onMoveUp={data.onMoveUp ?? (() => {})}
+                onMoveDown={data.onMoveDown ?? (() => {})}
+                onDuplicate={data.onDuplicate ?? (() => {})}
+                onDelete={data.onDelete ?? (() => {})}
+                onToggleNote={data.onToggleNote ?? (() => {})}
             />
             {overlay.badgeIcon && (
                 <div className="absolute -top-2.5 -right-2.5 z-50">

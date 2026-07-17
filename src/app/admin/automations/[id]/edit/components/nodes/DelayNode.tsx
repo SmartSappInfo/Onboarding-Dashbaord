@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Clock, Hourglass, Plus, StickyNote } from 'lucide-react';
+import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -60,22 +61,8 @@ export function DelayNode({ id, data, selected }: DelayNodeProps) {
     const config = data.config || {};
     const params = useParams();
     const automationId = params?.id as string;
-    const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace();
-
-    const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automation_jobs'),
-            where('automationId', '==', automationId),
-            where('targetNodeId', '==', id),
-            where('status', '==', 'pending'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, automationId, id, activeWorkspaceId]);
-
-    const { data: jobs } = useCollection<any>(jobsQuery);
-    const waitingCount = jobs?.length || 0;
+    const { countsBySourceNodeId } = usePendingJobs();
+    const waitingCount = countsBySourceNodeId[id] || 0;
 
     const getWaitLabel = () => {
         const type = config.waitType || 'period';

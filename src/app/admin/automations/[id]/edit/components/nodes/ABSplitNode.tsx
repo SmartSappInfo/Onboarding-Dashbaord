@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import { SplitSquareVertical, Plus, StickyNote } from 'lucide-react';
+import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -13,27 +14,39 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
-export function ABSplitNode({ id, data, selected }: any) {
+interface CommonNodeData {
+  config?: any;
+  stepNumber?: number;
+  executionStatus?: string;
+  isDefaultConnected?: boolean;
+  note?: string;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  hasNote?: boolean;
+  onAddStep?: (id: string, branch?: string | boolean) => void;
+  onAddAbove?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+  onToggleNote?: () => void;
+  onFilterDiagnostics?: (id: string) => void;
+  isFalseConnected?: boolean;
+  [key: string]: any;
+}
+
+interface ABSplitNodeProps {
+  id: string;
+  data: CommonNodeData;
+  selected?: boolean;
+}
+
+export function ABSplitNode({ id, data, selected }: ABSplitNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
     const params = useParams();
-    const automationId = params?.id as string;
-    const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace();
-
-    const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automation_jobs'),
-            where('automationId', '==', automationId),
-            where('targetNodeId', '==', id),
-            where('status', '==', 'pending'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, automationId, id, activeWorkspaceId]);
-
-    const { data: jobs } = useCollection<any>(jobsQuery);
-    const waitingCount = jobs?.length || 0;
+    const { countsBySourceNodeId } = usePendingJobs();
+    const waitingCount = countsBySourceNodeId[id] || 0;
     const splitRatio = config.splitRatio ?? 50;
 
     const overlay = useExecutionOverlay(data);
@@ -48,16 +61,16 @@ export function ABSplitNode({ id, data, selected }: any) {
                 nodeId={id}
                 isVisible={selected || isHovered}
                 isTrigger={false}
-                canMoveUp={data.canMoveUp}
-                canMoveDown={data.canMoveDown}
-                hasNote={data.hasNote}
-                onAddAbove={data.onAddAbove}
-                onAddBelow={() => data.onAddStep(id)}
-                onMoveUp={data.onMoveUp}
-                onMoveDown={data.onMoveDown}
-                onDuplicate={data.onDuplicate}
-                onDelete={data.onDelete}
-                onToggleNote={data.onToggleNote}
+                canMoveUp={!!data.canMoveUp}
+                canMoveDown={!!data.canMoveDown}
+                hasNote={!!data.hasNote}
+                onAddAbove={data.onAddAbove ?? (() => {})}
+                onAddBelow={() => data.onAddStep?.(id)}
+                onMoveUp={data.onMoveUp ?? (() => {})}
+                onMoveDown={data.onMoveDown ?? (() => {})}
+                onDuplicate={data.onDuplicate ?? (() => {})}
+                onDelete={data.onDelete ?? (() => {})}
+                onToggleNote={data.onToggleNote ?? (() => {})}
             />
             {overlay.badgeIcon ? (
                 <div className="absolute -top-2.5 -right-2.5 z-50">

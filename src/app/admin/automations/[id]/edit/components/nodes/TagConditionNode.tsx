@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Tag, Plus, StickyNote } from 'lucide-react';
+import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,28 +20,45 @@ import { useWorkspace } from '@/context/WorkspaceContext';
  * Evaluates tag-based conditions during flow execution.
  * Requirements: FR4.2.1, FR4.2.2
  */
-export function TagConditionNode({ id, data, selected }: any) {
+interface CommonNodeData {
+  logic?: string;
+  tagIds?: string[];
+  conditions?: any[];
+  config?: any;
+  stepNumber?: number;
+  executionStatus?: string;
+  isDefaultConnected?: boolean;
+  note?: string;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  hasNote?: boolean;
+  onAddStep?: (id: string, branch?: string | boolean) => void;
+  onAddAbove?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+  onToggleNote?: () => void;
+  onFilterDiagnostics?: (id: string) => void;
+  isTrueConnected?: boolean;
+  isFalseConnected?: boolean;
+  connectedSourceHandles?: string[];
+  [key: string]: any;
+}
+
+interface TagConditionNodeProps {
+  id: string;
+  data: CommonNodeData;
+  selected?: boolean;
+}
+
+export function TagConditionNode({ id, data, selected }: TagConditionNodeProps) {
   const [isHovered, setIsHovered] = React.useState(false);
   const logic: string = data.logic || '';
   const tagIds: string[] = data.tagIds || [];
   const params = useParams();
-  const automationId = params?.id as string;
-  const firestore = useFirestore();
-  const { activeWorkspaceId } = useWorkspace();
-
-  const jobsQuery = useMemoFirebase(() => {
-    if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'automation_jobs'),
-      where('automationId', '==', automationId),
-      where('targetNodeId', '==', id),
-      where('status', '==', 'pending'),
-      where('workspaceId', '==', activeWorkspaceId)
-    );
-  }, [firestore, automationId, id, activeWorkspaceId]);
-
-  const { data: jobs } = useCollection<any>(jobsQuery);
-  const waitingCount = jobs?.length || 0;
+  const { countsBySourceNodeId } = usePendingJobs();
+  const waitingCount = countsBySourceNodeId[id] || 0;
 
   const { allTags } = useWorkspaceScopedQueries();
 
@@ -68,16 +86,16 @@ export function TagConditionNode({ id, data, selected }: any) {
         nodeId={id}
         isVisible={selected || isHovered}
         isTrigger={false}
-        canMoveUp={data.canMoveUp}
-        canMoveDown={data.canMoveDown}
-        hasNote={data.hasNote}
-        onAddAbove={data.onAddAbove}
-        onAddBelow={() => data.onAddStep(id)}
-        onMoveUp={data.onMoveUp}
-        onMoveDown={data.onMoveDown}
-        onDuplicate={data.onDuplicate}
-        onDelete={data.onDelete}
-        onToggleNote={data.onToggleNote}
+        canMoveUp={!!data.canMoveUp}
+        canMoveDown={!!data.canMoveDown}
+        hasNote={!!data.hasNote}
+        onAddAbove={data.onAddAbove ?? (() => {})}
+        onAddBelow={() => data.onAddStep?.(id)}
+        onMoveUp={data.onMoveUp ?? (() => {})}
+        onMoveDown={data.onMoveDown ?? (() => {})}
+        onDuplicate={data.onDuplicate ?? (() => {})}
+        onDelete={data.onDelete ?? (() => {})}
+        onToggleNote={data.onToggleNote ?? (() => {})}
       />
       {overlay.badgeIcon && (
         <div className="absolute -top-2.5 -right-2.5 z-50">
@@ -134,11 +152,11 @@ export function TagConditionNode({ id, data, selected }: any) {
       {data.conditions ? (
         // Multi-condition Switch Mode
         <>
-          {data.conditions.map((cond: { id: string; tagId: string }, idx: number) => {
+          {(data.conditions || []).map((cond: { id: string; tagId: string }, idx: number) => {
             const tag = allTags?.find((t: any) => t.id === cond.tagId);
             const tagName = tag ? tag.name : (cond.tagId || 'Select tag...');
-            const isConnected = data.connectedSourceHandles?.includes(cond.id);
-            const total = data.conditions.length + 1;
+            const isConnected = data.connectedSourceHandles?.includes(cond.id) ?? false;
+            const total = (data.conditions || []).length + 1;
             const leftPercent = ((idx + 1) * 100) / (total + 1);
 
             return (

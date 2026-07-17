@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
 import { Milestone, Plus, StickyNote } from 'lucide-react';
+import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -53,25 +54,9 @@ interface JumpToNodeProps {
 export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const params = useParams();
-    const automationId = params?.id as string;
-    const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace();
-
+    const { countsBySourceNodeId } = usePendingJobs();
+    const waitingCount = countsBySourceNodeId[id] || 0;
     const isWaitBehavior = data.config?.sequentialBehavior === 'wait';
-
-    const jobsQuery = useMemoFirebase(() => {
-        if (!firestore || !automationId || !id || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'automation_jobs'),
-            where('automationId', '==', automationId),
-            where('targetNodeId', '==', id),
-            where('status', '==', 'pending'),
-            where('workspaceId', '==', activeWorkspaceId)
-        );
-    }, [firestore, automationId, id, activeWorkspaceId]);
-
-    const { data: jobs } = useCollection<Record<string, unknown>>(jobsQuery);
-    const waitingCount = jobs?.length || 0;
     const showPill = isWaitBehavior || waitingCount > 0;
 
     const overlay = useExecutionOverlay({

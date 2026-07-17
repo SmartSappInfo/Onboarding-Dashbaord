@@ -11,7 +11,7 @@ import { nodeChecksMessageActions } from '../payload-enricher';
 import { notifyAutomationFailed } from '../automation-lifecycle-notify';
 import * as crypto from 'crypto';
 
-export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: any): 'a' | 'b' {
+export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: Record<string, unknown> | null | undefined): 'a' | 'b' {
   const fallbackId = entityId || payload?.email || payload?.phone || Math.random().toString();
   const input = `${fallbackId}:${automationId}:${nodeId}`;
   const hash = crypto.createHash('md5').update(input).digest('hex');
@@ -19,7 +19,7 @@ export function getSplitAssignment(entityId: string, automationId: string, nodeI
   return percent < splitRatio ? 'a' : 'b';
 }
 
-function flattenObject(obj: any, prefix = '', res: Record<string, any> = {}): Record<string, any> {
+function flattenObject(obj: unknown, prefix = '', res: Record<string, unknown> = {}): Record<string, unknown> {
   if (!obj || typeof obj !== 'object') return res;
 
   for (const [key, value] of Object.entries(obj)) {
@@ -98,7 +98,7 @@ export async function enrichExecutionContext(context: ExecutionContext): Promise
   }
 }
 
-function getVisualStepNumber(nodeId: string, nodes: any[]): number | null {
+function getVisualStepNumber(nodeId: string, nodes: Array<{ id: string; type?: string; position?: { x: number; y: number } }>): number | null {
   const sortedNonTriggerNodes = nodes
     .filter((n) => n.type !== 'triggerNode')
     .sort((a, b) => {
@@ -116,7 +116,7 @@ function getVisualStepNumber(nodeId: string, nodes: any[]): number | null {
   return idx !== -1 ? idx + 1 : null;
 }
 
-function getNodeLabelWithStep(node: any, nodes: any[], defaultLabel: string): string {
+function getNodeLabelWithStep(node: { id: string; data?: { label?: string } }, nodes: Array<{ id: string; type?: string; position?: { x: number; y: number } }>, defaultLabel: string): string {
   const label = node.data?.label || defaultLabel;
   const stepNum = getVisualStepNumber(node.id, nodes);
   return stepNum ? `${label} (Step #${stepNum})` : label;
@@ -522,6 +522,7 @@ export async function traverseNodes(
             executeAt: farFuture.toISOString(),
             workspaceId: context.workspaceId,
             payload: persistedPayload,
+            sourceNodeId: nextNode.id,
           });
           return;
         } else if (behavior === 'exit') {
