@@ -2,14 +2,14 @@
 
 import * as React from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, updateDoc, deleteDoc, doc, limit } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { EntityNote } from '@/lib/types';
-import { MessageSquare, Trash2, Edit2, Check, X, Send, Loader2, Pin, PinOff, Phone, Users, AlertTriangle, Clock, Filter, Reply, CornerDownRight, Briefcase } from 'lucide-react';
+import { MessageSquare, Trash2, Edit2, Check, X, Send, Loader2, Pin, PinOff, Phone, Users, AlertTriangle, Clock, Filter, Reply, CornerDownRight, Briefcase, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -49,6 +49,9 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     const [replyingToId, setReplyingToId] = React.useState<string | null>(null);
     const [replyContent, setReplyContent] = React.useState('');
     const [filterType, setFilterType] = React.useState<'all' | 'pinned' | EntityNote['noteType']>('all');
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [composerDropdownOpen, setComposerDropdownOpen] = React.useState(false);
+    const [filterDropdownOpen, setFilterDropdownOpen] = React.useState(false);
     
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     const [aiSummary, setAiSummary] = React.useState<any>(null);
@@ -74,7 +77,8 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                 collection(firestore, 'entity_notes'),
                 where('dealId', '==', dealId),
                 where('workspaceId', '==', activeWorkspaceId),
-                orderBy('createdAt', 'desc')
+                orderBy('createdAt', 'desc'),
+                limit(100)
             );
         }
         if (!entityId) return null;
@@ -82,7 +86,8 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             collection(firestore, 'entity_notes'),
             where('entityId', '==', entityId),
             where('workspaceId', '==', activeWorkspaceId),
-            orderBy('createdAt', 'desc')
+            orderBy('createdAt', 'desc'),
+            limit(100)
         );
     }, [firestore, entityId, activeWorkspaceId, scope, dealId]);
 
@@ -92,12 +97,20 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
         const content = parentId ? replyContent : newNote;
         if (!content.trim() || !firestore || !user || !activeWorkspaceId) return;
         
+        // Escape HTML / Script tags to prevent XSS payloads
+        const sanitizedContent = content.trim()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
         setIsSubmitting(true);
         try {
             const noteData: any = {
                 entityId,
                 workspaceId: activeWorkspaceId,
-                content: content.trim(),
+                content: sanitizedContent,
                 noteType: parentId ? 'general' : noteType,
                 isPinned: false,
                 createdBy: user.uid,
@@ -217,6 +230,15 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
         // Filter out replies from the top-level list
         let result = notes.filter(n => !n.parentNoteId);
         
+        // Filter by search query if present
+        if (searchQuery.trim()) {
+            const queryText = searchQuery.toLowerCase().trim();
+            result = result.filter(n => 
+                n.content.toLowerCase().includes(queryText) ||
+                (n.createdByName && n.createdByName.toLowerCase().includes(queryText))
+            );
+        }
+
         // Sorting: Pinned first, then by date
         result.sort((a, b) => {
             if (a.isPinned && !b.isPinned) return -1;
@@ -227,7 +249,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
         if (filterType === 'pinned') return result.filter(n => n.isPinned);
         if (filterType !== 'all') return result.filter(n => n.noteType === filterType);
         return result;
-    }, [notes, filterType]);
+    }, [notes, filterType, searchQuery]);
 
     const getRepliesForNote = (noteId: string) => {
         if (!notes) return [];
@@ -238,108 +260,149 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
 
     return (
         <div className="space-y-6 text-left">
-            {showAddNote ? (
-                <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
-                    <div className="space-y-4">
-                        <div className="flex flex-wrap gap-2">
-                            {noteTypes.map((type) => (
+            {/* Search & Filter Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border/40 bg-card/30 backdrop-blur-md p-3 rounded-2xl relative overflow-visible">
+                <div className="relative flex-1 min-w-[200px]">
+                    <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                    <input
+                        type="text"
+                        placeholder="Search notes history..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-border/40 text-slate-100 placeholder:text-slate-650 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/30"
+                    />
+                </div>
+                <div className="flex items-center gap-2 relative overflow-visible">
+                    {/* Dropdown Select menu for filtering */}
+                    <div className="relative">
+                        <button
+                            onClick={() => {
+                                setFilterDropdownOpen(!filterDropdownOpen);
+                                setComposerDropdownOpen(false);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-border/40 bg-slate-900/50 text-slate-300 hover:text-slate-100 transition-all select-none"
+                        >
+                            <Filter className="h-3.5 w-3.5 opacity-60" />
+                            <span>
+                                {filterType === 'all' 
+                                    ? 'All Notes' 
+                                    : filterType === 'pinned' 
+                                    ? 'Pinned' 
+                                    : noteTypes.find(t => t.id === filterType)?.label || filterType}
+                            </span>
+                            <ChevronDown className="h-3.5 w-3.5 opacity-45" />
+                        </button>
+                        {filterDropdownOpen && (
+                            <div className="absolute right-0 top-full mt-1.5 w-40 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <button
-                                    key={type.id}
-                                    onClick={() => setNoteType(type.id as EntityNote['noteType'])}
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border",
-                                        noteType === type.id 
-                                            ? "bg-primary border-primary text-primary-foreground shadow-sm" 
-                                            : "bg-muted/50 border-border/50 text-muted-foreground hover:bg-muted"
-                                    )}
+                                    onClick={() => { setFilterType('all'); setFilterDropdownOpen(false); }}
+                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === 'all' ? "text-primary" : "text-slate-400")}
                                 >
-                                    <type.icon className="h-3 w-3" />
-                                    {type.label}
+                                    All Notes
                                 </button>
-                            ))}
-                        </div>
-                        
-                        <div className="flex items-start gap-4">
-                            <div className={cn(
-                                "p-3 rounded-xl shrink-0 transition-colors duration-300",
-                                noteTypes.find(t => t.id === noteType)?.color
-                            )}>
-                                {React.createElement(noteTypes.find(t => t.id === noteType)?.icon || MessageSquare, { className: "h-5 w-5" })}
-                            </div>
-                            <div className="flex-1 space-y-3">
-                                <Textarea 
-                                    placeholder={noteType === 'call' ? "Summarize the call outcome…" : "Type a new note…"}
-                                    value={newNote}
-                                    onChange={(e) => setNewNote(e.target.value)}
-                                    className="min-h-[100px] resize-y rounded-xl border-border/50 bg-background/50 focus-visible:ring-1 focus-visible:ring-primary/20"
-                                    autoFocus={compact}
-                                />
-                                <div className="flex justify-end gap-2">
-                                    {compact && (
-                                        <Button variant="ghost" size="sm" className="rounded-xl font-bold" onClick={() => { setShowAddNote(false); setNewNote(''); setNoteType('general'); }}>
-                                            Cancel
-                                        </Button>
-                                    )}
-                                    <Button 
-                                        onClick={() => handleAddNote()} 
-                                        disabled={!newNote.trim() || isSubmitting}
-                                        className="rounded-xl shadow-sm gap-2 font-bold px-6"
+                                <button
+                                    onClick={() => { setFilterType('pinned'); setFilterDropdownOpen(false); }}
+                                    className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === 'pinned' ? "text-amber-400" : "text-slate-400")}
+                                >
+                                    Pinned Notes
+                                </button>
+                                <div className="h-px bg-border/40 my-1" />
+                                {noteTypes.map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => { setFilterType(t.id as EntityNote['noteType']); setFilterDropdownOpen(false); }}
+                                        className={cn("w-full px-3 py-2 text-left text-xs font-semibold hover:bg-slate-900 transition-colors", filterType === t.id ? "text-primary" : "text-slate-400")}
                                     >
-                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                        Add Note
-                                    </Button>
-                                </div>
+                                        {t.label}
+                                    </button>
+                                ))}
                             </div>
-                        </div>
+                        )}
                     </div>
-                </div>
-            ) : (
-                <Button 
-                    variant="outline" 
-                    className="w-full rounded-xl font-bold h-10 border-dashed border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 gap-2"
-                    onClick={() => setShowAddNote(true)}
-                >
-                    <MessageSquare className="h-4 w-4" /> Add Note
-                </Button>
-            )}
 
-            {/* Filter Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <div className="p-1.5 bg-muted/30 rounded-lg shrink-0">
-                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-                <button
-                    onClick={() => setFilterType('all')}
-                    className={cn(
-                        "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
-                        filterType === 'all' ? "bg-primary text-primary-foreground" : "bg-card border border-border/50 text-muted-foreground hover:bg-muted"
-                    )}
-                >
-                    All Notes
-                </button>
-                <button
-                    onClick={() => setFilterType('pinned')}
-                    className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
-                        filterType === 'pinned' ? "bg-amber-500 text-white" : "bg-card border border-border/50 text-muted-foreground hover:bg-muted"
-                    )}
-                >
-                    <Pin className="h-3 w-3" /> Pinned
-                </button>
-                <div className="h-4 w-[1px] bg-border/50 mx-1 shrink-0" />
-                {noteTypes.map(type => (
-                    <button
-                        key={type.id}
-                        onClick={() => setFilterType(type.id as EntityNote['noteType'])}
+                    <Button
+                        onClick={() => setShowAddNote(!showAddNote)}
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all",
-                            filterType === type.id ? "bg-primary text-primary-foreground" : "bg-card border border-border/50 text-muted-foreground hover:bg-muted"
+                            "rounded-xl font-bold text-xs h-9 px-4 shadow-sm gap-1.5 transition-all select-none",
+                            showAddNote ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/25" : "bg-violet-600 hover:bg-violet-500 text-white"
                         )}
                     >
-                        {type.label}
-                    </button>
-                ))}
+                        {showAddNote ? 'Close' : 'Add Note'}
+                    </Button>
+                </div>
             </div>
+
+            {/* Collapsible Inline Composer Accordion */}
+            <div className={cn(
+                "grid transition-all duration-300 ease-in-out overflow-visible",
+                showAddNote ? "grid-rows-[1fr] opacity-100 mb-4" : "grid-rows-[0fr] opacity-0 pointer-events-none"
+            )}>
+                <div className="min-h-0 overflow-visible">
+                    <div className="bg-card/45 rounded-2xl p-4 border border-border/40 shadow-sm space-y-3 relative overflow-visible">
+                        <div className="flex-1">
+                            <Textarea 
+                                placeholder={noteType === 'call' ? "Summarize the call outcome…" : "Type a new note…"}
+                                value={newNote}
+                                onChange={(e) => setNewNote(e.target.value)}
+                                className="w-full bg-slate-900/40 border border-border/30 rounded-xl text-xs p-3 text-slate-200 placeholder:text-slate-650 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 min-h-[80px] resize-none"
+                                autoFocus={compact}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-border/30 overflow-visible">
+                            {/* Note Type select dropdown pill */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => {
+                                        setComposerDropdownOpen(!composerDropdownOpen);
+                                        setFilterDropdownOpen(false);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border border-border/50 bg-slate-900/60 text-slate-300 hover:text-slate-100 transition-all select-none"
+                                >
+                                    {React.createElement(noteTypes.find(t => t.id === noteType)?.icon || MessageSquare, { className: "h-3.5 w-3.5 opacity-60" })}
+                                    <span>{noteTypes.find(t => t.id === noteType)?.label || noteType}</span>
+                                    <ChevronDown className="h-3 w-3 opacity-65" />
+                                </button>
+
+                                {composerDropdownOpen && (
+                                    <div className="absolute top-full left-0 mt-1.5 w-40 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {noteTypes.map((t) => {
+                                            const Icon = t.icon;
+                                            return (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => {
+                                                        setNoteType(t.id as EntityNote['noteType']);
+                                                        setComposerDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-slate-800 transition-colors",
+                                                        noteType === t.id ? "text-primary bg-slate-900" : "text-slate-400 hover:text-slate-200"
+                                                    )}
+                                                >
+                                                    <Icon className="h-3.5 w-3.5" />
+                                                    <span>{t.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <Button 
+                                onClick={() => handleAddNote()} 
+                                disabled={!newNote.trim() || isSubmitting}
+                                className="rounded-full h-8 px-4 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/10 active:scale-[0.98] transition-all"
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    'Save Note'
+                                )}
+                            </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
             {/* AI Summary Section */}
             {notes && notes.length > 0 && (
@@ -475,24 +538,29 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                         return (
                             <div key={note.id} className="space-y-3">
                                 <div className={cn(
-                                    "rounded-xl p-6 border-l-4 border-amber-400 bg-amber-50/50 transition-shadow duration-200 group relative border-t-0 border-r-0 border-b-0",
-                                    note.isPinned ? "shadow-md ring-1 ring-amber-500/10" : "shadow-sm hover:shadow-md"
+                                    "rounded-xl p-4 transition-all duration-200 group relative border border-slate-800/60 bg-slate-900/30 hover:bg-slate-900/50 shadow-sm",
+                                    note.noteType === 'call' ? "border-l-2 border-l-blue-500/70" :
+                                    note.noteType === 'meeting' ? "border-l-2 border-l-purple-500/70" :
+                                    note.noteType === 'escalation' ? "border-l-2 border-l-red-500/70" :
+                                    note.noteType === 'followup' ? "border-l-2 border-l-amber-500/70" :
+                                    "border-l-2 border-l-slate-600/40",
+                                    note.isPinned && "shadow-md ring-1 ring-amber-500/10"
                                 )}>
                                     {note.isPinned && (
                                         <div className="absolute -top-2.5 -left-1 bg-amber-500 text-white p-1 rounded-lg shadow-lg z-10">
                                             <Pin className="h-3 w-3 fill-current" />
                                         </div>
                                     )}
-                                    <div className="flex items-start justify-between mb-3 opacity-60">
+                                    <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-amber-200/50 flex items-center justify-center text-[8px] font-medium text-amber-700">
+                                            <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-350">
                                                 {note.createdByName ? note.createdByName.charAt(0).toUpperCase() : '?'}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-[10px] font-medium text-amber-900/70 leading-none">{note.createdByName || 'Unknown User'}</p>
+                                                    <p className="text-xs font-semibold text-slate-200 leading-none">{note.createdByName || 'Unknown User'}</p>
                                                     {note.noteType && note.noteType !== 'general' && (
-                                                        <span className="text-[9px] font-medium text-amber-900/50 uppercase tracking-wider">
+                                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
                                                             • {note.noteType}
                                                         </span>
                                                     )}
@@ -507,7 +575,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                         </Link>
                                                     )}
                                                 </div>
-                                                <p className="text-[9px] text-amber-900/40 mt-0.5">
+                                                <p className="text-[9px] text-slate-500 mt-0.5">
                                                     {format(new Date(note.createdAt), 'MMM d, yyyy h:mm a')}
                                                     {note.updatedAt !== note.createdAt && ' (edited)'}
                                                 </p>
@@ -528,7 +596,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                 size="icon" 
                                                 className={cn(
                                                     "h-8 w-8 rounded-lg transition-colors",
-                                                    note.isPinned ? "text-amber-500 hover:bg-amber-50" : "text-muted-foreground hover:text-amber-500"
+                                                    note.isPinned ? "text-amber-500 hover:bg-slate-800" : "text-muted-foreground hover:text-amber-500"
                                                 )} 
                                                 onClick={() => togglePin(note)}
                                                 aria-label={note.isPinned ? "Unpin note" : "Pin note"}
@@ -553,20 +621,20 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                             <Textarea 
                                                 value={editContent}
                                                 onChange={(e) => setEditContent(e.target.value)}
-                                                className="min-h-[80px] text-sm resize-none rounded-xl"
+                                                className="min-h-[80px] text-xs resize-none rounded-xl bg-slate-900 border-slate-800"
                                                 autoFocus
                                             />
                                             <div className="flex justify-end gap-2">
-                                                <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => setEditingNoteId(null)}>
+                                                <Button size="sm" variant="outline" className="rounded-lg h-8 text-[10px]" onClick={() => setEditingNoteId(null)}>
                                                     <X className="h-3 w-3 mr-1" /> Cancel
                                                 </Button>
-                                                <Button size="sm" className="rounded-lg h-8" onClick={() => handleUpdateNote(note.id)}>
+                                                <Button size="sm" className="rounded-lg h-8 text-[10px]" onClick={() => handleUpdateNote(note.id)}>
                                                     <Check className="h-3 w-3 mr-1" /> Save
                                                 </Button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <p className="text-sm text-amber-950/80 whitespace-pre-wrap leading-relaxed font-normal">{note.content}</p>
+                                        <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed font-normal">{note.content}</p>
                                     )}
                                 </div>
 
@@ -574,16 +642,16 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                 {replies.length > 0 && (
                                     <div className="ml-8 space-y-3 border-l-2 border-border/30 pl-4 py-1">
                                         {replies.map(reply => (
-                                            <div key={reply.id} className="bg-muted/30 rounded-xl p-4 border border-border/30 relative">
-                                                <CornerDownRight className="absolute -left-5 top-4 h-4 w-4 text-border/50" />
+                                            <div key={reply.id} className="bg-slate-900/20 rounded-xl p-4 border border-slate-800/40 relative">
+                                                <CornerDownRight className="absolute -left-5 top-4 h-4 w-4 text-border/30" />
                                                 <div className="flex items-start justify-between mb-2">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="h-6 w-6 rounded-full bg-primary/5 flex items-center justify-center text-[10px] font-bold text-primary">
+                                                        <div className="h-6 w-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-350">
                                                             {reply.createdByName?.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-semibold">{reply.createdByName}</p>
-                                                            <p className="text-[9px] text-muted-foreground">{format(new Date(reply.createdAt), 'MMM d, h:mm a')}</p>
+                                                            <p className="text-xs font-semibold text-slate-200">{reply.createdByName}</p>
+                                                            <p className="text-[9px] text-slate-500">{format(new Date(reply.createdAt), 'MMM d, h:mm a')}</p>
                                                         </div>
                                                     </div>
                                                     {user?.uid === reply.createdBy && (
@@ -597,7 +665,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                                                         </Button>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{reply.content}</p>
+                                                <p className="text-xs text-slate-300 whitespace-pre-wrap">{reply.content}</p>
                                             </div>
                                         ))}
                                     </div>
