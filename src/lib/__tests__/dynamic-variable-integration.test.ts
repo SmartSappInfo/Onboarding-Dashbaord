@@ -336,3 +336,53 @@ describe('Task 13.3: buildVariableMap with dynamic survey variables', () => {
     expect(vars).toHaveProperty('current_date');
   });
 });
+
+describe('respondent_name global fallback resolution', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks().where.mockReturnValue({ where: mocks().where, limit: mocks().limit, get: mocks().get });
+  });
+
+  it('resolves respondent_name to contact_name as first fallback', async () => {
+    mocks().docGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        id: 'entity-123',
+        name: 'Test Entity Name',
+        entityContacts: [
+          { id: 'contact-abc', name: 'John Doe', email: 'john@example.com', isPrimary: true }
+        ]
+      })
+    });
+
+    const vars = await buildVariableMap('general', { 
+      entityId: 'entity-123', 
+      recipientContact: 'john@example.com' 
+    });
+
+    expect(vars['respondent_name']).toBe('John Doe');
+  });
+
+  it('resolves respondent_name to entity_name if contact name is missing', async () => {
+    mocks().docGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        id: 'entity-123',
+        name: 'Test Entity Name',
+        entityContacts: []
+      })
+    });
+
+    const vars = await buildVariableMap('general', { entityId: 'entity-123' });
+
+    expect(vars['respondent_name']).toBe('Test Entity Name');
+  });
+
+  it('resolves respondent_name to "there" if both contact and entity names are missing', async () => {
+    mocks().docGet.mockResolvedValueOnce({ exists: false });
+
+    const vars = await buildVariableMap('general', {});
+
+    expect(vars['respondent_name']).toBe('there');
+  });
+});

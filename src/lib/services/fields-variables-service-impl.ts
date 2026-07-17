@@ -617,6 +617,11 @@ export class FieldsVariablesService {
       });
     }
 
+    // Global fallback for respondent_name (maps to active contact name or entity name)
+    const activeContactName = valuesMap.get('contact_name') as string | undefined;
+    const activeEntityName = valuesMap.get('entity_name') as string | undefined;
+    valuesMap.set('respondent_name', activeContactName || activeEntityName || 'there');
+
     // 5. Fetch Meeting details (Category: meeting)
     if (context.meetingId && meetingSnap?.exists) {
       try {
