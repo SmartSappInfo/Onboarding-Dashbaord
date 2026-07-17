@@ -98,7 +98,7 @@ export function DiagnosticsPanel({
     return query(
       collection(firestore, 'automation_jobs'),
       where('automationId', '==', automationId),
-      where('targetNodeId', '==', filterNodeId),
+      where('sourceNodeId', '==', filterNodeId),
       where('status', '==', 'pending'),
       where('workspaceId', '==', activeWorkspaceId),
       limit(100)
@@ -183,11 +183,11 @@ export function DiagnosticsPanel({
           description: res.error || 'Failed to manually advance step.',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message || 'Server action failure.',
+        description: err instanceof Error ? err.message : 'Server action failure.',
       });
     } finally {
       setIsProcessingAction(null);
@@ -213,11 +213,11 @@ export function DiagnosticsPanel({
           description: res.error || 'Failed to force-resume parked contacts.',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message || 'Server action failure.',
+        description: err instanceof Error ? err.message : 'Server action failure.',
       });
     } finally {
       setIsBulkResuming(false);
@@ -246,11 +246,11 @@ export function DiagnosticsPanel({
           description: res.error || 'Failed to cancel automation run.',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message || 'Server action failure.',
+        description: err instanceof Error ? err.message : 'Server action failure.',
       });
     } finally {
       setIsProcessingAction(null);

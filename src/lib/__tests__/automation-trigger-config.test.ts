@@ -216,57 +216,67 @@ describe('evaluateTriggerConfig', () => {
 
   // ── Stage / Pipeline ───────────────────────────────────────────────────────
 
-  describe('DEAL_STAGE_CHANGED', () => {
+  describe('Stage / Pipeline Triggers', () => {
+    const stageTriggers = ['DEAL_STAGE_CHANGED', 'ENTITY_STAGE_CHANGED'] as const;
+
     it('allows any stage when config has no constraints', () => {
-      const auto = makeAutomation({
-        triggers: [{ id: 't1', type: 'DEAL_STAGE_CHANGED', config: {} }],
-      });
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p1', stageId: 's1' }))
-      ).toBe(true);
+      for (const triggerType of stageTriggers) {
+        const auto = makeAutomation({
+          triggers: [{ id: 't1', type: triggerType, config: {} }],
+        });
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p1', stageId: 's1' }))
+        ).toBe(true);
+      }
     });
 
     it('filters by pipelineId', () => {
-      const auto = makeAutomation({
-        triggers: [{ id: 't1', type: 'DEAL_STAGE_CHANGED', config: { pipelineId: 'p1' } }],
-      });
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p1' }))
-      ).toBe(true);
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p2' }))
-      ).toBe(false);
+      for (const triggerType of stageTriggers) {
+        const auto = makeAutomation({
+          triggers: [{ id: 't1', type: triggerType, config: { pipelineId: 'p1' } }],
+        });
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p1' }))
+        ).toBe(true);
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p2' }))
+        ).toBe(false);
+      }
     });
 
     it('filters by stageId', () => {
-      const auto = makeAutomation({
-        triggers: [{ id: 't1', type: 'DEAL_STAGE_CHANGED', config: { stageId: 's-closed' } }],
-      });
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { stageId: 's-closed' }))
-      ).toBe(true);
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { stageId: 's-open' }))
-      ).toBe(false);
+      for (const triggerType of stageTriggers) {
+        const auto = makeAutomation({
+          triggers: [{ id: 't1', type: triggerType, config: { stageId: 's-closed' } }],
+        });
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { stageId: 's-closed' }))
+        ).toBe(true);
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { stageId: 's-open' }))
+        ).toBe(false);
+      }
     });
 
     it('filters by both pipelineId AND stageId (AND logic)', () => {
-      const auto = makeAutomation({
-        triggers: [
-          { id: 't1', type: 'DEAL_STAGE_CHANGED', config: { pipelineId: 'p1', stageId: 's-won' } },
-        ],
-      });
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p1', stageId: 's-won' }))
-      ).toBe(true);
-      // Right pipeline, wrong stage
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p1', stageId: 's-lost' }))
-      ).toBe(false);
-      // Right stage, wrong pipeline
-      expect(
-        evaluateTriggerConfig(auto, payload('DEAL_STAGE_CHANGED', { pipelineId: 'p2', stageId: 's-won' }))
-      ).toBe(false);
+      for (const triggerType of stageTriggers) {
+        const auto = makeAutomation({
+          triggers: [
+            { id: 't1', type: triggerType, config: { pipelineId: 'p1', stageId: 's-won' } },
+          ],
+        });
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p1', stageId: 's-won' }))
+        ).toBe(true);
+        // Right pipeline, wrong stage
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p1', stageId: 's-lost' }))
+        ).toBe(false);
+        // Right stage, wrong pipeline
+        expect(
+          evaluateTriggerConfig(auto, payload(triggerType, { pipelineId: 'p2', stageId: 's-won' }))
+        ).toBe(false);
+      }
     });
   });
 

@@ -116,6 +116,7 @@ export async function scheduleResendCheck(params: {
     automationId: context.automationId,
     runId: context.runId,
     targetNodeId: RESEND_CHECK_SENTINEL,
+    sourceNodeId: nodeId,
     payload: { ...context.payload, __resend: meta },
     workspaceId,
     executeAt,

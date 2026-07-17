@@ -21,6 +21,7 @@ import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import { useAutomationAutosave } from '../../hooks/useAutomationAutosave';
 import { clearAutomationBackup } from '@/lib/automation-storage';
 import { AutomationMetaProvider } from '../../components/AutomationMetaContext';
+import { AutomationPendingJobsProvider } from '../../components/AutomationPendingJobsContext';
 import {
   Dialog,
   DialogContent,
@@ -566,15 +567,17 @@ export default function EditAutomationPage() {
       <div className="flex-1 relative overflow-hidden">
         {activeTab === 'designer' ? (
           <AutomationMetaProvider automationId={automationId}>
-            <AutomationBuilder
-              key={builderKey}
-              initialNodes={currentData.nodes ?? automation.nodes}
-              initialEdges={currentData.edges ?? automation.edges}
-              triggers={activeTriggers}
-              onStateChange={handleStateChange}
-              onTriggersChange={handleTriggersChange}
-              automationId={automationId}
-            />
+            <AutomationPendingJobsProvider automationId={automationId} workspaceId={activeWorkspaceId}>
+              <AutomationBuilder
+                key={builderKey}
+                initialNodes={currentData.nodes ?? automation.nodes}
+                initialEdges={currentData.edges ?? automation.edges}
+                triggers={activeTriggers}
+                onStateChange={handleStateChange}
+                onTriggersChange={handleTriggersChange}
+                automationId={automationId}
+              />
+            </AutomationPendingJobsProvider>
           </AutomationMetaProvider>
         ) : (
           <AutomationActivityLog

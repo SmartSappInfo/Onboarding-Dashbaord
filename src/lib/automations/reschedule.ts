@@ -71,7 +71,7 @@ export async function reschedulePendingJobs(
     let query = adminDb
       .collection('automation_jobs')
       .where('automationId', '==', automationId)
-      .where('targetNodeId', '==', nodeId)
+      .where('sourceNodeId', '==', nodeId)
       .where('status', '==', 'pending')
       .orderBy('__name__')
       .limit(BATCH_LIMIT);
@@ -177,7 +177,7 @@ export async function purgePendingJobsForNode(
     let query = adminDb
       .collection('automation_jobs')
       .where('automationId', '==', automationId)
-      .where('targetNodeId', '==', nodeId)
+      .where('sourceNodeId', '==', nodeId)
       .where('status', '==', 'pending')
       .orderBy('__name__')
       .limit(BATCH_LIMIT);
@@ -318,7 +318,7 @@ export async function rescheduleMilestoneJobs(
     let query = adminDb
       .collection('automation_jobs')
       .where('automationId', '==', automationId)
-      .where('targetNodeId', '==', nodeId)
+      .where('sourceNodeId', '==', nodeId)
       .where('status', '==', 'pending')
       .orderBy('__name__')
       .limit(BATCH_LIMIT);

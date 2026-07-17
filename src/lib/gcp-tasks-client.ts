@@ -94,6 +94,7 @@ export interface ScheduleTaskOptions {
   payload?: Record<string, unknown>;
   skipDbUpdate?: boolean;
   gcpTaskName?: string;
+  sourceNodeId?: string;
 }
 
 /**
@@ -137,6 +138,7 @@ export async function scheduleDelayTask({
   payload = {},
   skipDbUpdate = false,
   gcpTaskName,
+  sourceNodeId,
 }: ScheduleTaskOptions): Promise<string> {
   if (!workspaceId) {
     throw new Error(`Cannot schedule delay task for run ${runId}: workspaceId is required.`);
@@ -190,6 +192,7 @@ export async function scheduleDelayTask({
         runId,
         automationId,
         targetNodeId: nodeId,
+        sourceNodeId: sourceNodeId || null,
         payload,
         workspaceId,
         status: 'pending',
@@ -249,14 +252,15 @@ export async function scheduleDelayTask({
       runId,
       automationId,
       targetNodeId: nodeId,
+      sourceNodeId: sourceNodeId || null,
       payload,
       workspaceId,
       status: 'pending',
       executeAt,
       queue,
       type: 'gcp_task',
-      gcpTaskName: response.name,
       createdAt: new Date().toISOString(),
+      gcpTaskName: response.name, // Store actual GCP task name for robust cancellation
     });
   }
 
