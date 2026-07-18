@@ -16,10 +16,11 @@ import dynamic from 'next/dynamic';
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
 const FloatingNotesHUD = dynamic(() => import('@/components/shared/FloatingNotesHUD'), { ssr: false });
 
-import { 
     LogOut, 
     User as UserIcon,
-    NotebookPen
+    NotebookPen,
+    Sun,
+    Moon
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { AdminSidebar } from './components/AdminSidebar';
@@ -75,7 +76,7 @@ const profileSetupHref = (): string => {
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const { user, isUserLoading, userError } = useUser();
   const firestore = useFirestore();
@@ -260,9 +261,11 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               >
                 {plural}
               </Badge>
-              <ThemeToggle />
-              <QuickComposeButton />
-              <FloatingNotesTrigger />
+              <div className="hidden md:flex items-center gap-3">
+                <ThemeToggle />
+                <QuickComposeButton />
+                <FloatingNotesTrigger />
+              </div>
               <NotificationBell />
               <NotificationCenter />
               <div className="h-6 w-px bg-border mx-1" />
@@ -295,6 +298,31 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
                     </>
                   )}
   <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3 cursor-pointer"><Link href="/admin/profile"><UserIcon className="h-4 w-4 text-primary" /><span className="font-bold text-xs ">My Profile</span></Link></DropdownMenuItem>
+              <div className="md:hidden">
+                <DropdownMenuSeparator className="my-1" />
+                <DropdownMenuLabel className="text-[9px] font-semibold text-muted-foreground px-2 py-1.5 uppercase tracking-wider">Quick Actions</DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} 
+                  className="rounded-xl p-2.5 gap-3 cursor-pointer"
+                >
+                  {resolvedTheme === 'dark' ? (
+                    <Sun className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Moon className="h-4 w-4 text-primary" />
+                  )}
+                  <span className="font-bold text-xs">
+                    {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  </span>
+                </DropdownMenuItem>
+                <QuickComposeButton asMenuItem={true} />
+                <DropdownMenuItem 
+                  onClick={() => openNotes()} 
+                  className="rounded-xl p-2.5 gap-3 cursor-pointer"
+                >
+                  <NotebookPen className="h-4 w-4 text-primary" />
+                  <span className="font-bold text-xs">Quick Note</span>
+                </DropdownMenuItem>
+              </div>
   <DropdownMenuSeparator className="my-1" />
   <DropdownMenuItem onClick={() => auth.signOut()} className="rounded-xl p-2.5 gap-3 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"><LogOut className="h-4 w-4" /><span className="font-bold text-xs ">Log out</span></DropdownMenuItem>
               </DropdownMenuContent>

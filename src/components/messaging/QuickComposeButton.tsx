@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -29,9 +30,10 @@ interface QuickComposeButtonProps {
   entityId?: string;
   recipient?: string;
   entityName?: string;
+  asMenuItem?: boolean;
 }
 
-export default function QuickComposeButton({ entityId, recipient, entityName }: QuickComposeButtonProps) {
+export default function QuickComposeButton({ entityId, recipient, entityName, asMenuItem }: QuickComposeButtonProps) {
   const [open, setOpen] = React.useState(false);
   const [channel, setChannel] = React.useState<'email' | 'sms'>('email');
   const [to, setTo] = React.useState(recipient || '');
@@ -101,26 +103,39 @@ export default function QuickComposeButton({ entityId, recipient, entityName }: 
 
   return (
     <>
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={() => setOpen(true)}
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'relative h-10 w-10 rounded-xl hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary'
-              )}
-              aria-label="Compose message (C)"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="font-semibold">
-            <p>Quick Compose <kbd className="ml-1.5 px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">C</kbd></p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {asMenuItem ? (
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.preventDefault();
+            setOpen(true);
+          }}
+          className="rounded-xl p-2.5 gap-3 cursor-pointer"
+        >
+          <Send className="h-4 w-4 text-primary" />
+          <span className="font-bold text-xs">Quick Message</span>
+        </DropdownMenuItem>
+      ) : (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => setOpen(true)}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'relative h-10 w-10 rounded-xl hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary'
+                )}
+                aria-label="Compose message (C)"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="font-semibold">
+              <p>Quick Compose <kbd className="ml-1.5 px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">C</kbd></p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">

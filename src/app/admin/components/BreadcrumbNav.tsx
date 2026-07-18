@@ -139,7 +139,7 @@ export function BreadcrumbNav() {
   };
 
   if (pathname === '/admin') {
- return <span className="text-[10px] font-semibold text-foreground opacity-40">System Dashboard</span>;
+    return <span className="text-[10px] font-semibold text-foreground opacity-40 truncate whitespace-nowrap block">System Dashboard</span>;
   }
 
   return (
