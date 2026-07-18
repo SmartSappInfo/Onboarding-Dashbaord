@@ -13,7 +13,9 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
+  useSidebar,
 } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
@@ -60,7 +62,8 @@ import {
     Sparkles,
     Sliders,
     Share2,
-    Image
+    Image,
+    X
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -78,6 +81,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   const { isFeatureEnabled } = useFeatures();
   const { can, isSystemAdmin } = usePermissions();
   const { hasBackofficeAccess } = useBackofficeAccess();
+  const { isMobile, setOpenMobile } = useSidebar();
 
 
 
@@ -226,8 +230,21 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
   return (
     <Sidebar collapsible="icon" className={cn("bg-background/80 backdrop-blur-xl text-foreground border-r border-border/50 shadow-2xl print:hidden z-40 transition-all duration-300", className)}>
-      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-border/10">
-         <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
+      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-border/10 flex flex-row items-center justify-between">
+         <div className="flex-1 min-w-0">
+           <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
+         </div>
+         {isMobile && (
+           <Button
+             variant="ghost"
+             size="icon"
+             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 ml-2"
+             onClick={() => setOpenMobile(false)}
+           >
+             <X className="h-4 w-4" />
+             <span className="sr-only">Close sidebar</span>
+           </Button>
+         )}
       </SidebarHeader>
       
       <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">

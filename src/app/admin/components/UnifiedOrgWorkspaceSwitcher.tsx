@@ -303,7 +303,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
             
             <DropdownMenuContent 
                 align="start" 
- className="w-80 rounded-2xl p-2 border-none shadow-2xl animate-in zoom-in-95 duration-200"
+ className="w-80 rounded-2xl p-2 border-none shadow-2xl animate-in zoom-in-95 duration-200 z-[10001]"
             >
  <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">
                     {isSuperAdmin ? 'System Context' : 'Workspace Selection'}
@@ -355,7 +355,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
  {isActiveOrg && <Check className="h-4 w-4 ml-auto" />}
                                         </DropdownMenuSubTrigger>
                                         
- <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl">
+ <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl z-[10001]">
  <div className="px-3 py-2 mb-2 flex items-center justify-between">
  <p className="text-[10px] font-semibold text-muted-foreground">
                                                     {org.name} Workspaces

@@ -465,9 +465,6 @@ export default function EntityDetailPage() {
  <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
 
-                        <TabsTrigger value="notes" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
-                            <MessageSquarePlus className="h-3 w-3" /> Notes
-                        </TabsTrigger>
                         <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Zap className="h-3 w-3" /> Automations
                         </TabsTrigger>
@@ -631,10 +628,6 @@ export default function EntityDetailPage() {
 
 
                     
-                    <TabsContent value="notes" className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                        <EntityNotesTab entityId={entityId} />
-                        <LinkedQuickNotesPanel workspaceId={activeWorkspaceId} by="entity" recordId={entityId} />
-                    </TabsContent>
                     <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityAutomationsTab entityId={entityId} />
                     </TabsContent>
@@ -644,7 +637,7 @@ export default function EntityDetailPage() {
              </div>
              <div className="lg:col-span-1 space-y-6">
                   {/* Quick Notes Widget */}
-                  <EntityNotesWidget entityId={entityId} onViewAll={() => setActiveTab('notes')} />
+                  <EntityNotesWidget entityId={entityId} onViewAll={() => {}} />
 
                   {/* Tags Widget */}
                   <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
