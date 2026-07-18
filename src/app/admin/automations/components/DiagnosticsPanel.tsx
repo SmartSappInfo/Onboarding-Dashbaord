@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, documentId } from 'firebase/firestore';
 import { StepTimeline } from './StepTimeline';
 import type { AutomationRun } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -107,6 +107,30 @@ export function DiagnosticsPanel({
 
   const { data: pendingJobs } = useCollection<AutomationJob>(pendingJobsQuery);
 
+  // Find runIds that are in pendingJobs but missing from runs array
+  const missingRunIds = React.useMemo(() => {
+    if (!pendingJobs || !runs) return [];
+    const runIds = new Set(runs.map(r => r.id));
+    return Array.from(new Set(pendingJobs.map(j => j.runId))).filter(id => !runIds.has(id));
+  }, [pendingJobs, runs]);
+
+  // Fetch missing runs (up to 30 due to Firestore 'in' limit)
+  const missingRunsQuery = useMemoFirebase(() => {
+    if (!firestore || missingRunIds.length === 0) return null;
+    return query(
+      collection(firestore, 'automation_runs'),
+      where(documentId(), 'in', missingRunIds.slice(0, 30))
+    );
+  }, [firestore, missingRunIds]);
+
+  const { data: missingRuns } = useCollection<AutomationRun>(missingRunsQuery);
+
+  // Combine runs
+  const allRuns = React.useMemo(() => {
+    if (!runs) return [];
+    return missingRuns ? [...runs, ...missingRuns] : runs;
+  }, [runs, missingRuns]);
+
   // Reset selected run on unmount or automationId change
   React.useEffect(() => {
     return () => onSelectRun(null);
@@ -114,13 +138,13 @@ export function DiagnosticsPanel({
 
   // Sync selected run with real-time updates from collection if it is currently selected
   React.useEffect(() => {
-    if (selectedRun && runs) {
-      const updated = runs.find(r => r.id === selectedRun.id);
+    if (selectedRun && allRuns) {
+      const updated = allRuns.find(r => r.id === selectedRun.id);
       if (updated && JSON.stringify(updated.steps) !== JSON.stringify(selectedRun.steps)) {
         onSelectRun(updated);
       }
     }
-  }, [runs, selectedRun, onSelectRun]);
+  }, [allRuns, selectedRun, onSelectRun]);
 
   // Query jobs for currently selected run to locate wait step ids
   const selectedRunJobsQuery = useMemoFirebase(() => {
@@ -138,8 +162,8 @@ export function DiagnosticsPanel({
 
   // Filter runs based on status, search query, and node filter list
   const filteredRuns = React.useMemo(() => {
-    if (!runs) return [];
-    return runs.filter(run => {
+    if (!allRuns) return [];
+    return allRuns.filter(run => {
       const matchesStatus = statusFilter === 'ALL' || run.status === statusFilter;
       
       const displayName = String(
@@ -159,7 +183,7 @@ export function DiagnosticsPanel({
       
       return matchesStatus && matchesSearch && matchesNodeFilter;
     });
-  }, [runs, statusFilter, searchQuery, filterNodeId, pendingJobs]);
+  }, [allRuns, statusFilter, searchQuery, filterNodeId, pendingJobs]);
 
   const filterNode = React.useMemo(() => {
     if (!filterNodeId) return null;

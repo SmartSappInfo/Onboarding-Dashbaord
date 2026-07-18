@@ -621,22 +621,30 @@ export async function enrollContactsInAutomation(
       return { success: false, error: 'No valid contacts found matching the active workspace tenant and selection filters.' };
     }
 
-    // 5. Split targets into chunks of 100 and schedule bulk tasks
+    // 5. Split targets into chunks of 100 and schedule bulk tasks with concurrency limits
     const scheduleChunkSize = 100;
-    const taskPromises = [];
+    const CONCURRENCY_LIMIT = 10;
+    const taskChunks: typeof targets[] = [];
+    
     for (let i = 0; i < targets.length; i += scheduleChunkSize) {
-      const chunk = targets.slice(i, i + scheduleChunkSize);
-      taskPromises.push(
-        scheduleBulkTriggerTask({
-          automationId,
-          workspaceId,
-          organizationId,
-          trigger: 'MANUAL_ENROLLMENT',
-          targets: chunk,
-        })
+      taskChunks.push(targets.slice(i, i + scheduleChunkSize));
+    }
+
+    // Schedule tasks respecting the concurrency limit to prevent GCP rate limit drops (429s)
+    for (let i = 0; i < taskChunks.length; i += CONCURRENCY_LIMIT) {
+      const concurrentBatch = taskChunks.slice(i, i + CONCURRENCY_LIMIT);
+      await Promise.all(
+        concurrentBatch.map(chunk => 
+          scheduleBulkTriggerTask({
+            automationId,
+            workspaceId,
+            organizationId,
+            trigger: 'MANUAL_ENROLLMENT',
+            targets: chunk,
+          })
+        )
       );
     }
-    await Promise.all(taskPromises);
 
     logAutomationEvent('info', 'manual_enrollment_scheduled', {
       automationId,

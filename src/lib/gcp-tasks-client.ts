@@ -82,7 +82,7 @@ async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
   return clientInstance;
 }
 
-export type QueueChannel = 'email' | 'sms' | 'whatsapp';
+export type QueueChannel = 'email' | 'sms' | 'whatsapp' | 'bulk';
 
 export interface ScheduleTaskOptions {
   runId: string;
@@ -101,7 +101,7 @@ export interface ScheduleTaskOptions {
  * Strictly maps untyped inputs to valid QueueChannel options.
  */
 export function parseQueueChannel(channel: unknown): QueueChannel | undefined {
-  if (channel === 'email' || channel === 'sms' || channel === 'whatsapp') {
+  if (channel === 'email' || channel === 'sms' || channel === 'whatsapp' || channel === 'bulk') {
     return channel;
   }
   return undefined;
@@ -114,6 +114,7 @@ function getQueueName(channel?: QueueChannel): string {
   const suffix = channel === 'email' ? 'email-delivery-queue' :
                  channel === 'sms' ? 'sms-delivery-queue' :
                  channel === 'whatsapp' ? 'whatsapp-delivery-queue' :
+                 channel === 'bulk' ? 'bulk-trigger-queue' :
                  'default-delivery-queue';
   return `${QUEUE_PREFIX}${suffix}`;
 }
@@ -366,7 +367,7 @@ export async function scheduleBulkTriggerTask({
 }: BulkTriggerTaskOptions): Promise<string> {
   const uuid = Math.random().toString(36).substring(2, 15);
   const taskKey = `bulk_trigger_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
-  const queue = getQueueName();
+  const queue = getQueueName('bulk');
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 

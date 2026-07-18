@@ -20,6 +20,27 @@ export interface DelayNodeConfig {
 }
 
 /**
+ * Parses time strings robustly, supporting both 24-hour ('14:30') and AM/PM ('02:30 PM') formats.
+ */
+function parseTime(timeStr: string | undefined | null): { hour: number; minute: number } {
+  if (!timeStr) return { hour: 9, minute: 0 };
+  const cleanTime = String(timeStr).trim().toUpperCase();
+  const isPM = cleanTime.includes('PM');
+  const isAM = cleanTime.includes('AM');
+  
+  const timePart = cleanTime.replace(/[^\d:]/g, '');
+  const parts = timePart.split(':');
+  
+  let hour = parseInt(parts[0] || '9', 10);
+  const minute = parseInt(parts[1] || '0', 10);
+  
+  if (isPM && hour < 12) hour += 12;
+  if (isAM && hour === 12) hour = 0;
+  
+  return { hour: isNaN(hour) ? 9 : hour, minute: isNaN(minute) ? 0 : minute };
+}
+
+/**
  * Calculates the exact execution date/time for a delay node based on its configuration.
  */
 export async function calculateExecuteAt(
@@ -33,11 +54,11 @@ export async function calculateExecuteAt(
   if (waitType === 'specific_date') {
     if (config.specificDate) {
       const [year, month, day] = String(config.specificDate).split('-').map(Number);
-      const [hour, minute] = String(config.specificTime || '09:00').split(':').map(Number);
+      const { hour, minute } = parseTime(config.specificTime as string || '09:00');
       return new Date(year, month - 1, day, hour, minute, 0, 0);
     } else if (config.specificTime) {
       // Omitted target date: schedule for the next occurrence of this specific time
-      const [hour, minute] = String(config.specificTime).split(':').map(Number);
+      const { hour, minute } = parseTime(config.specificTime as string);
       const executeAt = new Date(now);
       executeAt.setHours(hour, minute, 0, 0);
       if (executeAt.getTime() <= now.getTime()) {
@@ -50,7 +71,7 @@ export async function calculateExecuteAt(
   // 2. On a Specific Day of Week
   if (waitType === 'scheduled_day' && (config.scheduledDay || config.scheduledDayPreset)) {
     const dayVal = String(config.scheduledDay || config.scheduledDayPreset).toLowerCase();
-    const [hour, minute] = String(config.scheduledTime || '09:00').split(':').map(Number);
+    const { hour, minute } = parseTime(config.scheduledTime as string || '09:00');
     const executeAt = new Date(now);
     executeAt.setHours(hour, minute, 0, 0);
 
@@ -113,7 +134,7 @@ export async function calculateExecuteAt(
 
   // 3. On a Specific Month / Day of Month (with optional Year)
   if (waitType === 'scheduled_month') {
-    const [hour, minute] = String(config.scheduledTime || '09:00').split(':').map(Number);
+    const { hour, minute } = parseTime(config.scheduledTime as string || '09:00');
     const executeAt = new Date(now);
     executeAt.setHours(hour, minute, 0, 0);
 

@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { enrollContactsInAutomationAction } from '@/lib/automation-actions';
 import type { Automation, EntityContact } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
+import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Dialog,
   DialogContent,
@@ -72,7 +74,9 @@ export function AddToAutomationDialog({
 
   // Bulk scopes and filters
   const [bulkScope, setBulkScope] = React.useState<BulkScope>('primary');
-  const [rolesInput, setRolesInput] = React.useState<string>('');
+  const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
+  const [availableRoles, setAvailableRoles] = React.useState<{ label: string; value: string }[]>([]);
+  const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
 
   const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -93,13 +97,40 @@ export function AddToAutomationDialog({
     return rawAutomations.filter((a) => a.isActive && !a.isArchived);
   }, [rawAutomations]);
 
+  // Load available roles dynamically based on active workspace
+  React.useEffect(() => {
+    if (open && workspaceId) {
+      setIsLoadingRoles(true);
+      let cancelled = false;
+      
+      // We assume contactScope defaults to 'institution' or 'contact' here. 
+      // For general role selection, resolving 'institution' fetches org/workspace globals.
+      getEffectiveContactTypes('institution', undefined, workspaceId)
+        .then((types) => {
+          if (cancelled) return;
+          setAvailableRoles(
+            types
+              .filter((t) => t.active)
+              .map((t) => ({ label: t.label, value: t.label }))
+          );
+          setIsLoadingRoles(false);
+        })
+        .catch((err) => {
+          console.error('Failed to load effective contact types:', err);
+          if (!cancelled) setIsLoadingRoles(false);
+        });
+        
+      return () => { cancelled = true; };
+    }
+  }, [open, workspaceId]);
+
   // Load contacts for single entity if not passed or empty
   React.useEffect(() => {
     if (open) {
       setSelectedAutomationId(null);
       setIsSubmitting(false);
       setBulkScope(isSingleEntity ? 'custom' : 'primary');
-      setRolesInput('');
+      setSelectedRoles([]);
       setStep('pick-automation');
 
       if (isSingleEntity) {
@@ -174,17 +205,17 @@ export function AddToAutomationDialog({
         selectedContactIds: Array.from(selectedContactIds),
       };
     } else {
-      if (bulkScope === 'roles' && !rolesInput.trim()) {
+      if (bulkScope === 'roles' && selectedRoles.length === 0) {
         toast({
           variant: 'destructive',
           title: 'Role Specification Required',
-          description: 'Please enter at least one contact role to filter by.',
+          description: 'Please select at least one contact role to filter by.',
         });
         return;
       }
       options = {
         contactScope: bulkScope,
-        roles: bulkScope === 'roles' ? rolesInput.split(',').map((r) => r.trim()).filter(Boolean) : undefined,
+        roles: bulkScope === 'roles' ? selectedRoles : undefined,
       };
     }
 
@@ -305,14 +336,27 @@ export function AddToAutomationDialog({
               {bulkScope === 'roles' && (
                 <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
                   <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground px-1">
-                    Roles filter (comma-separated)
+                    Select Role(s)
                   </label>
-                  <Input
-                    value={rolesInput}
-                    onChange={(e) => setRolesInput(e.target.value)}
-                    placeholder="e.g. Finance, Director, Owner"
-                    className="h-10 rounded-xl bg-background border-border text-foreground text-xs font-semibold focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-transparent placeholder:text-muted-foreground/50"
-                  />
+                  {isLoadingRoles ? (
+                    <div className="h-10 flex items-center px-3 border border-border rounded-xl bg-muted/20">
+                      <Loader2 className="h-4 w-4 text-muted-foreground animate-spin mr-2" />
+                      <span className="text-xs text-muted-foreground font-semibold">Loading roles...</span>
+                    </div>
+                  ) : availableRoles.length === 0 ? (
+                    <div className="h-10 flex items-center px-3 border border-amber-500/30 bg-amber-500/5 rounded-xl text-xs text-amber-600 font-semibold">
+                      No roles defined in workspace.
+                    </div>
+                  ) : (
+                    <MultiSelect
+                      options={availableRoles}
+                      value={selectedRoles}
+                      onChange={setSelectedRoles}
+                      placeholder="Select roles..."
+                      className="min-h-[40px]"
+                      maxCount={3}
+                    />
+                  )}
                 </div>
               )}
             </div>

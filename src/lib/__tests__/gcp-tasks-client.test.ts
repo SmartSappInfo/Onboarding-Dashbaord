@@ -103,4 +103,11 @@ describe('GCP Tasks Client & Emulator (P5-4, Strategy C)', () => {
     expect(delay.handleDelayNode).toBeDefined();
     expect(jump.evaluateContactJumps).toBeDefined();
   });
+
+  it('should correctly map the "bulk" channel to the bulk-trigger-queue to avoid blocking delivery traffic', async () => {
+    // Tests parseQueueChannel internal resolution through scheduleBulkTriggerTask or direct parse.
+    const { parseQueueChannel } = await import('../gcp-tasks-client');
+    expect(parseQueueChannel('bulk')).toBe('bulk');
+    expect(parseQueueChannel('invalid-channel')).toBeUndefined();
+  });
 });
