@@ -14,6 +14,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   useSidebar,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -235,15 +236,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
            <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
          </div>
          {isMobile && (
-           <Button
-             variant="ghost"
-             size="icon"
-             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 ml-2"
-             onClick={() => setOpenMobile(false)}
-           >
-             <X className="h-4 w-4" />
-             <span className="sr-only">Close sidebar</span>
-           </Button>
+           <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 ml-2" />
          )}
       </SidebarHeader>
       

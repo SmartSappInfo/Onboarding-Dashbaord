@@ -355,7 +355,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
  {isActiveOrg && <Check className="h-4 w-4 ml-auto" />}
                                         </DropdownMenuSubTrigger>
                                         
- <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl z-[10001]">
+ <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl z-[10002]">
  <div className="px-3 py-2 mb-2 flex items-center justify-between">
  <p className="text-[10px] font-semibold text-muted-foreground">
                                                     {org.name} Workspaces
