@@ -61,4 +61,5 @@ serviceAccountKey.json
 # local agent environment
 .superpowers/
 scratch/
+.worktrees/
 
