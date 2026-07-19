@@ -1075,7 +1075,7 @@ export async function bulkApplyTagsAction(
                   entityType:
                     contactType === 'workspace_entity'
                       ? ((item.contactData.entityType as EntityType) || 'institution')
-                      : contactType === 'entity' ? 'contact' : (contactType as EntityType),
+                      : contactType === 'entity' ? ('contact' as unknown as EntityType) : (contactType as EntityType),
                   displayName:
                     (item.contactData.displayName as string) ||
                     (item.contactData.name as string),
