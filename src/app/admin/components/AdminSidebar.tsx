@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarHeader,
@@ -62,9 +62,12 @@ import {
     Lock,
     Sparkles,
     Sliders,
-    Share2,
     Image,
-    X
+    ArrowLeft,
+    Building,
+    Check,
+    User,
+    Building2
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -72,17 +75,82 @@ import { useFeatures } from '@/hooks/use-features';
 import { useTenant } from '@/context/TenantContext';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useBackofficeAccess } from '@/hooks/use-backoffice-access';
-import type { AppFeatureId } from '@/lib/types';
+import type { ContactScope } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+const ENTITY_TYPE_ICONS = {
+  institution: Building2,
+  family: Users,
+  person: User,
+};
+
+function getScopeLabel(scope: ContactScope | undefined): string | null {
+  if (!scope) return null;
+  
+  const scopeMap: Record<ContactScope, string> = {
+    institution: 'Schools',
+    family: 'Families',
+    person: 'People'
+  };
+  
+  return scopeMap[scope];
+}
 
 export function AdminSidebar({ className }: { className?: string } = {}) {
   const pathname = usePathname();
   const { plural, dealPlural } = useTerminology();
-  const { activeWorkspaceId } = useTenant();
+  const { 
+    activeOrganizationId, 
+    activeOrganization, 
+    activeWorkspaceId, 
+    activeWorkspace,
+    setActiveWorkspace,
+    switchOrganizationAndWorkspace,
+    availableOrganizations,
+    allAccessibleWorkspaces,
+    isSuperAdmin,
+  } = useTenant();
+  const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const [activePanel, setActivePanel] = React.useState<'menu' | 'orgs' | 'workspaces'>('menu');
+  const [selectedOrgId, setSelectedOrgId] = React.useState<string>('');
+
+  React.useEffect(() => {
+    if (activeOrganizationId) {
+      setSelectedOrgId(activeOrganizationId);
+    }
+  }, [activeOrganizationId]);
+
+  React.useEffect(() => {
+    if (!isMobile) {
+      setActivePanel('menu');
+    }
+  }, [isMobile]);
+
+  const handleMobileSwitcherClick = () => {
+    if (!isMobile) return;
+    if (isSuperAdmin) {
+      setActivePanel('orgs');
+    } else {
+      setSelectedOrgId(activeOrganizationId || '');
+      setActivePanel('workspaces');
+    }
+  };
+
+  const handleWorkspaceSwitch = (workspaceId: string, orgId?: string) => {
+    if (orgId) {
+      switchOrganizationAndWorkspace(orgId, workspaceId);
+      router.push(`/admin?track=${workspaceId}`);
+    } else {
+      setActiveWorkspace(workspaceId);
+      router.push(`/admin?track=${workspaceId}`);
+    }
+  };
   const { isFeatureEnabled } = useFeatures();
   const { can, isSystemAdmin } = usePermissions();
   const { hasBackofficeAccess } = useBackofficeAccess();
-  const { isMobile, setOpenMobile } = useSidebar();
 
 
 
@@ -229,39 +297,288 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     );
   };
 
+  const renderOrganizationsPanel = () => {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="p-4 border-b border-border/10 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground shrink-0"
+            onClick={() => setActivePanel('menu')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Select Organization</span>
+        </div>
+        <ScrollArea className="flex-1 p-3">
+          <div className="space-y-1.5">
+            {availableOrganizations.map(org => {
+              const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === org.id);
+              const isActive = activeOrganizationId === org.id;
+
+              return (
+                <button
+                  key={org.id}
+                  onClick={() => {
+                    setSelectedOrgId(org.id);
+                    setActivePanel('workspaces');
+                  }}
+                  className={cn(
+                    "w-full rounded-xl p-3 gap-3 flex items-center transition-all border border-transparent text-left",
+                    isActive ? "bg-primary/5 border-primary/20" : "hover:bg-muted/50"
+                  )}
+                >
+                  <div className={cn(
+                    "p-2 rounded-lg shrink-0", 
+                    isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    {org.logoUrl ? (
+                      <img src={org.logoUrl} alt={org.name} className="h-4 w-4 rounded object-cover" />
+                    ) : (
+                      <Building className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-xs truncate">{org.name}</p>
+                    <p className="text-[9px] font-medium text-muted-foreground">
+                      {orgWorkspaces.length} workspace{orgWorkspaces.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground/50 ml-auto" />
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  };
+
+  const renderWorkspacesPanel = () => {
+    const selectedOrg = availableOrganizations.find(o => o.id === selectedOrgId);
+    const orgWorkspaces = allAccessibleWorkspaces.filter(w => w.organizationId === selectedOrgId);
+
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="p-4 border-b border-border/10 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground shrink-0"
+            onClick={() => {
+              if (isSuperAdmin) {
+                setActivePanel('orgs');
+              } else {
+                setActivePanel('menu');
+              }
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">
+            {selectedOrg?.name || 'Workspaces'}
+          </span>
+        </div>
+        <ScrollArea className="flex-1 p-3">
+          <div className="space-y-1.5">
+            {orgWorkspaces.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">No workspaces available</div>
+            ) : (
+              orgWorkspaces.map(w => {
+                const isActive = activeWorkspaceId === w.id && activeOrganizationId === selectedOrgId;
+                const isDefault = selectedOrg?.defaultWorkspaceId === w.id;
+                const wScopeLabel = getScopeLabel(w.contactScope);
+                const WScopeIcon = w.contactScope ? (ENTITY_TYPE_ICONS[w.contactScope as 'institution' | 'family' | 'person'] || Zap) : Zap;
+
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => {
+                      if (isActive) {
+                        setActivePanel('menu');
+                        setOpenMobile(false);
+                        return;
+                      }
+                      handleWorkspaceSwitch(w.id, selectedOrgId === activeOrganizationId ? undefined : selectedOrgId);
+                      setActivePanel('menu');
+                      setOpenMobile(false);
+                    }}
+                    className={cn(
+                      "w-full rounded-xl p-3 gap-3 mb-1 transition-all flex items-center text-left border border-transparent",
+                      isActive ? "bg-primary text-white shadow-md" : "hover:bg-muted/50"
+                    )}
+                    style={isActive ? { backgroundColor: w.color } : {}}
+                  >
+                    <div className={cn(
+                      "p-1.5 rounded-lg shrink-0",
+                      isActive ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
+                    )}>
+                      <WScopeIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-xs truncate">{w.name}</p>
+                        {isDefault && (
+                          <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" title="Default Workspace" />
+                        )}
+                        {wScopeLabel && (
+                          <Badge 
+                            variant={isActive ? "secondary" : "outline"}
+                            className={cn(
+                              "text-[8px] font-bold uppercase px-1 h-3.5",
+                              isActive && "bg-card/20 text-white border-white/30"
+                            )}
+                          >
+                            {wScopeLabel}
+                          </Badge>
+                        )}
+                      </div>
+                      {w.description && (
+                        <p className={cn(
+                          "text-[9px] font-medium truncate mt-0.5",
+                          isActive ? "text-white/70" : "text-muted-foreground"
+                        )}>
+                          {w.description}
+                        </p>
+                      )}
+                    </div>
+                    {isActive && <Check className="h-4 w-4 ml-auto" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  };
+
+  if (!isMobile) {
+    return (
+      <Sidebar collapsible="icon" className={cn("bg-background/80 backdrop-blur-xl text-foreground border-r border-border/50 shadow-2xl print:hidden z-40 transition-all duration-300", className)}>
+        <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-border/10 flex flex-row items-center justify-between">
+           <div className="flex-1 min-w-0">
+             <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
+           </div>
+        </SidebarHeader>
+        
+        <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
+          {renderNavGroup("Operations", coreNavItems, true)}
+          {renderNavGroup("Studios", studioNavItems, true)}
+          {renderNavGroup("Finance Hub", financeNavItems, false)}
+          {renderNavGroup("Social Hub", socialNavItems, false)}
+          <div className="mt-auto pt-4 mb-2">
+              {renderNavGroup("Management", systemNavItems, false)}
+          </div>
+        </SidebarContent>
+        
+        <SidebarFooter className="p-4 border-t border-border/30 bg-muted/20 backdrop-blur-md">
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Go to public site" className="text-muted-foreground hover:text-foreground transition-all h-10 group-data-[collapsible=icon]:justify-center rounded-xl hover:bg-muted/60">
+                        <Link href="/" target="_blank" className="flex items-center gap-3">
+                            <ExternalLink className="h-[18px] w-[18px] shrink-0" />
+                            <span className="font-semibold text-xs group-data-[collapsible=icon]:hidden">Live Site</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    );
+  }
+
   return (
     <Sidebar collapsible="icon" className={cn("bg-background/80 backdrop-blur-xl text-foreground border-r border-border/50 shadow-2xl print:hidden z-40 transition-all duration-300", className)}>
-      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2 border-b border-border/10 flex flex-row items-center justify-between">
-         <div className="flex-1 min-w-0">
-           <UnifiedOrgWorkspaceSwitcher variant="sidebar" />
-         </div>
-         {isMobile && (
-           <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 ml-2" />
-         )}
-      </SidebarHeader>
-      
-      <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
-        {renderNavGroup("Operations", coreNavItems, true)}
-        {renderNavGroup("Studios", studioNavItems, true)}
-        {renderNavGroup("Finance Hub", financeNavItems, false)}
-        {renderNavGroup("Social Hub", socialNavItems, false)}
-        <div className="mt-auto pt-4 mb-2">
-            {renderNavGroup("Management", systemNavItems, false)}
+      <div className="relative w-full h-full overflow-hidden flex flex-col">
+        
+        {/* Panel 1: Main Menu */}
+        <div 
+          className={cn(
+            "absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            activePanel === 'menu' ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          <SidebarHeader className="p-4 border-b border-border/10 flex flex-row items-center justify-between">
+             <div className="flex-1 min-w-0">
+               <SidebarMenu>
+                 <SidebarMenuItem>
+                   <SidebarMenuButton
+                     size="lg"
+                     onClick={handleMobileSwitcherClick}
+                     className="rounded-xl h-14 bg-card/5 hover:bg-card/10 border border-border/50 transition-all group"
+                   >
+                     <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-card text-sidebar-primary-foreground shadow-xl group-hover:scale-110 transition-transform overflow-hidden">
+                       {activeOrganization?.logoUrl ? (
+                         <img src={activeOrganization.logoUrl} alt={activeOrganization.name} className="h-full w-full object-cover" />
+                       ) : (
+                         <Building className="size-5 text-primary" />
+                       )}
+                     </div>
+                     <div className="grid flex-1 text-left text-sm leading-tight ml-1">
+                       <span className="truncate font-semibold tracking-tighter text-foreground text-base">
+                         {activeOrganization?.name || 'Organization'}
+                       </span>
+                       <span className="truncate text-[10px] font-bold text-muted-foreground leading-none mt-0.5">
+                         {activeWorkspace?.name || 'No Workspace selected'}
+                       </span>
+                     </div>
+                     <ChevronRight className="ml-auto size-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                   </SidebarMenuButton>
+                 </SidebarMenuItem>
+               </SidebarMenu>
+             </div>
+             <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 ml-2" />
+          </SidebarHeader>
+
+          <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none">
+            {renderNavGroup("Operations", coreNavItems, true)}
+            {renderNavGroup("Studios", studioNavItems, true)}
+            {renderNavGroup("Finance Hub", financeNavItems, false)}
+            {renderNavGroup("Social Hub", socialNavItems, false)}
+            <div className="mt-auto pt-4 mb-2">
+                {renderNavGroup("Management", systemNavItems, false)}
+            </div>
+          </SidebarContent>
+
+          <SidebarFooter className="p-4 border-t border-border/30 bg-muted/20 backdrop-blur-md">
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Go to public site" className="text-muted-foreground hover:text-foreground transition-all h-10 rounded-xl hover:bg-muted/60">
+                          <Link href="/" target="_blank" className="flex items-center gap-3">
+                              <ExternalLink className="h-[18px] w-[18px] shrink-0" />
+                              <span className="font-semibold text-xs">Live Site</span>
+                          </Link>
+                      </SidebarMenuButton>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+          </SidebarFooter>
         </div>
-      </SidebarContent>
-      
-      <SidebarFooter className="p-4 border-t border-border/30 bg-muted/20 backdrop-blur-md">
-          <SidebarMenu>
-              <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Go to public site" className="text-muted-foreground hover:text-foreground transition-all h-10 group-data-[collapsible=icon]:justify-center rounded-xl hover:bg-muted/60">
-                      <Link href="/" target="_blank" className="flex items-center gap-3">
-                          <ExternalLink className="h-[18px] w-[18px] shrink-0" />
-                          <span className="font-semibold text-xs group-data-[collapsible=icon]:hidden">Live Site</span>
-                      </Link>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-          </SidebarMenu>
-      </SidebarFooter>
+
+        {/* Panel 2: Organizations Selector (Superadmin Only) */}
+        {isSuperAdmin && (
+          <div 
+            className={cn(
+              "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              activePanel === 'orgs' ? "translate-x-0" : (activePanel === 'menu' ? "translate-x-full" : "-translate-x-full")
+            )}
+          >
+            {renderOrganizationsPanel()}
+          </div>
+        )}
+
+        {/* Panel 3: Workspaces Selector */}
+        <div 
+          className={cn(
+            "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            activePanel === 'workspaces' ? "translate-x-0" : "translate-x-full"
+          )}
+        >
+          {renderWorkspacesPanel()}
+        </div>
+
+      </div>
     </Sidebar>
   );
 }
