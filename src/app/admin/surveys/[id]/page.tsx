@@ -1,4 +1,3 @@
-import { SurveySummaryClient } from './components/SurveySummaryClient';
 import dynamic from 'next/dynamic';
 
 const SummaryClientDynamic = dynamic(() => import('./components/SurveySummaryClient'), { ssr: false });
