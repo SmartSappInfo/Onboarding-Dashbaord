@@ -6,6 +6,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag, TagCategory } from '@/lib/types';
 import { bulkApplyTagsAction, bulkRemoveTagsAction, createTagAction } from '@/lib/tag-actions';
+import { checkTagAutomations } from '@/lib/automations/checkTagAutomations';
 import { useToast } from '@/hooks/use-toast';
 import { useTerminology } from '@/hooks/use-terminology';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Search, Tag as TagIcon, X, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { Search, Tag as TagIcon, X, CheckCircle2, AlertCircle, Plus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TAG_CATEGORIES: { value: TagCategory; label: string }[] = [
@@ -75,6 +76,14 @@ export function BulkTagOperations({
   const [inlineCategory, setInlineCategory] = useState<TagCategory>('custom');
   const [inlineColor, setInlineColor] = useState('#3B82F6');
   const [isSubmittingInline, setIsSubmittingInline] = useState(false);
+
+  // Automation trigger awareness
+  const [automationMatches, setAutomationMatches] = useState<Array<{
+    automationId: string;
+    automationName: string;
+    tagId: string;
+    enrollOnce: boolean;
+  }>>([]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
@@ -160,6 +169,21 @@ export function BulkTagOperations({
     );
   };
 
+  // Check if selected tags trigger automations (only for "add" operation)
+  useEffect(() => {
+    if (operation !== 'add' || selectedTagIds.length === 0 || !activeWorkspaceId) {
+      setAutomationMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    checkTagAutomations(selectedTagIds, activeWorkspaceId)
+      .then((matches) => { if (!cancelled) setAutomationMatches(matches); })
+      .catch(() => { if (!cancelled) setAutomationMatches([]); });
+
+    return () => { cancelled = true; };
+  }, [selectedTagIds, operation, activeWorkspaceId]);
+
   // Reset focus when search changes
   useEffect(() => { setFocusedIndex(-1); }, [searchTerm]);
 
@@ -238,6 +262,7 @@ export function BulkTagOperations({
     setInlineTagName('');
     setInlineCategory('custom');
     setInlineColor('#3B82F6');
+    setAutomationMatches([]);
     onOpenChange(false);
   };
 
@@ -267,6 +292,14 @@ export function BulkTagOperations({
                     <p className="text-xs text-amber-600 font-medium mt-1">
                       {result.partialFailures} {result.partialFailures === 1 ? singular.toLowerCase() : plural.toLowerCase()} could not be updated
                     </p>
+                  )}
+                  {automationMatches.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-border/30">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        {[...new Set(automationMatches.map(m => m.automationId))].length} automation{[...new Set(automationMatches.map(m => m.automationId))].length !== 1 ? 's' : ''} triggered — processing in background
+                      </span>
+                    </div>
                   )}
                 </div>
               </>
@@ -516,6 +549,28 @@ export function BulkTagOperations({
               {operation === 'add' ? 'to' : 'from'}{' '}
               <span className="font-black text-foreground">{selectedContactIds.length} {selectedContactIds.length === 1 ? singular.toLowerCase() : plural.toLowerCase()}</span>
             </div>
+
+            {/* Automation trigger warning */}
+            {operation === 'add' && automationMatches.length > 0 && !isProcessing && !result && (
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                <Zap className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1 min-w-0">
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                    {[...new Set(automationMatches.map(m => m.automationId))].length} automation{[...new Set(automationMatches.map(m => m.automationId))].length !== 1 ? 's' : ''} will trigger
+                  </p>
+                  <p className="text-[10px] text-amber-600/80 dark:text-amber-500/70 leading-relaxed">
+                    Applying these tags will enroll the selected {plural.toLowerCase()} into:
+                  </p>
+                  <ul className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold space-y-0.5 mt-1">
+                    {[...new Set(automationMatches.map(m => m.automationName))].map((name) => (
+                      <li key={name} className="flex items-center gap-1.5">
+                        <Zap className="h-2.5 w-2.5 shrink-0" /> {name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
 
             {/* Progress */}
             {isProcessing && (
