@@ -940,7 +940,7 @@ export function NodeInspector({
                                 <ArrowRightLeft className="h-3 w-3" /> Condition Branching
                             </Label>
                             <ConditionsBuilder 
-                                groups={(config.groups as ConditionGroup[]) || (config.conditions && config.conditions.length > 0 ? [{
+                                groups={(config.groups as ConditionGroup[]) || (Array.isArray(config.conditions) && config.conditions.length > 0 ? [{
                                     id: 'legacy_group',
                                     relation: config.relation || config.matchType || 'and',
                                     conditions: config.conditions.map((c: any, idx: number) => ({
@@ -1293,7 +1293,7 @@ export function NodeInspector({
                             {config.waitType === 'conditions_met' ? (
                                 <div className="space-y-4 pt-2">
                                     <ConditionsBuilder 
-                                        groups={config.groups || (config.conditions && config.conditions.length > 0 ? [{
+                                        groups={(config.groups as ConditionGroup[]) || (Array.isArray(config.conditions) && config.conditions.length > 0 ? [{
                                             id: 'legacy_group',
                                             relation: config.relation || config.matchType || 'and',
                                             conditions: config.conditions.map((c: any, idx: number) => ({
