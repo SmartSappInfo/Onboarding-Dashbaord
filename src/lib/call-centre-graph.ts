@@ -323,6 +323,23 @@ export function resolveScriptVariables(
     DEAL_STATUS: deal?.status || 'open',
     DEAL_EXPECTED_CLOSE: deal?.expectedCloseDate || '',
     AGENT_NAME: agentName || 'Agent',
+
+    // Standard variables mapping support
+    entity_name: entity?.name || 'Contact',
+    contact_name: activeContact?.name || primaryContact?.name || entity?.name || 'Contact',
+    contact_phone: activeContact?.phone || primaryContact?.phone || primaryPhone,
+    contact_email: activeContact?.email || primaryContact?.email || primaryEmail,
+    contact_role: activeContact?.typeLabel || activeContact?.typeKey || '',
+    assigned_to: agentName || 'Agent',
+    user_name: agentName || 'Agent',
+
+    // Case-insensitive / uppercase versions of new variables
+    CONTACT_NAME: activeContact?.name || primaryContact?.name || entity?.name || 'Contact',
+    CONTACT_PHONE: activeContact?.phone || primaryContact?.phone || primaryPhone,
+    CONTACT_EMAIL: activeContact?.email || primaryContact?.email || primaryEmail,
+    CONTACT_ROLE: activeContact?.typeLabel || activeContact?.typeKey || '',
+    ASSIGNED_TO: agentName || 'Agent',
+    USER_NAME: agentName || 'Agent',
   };
 
   return text.replace(/\{\{([A-Za-z0-9_]+)\}\}|\[([A-Za-z0-9_]+)\]/g, (match, a, b) => {

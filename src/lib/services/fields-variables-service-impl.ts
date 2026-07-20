@@ -949,6 +949,17 @@ export class FieldsVariablesService {
       valuesMap.set('encrypted_recipient_token', 'mock_encrypted_token_123');
     }
 
+    // Map legacy uppercase aliases to ensure compatibility with call centre templates
+    valuesMap.set('ENTITY_NAME', valuesMap.get('entity_name') || '');
+    valuesMap.set('ENTITY_EMAIL', valuesMap.get('entity_email') || '');
+    valuesMap.set('ENTITY_PHONE', valuesMap.get('entity_phone') || '');
+    valuesMap.set('PRIMARY_CONTACT_NAME', valuesMap.get('contact_name_primary') || '');
+    valuesMap.set('PRIMARY_CONTACT_PHONE', valuesMap.get('contact_phone_primary') || '');
+    valuesMap.set('CURRENT_CONTACT_NAME', valuesMap.get('contact_name') || '');
+    valuesMap.set('CURRENT_CONTACT_PHONE', valuesMap.get('contact_phone') || '');
+    valuesMap.set('CURRENT_CONTACT_EMAIL', valuesMap.get('contact_email') || '');
+    valuesMap.set('AGENT_NAME', valuesMap.get('user_name') || valuesMap.get('assigned_to') || 'Agent');
+
     return valuesMap;
   }
 

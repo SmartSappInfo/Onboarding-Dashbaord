@@ -37,6 +37,8 @@ import {
   extractOutcomesFromGraph,
   ScriptVariableEntity,
 } from '@/lib/call-centre-graph';
+import { getVariableValuesMapAction } from '@/lib/services/fields-variables-service';
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 import { ScriptBodyDisplay } from '../../scripts/components/ScriptBodyDisplay';
 import { 
   ArrowLeft,
@@ -607,15 +609,45 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return contacts.find(c => c.isPrimary) || contacts[0] || null;
   }, [entityData, selectedContactId]);
 
+  const [liveVariablesMap, setLiveVariablesMap] = React.useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    if (!campaign?.workspaceId || !entityData?.id) {
+      setLiveVariablesMap({});
+      return;
+    }
+    getVariableValuesMapAction({
+      workspaceId: campaign.workspaceId,
+      entityId: entityData.id,
+      recipientContact: currentContact?.email || currentContact?.phone || currentContact?.id || undefined,
+      userId: user?.uid || undefined,
+    }).then(map => {
+      setLiveVariablesMap(map);
+    }).catch(err => {
+      console.warn('[WorkspaceClient] Failed to load live variables:', err);
+    });
+  }, [campaign?.workspaceId, entityData?.id, currentContact, user?.uid]);
+
   // Single source of truth for substituting the current contact + caller into a script body.
   // Reused by the guided runner and the interactive reference view.
-  const resolveLiveText = React.useCallback((raw: string) => resolveScriptVariables(
-    raw,
-    entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
-    contactDeals?.[0] || null,
-    user?.displayName || 'Agent',
-    currentContact
-  ), [entityData, currentItem, contactDeals, user, currentContact]);
+  const resolveLiveText = React.useCallback((raw: string) => {
+    if (!raw) return '';
+    const valuesMap = new Map<string, unknown>();
+    Object.entries(liveVariablesMap).forEach(([k, v]) => valuesMap.set(k, v));
+    Object.entries(liveVariablesMap).forEach(([k, v]) => valuesMap.set(k.toUpperCase(), v));
+
+    if (valuesMap.size === 0) {
+      return resolveScriptVariables(
+        raw,
+        entityData || { name: currentItem?.entityName, email: currentItem?.entityEmail, phone: currentItem?.entityPhone },
+        contactDeals?.[0] || null,
+        user?.displayName || 'Agent',
+        currentContact
+      );
+    }
+
+    return resolveTextWithMap(raw, valuesMap);
+  }, [liveVariablesMap, entityData, currentItem, contactDeals, user, currentContact]);
 
   const resolvedActiveNodeText = React.useMemo(
     () => resolveLiveText(currentNode?.data.text || ''),
@@ -666,6 +698,14 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const handleChoiceClick = React.useCallback(async (targetNodeId: string) => {
     const activeNode = currentNodeRef.current;
     if (!activeNode) return;
+
+    // Confirmation check for unexecuted Action steps
+    if (activeNode.type === 'action' && !triggeredNodeIds.has(activeNode.id) && actionStatus !== 'success') {
+      const confirmProceed = window.confirm(
+        "This action has not been executed yet. Are you sure you want to proceed without executing this action?"
+      );
+      if (!confirmProceed) return;
+    }
 
     // Validation & Writeback logic for Question nodes
     if (activeNode.type === 'question' && activeNode.data.questionConfig?.fieldName) {
@@ -743,7 +783,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
     setPathHistory(prev => [...prev, activeNode.id]);
     setCurrentNodeId(targetNodeId);
-  }, [currentItem?.entityId, contactDeals, firestore, toast, scriptGraph]);
+  }, [currentItem?.entityId, contactDeals, firestore, toast, scriptGraph, triggeredNodeIds, actionStatus]);
 
   const handleGoBack = () => {
     if (pathHistory.length === 0) return;
@@ -1014,13 +1054,20 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       const res = await handleTriggerAction(nodeWithResolvedConfig);
       if (res.ok) {
         setActionStatus('success');
+        // Auto-advance to next node after a brief success display
+        const nextChoices = getNextNodeChoices(scriptGraph, currentNode.id);
+        if (nextChoices.length === 1) {
+          setTimeout(() => {
+            handleChoiceClick(nextChoices[0].targetNode.id);
+          }, 1200);
+        }
       } else {
         setActionStatus('error');
         setActionError(res.error || 'Execution failed.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActionStatus('error');
-      setActionError(err.message);
+      setActionError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     }
   };
 
@@ -2630,22 +2677,20 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                 Continue to Next Step <ArrowRight className="h-3.5 w-3.5" />
                               </Button>
                             ) : currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && choices.length > 0 ? (
-                              (currentNode?.type !== 'action' || triggeredNodeIds.has(currentNode.id) || actionStatus === 'success') ? (
-                                <div className="flex flex-wrap gap-2 justify-end items-center">
-                                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
-                                  {choices.map((choice) => (
-                                    <Button
-                                      key={choice.edgeId}
-                                      type="button"
-                                      disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
-                                      onClick={() => handleChoiceClick(choice.targetNode.id)}
-                                      className="h-10 px-8 min-w-[120px] rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black shadow-sm"
-                                    >
-                                      {choice.edgeLabel}
-                                    </Button>
-                                  ))}
-                                </div>
-                              ) : null
+                              <div className="flex flex-wrap gap-2 justify-end items-center">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
+                                {choices.map((choice) => (
+                                  <Button
+                                    key={choice.edgeId}
+                                    type="button"
+                                    disabled={currentNode?.type === 'script_block' && currentNode.data.sayConfig?.complianceVerify && !complianceChecked}
+                                    onClick={() => handleChoiceClick(choice.targetNode.id)}
+                                    className="h-10 px-8 min-w-[120px] rounded-xl border border-border bg-card text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary transition-all text-xs font-black shadow-sm"
+                                  >
+                                    {choice.edgeLabel}
+                                  </Button>
+                                ))}
+                              </div>
                             ) : (
                               currentNode?.type !== 'outcome' && currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && (
                                 <div className="text-xs text-muted-foreground italic">

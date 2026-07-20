@@ -19,6 +19,7 @@ import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
 import { logActivity } from '../activity-logger';
 import { after } from 'next/server';
+import { FieldsVariablesService } from './fields-variables-service-impl';
 
 export class CallCentreService {
   // ─── Call Scripts ──────────────────────────────────────────────────────────
@@ -1060,11 +1061,22 @@ export class CallCentreService {
 
         case 'CREATE_TASK': {
           if (!params.taskTitle) return { success: false, error: 'No task title configured.' };
+          const varContext = {
+            workspaceId,
+            entityId,
+            recipientContact: contactId || undefined,
+            userId,
+          };
+          const resolvedTitle = await FieldsVariablesService.resolveTemplateVariables(params.taskTitle, varContext);
+          const resolvedDescription = params.taskDescription
+            ? await FieldsVariablesService.resolveTemplateVariables(params.taskDescription, varContext)
+            : '';
+
           await createTaskAction({
             organizationId,
             workspaceId,
-            title: params.taskTitle,
-            description: params.taskDescription || '',
+            title: resolvedTitle,
+            description: resolvedDescription,
             priority: params.taskPriority || 'medium',
             status: 'todo',
             category: 'call_follow_up' as any,
@@ -1115,13 +1127,13 @@ export class CallCentreService {
           }
 
           // Compile variables
-          const body = resolveScriptVariables(
-            rawBody,
-            entityData as any,
-            dealData,
-            agentName,
-            activeContact
-          );
+          const varContext = {
+            workspaceId,
+            entityId,
+            recipientContact: activeContact?.phone || activeContact?.email || activeContact?.id || undefined,
+            userId,
+          };
+          const body = await FieldsVariablesService.resolveTemplateVariables(rawBody, varContext);
 
           const phone = activeContact?.phone || '';
           if (!phone) return { success: false, error: 'Contact has no phone number.' };
@@ -1190,21 +1202,14 @@ export class CallCentreService {
           }
 
           // Compile variables for subject and HTML body
-          const subject = resolveScriptVariables(
-            rawSubject,
-            entityData as Record<string, unknown>,
-            dealData,
-            agentName,
-            activeContact
-          );
-
-          const html = resolveScriptVariables(
-            rawBody,
-            entityData as Record<string, unknown>,
-            dealData,
-            agentName,
-            activeContact
-          );
+          const varContext = {
+            workspaceId,
+            entityId,
+            recipientContact: activeContact?.email || activeContact?.phone || activeContact?.id || undefined,
+            userId,
+          };
+          const subject = await FieldsVariablesService.resolveTemplateVariables(rawSubject, varContext);
+          const html = await FieldsVariablesService.resolveTemplateVariables(rawBody, varContext);
 
           const email = activeContact?.email || '';
           if (!email) return { success: false, error: 'Contact has no email address.' };
