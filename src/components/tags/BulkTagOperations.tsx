@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useId } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import type { Tag, TagCategory } from '@/lib/types';
+import type { Tag } from '@/lib/types';
 import { bulkApplyTagsAction, bulkRemoveTagsAction, createTagAction } from '@/lib/tag-actions';
 import { checkTagAutomations } from '@/lib/automations/checkTagAutomations';
 import { useToast } from '@/hooks/use-toast';
@@ -25,21 +25,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Search, Tag as TagIcon, X, CheckCircle2, AlertCircle, Plus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const TAG_CATEGORIES: { value: TagCategory; label: string }[] = [
-  { value: 'behavioral', label: 'Behavioral' },
-  { value: 'demographic', label: 'Demographic' },
-  { value: 'interest', label: 'Interest' },
-  { value: 'status', label: 'Status' },
-  { value: 'lifecycle', label: 'Lifecycle' },
-  { value: 'engagement', label: 'Engagement' },
-  { value: 'custom', label: 'Custom' },
-];
-
-const TAG_COLORS = [
-  '#EF4444', '#F97316', '#EAB308', '#22C55E',
-  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
-];
 
 interface BulkTagOperationsProps {
   open: boolean;
@@ -64,19 +49,12 @@ export function BulkTagOperations({
 
   const [operation, setOperation] = useState<'add' | 'remove'>('add');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: boolean; count: number; partialFailures?: number } | null>(null);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
-
+  
   // Inline tag creation state
-  const [isCreatingInline, setIsCreatingInline] = useState(false);
-  const [inlineTagName, setInlineTagName] = useState('');
-  const [inlineCategory, setInlineCategory] = useState<TagCategory>('custom');
-  const [inlineColor, setInlineColor] = useState('#3B82F6');
-  const [isSubmittingInline, setIsSubmittingInline] = useState(false);
-
+          
   // Automation trigger awareness
   const [automationMatches, setAutomationMatches] = useState<Array<{
     automationId: string;
@@ -85,9 +63,7 @@ export function BulkTagOperations({
     enrollOnce: boolean;
   }>>([]);
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const listboxId = useId();
-
+    
   // Real-time tags subscription
   const tagsQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -110,8 +86,7 @@ export function BulkTagOperations({
     );
   }, [allTags, searchTerm]);
 
-  const exactMatchExists = useMemo(() => {
-    const cleanSearch = searchTerm.trim().toLowerCase();
+      const cleanSearch = searchTerm.trim().toLowerCase();
     if (!cleanSearch) return true;
     return (allTags || []).some(t => t.name.toLowerCase() === cleanSearch);
   }, [allTags, searchTerm]);
@@ -184,26 +159,7 @@ export function BulkTagOperations({
     return () => { cancelled = true; };
   }, [selectedTagIds, operation, activeWorkspaceId]);
 
-  // Reset focus when search changes
-  useEffect(() => { setFocusedIndex(-1); }, [searchTerm]);
-
-  // Sync DOM focus to focused list item
-  useEffect(() => {
-    if (focusedIndex < 0 || !listRef.current) return;
-    const items = listRef.current.querySelectorAll<HTMLElement>('[role="option"]');
-    items[focusedIndex]?.focus();
-  }, [focusedIndex]);
-
-  const handleListKeyDown = (e: React.KeyboardEvent) => {
-    const total = filteredTags.length;
-    if (total === 0) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIndex(i => (i + 1) % total); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIndex(i => (i <= 0 ? total - 1 : i - 1)); }
-    else if (e.key === 'Enter' && focusedIndex >= 0) { e.preventDefault(); toggleTag(filteredTags[focusedIndex].id); }
-    else if (e.key === 'Escape') { e.preventDefault(); open && handleClose(); }
-  };
-
-  const handleExecute = async () => {
+        const handleExecute = async () => {
     if (!user || selectedTagIds.length === 0 || selectedContactIds.length === 0) return;
     setIsProcessing(true);
     setProgress(0);

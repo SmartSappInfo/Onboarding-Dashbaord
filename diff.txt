@@ -1,0 +1,1145 @@
+diff --git a/firestore.indexes.json b/firestore.indexes.json
+index 0cd47670..5d0aac9e 100644
+--- a/firestore.indexes.json
++++ b/firestore.indexes.json
+@@ -1,5 +1,23 @@
+ {
+   "indexes": [
++    {
++      "collectionGroup": "message_logs",
++      "queryScope": "COLLECTION",
++      "fields": [
++        {
++          "fieldPath": "channel",
++          "order": "ASCENDING"
++        },
++        {
++          "fieldPath": "providerStatus",
++          "order": "ASCENDING"
++        },
++        {
++          "fieldPath": "lastStatusCheckAt",
++          "order": "ASCENDING"
++        }
++      ]
++    },
+     {
+       "collectionGroup": "media_shares",
+       "queryScope": "COLLECTION",
+diff --git a/scripts/migrate-message-logs.ts b/scripts/migrate-message-logs.ts
+new file mode 100644
+index 00000000..590627d3
+--- /dev/null
++++ b/scripts/migrate-message-logs.ts
+@@ -0,0 +1,53 @@
++import * as admin from 'firebase-admin';
++
++/**
++ * Executes a zero-downtime migration to backfill `lastStatusCheckAt` and `statusCheckCount`
++ * for all existing pending SMS message logs. This is required before the polling
++ * cron job can successfully query the compound index.
++ */
++
++async function main() {
++  if (!admin.apps.length) {
++    admin.initializeApp();
++  }
++
++  const db = admin.firestore();
++  console.log('Starting MessageLog migration for pending SMS...');
++
++  const pendingLogsSnap = await db
++    .collection('message_logs')
++    .where('channel', '==', 'sms')
++    .where('providerStatus', '==', 'pending')
++    .get();
++
++  if (pendingLogsSnap.empty) {
++    console.log('No pending SMS logs found. Migration complete.');
++    process.exit(0);
++  }
++
++  console.log(`Found ${pendingLogsSnap.size} pending logs. Backfilling fields...`);
++
++  const bulkWriter = db.bulkWriter();
++  let updatedCount = 0;
++
++  for (const doc of pendingLogsSnap.docs) {
++    const data = doc.data();
++    if (!data.lastStatusCheckAt) {
++      // Set to epoch to ensure these are picked up immediately by the cron
++      bulkWriter.update(doc.ref, {
++        lastStatusCheckAt: '1970-01-01T00:00:00.000Z',
++        statusCheckCount: 0,
++      });
++      updatedCount++;
++    }
++  }
++
++  await bulkWriter.close();
++  console.log(`Successfully migrated ${updatedCount} logs.`);
++  process.exit(0);
++}
++
++main().catch((err) => {
++  console.error('Migration failed:', err);
++  process.exit(1);
++});
+diff --git a/scripts/setup-sms-sync-scheduler.sh b/scripts/setup-sms-sync-scheduler.sh
+new file mode 100755
+index 00000000..8bf119b0
+--- /dev/null
++++ b/scripts/setup-sms-sync-scheduler.sh
+@@ -0,0 +1,82 @@
++#!/usr/bin/env bash
++# Targets Firebase App Hosting (Cloud Run). Pairs with apphosting.yaml CRON_SECRET → cron-secret.
++# This script sets up a Cloud Scheduler job to ping the /api/cron/messaging-status-sync endpoint every minute.
++
++set -e
++
++# Default settings
++DEFAULT_REGION="us-central1"
++JOB_NAME="messaging-status-sync-cron"
++SCHEDULE="* * * * *" # Every minute
++SECRET_NAME="cron-secret"
++
++# ANSI color codes
++CYAN='\033[0;36m'
++GREEN='\033[0;32m'
++YELLOW='\033[1;33m'
++RED='\033[0;31m'
++BOLD='\033[1m'
++RESET='\033[0m'
++
++echo -e "${BOLD}${CYAN}Setup: Messaging Status Sync Scheduler (Firebase App Hosting)${RESET}\n"
++
++# 1. Project verification
++PROJECT_ID=$(gcloud config get-value project)
++if [ -z "$PROJECT_ID" ]; then
++  echo -e "${RED}Error: No active gcloud project. Run 'gcloud config set project <your-project>'${RESET}"
++  exit 1
++fi
++echo -e "Project: ${BOLD}${GREEN}$PROJECT_ID${RESET}"
++
++# 2. Get target URL
++read -p "Enter your Firebase App Hosting custom domain (e.g., https://app.mycompany.com): " SERVICE_URL
++if [ -z "$SERVICE_URL" ]; then
++  echo -e "${RED}URL is required.${RESET}"
++  exit 1
++fi
++
++CRON_ENDPOINT_URL="${SERVICE_URL}/api/cron/messaging-status-sync"
++echo -e "Cron Endpoint: ${BOLD}${CYAN}$CRON_ENDPOINT_URL${RESET}"
++
++# 3. Retrieve CRON_SECRET
++echo -e "\n${BOLD}Retrieving CRON_SECRET from Secret Manager...${RESET}"
++CRON_SECRET=$(gcloud secrets versions access latest --secret="$SECRET_NAME" --project="$PROJECT_ID" 2>/dev/null || true)
++
++if [ -z "$CRON_SECRET" ]; then
++  echo -e "${RED}Error: Could not retrieve $SECRET_NAME from Secret Manager. Please run setup-automation-heartbeat-scheduler.sh first or create the secret manually.${RESET}"
++  exit 1
++fi
++
++echo -e "Secret retrieved successfully."
++
++# 4. Create or Update Cloud Scheduler Job
++read -p "Cloud Scheduler region (default: $DEFAULT_REGION): " REGION
++REGION=${REGION:-$DEFAULT_REGION}
++
++echo -e "\n${BOLD}Configuring Cloud Scheduler Job: $JOB_NAME${RESET}"
++
++if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" --project="$PROJECT_ID" >/dev/null 2>&1; then
++  echo "Updating existing job..."
++  gcloud scheduler jobs update http "$JOB_NAME" \
++    --location="$REGION" \
++    --project="$PROJECT_ID" \
++    --schedule="$SCHEDULE" \
++    --uri="$CRON_ENDPOINT_URL" \
++    --http-method=GET \
++    --update-headers="Authorization=Bearer $CRON_SECRET" \
++    --time-zone="UTC"
++else
++  echo "Creating new job..."
++  gcloud scheduler jobs create http "$JOB_NAME" \
++    --location="$REGION" \
++    --project="$PROJECT_ID" \
++    --schedule="$SCHEDULE" \
++    --uri="$CRON_ENDPOINT_URL" \
++    --http-method=GET \
++    --headers="Authorization=Bearer $CRON_SECRET" \
++    --time-zone="UTC"
++fi
++
++echo -e "\n${BOLD}${GREEN}Done.${RESET} The status sync cron will now run every minute."
++echo -e "You can trigger it manually with:"
++echo -e "gcloud scheduler jobs run $JOB_NAME --location=$REGION"
+diff --git a/src/app/admin/automations/components/AutomationBuilder.tsx b/src/app/admin/automations/components/AutomationBuilder.tsx
+index ac8c90ca..bde363f2 100644
+--- a/src/app/admin/automations/components/AutomationBuilder.tsx
++++ b/src/app/admin/automations/components/AutomationBuilder.tsx
+@@ -1759,10 +1759,25 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
+                 />
+             )}
+ 
++            {/* Mobile Backdrop for Sidebar Panels to block ReactFlow touch events */}
++            {(diagnosticsOpen || selectedNodeId) && (
++                <div 
++                    className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm sm:hidden pointer-events-auto"
++                    onClick={() => {
++                        if (diagnosticsOpen) setDiagnosticsOpen(false);
++                        else if (selectedNodeId && !isInspectorDirty) setSelectedNodeId(null);
++                        else if (selectedNodeId && isInspectorDirty && !skipConfirm) {
++                            nextActionRef.current = { type: 'close' };
++                            setConfirmModalOpen(true);
++                        }
++                    }}
++                />
++            )}
++
+             {/* Sidebar Inspector Context */}
+-            <div className="absolute top-6 right-6 bottom-6 z-20 w-[456px] pointer-events-none flex flex-col">
++            <div className="fixed inset-0 z-[50] w-full pointer-events-none flex flex-col sm:absolute sm:inset-y-6 sm:right-6 sm:left-auto sm:w-[456px]">
+                 {diagnosticsOpen ? (
+-                    <div className="h-full pointer-events-auto">
++                    <div className="h-full pointer-events-auto animate-in slide-in-from-bottom sm:slide-in-from-right duration-300 ease-out">
+                         <DiagnosticsPanel
+                             automationId={automationId}
+                             nodes={nodes}
+@@ -1778,8 +1793,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
+                     </div>
+                 ) : (
+                     <Card className={cn(
+-                        "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden",
+-                        selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
++                        "rounded-none sm:rounded-2xl border-0 sm:border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-right ease-out",
++                        selectedNodeId ? "opacity-100 translate-y-0 sm:translate-x-0" : "opacity-0 translate-y-full sm:translate-y-0 sm:translate-x-10 pointer-events-none"
+                     )}>
+                         <div className="flex items-center justify-between mb-6 shrink-0">
+                             <div className="flex items-center gap-3">
+diff --git a/src/app/admin/automations/components/AutomationStepLibraryModal.tsx b/src/app/admin/automations/components/AutomationStepLibraryModal.tsx
+index 01b4bbf8..b712b8a5 100644
+--- a/src/app/admin/automations/components/AutomationStepLibraryModal.tsx
++++ b/src/app/admin/automations/components/AutomationStepLibraryModal.tsx
+@@ -531,7 +531,7 @@ export default function AutomationStepLibraryModal({
+ 
+   return (
+     <Dialog open={open} onOpenChange={onOpenChange}>
+-      <DialogContent className="max-w-5xl h-[650px] p-0 overflow-hidden rounded-3xl border border-border bg-card text-left shadow-2xl flex flex-col focus:outline-none">
++      <DialogContent className="w-[100vw] h-[100dvh] rounded-none sm:max-w-5xl sm:h-[650px] sm:w-full sm:rounded-3xl p-0 overflow-hidden border border-border bg-card text-left shadow-2xl flex flex-col focus:outline-none">
+         <DialogHeader className="p-6 bg-muted/10 border-b border-border shrink-0">
+           <div className="flex items-center gap-3">
+             <div className="p-2 bg-primary/10 rounded-xl text-primary shadow-sm">
+@@ -546,11 +546,11 @@ export default function AutomationStepLibraryModal({
+           </div>
+         </DialogHeader>
+ 
+-        <div className="flex-1 flex min-h-0 overflow-hidden">
+-          {/* Left Sidebar */}
+-          <div className="w-64 border-r border-border bg-muted/5 p-4 flex flex-col justify-between overflow-y-auto shrink-0 select-none">
+-            <div className="space-y-1.5">
+-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-3 mb-3">
++        <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
++          {/* Left Sidebar / Mobile Top Tabs */}
++          <div className="w-full border-b sm:border-b-0 sm:border-r border-border bg-muted/5 p-4 flex flex-row overflow-x-auto scrollbar-hide sm:w-64 sm:flex-col sm:justify-between sm:overflow-y-auto shrink-0 select-none">
++            <div className="flex gap-2 sm:block sm:space-y-1.5 min-w-max sm:min-w-0">
++              <p className="hidden sm:block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-3 mb-3">
+                 Categories
+               </p>
+               {CATEGORIES.map((cat) => {
+@@ -566,7 +566,7 @@ export default function AutomationStepLibraryModal({
+                     disabled={isDisabled}
+                     onClick={() => setActiveCategory(cat.id)}
+                     className={cn(
+-                      "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left font-bold text-xs transition-all relative group/btn",
++                      "flex items-center justify-between px-3 py-2.5 rounded-xl text-left font-bold text-xs transition-all relative group/btn whitespace-nowrap flex-shrink-0 sm:w-full",
+                       isActive 
+                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:scale-[0.98]",
+@@ -636,7 +636,7 @@ export default function AutomationStepLibraryModal({
+             {/* Elements Cards Bento Grid */}
+             <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+               {filteredItems.length > 0 ? (
+-                <div className="grid grid-cols-2 gap-4">
++                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   {filteredItems.map((item) => {
+                     const Icon = item.icon;
+                     const style = CATEGORY_STYLES[item.category] || defaultStyle;
+diff --git a/src/app/admin/automations/components/DiagnosticsPanel.tsx b/src/app/admin/automations/components/DiagnosticsPanel.tsx
+index 76e893a9..b62f14b3 100644
+--- a/src/app/admin/automations/components/DiagnosticsPanel.tsx
++++ b/src/app/admin/automations/components/DiagnosticsPanel.tsx
+@@ -311,7 +311,7 @@ export function DiagnosticsPanel({
+   };
+ 
+   return (
+-    <Card className="pointer-events-auto w-full h-full bg-card/95 backdrop-blur-md border border-border/70 rounded-[1.5rem] shadow-xl flex flex-col overflow-hidden">
++    <Card className="pointer-events-auto w-full h-full bg-card/95 backdrop-blur-md border border-border/70 rounded-none sm:rounded-[1.5rem] shadow-xl flex flex-col overflow-hidden">
+       
+       {/* Header */}
+       <CardHeader className="p-4 border-b border-border/50 shrink-0 flex flex-row items-center justify-between gap-4">
+@@ -328,7 +328,7 @@ export function DiagnosticsPanel({
+           variant="ghost" 
+           size="icon" 
+           onClick={onClose}
+-          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
++          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.97] transition-transform"
+         >
+           <X size={15} />
+         </Button>
+@@ -398,7 +398,7 @@ export function DiagnosticsPanel({
+           </div>
+ 
+           {/* Runs List */}
+-          <ScrollArea className="flex-1 min-h-0">
++          <ScrollArea className="flex-1 min-h-0 overflow-x-auto scrollbar-hide">
+             <div className="p-3 space-y-1.5 text-left">
+               {isLoading ? (
+                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+@@ -457,7 +457,7 @@ export function DiagnosticsPanel({
+                             variant="ghost"
+                             size="sm"
+                             disabled={isProcessingAction === run.id}
+-                            className="h-7 px-2 text-[9px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0"
++                            className="h-7 px-2 text-[9px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0 active:scale-[0.97] transition-transform"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleEndAutomation(run.id);
+@@ -487,7 +487,7 @@ export function DiagnosticsPanel({
+                 onSelectRun(null);
+                 setJsonExpanded(false);
+               }}
+-              className="h-7 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-lg px-2 flex items-center gap-1 text-left"
++              className="h-7 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-lg px-2 flex items-center gap-1 text-left active:scale-[0.97] transition-transform"
+             >
+               <ArrowLeft size={11} /> Back to Runs
+             </Button>
+@@ -498,7 +498,7 @@ export function DiagnosticsPanel({
+           </div>
+ 
+           {/* Details Scroll Area */}
+-          <ScrollArea className="flex-1 min-h-0">
++          <ScrollArea className="flex-1 min-h-0 overflow-x-auto scrollbar-hide">
+             <div className="p-4 space-y-4 text-left">
+               {/* Entity Quick Info */}
+               <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/40">
+@@ -527,7 +527,7 @@ export function DiagnosticsPanel({
+                       size="sm" 
+                       disabled={isProcessingAction === selectedRun.id}
+                       onClick={() => handleEndAutomation(selectedRun.id)}
+-                      className="h-7 text-[9px] text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold"
++                      className="h-7 text-[9px] text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold active:scale-[0.97] transition-transform"
+                     >
+                       {isProcessingAction === selectedRun.id ? 'Terminating...' : 'End Automation'}
+                     </Button>
+@@ -539,7 +539,7 @@ export function DiagnosticsPanel({
+                         size="sm" 
+                         disabled={isProcessingAction === activeWaitJob.id}
+                         onClick={() => handleForceResume(activeWaitJob.id)}
+-                        className="h-7 text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm"
++                        className="h-7 text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm active:scale-[0.97] transition-transform"
+                       >
+                         {isProcessingAction === activeWaitJob.id ? 'Resuming...' : 'Force Resume / Next Step'}
+                       </Button>
+diff --git a/src/app/admin/automations/components/NodeInspector.tsx b/src/app/admin/automations/components/NodeInspector.tsx
+index 2a3ecb0b..179c4905 100644
+--- a/src/app/admin/automations/components/NodeInspector.tsx
++++ b/src/app/admin/automations/components/NodeInspector.tsx
+@@ -38,13 +38,13 @@ import { MessageNodeStatsPanel } from './message-stats/MessageNodeStatsPanel';
+ import { TagSelector } from '@/components/tags/TagSelector';
+ 
+ interface NodeInspectorProps {
+-    node: any;
+-    onUpdate: (data: any) => void;
++    node: import('reactflow').Node;
++    onUpdate: (data: Record<string, unknown>) => void;
+     triggers?: import('@/lib/types').AutomationTriggerDef[];
+     onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
+     onDirtyChange?: (isDirty: boolean) => void;
+-    onApply?: (nodeId: string, nodeData: any, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
+-    onTest?: (nodeId: string, nodeData: any) => void;
++    onApply?: (nodeId: string, nodeData: Record<string, unknown>, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
++    onTest?: (nodeId: string, nodeData: Record<string, unknown>) => void;
+     onCancel?: () => void;
+     nodes?: import('reactflow').Node[];
+ }
+@@ -487,7 +487,7 @@ export function NodeInspector({
+     }, [singular]);
+ 
+     // Draft state for normal node data
+-    const [draftData, setDraftData] = React.useState<any>(null);
++    const [draftData, setDraftData] = React.useState<Record<string, unknown> | null>(null);
+     // Draft state for triggers array (for triggerNode)
+     const [draftTriggers, setDraftTriggers] = React.useState<import('@/lib/types').AutomationTriggerDef[]>([]);
+ 
+@@ -531,7 +531,7 @@ export function NodeInspector({
+     }, [isDirty, onDirtyChange]);
+ 
+     const data = draftData || node.data || {};
+-    const config = data.config || {};
++    const config = (data.config as Record<string, unknown>) || {};
+ 
+     const deferredTriggerSearch = React.useDeferredValue(triggerSearch);
+     const deferredActionSearch = React.useDeferredValue(actionSearch);
+@@ -570,18 +570,18 @@ export function NodeInspector({
+         fieldGroups,
+     } = useWorkspaceScopedQueries();
+ 
+-    const updateConfig = (updates: any) => {
+-        setDraftData((prev: any) => ({
++    const updateConfig = (updates: Record<string, unknown>) => {
++        setDraftData((prev: Record<string, unknown> | null) => ({
+             ...(prev || {}),
+             config: {
+-                ...((prev || {}).config || {}),
++                ...((prev?.config as Record<string, unknown>) || {}),
+                 ...updates
+             }
+         }));
+     };
+ 
+     const updateTagNodeData = (updates: Record<string, unknown>) => {
+-        setDraftData((prev: any) => ({
++        setDraftData((prev: Record<string, unknown> | null) => ({
+             ...(prev || {}),
+             ...updates
+         }));
+@@ -1339,7 +1339,7 @@ export function NodeInspector({
+                                     </div>
+ 
+                                     {config.hasTimeLimit ? (
+-                                        <div className="grid grid-cols-2 gap-3 pt-1 animate-in slide-in-from-top-2 duration-200">
++                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 animate-in slide-in-from-top-2 duration-200">
+                                             <div className="space-y-2">
+                                                 <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Limit Amount</Label>
+                                                 <Input
+@@ -1434,7 +1434,7 @@ export function NodeInspector({
+                              {/* 6. On a Specific Month / Day of Month */}
+                              {config.waitType === 'scheduled_month' ? (
+                                  <div className="space-y-4 pt-2">
+-                                     <div className="grid grid-cols-3 gap-3">
++                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                          <div className="space-y-2">
+                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Year</Label>
+                                              <Select
+diff --git a/src/app/api/cron/messaging-status-sync/route.ts b/src/app/api/cron/messaging-status-sync/route.ts
+new file mode 100644
+index 00000000..cd360e3c
+--- /dev/null
++++ b/src/app/api/cron/messaging-status-sync/route.ts
+@@ -0,0 +1,53 @@
++import { type NextRequest, NextResponse } from 'next/server';
++import crypto from 'crypto';
++import { syncPendingSmsStatuses } from '@/lib/messaging/status-sync-service';
++
++export const dynamic = 'force-dynamic';
++export const maxDuration = 60; // 60 seconds (hobby/pro max without long limits)
++
++const SECRET = process.env.CRON_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-secret');
++
++/**
++ * Validates the authorization header securely to prevent timing attacks.
++ */
++function isAuthorized(request: NextRequest): boolean {
++  if (!SECRET) return false;
++
++  const authHeader = request.headers.get('authorization');
++  if (!authHeader?.startsWith('Bearer ')) return false;
++
++  const providedToken = authHeader.substring(7);
++  
++  if (providedToken.length !== SECRET.length) return false;
++
++  try {
++    return crypto.timingSafeEqual(Buffer.from(providedToken), Buffer.from(SECRET));
++  } catch (err) {
++    return false;
++  }
++}
++
++export async function GET(request: NextRequest) {
++  if (!isAuthorized(request)) {
++    console.warn('[CRON_SYNC] Unauthorized attempt to trigger messaging status sync');
++    return new NextResponse('Unauthorized', { status: 401 });
++  }
++
++  console.info('[CRON_SYNC] Starting messaging status sync...');
++
++  try {
++    const result = await syncPendingSmsStatuses();
++    
++    console.info(`[CRON_SYNC] Completed. Processed: ${result.processed}, Success: ${result.success}`);
++    
++    if (result.errors && result.errors.length > 0) {
++      console.warn(`[CRON_SYNC] Encountered ${result.errors.length} errors during sync:`, result.errors.slice(0, 5));
++    }
++
++    return NextResponse.json(result);
++  } catch (err: unknown) {
++    const message = err instanceof Error ? err.message : String(err);
++    console.error('[CRON_SYNC] Fatal error during status sync:', message);
++    return NextResponse.json({ error: 'Internal sync failure', message }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/webhooks/messaging/mnotify/route.ts b/src/app/api/webhooks/messaging/mnotify/route.ts
+deleted file mode 100644
+index d6449659..00000000
+--- a/src/app/api/webhooks/messaging/mnotify/route.ts
++++ /dev/null
+@@ -1,163 +0,0 @@
+-import { type NextRequest, NextResponse } from 'next/server';
+-import { adminDb } from '@/lib/firebase-admin';
+-import { incrementMessageNodeStat } from '@/lib/messaging/message-node-stats';
+-import type { MessageLog } from '@/lib/types';
+-
+-const SECRET = process.env.CLOUD_TASKS_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-secret');
+-
+-function cleanPhoneSuffix(phone: string): string {
+-  const digits = phone.replace(/\D/g, '');
+-  return digits.substring(digits.length - 9);
+-}
+-
+-function normalizeMnotifyStatus(status: string): 'delivered' | 'bounced' | 'pending' {
+-  const s = status.toUpperCase().trim();
+-  if (s === 'DELIVRD' || s === 'DELIVERED' || s === 'SUCCESS') return 'delivered';
+-  if (s === 'EXPIRED' || s === 'UNDELIV' || s === 'FAILED' || s === 'BOUNCED') return 'bounced';
+-  return 'pending';
+-}
+-
+-export async function POST(request: NextRequest) {
+-  return handleCallback(request);
+-}
+-
+-export async function GET(request: NextRequest) {
+-  return handleCallback(request);
+-}
+-
+-async function handleCallback(request: NextRequest) {
+-  try {
+-    // 1. Security Handshake Check
+-    if (!SECRET) {
+-      console.error('[MNOTIFY-WEBHOOK] CLOUD_TASKS_SECRET environment variable is missing.');
+-      return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
+-    }
+-    const { searchParams } = new URL(request.url);
+-    const requestSecret = searchParams.get('secret') || request.headers.get('x-mnotify-secret');
+-    if (!requestSecret || requestSecret !== SECRET) {
+-      console.warn('[MNOTIFY-WEBHOOK] Unauthorized access attempt.');
+-      return NextResponse.json({ error: 'Unauthorized secret handshake' }, { status: 401 });
+-    }
+-
+-    // 2. Parse callback parameters from body or query params
+-    let body: Record<string, unknown> = {};
+-    if (request.method === 'POST') {
+-      try {
+-        const contentType = request.headers.get('content-type') || '';
+-        if (
+-          contentType.includes('application/x-www-form-urlencoded') ||
+-          contentType.includes('multipart/form-data')
+-        ) {
+-          const formData = await request.formData();
+-          body = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+-        } else {
+-          body = (await request.json()) as Record<string, unknown>;
+-        }
+-      } catch {
+-        // Fallback to URL search parameters if POST body is empty or not JSON
+-      }
+-    }
+-
+-    const smsId = String(
+-      body.sms_id || body.id || searchParams.get('sms_id') || searchParams.get('id') || ''
+-    ).trim();
+-    const to = String(
+-      body.to || body.recipient || searchParams.get('to') || searchParams.get('recipient') || ''
+-    ).trim();
+-    const rawStatus = String(body.status || searchParams.get('status') || '').trim();
+-
+-    if (!smsId || !to || !rawStatus) {
+-      console.warn('[MNOTIFY-WEBHOOK] Missing required parameters:', { smsId, to, rawStatus });
+-      return NextResponse.json({ error: 'Missing sms_id, to/recipient, or status' }, { status: 400 });
+-    }
+-
+-    const targetStatus = normalizeMnotifyStatus(rawStatus);
+-    if (targetStatus === 'pending') {
+-      // Status is still pending, no updates needed yet
+-      return NextResponse.json({ success: true, message: 'Status pending. No action taken.' });
+-    }
+-
+-    const cleanTo = cleanPhoneSuffix(to);
+-    console.info(
+-      `[MNOTIFY-WEBHOOK] Status update received for SMS ${smsId} to ...${cleanTo}: ${rawStatus} (${targetStatus})`
+-    );
+-
+-    // 3. Query all logs with this providerId (batch or single send)
+-    const logsSnap = await adminDb
+-      .collection('message_logs')
+-      .where('providerId', '==', smsId)
+-      .get();
+-
+-    if (logsSnap.empty) {
+-      console.warn(`[MNOTIFY-WEBHOOK] No message log found with providerId: ${smsId}`);
+-      return NextResponse.json({ message: 'No matching message log found' }, { status: 200 });
+-    }
+-
+-    // Find the log matching our recipient's phone number suffix (skipping already finalized logs)
+-    const matchedDoc = logsSnap.docs.find((doc) => {
+-      const data = doc.data() as MessageLog;
+-      const isFinalized = data.providerStatus === 'delivered' || data.providerStatus === 'bounced';
+-      return cleanPhoneSuffix(data.recipient) === cleanTo && !isFinalized;
+-    });
+-
+-    if (!matchedDoc) {
+-      console.warn(
+-        `[MNOTIFY-WEBHOOK] Found logs for providerId ${smsId} but none matched recipient suffix: ...${cleanTo}`
+-      );
+-      return NextResponse.json({ message: 'Recipient suffix mismatch' }, { status: 200 });
+-    }
+-
+-    const logRef = matchedDoc.ref;
+-    const logData = matchedDoc.data() as MessageLog;
+-
+-    // 4. Update the log status transactionally to prevent race conditions & double-counting
+-    const updated = await adminDb.runTransaction(async (tx) => {
+-      const snap = await tx.get(logRef);
+-      if (!snap.exists) return false;
+-
+-      const current = snap.data() as MessageLog;
+-      // Skip if the log is already marked as finalized (delivered or failed)
+-      if (current.providerStatus === 'delivered' || current.providerStatus === 'bounced') {
+-        return false;
+-      }
+-
+-      const now = new Date().toISOString();
+-      tx.update(logRef, {
+-        providerStatus: targetStatus,
+-        status: targetStatus === 'delivered' ? 'delivered' : 'failed',
+-        updatedAt: now,
+-        ...(targetStatus === 'delivered' ? { deliveredAt: now } : { bouncedAt: now }),
+-      });
+-
+-      return true;
+-    });
+-
+-    // 5. Update the Message Node Stats if the log status was successfully updated
+-    if (updated) {
+-      const automationId = logData.automationId;
+-      const nodeId = logData.nodeId;
+-      if (automationId && nodeId) {
+-        try {
+-          await incrementMessageNodeStat({
+-            automationId,
+-            nodeId,
+-            workspaceId: logData.workspaceId || 'onboarding',
+-            organizationId: logData.organizationId,
+-            channel: 'sms',
+-            counter: targetStatus === 'delivered' ? 'delivered' : 'bounced',
+-          });
+-          console.info(`[MNOTIFY-WEBHOOK] Incremented stats for node ${nodeId} (${targetStatus})`);
+-        } catch (statErr: unknown) {
+-          const message = statErr instanceof Error ? statErr.message : String(statErr);
+-          console.warn('[MNOTIFY-WEBHOOK] Failed to increment node stat:', message);
+-        }
+-      }
+-    }
+-
+-    return NextResponse.json({ success: true });
+-  } catch (err: unknown) {
+-    const message = err instanceof Error ? err.message : String(err);
+-    console.error('[MNOTIFY-WEBHOOK] Critical error processing callback:', message);
+-    return NextResponse.json({ error: 'Webhook internal failure' }, { status: 500 });
+-  }
+-}
+diff --git a/src/components/tags/BulkTagOperations.tsx b/src/components/tags/BulkTagOperations.tsx
+index 04271c4d..5dfddcc5 100644
+--- a/src/components/tags/BulkTagOperations.tsx
++++ b/src/components/tags/BulkTagOperations.tsx
+@@ -58,7 +58,7 @@ export function BulkTagOperations({
+ }: BulkTagOperationsProps) {
+   const firestore = useFirestore();
+   const { user } = useUser();
+-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
++  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId: string; activeOrganizationId: string };
+   const { toast } = useToast();
+   const { singular, plural } = useTerminology();
+ 
+@@ -147,7 +147,7 @@ export function BulkTagOperations({
+           description: result.error || 'Failed to create tag',
+         });
+       }
+-    } catch (err: any) {
++    } catch (err: unknown) {
+       toast({
+         variant: 'destructive',
+         title: 'Error',
+@@ -232,7 +232,7 @@ export function BulkTagOperations({
+       setProgress(100);
+ 
+       if (res.success) {
+-        const partialFailures = (res as any).partialFailures?.length ?? 0;
++        const partialFailures = (res as { partialFailures?: any[] }).partialFailures?.length ?? 0;
+         setResult({ success: true, count: res.processedCount || selectedContactIds.length, partialFailures });
+         toast({
+           title: 'Operation Complete',
+@@ -241,11 +241,11 @@ export function BulkTagOperations({
+         onComplete?.();
+       } else {
+         setResult({ success: false, count: 0 });
+-        toast({ variant: 'destructive', title: 'Operation Failed', description: (res as any).error });
++        toast({ variant: 'destructive', title: 'Operation Failed', description: (res as { error?: string }).error || 'Unknown error' });
+       }
+-    } catch (err: any) {
++    } catch (err: unknown) {
+       setResult({ success: false, count: 0 });
+-      toast({ variant: 'destructive', title: 'Error', description: err.message });
++      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : String(err) });
+     } finally {
+       setIsProcessing(false);
+     }
+@@ -341,206 +341,17 @@ export function BulkTagOperations({
+             </div>
+ 
+             {/* Tag selection */}
+-            <div className="space-y-2">
+-              <Label htmlFor="bulk-tag-search" className="text-[10px] font-black uppercase tracking-widest">
+-                {isCreatingInline ? 'Create New Tag' : 'Select Tags'}
++            <div className="space-y-3">
++              <Label className="text-[10px] font-black uppercase tracking-widest">
++                Select Tags
+               </Label>
+-              {isCreatingInline ? (
+-                <div className="border border-border/60 rounded-xl p-3.5 space-y-3.5 bg-muted/20">
+-                  <div className="flex items-center justify-between">
+-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+-                      Tag Name
+-                    </span>
+-                    <button
+-                      type="button"
+-                      onClick={() => setIsCreatingInline(false)}
+-                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+-                    >
+-                      <X className="h-3.5 w-3.5" />
+-                    </button>
+-                  </div>
+-
+-                  <div className="space-y-3">
+-                    <Input
+-                      value={inlineTagName}
+-                      onChange={e => setInlineTagName(e.target.value)}
+-                      placeholder="Tag name…"
+-                      className="h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
+-                      maxLength={50}
+-                      onKeyDown={e => {
+-                        if (e.key === 'Enter' && inlineTagName.trim()) {
+-                          e.preventDefault();
+-                          handleCreateInlineTag();
+-                        }
+-                      }}
+-                    />
+-
+-                    <div className="grid grid-cols-2 gap-3">
+-                      <div className="space-y-1.5">
+-                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Category</label>
+-                        <select
+-                          value={inlineCategory}
+-                          onChange={e => setInlineCategory(e.target.value as TagCategory)}
+-                          className="w-full bg-background border border-border rounded-xl p-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+-                        >
+-                          {TAG_CATEGORIES.map(c => (
+-                            <option key={c.value} value={c.value}>{c.label}</option>
+-                          ))}
+-                        </select>
+-                      </div>
+-
+-                      <div className="space-y-1.5">
+-                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Color</label>
+-                        <div className="flex flex-wrap gap-1 border border-border rounded-xl p-1.5 bg-background justify-center">
+-                          {TAG_COLORS.map(color => (
+-                            <button
+-                              key={color}
+-                              type="button"
+-                              onClick={() => setInlineColor(color)}
+-                              className={cn(
+-                                "h-5 w-5 rounded-full transition-transform hover:scale-110",
+-                                inlineColor === color ? "ring-2 ring-offset-1 ring-primary" : ""
+-                              )}
+-                              style={{ backgroundColor: color }}
+-                            />
+-                          ))}
+-                        </div>
+-                      </div>
+-                    </div>
+-                  </div>
+-
+-                  <div className="flex justify-end gap-2 pt-1">
+-                    <Button
+-                      type="button"
+-                      variant="ghost"
+-                      size="sm"
+-                      onClick={() => setIsCreatingInline(false)}
+-                      className="h-8 text-xs font-bold rounded-xl"
+-                      disabled={isSubmittingInline}
+-                    >
+-                      Cancel
+-                    </Button>
+-                    <Button
+-                      type="button"
+-                      size="sm"
+-                      onClick={handleCreateInlineTag}
+-                      disabled={isSubmittingInline || !inlineTagName.trim()}
+-                      className="h-8 text-xs font-bold rounded-xl"
+-                    >
+-                      {isSubmittingInline ? 'Creating…' : 'Create & Select'}
+-                    </Button>
+-                  </div>
+-                </div>
+-              ) : (
+-                <>
+-                  <div className="relative">
+-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden="true" />
+-                    <Input
+-                      id="bulk-tag-search"
+-                      placeholder="Search tags…"
+-                      value={searchTerm}
+-                      onChange={e => setSearchTerm(e.target.value)}
+-                      onKeyDown={handleListKeyDown}
+-                      className="pl-8 h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
+-                      aria-label="Search tags"
+-                      aria-controls={listboxId}
+-                      role="combobox"
+-                      aria-expanded={true}
+-                      aria-autocomplete="list"
+-                      aria-activedescendant={focusedIndex >= 0 ? `bulk-option-${filteredTags[focusedIndex]?.id}` : undefined}
+-                    />
+-                  </div>
+-                  <div
+-                    ref={listRef}
+-                    id={listboxId}
+-                    role="listbox"
+-                    aria-label="Available tags"
+-                    aria-multiselectable="true"
+-                    className="max-h-48 overflow-y-auto border rounded-xl p-2 space-y-1"
+-                    onKeyDown={handleListKeyDown}
+-                  >
+-                    {searchTerm.trim() && !exactMatchExists && (
+-                      <button
+-                        type="button"
+-                        onClick={() => {
+-                          setInlineTagName(searchTerm.trim());
+-                          setIsCreatingInline(true);
+-                        }}
+-                        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-primary/10 text-primary text-left min-h-[44px] sm:min-h-0 sm:py-1.5 cursor-pointer font-bold border border-dashed border-primary/30 mb-1"
+-                      >
+-                        <Plus className="h-3.5 w-3.5 shrink-0" />
+-                        <span className="text-xs flex-1 truncate">
+-                          Create tag "{searchTerm.trim()}"
+-                        </span>
+-                      </button>
+-                    )}
+-                    {filteredTags.length === 0 && (!searchTerm.trim() || exactMatchExists) ? (
+-                      <p className="text-[10px] text-muted-foreground text-center py-4 font-medium" role="status">No tags found</p>
+-                    ) : (
+-                      filteredTags.map((tag, idx) => {
+-                        const isSelected = selectedTagIds.includes(tag.id);
+-                        const isFocused = focusedIndex === idx;
+-                        return (
+-                          <button
+-                            key={tag.id}
+-                            id={`bulk-option-${tag.id}`}
+-                            role="option"
+-                            aria-selected={isSelected}
+-                            tabIndex={isFocused ? 0 : -1}
+-                            onClick={() => toggleTag(tag.id)}
+-                            onFocus={() => setFocusedIndex(idx)}
+-                            className={cn(
+-                              'w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors text-left',
+-                              'min-h-[44px] sm:min-h-0 sm:py-1.5',
+-                              'cursor-pointer touch-manipulation',
+-                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+-                              isFocused
+-                                ? 'outline-none ring-2 ring-primary ring-inset'
+-                                : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset'
+-                            )}
+-                          >
+-                            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} aria-hidden="true" />
+-                            <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
+-                            <span className="text-[9px] text-muted-foreground uppercase font-bold hidden sm:block">{tag.category}</span>
+-                            {isSelected && (
+-                              <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center shrink-0" aria-hidden="true">
+-                                <X className="h-2.5 w-2.5 text-white" />
+-                              </div>
+-                            )}
+-                          </button>
+-                        );
+-                      })
+-                    )}
+-                  </div>
+-                </>
+-              )}
+-            </div>
+-
+-            {/* Selected tags preview */}
+-            {selectedTagObjects.length > 0 && (
+-              <div className="space-y-2">
+-                <Label className="text-[10px] font-black uppercase tracking-widest">
+-                  Selected ({selectedTagObjects.length})
+-                </Label>
+-                <div className="flex flex-wrap gap-1.5">
+-                  {selectedTagObjects.map(tag => (
+-                    <Badge
+-                      key={tag.id}
+-                      className="text-white border-none font-bold text-[10px] uppercase gap-1 pr-1"
+-                      style={{ backgroundColor: tag.color }}
+-                    >
+-                      {tag.name}
+-                      <button
+-                        onClick={() => toggleTag(tag.id)}
+-                        className="ml-0.5 hover:bg-black/20 rounded-full p-0.5"
+-                      >
+-                        <X className="h-2.5 w-2.5" />
+-                      </button>
+-                    </Badge>
+-                  ))}
+-                </div>
++              <div className="min-h-[44px] border border-border/40 rounded-xl p-2 bg-muted/20 flex flex-wrap items-center gap-1.5">
++                <TagSelector
++                  currentTagIds={selectedTagIds}
++                  onTagsChange={setSelectedTagIds}
++                />
+               </div>
+-            )}
++            </div>
+ 
+             {/* Operation summary */}
+             <div className="p-3 bg-muted/30 rounded-xl text-xs font-medium text-muted-foreground">
+@@ -552,7 +363,7 @@ export function BulkTagOperations({
+ 
+             {/* Automation trigger warning */}
+             {operation === 'add' && automationMatches.length > 0 && !isProcessing && !result && (
+-              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-bottom-1 duration-300">
++              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                 <Zap className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                 <div className="space-y-1 min-w-0">
+                   <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+diff --git a/src/lib/messaging/status-sync-service.ts b/src/lib/messaging/status-sync-service.ts
+new file mode 100644
+index 00000000..b4a5d723
+--- /dev/null
++++ b/src/lib/messaging/status-sync-service.ts
+@@ -0,0 +1,200 @@
++import { adminDb } from '../firebase-admin';
++import { getSmsStatus } from '../mnotify-service';
++import { incrementMessageNodeStat } from './message-node-stats';
++import type { MessageLog } from '../types';
++
++/**
++ * Normalizes mNotify's raw status string into our unified system status.
++ */
++function normalizeMnotifyStatus(status: string): 'delivered' | 'bounced' | 'pending' {
++  const s = status.toUpperCase().trim();
++  if (s === 'DELIVRD' || s === 'DELIVERED' || s === 'SUCCESS') return 'delivered';
++  if (s === 'EXPIRED' || s === 'UNDELIV' || s === 'FAILED' || s === 'BOUNCED') return 'bounced';
++  return 'pending';
++}
++
++/**
++ * Resolves the mNotify API key for a given organization if custom routing is enabled.
++ */
++async function resolveMnotifyApiKey(organizationId?: string): Promise<string | undefined> {
++  if (!organizationId) return undefined;
++  try {
++    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
++    if (orgSnap.exists) {
++      const org = orgSnap.data();
++      if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
++        return org.mnotifyApiKey as string;
++      }
++    }
++  } catch (error) {
++    console.warn("[STATUS-SYNC] Failed to resolve custom API key:", error instanceof Error ? error.message : String(error));
++  }
++  return undefined;
++}
++
++/**
++ * Helper to process an array in chunks concurrently.
++ */
++async function processInChunks<T, R>(items: T[], chunkSize: number, processor: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
++  const results: PromiseSettledResult<R>[] = [];
++  for (let i = 0; i < items.length; i += chunkSize) {
++    const chunk = items.slice(i, i + chunkSize);
++    const chunkPromises = chunk.map(processor);
++    const chunkResults = await Promise.allSettled(chunkPromises);
++    results.push(...chunkResults);
++    // Add a tiny delay between chunks to avoid hammering the API
++    if (i + chunkSize < items.length) {
++      await new Promise((resolve) => setTimeout(resolve, 200));
++    }
++  }
++  return results;
++}
++
++/**
++ * Polling service that syncs the delivery status of pending SMS messages.
++ * Designed to be invoked frequently via a cron job.
++ */
++export async function syncPendingSmsStatuses(): Promise<{ processed: number; success: boolean; errors: string[] }> {
++  const BATCH_SIZE = 200;
++  const CHUNK_SIZE = 20;
++  const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes lock
++  const MAX_CHECK_COUNT = 4320; // Approx 72 hours if checked every minute
++
++  const errors: string[] = [];
++
++  try {
++    // 1. Fetch the oldest unchecked pending SMS logs
++    const logsSnap = await adminDb
++      .collection('message_logs')
++      .where('channel', '==', 'sms')
++      .where('providerStatus', '==', 'pending')
++      .orderBy('lastStatusCheckAt', 'asc')
++      .limit(BATCH_SIZE)
++      .get();
++
++    if (logsSnap.empty) {
++      return { processed: 0, success: true, errors };
++    }
++
++    const docs = logsSnap.docs;
++
++    // 2. Optimistically lock these docs to prevent overlapping cron runs from processing them
++    const lockWriter = adminDb.bulkWriter();
++    const lockedUntil = new Date(Date.now() + LOCK_DURATION_MS).toISOString();
++    
++    docs.forEach((doc) => {
++      lockWriter.update(doc.ref, { lastStatusCheckAt: lockedUntil });
++    });
++    await lockWriter.close();
++
++    // 3. Process the documents in chunks to respect mNotify API rate limits
++    const updateWriter = adminDb.bulkWriter();
++
++    await processInChunks(docs, CHUNK_SIZE, async (doc) => {
++      const data = doc.data() as MessageLog;
++      const providerId = data.providerId;
++      const organizationId = data.organizationId;
++      
++      const currentCheckCount = (data.statusCheckCount || 0) + 1;
++
++      if (!providerId) {
++        // Log is missing a providerId, mark it as failed to prevent infinite loops
++        updateWriter.update(doc.ref, {
++          providerStatus: 'bounced',
++          status: 'failed',
++          bouncedAt: new Date().toISOString(),
++          error: 'Missing providerId for polling',
++          lastStatusCheckAt: new Date().toISOString(),
++          statusCheckCount: currentCheckCount,
++        });
++        return;
++      }
++
++      // Fetch the API Key if custom routing is used
++      const apiKey = await resolveMnotifyApiKey(organizationId);
++
++      // Hit mNotify
++      let mNotifyData;
++      try {
++        mNotifyData = await getSmsStatus(providerId, apiKey);
++      } catch (err: unknown) {
++        const message = err instanceof Error ? err.message : String(err);
++        
++        // If the message is completely unfound on mNotify's side and we've checked a few times
++        if (message.toLowerCase().includes('not found') && currentCheckCount > 5) {
++          updateWriter.update(doc.ref, {
++            providerStatus: 'bounced',
++            status: 'failed',
++            bouncedAt: new Date().toISOString(),
++            error: 'Message not found on gateway after multiple checks',
++            lastStatusCheckAt: new Date().toISOString(),
++            statusCheckCount: currentCheckCount,
++          });
++          return;
++        }
++
++        throw new Error(`API Error for ${providerId}: ${message}`);
++      }
++
++      // mNotify returns status under message or status property depending on the endpoint wrapper
++      // We expect the mnotify-service wrapper to return the direct status object or string
++      const rawStatus = String(mNotifyData?.status || mNotifyData?.message || 'pending').trim();
++      const targetStatus = normalizeMnotifyStatus(rawStatus);
++      const now = new Date().toISOString();
++
++      // If status is still pending
++      if (targetStatus === 'pending') {
++        if (currentCheckCount > MAX_CHECK_COUNT) {
++          // Expire the message
++          updateWriter.update(doc.ref, {
++            providerStatus: 'bounced',
++            status: 'failed',
++            bouncedAt: now,
++            error: 'Status polling expired (timeout)',
++            lastStatusCheckAt: now,
++            statusCheckCount: currentCheckCount,
++          });
++        } else {
++          // Keep polling, unlock the item by setting the real last checked time
++          updateWriter.update(doc.ref, {
++            lastStatusCheckAt: now,
++            statusCheckCount: currentCheckCount,
++          });
++        }
++        return;
++      }
++
++      // If status has finalized
++      updateWriter.update(doc.ref, {
++        providerStatus: targetStatus,
++        status: targetStatus === 'delivered' ? 'delivered' : 'failed',
++        updatedAt: now,
++        lastStatusCheckAt: now,
++        statusCheckCount: currentCheckCount,
++        ...(targetStatus === 'delivered' ? { deliveredAt: now } : { bouncedAt: now }),
++      });
++
++      // Update Node Stats if tied to an automation
++      if (data.automationId && data.nodeId) {
++        await incrementMessageNodeStat({
++          automationId: data.automationId,
++          nodeId: data.nodeId,
++          workspaceId: data.workspaceId || 'onboarding',
++          organizationId: data.organizationId,
++          channel: 'sms',
++          counter: targetStatus === 'delivered' ? 'delivered' : 'bounced',
++        }).catch((err) => {
++          errors.push(`Stat update failed for ${data.id}: ${err instanceof Error ? err.message : String(err)}`);
++        });
++      }
++    });
++
++    await updateWriter.close();
++
++    return { processed: docs.length, success: true, errors };
++
++  } catch (error: unknown) {
++    const msg = error instanceof Error ? error.message : String(error);
++    return { processed: 0, success: false, errors: [msg] };
++  }
++}
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index 4e773ed0..9a3dd157 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -3233,6 +3233,12 @@ export interface MessageLog {
+   clickedAt?: string;
+   bouncedAt?: string;
+   complainedAt?: string;
++
++  // ── Status Polling Sync ───────────────────────────────────────────────────
++  /** ISO timestamp of the last status check for channels that require polling (e.g., mNotify SMS) */
++  lastStatusCheckAt?: string;
++  /** Number of times the status has been polled, used to expire dead messages */
++  statusCheckCount?: number;
+   unsubscribedAt?: string;
+   repliedAt?: string;
+ }

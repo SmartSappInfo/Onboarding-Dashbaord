@@ -55,7 +55,7 @@ async function processInChunks<T, R>(items: T[], chunkSize: number, processor: (
  * Designed to be invoked frequently via a cron job.
  */
 export async function syncPendingSmsStatuses(): Promise<{ processed: number; success: boolean; errors: string[] }> {
-  const BATCH_SIZE = 200;
+  const BATCH_SIZE = 100;
   const CHUNK_SIZE = 20;
   const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes lock
   const MAX_CHECK_COUNT = 4320; // Approx 72 hours if checked every minute
@@ -79,15 +79,35 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
     const docs = logsSnap.docs;
 
     // 2. Optimistically lock these docs to prevent overlapping cron runs from processing them
+    // Using Precondition (lastUpdateTime) ensures we don't overwrite if another worker grabbed it first.
     const lockWriter = adminDb.bulkWriter();
     const lockedUntil = new Date(Date.now() + LOCK_DURATION_MS).toISOString();
     
     docs.forEach((doc) => {
-      lockWriter.update(doc.ref, { lastStatusCheckAt: lockedUntil });
+      lockWriter.update(doc.ref, { lastStatusCheckAt: lockedUntil }, { lastUpdateTime: doc.updateTime });
     });
+    
+    // We catch and ignore 'Failed precondition' errors here, as that means another worker got the lock.
+    lockWriter.onWriteError((error) => {
+      if (error.code === 9) { // 9 = FAILED_PRECONDITION
+        return false; // Tells BulkWriter not to retry this document
+      }
+      return true; // Retry other transient errors
+    });
+
     await lockWriter.close();
 
-    // 3. Process the documents in chunks to respect mNotify API rate limits
+    // 3. Setup API Key cache to avoid N+1 queries for organization keys
+    const apiKeyCache = new Map<string, string | undefined>();
+    const getCachedApiKey = async (orgId?: string) => {
+      if (!orgId) return undefined;
+      if (apiKeyCache.has(orgId)) return apiKeyCache.get(orgId);
+      const key = await resolveMnotifyApiKey(orgId);
+      apiKeyCache.set(orgId, key);
+      return key;
+    };
+
+    // 4. Process the documents in chunks to respect mNotify API rate limits
     const updateWriter = adminDb.bulkWriter();
 
     await processInChunks(docs, CHUNK_SIZE, async (doc) => {
@@ -98,7 +118,6 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
       const currentCheckCount = (data.statusCheckCount || 0) + 1;
 
       if (!providerId) {
-        // Log is missing a providerId, mark it as failed to prevent infinite loops
         updateWriter.update(doc.ref, {
           providerStatus: 'bounced',
           status: 'failed',
@@ -110,17 +129,15 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
         return;
       }
 
-      // Fetch the API Key if custom routing is used
-      const apiKey = await resolveMnotifyApiKey(organizationId);
+      // Fetch the API Key using cache
+      const apiKey = await getCachedApiKey(organizationId);
 
-      // Hit mNotify
       let mNotifyData;
       try {
         mNotifyData = await getSmsStatus(providerId, apiKey);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         
-        // If the message is completely unfound on mNotify's side and we've checked a few times
         if (message.toLowerCase().includes('not found') && currentCheckCount > 5) {
           updateWriter.update(doc.ref, {
             providerStatus: 'bounced',
@@ -136,16 +153,12 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
         throw new Error(`API Error for ${providerId}: ${message}`);
       }
 
-      // mNotify returns status under message or status property depending on the endpoint wrapper
-      // We expect the mnotify-service wrapper to return the direct status object or string
       const rawStatus = String(mNotifyData?.status || mNotifyData?.message || 'pending').trim();
       const targetStatus = normalizeMnotifyStatus(rawStatus);
       const now = new Date().toISOString();
 
-      // If status is still pending
       if (targetStatus === 'pending') {
         if (currentCheckCount > MAX_CHECK_COUNT) {
-          // Expire the message
           updateWriter.update(doc.ref, {
             providerStatus: 'bounced',
             status: 'failed',
@@ -155,7 +168,6 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
             statusCheckCount: currentCheckCount,
           });
         } else {
-          // Keep polling, unlock the item by setting the real last checked time
           updateWriter.update(doc.ref, {
             lastStatusCheckAt: now,
             statusCheckCount: currentCheckCount,
@@ -164,7 +176,26 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
         return;
       }
 
-      // If status has finalized
+      // Important fix: If tied to an automation, await the node stat increment first.
+      // If it fails, we throw an error and DO NOT update the document, allowing it to retry next cycle.
+      if (data.automationId && data.nodeId) {
+        try {
+          await incrementMessageNodeStat({
+            automationId: data.automationId,
+            nodeId: data.nodeId,
+            workspaceId: data.workspaceId || 'onboarding',
+            organizationId: data.organizationId,
+            channel: 'sms',
+            counter: targetStatus === 'delivered' ? 'delivered' : 'bounced',
+          });
+        } catch (err) {
+          const errMsg = `Stat update failed for ${data.id}: ${err instanceof Error ? err.message : String(err)}`;
+          errors.push(errMsg);
+          throw new Error(errMsg); // Bubble up so promise rejects and doc is NOT finalized
+        }
+      }
+
+      // Finalize the status update in the writer
       updateWriter.update(doc.ref, {
         providerStatus: targetStatus,
         status: targetStatus === 'delivered' ? 'delivered' : 'failed',
@@ -173,20 +204,6 @@ export async function syncPendingSmsStatuses(): Promise<{ processed: number; suc
         statusCheckCount: currentCheckCount,
         ...(targetStatus === 'delivered' ? { deliveredAt: now } : { bouncedAt: now }),
       });
-
-      // Update Node Stats if tied to an automation
-      if (data.automationId && data.nodeId) {
-        await incrementMessageNodeStat({
-          automationId: data.automationId,
-          nodeId: data.nodeId,
-          workspaceId: data.workspaceId || 'onboarding',
-          organizationId: data.organizationId,
-          channel: 'sms',
-          counter: targetStatus === 'delivered' ? 'delivered' : 'bounced',
-        }).catch((err) => {
-          errors.push(`Stat update failed for ${data.id}: ${err instanceof Error ? err.message : String(err)}`);
-        });
-      }
     });
 
     await updateWriter.close();

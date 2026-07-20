@@ -955,6 +955,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         ...(providerId ? { metaMessageId: providerId } : {}),
         ...(template.whatsappTemplateName ? { whatsappTemplateName: template.whatsappTemplateName } : {}),
       } : {}),
+      ...(template.channel === 'sms' && (!providerStatus || providerStatus === 'pending') ? {
+        lastStatusCheckAt: '1970-01-01T00:00:00.000Z',
+        statusCheckCount: 0,
+      } : {}),
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);
