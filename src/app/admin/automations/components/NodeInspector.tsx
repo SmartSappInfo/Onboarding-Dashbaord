@@ -38,13 +38,13 @@ import { MessageNodeStatsPanel } from './message-stats/MessageNodeStatsPanel';
 import { TagSelector } from '@/components/tags/TagSelector';
 
 interface NodeInspectorProps {
-    node: any;
-    onUpdate: (data: any) => void;
+    node: import('reactflow').Node;
+    onUpdate: (data: Record<string, unknown>) => void;
     triggers?: import('@/lib/types').AutomationTriggerDef[];
     onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
     onDirtyChange?: (isDirty: boolean) => void;
-    onApply?: (nodeId: string, nodeData: any, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
-    onTest?: (nodeId: string, nodeData: any) => void;
+    onApply?: (nodeId: string, nodeData: Record<string, unknown>, nextTriggers?: import('@/lib/types').AutomationTriggerDef[]) => void;
+    onTest?: (nodeId: string, nodeData: Record<string, unknown>) => void;
     onCancel?: () => void;
     nodes?: import('reactflow').Node[];
 }
@@ -487,7 +487,7 @@ export function NodeInspector({
     }, [singular]);
 
     // Draft state for normal node data
-    const [draftData, setDraftData] = React.useState<any>(null);
+    const [draftData, setDraftData] = React.useState<Record<string, unknown> | null>(null);
     // Draft state for triggers array (for triggerNode)
     const [draftTriggers, setDraftTriggers] = React.useState<import('@/lib/types').AutomationTriggerDef[]>([]);
 
@@ -531,7 +531,7 @@ export function NodeInspector({
     }, [isDirty, onDirtyChange]);
 
     const data = draftData || node.data || {};
-    const config = data.config || {};
+    const config = (data.config as Record<string, unknown>) || {};
 
     const deferredTriggerSearch = React.useDeferredValue(triggerSearch);
     const deferredActionSearch = React.useDeferredValue(actionSearch);
@@ -570,18 +570,18 @@ export function NodeInspector({
         fieldGroups,
     } = useWorkspaceScopedQueries();
 
-    const updateConfig = (updates: any) => {
-        setDraftData((prev: any) => ({
+    const updateConfig = (updates: Record<string, unknown>) => {
+        setDraftData((prev: Record<string, unknown> | null) => ({
             ...(prev || {}),
             config: {
-                ...((prev || {}).config || {}),
+                ...((prev?.config as Record<string, unknown>) || {}),
                 ...updates
             }
         }));
     };
 
     const updateTagNodeData = (updates: Record<string, unknown>) => {
-        setDraftData((prev: any) => ({
+        setDraftData((prev: Record<string, unknown> | null) => ({
             ...(prev || {}),
             ...updates
         }));
@@ -1339,7 +1339,7 @@ export function NodeInspector({
                                     </div>
 
                                     {config.hasTimeLimit ? (
-                                        <div className="grid grid-cols-2 gap-3 pt-1 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 animate-in slide-in-from-top-2 duration-200">
                                             <div className="space-y-2">
                                                 <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Limit Amount</Label>
                                                 <Input
@@ -1434,7 +1434,7 @@ export function NodeInspector({
                              {/* 6. On a Specific Month / Day of Month */}
                              {config.waitType === 'scheduled_month' ? (
                                  <div className="space-y-4 pt-2">
-                                     <div className="grid grid-cols-3 gap-3">
+                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                          <div className="space-y-2">
                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Year</Label>
                                              <Select

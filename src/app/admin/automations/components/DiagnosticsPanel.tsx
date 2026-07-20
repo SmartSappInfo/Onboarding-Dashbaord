@@ -311,7 +311,7 @@ export function DiagnosticsPanel({
   };
 
   return (
-    <Card className="pointer-events-auto w-full h-full bg-card/95 backdrop-blur-md border border-border/70 rounded-[1.5rem] shadow-xl flex flex-col overflow-hidden">
+    <Card className="pointer-events-auto w-full h-full bg-card/95 backdrop-blur-md border border-border/70 rounded-none sm:rounded-[1.5rem] shadow-xl flex flex-col overflow-hidden">
       
       {/* Header */}
       <CardHeader className="p-4 border-b border-border/50 shrink-0 flex flex-row items-center justify-between gap-4">
@@ -328,7 +328,7 @@ export function DiagnosticsPanel({
           variant="ghost" 
           size="icon" 
           onClick={onClose}
-          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.97] transition-transform"
         >
           <X size={15} />
         </Button>
@@ -398,7 +398,7 @@ export function DiagnosticsPanel({
           </div>
 
           {/* Runs List */}
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 overflow-x-auto scrollbar-hide">
             <div className="p-3 space-y-1.5 text-left">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
@@ -457,7 +457,7 @@ export function DiagnosticsPanel({
                             variant="ghost"
                             size="sm"
                             disabled={isProcessingAction === run.id}
-                            className="h-7 px-2 text-[9px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0"
+                            className="h-7 px-2 text-[9px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg shrink-0 active:scale-[0.97] transition-transform"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEndAutomation(run.id);
@@ -487,7 +487,7 @@ export function DiagnosticsPanel({
                 onSelectRun(null);
                 setJsonExpanded(false);
               }}
-              className="h-7 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-lg px-2 flex items-center gap-1 text-left"
+              className="h-7 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-lg px-2 flex items-center gap-1 text-left active:scale-[0.97] transition-transform"
             >
               <ArrowLeft size={11} /> Back to Runs
             </Button>
@@ -498,7 +498,7 @@ export function DiagnosticsPanel({
           </div>
 
           {/* Details Scroll Area */}
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 overflow-x-auto scrollbar-hide">
             <div className="p-4 space-y-4 text-left">
               {/* Entity Quick Info */}
               <div className="space-y-1 bg-muted/30 p-3 rounded-xl border border-border/40">
@@ -527,7 +527,7 @@ export function DiagnosticsPanel({
                       size="sm" 
                       disabled={isProcessingAction === selectedRun.id}
                       onClick={() => handleEndAutomation(selectedRun.id)}
-                      className="h-7 text-[9px] text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold"
+                      className="h-7 text-[9px] text-rose-600 hover:bg-rose-50 border-rose-200 rounded-lg font-bold active:scale-[0.97] transition-transform"
                     >
                       {isProcessingAction === selectedRun.id ? 'Terminating...' : 'End Automation'}
                     </Button>
@@ -539,7 +539,7 @@ export function DiagnosticsPanel({
                         size="sm" 
                         disabled={isProcessingAction === activeWaitJob.id}
                         onClick={() => handleForceResume(activeWaitJob.id)}
-                        className="h-7 text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm"
+                        className="h-7 text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm active:scale-[0.97] transition-transform"
                       >
                         {isProcessingAction === activeWaitJob.id ? 'Resuming...' : 'Force Resume / Next Step'}
                       </Button>

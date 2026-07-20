@@ -1759,10 +1759,25 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 />
             )}
 
+            {/* Mobile Backdrop for Sidebar Panels to block ReactFlow touch events */}
+            {(diagnosticsOpen || selectedNodeId) && (
+                <div 
+                    className="fixed inset-0 z-[40] bg-background/80 backdrop-blur-sm sm:hidden pointer-events-auto"
+                    onClick={() => {
+                        if (diagnosticsOpen) setDiagnosticsOpen(false);
+                        else if (selectedNodeId && !isInspectorDirty) setSelectedNodeId(null);
+                        else if (selectedNodeId && isInspectorDirty && !skipConfirm) {
+                            nextActionRef.current = { type: 'close' };
+                            setConfirmModalOpen(true);
+                        }
+                    }}
+                />
+            )}
+
             {/* Sidebar Inspector Context */}
-            <div className="absolute top-6 right-6 bottom-6 z-20 w-[456px] pointer-events-none flex flex-col">
+            <div className="fixed inset-0 z-[50] w-full pointer-events-none flex flex-col sm:absolute sm:inset-y-6 sm:right-6 sm:left-auto sm:w-[456px]">
                 {diagnosticsOpen ? (
-                    <div className="h-full pointer-events-auto">
+                    <div className="h-full pointer-events-auto animate-in slide-in-from-bottom sm:slide-in-from-right duration-300 ease-out">
                         <DiagnosticsPanel
                             automationId={automationId}
                             nodes={nodes}
@@ -1778,8 +1793,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     </div>
                 ) : (
                     <Card className={cn(
-                        "rounded-2xl border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden",
-                        selectedNodeId ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10 pointer-events-none"
+                        "rounded-none sm:rounded-2xl border-0 sm:border border-border shadow-sm bg-card p-6 pointer-events-auto transition-all duration-500 h-full flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-right ease-out",
+                        selectedNodeId ? "opacity-100 translate-y-0 sm:translate-x-0" : "opacity-0 translate-y-full sm:translate-y-0 sm:translate-x-10 pointer-events-none"
                     )}>
                         <div className="flex items-center justify-between mb-6 shrink-0">
                             <div className="flex items-center gap-3">

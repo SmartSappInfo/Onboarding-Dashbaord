@@ -3233,6 +3233,12 @@ export interface MessageLog {
   clickedAt?: string;
   bouncedAt?: string;
   complainedAt?: string;
+
+  // ── Status Polling Sync ───────────────────────────────────────────────────
+  /** ISO timestamp of the last status check for channels that require polling (e.g., mNotify SMS) */
+  lastStatusCheckAt?: string;
+  /** Number of times the status has been polled, used to expire dead messages */
+  statusCheckCount?: number;
   unsubscribedAt?: string;
   repliedAt?: string;
 }

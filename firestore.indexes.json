@@ -1,6 +1,24 @@
 {
   "indexes": [
     {
+      "collectionGroup": "message_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "channel",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "providerStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastStatusCheckAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "media_shares",
       "queryScope": "COLLECTION",
       "fields": [

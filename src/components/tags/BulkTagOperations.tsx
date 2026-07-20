@@ -58,7 +58,7 @@ export function BulkTagOperations({
 }: BulkTagOperationsProps) {
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId: string; activeOrganizationId: string };
   const { toast } = useToast();
   const { singular, plural } = useTerminology();
 
@@ -147,7 +147,7 @@ export function BulkTagOperations({
           description: result.error || 'Failed to create tag',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -232,7 +232,7 @@ export function BulkTagOperations({
       setProgress(100);
 
       if (res.success) {
-        const partialFailures = (res as any).partialFailures?.length ?? 0;
+        const partialFailures = (res as { partialFailures?: any[] }).partialFailures?.length ?? 0;
         setResult({ success: true, count: res.processedCount || selectedContactIds.length, partialFailures });
         toast({
           title: 'Operation Complete',
@@ -241,11 +241,11 @@ export function BulkTagOperations({
         onComplete?.();
       } else {
         setResult({ success: false, count: 0 });
-        toast({ variant: 'destructive', title: 'Operation Failed', description: (res as any).error });
+        toast({ variant: 'destructive', title: 'Operation Failed', description: (res as { error?: string }).error || 'Unknown error' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setResult({ success: false, count: 0 });
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+      toast({ variant: 'destructive', title: 'Error', description: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsProcessing(false);
     }
@@ -341,206 +341,17 @@ export function BulkTagOperations({
             </div>
 
             {/* Tag selection */}
-            <div className="space-y-2">
-              <Label htmlFor="bulk-tag-search" className="text-[10px] font-black uppercase tracking-widest">
-                {isCreatingInline ? 'Create New Tag' : 'Select Tags'}
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest">
+                Select Tags
               </Label>
-              {isCreatingInline ? (
-                <div className="border border-border/60 rounded-xl p-3.5 space-y-3.5 bg-muted/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Tag Name
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingInline(false)}
-                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Input
-                      value={inlineTagName}
-                      onChange={e => setInlineTagName(e.target.value)}
-                      placeholder="Tag name…"
-                      className="h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                      maxLength={50}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && inlineTagName.trim()) {
-                          e.preventDefault();
-                          handleCreateInlineTag();
-                        }
-                      }}
-                    />
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Category</label>
-                        <select
-                          value={inlineCategory}
-                          onChange={e => setInlineCategory(e.target.value as TagCategory)}
-                          className="w-full bg-background border border-border rounded-xl p-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        >
-                          {TAG_CATEGORIES.map(c => (
-                            <option key={c.value} value={c.value}>{c.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold uppercase text-muted-foreground">Color</label>
-                        <div className="flex flex-wrap gap-1 border border-border rounded-xl p-1.5 bg-background justify-center">
-                          {TAG_COLORS.map(color => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setInlineColor(color)}
-                              className={cn(
-                                "h-5 w-5 rounded-full transition-transform hover:scale-110",
-                                inlineColor === color ? "ring-2 ring-offset-1 ring-primary" : ""
-                              )}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsCreatingInline(false)}
-                      className="h-8 text-xs font-bold rounded-xl"
-                      disabled={isSubmittingInline}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleCreateInlineTag}
-                      disabled={isSubmittingInline || !inlineTagName.trim()}
-                      className="h-8 text-xs font-bold rounded-xl"
-                    >
-                      {isSubmittingInline ? 'Creating…' : 'Create & Select'}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden="true" />
-                    <Input
-                      id="bulk-tag-search"
-                      placeholder="Search tags…"
-                      value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
-                      onKeyDown={handleListKeyDown}
-                      className="pl-8 h-9 rounded-xl text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                      aria-label="Search tags"
-                      aria-controls={listboxId}
-                      role="combobox"
-                      aria-expanded={true}
-                      aria-autocomplete="list"
-                      aria-activedescendant={focusedIndex >= 0 ? `bulk-option-${filteredTags[focusedIndex]?.id}` : undefined}
-                    />
-                  </div>
-                  <div
-                    ref={listRef}
-                    id={listboxId}
-                    role="listbox"
-                    aria-label="Available tags"
-                    aria-multiselectable="true"
-                    className="max-h-48 overflow-y-auto border rounded-xl p-2 space-y-1"
-                    onKeyDown={handleListKeyDown}
-                  >
-                    {searchTerm.trim() && !exactMatchExists && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInlineTagName(searchTerm.trim());
-                          setIsCreatingInline(true);
-                        }}
-                        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-primary/10 text-primary text-left min-h-[44px] sm:min-h-0 sm:py-1.5 cursor-pointer font-bold border border-dashed border-primary/30 mb-1"
-                      >
-                        <Plus className="h-3.5 w-3.5 shrink-0" />
-                        <span className="text-xs flex-1 truncate">
-                          Create tag "{searchTerm.trim()}"
-                        </span>
-                      </button>
-                    )}
-                    {filteredTags.length === 0 && (!searchTerm.trim() || exactMatchExists) ? (
-                      <p className="text-[10px] text-muted-foreground text-center py-4 font-medium" role="status">No tags found</p>
-                    ) : (
-                      filteredTags.map((tag, idx) => {
-                        const isSelected = selectedTagIds.includes(tag.id);
-                        const isFocused = focusedIndex === idx;
-                        return (
-                          <button
-                            key={tag.id}
-                            id={`bulk-option-${tag.id}`}
-                            role="option"
-                            aria-selected={isSelected}
-                            tabIndex={isFocused ? 0 : -1}
-                            onClick={() => toggleTag(tag.id)}
-                            onFocus={() => setFocusedIndex(idx)}
-                            className={cn(
-                              'w-full flex items-center gap-2 px-2 py-2 rounded-lg transition-colors text-left',
-                              'min-h-[44px] sm:min-h-0 sm:py-1.5',
-                              'cursor-pointer touch-manipulation',
-                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
-                              isFocused
-                                ? 'outline-none ring-2 ring-primary ring-inset'
-                                : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset'
-                            )}
-                          >
-                            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: tag.color }} aria-hidden="true" />
-                            <span className="text-xs font-bold flex-1 truncate">{tag.name}</span>
-                            <span className="text-[9px] text-muted-foreground uppercase font-bold hidden sm:block">{tag.category}</span>
-                            {isSelected && (
-                              <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center shrink-0" aria-hidden="true">
-                                <X className="h-2.5 w-2.5 text-white" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Selected tags preview */}
-            {selectedTagObjects.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest">
-                  Selected ({selectedTagObjects.length})
-                </Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedTagObjects.map(tag => (
-                    <Badge
-                      key={tag.id}
-                      className="text-white border-none font-bold text-[10px] uppercase gap-1 pr-1"
-                      style={{ backgroundColor: tag.color }}
-                    >
-                      {tag.name}
-                      <button
-                        onClick={() => toggleTag(tag.id)}
-                        className="ml-0.5 hover:bg-black/20 rounded-full p-0.5"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
+              <div className="min-h-[44px] border border-border/40 rounded-xl p-2 bg-muted/20 flex flex-wrap items-center gap-1.5">
+                <TagSelector
+                  currentTagIds={selectedTagIds}
+                  onTagsChange={setSelectedTagIds}
+                />
               </div>
-            )}
+            </div>
 
             {/* Operation summary */}
             <div className="p-3 bg-muted/30 rounded-xl text-xs font-medium text-muted-foreground">
@@ -552,7 +363,7 @@ export function BulkTagOperations({
 
             {/* Automation trigger warning */}
             {operation === 'add' && automationMatches.length > 0 && !isProcessing && !result && (
-              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-bottom-1 duration-300">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-in fade-in slide-in-from-bottom-1 duration-200">
                 <Zap className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-1 min-w-0">
                   <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
