@@ -297,18 +297,18 @@ function getTriggerDescriptionDetail(
             return config.fieldPath ? `Field "${config.fieldPath}" changed` : 'Field changed';
         case 'DATE_REACHED':
             if (config.dateField) {
-                const offset = config.offsetDays || 0;
+                const offset = (config.offsetDays as number) || 0;
                 if (offset === 0) return `When "${config.dateField}" is reached`;
                 if (offset < 0) return `${Math.abs(offset)} days before "${config.dateField}"`;
                 return `${offset} days after "${config.dateField}"`;
             }
             return 'Date field reached';
         case 'SCORE_CHANGED': {
-            const scoreType = config.scoreType || 'overallScore';
+            const scoreType = (config.scoreType as string) || 'overallScore';
             const scoreLabel = scoreType.replace('Score', '');
-            const op = config.operator || 'any_change';
+            const op = (config.operator as string) || 'any_change';
             if (op === 'any_change') return `${scoreLabel} score changed`;
-            const threshold = config.threshold ?? 50;
+            const threshold = (config.threshold as number) ?? 50;
             const opSymbol = op === 'greater_than' ? '>' : '<';
             return `${scoreLabel} score ${opSymbol} ${threshold}`;
         }
@@ -942,7 +942,7 @@ export function NodeInspector({
                             <ConditionsBuilder 
                                 groups={(config.groups as ConditionGroup[]) || (Array.isArray(config.conditions) && config.conditions.length > 0 ? [{
                                     id: 'legacy_group',
-                                    relation: config.relation || config.matchType || 'and',
+                                    relation: (config.relation as 'and' | 'or') || (config.matchType as 'and' | 'or') || 'and',
                                     conditions: config.conditions.map((c: any, idx: number) => ({
                                         id: c.id || `c_legacy_${idx}`,
                                         field: c.field || 'tags',
@@ -952,7 +952,7 @@ export function NodeInspector({
                                         linkUrl: c.linkUrl
                                     }))
                                 }] : [])} 
-                                relation={config.relation || config.matchType || 'and'} 
+                                relation={(config.relation as 'and' | 'or') || (config.matchType as 'and' | 'or') || 'and'}
                                 onChange={(rel: 'and' | 'or', grps: any[]) => {
                                     setDraftData((prev: any) => ({
                                         ...prev,
@@ -984,7 +984,7 @@ export function NodeInspector({
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Goal / Milestone Name</Label>
                                 <Input
                                     type="text"
-                                    value={data.label || ''}
+                                    value={(data.label as string) || ''}
                                     onChange={(e) => setDraftData((prev: Record<string, unknown> | null) => ({
                                         ...(prev || {}),
                                         label: e.target.value
@@ -1021,7 +1021,7 @@ export function NodeInspector({
                                     <input
                                         type="checkbox"
                                         id="jumpFromAnywhere"
-                                        checked={config.jumpFromAnywhere !== false}
+                                        checked={(config.jumpFromAnywhere as boolean) !== false}
                                         onChange={(e) => setDraftData((prev: any) => ({
                                             ...prev,
                                             config: {
@@ -1039,7 +1039,7 @@ export function NodeInspector({
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sequential Entry Behavior</Label>
                                     <Select
-                                        value={config.sequentialBehavior || 'wait'}
+                                        value={(config.sequentialBehavior as string) || 'wait'}
                                         onValueChange={(v) => setDraftData((prev: any) => ({
                                             ...prev,
                                             config: {
@@ -1071,7 +1071,7 @@ export function NodeInspector({
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Wait Type</Label>
                                 <Select
-                                    value={config.waitType || 'period'}
+                                    value={(config.waitType as string) || 'period'}
                                     onValueChange={(v) => {
                                         let defaultLabel = 'Wait Period';
                                         if (v === 'specific_date') defaultLabel = 'Wait Until Specific Date';
@@ -1113,7 +1113,7 @@ export function NodeInspector({
                                                 <Input
                                                     type="number"
                                                     min={1}
-                                                    value={period.value ?? 1}
+                                                    value={(period.value as number) ?? 1}
                                                     onChange={(e) => {
                                                         const newVal = Number(e.target.value) || 1;
                                                         const currentPeriods = config.periods 
@@ -1132,7 +1132,7 @@ export function NodeInspector({
                                             <div className="space-y-2 flex-1">
                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unit</Label>
                                                 <Select
-                                                    value={period.unit || 'Minutes'}
+                                                    value={(period.unit as string) || 'Minutes'}
                                                     onValueChange={(v) => {
                                                         const currentPeriods = config.periods 
                                                             ? [...(config.periods as { value: number; unit: string }[])] 
@@ -1207,7 +1207,7 @@ export function NodeInspector({
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Date</Label>
                                         <Input
                                             type="date"
-                                            value={config.specificDate || ''}
+                                            value={(config.specificDate as string) || ''}
                                             onChange={(e) => updateConfig({ specificDate: e.target.value })}
                                             className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
                                         />
@@ -1216,7 +1216,7 @@ export function NodeInspector({
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Time</Label>
                                         <Input
                                             type="time"
-                                            value={config.specificTime || '09:00'}
+                                            value={(config.specificTime as string) || '09:00'}
                                             onChange={(e) => updateConfig({ specificTime: e.target.value })}
                                             className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
                                         />
@@ -1230,7 +1230,7 @@ export function NodeInspector({
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Select Date Field</Label>
                                         <Select
-                                            value={config.dateField || 'onboarding_date'}
+                                            value={(config.dateField as string) || 'onboarding_date'}
                                             onValueChange={(v) => updateConfig({ dateField: v })}
                                         >
                                             <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
@@ -1249,7 +1249,7 @@ export function NodeInspector({
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">When to Match</Label>
                                             <Select
-                                                value={config.offsetDirection || 'current_date'}
+                                                value={(config.offsetDirection as string) || 'current_date'}
                                                 onValueChange={(v) => updateConfig({ offsetDirection: v })}
                                             >
                                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
@@ -1269,7 +1269,7 @@ export function NodeInspector({
                                                 <Input
                                                     type="number"
                                                     min={1}
-                                                    value={config.offsetDays || 1}
+                                                    value={(config.offsetDays as number) || 1}
                                                     onChange={(e) => updateConfig({ offsetDays: Number(e.target.value) || 1 })}
                                                     className="h-10 rounded-xl bg-background border-none shadow-inner"
                                                 />
@@ -1281,7 +1281,7 @@ export function NodeInspector({
                                         <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
                                         <Input
                                             type="time"
-                                            value={config.matchTime || '09:00'}
+                                            value={(config.matchTime as string) || '09:00'}
                                             onChange={(e) => updateConfig({ matchTime: e.target.value })}
                                             className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
                                         />
@@ -1295,7 +1295,7 @@ export function NodeInspector({
                                     <ConditionsBuilder 
                                         groups={(config.groups as ConditionGroup[]) || (Array.isArray(config.conditions) && config.conditions.length > 0 ? [{
                                             id: 'legacy_group',
-                                            relation: config.relation || config.matchType || 'and',
+                                            relation: (config.relation as 'and' | 'or') || (config.matchType as 'and' | 'or') || 'and',
                                             conditions: config.conditions.map((c: any, idx: number) => ({
                                                 id: c.id || `c_legacy_${idx}`,
                                                 field: c.field || 'tags',
@@ -1305,7 +1305,7 @@ export function NodeInspector({
                                                 linkUrl: c.linkUrl
                                             }))
                                         }] : [])} 
-                                        relation={config.relation || config.matchType || 'and'} 
+                                        relation={(config.relation as 'and' | 'or') || (config.matchType as 'and' | 'or') || 'and'}
                                         onChange={(rel: 'and' | 'or', grps: any[]) => {
                                             setDraftData((prev: any) => ({
                                                 ...prev,
@@ -1331,7 +1331,7 @@ export function NodeInspector({
                                         <input
                                             type="checkbox"
                                             id="hasTimeLimit"
-                                            checked={config.hasTimeLimit || false}
+                                            checked={(config.hasTimeLimit as boolean) || false}
                                             onChange={(e) => updateConfig({ hasTimeLimit: e.target.checked })}
                                             className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                                         />
@@ -1345,7 +1345,7 @@ export function NodeInspector({
                                                 <Input
                                                     type="number"
                                                     min={1}
-                                                    value={config.timeLimitValue || 30}
+                                                    value={(config.timeLimitValue as number) || 30}
                                                     onChange={(e) => updateConfig({ timeLimitValue: Number(e.target.value) || 1 })}
                                                     className="h-9 rounded-lg bg-background border-none shadow-inner text-xs"
                                                 />
@@ -1353,7 +1353,7 @@ export function NodeInspector({
                                             <div className="space-y-2">
                                                 <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Limit Unit</Label>
                                                 <Select
-                                                    value={config.timeLimitUnit || 'Days'}
+                                                    value={(config.timeLimitUnit as string) || 'Days'}
                                                     onValueChange={(v) => updateConfig({ timeLimitUnit: v })}
                                                 >
                                                     <SelectTrigger className="h-9 rounded-lg bg-background border-none font-bold shadow-inner px-3 text-[10px]">
@@ -1381,7 +1381,7 @@ export function NodeInspector({
                                              <CalendarDays className="h-3 w-3" /> Day of Week
                                          </Label>
                                          <Select
-                                             value={config.scheduledDayPreset || 'monday'}
+                                             value={(config.scheduledDayPreset as string) || 'monday'}
                                              onValueChange={(v) => updateConfig({ scheduledDayPreset: v })}
                                          >
                                              <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
@@ -1406,7 +1406,7 @@ export function NodeInspector({
                                          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
                                          <Input
                                              type="time"
-                                             value={config.scheduledTime || '09:00'}
+                                             value={(config.scheduledTime as string) || '09:00'}
                                              onChange={(e) => updateConfig({ scheduledTime: e.target.value })}
                                              className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
                                          />
@@ -1417,7 +1417,7 @@ export function NodeInspector({
                                          <p className="text-[10px] font-bold text-purple-700 dark:text-purple-300 mb-0.5">Schedule Preview</p>
                                          <p className="text-[10px] text-purple-600 dark:text-purple-400">
                                              {(() => {
-                                                 const preset = config.scheduledDayPreset || 'monday';
+                                                 const preset = (config.scheduledDayPreset as string) || 'monday';
                                                  const dayMap: Record<string, string> = {
                                                      monday: 'Every Monday', tuesday: 'Every Tuesday', wednesday: 'Every Wednesday',
                                                      thursday: 'Every Thursday', friday: 'Every Friday', saturday: 'Every Saturday',
@@ -1438,7 +1438,7 @@ export function NodeInspector({
                                          <div className="space-y-2">
                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Year</Label>
                                              <Select
-                                                 value={config.scheduledYear || 'any'}
+                                                 value={(config.scheduledYear as string) || 'any'}
                                                  onValueChange={(v) => updateConfig({ scheduledYear: v })}
                                              >
                                                  <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
@@ -1457,7 +1457,7 @@ export function NodeInspector({
                                          <div className="space-y-2">
                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Month</Label>
                                              <Select
-                                                 value={config.scheduledMonth || 'any'}
+                                                 value={(config.scheduledMonth as string) || 'any'}
                                                  onValueChange={(v) => updateConfig({ scheduledMonth: v })}
                                              >
                                                  <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
@@ -1483,7 +1483,7 @@ export function NodeInspector({
                                          <div className="space-y-2">
                                              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Day of Month</Label>
                                              <Select
-                                                 value={config.scheduledDayOfMonth || 'any'}
+                                                 value={(config.scheduledDayOfMonth as string) || 'any'}
                                                  onValueChange={(v) => updateConfig({ scheduledDayOfMonth: v })}
                                              >
                                                  <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-3">
@@ -1533,7 +1533,7 @@ export function NodeInspector({
                                          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Time of Day</Label>
                                          <Input
                                              type="time"
-                                             value={config.scheduledTime || '09:00'}
+                                             value={(config.scheduledTime as string) || '09:00'}
                                              onChange={(e) => updateConfig({ scheduledTime: e.target.value })}
                                              className="h-10 rounded-xl bg-background border-none shadow-inner text-xs"
                                          />
@@ -1551,15 +1551,15 @@ export function NodeInspector({
                                                          '7': 'July', '8': 'August', '9': 'September', '10': 'October', '11': 'November', '12': 'December'
                                                      };
                                                      if (config.scheduledYear && config.scheduledYear !== 'any') {
-                                                         parts.push(config.scheduledYear);
+                                                         parts.push(config.scheduledYear as string);
                                                      }
                                                      if (config.scheduledMonth && config.scheduledMonth !== 'any') {
-                                                         parts.push(monthNames[config.scheduledMonth] || config.scheduledMonth);
+                                                         parts.push(monthNames[config.scheduledMonth as string] || (config.scheduledMonth as string));
                                                      } else {
                                                          parts.push('Every month');
                                                      }
                                                      if (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any') {
-                                                         const dom = config.scheduledDayOfMonth === 'last' ? 'last day' : `day ${config.scheduledDayOfMonth}`;
+                                                         const dom = (config.scheduledDayOfMonth as string) === 'last' ? 'last day' : `day ${(config.scheduledDayOfMonth as string)}`;
                                                          parts.push(`on the ${dom}`);
                                                      }
                                                      parts.push(`at ${config.scheduledTime || '09:00'}`);
@@ -1616,7 +1616,7 @@ export function NodeInspector({
                                             Evaluation Mode
                                         </Label>
                                         <Select
-                                            value={data.evaluationMode || 'first_match'}
+                                            value={(data.evaluationMode as string) || 'first_match'}
                                             onValueChange={(v) => updateTagNodeData({ evaluationMode: v })}
                                         >
                                             <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
@@ -1691,7 +1691,7 @@ export function NodeInspector({
                                     <Label className="text-[10px] font-semibold text-violet-600 flex items-center gap-2">
                                         <Tag className="h-3 w-3" /> Tag Logic
                                     </Label>
-                                    <Select value={data.logic || ''} onValueChange={(v) => updateTagNodeData({ logic: v })}>
+                                    <Select value={(data.logic as string) || ''} onValueChange={(v) => updateTagNodeData({ logic: v })}>
                                         <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
                                             <SelectValue placeholder="Select logic..." />
                                         </SelectTrigger>
@@ -1752,7 +1752,7 @@ export function NodeInspector({
                             <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
                                 <Tag className="h-3 w-3" /> Tag Action
                             </Label>
-                            <Select value={data.action || 'add_tags'} onValueChange={(v) => updateTagNodeData({ action: v })}>
+                            <Select value={(data.action as string) || 'add_tags'} onValueChange={(v) => updateTagNodeData({ action: v })}>
                                 <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -1847,9 +1847,9 @@ export function NodeInspector({
                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Step Note</Label>
                     </div>
                     <textarea
-                        value={data.note || ''}
-                        onChange={(e) => setDraftData((prev: Record<string, unknown>) => ({
-                            ...prev,
+                        value={(data.note as string) || ''}
+                        onChange={(e) => setDraftData((prev: Record<string, unknown> | null) => ({
+                            ...(prev || {}),
                             note: e.target.value,
                         }))}
                         placeholder="Add a note for your team..."
@@ -1916,7 +1916,7 @@ export function NodeInspector({
                                         : '';
                                     computedLabel = `Until conditions are met${limitStr}`;
                                 } else if (type === 'scheduled_day') {
-                                    const dayPreset = (config?.scheduledDay || config?.scheduledDayPreset as string) || 'monday';
+                                    const dayPreset = ((config?.scheduledDay as string) || (config?.scheduledDayPreset as string)) || 'monday';
                                     const time = (config?.scheduledTime as string) || '09:00';
                                     const dayLabel = dayPreset.charAt(0).toUpperCase() + dayPreset.slice(1);
                                     computedLabel = `Wait until ${dayLabel} at ${time}`;
