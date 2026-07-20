@@ -255,6 +255,8 @@ export interface TagTriggerConfig {
   entityType?: EntityType;
   /** Filter by how the tag was applied: 'manual' (by a user) or 'automatic' (by automation). */
   appliedBy?: 'manual' | 'automatic';
+  /** When true, each entity triggers this automation at most once. Re-adding the same tag after removal will NOT re-enroll. */
+  enrollOnce?: boolean;
 }
 
 export interface TagConditionBranch {

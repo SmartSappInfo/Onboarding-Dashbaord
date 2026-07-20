@@ -1,5 +1,5 @@
 import { adminDb } from '../firebase-admin';
-import type { Automation } from '../types';
+import type { Automation, AutomationTriggerDef } from '../types';
 import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
@@ -13,6 +13,32 @@ export async function executeAutomation(
   triggerPayload: Record<string, unknown>,
   chainDepth = 0
 ): Promise<void> {
+  // ── Enroll-once guard ─────────────────────────────────────────────────
+  const firingTrigger = triggerPayload._firingTrigger as string | undefined;
+  if (firingTrigger && triggerPayload.entityId) {
+    const triggerDef = automation.triggers?.find(
+      (t: AutomationTriggerDef) => t.type === firingTrigger
+    );
+    const triggerConfig = triggerDef?.config as Record<string, unknown> | undefined;
+
+    if (triggerConfig?.enrollOnce === true) {
+      const existingRunSnap = await adminDb
+        .collection('automation_runs')
+        .where('automationId', '==', automation.id)
+        .where('entityId', '==', triggerPayload.entityId as string)
+        .where('status', 'in', ['running', 'completed'])
+        .limit(1)
+        .get();
+
+      if (!existingRunSnap.empty) {
+        console.info(
+          `[AUTOMATION] enrollOnce: skipping entity ${triggerPayload.entityId} — already enrolled in "${automation.name}" (${automation.id})`
+        );
+        return;
+      }
+    }
+  }
+
   const timestamp = new Date().toISOString();
   let organizationId = '';
   if (triggerPayload.workspaceId) {

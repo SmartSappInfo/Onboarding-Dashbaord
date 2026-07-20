@@ -11,7 +11,8 @@ import {
   ArrowRightLeft, 
   Settings2, 
   Clock, 
-  Activity 
+  Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ import { useParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 import { createTagAction } from '@/lib/tag-actions';
 
 interface TriggerConfigPanelProps {
@@ -293,6 +295,21 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                 currentTagIds={config.tagIds || []}
                 onTagsChange={(val) => updateConfig({ tagIds: val })}
                 className="w-full"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/10 mt-3">
+              <div className="space-y-0.5">
+                <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+                  <ShieldCheck className="h-3 w-3" /> Trigger Once Per Entity
+                </Label>
+                <p className="text-[9px] text-muted-foreground/70 leading-relaxed max-w-[260px]">
+                  Each entity can only enter this automation once. Re-adding the tag after removal will not re-enroll.
+                </p>
+              </div>
+              <Switch
+                checked={!!config.enrollOnce}
+                onCheckedChange={(val: boolean) => updateConfig({ enrollOnce: val })}
+                className="data-[state=checked]:bg-emerald-500"
               />
             </div>
           </div>
