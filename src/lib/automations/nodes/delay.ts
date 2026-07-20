@@ -1,5 +1,7 @@
 import type { ExecutionContext } from '../execution-types';
 import { scheduleDelayTask } from '../../gcp-tasks-client';
+import { adminDb } from '../../firebase-admin';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 export interface DelayNodeConfig {
   waitType?: string;
@@ -40,6 +42,24 @@ function parseTime(timeStr: string | undefined | null): { hour: number; minute: 
   return { hour: isNaN(hour) ? 9 : hour, minute: isNaN(minute) ? 0 : minute };
 }
 
+async function resolveTimezone(context: ExecutionContext): Promise<string> {
+  try {
+    let orgId = context.organizationId;
+    if (!orgId && context.workspaceId) {
+      const wsSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+      orgId = wsSnap.data()?.organizationId;
+    }
+    if (orgId) {
+      const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+      const tz = orgSnap.data()?.settings?.defaultTimezone;
+      if (tz) return tz;
+    }
+  } catch (error) {
+    console.error('[DelayNode] Error resolving timezone:', error);
+  }
+  return 'UTC';
+}
+
 /**
  * Calculates the exact execution date/time for a delay node based on its configuration.
  */
@@ -49,22 +69,25 @@ export async function calculateExecuteAt(
   now: Date = new Date()
 ): Promise<Date> {
   const waitType = config.waitType || 'period';
+  const timeZone = await resolveTimezone(context);
+  const nowZoned = toZonedTime(now, timeZone);
 
   // 1. Until a Specific Day and/or Time
   if (waitType === 'specific_date') {
     if (config.specificDate) {
       const [year, month, day] = String(config.specificDate).split('-').map(Number);
       const { hour, minute } = parseTime(config.specificTime as string || '09:00');
-      return new Date(year, month - 1, day, hour, minute, 0, 0);
+      const executeAtZoned = new Date(year, month - 1, day, hour, minute, 0, 0);
+      return fromZonedTime(executeAtZoned, timeZone);
     } else if (config.specificTime) {
       // Omitted target date: schedule for the next occurrence of this specific time
       const { hour, minute } = parseTime(config.specificTime as string);
-      const executeAt = new Date(now);
-      executeAt.setHours(hour, minute, 0, 0);
-      if (executeAt.getTime() <= now.getTime()) {
-        executeAt.setDate(executeAt.getDate() + 1);
+      const executeAtZoned = new Date(nowZoned);
+      executeAtZoned.setHours(hour, minute, 0, 0);
+      if (executeAtZoned.getTime() <= nowZoned.getTime()) {
+        executeAtZoned.setDate(executeAtZoned.getDate() + 1);
       }
-      return executeAt;
+      return fromZonedTime(executeAtZoned, timeZone);
     }
   }
 
@@ -72,39 +95,39 @@ export async function calculateExecuteAt(
   if (waitType === 'scheduled_day' && (config.scheduledDay || config.scheduledDayPreset)) {
     const dayVal = String(config.scheduledDay || config.scheduledDayPreset).toLowerCase();
     const { hour, minute } = parseTime(config.scheduledTime as string || '09:00');
-    const executeAt = new Date(now);
-    executeAt.setHours(hour, minute, 0, 0);
+    const executeAtZoned = new Date(nowZoned);
+    executeAtZoned.setHours(hour, minute, 0, 0);
 
     if (dayVal === 'weekend') {
-      const currentDay = now.getDay();
+      const currentDay = nowZoned.getDay();
       const isWeekend = currentDay === 0 || currentDay === 6;
-      if (isWeekend && executeAt.getTime() > now.getTime()) {
+      if (isWeekend && executeAtZoned.getTime() > nowZoned.getTime()) {
         // Use today
       } else {
         let daysToAdd = 1;
         while (daysToAdd <= 14) {
-          const nextDay = new Date(now);
-          nextDay.setDate(now.getDate() + daysToAdd);
+          const nextDay = new Date(nowZoned);
+          nextDay.setDate(nowZoned.getDate() + daysToAdd);
           if (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-            executeAt.setDate(now.getDate() + daysToAdd);
+            executeAtZoned.setDate(nowZoned.getDate() + daysToAdd);
             break;
           }
           daysToAdd++;
         }
       }
     } else if (dayVal === 'weekday') {
-      const currentDay = now.getDay();
+      const currentDay = nowZoned.getDay();
       const isWeekday = currentDay >= 1 && currentDay <= 5;
-      if (isWeekday && executeAt.getTime() > now.getTime()) {
+      if (isWeekday && executeAtZoned.getTime() > nowZoned.getTime()) {
         // Use today
       } else {
         let daysToAdd = 1;
         while (daysToAdd <= 14) {
-          const nextDay = new Date(now);
-          nextDay.setDate(now.getDate() + daysToAdd);
+          const nextDay = new Date(nowZoned);
+          nextDay.setDate(nowZoned.getDate() + daysToAdd);
           const nextD = nextDay.getDay();
           if (nextD >= 1 && nextD <= 5) {
-            executeAt.setDate(now.getDate() + daysToAdd);
+            executeAtZoned.setDate(nowZoned.getDate() + daysToAdd);
             break;
           }
           daysToAdd++;
@@ -115,40 +138,40 @@ export async function calculateExecuteAt(
         sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
       };
       const targetDay = dayOfWeekMap[dayVal] ?? Number(dayVal);
-      const currentDay = now.getDay();
+      const currentDay = nowZoned.getDay();
       if (isNaN(targetDay)) {
         console.warn(`[DelayNode] Invalid scheduledDay value: ${dayVal}. Falling back to Monday.`);
         // Fallback to Monday (1)
         const daysToAdd = (1 - currentDay + 7) % 7 || 7;
-        executeAt.setDate(executeAt.getDate() + daysToAdd);
+        executeAtZoned.setDate(executeAtZoned.getDate() + daysToAdd);
       } else {
         let daysToAdd = (targetDay - currentDay + 7) % 7;
-        if (daysToAdd === 0 && executeAt.getTime() <= now.getTime()) {
+        if (daysToAdd === 0 && executeAtZoned.getTime() <= nowZoned.getTime()) {
           daysToAdd = 7;
         }
-        executeAt.setDate(executeAt.getDate() + daysToAdd);
+        executeAtZoned.setDate(executeAtZoned.getDate() + daysToAdd);
       }
     }
-    return executeAt;
+    return fromZonedTime(executeAtZoned, timeZone);
   }
 
   // 3. On a Specific Month / Day of Month (with optional Year)
   if (waitType === 'scheduled_month') {
     const { hour, minute } = parseTime(config.scheduledTime as string || '09:00');
-    const executeAt = new Date(now);
-    executeAt.setHours(hour, minute, 0, 0);
+    const executeAtZoned = new Date(nowZoned);
+    executeAtZoned.setHours(hour, minute, 0, 0);
 
-    let targetYear = now.getFullYear();
+    let targetYear = nowZoned.getFullYear();
     if (config.scheduledYear && config.scheduledYear !== 'any') {
       targetYear = Number(config.scheduledYear);
     }
 
-    let targetMonth = now.getMonth();
+    let targetMonth = nowZoned.getMonth();
     if (config.scheduledMonth && config.scheduledMonth !== 'any') {
       targetMonth = Number(config.scheduledMonth) - 1;
     }
 
-    let targetDay = now.getDate();
+    let targetDay = nowZoned.getDate();
     if (config.scheduledDayOfMonth && config.scheduledDayOfMonth !== 'any') {
       if (config.scheduledDayOfMonth === 'last') {
         targetDay = new Date(targetYear, targetMonth + 1, 0).getDate();
@@ -157,22 +180,22 @@ export async function calculateExecuteAt(
       }
     }
 
-    executeAt.setFullYear(targetYear, targetMonth, targetDay);
+    executeAtZoned.setFullYear(targetYear, targetMonth, targetDay);
 
-    if (executeAt.getTime() <= now.getTime()) {
+    if (executeAtZoned.getTime() <= nowZoned.getTime()) {
       if (!config.scheduledYear || config.scheduledYear === 'any') {
         if (!config.scheduledMonth || config.scheduledMonth === 'any') {
-          executeAt.setMonth(executeAt.getMonth() + 1);
+          executeAtZoned.setMonth(executeAtZoned.getMonth() + 1);
           if (config.scheduledDayOfMonth === 'last') {
-            const lastDay = new Date(executeAt.getFullYear(), executeAt.getMonth() + 1, 0).getDate();
-            executeAt.setDate(lastDay);
+            const lastDay = new Date(executeAtZoned.getFullYear(), executeAtZoned.getMonth() + 1, 0).getDate();
+            executeAtZoned.setDate(lastDay);
           }
         } else {
-          executeAt.setFullYear(executeAt.getFullYear() + 1);
+          executeAtZoned.setFullYear(executeAtZoned.getFullYear() + 1);
         }
       }
     }
-    return executeAt;
+    return fromZonedTime(executeAtZoned, timeZone);
   }
 
   // 4. Until a Custom Date Field Matches

@@ -300,6 +300,23 @@ function DeletableEdge({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              data?.onInsert?.(id);
+            }}
+            title="Insert step here"
+            className={[
+              'flex items-center justify-center rounded-full border transition-all duration-150 shadow-sm shrink-0 bg-card border-border text-muted-foreground',
+              'w-3.5 h-3.5 text-[8px] font-bold leading-none',
+              selected
+                ? 'bg-primary border-primary/80 text-primary-foreground opacity-100 pointer-events-auto shadow-md'
+                : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto hover:!opacity-100 hover:!bg-primary hover:!border-primary/80 hover:!text-primary-foreground',
+            ].join(' ')}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
               data?.onDelete?.(id);
             }}
             title="Delete connection"
@@ -339,6 +356,7 @@ export interface VisualScriptCanvasProps {
   onConnect: (connection: Connection) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onEdgeDelete: (edgeId: string) => void;
+  onEdgeInsertNode?: (edgeId: string) => void;
   /** Called when the user clicks the blank canvas background — use to deselect the active node */
   onPaneClick?: () => void;
   /** Simulation variable resolver callback */
@@ -373,6 +391,7 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
     onConnect,
     onNodeClick,
     onEdgeDelete,
+    onEdgeInsertNode,
     onPaneClick,
     resolveText,
   }, ref) {
@@ -421,9 +440,9 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
       ...e,
       type: 'deletable',
       className: 'group',
-      data: { ...e.data, onDelete: onEdgeDelete },
+      data: { ...e.data, onDelete: onEdgeDelete, onInsert: onEdgeInsertNode },
     })),
-    [edges, onEdgeDelete]
+    [edges, onEdgeDelete, onEdgeInsertNode]
   );
 
   // Propagates drag movement downstream to all descendants of the dragged node(s)

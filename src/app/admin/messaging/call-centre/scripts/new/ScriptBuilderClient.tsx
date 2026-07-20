@@ -214,9 +214,22 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   // Step Deletion Choice States
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [nodeToDelete, setNodeToDelete] = React.useState<Node | null>(null);
+  const [isInsertNodeDialogOpen, setIsInsertNodeDialogOpen] = React.useState(false);
+  const [activeInsertEdgeId, setActiveInsertEdgeId] = React.useState<string | null>(null);
 
   const pushHistory = React.useCallback((state: HistoryState, immediate = false) => {
     if (isUndoingRedoingRef.current || isTabSwitchingRef.current) return;
+
+    // Verify deep equality with current history pointer state to avoid duplicate writes
+    const currentState = historyRef.current[pointerRef.current];
+    if (currentState) {
+      const nodesMatch = JSON.stringify(currentState.nodes) === JSON.stringify(state.nodes);
+      const edgesMatch = JSON.stringify(currentState.edges) === JSON.stringify(state.edges);
+      const textMatch = currentState.legacyText === state.legacyText;
+      if (nodesMatch && edgesMatch && textMatch) {
+        return;
+      }
+    }
 
     const executePush = () => {
       const { history, pointer } = pushHistoryState(
@@ -874,6 +887,91 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     }
     // Select the newly inserted node so its properties open immediately
     setSelectedNodeId(id);
+  };
+
+  const handleInsertNodeOnEdge = (edgeId: string) => {
+    setActiveInsertEdgeId(edgeId);
+    setIsInsertNodeDialogOpen(true);
+  };
+
+  const handleConfirmInsertNode = (type: string) => {
+    if (!activeInsertEdgeId) return;
+    const edge = edges.find(e => e.id === activeInsertEdgeId);
+    if (!edge) return;
+
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
+    if (!sourceNode || !targetNode) return;
+
+    const id = `node-${Date.now()}`;
+    const defaultData: Record<string, unknown> = {
+      label: `New ${type.replace('_', ' ')}`,
+      text: type === 'start' ? 'Start of call outreach.' : type === 'end' ? 'End of call.' : 'Script body text.',
+    };
+    if (type === 'question') {
+      defaultData.options = ['Yes', 'No'];
+      defaultData.text = 'Ask your question here…';
+      defaultData.label = 'New question';
+    }
+    if (type === 'action') {
+      defaultData.actionType = 'SEND_SMS';
+      defaultData.actionConfig = { templateId: '', triggerDelaySeconds: 0 };
+      defaultData.label = 'New action';
+    }
+
+    // Midpoint positioning between source and target
+    const position = {
+      x: (sourceNode.position.x + targetNode.position.x) / 2,
+      y: (sourceNode.position.y + targetNode.position.y) / 2,
+    };
+
+    const newNode: Node = {
+      id,
+      type,
+      position,
+      data: defaultData,
+    };
+
+    // Splice the old edge
+    const newEdges = edges.filter(e => e.id !== activeInsertEdgeId);
+
+    const edge1: Edge = {
+      id: `edge-${edge.source}-${id}`,
+      source: edge.source,
+      target: id,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: null,
+      label: edge.label,
+      type: 'deletable',
+      className: 'group',
+      data: {},
+    };
+
+    const sourceHandle2 = getPrimarySourceHandle(type, defaultData);
+    const edge2: Edge = {
+      id: `edge-${id}-${edge.target}`,
+      source: id,
+      target: edge.target,
+      sourceHandle: sourceHandle2,
+      targetHandle: null,
+      label: sourceHandle2 ? sourceHandle2.replace('option-', 'Option ') : undefined,
+      type: 'deletable',
+      className: 'group',
+      data: {},
+    };
+
+    const nextNodes = [...nodes, newNode];
+    const nextEdges = [...newEdges, edge1, edge2];
+
+    isUndoingRedoingRef.current = true;
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    setSelectedNodeId(id);
+    setIsInsertNodeDialogOpen(false);
+    setActiveInsertEdgeId(null);
+
+    pushHistory({ nodes: nextNodes, edges: nextEdges, legacyText }, true);
+    toast({ title: 'Step Inserted', description: `Successfully inserted new ${type} step between nodes.` });
   };
 
   const handleDeleteSelectedNode = async () => {
@@ -2368,6 +2466,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
                   onEdgeDelete={handleEdgeDelete}
+                  onEdgeInsertNode={handleInsertNodeOnEdge}
                   onPaneClick={() => setSelectedNodeId(null)}
                   resolveText={simulationActive ? resolveSimulatedText : undefined}
                 />
@@ -3568,6 +3667,63 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 className="text-[10px] uppercase font-bold tracking-wider h-9 rounded-xl flex-grow"
               >
                 Delete Step &amp; Subtree
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isInsertNodeDialogOpen && activeInsertEdgeId && (
+        <Dialog open={isInsertNodeDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsInsertNodeDialogOpen(false);
+            setActiveInsertEdgeId(null);
+          }
+        }}>
+          <DialogContent className="max-w-md p-6 bg-card border border-border shadow-2xl rounded-2xl">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-2">
+                <Plus className="h-4 w-4 text-primary animate-pulse" />
+                Insert Step
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-normal">
+                Choose a step type to insert into the selected connection. The edge will be spliced into incoming and outgoing connections automatically.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 gap-2.5 my-4">
+              {[
+                { type: 'script_block', label: 'Script Block', desc: 'Readout dialogues, prompts or text-only messages.', color: 'text-zinc-400 bg-zinc-500/5 hover:bg-zinc-500/10 border-zinc-500/20' },
+                { type: 'question', label: 'Question / Choices', desc: 'Ask questions and define branching choices.', color: 'text-amber-500 bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20' },
+                { type: 'objection', label: 'Objection Handle', desc: 'Handle rebuttals and customer pushbacks.', color: 'text-orange-500 bg-orange-500/5 hover:bg-orange-500/10 border-orange-500/20' },
+                { type: 'action', label: 'Automation Action', desc: 'Trigger SMS, Tasks, Webhooks dynamically.', color: 'text-indigo-500 bg-indigo-500/5 hover:bg-indigo-500/10 border-indigo-500/20' },
+                { type: 'outcome', label: 'Outcome Finalizer', desc: 'Complete call and tag workspace contact.', color: 'text-purple-500 bg-purple-500/5 hover:bg-purple-500/10 border-purple-500/20' }
+              ].map((opt) => (
+                <button
+                  key={opt.type}
+                  type="button"
+                  onClick={() => handleConfirmInsertNode(opt.type)}
+                  className={[
+                    'w-full flex flex-col text-left p-3 rounded-xl border transition-all duration-150 active:scale-[0.98]',
+                    opt.color
+                  ].join(' ')}
+                >
+                  <span className="text-xs font-black uppercase tracking-wider">{opt.label}</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsInsertNodeDialogOpen(false);
+                  setActiveInsertEdgeId(null);
+                }}
+                className="text-[10px] uppercase font-bold tracking-wider border-border h-9 rounded-xl w-full"
+              >
+                Cancel
               </Button>
             </DialogFooter>
           </DialogContent>
