@@ -389,10 +389,28 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
         }
         
         if (!applied) {
-          const wrapper = document.createElement('div');
-          wrapper.style.textAlign = alignValue;
-          while (editorRef.current.firstChild) wrapper.appendChild(editorRef.current.firstChild);
-          editorRef.current.appendChild(wrapper);
+          // Per-child alignment: iterate each top-level child and set alignment individually
+          // instead of wrapping everything in a single div (which destroys block structure)
+          const editor = editorRef.current;
+          const children = Array.from(editor.childNodes);
+          children.forEach((child) => {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+              (child as HTMLElement).style.textAlign = alignValue;
+            } else if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
+              // Wrap bare text nodes in a block element to apply alignment
+              const wrapper = document.createElement('div');
+              wrapper.style.textAlign = alignValue;
+              child.parentNode?.insertBefore(wrapper, child);
+              wrapper.appendChild(child);
+            }
+          });
+          // If the editor was completely empty, insert a styled placeholder block
+          if (editor.childNodes.length === 0) {
+            const block = document.createElement('div');
+            block.style.textAlign = alignValue;
+            block.innerHTML = '<br>';
+            editor.appendChild(block);
+          }
         }
         
         saveSelection();
@@ -593,7 +611,7 @@ export const LegacyScriptEditor = React.forwardRef<LegacyScriptEditorHandle, Leg
 
     /* ── Render ─── */
     return (
-      <div className={cn('relative flex flex-col', className)}>
+      <div className={cn('relative flex flex-col', className)} style={{ textAlign: 'left' }}>
         {/* ── Rich-text formatting toolbar ── */}
         {richFormatting && (
           <div className="flex flex-wrap items-center gap-0.5 mb-2 p-1 bg-muted/40 border border-border rounded-xl">
