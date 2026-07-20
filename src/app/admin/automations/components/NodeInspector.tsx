@@ -910,7 +910,7 @@ export function NodeInspector({
                                         <MessageNodeStatsPanel
                                             automationId={automationId}
                                             nodeId={node.id}
-                                            channel={config?.channel}
+                                            channel={config?.channel as 'email' | 'sms' | 'whatsapp' | undefined}
                                         />
                                     ) : (
                                         /* The actual config form — NO list, just properties */
