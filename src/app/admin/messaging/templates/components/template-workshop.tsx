@@ -4869,6 +4869,8 @@ export function TemplateWorkshop({
                         <SimulationStudio
                             template={{
                                 ...(initialTemplate || {}),
+                                channel,
+                                contentMode,
                                 subject,
                                 previewText,
                                 body,

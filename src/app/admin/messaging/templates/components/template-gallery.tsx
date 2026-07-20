@@ -211,7 +211,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                     <div className="w-full h-full bg-card rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 dark:border-slate-800/80 shadow-inner">
                         <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-blue-600"><Zap size={120} /></div>
                         <div className="p-4 bg-card border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-xl backdrop-blur-sm">
-                            <p className="text-[9px] font-bold text-slate-900 dark:text-slate-100 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
+                            <p className="text-[9px] font-bold text-slate-900 dark:text-slate-100 leading-relaxed line-clamp-[8] italic whitespace-pre-wrap">&ldquo;{template.body}&rdquo;</p>
                         </div>
                         <div className="flex items-center justify-between opacity-20 border-t border-slate-200 dark:border-slate-800/80 pt-3">
                             <SmartSappIcon className="h-3.5 w-3.5" variant="primary" />
