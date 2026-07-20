@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import { adminDb } from '../src/lib/firebase-admin';
 
 /**
  * Executes a zero-downtime migration to backfill `lastStatusCheckAt` and `statusCheckCount`
@@ -7,11 +7,7 @@ import * as admin from 'firebase-admin';
  */
 
 async function main() {
-  if (!admin.apps.length) {
-    admin.initializeApp();
-  }
-
-  const db = admin.firestore();
+  const db = adminDb;
   console.log('Starting MessageLog migration for pending SMS...');
 
   const pendingLogsSnap = await db
