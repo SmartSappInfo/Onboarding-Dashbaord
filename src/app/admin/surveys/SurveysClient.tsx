@@ -461,7 +461,7 @@ export default function SurveysClient() {
                                     fallbackClassName="text-[8px] bg-primary/5 text-primary"
                                 />
                                 <div className="flex flex-col gap-0.5 min-w-0">
-                                    <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm font-bold truncate block">
+                                    <Link href={survey.status === 'draft' ? `/admin/surveys/${survey.id}/edit` : `/admin/surveys/${survey.id}`} className="hover:underline hover:text-primary transition-colors text-sm font-bold truncate block">
                                         {survey.internalName || survey.title}
                                     </Link>
                                     {survey.scoringEnabled && (

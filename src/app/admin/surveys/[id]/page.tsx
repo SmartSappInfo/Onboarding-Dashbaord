@@ -1,4 +1,7 @@
-import { redirect } from 'next/navigation';
+import { SurveySummaryClient } from './components/SurveySummaryClient';
+import dynamic from 'next/dynamic';
+
+const SummaryClientDynamic = dynamic(() => import('./components/SurveySummaryClient'), { ssr: false });
 
 type Props = {
   params: Promise<{
@@ -9,6 +12,5 @@ type Props = {
 export default async function SurveyDetailPage({ params }: Props) {
   const { id } = await params;
   
-  // Redirect to the edit page
-  redirect(`/admin/surveys/${id}/edit`);
+  return <SummaryClientDynamic id={id} />;
 }
