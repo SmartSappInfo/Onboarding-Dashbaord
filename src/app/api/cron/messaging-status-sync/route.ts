@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import { syncPendingSmsStatuses } from '@/lib/messaging/status-sync-service';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // 60 seconds (hobby/pro max without long limits)
 
 const SECRET = process.env.CRON_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'local-secret');
 

@@ -38,16 +38,37 @@ fi
 CRON_ENDPOINT_URL="${SERVICE_URL}/api/cron/messaging-status-sync"
 echo -e "Cron Endpoint: ${BOLD}${CYAN}$CRON_ENDPOINT_URL${RESET}"
 
-# 3. Retrieve CRON_SECRET
+# 3. Retrieve or Create CRON_SECRET
 echo -e "\n${BOLD}Retrieving CRON_SECRET from Secret Manager...${RESET}"
 CRON_SECRET=$(gcloud secrets versions access latest --secret="$SECRET_NAME" --project="$PROJECT_ID" 2>/dev/null || true)
 
 if [ -z "$CRON_SECRET" ]; then
-  echo -e "${RED}Error: Could not retrieve $SECRET_NAME from Secret Manager. Please run setup-automation-heartbeat-scheduler.sh first or create the secret manually.${RESET}"
-  exit 1
+  echo -e "${YELLOW}Secret not found. Generating a new one...${RESET}"
+  CRON_SECRET=$(openssl rand -hex 32)
+  if gcloud secrets describe "$SECRET_NAME" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    echo -n "$CRON_SECRET" | gcloud secrets versions add "$SECRET_NAME" --data-file=- --project="$PROJECT_ID"
+    echo -e "${GREEN}Added new version to existing secret.${RESET}"
+  else
+    echo -n "$CRON_SECRET" | gcloud secrets create "$SECRET_NAME" --data-file=- --project="$PROJECT_ID" --replication-policy="automatic"
+    echo -e "${GREEN}Created secret ${SECRET_NAME}.${RESET}"
+  fi
+else
+  echo -e "Secret retrieved successfully."
 fi
 
-echo -e "Secret retrieved successfully."
+# 3.5 Grant App Hosting access to secret
+read -p "Enter your Firebase App Hosting backend name (default: studio): " SERVICE_NAME
+SERVICE_NAME=${SERVICE_NAME:-studio}
+
+echo -e "\n${BOLD}Granting App Hosting access to secret...${RESET}"
+if command -v firebase >/dev/null 2>&1; then
+  firebase apphosting:secrets:grantaccess "$SECRET_NAME" --backend "$SERVICE_NAME" --project "$PROJECT_ID" 2>/dev/null || \
+    npx firebase-tools apphosting:secrets:grantaccess "$SECRET_NAME" --backend "$SERVICE_NAME" --project "$PROJECT_ID" || \
+    echo -e "${YELLOW}Grant access manually: firebase apphosting:secrets:grantaccess $SECRET_NAME --backend $SERVICE_NAME${RESET}"
+else
+  npx firebase-tools apphosting:secrets:grantaccess "$SECRET_NAME" --backend "$SERVICE_NAME" --project "$PROJECT_ID" 2>/dev/null || \
+    echo -e "${YELLOW}Run: firebase apphosting:secrets:grantaccess $SECRET_NAME --backend $SERVICE_NAME${RESET}"
+fi
 
 # 4. Create or Update Cloud Scheduler Job
 read -p "Cloud Scheduler region (default: $DEFAULT_REGION): " REGION
