@@ -2339,7 +2339,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
                 {liveScriptView === 'interactive' && hasScriptNodes && !showGuardrailWarning ? (
                   // Read-only interactive reference with live contact + caller values substituted
-                  <div className="flex-grow min-h-0 overflow-auto pt-4">
+                  <div className="flex-grow min-h-0 flex flex-col overflow-hidden pt-4">
                     <InteractiveScriptView
                       nodes={scriptGraph.nodes}
                       edges={scriptGraph.edges}
@@ -2388,7 +2388,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   ) : (
                     <div className="flex flex-grow min-h-0 overflow-hidden pt-4">
                       {/* Right dialog state & choices */}
-                      <div className="flex-grow flex flex-col min-h-0">
+                      <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
                         {/* Scrollable Readable Content */}
                         <div ref={scrollContainerRef} className="flex-grow overflow-y-auto min-h-0 pr-2 space-y-4">
                           {currentNode && (

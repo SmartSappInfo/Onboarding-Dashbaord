@@ -1596,7 +1596,7 @@ export function InteractiveScriptView({
             </div>
           </div>
 
-          <div className="flex-grow flex flex-col min-h-0">
+          <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
             {/* Scrollable Dialogue Viewport */}
             <div ref={scrollContainerRef} className="flex-grow overflow-y-auto p-7 min-h-0 pr-2 space-y-4 scrollbar-thin select-text">
               {middleNode.type === 'objection' && (enteredObjectionFromChoice || selectedObjectionId === null) && selectedSubObjectionIndex === null && subObjections.length > 1 ? (
@@ -1658,15 +1658,7 @@ export function InteractiveScriptView({
                   </div>
                 ) : middleNode.type === 'action' ? (
                   <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
-                    {/* Name of action and body text nicely centered at the top */}
-                    <div className="space-y-3">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold uppercase tracking-wider">
-                        {React.createElement(getActionMeta(middleNode.data?.actionType || 'SEND_SMS').icon, { className: "h-3.5 w-3.5" })}
-                        <span>{getActionMeta(middleNode.data?.actionType || 'SEND_SMS').label}</span>
-                      </div>
-                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
-                        {middleNode.data?.label || 'Action Step'}
-                      </h3>
+                    <div className="space-y-4">
                       {middleNode.data?.text && (
                         <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
                           <ScriptBodyDisplay
@@ -1676,6 +1668,24 @@ export function InteractiveScriptView({
                             zoom={zoom}
                             className="text-[24px] text-muted-foreground font-serif"
                           />
+                        </div>
+                      )}
+
+                      {/* Display the trigger card directly below the reading area */}
+                      <div className="max-w-md mx-auto w-full text-left pt-4">
+                        {renderMiddleActionConfig()}
+                      </div>
+
+                      {/* Step Advancement / Continue Button */}
+                      {nextEdgeFromAction && (
+                        <div className="max-w-md mx-auto w-full pt-2">
+                          <Button
+                            type="button"
+                            onClick={() => advanceTo(nextEdgeFromAction.target)}
+                            className="w-full h-11 rounded-xl font-bold uppercase tracking-wider bg-primary hover:bg-primary/95 text-primary-foreground shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+                          >
+                            Continue Flow <ArrowRight className="h-4 w-4" />
+                          </Button>
                         </div>
                       )}
                     </div>

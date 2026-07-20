@@ -56,7 +56,7 @@ export const ScriptBodyDisplay = React.memo(function ScriptBodyDisplay({
   // Width compensation keeps the scaled content filling its container without clipping.
   const zoomStyle: React.CSSProperties | undefined =
     zoom !== 1
-      ? { transform: `scale(${zoom})`, transformOrigin: 'top left', width: `${100 / zoom}%` }
+      ? { zoom }
       : undefined;
 
   return (
