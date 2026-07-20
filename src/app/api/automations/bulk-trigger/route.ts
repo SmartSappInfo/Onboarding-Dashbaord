@@ -98,11 +98,16 @@ export async function POST(request: NextRequest) {
 
     console.info(`[BULK-TRIGGER-WORKER] Enrolling ${finalTargets.length} contacts into automation ${automationId}`);
 
-    // 5. Enroll validated targets in concurrent micro-batches
+    // 5. Enroll validated targets in concurrent micro-batches with stagger + retry
     const CONCURRENCY_LIMIT = 15;
+    const STAGGER_DELAY_MS = 200;
+    const MAX_RETRIES = 2;
     const targetChunks = chunkArray(finalTargets, CONCURRENCY_LIMIT);
-    
-    for (const chunk of targetChunks) {
+
+    const failedTargets: Array<{ entityId: string; error: string }> = [];
+
+    for (let ci = 0; ci < targetChunks.length; ci++) {
+      const chunk = targetChunks[ci];
       await Promise.all(
         chunk.map(async (target) => {
           const enrichedPayload = {
@@ -113,16 +118,44 @@ export async function POST(request: NextRequest) {
             organizationId,
             _firingTrigger: trigger,
           };
-          try {
-            await executeAutomation(automation, enrichedPayload);
-          } catch (err) {
-            console.error(`[BULK-TRIGGER-WORKER] Execution failed for contact ${target.entityId} in automation ${automationId}:`, err);
+
+          let lastError: Error | null = null;
+          for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+              await executeAutomation(automation, enrichedPayload);
+              lastError = null;
+              break;
+            } catch (err: unknown) {
+              lastError = err instanceof Error ? err : new Error(String(err));
+              if (attempt < MAX_RETRIES) {
+                // Exponential backoff: 100ms, 200ms
+                await new Promise<void>((r) => setTimeout(r, 100 * Math.pow(2, attempt)));
+              }
+            }
+          }
+
+          if (lastError) {
+            failedTargets.push({ entityId: target.entityId, error: lastError.message });
+            console.error(
+              `[BULK-TRIGGER-WORKER] Failed after ${MAX_RETRIES + 1} attempts for entity ${target.entityId} in automation ${automationId}:`,
+              lastError
+            );
           }
         })
       );
+
+      // Stagger: pause between batches to prevent thundering herd (skip after last)
+      if (ci < targetChunks.length - 1) {
+        await new Promise<void>((r) => setTimeout(r, STAGGER_DELAY_MS));
+      }
     }
 
-    return NextResponse.json({ success: true, processedCount: finalTargets.length });
+    return NextResponse.json({
+      success: true,
+      processedCount: finalTargets.length - failedTargets.length,
+      failedCount: failedTargets.length,
+      ...(failedTargets.length > 0 ? { failedTargets: failedTargets.slice(0, 50) } : {}),
+    });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error('[BULK-TRIGGER-WORKER] Unhandled exception processing trigger tasks:', err);
