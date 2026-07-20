@@ -17,7 +17,7 @@ import { BarChart3, Edit, Calendar, Activity, Loader2, ListPlus, ExternalLink } 
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { stripHtml } from '@/lib/utils';
-import { AsyncEntityAvatar } from '@/app/admin/surveys/components/AsyncEntityAvatar';
+import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -26,17 +26,16 @@ const cardVariants = {
     y: 0,
     transition: {
       delay: i * 0.1,
-      duration: 0.4,
-      ease: [0.25, 0.4, 0.25, 1],
+      ease: "easeOut",
     },
   }),
 };
 
 // Helper to format answers for the preview table
-function extractFirstMeaningfulAnswer(data: Record<string, any> | undefined): string {
-    if (!data) return '—';
-    const values = Object.values(data);
-    for (const val of values) {
+function extractFirstMeaningfulAnswer(answers: { questionId: string; value: any }[] | undefined): string {
+    if (!answers || !Array.isArray(answers) || answers.length === 0) return '—';
+    for (const ans of answers) {
+        const val = ans.value;
         if (!val) continue;
         if (typeof val === 'string' || typeof val === 'number') {
             const stripped = stripHtml(String(val)).trim();
@@ -267,7 +266,7 @@ export default function SurveySummaryClient({ id }: { id: string }) {
                                                         {res.respondentName || 'Anonymous'}
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground truncate max-w-[200px] md:max-w-md">
-                                                        {extractFirstMeaningfulAnswer(res.data)}
+                                                        {extractFirstMeaningfulAnswer(res.answers)}
                                                     </TableCell>
                                                     <TableCell className="text-right pr-6 text-sm whitespace-nowrap">
                                                         {res.submittedAt ? format(new Date(res.submittedAt), "MMM d, h:mm a") : '—'}
