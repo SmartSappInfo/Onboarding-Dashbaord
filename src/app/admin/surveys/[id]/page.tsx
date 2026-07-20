@@ -1,6 +1,4 @@
-import dynamic from 'next/dynamic';
-
-const SummaryClientDynamic = dynamic(() => import('./components/SurveySummaryClient'), { ssr: false });
+import SurveySummaryClient from './components/SurveySummaryClient';
 
 type Props = {
   params: Promise<{
@@ -11,5 +9,5 @@ type Props = {
 export default async function SurveyDetailPage({ params }: Props) {
   const { id } = await params;
   
-  return <SummaryClientDynamic id={id} />;
+  return <SurveySummaryClient id={id} />;
 }
