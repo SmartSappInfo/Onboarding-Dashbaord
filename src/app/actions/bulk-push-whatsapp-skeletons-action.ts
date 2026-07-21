@@ -49,6 +49,14 @@ interface SkeletonDoc {
   organizationId?: string;
 }
 
+/**
+ * Maximum templates pushed per invocation. Each push is a sequential Meta Graph
+ * call plus Firestore writes, so an unbounded list would exhaust the request
+ * budget and risk Meta rate limits. The remainder is reported and the caller
+ * simply pushes again.
+ */
+const MAX_BULK_PUSH = 25;
+
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'An unexpected error occurred.';
 }
@@ -80,7 +88,22 @@ export async function bulkPushWhatsAppSkeletonsAction(
 
     const client = new MetaCloudApiClient(creds);
 
-    for (const skeletonId of skeletonIds) {
+    // Normalise the client-supplied list: drop junk, de-duplicate, and bound the
+    // work per invocation. The overflow is reported rather than silently dropped.
+    const uniqueIds = Array.from(
+      new Set(skeletonIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)),
+    );
+    const batch = uniqueIds.slice(0, MAX_BULK_PUSH);
+    const remainder = uniqueIds.length - batch.length;
+    if (remainder > 0) {
+      skipped.push({
+        id: '',
+        name: `${remainder} template${remainder === 1 ? '' : 's'}`,
+        reason: `Batch limit of ${MAX_BULK_PUSH} reached — ${remainder} remaining. Push again to continue.`,
+      });
+    }
+
+    for (const skeletonId of batch) {
       let displayName = skeletonId;
       try {
         const snap = await adminDb.collection('message_templates').doc(skeletonId).get();
@@ -93,6 +116,21 @@ export async function bulkPushWhatsAppSkeletonsAction(
           skipped.push({ id: skeletonId, name: displayName, reason: 'Template has no data.' });
           continue;
         }
+
+        // SECURITY (tenant isolation): the caller is authorised for `organizationId`
+        // only. Document ids come from the client, so every document must be proven
+        // to belong to that organization before it is read, mutated, or pushed to
+        // this org's Meta account. The message deliberately does not disclose that
+        // the document exists elsewhere, and we never echo its name.
+        if (data.organizationId !== organizationId) {
+          failed.push({
+            id: skeletonId,
+            name: skeletonId,
+            error: 'Not found in this organization.',
+          });
+          continue;
+        }
+
         displayName = data.name || skeletonId;
 
         if (data.channel !== 'whatsapp') {

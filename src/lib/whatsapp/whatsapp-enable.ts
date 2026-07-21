@@ -21,10 +21,23 @@ import type { MessageTemplate } from '@/lib/types';
  * deleting any legacy/duplicate docs for the same Meta template (different id) so
  * a template never appears twice in pickers or double-sends. Shared by manual
  * adopt and auto-enable.
+ *
+ * SECURITY (tenant isolation): Meta template names are only unique *within* a
+ * WhatsApp Business Account, so two organizations routinely share a name such as
+ * `order_update`. The duplicate lookup is therefore scoped to the owning
+ * organization — without it, enabling a template in one org would delete another
+ * org's template of the same name.
  */
 export async function writeSendableWhatsAppDoc(template: MessageTemplate): Promise<void> {
+  const { organizationId } = template;
+  if (!organizationId) {
+    // Refuse rather than run an unscoped, cross-tenant destructive query.
+    throw new Error('[whatsapp-enable] Cannot write a sendable template without an organizationId.');
+  }
+
   const col = adminDb.collection('message_templates');
   const dupes = await col
+    .where('organizationId', '==', organizationId)
     .where('channel', '==', 'whatsapp')
     .where('whatsappTemplateName', '==', template.whatsappTemplateName)
     .get();
