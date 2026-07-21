@@ -8,13 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Trash2, Phone, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { useCallQueueItems } from '@/lib/call-centre-hooks';
-import { useWorkspaceEntities } from '@/lib/entity-hooks';
 import { removeContactsFromCampaignAction } from '@/lib/call-centre-actions';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import type { CallCampaign } from '@/lib/types';
-import { useAuth } from '@/lib/auth';
-import { useWorkspace } from '@/components/workspace/WorkspaceProvider';
+import { useUser } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ManageCampaignContactsDialogProps {
   campaign: CallCampaign | null;
@@ -23,13 +22,11 @@ interface ManageCampaignContactsDialogProps {
 }
 
 export function ManageCampaignContactsDialog({ campaign, open, onOpenChange }: ManageCampaignContactsDialogProps) {
-  const { user } = useAuth();
-  const { activeWorkspaceId } = useWorkspace();
+  const { user } = useUser();
+  const { activeWorkspaceId } = useWorkspace() as any;
   const { toast } = useToast();
   
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaign?.id || '');
-  // Fetch entities to map names if needed (though queueItems usually has entityName)
-  const { entities } = useWorkspaceEntities(activeWorkspaceId || '');
 
   const [search, setSearch] = React.useState('');
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());

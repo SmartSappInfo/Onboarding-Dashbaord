@@ -1003,6 +1003,6 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
           campaign={campaignForManageContacts}
         />
       )}
-    </PageContainer>
+    </div>
   );
 }
