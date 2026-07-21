@@ -97,6 +97,22 @@ export function validateApprovedSend(
 /** Meta's allowed template-name shape: lowercase letters, digits, underscores. */
 export const TEMPLATE_NAME_RE = /^[a-z0-9_]+$/;
 
+// ── Meta template limits & documented rejection rules ──────────────────────
+// Source: developers.facebook.com › business-messaging › whatsapp › templates
+/** Max characters Meta accepts in a template BODY. */
+export const MAX_BODY_CHARS = 1024;
+/** Max characters Meta accepts in a template name. */
+export const MAX_TEMPLATE_NAME_CHARS = 512;
+/** Max characters Meta accepts in a HEADER or FOOTER text component. */
+export const MAX_HEADER_FOOTER_CHARS = 60;
+/** e.g. `en`, `en_US`, `pt_BR`, `zh_CN`. */
+const LANGUAGE_CODE_RE = /^[a-z]{2,3}(_[A-Z]{2})?$/;
+/** Meta rejects templates whose text begins or ends with a parameter. */
+const STARTS_WITH_PARAM_RE = /^\{\{\s*\d+\s*\}\}/;
+const ENDS_WITH_PARAM_RE = /\{\{\s*\d+\s*\}\}$/;
+/** Flagged during Meta review (not auto-rejected) — surfaced as warnings. */
+const FLAGGED_CHARS = ['#', '$', '%'] as const;
+
 export type MediaHeaderFormat = 'IMAGE' | 'VIDEO' | 'DOCUMENT';
 
 /** A media header — the `handle` comes from the resumable upload (see client). */
@@ -174,14 +190,61 @@ function toMetaButton(b: TemplateButtonInput): MetaButton {
  */
 export function validateCreateTemplateInput(
   input: CreateTemplateInput,
-): { valid: boolean; error?: string } {
+): { valid: boolean; error?: string; warnings?: string[] } {
+  const warnings: string[] = [];
+
   const name = input.name?.trim() ?? '';
   if (!name) return { valid: false, error: 'Template name is required.' };
   if (!TEMPLATE_NAME_RE.test(name)) {
     return { valid: false, error: 'Name may only contain lowercase letters, numbers, and underscores.' };
   }
-  if (!input.language?.trim()) return { valid: false, error: 'Language is required.' };
+  if (name.length > MAX_TEMPLATE_NAME_CHARS) {
+    return { valid: false, error: `Template name must be ${MAX_TEMPLATE_NAME_CHARS} characters or fewer.` };
+  }
+
+  const language = input.language?.trim() ?? '';
+  if (!language) return { valid: false, error: 'Language is required.' };
+  if (!LANGUAGE_CODE_RE.test(language)) {
+    return {
+      valid: false,
+      error: `"${language}" is not a valid language code. Use a code such as en_US, en_GB or fr.`,
+    };
+  }
+
+  // This builder authors text-body templates only; AUTHENTICATION requires a
+  // fixed OTP/button structure Meta would auto-reject here.
+  if (input.category === 'AUTHENTICATION') {
+    return { valid: false, error: 'Authentication templates cannot be created here — choose Utility or Marketing.' };
+  }
+
   if (!input.bodyText?.trim()) return { valid: false, error: 'Body text is required.' };
+
+  const body = input.bodyText.trim();
+  if (body.length > MAX_BODY_CHARS) {
+    return { valid: false, error: `Body must be ${MAX_BODY_CHARS} characters or fewer (currently ${body.length}).` };
+  }
+  // Meta rejects templates whose text begins or ends with a parameter.
+  if (STARTS_WITH_PARAM_RE.test(body)) {
+    return { valid: false, error: 'The message cannot start with a variable — add some text before it.' };
+  }
+  if (ENDS_WITH_PARAM_RE.test(body)) {
+    return { valid: false, error: 'The message cannot end with a variable — add some text after it.' };
+  }
+
+  if (input.headerText && input.headerText.trim().length > MAX_HEADER_FOOTER_CHARS) {
+    return { valid: false, error: `Header must be ${MAX_HEADER_FOOTER_CHARS} characters or fewer.` };
+  }
+  if (input.footerText && input.footerText.trim().length > MAX_HEADER_FOOTER_CHARS) {
+    return { valid: false, error: `Footer must be ${MAX_HEADER_FOOTER_CHARS} characters or fewer.` };
+  }
+
+  // Flagged during Meta review but not auto-rejected — surface, never block.
+  const flagged = FLAGGED_CHARS.filter((c) => body.includes(c));
+  if (flagged.length > 0) {
+    warnings.push(
+      `The characters ${flagged.join(' ')} are often flagged during Meta review — consider rewording.`,
+    );
+  }
 
   const paramCount = extractParamCount(input.bodyText);
   const examples = input.bodyExample ?? [];
@@ -219,7 +282,7 @@ export function validateCreateTemplateInput(
       return { valid: false, error: 'Phone buttons need a phone number.' };
     }
   }
-  return { valid: true };
+  return warnings.length > 0 ? { valid: true, warnings } : { valid: true };
 }
 
 /**

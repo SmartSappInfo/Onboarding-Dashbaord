@@ -276,6 +276,79 @@ describe('validateCreateTemplateInput', () => {
     const r = validateCreateTemplateInput({ ...base, bodyText: 'Static body', bodyExample: [] });
     expect(r.valid).toBe(true);
   });
+
+  // ── Meta-documented rejection rules ──────────────────────────────────────
+  // Source: developers.facebook.com › whatsapp › templates › template-review
+  // "templates cannot start or end with a parameter".
+  it('rejects a body that starts with a parameter', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      bodyText: '{{1}} your order is ready.',
+      bodyExample: ['John'],
+    });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/start/i);
+  });
+
+  it('rejects a body that ends with a parameter', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      bodyText: 'Your order number is {{1}}',
+      bodyExample: ['123'],
+    });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/end/i);
+  });
+
+  it('rejects a body longer than the Meta limit', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      bodyText: `Hi ${'x'.repeat(1100)}`,
+      bodyExample: [],
+    });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/1024/);
+  });
+
+  it('rejects a name longer than the Meta limit', () => {
+    const r = validateCreateTemplateInput({ ...base, name: 'a'.repeat(513) });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/512/);
+  });
+
+  it('rejects a malformed language code', () => {
+    const r = validateCreateTemplateInput({ ...base, language: 'English' });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/language/i);
+  });
+
+  it('rejects a category this builder cannot author', () => {
+    const r = validateCreateTemplateInput({ ...base, category: 'AUTHENTICATION' });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/authentication/i);
+  });
+
+  it('rejects header and footer text beyond Meta limits', () => {
+    expect(validateCreateTemplateInput({ ...base, headerText: 'h'.repeat(61) }).valid).toBe(false);
+    expect(validateCreateTemplateInput({ ...base, footerText: 'f'.repeat(61) }).valid).toBe(false);
+  });
+
+  // Flagged by Meta review but not auto-rejected → warn, never block.
+  it('warns about characters Meta flags without blocking submission', () => {
+    const r = validateCreateTemplateInput({
+      ...base,
+      bodyText: 'Hi {{1}}, save 50% today on order {{2}} ok',
+      bodyExample: ['John', 'A1'],
+    });
+    expect(r.valid).toBe(true);
+    expect(r.warnings?.join(' ')).toMatch(/%/);
+  });
+
+  it('reports no warnings for a clean body', () => {
+    const r = validateCreateTemplateInput(base);
+    expect(r.valid).toBe(true);
+    expect(r.warnings ?? []).toHaveLength(0);
+  });
 });
 
 describe('buildCreateTemplatePayload', () => {

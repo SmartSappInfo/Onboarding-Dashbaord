@@ -146,6 +146,17 @@ describe('bulkPushWhatsAppSkeletonsAction — resilience & limits', () => {
     expect(res.skipped.some((s) => /remaining|limit/i.test(s.reason))).toBe(true);
   });
 
+  it('rejects a body that ends with a variable locally, without calling Meta', async () => {
+    // Meta rejects these with an opaque "Invalid parameter" — catch it here.
+    h.docs.set('trailing', skeleton({ name: 'Trailing', body: 'Your order number is {{orderId}}' }));
+
+    const res = await bulkPushWhatsAppSkeletonsAction('tok', 'org-A', ['trailing']);
+
+    expect(h.created).toHaveLength(0); // never hit the Graph API
+    expect(res.pushed).toBe(0);
+    expect(res.failed[0].error).toMatch(/cannot end with a variable/i);
+  });
+
   it('ignores duplicate ids in the request', async () => {
     h.docs.set('dup', skeleton({ name: 'Dup' }));
 

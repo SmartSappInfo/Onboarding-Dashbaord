@@ -7,7 +7,8 @@ import { MetaCloudApiClient } from '@/lib/whatsapp/meta-cloud-client';
 import {
   buildCreateTemplatePayload,
   buildWhatsAppTemplateId,
-  stripComponentExamples
+  stripComponentExamples,
+  validateCreateTemplateInput
 } from '@/lib/whatsapp/whatsapp-domain';
 import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-repository';
 import { toWhatsAppTemplateName } from '@/app/admin/messaging/templates/lib/unified-template';
@@ -162,14 +163,28 @@ export async function bulkPushWhatsAppSkeletonsAction(
         }
 
         const category: WhatsAppTemplateCategory = 'UTILITY';
-        const metaPayload = buildCreateTemplatePayload({
+        const createInput = {
           name: cleanName,
           language: 'en_US',
           category,
           bodyText: processedBody,
           bodyExample: Array(paramMap.length).fill('Sample'),
-        });
+        };
 
+        // Pre-flight against Meta's documented rules so an invalid template fails
+        // here — with a specific, fixable reason — instead of coming back as an
+        // opaque "Invalid parameter" from the Graph API.
+        const check = validateCreateTemplateInput(createInput);
+        if (!check.valid) {
+          failed.push({
+            id: skeletonId,
+            name: displayName,
+            error: check.error ?? 'Template does not meet WhatsApp requirements.',
+          });
+          continue;
+        }
+
+        const metaPayload = buildCreateTemplatePayload(createInput);
         const res = await client.createMessageTemplate(metaPayload);
 
         // Bind the skeleton to its newly-registered Meta template.
