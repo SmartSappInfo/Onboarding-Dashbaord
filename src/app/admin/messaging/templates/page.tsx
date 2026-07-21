@@ -584,10 +584,31 @@ export default function MessageTemplatesPage() {
             if (!res.success) {
                 throw new Error(res.error);
             }
-            toast({
-                title: 'Bulk Push Successful',
-                description: `Successfully pushed ${res.count} skeleton templates to Meta.`,
-            });
+
+            // Per-item outcome: one bad template must never hide the rest.
+            const failedCount = res.failed.length;
+            if (failedCount > 0) {
+                // Name the first few templates and exactly why Meta rejected them.
+                const detail = res.failed
+                    .slice(0, 3)
+                    .map(f => `${f.name}: ${f.error}`)
+                    .join('\n');
+                const more = failedCount > 3 ? `\n…and ${failedCount - 3} more.` : '';
+                toast({
+                    variant: 'destructive',
+                    title: res.pushed > 0
+                        ? `Pushed ${res.pushed}, ${failedCount} failed`
+                        : `${failedCount} template${failedCount === 1 ? '' : 's'} failed`,
+                    description: `${detail}${more}`,
+                });
+            } else {
+                const skippedNote = res.skipped.length > 0 ? ` (${res.skipped.length} skipped)` : '';
+                toast({
+                    title: 'Bulk Push Successful',
+                    description: `Successfully pushed ${res.pushed} template${res.pushed === 1 ? '' : 's'} to Meta${skippedNote}.`,
+                });
+            }
+
             // Trigger WhatsApp status sync
             await whatsapp.sync();
         } catch (e: unknown) {

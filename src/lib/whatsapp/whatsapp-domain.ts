@@ -230,6 +230,9 @@ export function buildCreateTemplatePayload(input: CreateTemplateInput): {
   name: string;
   language: string;
   category: WhatsAppTemplateCategory;
+  /** Meta accepts 'named' | 'positional' and defaults to positional; we author
+   *  positional {{1}}..{{n}}, so we declare it rather than rely on the default. */
+  parameter_format: 'positional';
   components: MetaTemplateComponent[];
 } {
   const components: MetaTemplateComponent[] = [];
@@ -265,6 +268,7 @@ export function buildCreateTemplatePayload(input: CreateTemplateInput): {
     name: input.name.trim(),
     language: input.language.trim(),
     category: input.category,
+    parameter_format: 'positional',
     components,
   };
 }

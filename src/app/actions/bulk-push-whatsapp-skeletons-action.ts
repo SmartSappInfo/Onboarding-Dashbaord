@@ -13,91 +13,167 @@ import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-rep
 import { toWhatsAppTemplateName } from '@/app/admin/messaging/templates/lib/unified-template';
 import type { WhatsAppTemplate, WhatsAppTemplateCategory } from '@/lib/whatsapp/whatsapp-types';
 
+/** A skeleton that could not be pushed — surfaced per item so one bad template
+ *  never hides the rest of the batch. */
+export interface BulkPushFailure {
+  id: string;
+  name: string;
+  error: string;
+}
+
+/** A skeleton that needed no action (already pushed, missing, or not a skeleton). */
+export interface BulkPushSkip {
+  id: string;
+  name: string;
+  reason: string;
+}
+
+export interface BulkPushResult {
+  /** False only when the batch itself could not run (auth / credentials). */
+  success: boolean;
+  pushed: number;
+  failed: BulkPushFailure[];
+  skipped: BulkPushSkip[];
+  /** Batch-level error, when `success` is false. */
+  error?: string;
+}
+
+/** The subset of a `message_templates` skeleton this action reads. */
+interface SkeletonDoc {
+  name?: string;
+  body?: string;
+  channel?: string;
+  whatsappTemplateName?: string;
+  category?: string;
+  templateType?: string;
+  organizationId?: string;
+}
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : 'An unexpected error occurred.';
+}
+
+/**
+ * Push offline-drafted WhatsApp "skeletons" (message_templates with no bound
+ * Meta name) to Meta for approval.
+ *
+ * Resilient by design: each skeleton is pushed independently and a failure is
+ * recorded against that item rather than aborting the batch, so a single invalid
+ * template can no longer mask the outcome of every other one.
+ */
 export async function bulkPushWhatsAppSkeletonsAction(
   idToken: string,
   organizationId: string,
   skeletonIds: string[]
-): Promise<{ success: boolean; count: number; error?: string }> {
+): Promise<BulkPushResult> {
+  const failed: BulkPushFailure[] = [];
+  const skipped: BulkPushSkip[] = [];
+  let pushed = 0;
+
   try {
     await requireOrgAdmin(idToken, organizationId);
-    
+
     const creds = await WhatsAppCredentialRepository.getCredentials(organizationId);
     if (!creds) {
-      throw new Error('No WhatsApp connection configured.');
+      return { success: false, pushed: 0, failed, skipped, error: 'No WhatsApp connection configured.' };
     }
 
     const client = new MetaCloudApiClient(creds);
-    let count = 0;
 
     for (const skeletonId of skeletonIds) {
-      const snap = await adminDb.collection('message_templates').doc(skeletonId).get();
-      if (!snap.exists) continue;
-      const data = snap.data();
-      if (!data || data.channel !== 'whatsapp' || data.whatsappTemplateName) continue;
+      let displayName = skeletonId;
+      try {
+        const snap = await adminDb.collection('message_templates').doc(skeletonId).get();
+        if (!snap.exists) {
+          skipped.push({ id: skeletonId, name: displayName, reason: 'Template no longer exists.' });
+          continue;
+        }
+        const data = snap.data() as SkeletonDoc | undefined;
+        if (!data) {
+          skipped.push({ id: skeletonId, name: displayName, reason: 'Template has no data.' });
+          continue;
+        }
+        displayName = data.name || skeletonId;
 
-      const bodyText = data.body || '';
-      const varMatches = bodyText.match(/\{\{(.*?)\}\}/g);
-      const paramMap: string[] = varMatches
-        ? Array.from(new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim())))
-        : [];
+        if (data.channel !== 'whatsapp') {
+          skipped.push({ id: skeletonId, name: displayName, reason: 'Not a WhatsApp template.' });
+          continue;
+        }
+        if (data.whatsappTemplateName) {
+          skipped.push({ id: skeletonId, name: displayName, reason: 'Already pushed to Meta.' });
+          continue;
+        }
 
-      let processedBody = bodyText;
-      paramMap.forEach((v: string, idx: number) => {
-        const escaped = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const regex = new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g');
-        processedBody = processedBody.replace(regex, `{{${idx + 1}}}`);
-      });
+        const bodyText = data.body || '';
+        const varMatches = bodyText.match(/\{\{(.*?)\}\}/g);
+        const paramMap: string[] = varMatches
+          ? Array.from(new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim())))
+          : [];
 
-      const cleanName = toWhatsAppTemplateName(data.name || '');
-      if (!cleanName) continue;
+        let processedBody = bodyText;
+        paramMap.forEach((v: string, idx: number) => {
+          const escaped = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g');
+          processedBody = processedBody.replace(regex, `{{${idx + 1}}}`);
+        });
 
-      const category: WhatsAppTemplateCategory = 'UTILITY';
-      const metaPayload = buildCreateTemplatePayload({
-        name: cleanName,
-        language: 'en_US',
-        category,
-        bodyText: processedBody,
-        bodyExample: Array(paramMap.length).fill('Sample'),
-      });
+        const cleanName = toWhatsAppTemplateName(data.name || '');
+        if (!cleanName) {
+          failed.push({ id: skeletonId, name: displayName, error: 'Template name is empty or has no usable characters.' });
+          continue;
+        }
 
-      const res = await client.createMessageTemplate(metaPayload);
+        const category: WhatsAppTemplateCategory = 'UTILITY';
+        const metaPayload = buildCreateTemplatePayload({
+          name: cleanName,
+          language: 'en_US',
+          category,
+          bodyText: processedBody,
+          bodyExample: Array(paramMap.length).fill('Sample'),
+        });
 
-      // Update the skeleton template
-      await adminDb.collection('message_templates').doc(skeletonId).update({
-        whatsappTemplateName: cleanName,
-        whatsappLanguage: 'en_US',
-        whatsappParamMap: paramMap,
-        declaredVariables: paramMap,
-        updatedAt: new Date().toISOString()
-      });
+        const res = await client.createMessageTemplate(metaPayload);
 
-      // Mirror locally as PENDING
-      const now = new Date().toISOString();
-      const mirrorTemplate: WhatsAppTemplate = {
-        id: buildWhatsAppTemplateId(organizationId, cleanName, 'en_US'),
-        organizationId,
-        metaTemplateId: res.id,
-        name: cleanName,
-        language: 'en_US',
-        category,
-        status: 'PENDING',
-        components: stripComponentExamples(metaPayload.components),
-        paramCount: paramMap.length,
-        ...(paramMap.length ? { exampleParams: Array(paramMap.length).fill('Sample') } : {}),
-        appCategory: data.category || 'general',
-        templateType: data.templateType || `custom_general_${Date.now()}`,
-        paramMap,
-        syncedAt: now,
-      };
+        // Bind the skeleton to its newly-registered Meta template.
+        await adminDb.collection('message_templates').doc(skeletonId).update({
+          whatsappTemplateName: cleanName,
+          whatsappLanguage: 'en_US',
+          whatsappParamMap: paramMap,
+          declaredVariables: paramMap,
+          updatedAt: new Date().toISOString()
+        });
 
-      await WhatsAppTemplateRepository.upsertMany([mirrorTemplate]);
-      count++;
+        // Mirror locally as PENDING so the gallery reflects it before approval.
+        const now = new Date().toISOString();
+        const mirrorTemplate: WhatsAppTemplate = {
+          id: buildWhatsAppTemplateId(organizationId, cleanName, 'en_US'),
+          organizationId,
+          metaTemplateId: res.id,
+          name: cleanName,
+          language: 'en_US',
+          category,
+          status: 'PENDING',
+          components: stripComponentExamples(metaPayload.components),
+          paramCount: paramMap.length,
+          ...(paramMap.length ? { exampleParams: Array(paramMap.length).fill('Sample') } : {}),
+          appCategory: (data.category as WhatsAppTemplate['appCategory']) || 'general',
+          templateType: data.templateType || `custom_general_${Date.now()}`,
+          paramMap,
+          syncedAt: now,
+        };
+
+        await WhatsAppTemplateRepository.upsertMany([mirrorTemplate]);
+        pushed++;
+      } catch (itemError: unknown) {
+        // Record and continue — never let one template abort the batch.
+        console.error(`[bulkPushWhatsAppSkeletonsAction] "${displayName}" failed:`, itemError);
+        failed.push({ id: skeletonId, name: displayName, error: errorMessage(itemError) });
+      }
     }
 
-    return { success: true, count };
+    return { success: true, pushed, failed, skipped };
   } catch (e: unknown) {
     console.error('[bulkPushWhatsAppSkeletonsAction] Error:', e);
-    const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred.';
-    return { success: false, count: 0, error: errorMessage };
+    return { success: false, pushed, failed, skipped, error: errorMessage(e) };
   }
 }

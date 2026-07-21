@@ -87,6 +87,44 @@ describe('pure helpers', () => {
     );
     expect(parseGraphError({})).toMatch(/unknown/i);
   });
+
+  // Meta puts a generic "Invalid parameter" in `message` and the ACTUAL reason in
+  // error_user_title/error_user_msg/error_data.details. Surfacing only `message`
+  // is why template pushes failed with an undiagnosable error.
+  it('parseGraphError surfaces the user-facing title and message over the generic one', () => {
+    const out = parseGraphError({
+      error: {
+        message: 'Invalid parameter',
+        type: 'OAuthException',
+        code: 100,
+        error_subcode: 2388023,
+        error_user_title: 'Template Body Invalid',
+        error_user_msg: 'The body text cannot end with a parameter.',
+        fbtrace_id: 'Axyz',
+      },
+    });
+    expect(out).toMatch(/Template Body Invalid/);
+    expect(out).toMatch(/cannot end with a parameter/);
+    expect(out).toMatch(/100/); // code retained for support/debugging
+    expect(out).toMatch(/2388023/); // subcode retained
+  });
+
+  it('parseGraphError includes error_data.details when present', () => {
+    const out = parseGraphError({
+      error: {
+        message: 'Invalid parameter',
+        code: 100,
+        error_data: { details: 'body_text example count does not match placeholders' },
+      },
+    });
+    expect(out).toMatch(/example count does not match/);
+  });
+
+  it('parseGraphError never throws on malformed payloads', () => {
+    expect(parseGraphError(null)).toMatch(/unknown/i);
+    expect(parseGraphError('boom')).toMatch(/unknown/i);
+    expect(parseGraphError({ error: {} })).toMatch(/unknown/i);
+  });
 });
 
 describe('MetaCloudApiClient.getPhoneNumberHealth', () => {

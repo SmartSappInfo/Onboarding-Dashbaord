@@ -306,6 +306,20 @@ describe('buildCreateTemplatePayload', () => {
     expect(body?.example).toBeUndefined();
     expect(p.components).toHaveLength(1);
   });
+
+  // Meta supports 'named' and 'positional' parameter formats and defaults to
+  // positional. We author positional {{1}}..{{n}}, so declare it explicitly
+  // rather than relying on the default.
+  it('declares the positional parameter format explicitly', () => {
+    const p = buildCreateTemplatePayload({
+      name: 'order_update',
+      language: 'en_US',
+      category: 'UTILITY',
+      bodyText: 'Hi {{1}}',
+      bodyExample: ['John'],
+    });
+    expect(p.parameter_format).toBe('positional');
+  });
 });
 
 describe('media headers & buttons', () => {

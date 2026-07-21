@@ -64,9 +64,55 @@ export function parsePhoneHealth(data: Record<string, unknown>): PhoneHealth {
   };
 }
 
+/**
+ * The Meta Graph error envelope — only the fields we consume. Meta commonly
+ * returns a generic `message` (e.g. "Invalid parameter") and puts the actionable
+ * reason in `error_user_title`/`error_user_msg`/`error_data.details`.
+ */
+export interface GraphErrorPayload {
+  error?: {
+    message?: string;
+    type?: string;
+    code?: number;
+    error_subcode?: number;
+    error_user_title?: string;
+    error_user_msg?: string;
+    error_data?: { details?: string };
+    fbtrace_id?: string;
+  };
+}
+
+const UNKNOWN_GRAPH_ERROR = 'Unknown Meta Graph API error';
+
+/**
+ * Compose the most actionable message Meta gave us. Prefers the user-facing
+ * title/message over the generic `message`, appends `error_data.details`, and
+ * keeps code/subcode for support. Never throws on malformed input.
+ */
 export function parseGraphError(data: unknown): string {
-  const err = (data as { error?: { message?: string } } | undefined)?.error;
-  return err?.message || 'Unknown Meta Graph API error';
+  if (!data || typeof data !== 'object') return UNKNOWN_GRAPH_ERROR;
+  const err = (data as GraphErrorPayload).error;
+  if (!err || typeof err !== 'object') return UNKNOWN_GRAPH_ERROR;
+
+  const headline = [err.error_user_title, err.error_user_msg].filter(Boolean).join(': ');
+  const primary = headline || err.message;
+  const details = err.error_data?.details;
+
+  const parts: string[] = [];
+  if (primary) parts.push(primary);
+  if (details && details !== primary) parts.push(details);
+  // Keep the generic message as context when a richer headline replaced it.
+  if (headline && err.message && err.message !== headline) parts.push(`(${err.message})`);
+
+  const codes = [
+    typeof err.code === 'number' ? `code ${err.code}` : null,
+    typeof err.error_subcode === 'number' ? `subcode ${err.error_subcode}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  if (codes) parts.push(`[${codes}]`);
+
+  return parts.join(' — ').trim() || UNKNOWN_GRAPH_ERROR;
 }
 
 /**
@@ -226,6 +272,8 @@ export class MetaCloudApiClient {
     name: string;
     language: string;
     category: string;
+    /** 'named' | 'positional'; Meta defaults to positional when omitted. */
+    parameter_format?: 'named' | 'positional';
     components: unknown[];
   }): Promise<{ id: string; status?: string; category?: string }> {
     return this.request<{ id: string; status?: string; category?: string }>(
