@@ -28,10 +28,18 @@ import {
 } from './whatsapp/whatsapp-domain';
 import { buildTemplatePayload, normalizeWaPhone } from './whatsapp/whatsapp-send';
 import { writeSendableWhatsAppDoc, autoEnableApprovedWhatsAppTemplate } from './whatsapp/whatsapp-enable';
+import { mapWithConcurrency } from './utils/concurrency';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus, WhatsAppTemplateCategory } from './whatsapp/whatsapp-types';
 import { APP_TEMPLATE_CATEGORIES } from './types';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
+
+/**
+ * How many templates may be auto-enabled in parallel during a sync. Each one is a
+ * Firestore query plus a write, so this stays low to avoid contention on large
+ * organizations.
+ */
+const AUTO_ENABLE_CONCURRENCY = 5;
 
 function fail(error: unknown): { success: false; error: string } {
   return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
@@ -55,8 +63,13 @@ export async function syncWhatsAppTemplates(
     // Re-read the merged docs: `upsertMany` merges, so in-app classification +
     // param maps (which Meta's payload doesn't return) are preserved on the
     // stored docs. Auto-enable approved+eligible templates off those.
+    //
+    // Bounded fan-out: an org can hold hundreds of templates and each enable is a
+    // Firestore query plus a write, so this must not start them all at once.
     const templates = await WhatsAppTemplateRepository.list(organizationId);
-    await Promise.allSettled(templates.map((t) => autoEnableApprovedWhatsAppTemplate(t)));
+    await mapWithConcurrency(templates, AUTO_ENABLE_CONCURRENCY, (t) =>
+      autoEnableApprovedWhatsAppTemplate(t),
+    );
 
     return { success: true, data: { count, templates } };
   } catch (e) {

@@ -307,9 +307,14 @@ export function ConditionsBuilder({
   const { data: allUsers } = useCollection<any>(usersQuery);
 
   const templatesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'message_templates'), where('status', '==', 'published'));
-  }, [firestore]);
+    if (!firestore || !activeWorkspaceId) return null;
+    // Scoped to the active workspace: templates belong to a tenant, so an
+    // unscoped read would both leak and be rejected by the security rules.
+    return query(
+      collection(firestore, 'message_templates'),
+      where('workspaceIds', 'array-contains', activeWorkspaceId),
+    );
+  }, [firestore, activeWorkspaceId]);
   const { data: allTemplates } = useCollection<any>(templatesQuery);
 
   const pagesQuery = useMemoFirebase(() => {

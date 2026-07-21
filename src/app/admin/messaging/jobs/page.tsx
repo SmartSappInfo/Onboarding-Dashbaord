@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import type { MessageJob, MessageTemplate, MessageTask } from '@/lib/types';
 import { format } from 'date-fns';
 import {
@@ -42,6 +43,7 @@ interface MessageJobsViewProps {
 
 export default function MessageJobsView({ noPadding = false }: MessageJobsViewProps) {
     const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace();
     const [selectedJob, setSelectedJob] = React.useState<MessageJob | null>(null);
 
     const jobsQuery = useMemoFirebase(() => {
@@ -53,9 +55,15 @@ export default function MessageJobsView({ noPadding = false }: MessageJobsViewPr
 
     // Retrieve templates to resolve template name on the cards
     const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'));
-    }, [firestore]);
+        if (!firestore || !activeWorkspaceId) return null;
+        // Only used to resolve template names on the job cards. Scoped to the
+        // active workspace: an unscoped read spans every tenant and is rejected
+        // by the security rules.
+        return query(
+            collection(firestore, 'message_templates'),
+            where('workspaceIds', 'array-contains', activeWorkspaceId)
+        );
+    }, [firestore, activeWorkspaceId]);
 
     const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
 

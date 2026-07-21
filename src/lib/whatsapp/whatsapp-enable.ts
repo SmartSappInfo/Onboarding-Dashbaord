@@ -10,6 +10,9 @@
  */
 import { adminDb } from '@/lib/firebase-admin';
 import { shouldAutoEnableWhatsApp } from './whatsapp-domain';
+
+/** Firestore allows 500 operations per batch; stay comfortably under it. */
+const MAX_BATCH_OPS = 400;
 import type { WhatsAppTemplate } from './whatsapp-types';
 import type { MessageTemplate } from '@/lib/types';
 
@@ -38,12 +41,18 @@ export async function writeSendableWhatsAppDoc(template: MessageTemplate): Promi
     .where('channel', '==', 'whatsapp')
     .where('whatsappTemplateName', '==', template.whatsappTemplateName)
     .get();
-  const batch = adminDb.batch();
-  for (const d of dupes.docs) {
-    if (d.id !== template.id) batch.delete(d.ref);
+
+  const stale = dupes.docs.filter((d) => d.id !== template.id);
+
+  // Firestore commits at most 500 operations per batch; chunk defensively so an
+  // organization that accumulated many duplicates can still be cleaned up.
+  for (let i = 0; i < stale.length; i += MAX_BATCH_OPS) {
+    const batch = adminDb.batch();
+    for (const d of stale.slice(i, i + MAX_BATCH_OPS)) batch.delete(d.ref);
+    await batch.commit();
   }
-  batch.set(col.doc(template.id), template, { merge: true });
-  await batch.commit();
+
+  await col.doc(template.id).set(template, { merge: true });
 }
 
 /**

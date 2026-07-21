@@ -74,6 +74,21 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * True when the caller can access ANY of the given workspace ids. Used for
+     * documents shared across several workspaces (e.g. message templates), where
+     * membership of one shared workspace is enough to read the document.
+     */
+    function hasAnyWorkspaceIn(wsIds) {
+      let data = getUserData();
+      return isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (data != null && data.get('isAuthorized', false) == true &&
+         (data.get('permissions', []).hasAny(['system_admin']) ||
+          wsIds.hasAny(data.get('workspaceIds', []))))
+      );
+    }
+
     // --- Base Deny-All ---
     match /{document=**} {
       allow read, write: if false;
@@ -389,11 +404,19 @@ service cloud.firestore {
     // Global templates: read by all authenticated users, write only by super admins
     // Org templates: read/write scoped to matching organizationId
     match /message_templates/{tId} {
-      // Read access: all authorized users can read templates
-      // Global templates are accessible to all
-      // Org templates should be filtered by application layer
-      // Using 'read' instead of separate 'get' and 'list' to avoid permission conflicts
-      allow read: if isAuthorized();
+      // Read access is tenant-scoped: a template is readable when it is a global
+      // blueprint, belongs to the caller's organization, or is shared with a
+      // workspace the caller can access. System admins read everything.
+      //
+      // NOTE: Firestore evaluates `list` per returned document, so every client
+      // query must be scoped (by workspaceIds, organizationId or scope=='global')
+      // or it will be rejected outright. All known callers are scoped accordingly.
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.get('scope', '') == 'global' ||
+        isOrgMatch(resource.data.get('organizationId', '')) ||
+        hasAnyWorkspaceIn(resource.data.get('workspaceIds', []))
+      );
       
       // Write access for global templates: super admins only
       allow create: if isAuthorized() && (

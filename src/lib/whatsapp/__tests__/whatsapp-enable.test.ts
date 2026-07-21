@@ -53,7 +53,15 @@ vi.mock('@/lib/firebase-admin', () => {
   };
   return {
     adminDb: {
-      collection: () => ({ ...makeQuery(), doc: (id: string) => ({ id }) }),
+      collection: () => ({
+        ...makeQuery(),
+        doc: (id: string) => ({
+          id,
+          set: async (data: Record<string, unknown>) => {
+            h.written.push({ id, data });
+          },
+        }),
+      }),
       batch: () => ({
         delete: (ref: { id: string }) => h.deleted.push(ref.id),
         set: (ref: { id: string }, data: Record<string, unknown>) =>

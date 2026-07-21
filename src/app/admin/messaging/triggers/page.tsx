@@ -56,9 +56,11 @@ export default function MessagingTriggersPage() {
   // ── 1. Fetch Templates ──────────────────────────────────────────────────
   const templatesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
+    // Scoped to the active workspace: templates belong to a tenant, so an
+    // unscoped read would both leak and be rejected by the security rules.
     return query(
       collection(firestore, 'message_templates'),
-      where('isActive', '==', true)
+      where('workspaceIds', 'array-contains', activeWorkspaceId)
     );
   }, [firestore, activeWorkspaceId]);
 
@@ -76,7 +78,10 @@ export default function MessagingTriggersPage() {
 
     allTemplates.forEach(t => {
       if (!t.templateType || !t.channel) return;
-      
+      // Previously an `isActive == true` query filter; applied here so the query
+      // can stay workspace-scoped without needing another composite index.
+      if (t.isActive === false) return;
+
       const existing = map[t.templateType]?.[t.channel];
       // Org override takes priority over global default
       if (t.scope === 'organization' && t.workspaceIds?.includes(activeWorkspaceId)) {
