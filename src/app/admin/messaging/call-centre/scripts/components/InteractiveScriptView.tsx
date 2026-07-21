@@ -1842,7 +1842,7 @@ export function InteractiveScriptView({
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 h-[680px] overflow-hidden text-foreground">
+    <div className="grid grid-cols-12 gap-4 min-h-[600px] h-[calc(100dvh-220px)] overflow-hidden text-foreground">
       {/* 1. Left Panel: Main Block Outlines */}
       <div className="col-span-3 h-full flex flex-col bg-card/30 border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="p-3.5 bg-muted/30 border-b border-border flex items-center justify-between shrink-0">

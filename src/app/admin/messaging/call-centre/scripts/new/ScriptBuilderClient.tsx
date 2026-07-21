@@ -2284,7 +2284,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
         {/* Tab 1: Visual flowchart Editor */}
         <TabsContent value="flow" className="pt-3 m-0 outline-none">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[680px] overflow-hidden relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[600px] h-[calc(100dvh-220px)] overflow-hidden relative">
 
             {/* Center Canvas Container */}
             <div 
@@ -2606,7 +2606,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
 
         {/* Tab 2: List View split screen */}
         <TabsContent value="list" className="pt-3 m-0 outline-none">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[680px] overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[600px] h-[calc(100dvh-220px)] overflow-hidden">
             {/* Left Column: Categories and Node List (col-span-4) */}
             <div className="lg:col-span-4 flex flex-col h-full bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
               {/* Category tabs */}
