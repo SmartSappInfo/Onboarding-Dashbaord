@@ -70,7 +70,8 @@ import {
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScriptPlaybookView } from './scripts/components/ScriptPlaybookView';
-import { 
+import { ManageCampaignContactsDialog } from './components/ManageCampaignContactsDialog';
+import {
   PhoneCall, 
   Plus, 
   FileText, 
@@ -144,6 +145,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   const [launchingCampaignId, setLaunchingCampaignId] = React.useState<string | null>(null);
   const [previewScript, setPreviewScript] = React.useState<CallScript | null>(null);
   const [campaignForAddContacts, setCampaignForAddContacts] = React.useState<CallCampaign | null>(null);
+  const [campaignForManageContacts, setCampaignForManageContacts] = React.useState<CallCampaign | null>(null);
   const [isCloningId, setIsCloningId] = React.useState<string | null>(null);
   const [isImporting, setIsImporting] = React.useState(false);
   const importInputRef = React.useRef<HTMLInputElement>(null);
@@ -650,6 +652,14 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                               </DropdownMenuItem>
                             )}
 
+                            <DropdownMenuItem 
+                              onClick={() => setCampaignForManageContacts(camp)}
+                              className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                            >
+                              <UserPlus className="h-4 w-4 text-violet-500" />
+                              Manage Contacts
+                            </DropdownMenuItem>
+
                             <DropdownMenuSeparator className="my-1 bg-border/50" />
 
                             {(camp.status === 'draft' || camp.status === 'paused' || camp.status === 'scheduled') && (
@@ -985,6 +995,14 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
           campaignName={campaignForAddContacts.name}
         />
       )}
-    </div>
+
+      {campaignForManageContacts && (
+        <ManageCampaignContactsDialog
+          open={!!campaignForManageContacts}
+          onOpenChange={(open) => !open && setCampaignForManageContacts(null)}
+          campaign={campaignForManageContacts}
+        />
+      )}
+    </PageContainer>
   );
 }

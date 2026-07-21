@@ -464,6 +464,30 @@ export async function addContactsToCallCampaignAction(
   }
 }
 
+export async function removeContactsFromCampaignAction(
+  campaignId: string,
+  queueItemIds: string[],
+  workspaceId: string,
+  userId: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  const perm = await verifyPermission(userId, 'edit', workspaceId);
+  if (!perm.granted) return { success: false, count: 0, error: perm.reason };
+
+  try {
+    const result = await CallCentreService.removeContactsFromCampaign(
+      campaignId,
+      queueItemIds,
+      workspaceId,
+      userId
+    );
+    revalidatePath('/admin/messaging/call-centre');
+    revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
+    return result;
+  } catch (error: any) {
+    return { success: false, count: 0, error: error.message };
+  }
+}
+
 export async function archiveCallCampaignAction(campaignId: string, workspaceId: string, userId: string) {
   const perm = await verifyPermission(userId, 'edit', workspaceId);
   if (!perm.granted) return { success: false, error: perm.reason };

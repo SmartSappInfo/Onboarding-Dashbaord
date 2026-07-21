@@ -502,6 +502,106 @@ export class CallCentreService {
     }
   }
 
+  static async removeContactsFromCampaign(
+    campaignId: string,
+    queueItemIds: string[],
+    workspaceId: string,
+    userId: string
+  ): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+      if (!queueItemIds || queueItemIds.length === 0) {
+        return { success: false, count: 0, error: 'No contacts provided' };
+      }
+
+      const campaignRef = adminDb.collection('call_campaigns').doc(campaignId);
+      const campaignSnap = await campaignRef.get();
+      if (!campaignSnap.exists) {
+        return { success: false, count: 0, error: 'Campaign not found' };
+      }
+      const campaign = campaignSnap.data() as CallCampaign;
+
+      if (campaign.workspaceId !== workspaceId) {
+        return { success: false, count: 0, error: 'Unauthorized workspace' };
+      }
+
+      // Fetch queue items in chunks to avoid limits
+      const validItemsToDelete: any[] = [];
+      const batchCheckLimit = 30;
+      let pendingToRemove = 0;
+      let deferredToRemove = 0;
+      let callbacksToRemove = 0;
+
+      for (let i = 0; i < queueItemIds.length; i += batchCheckLimit) {
+        const chunk = queueItemIds.slice(i, i + batchCheckLimit);
+        const snaps = await adminDb.collection('call_queue_items')
+          .where('__name__', 'in', chunk)
+          .where('campaignId', '==', campaignId)
+          .get();
+
+        snaps.forEach(snap => {
+          const item = snap.data();
+          // We strictly allow only removal of non-completed items to preserve analytics
+          if (['scheduled', 'callback_scheduled', 'deferred'].includes(item.status)) {
+            validItemsToDelete.push(item);
+            if (item.status === 'scheduled') pendingToRemove++;
+            if (item.status === 'callback_scheduled') callbacksToRemove++;
+            if (item.status === 'deferred') deferredToRemove++;
+          }
+        });
+      }
+
+      if (validItemsToDelete.length === 0) {
+        return { success: false, count: 0, error: 'No valid contacts to remove. Contacts may already be completed or missing.' };
+      }
+
+      // Prepare chunks for deletion
+      const writeChunks: Promise<any>[] = [];
+      let writeBatch = adminDb.batch();
+      let writeCount = 0;
+
+      for (const item of validItemsToDelete) {
+        const itemRef = adminDb.collection('call_queue_items').doc(item.id);
+        writeBatch.delete(itemRef);
+        writeCount++;
+
+        if (writeCount === 450) {
+          writeChunks.push(writeBatch.commit());
+          writeBatch = adminDb.batch();
+          writeCount = 0;
+        }
+      }
+      if (writeCount > 0) {
+        writeChunks.push(writeBatch.commit());
+      }
+      await Promise.all(writeChunks);
+
+      // Rebuild selectedContacts without the deleted ones
+      const currentSelected = campaign.audienceDefinition?.selectedContacts || [];
+      const deletedEntityContactPairs = new Set(validItemsToDelete.map(i => `${i.entityId}_${i.contactId}`));
+      const updatedSelected = currentSelected.filter(
+        s => !deletedEntityContactPairs.has(`${s.entityId}_${s.contactId}`)
+      );
+
+      // Decrement Campaign Progress
+      const updateFields: Record<string, any> = {
+        'audienceDefinition.selectedContacts': updatedSelected,
+        'progress.total': FieldValue.increment(-validItemsToDelete.length),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (pendingToRemove > 0) updateFields['progress.pending'] = FieldValue.increment(-pendingToRemove);
+      if (deferredToRemove > 0) updateFields['progress.deferred'] = FieldValue.increment(-deferredToRemove);
+      if (callbacksToRemove > 0) updateFields['progress.callbacks'] = FieldValue.increment(-callbacksToRemove);
+
+      await campaignRef.update(updateFields);
+
+      return { success: true, count: validItemsToDelete.length };
+    } catch (error: any) {
+      console.error('[CALL_CENTRE_SERVICE] Contact removal failed:', error);
+      return { success: false, count: 0, error: error.message };
+    }
+  }
+
   static async getCampaign(id: string): Promise<CallCampaign | null> {
     const doc = await adminDb.collection('call_campaigns').doc(id).get();
     return doc.exists ? (doc.data() as CallCampaign) : null;
