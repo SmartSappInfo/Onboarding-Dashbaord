@@ -147,6 +147,11 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes || []);
     const [edges, setEdges, onEdgesChange] = useEdgesState(healedEdges);
+    
+    // Explicitly memoize to prevent React Flow error #002 during Fast Refresh or re-renders
+    const memoizedNodeTypes = React.useMemo(() => nodeTypes, []);
+    const memoizedEdgeTypes = React.useMemo(() => edgeTypes, []);
+
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
     const [selectedEdgeId, setSelectedEdgeId] = React.useState<string | null>(null);
@@ -1539,8 +1544,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
                     setSelectedNodeId(node.id);
                 }}
-                edgeTypes={edgeTypes}
-                nodeTypes={nodeTypes}
+                edgeTypes={memoizedEdgeTypes}
+                nodeTypes={memoizedNodeTypes}
                 isValidConnection={isValidConnection}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 fitView

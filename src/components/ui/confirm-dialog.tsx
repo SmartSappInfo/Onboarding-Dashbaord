@@ -78,9 +78,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>{options.title ?? 'Are you sure?'}</AlertDialogTitle>
-            {options.description != null && options.description !== '' && (
-              <AlertDialogDescription>{options.description}</AlertDialogDescription>
-            )}
+            <AlertDialogDescription className={!options.description ? 'hidden' : undefined}>
+              {options.description || ''}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => settle(false)} className="rounded-xl">

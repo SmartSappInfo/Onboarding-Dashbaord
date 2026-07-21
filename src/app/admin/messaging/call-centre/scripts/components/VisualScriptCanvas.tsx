@@ -517,8 +517,8 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onInit={(inst) => { rfRef.current = inst; }}
-        nodeTypes={customNodeTypes}
-        edgeTypes={customEdgeTypes}
+        nodeTypes={memoizedNodeTypes}
+        edgeTypes={memoizedEdgeTypes}
         defaultViewport={{ x: 200, y: 80, zoom: 0.65 }}
         minZoom={0.2}
         maxZoom={2}

@@ -43,7 +43,10 @@ export function AutomationPendingJobsProvider({
     const counts: Record<string, number> = {};
     if (jobs) {
       for (const job of jobs) {
-        const sourceId = job.sourceNodeId as string;
+        // Fall back to targetNodeId: jobs written before sourceNodeId was always
+        // populated carry null, and dropping them made parked contacts invisible
+        // on the canvas while still counting toward the WAITING total.
+        const sourceId = (job.sourceNodeId as string) || (job.targetNodeId as string);
         if (sourceId) {
           counts[sourceId] = (counts[sourceId] || 0) + 1;
         }
