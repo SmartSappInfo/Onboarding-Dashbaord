@@ -397,6 +397,8 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
   }, ref) {
   // Ref for the outer wrapper div so we can read its pixel dimensions
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const memoizedNodeTypes = React.useMemo(() => customNodeTypes, []);
+  const memoizedEdgeTypes = React.useMemo(() => customEdgeTypes, []);
 
   // Track the live viewport transform so getDropPosition() is always fresh
   const viewportRef = React.useRef<Viewport>({ x: 200, y: 80, zoom: 0.65 });
