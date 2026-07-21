@@ -2,7 +2,7 @@ import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
 
 // Configurations
-const PROJECT = process.env.GCP_PROJECT || '';
+const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 const BASE_URL = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://go.smartsapp.com' : 'http://127.0.0.1:3000');
@@ -60,7 +60,11 @@ async function executeWithRetry<T>(
 // Instantiate Cloud Tasks Client safely and dynamically to prevent bundler errors
 let clientInstance: CloudTasksClient | null = null;
 let isInitialized = false;
-const isEmulator = !PROJECT || !process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+const isEmulator = 
+  process.env.USE_GCP_TASKS_EMULATOR === 'true' || 
+  !PROJECT || 
+  (process.env.NODE_ENV !== 'production' && !process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
   if (isInitialized) {
