@@ -91,8 +91,8 @@ export default function WhatsAppSendTestDialog({
         <DialogHeader>
           <DialogTitle>Send test — “{template.name}”</DialogTitle>
           <DialogDescription className="text-xs">
-            Sends this approved template to one number. Use international format (e.g.
-            <code> +233201234567</code>).
+            Sends this approved template to a single number. Include the country code, for example
+            +233 20 123 4567.
           </DialogDescription>
         </DialogHeader>
 

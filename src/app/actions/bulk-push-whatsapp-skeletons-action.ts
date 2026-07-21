@@ -49,7 +49,15 @@ interface SkeletonDoc {
   category?: string;
   templateType?: string;
   organizationId?: string;
+  /** Authored sample values, one per variable in body order. */
+  whatsappSamples?: string[];
+  /** Authored Meta template category. */
+  whatsappMetaCategory?: WhatsAppTemplateCategory;
+  /** Authored Meta language code. */
+  whatsappLanguage?: string;
 }
+
+const DEFAULT_TEMPLATE_LANGUAGE = 'en_US';
 
 /**
  * Maximum templates pushed per invocation. Each push is a sequential Meta Graph
@@ -152,13 +160,19 @@ export async function bulkPushWhatsAppSkeletonsAction(
           continue;
         }
 
-        const category: WhatsAppTemplateCategory = 'UTILITY';
+        // Use what the author captured; never invent sample values, because Meta
+        // reviewers judge the template on them. Missing/short sample sets are
+        // caught by the pre-flight below, which reports body problems first.
+        const samples = (data.whatsappSamples ?? []).map((s) => (s ?? '').trim());
+
+        const category: WhatsAppTemplateCategory = data.whatsappMetaCategory ?? 'UTILITY';
+        const language = data.whatsappLanguage?.trim() || DEFAULT_TEMPLATE_LANGUAGE;
         const createInput = {
           name: cleanName,
-          language: 'en_US',
+          language,
           category,
           bodyText: processedBody,
-          bodyExample: Array(paramMap.length).fill('Sample'),
+          bodyExample: samples,
         };
 
         // Pre-flight against Meta's documented rules so an invalid template fails
@@ -180,7 +194,7 @@ export async function bulkPushWhatsAppSkeletonsAction(
         // Bind the skeleton to its newly-registered Meta template.
         await adminDb.collection('message_templates').doc(skeletonId).update({
           whatsappTemplateName: cleanName,
-          whatsappLanguage: 'en_US',
+          whatsappLanguage: language,
           whatsappParamMap: paramMap,
           declaredVariables: paramMap,
           updatedAt: new Date().toISOString()
@@ -189,16 +203,16 @@ export async function bulkPushWhatsAppSkeletonsAction(
         // Mirror locally as PENDING so the gallery reflects it before approval.
         const now = new Date().toISOString();
         const mirrorTemplate: WhatsAppTemplate = {
-          id: buildWhatsAppTemplateId(organizationId, cleanName, 'en_US'),
+          id: buildWhatsAppTemplateId(organizationId, cleanName, language),
           organizationId,
           metaTemplateId: res.id,
           name: cleanName,
-          language: 'en_US',
+          language,
           category,
           status: 'PENDING',
           components: stripComponentExamples(metaPayload.components),
           paramCount: paramMap.length,
-          ...(paramMap.length ? { exampleParams: Array(paramMap.length).fill('Sample') } : {}),
+          ...(samples.length ? { exampleParams: samples } : {}),
           appCategory: (data.category as WhatsAppTemplate['appCategory']) || 'general',
           templateType: data.templateType || `custom_general_${Date.now()}`,
           paramMap,

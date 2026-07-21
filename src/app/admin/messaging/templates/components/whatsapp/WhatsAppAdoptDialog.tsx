@@ -72,8 +72,8 @@ export default function WhatsAppAdoptDialog({
         <DialogHeader>
           <DialogTitle>Adopt “{template.name}”</DialogTitle>
           <DialogDescription className="text-xs">
-            Map each positional parameter to a variable key (e.g. <code>firstName</code>). These resolve
-            from the same variables as email/SMS at send time.
+            Choose which piece of contact information fills each placeholder — for example, first name.
+            These are filled in automatically when the message is sent, just like email and SMS.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">

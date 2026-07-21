@@ -93,6 +93,18 @@ import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel, EntityContact } from '@/lib/types';
+import { toPositionalBody } from '@/lib/whatsapp/whatsapp-domain';
+
+/** Languages offered when submitting a WhatsApp template to Meta for approval. */
+const WHATSAPP_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
+    { code: 'en_US', label: 'English (US)' },
+    { code: 'en_GB', label: 'English (UK)' },
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'French' },
+    { code: 'es', label: 'Spanish' },
+    { code: 'pt_BR', label: 'Portuguese (Brazil)' },
+    { code: 'ar', label: 'Arabic' },
+];
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import { SortableBlockItem } from './visual-block';
@@ -2341,6 +2353,37 @@ export function TemplateWorkshop({
 
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
+
+    // ── WhatsApp submission details ────────────────────────────────────────
+    // Meta requires a sample value per variable, a language and a category when a
+    // template is submitted for approval, and reviewers judge the template on the
+    // samples. Capturing them here means the push never has to invent them.
+    const [whatsappSamplesByVar, setWhatsappSamplesByVar] = React.useState<Record<string, string>>(() => {
+        const seed: Record<string, string> = {};
+        const names = toPositionalBody(initialTemplate?.body || '').paramMap;
+        (initialTemplate?.whatsappSamples || []).forEach((sample, i) => {
+            const key = names[i];
+            if (key) seed[key] = sample;
+        });
+        return seed;
+    });
+    const [whatsappMetaCategory, setWhatsappMetaCategory] = React.useState<'UTILITY' | 'MARKETING'>(
+        initialTemplate?.whatsappMetaCategory || 'UTILITY'
+    );
+    const [whatsappLanguage, setWhatsappLanguage] = React.useState(
+        initialTemplate?.whatsappLanguage || 'en_US'
+    );
+    /** Variables detected in the body, in the order Meta will number them. */
+    const whatsappVariables = React.useMemo(() => toPositionalBody(body).paramMap, [body]);
+    /** Samples aligned to variable order — the shape Meta expects. */
+    const whatsappSamples = React.useMemo(
+        () => whatsappVariables.map((v) => whatsappSamplesByVar[v] ?? ''),
+        [whatsappVariables, whatsappSamplesByVar]
+    );
+    const whatsappMissingSamples = React.useMemo(
+        () => whatsappVariables.filter((v) => !(whatsappSamplesByVar[v] ?? '').trim()),
+        [whatsappVariables, whatsappSamplesByVar]
+    );
     const [activeBlockSubView, setActiveBlockSubView] = React.useState<string | null>(null);
     const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'layers' | 'validation'>('properties');
     
@@ -3362,6 +3405,12 @@ export function TemplateWorkshop({
             saveData.contentMode = 'plain_text';
             saveData.blocks = [];
         }
+        // Carry the Meta submission details so pushing to Meta needs no guesswork.
+        if (channel === 'whatsapp') {
+            saveData.whatsappSamples = whatsappSamples;
+            saveData.whatsappMetaCategory = whatsappMetaCategory;
+            saveData.whatsappLanguage = whatsappLanguage;
+        }
         onSave(saveData);
     };
 
@@ -3986,6 +4035,86 @@ export function TemplateWorkshop({
                                                         </div>
                                                     </button>
                                                 </div>
+
+                                                {channel === 'whatsapp' && (
+                                                    <div className="space-y-4 pt-4 border-t border-dashed border-border/85">
+                                                        <div className="space-y-1">
+                                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                                WhatsApp submission details
+                                                            </Label>
+                                                            <p className="text-[10px] text-muted-foreground/80 ml-1 leading-relaxed">
+                                                                WhatsApp reviews every template before it can be sent. These details are submitted with it.
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Purpose</Label>
+                                                                <Select
+                                                                    value={whatsappMetaCategory}
+                                                                    onValueChange={(v) => setWhatsappMetaCategory(v as 'UTILITY' | 'MARKETING')}
+                                                                >
+                                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="UTILITY">Utility — order, account or service updates</SelectItem>
+                                                                        <SelectItem value="MARKETING">Marketing — offers, promotions or invitations</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="space-y-1.5">
+                                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Language</Label>
+                                                                <Select value={whatsappLanguage} onValueChange={setWhatsappLanguage}>
+                                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-medium">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        {WHATSAPP_LANGUAGES.map((l) => (
+                                                                            <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+
+                                                        {whatsappVariables.length > 0 ? (
+                                                            <div className="space-y-2 rounded-xl bg-muted/10 p-3">
+                                                                <Label className="text-[10px] font-semibold text-muted-foreground">
+                                                                    Example values for review
+                                                                </Label>
+                                                                <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+                                                                    Give each variable a realistic example so reviewers can see how the message reads.
+                                                                </p>
+                                                                {whatsappVariables.map((variable) => (
+                                                                    <div key={variable} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                                                                        <span className="text-[10px] font-semibold text-muted-foreground truncate sm:w-32 shrink-0">
+                                                                            {variable}
+                                                                        </span>
+                                                                        <Input
+                                                                            value={whatsappSamplesByVar[variable] ?? ''}
+                                                                            onChange={(e) =>
+                                                                                setWhatsappSamplesByVar((prev) => ({ ...prev, [variable]: e.target.value }))
+                                                                            }
+                                                                            placeholder="e.g. Ama"
+                                                                            aria-label={`Example value for ${variable}`}
+                                                                            className="h-11 rounded-lg bg-background border-none shadow-inner font-medium px-3"
+                                                                        />
+                                                                    </div>
+                                                                ))}
+                                                                {whatsappMissingSamples.length > 0 && (
+                                                                    <p role="status" className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                                                        {whatsappMissingSamples.length} example{whatsappMissingSamples.length === 1 ? '' : 's'} still needed before this can be sent for approval.
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[10px] text-muted-foreground/80 ml-1">
+                                                                No variables in this message yet — add one from the variables panel to personalise it.
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {channel === 'email' && (
                                                     <div className="space-y-3 pt-4 border-t border-dashed border-border/85">

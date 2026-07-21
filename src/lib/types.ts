@@ -2796,6 +2796,15 @@ export interface MessageTemplate {
   whatsappTemplateName?: string;
   whatsappLanguage?: string;
   whatsappParamMap?: string[];
+  /**
+   * Example value for each variable, in the same order as they appear in the
+   * body. Meta requires a sample per placeholder when a template is submitted,
+   * and reviewers judge the template on them — captured while authoring so the
+   * push never has to invent placeholders.
+   */
+  whatsappSamples?: string[];
+  /** Meta's own template category, distinct from the app-level `category`. */
+  whatsappMetaCategory?: 'UTILITY' | 'MARKETING';
 
   // Metadata
   createdAt: string;

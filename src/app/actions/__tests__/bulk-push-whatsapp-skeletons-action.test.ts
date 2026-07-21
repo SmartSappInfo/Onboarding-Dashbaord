@@ -157,6 +157,46 @@ describe('bulkPushWhatsAppSkeletonsAction — resilience & limits', () => {
     expect(res.failed[0].error).toMatch(/cannot end with a variable/i);
   });
 
+  it('uses the sample values, language and Meta category captured while authoring', async () => {
+    h.docs.set('rich', skeleton({
+      name: 'Rich One',
+      body: 'Hi {{firstName}}, order {{orderId}} shipped.',
+      whatsappSamples: ['Ama', 'A-1024'],
+      whatsappLanguage: 'en_GB',
+      whatsappMetaCategory: 'MARKETING',
+    }));
+
+    const res = await bulkPushWhatsAppSkeletonsAction('tok', 'org-A', ['rich']);
+
+    expect(res.pushed).toBe(1);
+    const payload = h.created[0];
+    expect(payload.language).toBe('en_GB');
+    expect(payload.category).toBe('MARKETING');
+    const body = (payload.components as Array<Record<string, unknown>>).find((c) => c.type === 'BODY');
+    expect((body?.example as { body_text: string[][] }).body_text).toEqual([['Ama', 'A-1024']]);
+  });
+
+  it('reports parametrized templates that have no sample values instead of inventing them', async () => {
+    h.docs.set('nosamples', skeleton({
+      name: 'No Samples',
+      body: 'Hi {{firstName}}, your order is ready.',
+    }));
+
+    const res = await bulkPushWhatsAppSkeletonsAction('tok', 'org-A', ['nosamples']);
+
+    expect(h.created).toHaveLength(0);
+    expect(res.pushed).toBe(0);
+    expect(res.failed[0].error).toMatch(/sample value/i);
+  });
+
+  it('still pushes parameter-free templates with no samples', async () => {
+    h.docs.set('plain', skeleton({ name: 'Plain', body: 'We are open today.' }));
+
+    const res = await bulkPushWhatsAppSkeletonsAction('tok', 'org-A', ['plain']);
+
+    expect(res.pushed).toBe(1);
+  });
+
   it('ignores duplicate ids in the request', async () => {
     h.docs.set('dup', skeleton({ name: 'Dup' }));
 

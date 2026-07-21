@@ -183,8 +183,9 @@ export default function WhatsAppCreateDialog({
         <DialogHeader>
           <DialogTitle>Create WhatsApp template</DialogTitle>
           <DialogDescription className="text-xs">
-            Submitted to Meta for approval. Use <code>{'{{1}}'}</code>, <code>{'{{2}}'}</code> … in the
-            body for variables; give each a sample value so Meta can review it.
+            This message is sent to WhatsApp for approval. Add variables where the text should change
+            for each recipient, then give every variable an example value so reviewers can see how the
+            message reads.
           </DialogDescription>
         </DialogHeader>
 
