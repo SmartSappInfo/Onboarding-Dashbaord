@@ -16,8 +16,18 @@
  *            whatsapp_templates mirror where the document is missing them
  *   Restore  re-attach workspaceIds to unscoped documents, taken from a sibling
  *            in the same group (the authored document usually still has them)
+ *   Rebind   repair unbound drafts that Meta already knows about. Pushing is a
+ *            two-phase write (Meta first, then the local binding) with no
+ *            transaction, so a crash in between leaves a draft that can never be
+ *            pushed again ("template already exists") and shows twice in the
+ *            gallery. Matching drafts are rebound to the registered template.
+ *            Requires a current mirror — run "Sync from Meta" first.
  *   Dedupe   keep one canonical document per group and ARCHIVE the rest
  *            (status: 'archived' + reconciledAt) — nothing is ever hard-deleted
+ *
+ * Name collisions between drafts, or a draft duplicating an already-registered
+ * template, are REPORTED and never modified: they may be deliberate in-progress
+ * work and only a human can decide which one to rename.
  *
  * Usage:
  *   pnpm reconcile:whatsapp-templates            # dry run, prints a report
@@ -29,6 +39,7 @@ import * as dotenv from 'dotenv';
 // initialisation before the environment is loaded.
 import type { MessageTemplate } from '../src/lib/types';
 import type { WhatsAppTemplate } from '../src/lib/whatsapp/whatsapp-types';
+import { toWhatsAppTemplateName } from '../src/app/admin/messaging/templates/lib/unified-template';
 
 // Next loads .env.local automatically; a plain tsx script does not, and the Admin
 // SDK reads FIREBASE_SERVICE_ACCOUNT_PATH at import time. ES module imports are
@@ -126,6 +137,61 @@ async function main() {
   let restoredScope = 0;
   let backfilled = 0;
 
+  // ── Skeleton reconciliation: fetch → match → restore ──────────────────────
+  // Pushing a skeleton is a two-phase write across two systems with no
+  // transaction: Meta is written first, then the local binding. If the process
+  // dies in between, Meta holds the template while the skeleton still looks like
+  // an unpushed draft — every retry then fails with "template already exists",
+  // and after a sync the gallery shows the draft AND the Meta card. Rebinding the
+  // skeleton to the template Meta already has repairs that split-brain.
+  //
+  // Requires the mirror to be current, so run a "Sync from Meta" first.
+  const collisions: string[] = [];
+  const slugSeen = new Map<string, string>();
+  let orphansRestored = 0;
+
+  for (const sk of unbound) {
+    const orgId = sk.data.organizationId ?? '';
+    const slug = toWhatsAppTemplateName(sk.data.name ?? '');
+    if (!slug) {
+      collisions.push(`${sk.id} ("${sk.data.name ?? ''}") has no usable Meta name — rename it before pushing.`);
+      continue;
+    }
+    const key = `${orgId}::${slug}`;
+
+    // Two drafts that would claim the same Meta name: the second push always fails.
+    const prior = slugSeen.get(key);
+    if (prior) {
+      collisions.push(`${sk.id} would claim the same Meta name "${slug}" as ${prior} — rename one.`);
+      continue;
+    }
+    slugSeen.set(key, sk.id);
+
+    // A draft duplicating an already-bound template. Reported, never touched: it
+    // may be deliberate in-progress work, and pushing it would simply fail.
+    if (groups.has(key)) {
+      collisions.push(`${sk.id} duplicates the already-registered template "${slug}" — rename or delete the draft.`);
+      continue;
+    }
+
+    const mirror = mirrorByKey.get(key);
+    if (!mirror) continue; // genuinely still an unpushed draft — nothing to do
+
+    writes.push({
+      id: sk.id,
+      patch: {
+        whatsappTemplateName: mirror.name,
+        whatsappLanguage: mirror.language,
+        ...(mirror.paramMap?.length
+          ? { whatsappParamMap: mirror.paramMap, declaredVariables: mirror.paramMap }
+          : {}),
+        reconciledAt: new Date().toISOString(),
+      },
+      reason: `orphan rebound: already registered with Meta as "${mirror.name}" (${mirror.status})`,
+    });
+    orphansRestored++;
+  }
+
   for (const [key, group] of groups) {
     const canonical = pickCanonical(group);
     const mirror = mirrorByKey.get(key);
@@ -186,12 +252,19 @@ async function main() {
 
   // ── Report ────────────────────────────────────────────────────────────────
   console.log(`WhatsApp templates scanned : ${snap.size}`);
-  console.log(`Unbound skeletons (skipped): ${unbound.length}`);
+  console.log(`Unbound drafts (skeletons) : ${unbound.length}`);
   console.log(`Distinct Meta templates    : ${groups.size}`);
   console.log(`Groups with duplicates     : ${duplicateGroups}`);
   console.log(`Workspace scope restored   : ${restoredScope}`);
   console.log(`Classification backfilled  : ${backfilled}`);
+  console.log(`Orphan drafts rebound      : ${orphansRestored}`);
   console.log(`Planned writes             : ${writes.length}\n`);
+
+  if (collisions.length > 0) {
+    console.log('Needs a human decision (never modified automatically):');
+    for (const c of collisions) console.log(`  - ${c}`);
+    console.log('');
+  }
 
   for (const w of writes.slice(0, 40)) {
     console.log(`  ${w.id}\n    ${w.reason}\n    ${JSON.stringify(w.patch)}`);
