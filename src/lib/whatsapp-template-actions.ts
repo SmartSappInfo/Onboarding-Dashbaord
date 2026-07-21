@@ -256,6 +256,12 @@ const AdoptSchema = z.object({
   /** Positional {{1..n}} → variable-key mapping. */
   paramMap: z.array(z.string()).default([]),
   name: z.string().trim().optional(),
+  /**
+   * Workspaces the adopted template should belong to. Required for it to appear
+   * in workspace-scoped galleries/pickers; the client supplies the active
+   * workspace because the server has no workspace context.
+   */
+  workspaceIds: z.array(z.string().min(1)).default([]),
 });
 
 /**
@@ -267,7 +273,7 @@ export async function adoptWhatsAppTemplate(
   payload: z.infer<typeof AdoptSchema>,
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const { organizationId, templateId, paramMap, name } = AdoptSchema.parse(payload);
+    const { organizationId, templateId, paramMap, name, workspaceIds } = AdoptSchema.parse(payload);
     const { uid } = await requireOrgAdmin(idToken, organizationId);
 
     const wa = await WhatsAppTemplateRepository.get(templateId);
@@ -288,7 +294,7 @@ export async function adoptWhatsAppTemplate(
     const check = validateParamMap(paramMap, wa.paramCount);
     if (!check.valid) return { success: false, error: check.error ?? 'Invalid parameter mapping.' };
 
-    const template = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap, name, createdBy: uid });
+    const template = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap, name, createdBy: uid, workspaceIds });
     await writeSendableWhatsAppDoc(template);
     return { success: true, data: { id: template.id } };
   } catch (e) {

@@ -174,6 +174,21 @@ describe('buildAdoptedWhatsAppMessageTemplate', () => {
     expect(t.createdBy).toBe('u1');
   });
 
+  // Workspace-scoped queries use `workspaceIds array-contains`, so an adopted
+  // template without it is invisible in the gallery and pickers.
+  it('carries the workspace scope supplied by the caller', () => {
+    const t = buildAdoptedWhatsAppMessageTemplate(wa, {
+      paramMap: [],
+      workspaceIds: ['ws-1', 'ws-2'],
+    });
+    expect(t.workspaceIds).toEqual(['ws-1', 'ws-2']);
+  });
+
+  it('omits the workspace scope when none is supplied', () => {
+    const t = buildAdoptedWhatsAppMessageTemplate(wa, { paramMap: [] });
+    expect(t.workspaceIds).toBeUndefined();
+  });
+
   it('prefers explicit opts, then stored classification, then defaults', () => {
     const stored = buildAdoptedWhatsAppMessageTemplate(
       { ...wa, appCategory: 'reminders', templateType: 'due_soon' },

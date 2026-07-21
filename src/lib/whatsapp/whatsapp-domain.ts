@@ -490,6 +490,13 @@ export interface BuildAdoptedTemplateOptions {
   appCategory?: TemplateCategory;
   templateType?: string;
   createdBy?: string;
+  /**
+   * Workspaces this template belongs to. Workspace-scoped queries filter on
+   * `workspaceIds array-contains`, so omitting it makes the template invisible
+   * in the gallery and pickers. Supplied by the client, which knows the active
+   * workspace (the server does not).
+   */
+  workspaceIds?: string[];
   /** Injectable timestamp for deterministic tests. */
   now?: string;
 }
@@ -527,6 +534,7 @@ export function buildAdoptedWhatsAppMessageTemplate(
     createdAt: now,
     updatedAt: now,
     ...(opts.createdBy ? { createdBy: opts.createdBy } : {}),
+    ...(opts.workspaceIds?.length ? { workspaceIds: opts.workspaceIds } : {}),
   };
 }
 

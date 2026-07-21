@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Plus } from 'lucide-react';
 import { adoptWhatsAppTemplate } from '@/lib/whatsapp-template-actions';
+import { useTenant } from '@/context/TenantContext';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 
 interface WhatsAppAdoptDialogProps {
@@ -33,6 +34,9 @@ export default function WhatsAppAdoptDialog({
 }: WhatsAppAdoptDialogProps) {
   const { user } = useUser();
   const { toast } = useToast();
+  // The server has no workspace context, so the client supplies the scope the
+  // adopted template must be visible in.
+  const { activeWorkspaceId } = useTenant();
   const [params, setParams] = React.useState<string[]>(() => Array(template.paramCount).fill(''));
   const [saving, setSaving] = React.useState(false);
 
@@ -51,6 +55,7 @@ export default function WhatsAppAdoptDialog({
         templateId: template.id,
         paramMap: params.map((p) => p.trim()),
         name: template.name,
+        workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
       });
       if (res.success) onAdopted();
       else toast({ variant: 'destructive', title: 'Adopt failed', description: res.error });

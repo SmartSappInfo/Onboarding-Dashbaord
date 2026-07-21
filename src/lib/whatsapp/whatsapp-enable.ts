@@ -9,10 +9,7 @@
  * reachable from the browser).
  */
 import { adminDb } from '@/lib/firebase-admin';
-import {
-  buildAdoptedWhatsAppMessageTemplate,
-  shouldAutoEnableWhatsApp,
-} from './whatsapp-domain';
+import { shouldAutoEnableWhatsApp } from './whatsapp-domain';
 import type { WhatsAppTemplate } from './whatsapp-types';
 import type { MessageTemplate } from '@/lib/types';
 
@@ -50,17 +47,55 @@ export async function writeSendableWhatsAppDoc(template: MessageTemplate): Promi
 }
 
 /**
- * Create/refresh the sendable doc for an approved template, if eligible
- * ({@link shouldAutoEnableWhatsApp}). Idempotent. Returns whether a doc was
- * written. Safe to call from sync and the status webhook.
+ * Activate the template the user authored, **in place**, once Meta approves it.
+ *
+ * The authored document (a "skeleton" created in the workshop and bound to Meta
+ * on push) is the canonical record: it carries `workspaceIds`, `target`,
+ * `createdBy` and its original id. Deleting and re-minting it on approval churned
+ * the id and dropped workspace scoping, which removed the newly-live template
+ * from workspace-scoped galleries and pickers. So we patch it instead.
+ *
+ * When no local document exists the template was authored in Meta Business
+ * Manager. We deliberately do **not** mint one here: this runs server-side (sync
+ * and webhook) with no workspace context, and a doc without `workspaceIds` would
+ * be invisible anyway. Those surface in the gallery for a manual
+ * "Enable for campaigns", which runs client-side and supplies the workspace.
+ *
+ * Idempotent and safe to call repeatedly. Returns whether a document was updated.
  */
 export async function autoEnableApprovedWhatsAppTemplate(wa: WhatsAppTemplate): Promise<boolean> {
   if (!shouldAutoEnableWhatsApp(wa)) return false;
-  const template = buildAdoptedWhatsAppMessageTemplate(wa, {
-    paramMap: wa.paramMap ?? [],
-    appCategory: wa.appCategory,
-    templateType: wa.templateType,
-  });
-  await writeSendableWhatsAppDoc(template);
+  if (!wa.organizationId) return false;
+
+  const snap = await adminDb
+    .collection('message_templates')
+    .where('organizationId', '==', wa.organizationId)
+    .where('channel', '==', 'whatsapp')
+    .where('whatsappTemplateName', '==', wa.name)
+    .limit(1)
+    .get();
+
+  if (snap.empty) return false;
+
+  const doc = snap.docs[0];
+  const existing = doc.data() as Partial<MessageTemplate> | undefined;
+  const paramMap = wa.paramMap ?? [];
+
+  const patch: Record<string, unknown> = {
+    status: 'active',
+    isActive: true, // legacy flag kept in step with `status`
+    whatsappTemplateName: wa.name,
+    whatsappLanguage: wa.language,
+    whatsappParamMap: paramMap,
+    declaredVariables: paramMap,
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Only fill classification the author never set — never overwrite their choice.
+  if (!existing?.category) patch.category = wa.appCategory ?? 'general';
+  if (!existing?.templateType) patch.templateType = wa.templateType ?? 'whatsapp';
+  if (!existing?.contentMode) patch.contentMode = 'template';
+
+  await doc.ref.update(patch);
   return true;
 }
