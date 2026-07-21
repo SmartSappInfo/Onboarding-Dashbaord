@@ -1693,24 +1693,9 @@ export function InteractiveScriptView({
                 ) : middleNode.type === 'outcome' ? (
                   <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
                     <div className="space-y-3">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-bold uppercase tracking-wider">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-purple-500" />
-                        <span>Outcome: {middleNode.data?.outcomeValue || 'Outcome'}</span>
-                      </div>
-                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
+                      <h3 className="text-[24px] font-black text-foreground uppercase tracking-wide">
                         {middleNode.data?.label || 'Outcome Step'}
                       </h3>
-                      {middleText && (
-                        <div className="max-w-md mx-auto text-[24px] text-muted-foreground leading-relaxed italic">
-                          <ScriptBodyDisplay
-                            text={middleText}
-                            resolveText={resolveText}
-                            highlightVariables={!resolveText}
-                            zoom={zoom}
-                            className="text-[24px] text-muted-foreground font-serif"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
                 ) : (
