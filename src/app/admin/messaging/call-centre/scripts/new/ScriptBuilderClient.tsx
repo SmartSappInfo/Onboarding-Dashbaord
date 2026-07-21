@@ -73,7 +73,7 @@ import type { LegacyScriptEditorHandle, VariableGroup } from '../components/Lega
 import { ScriptBodyDisplay } from '../components/ScriptBodyDisplay';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import type { ScriptNode, ScriptEdge, ScriptNodeType, EntityContact, Entity, CallActionParams } from '@/lib/types';
 import type { VisualScriptCanvasHandle, VisualScriptCanvasProps } from '../components/VisualScriptCanvas';
 import { ActionNodeConfigPanel } from '../components/ActionNodeConfigPanel';
@@ -2734,7 +2734,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                         </h4>
                         {node.data?.text && (
                           <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
-                            {node.data.text}
+                            {stripHtml(node.data.text)}
                           </p>
                         )}
                       </button>

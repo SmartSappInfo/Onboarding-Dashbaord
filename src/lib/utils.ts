@@ -89,7 +89,15 @@ export function getContrastColor(hex: string): string {
  */
 export function stripHtml(html: string): string {
   if (!html) return '';
-  return html.replace(/<[a-zA-Z\/][^>]*>/g, '').trim();
+  return html
+    .replace(/<[a-zA-Z\/][^>]*>/g, '') // remove tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
 }
 
 /**
