@@ -7,8 +7,7 @@ import type { Automation } from '../types';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 
 const mockExecuteAutomation = vi.fn<
-  [Automation, Record<string, unknown>],
-  Promise<void>
+  (...args: [Automation, Record<string, unknown>]) => Promise<void>
 >();
 
 const mockAutomationData: Partial<Automation> = {

@@ -6,7 +6,7 @@ import type { Automation, AutomationTriggerDef } from '../types';
 const mockGet = vi.fn();
 const mockLimit = vi.fn(() => ({ get: mockGet }));
 const mockWhere = vi.fn(() => ({ where: mockWhere, limit: mockLimit }));
-const mockAdd = vi.fn(() => Promise.resolve({ id: 'run-001', update: vi.fn() }));
+const mockAdd = vi.fn((data: any) => Promise.resolve({ id: 'run-001', update: vi.fn() }));
 const mockDoc = vi.fn(() => ({
   get: vi.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
   update: vi.fn(),
