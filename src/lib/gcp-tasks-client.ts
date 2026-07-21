@@ -131,13 +131,33 @@ function getTaskKey(runId: string, nodeId: string): string {
 }
 
 /**
+ * Coerces any executeAt representation into an ISO string.
+ *
+ * `automation_jobs.executeAt` MUST be an ISO string: the heartbeat sweeps due work
+ * with `.where('executeAt', '<=', new Date().toISOString())`, and Firestore orders
+ * values by type before value — a string bound never matches a Timestamp field, so
+ * a job stored with a Timestamp becomes permanently invisible to the heartbeat and
+ * the contact is parked forever. Call sites that pass an existing job's `executeAt`
+ * straight through (resume/migration paths) are typed as `string` but receive
+ * untyped Firestore data, so normalize here where every job doc is written.
+ */
+function toExecuteAtIso(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  throw new Error(`Cannot schedule task: unsupported executeAt value ${JSON.stringify(value)}`);
+}
+
+/**
  * Schedules a delayed resume task in Google Cloud Tasks (or falls back to local timeout emulator).
  */
 export async function scheduleDelayTask({
   runId,
   nodeId,
   automationId,
-  executeAt,
+  executeAt: rawExecuteAt,
   workspaceId,
   channel,
   payload = {},
@@ -148,6 +168,7 @@ export async function scheduleDelayTask({
   if (!workspaceId) {
     throw new Error(`Cannot schedule delay task for run ${runId}: workspaceId is required.`);
   }
+  const executeAt = toExecuteAtIso(rawExecuteAt);
   const taskKey = getTaskKey(runId, nodeId);
   const queue = getQueueName(channel);
   const client = await getCloudTasksClient();
@@ -197,7 +218,11 @@ export async function scheduleDelayTask({
         runId,
         automationId,
         targetNodeId: nodeId,
-        sourceNodeId: sourceNodeId || null,
+        // Defaults to nodeId: for every scheduleDelayTask caller the node being
+        // scheduled IS the node the contact is parked at. Without this, resume /
+        // migration paths write null and the designer's per-node "N Contacts"
+        // badge — which groups by sourceNodeId — silently omits those contacts.
+        sourceNodeId: sourceNodeId || nodeId,
         payload,
         workspaceId,
         status: 'pending',
@@ -257,7 +282,7 @@ export async function scheduleDelayTask({
       runId,
       automationId,
       targetNodeId: nodeId,
-      sourceNodeId: sourceNodeId || null,
+      sourceNodeId: sourceNodeId || nodeId,
       payload,
       workspaceId,
       status: 'pending',
@@ -431,6 +456,89 @@ export async function scheduleBulkTriggerTask({
 
   const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
   console.info(`[GCP-TASKS] Scheduled bulk trigger task ${response.name}`);
+
+  return response.name || taskKey;
+}
+
+export interface BulkRetryTaskOptions {
+  automationId: string;
+  workspaceId: string;
+  userId: string;
+  runIds?: string[];
+  retryAll?: boolean;
+}
+
+/**
+ * Schedules a bulk retry task for failed automation runs.
+ */
+export async function scheduleBulkRetryTask({
+  automationId,
+  workspaceId,
+  userId,
+  runIds,
+  retryAll,
+}: BulkRetryTaskOptions): Promise<string> {
+  const uuid = Math.random().toString(36).substring(2, 15);
+  const taskKey = `bulk_retry_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  const queue = getQueueName('bulk');
+  const client = await getCloudTasksClient();
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
+
+  if (isEmulator || !client) {
+    console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk retry task ${taskKey} on queue "${queue}"`);
+    
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${resolvedBaseUrl}/api/automations/runs/bulk-retry`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify({ automationId, workspaceId, userId, runIds, retryAll }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`[GCP-TASKS-EMULATOR] Bulk retry worker returned error: ${response.status} - ${text}`);
+        } else {
+          console.info(`[GCP-TASKS-EMULATOR] Bulk retry worker executed task ${taskKey} successfully.`);
+        }
+      } catch (err) {
+        console.error(`[GCP-TASKS-EMULATOR] Network error executing bulk retry task ${taskKey}:`, err);
+      }
+    }, 10);
+
+    return taskKey;
+  }
+
+  // Production GCP Cloud Tasks Mode
+  const parent = client.queuePath(PROJECT, LOCATION, queue);
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+
+  const taskPayload = {
+    automationId,
+    workspaceId,
+    userId,
+    runIds,
+    retryAll,
+  };
+
+  const task = {
+    name: formattedTaskName,
+    httpRequest: {
+      httpMethod: 'POST' as const,
+      url: `${resolvedBaseUrl}/api/automations/runs/bulk-retry`,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+    },
+  };
+
+  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
+  console.info(`[GCP-TASKS] Scheduled bulk retry task ${response.name}`);
 
   return response.name || taskKey;
 }

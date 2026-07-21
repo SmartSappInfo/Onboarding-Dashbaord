@@ -30,6 +30,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +54,7 @@ import {
   forceAdvanceRunAction,
   pauseRunAction,
   resumeRunAction,
+  bulkRetryRunsAction,
 } from '@/lib/automation-actions';
 import { StepTimeline } from './StepTimeline';
 import { formatDistanceToNow } from 'date-fns';
@@ -152,6 +155,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     email: string;
     phone: string;
   } | null>(null);
+
+  const [selectedRunIds, setSelectedRunIds] = React.useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = React.useState(false);
 
   const [limitAmount, setLimitAmount] = React.useState(100);
   const [dbStats, setDbStats] = React.useState<{
@@ -426,6 +432,55 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const stats = dbStats;
 
   // ── Action Handlers ─────────────────────────────────────────────────────────
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const visibleFailed = filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').map(r => r.id);
+      setSelectedRunIds(new Set(visibleFailed));
+    } else {
+      setSelectedRunIds(new Set());
+    }
+  };
+
+  const toggleSelection = (runId: string) => {
+    setSelectedRunIds(prev => {
+      const next = new Set(prev);
+      if (next.has(runId)) next.delete(runId);
+      else next.add(runId);
+      return next;
+    });
+  };
+
+  const handleBulkRetry = async (retryAllFailed = false) => {
+    if (!user?.uid || !activeWorkspaceId) return;
+    const runIds = Array.from(selectedRunIds);
+    if (!retryAllFailed && runIds.length === 0) return;
+
+    const qty = retryAllFailed ? stats.failed : runIds.length;
+    const confirmed = await confirm({
+      title: 'Bulk Retry Failed Steps',
+      description: `You are about to retry ${qty} failed automation ${qty === 1 ? 'run' : 'runs'}. This will process in the background. Are you sure?`,
+      confirmText: 'Retry Now',
+      variant: 'default',
+    });
+
+    if (!confirmed) return;
+
+    setIsBulkProcessing(true);
+    try {
+      const res = await bulkRetryRunsAction(automationId, { runIds, retryAllFailed }, user.uid, activeWorkspaceId);
+      if (res.success) {
+        toast({ title: 'Bulk retry scheduled successfully' });
+        setSelectedRunIds(new Set());
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to schedule', description: res.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
 
   async function handleAction(
     action: 'restart' | 'retry' | 'forceEnd' | 'forceAdvance' | 'pause' | 'resume',
@@ -797,7 +852,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Bulk Actions */}
       <div className="border-b border-border/50 px-6 py-3 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -824,9 +879,23 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           </select>
         </div>
 
-        <p className="text-[10px] text-muted-foreground font-medium ml-auto">
-          {filteredRuns.length} of {stats.total} runs
-        </p>
+        <div className="ml-auto flex items-center gap-3">
+          {statusFilter === 'failed' && stats.failed > 0 && selectedRunIds.size === 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-[10px] font-bold text-amber-600 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
+              onClick={() => handleBulkRetry(true)}
+              disabled={isBulkProcessing}
+            >
+              {isBulkProcessing ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <RefreshCw size={12} className="mr-1.5" />}
+              Retry All Failed ({stats.failed})
+            </Button>
+          )}
+          <p className="text-[10px] text-muted-foreground font-medium">
+            {filteredRuns.length} of {stats.total} runs
+          </p>
+        </div>
       </div>
 
       {/* Table */}
@@ -835,6 +904,16 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           <table className="w-full">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/40">
+                <th className="w-10 px-3 py-2.5 text-left">
+                  <Checkbox
+                    checked={
+                      filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').length > 0 &&
+                      selectedRunIds.size === filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').length
+                    }
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    className="h-4 w-4 rounded-md border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                </th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[28%]">Contact / Entity</th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[14%]">Status</th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[22%]">Current Step</th>
@@ -859,6 +938,17 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                     )}
                     onClick={() => setSelectedRun(run)}
                   >
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      {effectiveStatus === 'failed' ? (
+                        <Checkbox
+                          checked={selectedRunIds.has(run.id)}
+                          onCheckedChange={() => toggleSelection(run.id)}
+                          className="h-4 w-4 rounded-md border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
+                        />
+                      ) : (
+                        <div className="h-4 w-4" /> // Spacer for alignment
+                      )}
+                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         {isWebhook && <Globe size={12} className="text-primary shrink-0" />}
@@ -973,6 +1063,43 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           )}
         </div>
       </ScrollArea>
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedRunIds.size > 0 && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl rounded-2xl px-5 py-3 shadow-primary/5"
+          >
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="h-6 font-bold bg-primary/10 text-primary border-primary/20">
+                {selectedRunIds.size} Selected
+              </Badge>
+            </div>
+            <div className="w-px h-4 bg-border/50" />
+            <Button
+              size="sm"
+              className="h-8 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all active:scale-[0.98]"
+              onClick={() => handleBulkRetry(false)}
+              disabled={isBulkProcessing}
+            >
+              {isBulkProcessing ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <RefreshCw size={12} className="mr-1.5" />}
+              Retry Selected
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full ml-1"
+              onClick={() => setSelectedRunIds(new Set())}
+              disabled={isBulkProcessing}
+            >
+              <XCircle size={14} className="text-muted-foreground hover:text-foreground transition-colors" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
