@@ -12,6 +12,7 @@ import {
   buildAdoptedWhatsAppMessageTemplate,
   adoptedTemplateDocId,
   shouldAutoEnableWhatsApp,
+  toPositionalBody,
   stripComponentExamples,
   validateApprovedSend,
   validateHeaderMedia,
@@ -237,6 +238,55 @@ describe('stripComponentExamples', () => {
   it('returns [] for undefined and tolerates non-object entries', () => {
     expect(stripComponentExamples(undefined)).toEqual([]);
     expect(stripComponentExamples(['x', null])).toEqual(['x', null]);
+  });
+});
+
+describe('toPositionalBody', () => {
+  it('rewrites named variables to positional params in order of appearance', () => {
+    const r = toPositionalBody('Hi {{firstName}}, order {{orderId}} is ready.');
+    expect(r.text).toBe('Hi {{1}}, order {{2}} is ready.');
+    expect(r.paramMap).toEqual(['firstName', 'orderId']);
+  });
+
+  it('reuses one index for a variable repeated in the body', () => {
+    const r = toPositionalBody('{{name}} — thanks {{name}}!');
+    expect(r.text).toBe('{{1}} — thanks {{1}}!');
+    expect(r.paramMap).toEqual(['name']);
+  });
+
+  it('tolerates whitespace inside the braces', () => {
+    const r = toPositionalBody('Hi {{  firstName  }} there');
+    expect(r.text).toBe('Hi {{1}} there');
+    expect(r.paramMap).toEqual(['firstName']);
+  });
+
+  it('escapes regex-significant characters in variable names', () => {
+    const r = toPositionalBody('Value {{user.name}} and {{a+b}}');
+    expect(r.text).toBe('Value {{1}} and {{2}}');
+    expect(r.paramMap).toEqual(['user.name', 'a+b']);
+  });
+
+  it('only replaces exact tokens, never prefixes of longer names', () => {
+    const r = toPositionalBody('{{a}} then {{ab}}');
+    expect(r.text).toBe('{{1}} then {{2}}');
+    expect(r.paramMap).toEqual(['a', 'ab']);
+  });
+
+  it('returns the body unchanged when there are no variables', () => {
+    const r = toPositionalBody('Static message');
+    expect(r.text).toBe('Static message');
+    expect(r.paramMap).toEqual([]);
+  });
+
+  it('handles empty input safely', () => {
+    expect(toPositionalBody('')).toEqual({ text: '', paramMap: [] });
+  });
+
+  it('is stable when called repeatedly (no leaked regex state)', () => {
+    const body = 'Hi {{firstName}} and {{lastName}}';
+    const a = toPositionalBody(body);
+    const b = toPositionalBody(body);
+    expect(a).toEqual(b);
   });
 });
 

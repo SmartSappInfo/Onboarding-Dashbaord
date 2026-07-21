@@ -63,6 +63,7 @@ import {
     type GalleryTemplate,
     type WhatsAppDisplayTemplate,
 } from './lib/unified-template';
+import { toPositionalBody } from '@/lib/whatsapp/whatsapp-domain';
 import type { TemplateDraft } from './components/whatsapp/shared';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 import { bulkPushWhatsAppSkeletonsAction } from '@/app/actions/bulk-push-whatsapp-skeletons-action';
@@ -547,17 +548,10 @@ export default function MessageTemplatesPage() {
     const handleWaAdopt = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'adopt', template: t.raw });
 
     const handlePushSkeleton = (template: MessageTemplate) => {
-        const matches = (template.body || '').match(/\{\{([^{}]+?)\}\}/g);
-        const vars = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
-        
-        let bodyText = template.body || '';
+        // Shared with the bulk push so both paths convert identically.
+        const { text: bodyText, paramMap: vars } = toPositionalBody(template.body || '');
         const paramVars: Record<number, string> = {};
-        vars.forEach((v, index) => {
-            const escapedVar = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-            const regex = new RegExp(`\\{\\{\\s*${escapedVar}\\s*\\}\\}`, 'g');
-            bodyText = bodyText.replace(regex, `{{${index + 1}}}`);
-            paramVars[index] = v;
-        });
+        vars.forEach((v, index) => { paramVars[index] = v; });
 
         const draft: TemplateDraft = {
             name: toWhatsAppTemplateName(template.name) || undefined,

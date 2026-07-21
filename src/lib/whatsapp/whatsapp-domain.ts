@@ -444,6 +444,39 @@ function coerceCategory(c: string): WhatsAppTemplateCategory {
   return KNOWN_CATEGORIES.includes(up) ? up : 'UTILITY';
 }
 
+/** Any `{{token}}` occurrence — the token may be a named variable or a number. */
+const TEMPLATE_VAR_RE = /\{\{(.*?)\}\}/g;
+/** Characters that must be escaped before embedding a token in a RegExp. */
+const REGEX_ESCAPE_RE = /[-/\\^$*+?.()|[\]{}]/g;
+
+/**
+ * Convert an authored body using named variables (`{{firstName}}`) into the
+ * positional form Meta requires (`{{1}}`), returning the ordered variable names
+ * so they can be stored as the runtime parameter map.
+ *
+ * Variables are numbered by first appearance and de-duplicated, so a variable
+ * used twice keeps a single index. Token matching is exact — `{{a}}` never
+ * matches inside `{{ab}}`. Pure; shared by the single and bulk push paths so the
+ * two can never drift.
+ */
+export function toPositionalBody(body: string): { text: string; paramMap: string[] } {
+  const source = body ?? '';
+  const matches = source.match(TEMPLATE_VAR_RE);
+  if (!matches) return { text: source, paramMap: [] };
+
+  const paramMap = Array.from(
+    new Set(matches.map((m) => m.replace(/\{\{|\}\}/g, '').trim())),
+  ).filter((v) => v.length > 0);
+
+  let text = source;
+  paramMap.forEach((variable, idx) => {
+    const escaped = variable.replace(REGEX_ESCAPE_RE, '\\$&');
+    text = text.replace(new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g'), `{{${idx + 1}}}`);
+  });
+
+  return { text, paramMap };
+}
+
 /** Deterministic `message_templates` doc id for an adopted/auto-enabled WhatsApp template. */
 export function adoptedTemplateDocId(whatsAppTemplateId: string): string {
   return `wa_${whatsAppTemplateId}`;

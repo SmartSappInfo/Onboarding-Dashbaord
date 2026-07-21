@@ -8,6 +8,7 @@ import {
   buildCreateTemplatePayload,
   buildWhatsAppTemplateId,
   stripComponentExamples,
+  toPositionalBody,
   validateCreateTemplateInput
 } from '@/lib/whatsapp/whatsapp-domain';
 import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-repository';
@@ -143,18 +144,7 @@ export async function bulkPushWhatsAppSkeletonsAction(
           continue;
         }
 
-        const bodyText = data.body || '';
-        const varMatches = bodyText.match(/\{\{(.*?)\}\}/g);
-        const paramMap: string[] = varMatches
-          ? Array.from(new Set(varMatches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim())))
-          : [];
-
-        let processedBody = bodyText;
-        paramMap.forEach((v: string, idx: number) => {
-          const escaped = v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-          const regex = new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g');
-          processedBody = processedBody.replace(regex, `{{${idx + 1}}}`);
-        });
+        const { text: processedBody, paramMap } = toPositionalBody(data.body || '');
 
         const cleanName = toWhatsAppTemplateName(data.name || '');
         if (!cleanName) {
