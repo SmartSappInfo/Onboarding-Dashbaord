@@ -372,6 +372,11 @@ export default function DealDetailsPage() {
         return contactSearchResults.filter(e => !associatedIds.has(e.entityId));
     }, [contactSearchResults, deal?.contacts, deal?.entityId]);
 
+    // Guarantee page always loads scrolled to top showing the top card
+    React.useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }, [dealId]);
+
     React.useEffect(() => {
         if (deal) {
             setName(deal.name || '');
@@ -386,26 +391,27 @@ export default function DealDetailsPage() {
         }
     }, [deal]);
 
-    // Ensure pipelineId is populated once pipelineOptions are available
+    // Ensure pipelineId is populated once pipelineOptions are available (only if deal has loaded and pipelineId is empty)
     React.useEffect(() => {
-        if (!pipelineId && pipelineOptions.length > 0) {
+        if (deal && !pipelineId && pipelineOptions.length > 0) {
             setPipelineId(pipelineOptions[0].id);
         }
-    }, [pipelineId, pipelineOptions]);
+    }, [deal, pipelineId, pipelineOptions]);
 
-    // Ensure stageId is populated once stageOptions are available for the selected pipeline
+    // Ensure stageId is strictly populated from deal or first stageOption once stageOptions are available
     React.useEffect(() => {
-        if (stageOptions.length > 0) {
-            const hasSelected = stageOptions.some(s => s.id === stageId);
-            if (!hasSelected) {
-                if (deal?.stageId && stageOptions.some(s => s.id === deal.stageId)) {
-                    setStageId(deal.stageId);
-                } else {
-                    setStageId(stageOptions[0].id);
-                }
+        if (!deal || stageOptions.length === 0) return;
+
+        const isCurrentValid = stageOptions.some(s => s.id === stageId);
+        if (!isCurrentValid) {
+            const isDealStageValid = stageOptions.some(s => s.id === deal.stageId);
+            if (isDealStageValid && deal.stageId) {
+                setStageId(deal.stageId);
+            } else {
+                setStageId(stageOptions[0].id);
             }
         }
-    }, [stageOptions, stageId, deal?.stageId]);
+    }, [deal, stageOptions, stageId]);
 
     // Load the entity's contacts so focal persons can be (de)selected.
     React.useEffect(() => {
