@@ -37,8 +37,27 @@ import {
   FileText,
   ArrowUpRight,
   Sparkles,
-  Trash2
+  Trash2,
+  PhoneCall,
+  DollarSign,
+  Tag as TagIcon,
+  UserPlus,
+  ClipboardList,
+  CalendarDays,
+  CheckSquare,
+  X,
+  MoreHorizontal,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AddToCampaignDialog } from '@/app/admin/entities/components/AddToCampaignDialog';
+import { AddToAutomationDialog } from '@/app/admin/entities/components/AddToAutomationDialog';
+import BulkCreateDealModal from '@/app/admin/entities/components/BulkCreateDealModal';
+import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
+import AssignUserModal from '@/app/admin/entities/components/AssignUserModal';
+import BulkCreateTaskModal from '@/app/admin/entities/components/BulkCreateTaskModal';
+import BulkMeetingInviteModal from '@/app/admin/entities/components/BulkMeetingInviteModal';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -231,6 +250,23 @@ export function MessageNodeLogsDialog({
   const { user } = useUser();
   const [isReconciling, setIsReconciling] = React.useState(false);
   const [reconcileResult, setReconcileResult] = React.useState<{ updatedCount: number } | null>(null);
+
+  // Multi-select state
+  const [selectedLogIds, setSelectedLogIds] = React.useState<Set<string>>(new Set());
+
+  // Workspace Bulk Modals Trigger States
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = React.useState(false);
+  const [isAutomationModalOpen, setIsAutomationModalOpen] = React.useState(false);
+  const [isDealModalOpen, setIsDealModalOpen] = React.useState(false);
+  const [isTagModalOpen, setIsTagModalOpen] = React.useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = React.useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = React.useState(false);
+
+  // Clear selection when activeTab or search filter changes
+  React.useEffect(() => {
+    setSelectedLogIds(new Set());
+  }, [activeTab, search]);
   
   // Fetch logs on mount or when id changes
   React.useEffect(() => {
@@ -391,11 +427,54 @@ export function MessageNodeLogsDialog({
           return log.providerStatus === 'unsubscribed' || log.externalStatus === 'unsubscribed' || !!log.unsubscribedAt;
         case 'replied':
           return log.direction === 'inbound' || log.providerStatus === 'replied' || log.externalStatus === 'replied' || !!log.repliedAt;
-        default:
-          return true;
       }
     });
   }, [logs, activeTab, search]);
+
+  // Selection Handlers & Derived Values
+  const isAllFilteredSelected = React.useMemo(() => {
+    if (filteredLogs.length === 0) return false;
+    return filteredLogs.every((l) => selectedLogIds.has(l.id));
+  }, [filteredLogs, selectedLogIds]);
+
+  const toggleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      setSelectedLogIds(new Set());
+    } else {
+      setSelectedLogIds(new Set(filteredLogs.map((l) => l.id)));
+    }
+  };
+
+  const toggleSelectLog = (logId: string) => {
+    setSelectedLogIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(logId)) {
+        next.delete(logId);
+      } else {
+        next.add(logId);
+      }
+      return next;
+    });
+  };
+
+  // Derived list of unique Entity IDs from currently selected logs
+  const selectedEntityIds = React.useMemo(() => {
+    const set = new Set<string>();
+    logs
+      .filter((l) => selectedLogIds.has(l.id))
+      .forEach((l) => {
+        if (l.entityId) set.add(l.entityId);
+      });
+    return Array.from(set);
+  }, [logs, selectedLogIds]);
+
+  // Selection-aware export targets
+  const logsToExport = React.useMemo(() => {
+    if (selectedLogIds.size > 0) {
+      return logs.filter((l) => selectedLogIds.has(l.id));
+    }
+    return filteredLogs;
+  }, [logs, selectedLogIds, filteredLogs]);
 
   // Paginated Rendering
   const [visibleCount, setVisibleCount] = React.useState(20);
@@ -464,11 +543,11 @@ export function MessageNodeLogsDialog({
 
   // Export to Excel (.xlsx)
   const handleExportExcel = async () => {
-    if (filteredLogs.length === 0) return;
+    if (logsToExport.length === 0) return;
     setIsExporting(true);
     try {
       const XLSX = await import('xlsx');
-      const resolved = await resolveAllNames(filteredLogs);
+      const resolved = await resolveAllNames(logsToExport);
 
       const sheetData = resolved.map(log => ({
         'Recipient Address': log.recipient,
@@ -502,10 +581,10 @@ export function MessageNodeLogsDialog({
 
   // Export to CSV
   const handleExportCSV = async () => {
-    if (filteredLogs.length === 0) return;
+    if (logsToExport.length === 0) return;
     setIsExporting(true);
     try {
-      const resolved = await resolveAllNames(filteredLogs);
+      const resolved = await resolveAllNames(logsToExport);
 
       const headers = ['Recipient Address', 'Entity Name', 'Contact Person', 'Dispatched At', 'Delivery Status'];
       const rows = resolved.map(log => [
@@ -554,11 +633,11 @@ export function MessageNodeLogsDialog({
 
   // Export to PDF
   const handleExportPDF = async () => {
-    if (filteredLogs.length === 0) return;
+    if (logsToExport.length === 0) return;
     setIsExporting(true);
     try {
       const { jsPDF } = await import('jspdf');
-      const resolved = await resolveAllNames(filteredLogs);
+      const resolved = await resolveAllNames(logsToExport);
 
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -846,7 +925,7 @@ export function MessageNodeLogsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 overflow-hidden bg-background border border-border/80 shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-6xl w-full max-h-[94vh] flex flex-col p-4 sm:p-6 overflow-hidden bg-background border border-border/80 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold tracking-tight">
@@ -1127,6 +1206,105 @@ export function MessageNodeLogsDialog({
           </div>
         </div>
 
+        {/* Multi-Select Floating Bulk Operations Action Dock */}
+        {selectedLogIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 px-4 rounded-xl bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl my-2 shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center gap-2">
+              <div className="h-6 px-2 rounded-md bg-primary/20 flex items-center justify-center">
+                <span className="font-mono text-xs font-black text-primary">{selectedLogIds.size}</span>
+              </div>
+              <span className="text-xs font-bold text-slate-200">
+                Selected ({selectedEntityIds.length} Entities)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCampaignModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-indigo-400 hover:bg-indigo-500/10 active:scale-[0.97]"
+              >
+                <PhoneCall className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Call Campaign</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDealModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97]"
+              >
+                <DollarSign className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Pipeline Stage</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAutomationModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-sky-400 hover:bg-sky-500/10 active:scale-[0.97]"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Add to Automation</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTagModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-violet-400 hover:bg-violet-500/10 active:scale-[0.97]"
+              >
+                <TagIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Manage Tags</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAssignModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-amber-400 hover:bg-amber-500/10 active:scale-[0.97]"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Assign Owner</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsTaskModalOpen(true)}
+                disabled={selectedEntityIds.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-blue-400 hover:bg-blue-500/10 active:scale-[0.97]"
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Create Task</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedLogIds(new Set())}
+                className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 ml-1"
+                title="Clear Selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Drill-down Table view */}
         <div className="flex-1 overflow-auto border border-border/60 rounded-xl bg-card shadow-inner">
           {isLoading ? (
@@ -1143,125 +1321,206 @@ export function MessageNodeLogsDialog({
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10 border-b border-border/50">
-                <TableRow>
-                  <TableHead className="w-[180px] text-xs">Recipient</TableHead>
-                  <TableHead className="w-[200px] text-xs">Entity Name</TableHead>
-                  <TableHead className="w-[160px] text-xs">Contact Person</TableHead>
-                  <TableHead className="w-[140px] text-xs">Sent At</TableHead>
-                  <TableHead className="w-[110px] text-xs text-center">Status</TableHead>
-                  <TableHead className="w-[50px] text-xs text-right"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile View: Responsive Card Stack */}
+              <div className="md:hidden divide-y divide-border/40">
                 {visibleLogs.map((log) => {
-                  const hasOpened = log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
-                  const hasClicked = log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
-                  const hasFailed = log.status === 'failed' || log.providerStatus === 'bounced';
+                  const hasOpened = isLogOpened(log);
+                  const hasClicked = isLogClicked(log);
+                  const hasFailed = isLogFailed(log);
+                  const isSelected = selectedLogIds.has(log.id);
 
-                  // Build status badge
                   let statusBadge = (
                     <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/20 text-[10px]">
                       Sent
                     </Badge>
                   );
                   if (hasFailed) {
-                    const failReason = log.error || 'Bounce / Delivery Failure';
-                    const bounceLabel = log.bounceType 
-                      ? (log.bounceType === 'permanent' ? 'Hard Bounce' : 'Soft Bounce')
-                      : (failReason.toLowerCase().includes('permanent') ? 'Hard Bounce' : failReason.toLowerCase().includes('temporary') ? 'Soft Bounce' : 'Failed');
-
                     statusBadge = (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] whitespace-nowrap">
-                          {bounceLabel}
-                        </Badge>
-                        {log.error && (
-                          <span className="text-[9px] text-muted-foreground/60 max-w-[130px] truncate block text-center" title={log.error}>
-                            {log.error}
-                          </span>
-                        )}
-                      </div>
+                      <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]">
+                        Failed
+                      </Badge>
                     );
                   } else if (hasClicked) {
                     statusBadge = (
-                      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1 justify-center">
+                      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1">
                         <MousePointer2 className="h-2.5 w-2.5" /> Clicked
                       </Badge>
                     );
                   } else if (hasOpened) {
                     statusBadge = (
-                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1 justify-center">
+                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1">
                         <Eye className="h-2.5 w-2.5" /> {channel === 'email' ? 'Opened' : 'Read'}
                       </Badge>
                     );
                   } else if (log.deliveredAt || log.providerStatus === 'delivered') {
                     statusBadge = (
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1 justify-center">
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1">
                         <CheckCircle2 className="h-2.5 w-2.5" /> Delivered
                       </Badge>
                     );
                   }
 
-                  const entityId = log.entityId;
-
                   return (
-                    <TableRow key={log.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-[11px] truncate max-w-[180px]" title={log.recipient}>
-                        {log.recipient}
-                      </TableCell>
-                      
-                      {/* Async Entity details */}
-                      <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
-
-                      <TableCell className="text-[11px] text-muted-foreground">
-                        {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
-                      </TableCell>
-                      <TableCell className="text-center align-middle">
-                        {statusBadge}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {entityId && channel === 'email' && hasFailed && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-md hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300"
-                              onClick={() => {
-                                setSelectedCleanEmail(log.recipient);
-                                setSelectedCleanEntityId(entityId);
-                                setIsCleanDialogOpen(true);
-                              }}
-                              title="Clean Bounced Email"
-                            >
-                              <MagicTrashIcon className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          {entityId && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-md hover:bg-primary/5 text-muted-foreground hover:text-primary"
-                              asChild
-                            >
-                              <a
-                                href={`/admin/entities/${entityId}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="View Contact Profile"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
-                            </Button>
-                          )}
+                    <div key={log.id} className={cn("p-3 space-y-2 transition-colors", isSelected && "bg-primary/5")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelectLog(log.id)}
+                            className="h-4 w-4 rounded border-border"
+                          />
+                          <span className="font-mono text-xs font-bold text-foreground truncate">{log.recipient}</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                        {statusBadge}
+                      </div>
+
+                      <div className="pl-6 space-y-1 text-xs">
+                        <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
+                        <p className="text-[10px] text-muted-foreground">
+                          {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
+                        </p>
+                      </div>
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop View: Full Table */}
+              <Table className="hidden md:table">
+                <TableHeader className="bg-muted/50 sticky top-0 z-10 border-b border-border/50">
+                  <TableRow>
+                    <TableHead className="w-[40px] text-center">
+                      <Checkbox
+                        checked={isAllFilteredSelected}
+                        onCheckedChange={toggleSelectAllFiltered}
+                        title="Select All Filtered"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[180px] text-xs">Recipient</TableHead>
+                    <TableHead className="w-[200px] text-xs">Entity Name</TableHead>
+                    <TableHead className="w-[160px] text-xs">Contact Person</TableHead>
+                    <TableHead className="w-[140px] text-xs">Sent At</TableHead>
+                    <TableHead className="w-[110px] text-xs text-center">Status</TableHead>
+                    <TableHead className="w-[50px] text-xs text-right"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleLogs.map((log) => {
+                    const hasOpened = isLogOpened(log);
+                    const hasClicked = isLogClicked(log);
+                    const hasFailed = isLogFailed(log);
+                    const isSelected = selectedLogIds.has(log.id);
+
+                    // Build status badge
+                    let statusBadge = (
+                      <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/20 text-[10px]">
+                        Sent
+                      </Badge>
+                    );
+                    if (hasFailed) {
+                      const failReason = log.error || 'Bounce / Delivery Failure';
+                      const bounceLabel = log.bounceType 
+                        ? (log.bounceType === 'permanent' ? 'Hard Bounce' : 'Soft Bounce')
+                        : (failReason.toLowerCase().includes('permanent') ? 'Hard Bounce' : failReason.toLowerCase().includes('temporary') ? 'Soft Bounce' : 'Failed');
+
+                      statusBadge = (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] whitespace-nowrap">
+                            {bounceLabel}
+                          </Badge>
+                          {log.error && (
+                            <span className="text-[9px] text-muted-foreground/60 max-w-[130px] truncate block text-center" title={log.error}>
+                              {log.error}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    } else if (hasClicked) {
+                      statusBadge = (
+                        <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1 justify-center">
+                          <MousePointer2 className="h-2.5 w-2.5" /> Clicked
+                        </Badge>
+                      );
+                    } else if (hasOpened) {
+                      statusBadge = (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1 justify-center">
+                          <Eye className="h-2.5 w-2.5" /> {channel === 'email' ? 'Opened' : 'Read'}
+                        </Badge>
+                      );
+                    } else if (log.deliveredAt || log.providerStatus === 'delivered') {
+                      statusBadge = (
+                        <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1 justify-center">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> Delivered
+                        </Badge>
+                      );
+                    }
+
+                    const entityId = log.entityId;
+
+                    return (
+                      <TableRow key={log.id} className={cn("hover:bg-muted/30 transition-colors", isSelected && "bg-primary/5")}>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelectLog(log.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] truncate max-w-[180px]" title={log.recipient}>
+                          {log.recipient}
+                        </TableCell>
+                        
+                        {/* Async Entity details */}
+                        <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
+
+                        <TableCell className="text-[11px] text-muted-foreground">
+                          {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
+                        </TableCell>
+                        <TableCell className="text-center align-middle">
+                          {statusBadge}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {entityId && channel === 'email' && hasFailed && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-md hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300 active:scale-[0.97]"
+                                onClick={() => {
+                                  setSelectedCleanEmail(log.recipient);
+                                  setSelectedCleanEntityId(entityId);
+                                  setIsCleanDialogOpen(true);
+                                }}
+                                title="Clean Bounced Email"
+                              >
+                                <MagicTrashIcon className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {entityId && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-md hover:bg-primary/5 text-muted-foreground hover:text-primary active:scale-[0.97]"
+                                asChild
+                              >
+                                <a
+                                  href={`/admin/entities/${entityId}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="View Contact Profile"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
           )}
 
           {filteredLogs.length > visibleCount && (
@@ -1273,7 +1532,7 @@ export function MessageNodeLogsDialog({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="text-[10px] font-bold px-3.5 h-7 rounded-lg border-border/80 shadow-sm transition-all hover:bg-muted active:scale-95 flex items-center gap-1"
+                className="text-[10px] font-bold px-3.5 h-7 rounded-lg border-border/80 shadow-sm transition-all hover:bg-muted active:scale-[0.97] flex items-center gap-1"
                 onClick={handleLoadMore}
               >
                 <span>Load More</span>
@@ -1282,6 +1541,57 @@ export function MessageNodeLogsDialog({
             </div>
           )}
         </div>
+
+        {/* ── REUSED WORKSPACE BULK ACTION MODALS ──────────────────────────── */}
+        {selectedEntityIds.length > 0 && (
+          <>
+            <AddToCampaignDialog
+              open={isCampaignModalOpen}
+              onOpenChange={setIsCampaignModalOpen}
+              entityIds={selectedEntityIds}
+              workspaceId={activeWorkspaceId || ''}
+            />
+
+            <AddToAutomationDialog
+              open={isAutomationModalOpen}
+              onOpenChange={setIsAutomationModalOpen}
+              entityIds={selectedEntityIds}
+              workspaceId={activeWorkspaceId || ''}
+            />
+
+            <BulkCreateDealModal
+              open={isDealModalOpen}
+              onOpenChange={setIsDealModalOpen}
+              entityIds={selectedEntityIds}
+            />
+
+            <BulkTagOperations
+              open={isTagModalOpen}
+              onOpenChange={setIsTagModalOpen}
+              selectedContactIds={selectedEntityIds}
+              contactType="workspace_entity"
+            />
+
+            <AssignUserModal
+              entity={null}
+              selectedEntityIds={selectedEntityIds}
+              open={isAssignModalOpen}
+              onOpenChange={setIsAssignModalOpen}
+            />
+
+            <BulkCreateTaskModal
+              entityIds={selectedEntityIds}
+              open={isTaskModalOpen}
+              onOpenChange={setIsTaskModalOpen}
+            />
+
+            <BulkMeetingInviteModal
+              entityIds={selectedEntityIds}
+              open={isMeetingModalOpen}
+              onOpenChange={setIsMeetingModalOpen}
+            />
+          </>
+        )}
 
         <CleanContactEmailDialog
           email={selectedCleanEmail}
