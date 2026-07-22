@@ -776,3 +776,92 @@ export async function bulkForceAdvanceRunsAction(
     return { success: false, error: errMsg };
   }
 }
+
+export async function jumpRunToStepAction(
+  runId: string,
+  targetNodeId: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    const { jumpRunToStep } = await import('./automations/run-management');
+    return await jumpRunToStep(runId, targetNodeId, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function rescheduleWaitJobAction(
+  jobId: string,
+  newExecuteAtIso: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    const { rescheduleWaitJob } = await import('./automations/run-management');
+    return await rescheduleWaitJob(jobId, newExecuteAtIso, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function updateRunPayloadAction(
+  runId: string,
+  updatedPayload: Record<string, unknown>,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    const { updateRunPayload } = await import('./automations/run-management');
+    return await updateRunPayload(runId, updatedPayload, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function cleanAndVerifyRunContactAction(
+  runId: string,
+  updatedEmail: string,
+  updatedPhone: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    const { cleanAndVerifyRunContact } = await import('./automations/run-management');
+    return await cleanAndVerifyRunContact(runId, updatedEmail, updatedPhone, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function createContactFollowupTaskAction(
+  workspaceId: string,
+  contactId: string,
+  assigneeId: string,
+  title: string,
+  description: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    const { createContactFollowupTask } = await import('./automations/run-management');
+    return await createContactFollowupTask(workspaceId, contactId, assigneeId, title, description, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}

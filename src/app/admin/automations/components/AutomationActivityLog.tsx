@@ -25,6 +25,10 @@ import {
   Check,
   Database,
   Filter,
+  CornerDownRight,
+  Code,
+  History,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +42,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
@@ -56,8 +63,14 @@ import {
   resumeRunAction,
   bulkRetryRunsAction,
   bulkForceAdvanceRunsAction,
+  jumpRunToStepAction,
+  cleanAndVerifyRunContactAction,
+  createContactFollowupTaskAction,
 } from '@/lib/automation-actions';
 import { StepTimeline } from './StepTimeline';
+import { RunExecutionTimelineModal } from './RunExecutionTimelineModal';
+import { EditRunPayloadModal } from './EditRunPayloadModal';
+import { RescheduleWaitModal } from './RescheduleWaitModal';
 import { formatDistanceToNow } from 'date-fns';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
@@ -169,6 +182,47 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     }
     return false;
   }, [processingActionKeys]);
+
+  const isMenuProcessingAnyAction = React.useCallback((runId: string): boolean => {
+    return (
+      isActionProcessing(`${runId}-pause`) ||
+      isActionProcessing(`${runId}-resume`) ||
+      isActionProcessing(`${runId}-restart`) ||
+      isActionProcessing(`${runId}-forceEnd`) ||
+      isActionProcessing(`${runId}-jump`)
+    );
+  }, [isActionProcessing]);
+
+  const [timelineRun, setTimelineRun] = React.useState<AutomationRun | null>(null);
+  const [editPayloadRun, setEditPayloadRun] = React.useState<AutomationRun | null>(null);
+  const [rescheduleJobId, setRescheduleJobId] = React.useState<string | null>(null);
+
+  async function handleJumpStep(run: AutomationRun, targetNodeId: string) {
+    if (!user?.uid || !targetNodeId) return;
+    const actionKey = `${run.id}-jump`;
+    if (processingActionKeys.has(actionKey)) return;
+
+    setProcessingActionKeys((prev) => new Set(prev).add(actionKey));
+
+    try {
+      const result = await jumpRunToStepAction(run.id, targetNodeId, user.uid);
+      if (result.success) {
+        toast({ title: 'Moved contact to step successfully' });
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to jump step', description: result.error });
+      }
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      if (isMountedRef.current) {
+        setProcessingActionKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(actionKey);
+          return next;
+        });
+      }
+    }
+  }
 
   const [triggerDataView, setTriggerDataView] = React.useState<'table' | 'json'>('table');
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
@@ -1159,60 +1213,110 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                         )}
 
                         {/* More Actions Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted/80 active:scale-[0.97] transition-all" disabled={isBulkProcessing || isRunProcessing}>
-                              {isRunProcessing ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={14} />}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                            {run.status === 'running' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleAction('pause', run)} className="text-xs font-medium gap-2">
-                                  <Pause size={12} /> Pause
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
-                                  <SkipForward size={12} /> Skip to Next Step
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
-                                  <Square size={12} /> Force End
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {run.status === 'paused' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleAction('resume', run)} className="text-xs font-medium gap-2">
-                                  <Play size={12} /> Resume
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
-                                  <SkipForward size={12} /> Skip to Next Step
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
-                                  <Square size={12} /> Force End
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {run.status === 'failed' && (
-                              <>
-                                {getFailedStepNodeId(run) && (
-                                  <DropdownMenuItem onClick={() => handleAction('retry', run)} className="text-xs font-medium gap-2">
-                                    <RefreshCw size={12} /> Retry Failed Step
+                        {(() => {
+                          const isMenuProcessing = isMenuProcessingAnyAction(run.id);
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted/80 active:scale-[0.97] transition-all"
+                                  disabled={isBulkProcessing || isMenuProcessing}
+                                >
+                                  {isMenuProcessing ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <MoreHorizontal size={14} />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                                {run.status === 'running' && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleAction('pause', run)} className="text-xs font-medium gap-2">
+                                      <Pause size={12} /> Pause Execution
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
+                                      <SkipForward size={12} /> Skip to Next Step
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {run.status === 'paused' && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleAction('resume', run)} className="text-xs font-medium gap-2">
+                                      <Play size={12} /> Resume Execution
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
+                                      <SkipForward size={12} /> Skip to Next Step
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                {run.status === 'failed' && (
+                                  <>
+                                    {getFailedStepNodeId(run) && (
+                                      <DropdownMenuItem onClick={() => handleAction('retry', run)} className="text-xs font-medium gap-2">
+                                        <RefreshCw size={12} /> Retry Failed Step
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
+                                      <RotateCcw size={12} /> Restart from Trigger
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+
+                                {/* Jump to Selected Step */}
+                                {stepOptions.length > 0 && (
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="text-xs font-medium gap-2">
+                                      <CornerDownRight size={12} /> Move Contact to Step...
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent className="w-56 rounded-xl">
+                                      {stepOptions.map((opt) => (
+                                        <DropdownMenuItem
+                                          key={opt.id}
+                                          onClick={() => handleJumpStep(run, opt.id)}
+                                          className="text-xs font-medium"
+                                        >
+                                          {opt.label}
+                                        </DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                )}
+
+                                {/* Reschedule Wait Time */}
+                                {effectiveStatus === 'waiting' && (
+                                  <DropdownMenuItem onClick={() => setRescheduleJobId(run.id)} className="text-xs font-medium gap-2">
+                                    <Calendar size={12} /> Reschedule / Snooze Wait...
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
-                                  <RotateCcw size={12} /> Restart from Trigger
+
+                                {/* Edit Run Payload */}
+                                <DropdownMenuItem onClick={() => setEditPayloadRun(run)} className="text-xs font-medium gap-2">
+                                  <Code size={12} /> Edit Run Payload Data...
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                            {run.status === 'completed' && (
-                              <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
-                                <RotateCcw size={12} /> Restart from Trigger
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+
+                                {/* Execution Timeline Trace */}
+                                <DropdownMenuItem onClick={() => setTimelineRun(run)} className="text-xs font-medium gap-2">
+                                  <History size={12} /> Execution Timeline Trace...
+                                </DropdownMenuItem>
+
+                                {isActionable && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600 dark:text-rose-400">
+                                      <Square size={12} /> Force End Execution
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -1305,6 +1409,27 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Operational Modals */}
+      <RunExecutionTimelineModal
+        run={timelineRun}
+        isOpen={!!timelineRun}
+        onClose={() => setTimelineRun(null)}
+      />
+
+      <EditRunPayloadModal
+        run={editPayloadRun}
+        isOpen={!!editPayloadRun}
+        onClose={() => setEditPayloadRun(null)}
+        userId={user?.uid || ''}
+      />
+
+      <RescheduleWaitModal
+        jobId={rescheduleJobId}
+        isOpen={!!rescheduleJobId}
+        onClose={() => setRescheduleJobId(null)}
+        userId={user?.uid || ''}
+      />
     </div>
   );
 }

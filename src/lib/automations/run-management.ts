@@ -584,3 +584,272 @@ export async function resumePausedRun(
     return { success: false, error: message };
   }
 }
+
+// ── 7. Jump Run to Step ──────────────────────────────────────────────────────────
+
+/**
+ * Moves an automation run directly to any target node in the canvas.
+ * Purges pending jobs for old nodes and schedules immediate traversal to target.
+ */
+export async function jumpRunToStep(
+  runId: string,
+  targetNodeId: string,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    if (!targetNodeId) throw new Error('Target node ID is required.');
+
+    const { ref: runRef, data: run } = await assertRunExists(runId);
+
+    // Fetch automation to validate node existence
+    const autoSnap = await adminDb.collection('automations').doc(run.automationId).get();
+    if (!autoSnap.exists) {
+      throw new Error(`Automation document ${run.automationId} not found.`);
+    }
+    const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
+
+    const targetNode = automation.nodes?.find((n) => n.id === targetNodeId);
+    if (!targetNode) {
+      throw new Error(`Target node ${targetNodeId} does not exist in automation schema.`);
+    }
+
+    // Purge pending jobs for this run
+    await purgeAllPendingJobsForRun(runId);
+
+    // Update run document to target node
+    await runRef.update({
+      currentNodeId: targetNodeId,
+      currentNodeLabel: targetNode.data?.label || targetNodeId,
+      status: 'running',
+      finishedAt: FieldValue.delete(),
+      error: FieldValue.delete(),
+    });
+
+    // Traverse from target node
+    const context: TraversalContext = {
+      runId,
+      automationId: run.automationId,
+      workspaceId: run.workspaceId || automation.workspaceIds?.[0] || '',
+      entityId: run.entityId ?? undefined,
+      entityType: run.entityType ?? undefined,
+      payload: run.payload ?? {},
+    };
+
+    await traverseNodes(targetNodeId, automation, context);
+
+    logAutomationEvent('info', 'run_jumped_to_step', {
+      runId,
+      automationId: run.automationId,
+      targetNodeId,
+      userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'jump_run_to_step_failed', { runId, targetNodeId, error: message });
+    return { success: false, error: message };
+  }
+}
+
+// ── 8. Reschedule Wait Job ───────────────────────────────────────────────────────
+
+/**
+ * Updates the executeAt timestamp for a pending wait job and reschedules its GCP Cloud Task.
+ */
+export async function rescheduleWaitJob(
+  jobId: string,
+  newExecuteAtIso: string,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    if (!newExecuteAtIso) throw new Error('New execution time is required.');
+
+    const jobSnap = await adminDb.collection('automation_jobs').doc(jobId).get();
+    if (!jobSnap.exists) {
+      throw new Error(`Wait job ${jobId} not found.`);
+    }
+
+    const jobData = jobSnap.data() as {
+      runId: string;
+      targetNodeId?: string;
+      workspaceId?: string;
+      payload?: Record<string, unknown>;
+    };
+
+    const runSnap = await adminDb.collection('automation_runs').doc(jobData.runId).get();
+    const runData = runSnap.exists ? (runSnap.data() as AutomationRun) : null;
+
+    // Update job document
+    await jobSnap.ref.update({
+      executeAt: newExecuteAtIso,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userId,
+    });
+
+    // Reschedule GCP Cloud Task if targetNodeId is present
+    if (jobData.targetNodeId && runData) {
+      const workspaceId = runData.workspaceId || jobData.workspaceId || '';
+      try {
+        await cancelDelayTask(jobData.runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel));
+      } catch (err) {
+        console.warn(`[RESCHEDULE] Task cancel warning for job ${jobId}:`, err);
+      }
+
+      await scheduleDelayTask({
+        runId: jobData.runId,
+        nodeId: jobData.targetNodeId,
+        automationId: runData.automationId,
+        executeAt: newExecuteAtIso,
+        workspaceId,
+        channel: parseQueueChannel(jobData.payload?.channel),
+        payload: jobData.payload,
+      });
+    }
+
+    logAutomationEvent('info', 'wait_job_rescheduled', {
+      jobId,
+      runId: jobData.runId,
+      newExecuteAt: newExecuteAtIso,
+      userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'reschedule_wait_job_failed', { jobId, error: message });
+    return { success: false, error: message };
+  }
+}
+
+// ── 9. Update Run Payload ────────────────────────────────────────────────────────
+
+/**
+ * Updates the JSON payload of an automation run.
+ */
+export async function updateRunPayload(
+  runId: string,
+  updatedPayload: Record<string, unknown>,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    const { ref: runRef, data: run } = await assertRunExists(runId);
+
+    await runRef.update({
+      payload: updatedPayload,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userId,
+    });
+
+    logAutomationEvent('info', 'run_payload_updated', {
+      runId,
+      automationId: run.automationId,
+      userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'update_run_payload_failed', { runId, error: message });
+    return { success: false, error: message };
+  }
+}
+
+// ── 10. Clean & Verify Contact Details ──────────────────────────────────────────
+
+/**
+ * Updates email and phone details for a contact on both run payload and master contact record.
+ */
+export async function cleanAndVerifyRunContact(
+  runId: string,
+  updatedEmail: string,
+  updatedPhone: string,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    const { ref: runRef, data: run } = await assertRunExists(runId);
+
+    const contactId = run.entityId || (run.payload?.contactId as string | undefined);
+    if (contactId) {
+      const contactRef = adminDb.collection('contacts').doc(contactId);
+      const contactSnap = await contactRef.get();
+      if (contactSnap.exists) {
+        await contactRef.update({
+          ...(updatedEmail ? { email: updatedEmail } : {}),
+          ...(updatedPhone ? { phone: updatedPhone } : {}),
+          updatedAt: new Date().toISOString(),
+          updatedBy: userId,
+        });
+      }
+    }
+
+    const nextPayload = {
+      ...(run.payload || {}),
+      ...(updatedEmail ? { email: updatedEmail } : {}),
+      ...(updatedPhone ? { phone: updatedPhone } : {}),
+    };
+
+    await runRef.update({
+      payload: nextPayload,
+      updatedAt: new Date().toISOString(),
+      updatedBy: userId,
+    });
+
+    logAutomationEvent('info', 'run_contact_cleaned', {
+      runId,
+      contactId: contactId ?? undefined,
+      userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'clean_run_contact_failed', { runId, error: message });
+    return { success: false, error: message };
+  }
+}
+
+// ── 11. Create Internal Follow-up Task ──────────────────────────────────────────
+
+/**
+ * Creates an internal follow-up task assigned to a team member for a contact.
+ */
+export async function createContactFollowupTask(
+  workspaceId: string,
+  contactId: string,
+  assigneeId: string,
+  title: string,
+  description: string,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    if (!workspaceId || !contactId || !title) {
+      throw new Error('Workspace ID, contact ID, and task title are required.');
+    }
+
+    const newTaskRef = adminDb.collection('tasks').doc();
+    await newTaskRef.set({
+      id: newTaskRef.id,
+      workspaceId,
+      contactId,
+      assigneeId: assigneeId || userId,
+      title,
+      description: description || '',
+      status: 'todo',
+      priority: 'high',
+      createdAt: new Date().toISOString(),
+      createdBy: userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'create_followup_task_failed', { contactId, error: message });
+    return { success: false, error: message };
+  }
+}
