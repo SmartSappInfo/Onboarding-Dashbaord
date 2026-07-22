@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Check, X, UserCircle2, Users } from 'lucide-react';
+import { Loader2, Plus, Check, X, UserCircle2, Users, Calendar } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { createDeal, type AssignmentStrategy } from '@/app/actions/deal-actions';
 import { getEntityDealDefaultsAction, type EntityAssignee } from '@/app/actions/entity-contact-actions';
@@ -25,8 +25,9 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { cn } from '@/lib/utils';
-import type { EntityContact, DealFocalContact } from '@/lib/types';
+import type { EntityContact, DealFocalContact, Pipeline } from '@/lib/types';
 import { useTerminology } from '@/hooks/use-terminology';
+import { calculateExpectedCloseDate } from '@/app/admin/pipeline/utils/deal-expected-close';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -211,8 +212,16 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         }
     };
 
+    const selectedPipelineObj = React.useMemo(() => {
+        return pipelines?.find((p: Pipeline) => p.id === pipelineId);
+    }, [pipelines, pipelineId]);
+
+    const calculatedCloseHint = React.useMemo(() => {
+        if (!selectedPipelineObj) return null;
+        return calculateExpectedCloseDate(selectedPipelineObj);
+    }, [selectedPipelineObj]);
+
     const getAutoLabel = () => {
-        const selectedPipelineObj = pipelines?.find((p: any) => p.id === pipelineId);
         const strategy = selectedPipelineObj?.assignmentStrategy || 'direct';
         if (strategy === 'round-robin') return 'Auto — Round Robin';
         if (strategy === 'value-based') return 'Auto — Value-based Routing';
@@ -390,11 +399,17 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                         <SelectValue placeholder="Select Pipeline" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-none shadow-xl">
-                                        {pipelines?.map((p: any) => (
+                                        {pipelines?.map((p: Pipeline) => (
                                             <SelectItem key={p.id} value={p.id} className="font-bold text-xs">{p.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {calculatedCloseHint && (
+                                    <p className="text-[10px] text-muted-foreground ml-1 flex items-center gap-1 mt-1">
+                                        <Calendar className="h-3 w-3 text-primary shrink-0" />
+                                        Default close: <span className="font-bold text-foreground">{new Date(calculatedCloseHint).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    </p>
+                                )}
                             </div>
                         </div>
 

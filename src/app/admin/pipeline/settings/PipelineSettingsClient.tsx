@@ -16,7 +16,8 @@ import {
     Zap,
     Plus,
     Trash2,
-    Users
+    Users,
+    Calendar
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,8 @@ export default function PipelineSettingsClient() {
     const [columnWidth, setColumnWidth] = React.useState(320);
     const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
     const [assignmentUserIds, setAssignmentUserIds] = React.useState<string[]>([]);
+    const [defaultCloseDateOffsetValue, setDefaultCloseDateOffsetValue] = React.useState<number | ''>('');
+    const [defaultCloseDateOffsetUnit, setDefaultCloseDateOffsetUnit] = React.useState<'hours' | 'days' | 'months'>('days');
 
     const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
 
@@ -114,6 +117,8 @@ export default function PipelineSettingsClient() {
             setAccessRoles(selectedPipeline.accessRoles || []);
             setAssignmentStrategy(selectedPipeline.assignmentStrategy || 'direct');
             setAssignmentUserIds(selectedPipeline.assignmentUserIds || []);
+            setDefaultCloseDateOffsetValue(selectedPipeline.defaultCloseDateOffsetValue ?? '');
+            setDefaultCloseDateOffsetUnit(selectedPipeline.defaultCloseDateOffsetUnit ?? 'days');
             if (selectedPipeline.columnWidth) setColumnWidth(selectedPipeline.columnWidth);
         } else if (!isCreating) {
             setName('');
@@ -121,6 +126,8 @@ export default function PipelineSettingsClient() {
             setAccessRoles([]);
             setAssignmentStrategy('direct');
             setAssignmentUserIds([]);
+            setDefaultCloseDateOffsetValue('');
+            setDefaultCloseDateOffsetUnit('days');
         }
     }, [selectedPipeline, isCreating]);
 
@@ -129,6 +136,9 @@ export default function PipelineSettingsClient() {
         if (!firestore || !name.trim()) return;
         setIsSaving(true);
 
+        const numOffset = typeof defaultCloseDateOffsetValue === 'number' && defaultCloseDateOffsetValue > 0 ? defaultCloseDateOffsetValue : null;
+        const unitOffset = numOffset ? defaultCloseDateOffsetUnit : null;
+
         const data = {
             name: name.trim(),
             description: description.trim(),
@@ -136,6 +146,8 @@ export default function PipelineSettingsClient() {
             columnWidth,
             assignmentStrategy,
             assignmentUserIds,
+            defaultCloseDateOffsetValue: numOffset,
+            defaultCloseDateOffsetUnit: unitOffset,
             updatedAt: new Date().toISOString()
         };
 
@@ -348,6 +360,51 @@ export default function PipelineSettingsClient() {
                                                 </p>
                                             </div>
                                         )}
+                                    </CardContent>
+                                 </Card>
+
+                                 {/* Default Forecast Close Date Offset Card */}
+                                 <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
+                                     <CardHeader className="bg-primary/5 border-b p-6 px-8">
+                                         <div className="flex items-center gap-3">
+                                             <div className="p-2 bg-card rounded-xl shadow-sm"><Calendar className="h-4 w-4 text-primary" /></div>
+                                             <CardTitle className="text-sm font-semibold tracking-tight">Default Forecast Close Date Offset</CardTitle>
+                                         </div>
+                                     </CardHeader>
+                                     <CardContent className="p-6 space-y-4">
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                             <div className="space-y-2">
+                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1 uppercase">Offset Duration</Label>
+                                                 <Input
+                                                     type="number"
+                                                     min="0"
+                                                     step="1"
+                                                     placeholder="e.g. 30"
+                                                     value={defaultCloseDateOffsetValue}
+                                                     onChange={(e) => {
+                                                         const val = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+                                                         setDefaultCloseDateOffsetValue(isNaN(val as number) ? '' : val);
+                                                     }}
+                                                     className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4"
+                                                 />
+                                             </div>
+                                             <div className="space-y-2">
+                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1 uppercase">Duration Unit</Label>
+                                                 <Select
+                                                     value={defaultCloseDateOffsetUnit}
+                                                     onValueChange={(val: 'hours' | 'days' | 'months') => setDefaultCloseDateOffsetUnit(val)}
+                                                 >
+                                                     <SelectTrigger className="w-full h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4">
+                                                         <SelectValue placeholder="Select unit..." />
+                                                     </SelectTrigger>
+                                                     <SelectContent className="rounded-xl border-none shadow-2xl bg-popover text-popover-foreground">
+                                                         <SelectItem value="hours" className="text-xs">Hours</SelectItem>
+                                                         <SelectItem value="days" className="text-xs">Days</SelectItem>
+                                                         <SelectItem value="months" className="text-xs">Months</SelectItem>
+                                                     </SelectContent>
+                                                 </Select>
+                                             </div>
+                                         </div>
                                      </CardContent>
                                  </Card>
 

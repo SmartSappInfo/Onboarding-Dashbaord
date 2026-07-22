@@ -1,8 +1,7 @@
-'use server';
-
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, WorkspaceEntity } from '@/lib/types';
+import type { Deal, Pipeline, WorkspaceEntity } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
+import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 
 interface BulkDealCreationData {
   entityIds: string[];
@@ -44,7 +43,9 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
     ]);
 
     if (!pipelineSnap.exists) throw new Error('Pipeline not found');
-    const pipeline = pipelineSnap.data() as any;
+    const pipeline = pipelineSnap.data() as Pipeline;
+
+    const calculatedCloseDate = calculateExpectedCloseDate(pipeline);
 
     const stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
     const stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
@@ -155,6 +156,7 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
           value: value || 0,
           status: 'open',
           assignedTo,
+          expectedCloseDate: calculatedCloseDate,
           createdAt: now,
           updatedAt: now,
         };
@@ -172,8 +174,9 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
       count: processedResults.length,
       message: `Successfully initiated ${processedResults.length} deals in the pipeline.`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Bulk deal creation failed';
     console.error('[bulkCreateDealsAction] Error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: message };
   }
 }

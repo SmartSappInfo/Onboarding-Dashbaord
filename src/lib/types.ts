@@ -839,6 +839,8 @@ export interface Pipeline {
   updatedAt?: string;
   assignmentStrategy?: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
   assignmentUserIds?: string[];
+  defaultCloseDateOffsetValue?: number;
+  defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months';
 }
 
 export const APP_PERMISSIONS = [

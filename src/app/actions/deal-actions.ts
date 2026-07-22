@@ -3,7 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, WorkspaceEntity, DealContact, DealFocalContact } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
-import { canUser } from '@/lib/workspace-permissions';
+import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
 
@@ -116,6 +116,11 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             }
         }
 
+        const calculatedCloseDate = calculateExpectedCloseDate(
+            pipeline,
+            rest.expectedCloseDate
+        );
+
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
             workspaceId,
@@ -127,7 +132,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             value: value || 0,
             status: data.status || 'open',
             assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
-            expectedCloseDate: rest.expectedCloseDate || null,
+            expectedCloseDate: calculatedCloseDate,
             description: rest.description || null,
             // Set explicitly — `rest` is never spread into the document, so this
             // would be silently dropped if left to the spread. Bulk/automation/import

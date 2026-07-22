@@ -19,6 +19,7 @@ import { buildTagDocument } from './tag-schemas';
 import { getBaseUrl } from './utils/url-helpers';
 import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
+import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-expected-close';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -31,14 +32,14 @@ import { buildDealDocument, resolveDealName } from './deal-writer';
 interface ResolutionContext {
     zones: { id: string; name: string }[];
     users: { id: string; name: string; email: string }[];
-    packages: { id: string; [key: string]: any }[];
-    modules: { id: string; [key: string]: any }[];
+    packages: Record<string, any>[];
+    modules: Record<string, any>[];
     regions: { id: string; name: string }[];
     districts: { id: string; name: string }[];
     tags: { id: string; name: string }[];
-    countries: { id: string; name: string; code: string; flag: string }[];
-    pipelines: { id: string; name: string }[];
-    stages: { id: string; name: string; pipelineId: string }[];
+    countries: { id: string; name: string; code: string; flag?: string }[];
+    pipelines: { id: string; name: string; defaultCloseDateOffsetValue?: number; defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months' }[];
+    stages: { id: string; name: string; pipelineId?: string }[];
 }
 
 async function getResolutionContext(workspaceId: string): Promise<ResolutionContext> {
@@ -75,7 +76,12 @@ async function getResolutionContext(workspaceId: string): Promise<ResolutionCont
         districts: districtsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         tags: tagsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         countries: countriesSnap.docs.map(d => ({ id: d.id, name: d.data().name, code: d.data().code, flag: d.data().flag })),
-        pipelines: pipelinesSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
+        pipelines: pipelinesSnap.docs.map(d => ({ 
+            id: d.id, 
+            name: d.data().name,
+            defaultCloseDateOffsetValue: d.data().defaultCloseDateOffsetValue,
+            defaultCloseDateOffsetUnit: d.data().defaultCloseDateOffsetUnit,
+        })),
         stages: stagesSnap.docs.map(d => ({ id: d.id, name: d.data().name, pipelineId: d.data().pipelineId })),
     };
 }
@@ -558,6 +564,9 @@ export async function processImportChunkBackground(importLogId: string): Promise
                             assignedTo = null;
                         }
 
+                        const targetPipeline = context.pipelines.find(p => p.id === dealConfig.pipelineId);
+                        const calculatedCloseDate = calculateExpectedCloseDate(targetPipeline);
+
                         const dealDoc = buildDealDocument({
                             entityId: extracted.entityId,
                             entityName: name,
@@ -572,6 +581,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
                             isBulkImport: true,
                             suppressAutomations: dealConfig.suppressAutomations,
                             assignedTo,
+                            expectedCloseDate: calculatedCloseDate,
                         }, dealId);
 
                         pendingDealDocs.push(dealDoc);

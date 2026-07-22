@@ -101,20 +101,43 @@ export default function DealDetailsPage() {
     const { data: users } = useCollection<UserProfile>(usersQuery);
 
     // Fetch pipelines for the deal's workspace (shared pipelines use workspaceIds array)
-    const pipelinesQuery = useMemoFirebase(() =>
-        firestore && deal?.workspaceId
-            ? query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', deal.workspaceId))
+    const pipelinesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        if (deal?.workspaceId) {
+            return query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', deal.workspaceId));
+        }
+        return query(collection(firestore, 'pipelines'), orderBy('name', 'asc'));
+    }, [firestore, deal?.workspaceId]);
+    const { data: rawPipelines } = useCollection<Pipeline>(pipelinesQuery);
+
+    // Fallback if deal workspace has no returned pipelines
+    const allPipelinesQuery = useMemoFirebase(() =>
+        firestore && deal?.workspaceId && rawPipelines !== undefined && rawPipelines.length === 0
+            ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc'))
             : null,
-    [firestore, deal?.workspaceId]);
-    const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
+    [firestore, deal?.workspaceId, rawPipelines]);
+    const { data: fallbackPipelines } = useCollection<Pipeline>(allPipelinesQuery);
+
+    const pipelines = React.useMemo(() => {
+        const list = (rawPipelines && rawPipelines.length > 0) ? rawPipelines : (fallbackPipelines || []);
+        return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [rawPipelines, fallbackPipelines]);
 
     // Fetch stages for the currently-selected pipeline (populates the Stage select)
-    const stagesQuery = useMemoFirebase(() =>
-        firestore && pipelineId
-            ? query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', pipelineId), orderBy('order', 'asc'))
-            : null,
-    [firestore, pipelineId]);
-    const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
+    // Note: Query without orderBy in Firestore to avoid requiring composite indexes; sort in memory instead.
+    const stagesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        if (pipelineId) {
+            return query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', pipelineId));
+        }
+        return query(collection(firestore, 'onboardingStages'));
+    }, [firestore, pipelineId]);
+    const { data: rawStages } = useCollection<OnboardingStage>(stagesQuery);
+
+    const stages = React.useMemo(() => {
+        if (!rawStages) return [];
+        return [...rawStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }, [rawStages]);
 
     // Directly fetch the deal's CURRENT pipeline/stage by id so the value is
     // always selectable even if it falls outside the workspace list query
@@ -134,10 +157,11 @@ export default function DealDetailsPage() {
         () => mergeById(pipelines, currentPipeline),
         [pipelines, currentPipeline]
     );
-    const stageOptions = React.useMemo(
-        () => mergeById(stages, currentStage).filter(s => s.pipelineId === pipelineId),
-        [stages, currentStage, pipelineId]
-    );
+    const stageOptions = React.useMemo(() => {
+        const merged = mergeById(stages, currentStage);
+        if (!pipelineId) return merged;
+        return merged.filter(s => !s.pipelineId || s.pipelineId === pipelineId);
+    }, [stages, currentStage, pipelineId]);
 
     const { user: currentUser } = useUser();
     const { singular } = useTerminology();
@@ -331,14 +355,28 @@ export default function DealDetailsPage() {
             setName(deal.name || '');
             setValue(deal.value?.toString() || '0');
             setDescription(deal.description || '');
-            setPipelineId(deal.pipelineId || '');
-            setStageId(deal.stageId || '');
+            setPipelineId(prev => prev || deal.pipelineId || '');
+            setStageId(prev => prev || deal.stageId || '');
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
             setExpectedCloseDate(deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : '');
             setSelectedFocalContactIds((deal.focalContacts ?? []).map(fc => fc.id));
         }
     }, [deal]);
+
+    // Ensure pipelineId is populated once pipelineOptions are available
+    React.useEffect(() => {
+        if (!pipelineId && pipelineOptions.length > 0) {
+            setPipelineId(pipelineOptions[0].id);
+        }
+    }, [pipelineId, pipelineOptions]);
+
+    // Ensure stageId is populated once stageOptions are available for the selected pipeline
+    React.useEffect(() => {
+        if (!stageId && stageOptions.length > 0) {
+            setStageId(stageOptions[0].id);
+        }
+    }, [stageId, stageOptions]);
 
     // Load the entity's contacts so focal persons can be (de)selected.
     React.useEffect(() => {
@@ -459,7 +497,7 @@ export default function DealDetailsPage() {
     return (
         <PageContainer>
             <div className="space-y-6 w-full pb-20">
-                <Button variant="ghost" size="sm" onClick={() => router.back()} className="mb-2">
+                <Button variant="ghost" size="sm" onClick={() => router.push('/admin/pipeline')} className="mb-2">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
 

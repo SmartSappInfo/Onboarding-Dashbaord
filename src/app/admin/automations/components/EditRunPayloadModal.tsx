@@ -114,7 +114,7 @@ export function EditRunPayloadModal({
             onChange={(e) => handleJsonChange(e.target.value)}
             rows={12}
             className="font-mono text-xs p-3 rounded-xl border border-border bg-muted/20 focus-visible:ring-primary leading-relaxed"
-            placeholder="{\n  \"first_name\": \"John\"\n}"
+            placeholder={'{\n  "first_name": "John"\n}'}
           />
         </div>
 

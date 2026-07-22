@@ -1,4 +1,4 @@
-import type { DealFocalContact } from '@/lib/types';
+import type { Deal, DealFocalContact } from '@/lib/types';
 
 export interface WriteDealParams {
   entityId: string;
@@ -19,7 +19,7 @@ export interface WriteDealParams {
   suppressAutomations?: boolean;
 }
 
-export function buildDealDocument(params: WriteDealParams, dealId: string): Record<string, any> {
+export function buildDealDocument(params: WriteDealParams, dealId: string): Omit<Deal, 'id'> & { id: string } {
   const timestamp = new Date().toISOString();
   return {
     id: dealId,

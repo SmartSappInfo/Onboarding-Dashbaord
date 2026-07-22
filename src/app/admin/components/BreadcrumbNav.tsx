@@ -21,6 +21,7 @@ const segmentMap: Record<string, string> = {
   schools: 'Directory',
   prospects: 'Lead Pipeline',
   pipeline: 'Onboarding Pipeline',
+  deals: 'Onboarding Pipeline',
   meetings: 'Session Registry',
   portals: 'Public Portals',
   media: 'Media Repository',
@@ -81,7 +82,9 @@ export function BreadcrumbNav() {
       // Technical IDs (Firestore UIDs) that don't have a label are skipped.
       if (customLabel || mapLabel) {
         let path = currentPath;
-        if (currentPath === '/admin/messaging/call-centre') {
+        if (currentPath === '/admin/deals') {
+          path = '/admin/pipeline';
+        } else if (currentPath === '/admin/messaging/call-centre') {
           if (pathname.includes('/scripts/')) {
             path = '/admin/messaging/call-centre?tab=scripts';
           } else if (pathname.includes('/campaigns/') || pathname.includes('/workspace/') || pathname.includes('/analytics/')) {
@@ -130,8 +133,10 @@ export function BreadcrumbNav() {
 
   const handleBack = () => {
     if (segments.length > 1) {
-      // Find the previous human-readable step in history if possible
-      const parentPath = `/${segments.slice(0, segments.length - 1).join('/')}`;
+      let parentPath = `/${segments.slice(0, segments.length - 1).join('/')}`;
+      if (parentPath === '/admin/deals') {
+        parentPath = '/admin/pipeline';
+      }
       router.push(parentPath);
     } else {
       router.push('/admin');
