@@ -392,9 +392,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   // Get unique step labels for filter dropdown
   const stepOptions = React.useMemo(() => {
     const actionNodes = nodes.filter((n) => n.type !== 'triggerNode');
-    return actionNodes.map((n) => ({
+    return actionNodes.map((n, idx) => ({
       id: n.id,
-      label: (n.data?.label as string) || n.id,
+      label: `#${idx + 1}: ${(n.data?.label as string) || n.id}`,
     }));
   }, [nodes]);
 
