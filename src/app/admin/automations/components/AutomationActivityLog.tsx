@@ -66,7 +66,7 @@ type StatusFilter = 'ALL' | 'running' | 'completed' | 'failed' | 'paused' | 'wai
 
 interface AutomationActivityLogProps {
   automationId: string;
-  nodes: Array<{ id: string; type: string; data?: Record<string, unknown> }>;
+  nodes: Array<{ id: string; type: string; data?: Record<string, unknown>; position?: { x: number; y: number } }>;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
@@ -389,10 +389,22 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRun?.id, selectedRun?.entityId]);
 
-  // Get unique step labels for filter dropdown
+  // Get step labels for filter dropdown using visual canvas step numbers
   const stepOptions = React.useMemo(() => {
-    const actionNodes = nodes.filter((n) => n.type !== 'triggerNode');
-    return actionNodes.map((n, idx) => ({
+    const sortedNonTriggerNodes = [...nodes]
+      .filter((n) => n.type !== 'triggerNode')
+      .sort((a, b) => {
+        const ay = typeof a.position?.y === 'number' ? a.position.y : 0;
+        const by = typeof b.position?.y === 'number' ? b.position.y : 0;
+        const ax = typeof a.position?.x === 'number' ? a.position.x : 0;
+        const bx = typeof b.position?.x === 'number' ? b.position.x : 0;
+        if (Math.abs(ay - by) < 5) {
+          return ax - bx;
+        }
+        return ay - by;
+      });
+
+    return sortedNonTriggerNodes.map((n, idx) => ({
       id: n.id,
       label: `#${idx + 1}: ${(n.data?.label as string) || n.id}`,
     }));
