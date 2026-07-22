@@ -904,19 +904,25 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             };
         }
 
-        const providerResponse = await sendEmail({
-            from: sender.name && sender.identifier ? `${sender.name} <${sender.identifier}>` : undefined, 
-            to: recipient,
-            subject: resolvedSubject || 'SmartSapp Notification',
-            html: resolvedBody,
-            attachments: attachments,
-            scheduledAt: scheduledAt,
-            tags: tags,
-            apiKey: resendKey,
-            domain: resendDomain,
-            headers
-        });
-        providerId = providerResponse?.id;
+        let providerResponse: any;
+        let dispatchError: any = null;
+        try {
+            providerResponse = await sendEmail({
+                from: sender.name && sender.identifier ? `${sender.name} <${sender.identifier}>` : undefined, 
+                to: recipient,
+                subject: resolvedSubject || 'SmartSapp Notification',
+                html: resolvedBody,
+                attachments: attachments,
+                scheduledAt: scheduledAt,
+                tags: tags,
+                apiKey: resendKey,
+                domain: resendDomain,
+                headers
+            });
+            providerId = providerResponse?.id;
+        } catch (e: any) {
+            dispatchError = e;
+        }
     }
 
     // 9. Audit Log Generation (Requirement 11 - Record workspaceId, Requirement 15.2 - Dual-write)
@@ -931,7 +937,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       subject: resolvedSubject || null,
       previewText: input.previewText || resolvedPreviewText || null,
       body: resolvedBody,
-      status: scheduledAt ? 'scheduled' : 'sent',
+      status: dispatchError ? 'failed' : (scheduledAt ? 'scheduled' : 'sent'),
       sentAt: scheduledAt || new Date().toISOString(),
       variables: JSON.parse(JSON.stringify(finalVariables)),
       workspaceIds: workspaceIds, // Bind to institutional track(s)
@@ -992,9 +998,13 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         workspaceId: resolvedWorkspaceId || 'onboarding',
         type: 'notification_sent',
         source: 'system',
-        description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
-        metadata: { logId: logRef.id, channel: template.channel, providerId, isRetry: !!finalVariables.isRetry || finalVariables.isRetry === 'true' }
+        description: `${dispatchError ? 'Failed to Send' : (scheduledAt ? 'Scheduled' : 'Sent')} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
+        metadata: { logId: logRef.id, channel: template.channel, providerId, isRetry: !!finalVariables.isRetry || finalVariables.isRetry === 'true', error: dispatchError?.message }
     });
+
+    if (dispatchError) {
+        return { success: false, error: dispatchError.message, logId: logRef.id, originalError: dispatchError };
+    }
 
     return { success: true, logId: logRef.id };
 
@@ -1254,15 +1264,20 @@ export async function sendRawMessage(input: {
                 }
             }
 
-            await sendEmail({ 
-                from: `${sender.name} <${sender.identifier}>`, 
-                to: recipient, 
-                subject: resolvedSubject, 
-                html: resolvedBody,
-                apiKey: resendKey,
-                domain: resendDomain,
-                headers
-            });
+            let providerResponse: any;
+            try {
+                await sendEmail({ 
+                    from: `${sender.name} <${sender.identifier}>`, 
+                    to: recipient, 
+                    subject: resolvedSubject, 
+                    html: resolvedBody,
+                    apiKey: resendKey,
+                    domain: resendDomain,
+                    headers
+                });
+            } catch (e: any) {
+                dispatchError = e;
+            }
         }
 
 
@@ -1278,7 +1293,7 @@ export async function sendRawMessage(input: {
             subject: resolvedSubject || null,
             previewText: resolvedPreviewText || null,
             body: resolvedBody,
-            status: 'sent',
+            status: dispatchError ? 'failed' : 'sent',
             sentAt: new Date().toISOString(),
             variables: JSON.parse(JSON.stringify(variables)),
             workspaceIds: resolvedWorkspaceIds,
@@ -1322,13 +1337,18 @@ export async function sendRawMessage(input: {
             workspaceId: baseWorkspaceId,
             type: 'notification_sent',
             source: 'system',
-            description: `Sent Direct ${channel.toUpperCase()} message to ${recipient}`,
+            description: `${dispatchError ? 'Failed to Send' : 'Sent'} Direct ${channel.toUpperCase()} message to ${recipient}`,
             metadata: {
                 logId: logRef.id,
                 channel,
-                isAutomation: isAutomation || true
+                isAutomation: isAutomation || true,
+                error: dispatchError?.message
             }
         });
+
+        if (dispatchError) {
+            return { success: false, error: dispatchError.message, logId: logRef.id, originalError: dispatchError };
+        }
 
         return { success: true, logId: logRef.id };
     } catch (error: any) {

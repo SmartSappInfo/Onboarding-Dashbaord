@@ -38,6 +38,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 export default function OrganizationsClient() {
     const firestore = useFirestore();
@@ -96,7 +97,7 @@ export default function OrganizationsClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto w-full">
+        <PageContainerFluid>
             <div className="space-y-8 pb-32 w-full">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -339,6 +340,6 @@ export default function OrganizationsClient() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </div>
+        </PageContainerFluid>
     );
 }

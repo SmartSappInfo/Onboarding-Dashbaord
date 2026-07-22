@@ -55,6 +55,7 @@ import {
   pauseRunAction,
   resumeRunAction,
   bulkRetryRunsAction,
+  bulkForceAdvanceRunsAction,
 } from '@/lib/automation-actions';
 import { StepTimeline } from './StepTimeline';
 import { formatDistanceToNow } from 'date-fns';
@@ -433,10 +434,32 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
   // ── Action Handlers ─────────────────────────────────────────────────────────
 
+  const selectableRuns = React.useMemo(() => {
+    return filteredRuns.filter((r) => {
+      const st = getEffectiveStatus(r);
+      return st === 'failed' || st === 'running' || st === 'paused' || st === 'waiting';
+    });
+  }, [filteredRuns]);
+
+  const selectedRunsList = React.useMemo(() => {
+    return filteredRuns.filter(r => selectedRunIds.has(r.id));
+  }, [filteredRuns, selectedRunIds]);
+
+  const advanceableSelectedCount = React.useMemo(() => {
+    return selectedRunsList.filter(r => {
+      const st = getEffectiveStatus(r);
+      return st === 'running' || st === 'paused' || st === 'waiting';
+    }).length;
+  }, [selectedRunsList]);
+
+  const retryableSelectedCount = React.useMemo(() => {
+    return selectedRunsList.filter(r => getEffectiveStatus(r) === 'failed').length;
+  }, [selectedRunsList]);
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const visibleFailed = filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').map(r => r.id);
-      setSelectedRunIds(new Set(visibleFailed));
+      const selectableIds = selectableRuns.map(r => r.id);
+      setSelectedRunIds(new Set(selectableIds));
     } else {
       setSelectedRunIds(new Set());
     }
@@ -453,7 +476,10 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
   const handleBulkRetry = async (retryAllFailed = false) => {
     if (!user?.uid || !activeWorkspaceId) return;
-    const runIds = Array.from(selectedRunIds);
+    const runIds = Array.from(selectedRunIds).filter(id => {
+      const r = filteredRuns.find(run => run.id === id);
+      return r && getEffectiveStatus(r) === 'failed';
+    });
     if (!retryAllFailed && runIds.length === 0) return;
 
     const qty = retryAllFailed ? stats.failed : runIds.length;
@@ -477,6 +503,52 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
       }
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handleBulkForceAdvance = async (advanceAllWaiting = false) => {
+    if (!user?.uid || !activeWorkspaceId) return;
+    const runIds = Array.from(selectedRunIds).filter(id => {
+      const r = filteredRuns.find(run => run.id === id);
+      if (!r) return false;
+      const st = getEffectiveStatus(r);
+      return st === 'running' || st === 'paused' || st === 'waiting';
+    });
+
+    if (!advanceAllWaiting && runIds.length === 0) return;
+
+    const qty = advanceAllWaiting ? (stats.waiting + stats.running) : runIds.length;
+    const confirmed = await confirm({
+      title: 'Bulk Force Advance Steps',
+      description: `You are about to force advance ${qty} active automation ${qty === 1 ? 'run' : 'runs'} to their next step. Remote scheduled delays will be cancelled and execution resumed immediately in the background. Are you sure?`,
+      confirmText: 'Advance Now',
+      variant: 'default',
+    });
+
+    if (!confirmed) return;
+
+    setIsBulkProcessing(true);
+    try {
+      const res = await bulkForceAdvanceRunsAction(
+        automationId,
+        { runIds, advanceAllWaiting },
+        user.uid,
+        activeWorkspaceId
+      );
+      if (res.success) {
+        toast({ title: 'Bulk force advance scheduled successfully' });
+        setSelectedRunIds(new Set());
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to schedule', description: res.error });
+      }
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Action failed',
+        description: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setIsBulkProcessing(false);
     }
@@ -884,12 +956,24 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-[10px] font-bold text-amber-600 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20"
+              className="h-8 text-[10px] font-bold text-indigo-600 border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-[0.97]"
               onClick={() => handleBulkRetry(true)}
               disabled={isBulkProcessing}
             >
               {isBulkProcessing ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <RefreshCw size={12} className="mr-1.5" />}
               Retry All Failed ({stats.failed})
+            </Button>
+          )}
+          {(statusFilter === 'waiting' || statusFilter === 'running' || statusFilter === 'paused') && (stats.waiting + stats.running > 0) && selectedRunIds.size === 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-[10px] font-bold text-amber-600 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 active:scale-[0.97]"
+              onClick={() => handleBulkForceAdvance(true)}
+              disabled={isBulkProcessing}
+            >
+              {isBulkProcessing ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <SkipForward size={12} className="mr-1.5" />}
+              Force Advance All Waiting ({stats.waiting + stats.running})
             </Button>
           )}
           <p className="text-[10px] text-muted-foreground font-medium">
@@ -906,10 +990,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
               <tr className="border-b border-border/40">
                 <th className="w-10 px-3 py-2.5 text-left">
                   <Checkbox
-                    checked={
-                      filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').length > 0 &&
-                      selectedRunIds.size === filteredRuns.filter((r) => getEffectiveStatus(r) === 'failed').length
-                    }
+                    checked={selectableRuns.length > 0 && selectedRunIds.size === selectableRuns.length}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     className="h-4 w-4 rounded-md border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
@@ -928,6 +1009,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                 const statusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.completed;
                 const isWebhook = isWebhookRun(run);
                 const runIsProcessing = isProcessing?.startsWith(run.id);
+                const isActionable = effectiveStatus === 'failed' || effectiveStatus === 'running' || effectiveStatus === 'paused' || effectiveStatus === 'waiting';
 
                 return (
                   <tr
@@ -939,7 +1021,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                     onClick={() => setSelectedRun(run)}
                   >
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      {effectiveStatus === 'failed' ? (
+                      {isActionable ? (
                         <Checkbox
                           checked={selectedRunIds.has(run.id)}
                           onCheckedChange={() => toggleSelection(run.id)}
@@ -1071,27 +1153,51 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-background/80 backdrop-blur-xl border border-border/50 shadow-2xl rounded-2xl px-5 py-3 shadow-primary/5"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-wrap items-center gap-3 bg-background/90 backdrop-blur-xl border border-border/60 shadow-2xl rounded-2xl px-5 py-3 shadow-primary/10 max-w-[92vw] sm:max-w-none"
           >
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="h-6 font-bold bg-primary/10 text-primary border-primary/20">
                 {selectedRunIds.size} Selected
               </Badge>
             </div>
-            <div className="w-px h-4 bg-border/50" />
-            <Button
-              size="sm"
-              className="h-8 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all active:scale-[0.98]"
-              onClick={() => handleBulkRetry(false)}
-              disabled={isBulkProcessing}
-            >
-              {isBulkProcessing ? <Loader2 size={12} className="animate-spin mr-1.5" /> : <RefreshCw size={12} className="mr-1.5" />}
-              Retry Selected
-            </Button>
+            <div className="w-px h-4 bg-border/50 hidden sm:block" />
+
+            {advanceableSelectedCount > 0 && (
+              <Button
+                size="sm"
+                className="h-8 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all active:scale-[0.97]"
+                onClick={() => handleBulkForceAdvance(false)}
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? (
+                  <Loader2 size={12} className="animate-spin mr-1.5" />
+                ) : (
+                  <SkipForward size={12} className="mr-1.5" />
+                )}
+                Force Advance ({advanceableSelectedCount})
+              </Button>
+            )}
+
+            {retryableSelectedCount > 0 && (
+              <Button
+                size="sm"
+                className="h-8 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all active:scale-[0.97]"
+                onClick={() => handleBulkRetry(false)}
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? (
+                  <Loader2 size={12} className="animate-spin mr-1.5" />
+                ) : (
+                  <RefreshCw size={12} className="mr-1.5" />
+                )}
+                Retry Failed ({retryableSelectedCount})
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full ml-1"
+              className="h-8 w-8 rounded-full ml-1 active:scale-[0.97]"
               onClick={() => setSelectedRunIds(new Set())}
               disabled={isBulkProcessing}
             >

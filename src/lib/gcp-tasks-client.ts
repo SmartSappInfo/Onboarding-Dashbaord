@@ -537,8 +537,189 @@ export async function scheduleBulkRetryTask({
     },
   };
 
-  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
-  console.info(`[GCP-TASKS] Scheduled bulk retry task ${response.name}`);
+  const requestObj = {
+    parent,
+    task,
+  };
 
-  return response.name || taskKey;
+  try {
+    const [response] = await client.createTask(requestObj);
+    return response.name || taskKey;
+  } catch (error) {
+    console.error(`[GCP-TASKS] Failed to schedule bulk retry task ${taskKey}:`, error);
+    throw error;
+  }
+}
+
+export interface BulkResendMessagesTaskOptions {
+  automationId: string;
+  workspaceId: string;
+  userId: string;
+  logIds?: string[];
+  resendAll?: boolean;
+}
+
+export async function scheduleBulkResendMessagesTask({
+  automationId,
+  workspaceId,
+  userId,
+  logIds,
+  resendAll,
+}: BulkResendMessagesTaskOptions): Promise<string> {
+  const uuid = Math.random().toString(36).substring(2, 15);
+  const taskKey = `bulk_resend_msgs_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  const queue = getQueueName('bulk');
+  const client = await getCloudTasksClient();
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
+
+  if (isEmulator || !client) {
+    console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk resend messages task ${taskKey} on queue "${queue}"`);
+    
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${resolvedBaseUrl}/api/automations/messages/bulk-resend`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify({ automationId, workspaceId, userId, logIds, resendAll }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`[GCP-TASKS-EMULATOR] Bulk resend worker returned error: ${response.status} - ${text}`);
+        } else {
+          console.info(`[GCP-TASKS-EMULATOR] Bulk resend worker executed task ${taskKey} successfully.`);
+        }
+      } catch (err) {
+        console.error(`[GCP-TASKS-EMULATOR] Network error executing bulk resend task ${taskKey}:`, err);
+      }
+    }, 10);
+
+    return taskKey;
+  }
+
+  // Production GCP Cloud Tasks Mode
+  const parent = client.queuePath(PROJECT, LOCATION, queue);
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+
+  const taskPayload = {
+    automationId,
+    workspaceId,
+    userId,
+    logIds,
+    resendAll,
+  };
+
+  const task = {
+    name: formattedTaskName,
+    httpRequest: {
+      httpMethod: 'POST' as const,
+      url: `${resolvedBaseUrl}/api/automations/messages/bulk-resend`,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+    },
+  };
+
+  const requestObj = { parent, task };
+
+  try {
+    const [response] = await client.createTask(requestObj);
+    return response.name || taskKey;
+  } catch (error) {
+    console.error(`[GCP-TASKS] Failed to schedule bulk resend messages task ${taskKey}:`, error);
+    throw error;
+  }
+}
+
+export interface BulkForceAdvanceTaskOptions {
+  automationId: string;
+  workspaceId: string;
+  userId: string;
+  runIds?: string[];
+  advanceAllWaiting?: boolean;
+}
+
+/**
+ * Schedules a bulk force advance task for automation runs.
+ */
+export async function scheduleBulkForceAdvanceTask({
+  automationId,
+  workspaceId,
+  userId,
+  runIds,
+  advanceAllWaiting,
+}: BulkForceAdvanceTaskOptions): Promise<string> {
+  const uuid = Math.random().toString(36).substring(2, 15);
+  const taskKey = `bulk_force_advance_${automationId}_${uuid}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+  const queue = getQueueName('bulk');
+  const client = await getCloudTasksClient();
+  const resolvedBaseUrl = await resolveRequestBaseUrl();
+
+  if (isEmulator || !client) {
+    console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk force advance task ${taskKey} on queue "${queue}"`);
+    
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${resolvedBaseUrl}/api/automations/runs/bulk-force-advance`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify({ automationId, workspaceId, userId, runIds, advanceAllWaiting }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`[GCP-TASKS-EMULATOR] Bulk force advance worker returned error: ${response.status} - ${text}`);
+        } else {
+          console.info(`[GCP-TASKS-EMULATOR] Bulk force advance worker executed task ${taskKey} successfully.`);
+        }
+      } catch (err) {
+        console.error(`[GCP-TASKS-EMULATOR] Network error executing bulk force advance task ${taskKey}:`, err);
+      }
+    }, 10);
+
+    return taskKey;
+  }
+
+  // Production GCP Cloud Tasks Mode
+  const parent = client.queuePath(PROJECT, LOCATION, queue);
+  const formattedTaskName = client.taskPath(PROJECT, LOCATION, queue, taskKey);
+
+  const taskPayload = {
+    automationId,
+    workspaceId,
+    userId,
+    runIds,
+    advanceAllWaiting,
+  };
+
+  const task = {
+    name: formattedTaskName,
+    httpRequest: {
+      httpMethod: 'POST' as const,
+      url: `${resolvedBaseUrl}/api/automations/runs/bulk-force-advance`,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-cloud-tasks-secret': SECRET,
+      },
+      body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+    },
+  };
+
+  const requestObj = { parent, task };
+
+  try {
+    const [response] = await client.createTask(requestObj);
+    return response.name || taskKey;
+  } catch (error) {
+    console.error(`[GCP-TASKS] Failed to schedule bulk force advance task ${taskKey}:`, error);
+    throw error;
+  }
 }

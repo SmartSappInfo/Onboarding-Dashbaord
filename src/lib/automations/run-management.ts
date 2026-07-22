@@ -190,6 +190,64 @@ export async function retryFailedStep(
   }
 }
 
+// ── 3. Terminate Run ──────────────────────────────────────────────────────────────
+
+export async function resendFailedMessage(
+  logId: string,
+  userId: string
+): Promise<RunManagementResult> {
+  try {
+    if (!userId) throw new Error('User ID is required.');
+    
+    const logSnap = await adminDb.collection('message_logs').doc(logId).get();
+    if (!logSnap.exists) throw new Error('Message log not found.');
+    const messageLog = { id: logSnap.id, ...logSnap.data() } as any;
+
+    if (messageLog.status !== 'failed') {
+      throw new Error('Can only resend messages that have failed.');
+    }
+
+    const { sendMessage } = await import('../messaging-engine');
+    
+    const resendNumber = (messageLog.resendNumber || 0) + 1;
+
+    const result = await sendMessage({
+      templateId: messageLog.templateId,
+      senderProfileId: messageLog.senderProfileId,
+      organizationId: messageLog.organizationId,
+      recipient: messageLog.recipient,
+      variables: messageLog.variables || {},
+      entityId: messageLog.entityId,
+      workspaceId: messageLog.workspaceId,
+      automationId: messageLog.automationId,
+      runId: messageLog.runId,
+      nodeId: messageLog.nodeId,
+      subject: messageLog.subject,
+      previewText: messageLog.previewText,
+      body: messageLog.body,
+      isResend: true,
+      resendOfLogId: logId,
+      resendNumber: resendNumber,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to resend message.');
+    }
+
+    logAutomationEvent('info', 'message_resent', {
+      logId,
+      automationId: messageLog.automationId,
+      userId,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    logAutomationEvent('error', 'resend_message_failed', { logId, error: message });
+    return { success: false, error: message };
+  }
+}
+
 export async function terminateAutomationRunInternal(
   runId: string,
   targetStatus: 'cancelled' | 'completed',

@@ -556,28 +556,40 @@ export default function AutomationsClient() {
         contacts: number;
         messages: number;
         completions: number;
+        failed: number;
     } => {
-        if (!allRuns) return { contacts: 0, messages: 0, completions: 0 };
+        if (!allRuns) return { contacts: 0, messages: 0, completions: 0, failed: 0 };
 
         const autoRuns = allRuns.filter((r) => r.automationId === automationId);
-        if (autoRuns.length === 0) return { contacts: 0, messages: 0, completions: 0 };
+        if (autoRuns.length === 0) return { contacts: 0, messages: 0, completions: 0, failed: 0 };
 
         // Unique entities enrolled in this automation
         const uniqueContacts = new Set(
             autoRuns.map((r) => r.entityId).filter((id): id is string => Boolean(id))
         ).size;
+        const enrolledCount = uniqueContacts > 0 ? uniqueContacts : autoRuns.length;
 
-        // Count successful outbound message steps across all runs
+        // Count successful outbound message steps and failed executions across all runs
         let messageCount = 0;
+        let failedCount = 0;
+
         for (const run of autoRuns) {
-            if (!run.steps) continue;
-            for (const step of Object.values(run.steps)) {
-                if (
-                    step.status === 'success' &&
-                    step.metadata?.actionType &&
-                    MESSAGE_ACTION_TYPES.has(step.metadata.actionType)
-                ) {
-                    messageCount++;
+            if (run.status === 'failed') {
+                failedCount++;
+            } else if (run.steps) {
+                const hasFailedStep = Object.values(run.steps).some((s) => s.status === 'failed');
+                if (hasFailedStep) failedCount++;
+            }
+
+            if (run.steps) {
+                for (const step of Object.values(run.steps)) {
+                    if (
+                        step.status === 'success' &&
+                        step.metadata?.actionType &&
+                        MESSAGE_ACTION_TYPES.has(step.metadata.actionType)
+                    ) {
+                        messageCount++;
+                    }
                 }
             }
         }
@@ -585,7 +597,7 @@ export default function AutomationsClient() {
         // Runs where the contact finished the entire automation
         const completions = autoRuns.filter((r) => r.status === 'completed').length;
 
-        return { contacts: uniqueContacts, messages: messageCount, completions };
+        return { contacts: enrolledCount, messages: messageCount, completions, failed: failedCount };
     }, [allRuns]);
 
     const handleToggleStatus = async (id: string, current: boolean) => {
@@ -1131,17 +1143,17 @@ export default function AutomationsClient() {
                                                                              <Tooltip>
                                                                                  <TooltipTrigger asChild>
                                                                                      <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                                         <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.messages}</span>
+                                                                                         <AlertCircle className="h-3.5 w-3.5 text-rose-500/80" />
+                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-rose-600 dark:text-rose-400">{stats.failed}</span>
                                                                                      </div>
                                                                                  </TooltipTrigger>
-                                                                                 <TooltipContent className="text-[9px] font-semibold">Messages Sent</TooltipContent>
+                                                                                 <TooltipContent className="text-[9px] font-semibold">Failed Executions</TooltipContent>
                                                                              </Tooltip>
                                                                              <Tooltip>
                                                                                  <TooltipTrigger asChild>
                                                                                      <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                                         <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.completions}</span>
+                                                                                         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/80" />
+                                                                                         <span className="font-mono font-bold text-xs tabular-nums text-emerald-600 dark:text-emerald-400">{stats.completions}</span>
                                                                                      </div>
                                                                                  </TooltipTrigger>
                                                                                  <TooltipContent className="text-[9px] font-semibold">Completed Runs</TooltipContent>
@@ -1304,37 +1316,42 @@ export default function AutomationsClient() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-6 text-center align-middle">
-                                                        <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
-                                                            <TooltipProvider delayDuration={100}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).contacts}</span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="text-[9px] font-semibold">Active Contacts</TooltipContent>
-                                                                </Tooltip>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                            <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).messages}</span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="text-[9px] font-semibold">Outbound Messages</TooltipContent>
-                                                                </Tooltip>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <div className="flex items-center gap-1 border-l border-border/80 pl-3">
-                                                                            <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground/60" />
-                                                                            <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{getAutomationStats(auth.id).completions}</span>
-                                                                        </div>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="text-[9px] font-semibold">Goal Completions</TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </div>
+                                                        {(() => {
+                                                            const stats = getAutomationStats(auth.id);
+                                                            return (
+                                                                <div className="flex items-center justify-center gap-3 bg-muted/30 border border-border/50 rounded-xl px-3 py-1.5 w-fit mx-auto shadow-sm">
+                                                                    <TooltipProvider delayDuration={100}>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                                                    <span className="font-mono font-bold text-xs tabular-nums text-foreground/80">{stats.contacts}</span>
+                                                                                </div>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent className="text-[9px] font-semibold">Enrolled Contacts</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                                    <AlertCircle className="h-3.5 w-3.5 text-rose-500/80" />
+                                                                                    <span className="font-mono font-bold text-xs tabular-nums text-rose-600 dark:text-rose-400">{stats.failed}</span>
+                                                                                </div>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent className="text-[9px] font-semibold">Failed Executions</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <div className="flex items-center gap-1 border-l border-border/80 pl-3">
+                                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/80" />
+                                                                                    <span className="font-mono font-bold text-xs tabular-nums text-emerald-600 dark:text-emerald-400">{stats.completions}</span>
+                                                                                </div>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent className="text-[9px] font-semibold">Completed Runs</TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </TableCell>
                                                     <TableCell className="pr-6 py-6 text-right align-middle">
                                                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">

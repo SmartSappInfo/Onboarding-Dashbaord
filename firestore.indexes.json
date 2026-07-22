@@ -8,6 +8,28 @@
           "fieldPath": "channel",
           "order": "ASCENDING"
         },
+    {
+      "collectionGroup": "message_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "automationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
         {
           "fieldPath": "providerStatus",
           "order": "ASCENDING"
@@ -694,6 +716,28 @@
         },
         {
           "fieldPath": "currentNodeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "automation_runs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "automationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         },
         {

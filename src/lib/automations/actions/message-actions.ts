@@ -198,62 +198,86 @@ export async function handleSendMessage(
   if (userId) sendMessageVars._userId = userId;
 
   for (const recipient of recipientList) {
-    if (config.templateCategory && config.templateType) {
-      const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
-      if (!workspaceSnap.exists) {
-        throw new Error(`Workspace ${context.workspaceId} not found`);
-      }
-      const organizationId = workspaceSnap.data()!.organizationId;
+    try {
+      if (config.templateCategory && config.templateType) {
+        const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+        if (!workspaceSnap.exists) {
+          throw new Error(`Workspace ${context.workspaceId} not found`);
+        }
+        const organizationId = workspaceSnap.data()!.organizationId;
 
-      const { resolveAndRender } = await import('../../template-resolver');
-      const rendered = await resolveAndRender(
-        config.templateCategory as Parameters<typeof resolveAndRender>[0],
-        config.templateType as Parameters<typeof resolveAndRender>[1],
-        organizationId,
-        resolutionCtx
-      );
+        const { resolveAndRender } = await import('../../template-resolver');
+        const rendered = await resolveAndRender(
+          config.templateCategory as Parameters<typeof resolveAndRender>[0],
+          config.templateType as Parameters<typeof resolveAndRender>[1],
+          organizationId,
+          resolutionCtx
+        );
 
-      const result = await sendMessage({
-        templateId: (config.templateId as string) || 'automation-generated',
-        senderProfileId: (config.senderProfileId as string) || 'default',
-        organizationId: organizationId || context.organizationId,
-        recipient: recipient,
-        variables: sendMessageVars,
-        entityId: context.entityId,
-        workspaceId: context.workspaceId,
-        ...(resendOverride?.subject
-          ? { subject: resendOverride.subject }
-          : (rendered.subject ? { subject: rendered.subject } : {})),
-        body: rendered.body,
-        automationId: context.automationId,
-        runId: context.runId,
-        ...(nodeId ? { nodeId } : {}),
-        ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
-        ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
-      });
-      if (!result.success) {
-        throw new Error(result.error || 'Template message sending failed.');
+        const result = await sendMessage({
+          templateId: (config.templateId as string) || 'automation-generated',
+          senderProfileId: (config.senderProfileId as string) || 'default',
+          organizationId: organizationId || context.organizationId,
+          recipient: recipient,
+          variables: sendMessageVars,
+          entityId: context.entityId,
+          workspaceId: context.workspaceId,
+          ...(resendOverride?.subject
+            ? { subject: resendOverride.subject }
+            : (rendered.subject ? { subject: rendered.subject } : {})),
+          body: rendered.body,
+          automationId: context.automationId,
+          runId: context.runId,
+          ...(nodeId ? { nodeId } : {}),
+          ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
+          ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
+        });
+        if (!result.success) {
+          throw new Error(result.error || 'Template message sending failed.');
+        }
+      } else {
+        const result = await sendMessage({
+          templateId: config.templateId as string,
+          senderProfileId: (config.senderProfileId as string) || 'default',
+          organizationId: context.organizationId,
+          recipient: recipient,
+          variables: sendMessageVars,
+          entityId: context.entityId,
+          workspaceId: context.workspaceId,
+          automationId: context.automationId,
+          runId: context.runId,
+          ...(nodeId ? { nodeId } : {}),
+          ...(resendOverride?.subject ? { subject: resendOverride.subject } : {}),
+          ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
+          ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
+        });
+        if (!result.success) {
+          throw new Error(result.error || 'Template message sending failed.');
+        }
       }
-    } else {
-      const result = await sendMessage({
-        templateId: config.templateId as string,
-        senderProfileId: (config.senderProfileId as string) || 'default',
-        organizationId: context.organizationId,
-        recipient: recipient,
-        variables: sendMessageVars,
-        entityId: context.entityId,
-        workspaceId: context.workspaceId,
-        automationId: context.automationId,
-        runId: context.runId,
-        ...(nodeId ? { nodeId } : {}),
-        ...(resendOverride?.subject ? { subject: resendOverride.subject } : {}),
-        ...(resendOverride?.previewText ? { previewText: resendOverride.previewText } : {}),
-        ...(resendOverride ? { isResend: resendOverride.isResend, resendNumber: resendOverride.resendNumber } : {}),
-      });
-      if (!result.success) {
-        throw new Error(result.error || 'Template message sending failed.');
+    } catch (err: any) {
+      console.warn(`[AUTOMATION] Message node failed for ${recipient}, swallowing error to continue traverse. Error:`, err.message);
+      
+      const errMsg = String(err.message || '').toLowerCase();
+      // Only mark as invalid if the provider rejected it due to bad formatting or a permanent block
+      if (errMsg.includes('400') || errMsg.includes('validation') || errMsg.includes('invalid') || errMsg.includes('bounce')) {
+        try {
+          const { ContactHygieneRepository } = await import('../../hygiene-repository');
+          await ContactHygieneRepository.commitBatch([[recipient, {
+            email: recipient,
+            status: 'invalid',
+            score: 0,
+            checks: { format: false, disposable: false, mx: false, catchall: false, regex: false },
+            lastVerifiedAt: new Date().toISOString()
+          }]]);
+        } catch (hygieneErr) {
+          console.warn('[AUTOMATION] Failed to update hygiene for bad email:', hygieneErr);
+        }
       }
     }
+
+    // Rate limit pacing delay (~9 req/s per node loop)
+    await new Promise(resolve => setTimeout(resolve, 110));
   }
 }
 

@@ -69,7 +69,9 @@ async function resendRequest(
   endpoint: string, 
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE', 
   body?: unknown,
-  apiKeyOverride?: string
+  apiKeyOverride?: string,
+  maxRetries = 5,
+  initialDelayMs = 200
 ): Promise<ResendResponse> {
   const apiKey = apiKeyOverride || getApiKey();
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
@@ -86,33 +88,49 @@ async function resendRequest(
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, options);
-  
-  let data: ResendResponse = {};
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    try {
-      data = (await response.json()) as ResendResponse;
-    } catch (e) {
-      console.warn('[RESEND] Failed to parse JSON response:', (e as Error).message);
-    }
-  } else {
-    try {
-      const text = await response.text();
-      if (text) {
-        data = { message: text };
+  let attempt = 0;
+  while (true) {
+    const response = await fetch(`${BASE_URL}${endpoint}`, options);
+    
+    let data: ResendResponse = {};
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = (await response.json()) as ResendResponse;
+      } catch (e) {
+        console.warn('[RESEND] Failed to parse JSON response:', (e as Error).message);
       }
-    } catch (e) {
-      // Ignore text read error
+    } else {
+      try {
+        const text = await response.text();
+        if (text) {
+          data = { message: text };
+        }
+      } catch (e) {
+        // Ignore text read error
+      }
     }
-  }
 
-  if (!response.ok) {
-    const errorMsg = data?.message || `Resend API Error: ${response.statusText} (${response.status})`;
-    throw new Error(errorMsg);
-  }
+    if (!response.ok) {
+      const status = response.status;
+      // Handle 429 Too Many Requests and 5xx Server Errors with exponential backoff
+      if ((status === 429 || status >= 500) && attempt < maxRetries) {
+        attempt++;
+        const delay = initialDelayMs * Math.pow(2, attempt) * (0.8 + Math.random() * 0.4);
+        console.warn(`[RESEND] Rate limit or server error (${status}), retrying attempt ${attempt} in ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue; // Retry
+      }
 
-  return data;
+      const errorMsg = data?.message || `Resend API Error: ${response.statusText} (${status})`;
+      const error = new Error(errorMsg) as any;
+      error.status = status;
+      error.name = (data as any)?.name || 'ResendError';
+      throw error;
+    }
+
+    return data;
+  }
 }
 
 export interface ResendTag {

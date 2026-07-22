@@ -133,6 +133,23 @@ export async function getMessageNodeStatsAction(automationId: string, nodeId: st
   return readMessageNodeStats(automationId, nodeId);
 }
 
+export async function resendFailedMessagesAction(
+  automationId: string,
+  workspaceId: string,
+  userId: string,
+  logIds?: string[],
+  resendAll?: boolean
+) {
+  const { scheduleBulkResendMessagesTask } = await import('./gcp-tasks-client');
+  return scheduleBulkResendMessagesTask({
+    automationId,
+    workspaceId,
+    userId,
+    logIds,
+    resendAll,
+  });
+}
+
 /**
  * Returns all message logs associated with a specific message node in an automation.
  * Fetches via equality constraints and sorts on the client to avoid composite index overhead.
@@ -718,6 +735,39 @@ export async function bulkRetryRunsAction(
       userId,
       runIds: payload.runIds,
       retryAll: payload.retryAllFailed,
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function bulkForceAdvanceRunsAction(
+  automationId: string,
+  payload: { runIds?: string[]; advanceAllWaiting?: boolean },
+  userId: string,
+  workspaceId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    if (!automationId || !workspaceId) {
+      throw new Error('AutomationId and workspaceId are required.');
+    }
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
+    const { scheduleBulkForceAdvanceTask } = await import('./gcp-tasks-client');
+    await scheduleBulkForceAdvanceTask({
+      automationId,
+      workspaceId,
+      userId,
+      runIds: payload.runIds,
+      advanceAllWaiting: payload.advanceAllWaiting,
     });
 
     return { success: true };

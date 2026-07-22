@@ -176,6 +176,9 @@ export function MessageNodeLogsDialog({
   const [isBulkCleaning, setIsBulkCleaning] = React.useState(false);
   const [bulkCleanMode, setBulkCleanMode] = React.useState<'archive' | 'delete'>('archive');
 
+  // Bulk resend state
+  const [isBulkResendLoading, setIsBulkResendLoading] = React.useState(false);
+
   const [nodeStats, setNodeStats] = React.useState<MessageNodeStats | null>(null);
   const { user } = useUser();
   const [isReconciling, setIsReconciling] = React.useState(false);
@@ -760,15 +763,36 @@ export function MessageNodeLogsDialog({
           variant: 'destructive',
         });
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+    } catch (err) {
       toast({
-        title: 'Error',
-        description: msg,
+        title: 'Failed to drop contacts',
+        description: err instanceof Error ? err.message : 'Unknown error occurred',
         variant: 'destructive',
       });
     } finally {
       setIsBulkCleaning(false);
+    }
+  };
+
+  const handleBulkResend = async () => {
+    if (!activeWorkspaceId || !user?.uid) return;
+    setIsBulkResendLoading(true);
+    try {
+      const { resendFailedMessagesAction } = await import('@/lib/automation-actions');
+      const failedLogs = filteredLogs.map(l => l.id);
+      await resendFailedMessagesAction(automationId, activeWorkspaceId, user.uid, failedLogs, false);
+      toast({
+        title: 'Resend task queued',
+        description: `Successfully queued ${failedLogs.length} failed messages to be resent.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Resend Failed',
+        description: error.message || 'Failed to queue resend task.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkResendLoading(false);
     }
   };
 
@@ -1016,15 +1040,31 @@ export function MessageNodeLogsDialog({
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {activeTab === 'bounced' && filteredLogs.length > 0 && channel === 'email' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsBulkCleanConfirmOpen(true)}
-                className="h-9 px-3 rounded-lg text-xs font-bold border-indigo-500/20 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 transition-all duration-150 active:scale-95 flex items-center gap-1.5 shrink-0"
-              >
-                <MagicTrashIcon className="h-3.5 w-3.5 animate-pulse" />
-                <span>Bulk Clean Bounced</span>
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkResend}
+                  disabled={isBulkResendLoading}
+                  className="h-9 px-3 rounded-lg text-xs font-bold border-amber-500/20 text-amber-500 hover:text-amber-400 hover:bg-amber-500/5 transition-all duration-150 active:scale-95 flex items-center gap-1.5 shrink-0"
+                >
+                  {isBulkResendLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  <span>Bulk Resend Failed</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkCleanConfirmOpen(true)}
+                  className="h-9 px-3 rounded-lg text-xs font-bold border-indigo-500/20 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 transition-all duration-150 active:scale-95 flex items-center gap-1.5 shrink-0"
+                >
+                  <MagicTrashIcon className="h-3.5 w-3.5 animate-pulse" />
+                  <span>Bulk Clean Bounced</span>
+                </Button>
+              </>
             )}
 
             <div className="relative w-full sm:w-64">
