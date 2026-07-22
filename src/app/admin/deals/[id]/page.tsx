@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
-import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, EntityContact, DealFocalContact } from '@/lib/types';
+import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, EntityContact, DealFocalContact, WorkspaceEntity } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,8 @@ import {
     Search,
     Link as LinkIcon,
     User,
-    MessageSquare
+    MessageSquare,
+    ExternalLink
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -139,9 +140,16 @@ export default function DealDetailsPage() {
         return [...rawStages].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     }, [rawStages]);
 
+    // Directly fetch the linked entity (school/contact) to display its actual name and external link
+    const entityDocRef = useMemoFirebase(() =>
+        firestore && deal?.workspaceId && deal?.entityId
+            ? doc(firestore, 'workspace_entities', `${deal.workspaceId}_${deal.entityId}`)
+            : null,
+    [firestore, deal?.workspaceId, deal?.entityId]);
+    const { data: linkedEntity } = useDoc<WorkspaceEntity>(entityDocRef);
+
     // Directly fetch the deal's CURRENT pipeline/stage by id so the value is
     // always selectable even if it falls outside the workspace list query
-    // (e.g. a pipeline un-shared from the workspace, or legacy field drift).
     const currentPipelineRef = useMemoFirebase(() =>
         firestore && deal?.pipelineId ? doc(firestore, 'pipelines', deal.pipelineId) : null,
     [firestore, deal?.pipelineId]);
@@ -152,16 +160,30 @@ export default function DealDetailsPage() {
     [firestore, deal?.stageId]);
     const { data: currentStage } = useDoc<OnboardingStage>(currentStageRef);
 
+    // Synchronous fallback for currentStage if currentStage is still loading from Firestore
+    const effectiveCurrentStage = React.useMemo(() => {
+        if (currentStage) return currentStage;
+        if (deal?.stageId) {
+            return {
+                id: deal.stageId,
+                name: deal.stageName || 'Active Stage',
+                pipelineId: deal.pipelineId,
+                order: 0
+            } as OnboardingStage;
+        }
+        return null;
+    }, [currentStage, deal?.stageId, deal?.stageName, deal?.pipelineId]);
+
     // De-duplicated option lists that always include the current value.
     const pipelineOptions = React.useMemo(
         () => mergeById(pipelines, currentPipeline),
         [pipelines, currentPipeline]
     );
     const stageOptions = React.useMemo(() => {
-        const merged = mergeById(stages, currentStage);
+        const merged = mergeById(stages, effectiveCurrentStage);
         if (!pipelineId) return merged;
         return merged.filter(s => !s.pipelineId || s.pipelineId === pipelineId);
-    }, [stages, currentStage, pipelineId]);
+    }, [stages, effectiveCurrentStage, pipelineId]);
 
     const { user: currentUser } = useUser();
     const { singular } = useTerminology();
@@ -355,8 +377,8 @@ export default function DealDetailsPage() {
             setName(deal.name || '');
             setValue(deal.value?.toString() || '0');
             setDescription(deal.description || '');
-            setPipelineId(prev => prev || deal.pipelineId || '');
-            setStageId(prev => prev || deal.stageId || '');
+            if (deal.pipelineId) setPipelineId(deal.pipelineId);
+            if (deal.stageId) setStageId(deal.stageId);
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
             setExpectedCloseDate(deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : '');
@@ -373,10 +395,17 @@ export default function DealDetailsPage() {
 
     // Ensure stageId is populated once stageOptions are available for the selected pipeline
     React.useEffect(() => {
-        if (!stageId && stageOptions.length > 0) {
-            setStageId(stageOptions[0].id);
+        if (stageOptions.length > 0) {
+            const hasSelected = stageOptions.some(s => s.id === stageId);
+            if (!hasSelected) {
+                if (deal?.stageId && stageOptions.some(s => s.id === deal.stageId)) {
+                    setStageId(deal.stageId);
+                } else {
+                    setStageId(stageOptions[0].id);
+                }
+            }
         }
-    }, [stageId, stageOptions]);
+    }, [stageOptions, stageId, deal?.stageId]);
 
     // Load the entity's contacts so focal persons can be (de)selected.
     React.useEffect(() => {
@@ -513,9 +542,19 @@ export default function DealDetailsPage() {
                             <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> ${(deal.value || 0).toLocaleString()}</span>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
-                                <Link href={`/admin/entities/${deal.entityId}`} className="flex items-center gap-1.5 hover:text-primary transition-colors">
-                                    <Building2 className="h-4 w-4" /> View Linked {singular}
-                                </Link>
+                                <a 
+                                    href={`/admin/entities/${deal.entityId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`View Linked ${singular}`}
+                                    className="flex items-center gap-1.5 hover:text-primary transition-colors group cursor-pointer"
+                                >
+                                    <Building2 className="h-4 w-4 text-primary shrink-0" />
+                                    <span className="font-semibold underline-offset-4 group-hover:underline">
+                                        {linkedEntity?.displayName || linkedEntity?.name || `Linked ${singular}`}
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity shrink-0" />
+                                </a>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
                                 <span className="flex items-center gap-1.5"><UserCircle2 className="h-4 w-4" /> {deal.assignedTo?.name || 'Unassigned'}</span>
                             </div>
