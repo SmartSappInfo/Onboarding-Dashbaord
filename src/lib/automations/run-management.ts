@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { logAutomationEvent } from '../automation-log';
 import type { Automation, AutomationRun, MessageLog, TraversalContext } from '../types';
 import { traverseNodes } from './nodes/traverse';
+import type { ExecutionContext } from './execution-types';
 import { cancelDelayTask, scheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 
 interface RunManagementResult {
@@ -223,8 +224,8 @@ export async function resendFailedMessage(
       automationId: messageLog.automationId,
       runId: messageLog.runId,
       nodeId: messageLog.nodeId,
-      subject: messageLog.subject,
-      previewText: messageLog.previewText,
+      subject: messageLog.subject ?? undefined,
+      previewText: messageLog.previewText ?? undefined,
       body: messageLog.body,
       isResend: true,
       resendOfLogId: logId,
@@ -637,7 +638,7 @@ export async function jumpRunToStep(
       payload: run.payload ?? {},
     };
 
-    await traverseNodes(targetNodeId, automation, context);
+    await traverseNodes(targetNodeId, automation, context as unknown as ExecutionContext);
 
     logAutomationEvent('info', 'run_jumped_to_step', {
       runId,

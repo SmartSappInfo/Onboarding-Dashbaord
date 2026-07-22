@@ -264,11 +264,11 @@ export async function handleSendMessage(
         try {
           const { ContactHygieneRepository } = await import('../../hygiene-repository');
           await ContactHygieneRepository.commitBatch([[recipient, {
-            email: recipient,
+            valid: false,
             status: 'invalid',
             score: 0,
-            checks: { format: false, disposable: false, mx: false, catchall: false, regex: false },
-            lastVerifiedAt: new Date().toISOString()
+            checks: { syntax: false, dns: false, smtp: false, disposable: false, roleAccount: false, catchAll: false },
+            details: { reason: 'Delivery bounce' }
           }]]);
         } catch (hygieneErr) {
           console.warn('[AUTOMATION] Failed to update hygiene for bad email:', hygieneErr);

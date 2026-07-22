@@ -1,3 +1,5 @@
+'use server';
+
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, Pipeline, WorkspaceEntity } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';

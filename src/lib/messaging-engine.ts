@@ -832,8 +832,10 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     let providerId = null;
     let providerStatus = null;
+    let dispatchError: any = null;
 
-    if (template.channel === 'sms') {
+    try {
+      if (template.channel === 'sms') {
         try {
             const providerResponse = await sendSms({
                 recipient,
@@ -847,47 +849,55 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             recordSmsReachability(recipient, true);
         } catch (smsErr) {
             recordSmsReachability(recipient, false);
-            throw smsErr;
+            dispatchError = smsErr;
         }
-    } else if (template.channel === 'push') {
-        const providerResponse = await sendPushNotification(
-            [recipient], 
-            resolvedSubject || 'SmartSapp Notification', 
-            resolvedBody
-        );
-        providerId = providerResponse?.id;
-        if (providerResponse?.errors) providerStatus = 'failed';
-        else providerStatus = 'delivered';
-    } else if (template.channel === 'in_app') {
-        const inAppRef = await adminDb.collection('in_app_notifications').add({
-            userId: recipient,
-            organizationId: template.organizationId || variables.organizationId || 'default',
-            workspaceId: resolvedWorkspaceId,
-            title: resolvedSubject || resolvedLogTitle || 'Notification',
-            body: resolvedBody,
-            category: template.category || 'general',
-            isRead: false,
-            createdAt: scheduledAt || new Date().toISOString()
-        });
-        providerId = inAppRef.id;
-        providerStatus = 'delivered';
-    } else if (template.channel === 'whatsapp') {
-        // Focused WhatsApp branch (spec Phase 3): delegate to the orchestration,
-        // which resolves the org connection, re-checks the 24h session window at
-        // send time, enforces approved-template / session rules, and returns the
-        // Meta message id for status reconciliation.
-        const { sendWhatsApp } = await import('./whatsapp/whatsapp-send');
-        const waOrgId = orgId;
-        const waResult = await sendWhatsApp({
-            organizationId: waOrgId,
-            recipient,
-            template,
-            resolvedBody,
-            variables: finalVariables,
-        });
-        providerId = waResult.metaMessageId;
-        providerStatus = waResult.status;
-    } else {
+      } else if (template.channel === 'push') {
+        try {
+            const providerResponse = await sendPushNotification(
+                [recipient], 
+                resolvedSubject || 'SmartSapp Notification', 
+                resolvedBody
+            );
+            providerId = providerResponse?.id;
+            if (providerResponse?.errors) providerStatus = 'failed';
+            else providerStatus = 'delivered';
+        } catch (pushErr) {
+            dispatchError = pushErr;
+        }
+      } else if (template.channel === 'in_app') {
+        try {
+            const inAppRef = await adminDb.collection('in_app_notifications').add({
+                userId: recipient,
+                organizationId: template.organizationId || variables.organizationId || 'default',
+                workspaceId: resolvedWorkspaceId,
+                title: resolvedSubject || resolvedLogTitle || 'Notification',
+                body: resolvedBody,
+                category: template.category || 'general',
+                isRead: false,
+                createdAt: scheduledAt || new Date().toISOString()
+            });
+            providerId = inAppRef.id;
+            providerStatus = 'delivered';
+        } catch (inAppErr) {
+            dispatchError = inAppErr;
+        }
+      } else if (template.channel === 'whatsapp') {
+        try {
+            const { sendWhatsApp } = await import('./whatsapp/whatsapp-send');
+            const waOrgId = orgId;
+            const waResult = await sendWhatsApp({
+                organizationId: waOrgId,
+                recipient,
+                template,
+                resolvedBody,
+                variables: finalVariables,
+            });
+            providerId = waResult.metaMessageId;
+            providerStatus = waResult.status;
+        } catch (waErr) {
+            dispatchError = waErr;
+        }
+      } else {
         let headers: Record<string, string> | undefined = undefined;
         if (template.channel === 'email') {
             const { generateUnsubscribeToken } = await import('./services/unsubscribe-service');
@@ -905,7 +915,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
 
         let providerResponse: any;
-        let dispatchError: any = null;
         try {
             providerResponse = await sendEmail({
                 from: sender.name && sender.identifier ? `${sender.name} <${sender.identifier}>` : undefined, 
@@ -923,6 +932,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         } catch (e: any) {
             dispatchError = e;
         }
+    }
+    } catch (err: any) {
+        dispatchError = err;
     }
 
     // 9. Audit Log Generation (Requirement 11 - Record workspaceId, Requirement 15.2 - Dual-write)
@@ -1003,7 +1015,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     });
 
     if (dispatchError) {
-        return { success: false, error: dispatchError.message, logId: logRef.id, originalError: dispatchError };
+        return { success: false, error: dispatchError.message, logId: logRef.id };
     }
 
     return { success: true, logId: logRef.id };
@@ -1213,9 +1225,11 @@ export async function sendRawMessage(input: {
 
         // Dispatch Delivery
         let providerId = null;
-        if (channel === 'sms') {
-            await sendSms({ recipient, message: resolvedBody, sender: sender.identifier, apiKey: mnotifyKey });
-        } else if (channel === 'push') {
+        let dispatchError: any = null;
+        try {
+          if (channel === 'sms') {
+              await sendSms({ recipient, message: resolvedBody, sender: sender.identifier, apiKey: mnotifyKey });
+          } else if (channel === 'push') {
             await sendPushNotification([recipient], resolvedSubject, resolvedBody);
         } else if (channel === 'in_app') {
             await adminDb.collection('in_app_notifications').add({
@@ -1278,6 +1292,9 @@ export async function sendRawMessage(input: {
             } catch (e: any) {
                 dispatchError = e;
             }
+        }
+        } catch (err: any) {
+            dispatchError = err;
         }
 
 
@@ -1347,7 +1364,7 @@ export async function sendRawMessage(input: {
         });
 
         if (dispatchError) {
-            return { success: false, error: dispatchError.message, logId: logRef.id, originalError: dispatchError };
+            return { success: false, error: dispatchError.message, logId: logRef.id };
         }
 
         return { success: true, logId: logRef.id };

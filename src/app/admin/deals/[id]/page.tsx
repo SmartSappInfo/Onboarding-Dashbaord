@@ -557,7 +557,7 @@ export default function DealDetailsPage() {
                                 >
                                     <Building2 className="h-4 w-4 text-primary shrink-0" />
                                     <span className="font-semibold underline-offset-4 group-hover:underline">
-                                        {linkedEntity?.displayName || linkedEntity?.name || `Linked ${singular}`}
+                                        {linkedEntity?.displayName || `Linked ${singular}`}
                                     </span>
                                     <ExternalLink className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity shrink-0" />
                                 </a>

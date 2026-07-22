@@ -22,7 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import type { AutomationRun, StepRunState } from '@/lib/types';
+import type { AutomationRun, StepRunState, StepExecution } from '@/lib/types';
 
 interface RunExecutionTimelineModalProps {
   run: AutomationRun | null;
@@ -86,12 +86,12 @@ export function RunExecutionTimelineModal({
             </div>
           ) : (
             <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border/60">
-              {stepsList.map(([nodeId, stepState]: [string, StepRunState], idx: number) => {
+              {stepsList.map(([nodeId, stepState]: [string, StepExecution], idx: number) => {
                 const cfg = STEP_STATUS_CONFIG[stepState.status] || STEP_STATUS_CONFIG.completed;
                 const IconComponent = cfg.icon;
                 const isExpanded = expandedStepNodeId === nodeId;
-                const startTime = stepState.startedAt ? new Date(stepState.startedAt) : null;
-                const endTime = stepState.finishedAt ? new Date(stepState.finishedAt) : null;
+                const startTime = stepState.executedAt ? new Date(stepState.executedAt) : null;
+                const endTime = stepState.executedAt && stepState.durationMs ? new Date(new Date(stepState.executedAt).getTime() + stepState.durationMs) : null;
 
                 return (
                   <div key={nodeId} className="relative group">
@@ -144,19 +144,19 @@ export function RunExecutionTimelineModal({
                       {/* Expanded Payload & Diagnostics */}
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-border/40 space-y-2 text-[10px]">
-                          {stepState.outputPayload && (
+                          {stepState.metadata?.output && (
                             <div>
                               <p className="font-semibold text-muted-foreground flex items-center gap-1 mb-1">
                                 <FileText size={10} /> Step Output Payload:
                               </p>
                               <pre className="p-2 rounded-lg bg-muted/60 font-mono text-[9px] overflow-x-auto">
-                                {JSON.stringify(stepState.outputPayload, null, 2)}
+                                {JSON.stringify(stepState.metadata.output, null, 2)}
                               </pre>
                             </div>
                           )}
-                          {endTime && startTime && (
+                          {stepState.durationMs !== undefined && (
                             <p className="text-muted-foreground">
-                              Duration: {((endTime.getTime() - startTime.getTime()) / 1000).toFixed(2)}s
+                              Duration: {(stepState.durationMs / 1000).toFixed(2)}s
                             </p>
                           )}
                         </div>

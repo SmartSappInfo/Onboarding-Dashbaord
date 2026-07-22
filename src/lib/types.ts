@@ -2480,12 +2480,15 @@ export interface CampaignSession {
   updatedAt?: string;
 }
 
+export type StepRunState = 'success' | 'failed' | 'waiting' | 'skipped' | 'cancelled';
+
 export interface StepExecution {
   nodeId: string;
   nodeType: string;
   nodeLabel: string;
-  status: 'success' | 'failed' | 'waiting' | 'skipped' | 'cancelled';
+  status: StepRunState;
   executedAt: string;
+  startedAt?: string;
   durationMs?: number;
   error?: string;
   metadata?: {
@@ -2498,6 +2501,8 @@ export interface StepExecution {
   };
 }
 
+export type TraversalContext = Record<string, unknown>;
+
 export interface AutomationRun {
   id: string;
   automationId: string;
@@ -2506,6 +2511,7 @@ export interface AutomationRun {
   startedAt: string;
   finishedAt?: string;
   triggerData: Record<string, unknown>;
+  payload?: Record<string, unknown>;
   error?: string;
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity

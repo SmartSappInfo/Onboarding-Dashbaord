@@ -775,7 +775,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('pause', selectedRun)} disabled={!!isProcessing}>
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('pause', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                           <Pause size={14} />
                         </Button>
                       </TooltipTrigger>
@@ -787,7 +787,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('resume', selectedRun)} disabled={!!isProcessing}>
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('resume', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                           <Play size={14} />
                         </Button>
                       </TooltipTrigger>
@@ -798,7 +798,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                 <TooltipProvider delayDuration={200}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('forceAdvance', selectedRun)} disabled={!!isProcessing}>
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('forceAdvance', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                         <SkipForward size={14} />
                       </Button>
                     </TooltipTrigger>
@@ -808,7 +808,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                 <TooltipProvider delayDuration={200}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl text-rose-500 hover:text-rose-600" onClick={() => handleAction('forceEnd', selectedRun)} disabled={!!isProcessing}>
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl text-rose-500 hover:text-rose-600" onClick={() => handleAction('forceEnd', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                         <Square size={14} />
                       </Button>
                     </TooltipTrigger>
@@ -821,7 +821,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('restart', selectedRun)} disabled={!!isProcessing}>
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" onClick={() => handleAction('restart', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                       <RotateCcw size={14} />
                     </Button>
                   </TooltipTrigger>
@@ -833,7 +833,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl text-amber-600" onClick={() => handleAction('retry', selectedRun)} disabled={!!isProcessing}>
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl text-amber-600" onClick={() => handleAction('retry', selectedRun)} disabled={isRunProcessingAnyAction(selectedRun.id)}>
                       <RefreshCw size={14} />
                     </Button>
                   </TooltipTrigger>
