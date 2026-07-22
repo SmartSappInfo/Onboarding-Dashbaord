@@ -1004,7 +1004,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                   <Checkbox
                     checked={selectableRuns.length > 0 && selectedRunIds.size === selectableRuns.length}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    className="h-4.5 w-4.5 rounded-md border-2 border-slate-400 dark:border-slate-500 bg-background shadow-xs data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
+                    className="h-5 w-5 rounded-md border-2 border-slate-400 dark:border-slate-500 bg-background shadow-xs hover:border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all cursor-pointer"
                   />
                 </th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[26%]">Contact / Entity</th>
@@ -1037,10 +1037,10 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                         <Checkbox
                           checked={selectedRunIds.has(run.id)}
                           onCheckedChange={() => toggleSelection(run.id)}
-                          className="h-4.5 w-4.5 rounded-full border-2 border-slate-400 dark:border-slate-500 bg-background/90 hover:border-primary/80 shadow-xs data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
+                          className="h-5 w-5 rounded-md border-2 border-slate-400 dark:border-slate-500 bg-background hover:border-primary shadow-xs data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all cursor-pointer"
                         />
                       ) : (
-                        <div className="h-4.5 w-4.5" /> // Spacer for alignment
+                        <div className="h-5 w-5" /> // Spacer for alignment
                       )}
                     </td>
                     <td className="px-3 py-2.5">
