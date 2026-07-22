@@ -3,7 +3,8 @@
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logAutomationEvent } from '../automation-log';
-import type { Automation, AutomationRun } from '../types';
+import type { Automation, AutomationRun, MessageLog, TraversalContext } from '../types';
+import { traverseNodes } from './nodes/traverse';
 import { cancelDelayTask, scheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 
 interface RunManagementResult {
@@ -201,7 +202,7 @@ export async function resendFailedMessage(
     
     const logSnap = await adminDb.collection('message_logs').doc(logId).get();
     if (!logSnap.exists) throw new Error('Message log not found.');
-    const messageLog = { id: logSnap.id, ...logSnap.data() } as any;
+    const messageLog = { id: logSnap.id, ...logSnap.data() } as MessageLog;
 
     if (messageLog.status !== 'failed') {
       throw new Error('Can only resend messages that have failed.');
@@ -615,7 +616,7 @@ export async function jumpRunToStep(
     }
 
     // Purge pending jobs for this run
-    await purgeAllPendingJobsForRun(runId);
+    await purgeRunPendingJobs(runId);
 
     // Update run document to target node
     await runRef.update({

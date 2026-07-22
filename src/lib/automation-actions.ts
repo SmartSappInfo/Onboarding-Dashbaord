@@ -69,7 +69,7 @@ export async function testAutomationStepAction(
   automationId: string,
   nodeId: string,
   entityId: string,
-  nodeDataOverride: any,
+  nodeDataOverride: Record<string, unknown>,
   userId: string
 ) {
   const { testAutomationStep } = await import('./automations/test-step');
@@ -786,6 +786,14 @@ export async function jumpRunToStepAction(
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
     }
+    const { adminDb } = await import('./firebase-admin');
+    const runSnap = await adminDb.collection('automation_runs').doc(runId).get();
+    if (!runSnap.exists) throw new Error('Automation run not found.');
+    const workspaceId = runSnap.data()?.workspaceId || 'onboarding';
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
     const { jumpRunToStep } = await import('./automations/run-management');
     return await jumpRunToStep(runId, targetNodeId, userId);
   } catch (error: unknown) {
@@ -803,6 +811,14 @@ export async function rescheduleWaitJobAction(
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
     }
+    const { adminDb } = await import('./firebase-admin');
+    const jobSnap = await adminDb.collection('automation_jobs').doc(jobId).get();
+    if (!jobSnap.exists) throw new Error('Wait job not found.');
+    const workspaceId = jobSnap.data()?.workspaceId || 'onboarding';
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
     const { rescheduleWaitJob } = await import('./automations/run-management');
     return await rescheduleWaitJob(jobId, newExecuteAtIso, userId);
   } catch (error: unknown) {
@@ -820,6 +836,14 @@ export async function updateRunPayloadAction(
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
     }
+    const { adminDb } = await import('./firebase-admin');
+    const runSnap = await adminDb.collection('automation_runs').doc(runId).get();
+    if (!runSnap.exists) throw new Error('Automation run not found.');
+    const workspaceId = runSnap.data()?.workspaceId || 'onboarding';
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
     const { updateRunPayload } = await import('./automations/run-management');
     return await updateRunPayload(runId, updatedPayload, userId);
   } catch (error: unknown) {
@@ -838,6 +862,14 @@ export async function cleanAndVerifyRunContactAction(
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
     }
+    const { adminDb } = await import('./firebase-admin');
+    const runSnap = await adminDb.collection('automation_runs').doc(runId).get();
+    if (!runSnap.exists) throw new Error('Automation run not found.');
+    const workspaceId = runSnap.data()?.workspaceId || 'onboarding';
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
     const { cleanAndVerifyRunContact } = await import('./automations/run-management');
     return await cleanAndVerifyRunContact(runId, updatedEmail, updatedPhone, userId);
   } catch (error: unknown) {
@@ -858,6 +890,12 @@ export async function createContactFollowupTaskAction(
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
     }
+    if (!workspaceId) {
+      throw new Error('WorkspaceId is required.');
+    }
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
     const { createContactFollowupTask } = await import('./automations/run-management');
     return await createContactFollowupTask(workspaceId, contactId, assigneeId, title, description, userId);
   } catch (error: unknown) {
