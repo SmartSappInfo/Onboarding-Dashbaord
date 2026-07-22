@@ -372,18 +372,26 @@ export default function DealDetailsPage() {
         return contactSearchResults.filter(e => !associatedIds.has(e.entityId));
     }, [contactSearchResults, deal?.contacts, deal?.entityId]);
 
-    // Guarantee page always loads scrolled to top showing the top card
-    React.useEffect(() => {
+    // Guarantee page loads scrolled to top before browser paint
+    const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
+    useIsomorphicLayoutEffect(() => {
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }, [dealId]);
+        if (typeof document !== 'undefined') {
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            const mainContainer = document.querySelector('main');
+            if (mainContainer) mainContainer.scrollTop = 0;
+        }
+    }, [dealId, isLoading]);
 
+    // Populate form state when deal document finishes loading from Firestore
     React.useEffect(() => {
         if (deal) {
             setName(deal.name || '');
             setValue(deal.value?.toString() || '0');
             setDescription(deal.description || '');
-            if (deal.pipelineId) setPipelineId(deal.pipelineId);
-            if (deal.stageId) setStageId(deal.stageId);
+            setPipelineId(deal.pipelineId || '');
+            setStageId(deal.stageId || '');
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
             setExpectedCloseDate(deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : '');
@@ -391,16 +399,9 @@ export default function DealDetailsPage() {
         }
     }, [deal]);
 
-    // Ensure pipelineId is populated once pipelineOptions are available (only if deal has loaded and pipelineId is empty)
+    // Lazy stage sync: once rawStages for the selected pipeline arrive, ensure stageId is preserved or updated
     React.useEffect(() => {
-        if (deal && !pipelineId && pipelineOptions.length > 0) {
-            setPipelineId(pipelineOptions[0].id);
-        }
-    }, [deal, pipelineId, pipelineOptions]);
-
-    // Ensure stageId is strictly populated from deal or first stageOption once stageOptions are available
-    React.useEffect(() => {
-        if (!deal || stageOptions.length === 0) return;
+        if (!deal || rawStages === undefined || stageOptions.length === 0) return;
 
         const isCurrentValid = stageOptions.some(s => s.id === stageId);
         if (!isCurrentValid) {
@@ -411,7 +412,7 @@ export default function DealDetailsPage() {
                 setStageId(stageOptions[0].id);
             }
         }
-    }, [deal, stageOptions, stageId]);
+    }, [deal, rawStages, stageOptions, stageId]);
 
     // Load the entity's contacts so focal persons can be (de)selected.
     React.useEffect(() => {
