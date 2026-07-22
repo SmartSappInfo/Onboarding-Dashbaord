@@ -496,7 +496,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         {/* Panel 1: Main Menu */}
         <div 
           className={cn(
-            "absolute inset-0 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            "absolute inset-0 flex flex-col transition-transform duration-300 ease-in-out",
             activePanel === 'menu' ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -560,7 +560,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         {isSuperAdmin && (
           <div 
             className={cn(
-              "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out",
               activePanel === 'orgs' ? "translate-x-0" : (activePanel === 'menu' ? "translate-x-full" : "-translate-x-full")
             )}
           >
@@ -571,7 +571,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         {/* Panel 3: Workspaces Selector */}
         <div 
           className={cn(
-            "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            "absolute inset-0 flex flex-col bg-background transition-transform duration-300 ease-in-out",
             activePanel === 'workspaces' ? "translate-x-0" : "translate-x-full"
           )}
         >
