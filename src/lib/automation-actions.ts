@@ -159,7 +159,7 @@ export async function getMessageNodeLogsAction(automationId: string, nodeId: str
   const snap = await adminDb.collection('message_logs')
     .where('automationId', '==', automationId)
     .where('nodeId', '==', nodeId)
-    .limit(1000)
+    .limit(10000)
     .get();
 
   const logs = snap.docs.map(doc => ({

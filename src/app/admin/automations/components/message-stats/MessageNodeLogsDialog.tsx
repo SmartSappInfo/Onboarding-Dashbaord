@@ -55,6 +55,54 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTenant } from '@/context/TenantContext';
 
+export function isLogClicked(log: MessageLog): boolean {
+  return (
+    !!log.clickedAt ||
+    (log.clickedCount ?? 0) > 0 ||
+    log.providerStatus === 'clicked' ||
+    log.externalStatus === 'clicked' ||
+    log.clicked === true ||
+    (log.status as string) === 'clicked'
+  );
+}
+
+export function isLogOpened(log: MessageLog): boolean {
+  return (
+    isLogClicked(log) ||
+    !!log.openedAt ||
+    (log.openedCount ?? 0) > 0 ||
+    log.providerStatus === 'opened' ||
+    log.externalStatus === 'opened' ||
+    log.opened === true ||
+    (log.status as string) === 'opened'
+  );
+}
+
+export function isLogDelivered(log: MessageLog): boolean {
+  return (
+    isLogOpened(log) ||
+    !!log.deliveredAt ||
+    log.providerStatus === 'delivered' ||
+    log.externalStatus === 'delivered' ||
+    (log.status as string) === 'delivered' ||
+    log.providerStatus === 'delivered_to_handset'
+  );
+}
+
+export function isLogFailed(log: MessageLog): boolean {
+  return (
+    !!log.bouncedAt ||
+    log.status === 'failed' ||
+    log.providerStatus === 'bounced' ||
+    log.providerStatus === 'failed' ||
+    log.providerStatus === 'bounced_permanent' ||
+    log.providerStatus === 'bounced_transient' ||
+    log.externalStatus === 'bounced' ||
+    log.externalStatus === 'failed' ||
+    log.externalStatus === 'rejected'
+  );
+}
+
 interface MessageNodeLogsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -275,17 +323,17 @@ export function MessageNodeLogsDialog({
     };
 
     logs.forEach(log => {
-      const isClicked = !!log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
-      const isOpened = !!log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
-      const isDelivered = !!log.deliveredAt || log.providerStatus === 'delivered';
-      const isFailed = log.status === 'failed' || log.providerStatus === 'bounced';
+      const isClicked = isLogClicked(log);
+      const isOpened = isLogOpened(log);
+      const isDelivered = isLogDelivered(log);
+      const isFailed = isLogFailed(log);
 
       if (isClicked) res.clicked++;
-      if (isOpened || isClicked) res.opened++; // Opened includes clicked
-      if (isDelivered || isOpened || isClicked) res.delivered++; // Delivered includes opened/clicked
+      if (isOpened) res.opened++;
+      if (isDelivered) res.delivered++;
       if (isFailed) res.bounced++;
-      if (log.providerStatus === 'unsubscribed') res.unsubscribed++;
-      if (log.direction === 'inbound' || log.providerStatus === 'replied') res.replied++;
+      if (log.providerStatus === 'unsubscribed' || log.externalStatus === 'unsubscribed' || !!log.unsubscribedAt) res.unsubscribed++;
+      if (log.direction === 'inbound' || log.providerStatus === 'replied' || log.externalStatus === 'replied' || !!log.repliedAt) res.replied++;
 
       // Sent but pending delivery
       if (!isDelivered && !isOpened && !isClicked && !isFailed) {
@@ -332,17 +380,17 @@ export function MessageNodeLogsDialog({
         case 'sent':
           return true;
         case 'delivered':
-          return !!log.deliveredAt || log.providerStatus === 'delivered';
+          return isLogDelivered(log);
         case 'opened':
-          return !!log.openedAt || (log.openedCount ?? 0) > 0 || log.providerStatus === 'opened';
+          return isLogOpened(log);
         case 'clicked':
-          return !!log.clickedAt || (log.clickedCount ?? 0) > 0 || log.providerStatus === 'clicked';
+          return isLogClicked(log);
         case 'bounced':
-          return !!log.bouncedAt || log.status === 'failed' || log.providerStatus === 'bounced';
+          return isLogFailed(log);
         case 'unsubscribed':
-          return log.providerStatus === 'unsubscribed';
+          return log.providerStatus === 'unsubscribed' || log.externalStatus === 'unsubscribed' || !!log.unsubscribedAt;
         case 'replied':
-          return log.direction === 'inbound' || log.providerStatus === 'replied';
+          return log.direction === 'inbound' || log.providerStatus === 'replied' || log.externalStatus === 'replied' || !!log.repliedAt;
         default:
           return true;
       }

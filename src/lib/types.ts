@@ -3260,6 +3260,9 @@ export interface MessageLog {
   statusCheckCount?: number;
   unsubscribedAt?: string;
   repliedAt?: string;
+  externalStatus?: string;
+  clicked?: boolean;
+  opened?: boolean;
 }
 
 export interface MessageJob {
