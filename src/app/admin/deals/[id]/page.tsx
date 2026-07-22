@@ -112,7 +112,7 @@ export default function DealDetailsPage() {
 
     // Fallback if deal workspace has no returned pipelines
     const allPipelinesQuery = useMemoFirebase(() =>
-        firestore && deal?.workspaceId && rawPipelines !== undefined && rawPipelines.length === 0
+        firestore && deal?.workspaceId && Array.isArray(rawPipelines) && rawPipelines.length === 0
             ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc'))
             : null,
     [firestore, deal?.workspaceId, rawPipelines]);

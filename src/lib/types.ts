@@ -1283,6 +1283,8 @@ export interface Deal {
   } | null;
   expectedCloseDate?: string | null;
   description?: string | null;
+  source?: 'manual' | 'bulk_import' | 'automation';
+  isBulkImport?: boolean;
   customFields?: Record<string, any>; // Persists across workspaces
   createdAt: string;
   updatedAt: string;

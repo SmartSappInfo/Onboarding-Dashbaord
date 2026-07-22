@@ -37,7 +37,7 @@ interface ResolutionContext {
     regions: { id: string; name: string }[];
     districts: { id: string; name: string }[];
     tags: { id: string; name: string }[];
-    countries: { id: string; name: string; code: string; flag?: string }[];
+    countries: { id: string; name: string; code: string; flag: string }[];
     pipelines: { id: string; name: string; defaultCloseDateOffsetValue?: number; defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months' }[];
     stages: { id: string; name: string; pipelineId?: string }[];
 }
@@ -75,7 +75,7 @@ async function getResolutionContext(workspaceId: string): Promise<ResolutionCont
         regions: regionsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         districts: districtsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
         tags: tagsSnap.docs.map(d => ({ id: d.id, name: d.data().name })),
-        countries: countriesSnap.docs.map(d => ({ id: d.id, name: d.data().name, code: d.data().code, flag: d.data().flag })),
+        countries: countriesSnap.docs.map(d => ({ id: d.id, name: d.data().name, code: d.data().code, flag: d.data().flag || '' })),
         pipelines: pipelinesSnap.docs.map(d => ({ 
             id: d.id, 
             name: d.data().name,

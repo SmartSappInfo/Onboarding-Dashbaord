@@ -23,7 +23,7 @@ import {
     RefreshCw,
     Calendar
 } from 'lucide-react';
-import { calculateExpectedCloseDate } from './utils/deal-expected-close';
+import { calculateExpectedCloseDate } from '../utils/deal-expected-close';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -142,7 +142,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const pipelineRef = useMemoFirebase(() => 
         firestore && pipelineId ? doc(firestore, 'pipelines', pipelineId) : null,
     [firestore, pipelineId]);
-    const { data: pipeline } = useDoc<Pipeline>(pipelineRef);
+    const { data: pipeline, isLoading } = useDoc<Pipeline>(pipelineRef);
 
     const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
 

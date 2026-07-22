@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, WorkspaceEntity, DealContact, DealFocalContact } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
+import { canUser } from '@/lib/workspace-permissions';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
