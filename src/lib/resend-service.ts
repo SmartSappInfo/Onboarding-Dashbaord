@@ -62,6 +62,21 @@ export interface BatchEmailsResponse {
   error?: string;
 }
 
+let lastResendCallTimestamp = 0;
+const RESEND_MIN_INTERVAL_MS = 135; // ~7.4 requests per second max per process to stay strictly under Resend's 10 req/s limit
+
+async function throttleResendCall(): Promise<void> {
+  const now = Date.now();
+  const timeSinceLast = now - lastResendCallTimestamp;
+  if (timeSinceLast < RESEND_MIN_INTERVAL_MS) {
+    const waitMs = RESEND_MIN_INTERVAL_MS - timeSinceLast;
+    lastResendCallTimestamp = now + waitMs;
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  } else {
+    lastResendCallTimestamp = now;
+  }
+}
+
 /**
  * Core request handler for Resend API using native fetch.
  */
@@ -70,8 +85,8 @@ async function resendRequest(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE', 
   body?: unknown,
   apiKeyOverride?: string,
-  maxRetries = 5,
-  initialDelayMs = 200
+  maxRetries = 8,
+  initialDelayMs = 1000
 ): Promise<ResendResponse> {
   const apiKey = apiKeyOverride || getApiKey();
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
@@ -90,6 +105,8 @@ async function resendRequest(
 
   let attempt = 0;
   while (true) {
+    await throttleResendCall();
+
     const response = await fetch(`${BASE_URL}${endpoint}`, options);
     
     let data: ResendResponse = {};
@@ -113,19 +130,35 @@ async function resendRequest(
 
     if (!response.ok) {
       const status = response.status;
-      // Handle 429 Too Many Requests and 5xx Server Errors with exponential backoff
+      // Handle 429 Too Many Requests and 5xx Server Errors with exponential backoff & full jitter
       if ((status === 429 || status >= 500) && attempt < maxRetries) {
         attempt++;
-        const delay = initialDelayMs * Math.pow(2, attempt) * (0.8 + Math.random() * 0.4);
-        console.warn(`[RESEND] Rate limit or server error (${status}), retrying attempt ${attempt} in ${Math.round(delay)}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        let delayMs = 0;
+
+        // Check if provider supplied Retry-After or RateLimit-Reset header
+        const retryAfterHeader = response.headers.get('retry-after') || response.headers.get('ratelimit-reset');
+        if (retryAfterHeader) {
+          const parsedHeader = parseFloat(retryAfterHeader);
+          if (!isNaN(parsedHeader) && parsedHeader > 0) {
+            delayMs = parsedHeader > 1000000000 ? Math.max(200, parsedHeader - Date.now()) : parsedHeader * 1000;
+          }
+        }
+
+        if (!delayMs || delayMs <= 0) {
+          // Exponential backoff with full randomized jitter: 1s, 2s, 4s, 8s, 16s
+          const baseBackoff = Math.min(16000, initialDelayMs * Math.pow(2, attempt));
+          delayMs = Math.round(baseBackoff * (0.75 + Math.random() * 0.5));
+        }
+
+        console.warn(`[RESEND] Rate limit or server error (${status}), attempt ${attempt}/${maxRetries}. Backing off for ${Math.round(delayMs)}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue; // Retry
       }
 
       const errorMsg = data?.message || `Resend API Error: ${response.statusText} (${status})`;
-      const error = new Error(errorMsg) as any;
+      const error = new Error(errorMsg) as Error & { status?: number; name?: string };
       error.status = status;
-      error.name = (data as any)?.name || 'ResendError';
+      error.name = (data as Record<string, unknown>)?.name as string || 'ResendError';
       throw error;
     }
 
