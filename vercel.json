@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/automation-heartbeat",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/messaging-status-sync",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/process-scheduled-messages",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/social-publisher",
+      "schedule": "* * * * *"
     }
   ]
 }
