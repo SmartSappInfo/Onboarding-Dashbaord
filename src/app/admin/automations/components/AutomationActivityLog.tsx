@@ -149,7 +149,27 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const [searchQuery, setSearchQuery] = React.useState('');
   const [stepFilter, setStepFilter] = React.useState<string>('ALL');
   const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
-  const [isProcessing, setIsProcessing] = React.useState<string | null>(null);
+  const [processingActionKeys, setProcessingActionKeys] = React.useState<Set<string>>(new Set());
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const isActionProcessing = React.useCallback((key: string): boolean => {
+    return processingActionKeys.has(key);
+  }, [processingActionKeys]);
+
+  const isRunProcessingAnyAction = React.useCallback((runId: string): boolean => {
+    for (const key of processingActionKeys) {
+      if (key.startsWith(`${runId}-`)) return true;
+    }
+    return false;
+  }, [processingActionKeys]);
+
   const [triggerDataView, setTriggerDataView] = React.useState<'table' | 'json'>('table');
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [resolvedContact, setResolvedContact] = React.useState<{
@@ -571,7 +591,12 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     run: AutomationRun
   ) {
     if (!user?.uid) return;
-    setIsProcessing(`${run.id}-${action}`);
+    const actionKey = `${run.id}-${action}`;
+
+    // Atomic double-click protection
+    if (processingActionKeys.has(actionKey)) return;
+
+    setProcessingActionKeys((prev) => new Set(prev).add(actionKey));
 
     try {
       let result: { success: boolean; error?: string };
@@ -584,13 +609,16 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             confirmText: 'Restart',
             variant: 'default',
           });
-          if (!confirmed) { setIsProcessing(null); return; }
+          if (!confirmed) return;
           result = await restartRunAction(run.id, user.uid);
           break;
         }
         case 'retry': {
           const failedNode = getFailedStepNodeId(run);
-          if (!failedNode) { toast({ variant: 'destructive', title: 'No failed step found' }); setIsProcessing(null); return; }
+          if (!failedNode) {
+            toast({ variant: 'destructive', title: 'No failed step found' });
+            return;
+          }
           result = await retryFailedStepAction(run.id, failedNode, user.uid);
           break;
         }
@@ -601,7 +629,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             confirmText: 'End Now',
             variant: 'destructive',
           });
-          if (!confirmed) { setIsProcessing(null); return; }
+          if (!confirmed) return;
           result = await forceEndRunAction(run.id, user.uid);
           break;
         }
@@ -626,7 +654,13 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });
     } finally {
-      setIsProcessing(null);
+      if (isMountedRef.current) {
+        setProcessingActionKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(actionKey);
+          return next;
+        });
+      }
     }
   }
 
@@ -1020,7 +1054,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                 const effectiveStatus = getEffectiveStatus(run);
                 const statusCfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.completed;
                 const isWebhook = isWebhookRun(run);
-                const runIsProcessing = isProcessing?.startsWith(run.id);
+                const isRetryProcessing = isActionProcessing(`${run.id}-retry`);
+                const isSkipProcessing = isActionProcessing(`${run.id}-forceAdvance`);
+                const isRunProcessing = isRunProcessingAnyAction(run.id);
                 const isActionable = effectiveStatus === 'failed' || effectiveStatus === 'running' || effectiveStatus === 'paused' || effectiveStatus === 'waiting';
 
                 return (
@@ -1084,9 +1120,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                                   size="icon"
                                   className="h-7 w-7 rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 active:scale-[0.97] transition-all"
                                   onClick={() => handleAction('retry', run)}
-                                  disabled={!!runIsProcessing}
+                                  disabled={isBulkProcessing || isRetryProcessing}
                                 >
-                                  {runIsProcessing === `${run.id}-retry` ? (
+                                  {isRetryProcessing ? (
                                     <Loader2 size={12} className="animate-spin" />
                                   ) : (
                                     <RefreshCw size={12} />
@@ -1108,9 +1144,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                                   size="icon"
                                   className="h-7 w-7 rounded-lg text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 active:scale-[0.97] transition-all"
                                   onClick={() => handleAction('forceAdvance', run)}
-                                  disabled={!!runIsProcessing}
+                                  disabled={isBulkProcessing || isSkipProcessing}
                                 >
-                                  {runIsProcessing === `${run.id}-forceAdvance` ? (
+                                  {isSkipProcessing ? (
                                     <Loader2 size={12} className="animate-spin" />
                                   ) : (
                                     <SkipForward size={12} />
@@ -1125,8 +1161,8 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                         {/* More Actions Menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted/80 active:scale-[0.97] transition-all" disabled={!!runIsProcessing}>
-                              {runIsProcessing ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={14} />}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted/80 active:scale-[0.97] transition-all" disabled={isBulkProcessing || isRunProcessing}>
+                              {isRunProcessing ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={14} />}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48 rounded-xl">
