@@ -59,6 +59,7 @@ import AssignUserModal from '@/app/admin/entities/components/AssignUserModal';
 import BulkCreateTaskModal from '@/app/admin/entities/components/BulkCreateTaskModal';
 import BulkMeetingInviteModal from '@/app/admin/entities/components/BulkMeetingInviteModal';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { getMessageNodeLogsAction, getMessageNodeStatsAction, reconcilePendingSmsLogsAction } from '@/lib/automation-actions';
