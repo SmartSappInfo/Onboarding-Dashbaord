@@ -1004,15 +1004,15 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                   <Checkbox
                     checked={selectableRuns.length > 0 && selectedRunIds.size === selectableRuns.length}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    className="h-4 w-4 rounded-md border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    className="h-4.5 w-4.5 rounded-md border-2 border-slate-400 dark:border-slate-500 bg-background shadow-xs data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
                   />
                 </th>
-                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[28%]">Contact / Entity</th>
+                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[26%]">Contact / Entity</th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[14%]">Status</th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[22%]">Current Step</th>
                 <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[14%]">Started</th>
-                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[10%]">Duration</th>
-                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-right px-3 py-2.5 w-[12%]">Actions</th>
+                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-left px-3 py-2.5 w-[8%]">Duration</th>
+                <th className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider text-right px-3 py-2.5 w-[14%]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1037,10 +1037,10 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                         <Checkbox
                           checked={selectedRunIds.has(run.id)}
                           onCheckedChange={() => toggleSelection(run.id)}
-                          className="h-4 w-4 rounded-md border-border/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
+                          className="h-4.5 w-4.5 rounded-full border-2 border-slate-400 dark:border-slate-500 bg-background/90 hover:border-primary/80 shadow-xs data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
                         />
                       ) : (
-                        <div className="h-4 w-4" /> // Spacer for alignment
+                        <div className="h-4.5 w-4.5" /> // Spacer for alignment
                       )}
                     </td>
                     <td className="px-3 py-2.5">
@@ -1073,60 +1073,111 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                       <span className="text-[10px] font-medium tabular-nums">{getDuration(run)}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" disabled={!!runIsProcessing}>
-                            {runIsProcessing ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={14} />}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                          {run.status === 'running' && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleAction('pause', run)} className="text-xs font-medium gap-2">
-                                <Pause size={12} /> Pause
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
-                                <SkipForward size={12} /> Skip to Next Step
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
-                                <Square size={12} /> Force End
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {run.status === 'paused' && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleAction('resume', run)} className="text-xs font-medium gap-2">
-                                <Play size={12} /> Resume
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
-                                <SkipForward size={12} /> Skip to Next Step
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
-                                <Square size={12} /> Force End
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {run.status === 'failed' && (
-                            <>
-                              {getFailedStepNodeId(run) && (
-                                <DropdownMenuItem onClick={() => handleAction('retry', run)} className="text-xs font-medium gap-2">
-                                  <RefreshCw size={12} /> Retry Failed Step
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Direct Action: Retry Failed Step */}
+                        {effectiveStatus === 'failed' && getFailedStepNodeId(run) && (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-lg text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 active:scale-[0.97] transition-all"
+                                  onClick={() => handleAction('retry', run)}
+                                  disabled={!!runIsProcessing}
+                                >
+                                  {runIsProcessing === `${run.id}-retry` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <RefreshCw size={12} />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-[9px] font-semibold">Retry Failed Step</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+
+                        {/* Direct Action: Skip to Next Step */}
+                        {isActionable && (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-lg text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 active:scale-[0.97] transition-all"
+                                  onClick={() => handleAction('forceAdvance', run)}
+                                  disabled={!!runIsProcessing}
+                                >
+                                  {runIsProcessing === `${run.id}-forceAdvance` ? (
+                                    <Loader2 size={12} className="animate-spin" />
+                                  ) : (
+                                    <SkipForward size={12} />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-[9px] font-semibold">Skip to Next Step</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+
+                        {/* More Actions Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted/80 active:scale-[0.97] transition-all" disabled={!!runIsProcessing}>
+                              {runIsProcessing ? <Loader2 size={12} className="animate-spin" /> : <MoreHorizontal size={14} />}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                            {run.status === 'running' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleAction('pause', run)} className="text-xs font-medium gap-2">
+                                  <Pause size={12} /> Pause
                                 </DropdownMenuItem>
-                              )}
+                                <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
+                                  <SkipForward size={12} /> Skip to Next Step
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
+                                  <Square size={12} /> Force End
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {run.status === 'paused' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleAction('resume', run)} className="text-xs font-medium gap-2">
+                                  <Play size={12} /> Resume
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAction('forceAdvance', run)} className="text-xs font-medium gap-2">
+                                  <SkipForward size={12} /> Skip to Next Step
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleAction('forceEnd', run)} className="text-xs font-medium gap-2 text-rose-600">
+                                  <Square size={12} /> Force End
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {run.status === 'failed' && (
+                              <>
+                                {getFailedStepNodeId(run) && (
+                                  <DropdownMenuItem onClick={() => handleAction('retry', run)} className="text-xs font-medium gap-2">
+                                    <RefreshCw size={12} /> Retry Failed Step
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
+                                  <RotateCcw size={12} /> Restart from Trigger
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {run.status === 'completed' && (
                               <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
                                 <RotateCcw size={12} /> Restart from Trigger
                               </DropdownMenuItem>
-                            </>
-                          )}
-                          {run.status === 'completed' && (
-                            <DropdownMenuItem onClick={() => handleAction('restart', run)} className="text-xs font-medium gap-2">
-                              <RotateCcw size={12} /> Restart from Trigger
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </td>
                   </tr>
                 );
