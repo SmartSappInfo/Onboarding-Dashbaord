@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Sparkles,
-  Plus,
   Trash2,
   Tag as TagIcon,
   PhoneCall,
@@ -15,8 +14,7 @@ import {
   AlertTriangle,
   MessageSquare,
   UserX,
-  ChevronDown,
-  Layers
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -43,12 +43,7 @@ import {
   Tag as TagIcon,
   UserPlus,
   ClipboardList,
-  CalendarDays,
-  CheckSquare,
-  X,
-  MoreHorizontal,
-  Layers,
-  ChevronDown
+  X
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AddToCampaignDialog } from '@/app/admin/entities/components/AddToCampaignDialog';
