@@ -30,6 +30,16 @@
           "fieldPath": "channel",
           "order": "ASCENDING"
         },
+        {
+          "fieldPath": "providerStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastStatusCheckAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
     {
       "collectionGroup": "message_logs",
       "queryScope": "COLLECTION",
@@ -49,16 +59,6 @@
         {
           "fieldPath": "createdAt",
           "order": "DESCENDING"
-        }
-      ]
-    },
-        {
-          "fieldPath": "providerStatus",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "lastStatusCheckAt",
-          "order": "ASCENDING"
         }
       ]
     },
