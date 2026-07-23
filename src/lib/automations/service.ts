@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import type { Automation, EntityContact, AutomationJob } from '../types';
+import type { Automation, EntityContact, Entity, AutomationJob } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';
 import { validateAutomationBlueprint } from '../automation-validation';
 import { assertAutomationManagePermission } from '../automation-permissions';
@@ -538,7 +538,7 @@ export async function enrollContactsInAutomation(
     }
     const organizationId = wsSnap.data()?.organizationId || 'default';
 
-    // 3. Query contacts to validate they belong to the workspace in batches of 500
+    // 3. Query contacts from entities and workspace_entities
     const targets: Array<{
       entityId: string;
       entityType: string;
@@ -558,62 +558,80 @@ export async function enrollContactsInAutomation(
       const chunkIds = entityIds.slice(i, i + readChunkSize);
       if (chunkIds.length === 0) continue;
       
-      const snap = await adminDb.collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', 'in', chunkIds)
-        .get();
+      const entityRefs = chunkIds.map(id => adminDb.collection('entities').doc(id));
+      const entitySnaps = await adminDb.getAll(...entityRefs);
 
-      snap.forEach(doc => {
-        const data = doc.data()!;
-        const contacts = (data.entityContacts || []) as EntityContact[];
-        const entityId = data.entityId;
-        const entityType = data.entityType || 'institution';
+      entitySnaps.forEach(entitySnap => {
+        const entityRaw = (entitySnap.data() || {}) as Record<string, unknown>;
+        const entityId = entitySnap.id;
+        const entityType = (entityRaw.entityType as string) || 'institution';
+        const entityName = String(entityRaw.displayName || entityRaw.name || 'Primary Contact');
+        const primaryEmail = String(entityRaw.primaryContactEmail || entityRaw.email || '');
+        const primaryPhone = String(entityRaw.primaryContactPhone || entityRaw.phone || '');
 
-            // Resolve which contacts to target based on scope options
-            let matchedContacts: EntityContact[] = [];
-            const scope = options?.contactScope;
+        let contacts = (entityRaw.entityContacts || []) as EntityContact[];
 
-            if (scope === 'custom') {
-              if (options?.selectedContactIds?.length) {
-                matchedContacts = contacts.filter(c => options.selectedContactIds!.includes(c.id));
-              }
-            } else if (scope === 'primary') {
-              const primary = contacts.find(c => c.isPrimary) || contacts[0];
-              if (primary) matchedContacts = [primary];
-            } else if (scope === 'signatories') {
-              matchedContacts = contacts.filter(c => c.isSignatory);
-            } else if (scope === 'roles') {
-              if (options?.roles?.length) {
-                const normalizedRoles = options.roles.map(r => r.toLowerCase().trim());
-                matchedContacts = contacts.filter(c =>
-                  c.typeLabel && normalizedRoles.some(r => r === c.typeLabel?.toLowerCase().trim() || r === c.typeKey?.toLowerCase().trim())
-                );
-              }
-            } else if (scope === 'all') {
-              matchedContacts = contacts;
-            } else {
-              // Default fallback: primary contact
-              const primary = contacts.find(c => c.isPrimary) || contacts[0];
-              if (primary) matchedContacts = [primary];
+        // Fallback: If no entityContacts exist on entity, synthesize a primary contact from entity fields
+        if (contacts.length === 0) {
+          contacts = [
+            {
+              id: entityId,
+              name: entityName,
+              email: primaryEmail,
+              phone: primaryPhone,
+              typeKey: 'primary',
+              isPrimary: true,
+              isSignatory: false,
+              order: 0,
+            },
+          ];
+        }
+
+        // Resolve which contacts to target based on scope options
+        let matchedContacts: EntityContact[] = [];
+        const scope = options?.contactScope;
+
+        if (scope === 'custom') {
+          if (options?.selectedContactIds?.length) {
+            matchedContacts = contacts.filter(c => options.selectedContactIds!.includes(c.id));
+          }
+        } else if (scope === 'primary') {
+          const primary = contacts.find(c => c.isPrimary) || contacts[0];
+          if (primary) matchedContacts = [primary];
+        } else if (scope === 'signatories') {
+          matchedContacts = contacts.filter(c => c.isSignatory);
+        } else if (scope === 'roles') {
+          if (options?.roles?.length) {
+            const normalizedRoles = options.roles.map(r => r.toLowerCase().trim());
+            matchedContacts = contacts.filter(c =>
+              c.typeLabel && normalizedRoles.some(r => r === c.typeLabel?.toLowerCase().trim() || r === c.typeKey?.toLowerCase().trim())
+            );
+          }
+        } else if (scope === 'all') {
+          matchedContacts = contacts;
+        } else {
+          // Default fallback: primary contact
+          const primary = contacts.find(c => c.isPrimary) || contacts[0];
+          if (primary) matchedContacts = [primary];
+        }
+
+        // Map each matched contact into a target enrollment payload
+        matchedContacts.forEach(contact => {
+          targets.push({
+            entityId,
+            entityType,
+            payload: {
+              workspaceId,
+              startedBy: userId,
+              manualEnrollment: true,
+              contactId: contact.id || entityId,
+              contactName: contact.name || entityName,
+              email: contact.email || primaryEmail,
+              phone: contact.phone || primaryPhone,
+              name: contact.name || entityName,
             }
-
-            // Map each matched contact into a target enrollment payload
-            matchedContacts.forEach(contact => {
-              targets.push({
-                entityId,
-                entityType,
-                payload: {
-                  workspaceId,
-                  startedBy: userId,
-                  manualEnrollment: true,
-                  contactId: contact.id,
-                  contactName: contact.name,
-                  email: contact.email || '',
-                  phone: contact.phone || '',
-                  name: contact.name,
-                }
-              });
-            });
+          });
+        });
       });
     }
 
