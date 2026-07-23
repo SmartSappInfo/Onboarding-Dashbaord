@@ -1,6 +1,28 @@
 {
   "indexes": [
     {
+      "collectionGroup": "automation_message_event_executions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "automationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nodeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eventStatus",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "message_logs",
       "queryScope": "COLLECTION",
       "fields": [

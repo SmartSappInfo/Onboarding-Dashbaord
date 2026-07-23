@@ -334,6 +334,71 @@ export function MessageNodeLogsDialog({
 
   // Bulk resend state
   const [isBulkResendLoading, setIsBulkResendLoading] = React.useState(false);
+  const [isManualAutomationsLoading, setIsManualAutomationsLoading] = React.useState(false);
+
+  const handleRunManualStatusAutomations = async () => {
+    const targetLogs = logsToExport;
+    if (targetLogs.length === 0) return;
+
+    const mappedEventStatus: import('@/lib/types').MessageDeliveryStatusEvent | null =
+      activeTab === 'opened' ? 'opened' :
+      activeTab === 'clicked' ? 'clicked' :
+      activeTab === 'bounced' ? 'bounced' :
+      activeTab === 'delivered' ? 'delivered' :
+      activeTab === 'replied' ? 'replied' :
+      activeTab === 'unsubscribed' ? 'unsubscribed' : null;
+
+    if (!mappedEventStatus) {
+      toast({
+        title: 'Action Not Applicable',
+        description: 'Status automations apply to delivery milestones (Opened, Clicked, Bounced, Delivered, Replied, Unsubscribed).',
+      });
+      return;
+    }
+
+    setIsManualAutomationsLoading(true);
+    try {
+      const { executeMessageStatusAutomationsAction } = await import('@/lib/automation-actions');
+      let totalExecuted = 0;
+
+      for (const log of targetLogs) {
+        if (log.entityId) {
+          const res = await executeMessageStatusAutomationsAction(
+            automationId,
+            nodeId,
+            mappedEventStatus,
+            log.entityId,
+            log.workspaceId || activeWorkspaceId || 'global',
+            user?.uid || 'system',
+            log.recipient,
+            log.recipient,
+            log.runId
+          );
+          if (res.success) {
+            totalExecuted += res.executedCount;
+          }
+        }
+      }
+
+      toast({
+        title: 'Status Automations Triggered',
+        description: `Successfully executed ${totalExecuted} status automation action(s) across ${targetLogs.length} contact(s).`,
+        actionConfig: {
+          path: `/admin/automations/${automationId}/edit`,
+          label: 'View Automation',
+        },
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        title: 'Execution Failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsManualAutomationsLoading(false);
+    }
+  };
 
   const [nodeStats, setNodeStats] = React.useState<MessageNodeStats | null>(null);
   const { user } = useUser();
@@ -1380,6 +1445,22 @@ export function MessageNodeLogsDialog({
             </div>
 
             <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleRunManualStatusAutomations}
+                disabled={isManualAutomationsLoading || logsToExport.length === 0}
+                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-primary hover:bg-primary/10 active:scale-[0.97]"
+              >
+                {isManualAutomationsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">Run Status Automations</span>
+              </Button>
+
               <Button
                 type="button"
                 variant="ghost"

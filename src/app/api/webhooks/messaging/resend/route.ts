@@ -162,6 +162,31 @@ async function handleAutomationMessageEvent(
     }).catch((e: unknown) =>
       console.warn('>>> [WEBHOOK] node stat increment failed (non-fatal):', e)
     );
+
+    const mappedStatusEvent: import('@/lib/types').MessageDeliveryStatusEvent | null =
+      type === 'email.opened' ? 'opened' :
+      type === 'email.clicked' ? 'clicked' :
+      type === 'email.bounced' || type === 'email.complained' ? 'bounced' :
+      type === 'email.delivered' ? 'delivered' : null;
+
+    if (mappedStatusEvent && log.automationId && log.nodeId && log.entityId) {
+      import('@/lib/automations/message-status-automations')
+        .then(({ executeMessageStatusAutomations }) =>
+          executeMessageStatusAutomations({
+            automationId: log.automationId!,
+            nodeId: log.nodeId!,
+            eventStatus: mappedStatusEvent,
+            entityId: log.entityId!,
+            contactId: log.recipient,
+            recipient: log.recipient,
+            workspaceId: log.workspaceId || log.workspaceIds?.[0] || 'onboarding',
+            runId: log.runId,
+          })
+        )
+        .catch((err: unknown) =>
+          console.warn('>>> [WEBHOOK] message status automation execution failed (non-fatal):', err)
+        );
+    }
   }
 
   // Real-time resend release: an engaged contact advances immediately rather than

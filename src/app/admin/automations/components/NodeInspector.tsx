@@ -35,6 +35,7 @@ import { TriggerConfigPanel } from './TriggerConfigPanel';
 import { ActionConfigPanel } from './ActionConfigPanel';
 import { SearchInput } from './SearchInput';
 import { MessageNodeStatsPanel } from './message-stats/MessageNodeStatsPanel';
+import { MessageStatusAutomationsPanel } from './message-stats/MessageStatusAutomationsPanel';
 import { TagSelector } from '@/components/tags/TagSelector';
 
 interface NodeInspectorProps {
@@ -471,7 +472,7 @@ export function NodeInspector({
     const { singular } = useTerminology();
     const params = useParams();
     const automationId = params.id as string;
-    const [messageInspectorTab, setMessageInspectorTab] = React.useState<'config' | 'stats'>('config');
+    const [messageInspectorTab, setMessageInspectorTab] = React.useState<'config' | 'stats' | 'automations'>('config');
 
     const localizedActionTypes = React.useMemo(() => {
         return ACTION_TYPES.map((a) => {
@@ -903,6 +904,18 @@ export function NodeInspector({
                                             >
                                                 Statistics
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageInspectorTab('automations')}
+                                                className={cn(
+                                                    'px-3 py-1 rounded-md transition-colors',
+                                                    messageInspectorTab === 'automations'
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : 'text-muted-foreground hover:text-foreground'
+                                                )}
+                                            >
+                                                Event Automations
+                                            </button>
                                         </div>
                                     )}
 
@@ -911,6 +924,16 @@ export function NodeInspector({
                                             automationId={automationId}
                                             nodeId={node.id}
                                             channel={config?.channel as 'email' | 'sms' | 'whatsapp' | undefined}
+                                        />
+                                    ) : data.actionType === 'SEND_MESSAGE' && messageInspectorTab === 'automations' ? (
+                                        <MessageStatusAutomationsPanel
+                                            statusRules={(config?.statusRules as import('@/lib/types').MessageStatusRule[]) || []}
+                                            onChangeRules={(rules) => updateConfig({ statusRules: rules })}
+                                            pipelines={pipelines}
+                                            automations={automations}
+                                            users={users}
+                                            callCampaigns={[]}
+                                            meetingTypes={[]}
                                         />
                                     ) : (
                                         /* The actual config form — NO list, just properties */

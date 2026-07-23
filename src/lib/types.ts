@@ -3382,6 +3382,72 @@ export type MessageNodeStatCounter =
   | 'replied'
   | 'resent';
 
+/**
+ * Delivery events on message steps that can trigger automated lead actions.
+ */
+export type MessageDeliveryStatusEvent =
+  | 'delivered'
+  | 'opened'
+  | 'clicked'
+  | 'bounced'
+  | 'replied'
+  | 'unsubscribed';
+
+/**
+ * Action types supported for per-message status event automations.
+ */
+export type MessageEventActionType =
+  | 'add_tags'
+  | 'remove_tags'
+  | 'add_to_campaign'
+  | 'move_deal'
+  | 'enroll_automation'
+  | 'assign_user'
+  | 'create_task'
+  | 'send_meeting';
+
+/**
+ * Action configuration payload for an event automation rule.
+ */
+export interface MessageStatusActionConfig {
+  id: string;
+  type: MessageEventActionType;
+  tagIds?: string[];
+  campaignId?: string;
+  pipelineId?: string;
+  stageId?: string;
+  automationId?: string;
+  assignedUserId?: string;
+  taskTitle?: string;
+  taskDescription?: string;
+  meetingTypeId?: string;
+}
+
+/**
+ * A per-status automation rule attached to a message step node.
+ */
+export interface MessageStatusRule {
+  id: string;
+  event: MessageDeliveryStatusEvent;
+  enabled: boolean;
+  actions: MessageStatusActionConfig[];
+}
+
+/**
+ * Defensive normalizer helper to ensure message node config always contains statusRules array.
+ */
+export function normalizeMessageNodeConfig(config: Record<string, unknown> | undefined): {
+  statusRules: MessageStatusRule[];
+  [key: string]: unknown;
+} {
+  const safeConfig = config || {};
+  const rawRules = Array.isArray(safeConfig.statusRules) ? safeConfig.statusRules : [];
+  return {
+    ...safeConfig,
+    statusRules: rawRules as MessageStatusRule[],
+  };
+}
+
 /** Condition that keeps a contact waiting at a message node until satisfied. */
 export type ResendTriggerCondition = 'no_open' | 'no_click';
 

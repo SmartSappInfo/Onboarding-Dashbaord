@@ -776,6 +776,14 @@ service cloud.firestore {
         hasWorkspaceAccess(resource.data.workspaceId)
       );
     }
+    match /automation_message_event_executions/{execId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.workspaceId == null ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if isAuthorized();
+    }
     match /survey_sessions/{sId} {
       allow create, update: if true;
       allow read, list: if isAuthorized();

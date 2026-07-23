@@ -903,3 +903,42 @@ export async function createContactFollowupTaskAction(
     return { success: false, error: errMsg };
   }
 }
+
+export async function executeMessageStatusAutomationsAction(
+  automationId: string,
+  nodeId: string,
+  eventStatus: import('./types').MessageDeliveryStatusEvent,
+  entityId: string,
+  workspaceId: string,
+  userId: string,
+  contactId?: string,
+  recipient?: string,
+  runId?: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    if (!workspaceId) {
+      throw new Error('WorkspaceId is required.');
+    }
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
+    const { executeMessageStatusAutomations } = await import('./automations/message-status-automations');
+    return await executeMessageStatusAutomations({
+      automationId,
+      nodeId,
+      eventStatus,
+      entityId,
+      contactId,
+      recipient,
+      workspaceId,
+      userId,
+      runId,
+    });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, executedCount: 0, error: errMsg };
+  }
+}
