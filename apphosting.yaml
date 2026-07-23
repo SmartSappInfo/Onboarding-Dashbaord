@@ -36,6 +36,8 @@ env:
     secret: onesignal-app-id
   - variable: ONESIGNAL_REST_API_KEY
     secret: onesignal-rest-api-key
+  - variable: CLOUD_TASKS_SECRET
+    secret: CLOUD_TASKS_SECRET
   # Resend "from" domain — NOT a secret. Code defaults to "smartsapp.com" if unset.
   # Uncomment and set this to your VERIFIED Resend sending domain if it differs
   # (the from-domain must be verified under RESEND_API_KEY or Resend rejects sends).
