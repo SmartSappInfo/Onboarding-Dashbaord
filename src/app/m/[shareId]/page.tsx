@@ -253,7 +253,21 @@ export default async function PublicMediaShareRoute({
             }
         });
 
-        // 1. Resolve encrypted recipient ref parameters
+        // 1. Normalize query parameter aliases
+        const rawContactParam = resolvedSearchParams.contactId || resolvedSearchParams.contact_id || resolvedSearchParams.c || resolvedSearchParams.cid || resolvedSearchParams.contact;
+        const rawEntityParam = resolvedSearchParams.entityId || resolvedSearchParams.entity_id || resolvedSearchParams.e || resolvedSearchParams.entity;
+        const rawEmailParam = resolvedSearchParams.email || resolvedSearchParams.contactEmail;
+        const rawPhoneParam = resolvedSearchParams.phone || resolvedSearchParams.contactPhone;
+
+        if (rawContactParam && !paramsRecord.contactId) paramsRecord.contactId = rawContactParam;
+        if (rawEntityParam && !paramsRecord.entityId) paramsRecord.entityId = rawEntityParam;
+        if (rawEmailParam && !paramsRecord.email) paramsRecord.email = rawEmailParam;
+        if (rawPhoneParam && !paramsRecord.phone) paramsRecord.phone = rawPhoneParam;
+
+        if (rawContactParam) resolvedContactId = rawContactParam;
+        if (rawEntityParam) resolvedEntityId = rawEntityParam;
+
+        // 2. Resolve encrypted recipient ref parameters
         const ref = resolvedSearchParams.ref;
         const isEncrypted = ref ? ref.split(':').length === 3 : false;
         
@@ -265,7 +279,8 @@ export default async function PublicMediaShareRoute({
                 const decrypted = decryptToken(ref);
                 if (decrypted) {
                     const [contactId, entityId] = decrypted.split(':');
-                    resolvedContactId = contactId;
+                    if (contactId) resolvedContactId = contactId;
+                    if (entityId) resolvedEntityId = entityId;
                     
                     if (entityId) {
                         const weSnap = await adminDb.collection('workspace_entities')
@@ -280,7 +295,7 @@ export default async function PublicMediaShareRoute({
                                 resolvedRecipientContact = found.email || '';
                             }
                         }
-                    } else {
+                    } else if (contactId) {
                         const contactSnap = await adminDb.collection('contacts').doc(contactId).get();
                         if (contactSnap.exists) {
                             const data = contactSnap.data() || {};
@@ -294,7 +309,7 @@ export default async function PublicMediaShareRoute({
         }
 
         // Fallback or explicit parameters mapping
-        if (ref && !isEncrypted) {
+        if (ref && !isEncrypted && !paramsRecord.entityId) {
             paramsRecord.entityId = ref;
         }
         if (resolvedContactId) {
@@ -309,11 +324,31 @@ export default async function PublicMediaShareRoute({
             paramsRecord
         );
 
-        resolvedEntityId = entityCtx.entityId || '';
+        if (entityCtx.entityId) {
+            resolvedEntityId = entityCtx.entityId;
+        }
+
+        // If contact ID not directly provided, query matching contact by email/phone in workspace
+        if (!resolvedContactId && (paramsRecord.email || paramsRecord.phone)) {
+            try {
+                if (paramsRecord.email) {
+                    const matchSnap = await adminDb.collection('contacts')
+                        .where('workspaceId', '==', config.workspaceId)
+                        .where('email', '==', paramsRecord.email.toLowerCase().trim())
+                        .limit(1)
+                        .get();
+                    if (!matchSnap.empty) {
+                        resolvedContactId = matchSnap.docs[0].id;
+                    }
+                }
+            } catch {
+                // Ignore lookup errors
+            }
+        }
 
         const context = {
             workspaceId: config.workspaceId,
-            entityId: entityCtx.entityId || undefined,
+            entityId: resolvedEntityId || undefined,
             recipientContact: entityCtx.recipientContact || undefined,
         };
 
