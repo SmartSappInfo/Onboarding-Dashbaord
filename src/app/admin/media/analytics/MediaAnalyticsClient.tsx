@@ -254,47 +254,53 @@ export default function MediaAnalyticsClient() {
                           {isVideo ? <Film className="h-5 w-5" /> : <Music className="h-5 w-5" />}
                         </div>
                         <div className="space-y-0.5 text-left">
-                          {item.assetName && (
-                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary">
-                              <Sparkles className="h-3 w-3" />
-                              <span>{item.assetName}</span>
-                            </div>
+                          {item.assetName ? (
+                            <>
+                              <h4 className="text-sm font-black text-foreground tracking-tight group-hover:text-primary transition-colors flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>{item.assetName}</span>
+                              </h4>
+                              <p className="text-xs font-semibold text-muted-foreground leading-snug">
+                                {item.title}
+                              </p>
+                            </>
+                          ) : (
+                            <h4 className="text-sm font-black text-foreground tracking-tight group-hover:text-primary transition-colors">
+                              {item.title}
+                            </h4>
                           )}
-                          <h4 className="text-sm font-extrabold text-slate-800 dark:text-slate-200 tracking-tight group-hover:text-primary transition-colors">
-                            {item.title}
-                          </h4>
-                          <span className="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded border border-border inline-block">
+                          <span className="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded border border-border inline-block mt-0.5">
                             /m/{item.shareId}
                           </span>
                         </div>
                       </div>
 
-                      {/* Middle Metrics */}
-                      <div className="grid grid-cols-4 gap-6 text-left sm:text-right shrink-0">
-                        <div className="space-y-0.5">
-                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block">Views</span>
-                          <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                      {/* Middle Metrics - Right Aligned */}
+                      <div className="grid grid-cols-4 gap-6 text-right sm:ml-auto shrink-0 items-center">
+                        <div className="space-y-0.5 flex flex-col items-end text-right">
+                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Views</span>
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
                             {item.stats.views} <span className="text-[10px] font-normal text-muted-foreground">({item.stats.uniqueViews})</span>
                           </span>
                         </div>
 
-                        <div className="space-y-0.5">
-                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block">Plays</span>
-                          <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                        <div className="space-y-0.5 flex flex-col items-end text-right">
+                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Plays</span>
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
                             {item.stats.mediaPlays}
                           </span>
                         </div>
 
-                        <div className="space-y-0.5">
-                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block">Complete</span>
-                          <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                        <div className="space-y-0.5 flex flex-col items-end text-right">
+                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Complete</span>
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
                             {singleCompletionRate}%
                           </span>
                         </div>
 
-                        <div className="space-y-0.5">
-                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block">CTA Clicks</span>
-                          <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                        <div className="space-y-0.5 flex flex-col items-end text-right">
+                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">CTA Clicks</span>
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
                             {item.stats.ctaClicks}
                           </span>
                         </div>
