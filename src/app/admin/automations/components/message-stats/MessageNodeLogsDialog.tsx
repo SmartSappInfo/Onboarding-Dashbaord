@@ -133,60 +133,144 @@ interface MessageNodeLogsDialogProps {
   initialTab?: string;
 }
 
-// Separate component to asynchronously resolve and render Entity Name + Contact Person details per row
-interface MessageContactRowDetailsProps {
-  log: MessageLog;
-  workspaceId: string;
-}
-
 interface ResolvedExportLog extends MessageLog {
   resolvedEntityName: string;
   resolvedContactPerson: string;
 }
 
-function MessageContactRowDetails({ log, workspaceId }: MessageContactRowDetailsProps) {
-  const [entityName, setEntityName] = React.useState<string>('-');
-  const [contactPerson, setContactPerson] = React.useState<string>('-');
-  const [isLoading, setIsLoading] = React.useState(true);
+interface MessageLogStatusBadgeProps {
+  log: MessageLog;
+  channel: 'email' | 'sms' | 'whatsapp';
+}
+
+export function MessageLogStatusBadge({ log, channel }: MessageLogStatusBadgeProps) {
+  const hasFailed = isLogFailed(log);
+  const hasClicked = isLogClicked(log);
+  const hasOpened = isLogOpened(log);
+  const isDelivered = log.deliveredAt || log.providerStatus === 'delivered' || isLogDelivered(log);
+
+  if (hasFailed) {
+    const failReason = log.error || 'Bounce / Delivery Failure';
+    const bounceLabel = log.bounceType 
+      ? (log.bounceType === 'permanent' ? 'Hard Bounce' : 'Soft Bounce')
+      : (failReason.toLowerCase().includes('permanent') ? 'Hard Bounce' : failReason.toLowerCase().includes('temporary') ? 'Soft Bounce' : 'Failed');
+
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] whitespace-nowrap">
+          {bounceLabel}
+        </Badge>
+        {log.error && (
+          <span className="text-[9px] text-muted-foreground/60 max-w-[130px] truncate block text-center" title={log.error}>
+            {log.error}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (hasClicked) {
+    return (
+      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1 justify-center">
+        <MousePointer2 className="h-2.5 w-2.5" /> Clicked
+      </Badge>
+    );
+  }
+
+  if (hasOpened) {
+    return (
+      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1 justify-center">
+        <Eye className="h-2.5 w-2.5" /> {channel === 'email' ? 'Opened' : 'Read'}
+      </Badge>
+    );
+  }
+
+  if (isDelivered) {
+    return (
+      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1 justify-center">
+        <CheckCircle2 className="h-2.5 w-2.5" /> Delivered
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/20 text-[10px]">
+      Sent
+    </Badge>
+  );
+}
+
+interface MessageContactRowDetailsProps {
+  log: MessageLog;
+  workspaceId: string;
+  cachedContact?: import('@/lib/types').ResolvedContact | null;
+}
+
+function MessageContactRowDetails({ log, workspaceId, cachedContact }: MessageContactRowDetailsProps) {
+  const [entityName, setEntityName] = React.useState<string>(() => log.entityName || log.displayName || '-');
+  const [contactPerson, setContactPerson] = React.useState<string>(() => log.displayName || '-');
+  const [isLoading, setIsLoading] = React.useState<boolean>(() => !cachedContact && !!log.entityId);
 
   React.useEffect(() => {
+    if (cachedContact !== undefined) {
+      if (cachedContact) {
+        setEntityName(cachedContact.name || '-');
+        const cleanRecipient = log.recipient.toLowerCase().trim();
+        const matchedContact = cachedContact.contacts?.find(
+          c => c.email?.toLowerCase().trim() === cleanRecipient ||
+               c.phone?.replace(/[+\s-]/g, '') === cleanRecipient.replace(/[+\s-]/g, '')
+        );
+        setContactPerson(matchedContact?.name || cachedContact.primaryContactName || '-');
+      } else {
+        setEntityName(log.entityName || log.displayName || '-');
+        setContactPerson(log.displayName || '-');
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
     async function resolve() {
       try {
         const identifier = log.entityId;
         if (!identifier) {
-          setEntityName(log.entityName || log.displayName || '-');
-          setContactPerson(log.displayName || '-');
-          setIsLoading(false);
+          if (isMounted) {
+            setEntityName(log.entityName || log.displayName || '-');
+            setContactPerson(log.displayName || '-');
+            setIsLoading(false);
+          }
           return;
         }
 
         const { resolveContact } = await import('@/lib/contact-adapter');
         const contact = await resolveContact(identifier, workspaceId);
 
-        if (contact) {
-          setEntityName(contact.name || '-');
-          
-          // Match recipient to contacts list
-          const cleanRecipient = log.recipient.toLowerCase().trim();
-          const matchedContact = contact.contacts?.find(
-            c => c.email?.toLowerCase().trim() === cleanRecipient ||
-                 c.phone?.replace(/[+\s-]/g, '') === cleanRecipient.replace(/[+\s-]/g, '')
-          );
-          
-          setContactPerson(matchedContact?.name || contact.primaryContactName || '-');
-        } else {
+        if (isMounted) {
+          if (contact) {
+            setEntityName(contact.name || '-');
+            const cleanRecipient = log.recipient.toLowerCase().trim();
+            const matchedContact = contact.contacts?.find(
+              c => c.email?.toLowerCase().trim() === cleanRecipient ||
+                   c.phone?.replace(/[+\s-]/g, '') === cleanRecipient.replace(/[+\s-]/g, '')
+            );
+            setContactPerson(matchedContact?.name || contact.primaryContactName || '-');
+          } else {
+            setEntityName(log.entityName || log.displayName || '-');
+            setContactPerson(log.displayName || '-');
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
           setEntityName(log.entityName || log.displayName || '-');
           setContactPerson(log.displayName || '-');
         }
-      } catch (error) {
-        setEntityName(log.entityName || log.displayName || '-');
-        setContactPerson(log.displayName || '-');
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     }
     void resolve();
-  }, [log, workspaceId]);
+    return () => { isMounted = false; };
+  }, [log, workspaceId, cachedContact]);
 
   if (isLoading) {
     return (
@@ -239,6 +323,10 @@ export function MessageNodeLogsDialog({
   const [selectedCleanEntityId, setSelectedCleanEntityId] = React.useState('');
   const [isCleanDialogOpen, setIsCleanDialogOpen] = React.useState(false);
   
+  // Contact details parent resolution cache
+  const [contactCache, setContactCache] = React.useState<Map<string, import('@/lib/types').ResolvedContact>>(new Map());
+  const [exportProgress, setExportProgress] = React.useState<{ current: number; total: number } | null>(null);
+
   // Bulk clean state
   const [isBulkCleanConfirmOpen, setIsBulkCleanConfirmOpen] = React.useState(false);
   const [isBulkCleaning, setIsBulkCleaning] = React.useState(false);
@@ -493,6 +581,48 @@ export function MessageNodeLogsDialog({
     setVisibleCount(prev => prev + 20);
   };
 
+  // Batch resolve visible entity IDs into parent contactCache
+  React.useEffect(() => {
+    const wsId = activeWorkspaceId || 'global';
+    const missingEntityIds = Array.from(
+      new Set(
+        visibleLogs
+          .map(l => l.entityId)
+          .filter((id): id is string => !!id && !contactCache.has(id))
+      )
+    );
+
+    if (missingEntityIds.length === 0) return;
+
+    let isCancelled = false;
+    async function fetchMissing() {
+      const { resolveContact } = await import('@/lib/contact-adapter');
+      const newEntries = new Map<string, import('@/lib/types').ResolvedContact>();
+
+      for (let i = 0; i < missingEntityIds.length; i += 10) {
+        if (isCancelled) break;
+        const chunk = missingEntityIds.slice(i, i + 10);
+        await Promise.all(
+          chunk.map(async (id) => {
+            const res = await resolveContact(id, wsId);
+            if (res) newEntries.set(id, res);
+          })
+        );
+      }
+
+      if (!isCancelled && newEntries.size > 0) {
+        setContactCache(prev => {
+          const next = new Map(prev);
+          newEntries.forEach((val, key) => next.set(key, val));
+          return next;
+        });
+      }
+    }
+
+    void fetchMissing();
+    return () => { isCancelled = true; };
+  }, [visibleLogs, activeWorkspaceId, contactCache]);
+
   // Metrics helper
   const sentCount = stats.sent;
   const openRate = sentCount > 0 ? Math.round((stats.opened / sentCount) * 100) : 0;
@@ -502,23 +632,26 @@ export function MessageNodeLogsDialog({
 
   const ChannelIcon = channel === 'email' ? Mail : Smartphone;
 
-  // Batch resolve Entity Names and Contact Names for export
+  // Batch resolve Entity Names and Contact Names for export with progress reporting
   const resolveAllNames = async (logsToExport: MessageLog[]): Promise<ResolvedExportLog[]> => {
     const { resolveContact } = await import('@/lib/contact-adapter');
-    const cache = new Map<string, import('@/lib/types').ResolvedContact>();
+    const localCache = new Map<string, import('@/lib/types').ResolvedContact>(contactCache);
 
     const resolved: ResolvedExportLog[] = [];
-    for (const log of logsToExport) {
+    const total = logsToExport.length;
+
+    for (let i = 0; i < total; i++) {
+      const log = logsToExport[i];
       let entityName = log.entityName || log.displayName || '-';
       let contactPerson = log.displayName || '-';
 
       if (log.entityId) {
-        let contact = cache.get(log.entityId);
+        let contact = localCache.get(log.entityId);
         if (!contact) {
           const res = await resolveContact(log.entityId, activeWorkspaceId || 'global');
           if (res) {
             contact = res;
-            cache.set(log.entityId, res);
+            localCache.set(log.entityId, res);
           }
         }
 
@@ -538,14 +671,27 @@ export function MessageNodeLogsDialog({
         resolvedEntityName: entityName,
         resolvedContactPerson: contactPerson
       });
+
+      if (i % 50 === 0 || i === total - 1) {
+        setExportProgress({ current: i + 1, total });
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
     return resolved;
+  };
+
+  const escapeCsvField = (val: string): string => {
+    if (/^[=+\-@\t\r]/.test(val)) {
+      return `'${val}`;
+    }
+    return val;
   };
 
   // Export to Excel (.xlsx)
   const handleExportExcel = async () => {
     if (logsToExport.length === 0) return;
     setIsExporting(true);
+    setExportProgress({ current: 0, total: logsToExport.length });
     try {
       const XLSX = await import('xlsx');
       const resolved = await resolveAllNames(logsToExport);
@@ -577,6 +723,7 @@ export function MessageNodeLogsDialog({
       console.error('Excel Export Failed:', err);
     } finally {
       setIsExporting(false);
+      setExportProgress(null);
     }
   };
 
@@ -584,16 +731,17 @@ export function MessageNodeLogsDialog({
   const handleExportCSV = async () => {
     if (logsToExport.length === 0) return;
     setIsExporting(true);
+    setExportProgress({ current: 0, total: logsToExport.length });
     try {
       const resolved = await resolveAllNames(logsToExport);
 
       const headers = ['Recipient Address', 'Entity Name', 'Contact Person', 'Dispatched At', 'Delivery Status'];
       const rows = resolved.map(log => [
-        log.recipient,
-        log.resolvedEntityName,
-        log.resolvedContactPerson,
+        escapeCsvField(log.recipient),
+        escapeCsvField(log.resolvedEntityName),
+        escapeCsvField(log.resolvedContactPerson),
         log.sentAt ? format(new Date(log.sentAt), 'yyyy-MM-dd HH:mm:ss') : '-',
-        log.providerStatus || log.status || 'Sent'
+        escapeCsvField(log.providerStatus || log.status || 'Sent')
       ]);
 
       const csvContent = [
@@ -613,6 +761,7 @@ export function MessageNodeLogsDialog({
       console.error('CSV Export Failed:', err);
     } finally {
       setIsExporting(false);
+      setExportProgress(null);
     }
   };
 
@@ -636,6 +785,7 @@ export function MessageNodeLogsDialog({
   const handleExportPDF = async () => {
     if (logsToExport.length === 0) return;
     setIsExporting(true);
+    setExportProgress({ current: 0, total: logsToExport.length });
     try {
       const { jsPDF } = await import('jspdf');
       const resolved = await resolveAllNames(logsToExport);
@@ -858,11 +1008,16 @@ export function MessageNodeLogsDialog({
       console.error('PDF Export Failed:', err);
     } finally {
       setIsExporting(false);
+      setExportProgress(null);
     }
   };
 
   const handleBulkCleanLogs = async () => {
-    const failedTargets = filteredLogs
+    const sourceLogs = selectedLogIds.size > 0 
+      ? logs.filter(log => selectedLogIds.has(log.id)) 
+      : filteredLogs;
+
+    const failedTargets = sourceLogs
       .filter(log => log.entityId && log.recipient)
       .map(log => ({
         entityId: log.entityId!,
@@ -881,6 +1036,7 @@ export function MessageNodeLogsDialog({
           description: `Successfully cleaned ${res.count} bounced contacts.`,
         });
         setIsBulkCleanConfirmOpen(false);
+        setSelectedLogIds(new Set());
         // Refresh logs list
         const updated = await getMessageNodeLogsAction(automationId, nodeId);
         setLogs(updated);
@@ -907,16 +1063,20 @@ export function MessageNodeLogsDialog({
     setIsBulkResendLoading(true);
     try {
       const { resendFailedMessagesAction } = await import('@/lib/automation-actions');
-      const failedLogs = filteredLogs.map(l => l.id);
+      const sourceLogs = selectedLogIds.size > 0 
+        ? logs.filter(log => selectedLogIds.has(log.id)) 
+        : filteredLogs;
+      const failedLogs = sourceLogs.map(l => l.id);
       await resendFailedMessagesAction(automationId, activeWorkspaceId, user.uid, failedLogs, false);
       toast({
         title: 'Resend task queued',
         description: `Successfully queued ${failedLogs.length} failed messages to be resent.`,
       });
-    } catch (error: any) {
+      setSelectedLogIds(new Set());
+    } catch (error: unknown) {
       toast({
         title: 'Resend Failed',
-        description: error.message || 'Failed to queue resend task.',
+        description: error instanceof Error ? error.message : 'Failed to queue resend task.',
         variant: 'destructive',
       });
     } finally {
@@ -1326,41 +1486,8 @@ export function MessageNodeLogsDialog({
               {/* Mobile View: Responsive Card Stack */}
               <div className="md:hidden divide-y divide-border/40">
                 {visibleLogs.map((log) => {
-                  const hasOpened = isLogOpened(log);
-                  const hasClicked = isLogClicked(log);
-                  const hasFailed = isLogFailed(log);
                   const isSelected = selectedLogIds.has(log.id);
-
-                  let statusBadge = (
-                    <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/20 text-[10px]">
-                      Sent
-                    </Badge>
-                  );
-                  if (hasFailed) {
-                    statusBadge = (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px]">
-                        Failed
-                      </Badge>
-                    );
-                  } else if (hasClicked) {
-                    statusBadge = (
-                      <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1">
-                        <MousePointer2 className="h-2.5 w-2.5" /> Clicked
-                      </Badge>
-                    );
-                  } else if (hasOpened) {
-                    statusBadge = (
-                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1">
-                        <Eye className="h-2.5 w-2.5" /> {channel === 'email' ? 'Opened' : 'Read'}
-                      </Badge>
-                    );
-                  } else if (log.deliveredAt || log.providerStatus === 'delivered') {
-                    statusBadge = (
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1">
-                        <CheckCircle2 className="h-2.5 w-2.5" /> Delivered
-                      </Badge>
-                    );
-                  }
+                  const cachedContact = log.entityId ? contactCache.get(log.entityId) : null;
 
                   return (
                     <div key={log.id} className={cn("p-3 space-y-2 transition-colors", isSelected && "bg-primary/5")}>
@@ -1373,11 +1500,15 @@ export function MessageNodeLogsDialog({
                           />
                           <span className="font-mono text-xs font-bold text-foreground truncate">{log.recipient}</span>
                         </div>
-                        {statusBadge}
+                        <MessageLogStatusBadge log={log} channel={channel} />
                       </div>
 
                       <div className="pl-6 space-y-1 text-xs">
-                        <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
+                        <MessageContactRowDetails
+                          log={log}
+                          workspaceId={log.workspaceId || 'global'}
+                          cachedContact={cachedContact}
+                        />
                         <p className="text-[10px] text-muted-foreground">
                           {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
                         </p>
@@ -1408,56 +1539,10 @@ export function MessageNodeLogsDialog({
                 </TableHeader>
                 <TableBody>
                   {visibleLogs.map((log) => {
-                    const hasOpened = isLogOpened(log);
-                    const hasClicked = isLogClicked(log);
                     const hasFailed = isLogFailed(log);
                     const isSelected = selectedLogIds.has(log.id);
-
-                    // Build status badge
-                    let statusBadge = (
-                      <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/20 text-[10px]">
-                        Sent
-                      </Badge>
-                    );
-                    if (hasFailed) {
-                      const failReason = log.error || 'Bounce / Delivery Failure';
-                      const bounceLabel = log.bounceType 
-                        ? (log.bounceType === 'permanent' ? 'Hard Bounce' : 'Soft Bounce')
-                        : (failReason.toLowerCase().includes('permanent') ? 'Hard Bounce' : failReason.toLowerCase().includes('temporary') ? 'Soft Bounce' : 'Failed');
-
-                      statusBadge = (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20 text-[10px] whitespace-nowrap">
-                            {bounceLabel}
-                          </Badge>
-                          {log.error && (
-                            <span className="text-[9px] text-muted-foreground/60 max-w-[130px] truncate block text-center" title={log.error}>
-                              {log.error}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    } else if (hasClicked) {
-                      statusBadge = (
-                        <Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20 text-[10px] flex items-center gap-1 justify-center">
-                          <MousePointer2 className="h-2.5 w-2.5" /> Clicked
-                        </Badge>
-                      );
-                    } else if (hasOpened) {
-                      statusBadge = (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] flex items-center gap-1 justify-center">
-                          <Eye className="h-2.5 w-2.5" /> {channel === 'email' ? 'Opened' : 'Read'}
-                        </Badge>
-                      );
-                    } else if (log.deliveredAt || log.providerStatus === 'delivered') {
-                      statusBadge = (
-                        <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20 text-[10px] flex items-center gap-1 justify-center">
-                          <CheckCircle2 className="h-2.5 w-2.5" /> Delivered
-                        </Badge>
-                      );
-                    }
-
                     const entityId = log.entityId;
+                    const cachedContact = entityId ? contactCache.get(entityId) : null;
 
                     return (
                       <TableRow key={log.id} className={cn("hover:bg-muted/30 transition-colors", isSelected && "bg-primary/5")}>
@@ -1472,13 +1557,17 @@ export function MessageNodeLogsDialog({
                         </TableCell>
                         
                         {/* Async Entity details */}
-                        <MessageContactRowDetails log={log} workspaceId={log.workspaceId || 'global'} />
+                        <MessageContactRowDetails
+                          log={log}
+                          workspaceId={log.workspaceId || 'global'}
+                          cachedContact={cachedContact}
+                        />
 
                         <TableCell className="text-[11px] text-muted-foreground">
                           {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
                         </TableCell>
                         <TableCell className="text-center align-middle">
-                          {statusBadge}
+                          <MessageLogStatusBadge log={log} channel={channel} />
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1.5">
