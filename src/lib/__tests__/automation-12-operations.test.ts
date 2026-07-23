@@ -5,6 +5,7 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(() => ({
       doc: vi.fn(() => ({
+        set: vi.fn().mockResolvedValue(true),
         get: vi.fn().mockResolvedValue({
           exists: true,
           id: 'test-doc-id',
@@ -17,6 +18,7 @@ vi.mock('@/lib/firebase-admin', () => ({
               { id: 'node-email', type: 'messageNode', data: { label: 'Send Email' } },
               { id: 'node-delay', type: 'delayNode', data: { label: 'Wait 1 Day' } },
             ],
+            edges: [],
           }),
           ref: {
             update: vi.fn().mockResolvedValue(true),
