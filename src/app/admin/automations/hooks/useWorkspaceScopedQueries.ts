@@ -20,11 +20,14 @@ export function useWorkspaceScopedQueries() {
     [firestore]
   );
 
-  // Pipelines - global config
-  const pipelinesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'pipelines'), orderBy('name', 'asc')) : null, 
-    [firestore]
-  );
+  // Pipelines - workspace-scoped (workspaceIds array contains activeWorkspaceId)
+  const pipelinesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      return query(collection(firestore, 'pipelines'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'pipelines'), where('workspaceIds', 'array-contains', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
 
   // Variables - global config
   const varsQuery = useMemoFirebase(() => 
