@@ -186,7 +186,7 @@ export async function clonePipelineAction(
             throw new Error("Source pipeline not found.");
         }
 
-        const sourceData = sourceDocSnap.data() as Partial<Pipeline>;
+        const sourceData = sourceDocSnap.data() as Partial<Pipeline> & { workspaceId?: string };
         const targetWorkspaceId = sourceData.workspaceIds?.[0] || sourceData.workspaceId;
         if (!targetWorkspaceId) {
             throw new Error("Source pipeline is missing workspace information.");

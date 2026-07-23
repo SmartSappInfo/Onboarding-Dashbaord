@@ -9,7 +9,7 @@ import { addDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { File as FileIcon, Upload, Loader2, Info, Layout } from 'lucide-react';
+import { File as FileIcon, Upload, Loader2, Info, Layout, Plus } from 'lucide-react';
 import type { MediaAsset, MediaCategory } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 import { UploadDropzone } from './upload-dropzone';
 import { WorkspaceDestinationSelector } from './workspace-destination-selector';
@@ -67,6 +78,9 @@ export default function MediaUploader({
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<string[]>([]);
   const [categories, setCategories] = useState<MediaCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('General');
+  const [isAddCatOpen, setIsAddCatOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   
   const storage = getStorage();
   const firestore = useFirestore();
@@ -390,6 +404,34 @@ export default function MediaUploader({
     }
     setIsUploading(false);
   };
+
+  const handleAddCategory = async () => {
+    if (!firestore || !activeWorkspaceId) return;
+
+    const normalized = newCategoryName.trim().toLowerCase();
+    if (categories.some(c => c.name.toLowerCase() === normalized)) {
+      toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' });
+      return;
+    }
+
+    setIsSavingCategory(true);
+    try {
+      await addDoc(collection(firestore, 'media_categories'), {
+        name: newCategoryName.trim(),
+        workspaceId: activeWorkspaceId,
+        createdAt: new Date().toISOString()
+      });
+      setSelectedCategory(newCategoryName.trim());
+      setNewCategoryName('');
+      setIsAddCatOpen(false);
+      toast({ title: 'Category Created', description: `"${newCategoryName.trim()}" is now available.` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not create category.';
+      toast({ variant: 'destructive', title: 'Failed to create category', description: msg });
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
   
   const activeFileState = activeFileId ? stagedFiles.find(f => f.id === activeFileId) : null;
   const activeFileMime = activeFileState?.file.type;
@@ -416,6 +458,61 @@ export default function MediaUploader({
             ))}
           </SelectContent>
         </Select>
+
+        <Dialog open={isAddCatOpen} onOpenChange={setIsAddCatOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-xl bg-background border border-border hover:bg-muted/10 shadow-sm shrink-0 active:scale-[0.97] transition-transform duration-100 cursor-pointer"
+              title="Add Category"
+            >
+              <Plus className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md w-[90vw] bg-card border-border rounded-2xl shadow-xl">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-sm font-bold text-foreground">Add New Category</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
+                Create a new category to organize your uploaded media assets.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2 text-left">
+                <Label htmlFor="category-name" className="text-xs font-bold text-muted-foreground ml-1">Category Name</Label>
+                <Input
+                  id="category-name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g. Sales Deck, Product Demo"
+                  className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                  maxLength={40}
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex justify-between items-center sm:justify-between pt-4 border-t border-border/40">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setNewCategoryName('');
+                  setIsAddCatOpen(false);
+                }}
+                disabled={isSavingCategory}
+                className="rounded-xl font-bold h-11 px-6 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddCategory}
+                disabled={isSavingCategory || !newCategoryName.trim()}
+                className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/25 cursor-pointer active:scale-[0.97] transition-transform duration-100"
+              >
+                {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Category
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <WorkspaceDestinationSelector 

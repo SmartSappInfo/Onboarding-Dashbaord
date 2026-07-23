@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, writeBatch, addDoc } from 'firebase/firestore';
-import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { clonePipelineAction } from '@/lib/pipeline-actions';
 import { 
     ShieldCheck, 
     Loader2,
@@ -17,7 +18,8 @@ import {
     Plus,
     Trash2,
     Users,
-    Calendar
+    Calendar,
+    Copy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,11 +46,39 @@ export default function PipelineSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
+    const { user } = useUser();
     const { activeWorkspaceId, allowedWorkspaces, activeOrganizationId } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
     const [isCreating, setIsAdding] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isCloning, setIsCloning] = React.useState(false);
+
+    const handleClone = async () => {
+        if (!user || !selectedId) return;
+        setIsCloning(true);
+        try {
+            const res = await clonePipelineAction(selectedId, user.uid);
+            if (res.success && res.id) {
+                setSelectedId(res.id);
+                toast({
+                    title: 'Pipeline Cloned Successfully',
+                    description: 'Stages and settings duplicated. Content & deals were not copied.',
+                    actionConfig: {
+                        path: '/admin/pipeline',
+                        label: 'View Pipeline',
+                    },
+                });
+            } else {
+                throw new Error(res.error || 'Failed to clone pipeline');
+            }
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Clone Failed', description: error });
+        } finally {
+            setIsCloning(false);
+        }
+    };
 
     // Form State
     const [name, setName] = React.useState('');
@@ -198,18 +228,29 @@ export default function PipelineSettingsClient() {
         <div className="h-full overflow-y-auto text-left">
             <div className="max-w-5xl mx-auto space-y-10">
                 
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
- <div className="space-y-1 text-left">
- <h1 className="text-3xl font-semibold tracking-tight text-foreground ">Pipeline Architecture</h1>
- <p className="text-sm text-muted-foreground font-medium ">Modify shared stages and access rules for {activeWorkspaceId}.</p>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1 text-left">
+                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Pipeline Architecture</h1>
+                        <p className="text-sm text-muted-foreground font-medium">Modify shared stages and access rules for {activeWorkspaceId}.</p>
                     </div>
- <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
+                        {selectedId && (
+                            <Button 
+                                variant="outline" 
+                                onClick={handleClone}
+                                disabled={isCloning}
+                                className="rounded-xl font-bold h-11 px-5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-card shadow-sm hover:bg-indigo-500/10"
+                            >
+                                {isCloning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4 text-indigo-500" />}
+                                Clone Pipeline
+                            </Button>
+                        )}
                         <Button 
                             variant="outline" 
                             onClick={() => { setSelectedId(null); setIsAdding(true); }}
- className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm"
+                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm"
                         >
- <Plus className="mr-2 h-4 w-4" /> New Workflow
+                            <Plus className="mr-2 h-4 w-4" /> New Workflow
                         </Button>
                     </div>
                 </div>

@@ -21,7 +21,8 @@ import {
     Archive,
     Trash2,
     RefreshCw,
-    Calendar
+    Calendar,
+    Copy
 } from 'lucide-react';
 import { calculateExpectedCloseDate } from '../utils/deal-expected-close';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,9 +42,10 @@ interface PipelineConfigViewProps {
     pipelineId: string;
     columnWidth: number;
     onWidthChange: (width: number) => void;
+    onPipelineSelect?: (pipelineId: string) => void;
 }
 
-export default function PipelineConfigView({ pipelineId, columnWidth, onWidthChange }: PipelineConfigViewProps) {
+export default function PipelineConfigView({ pipelineId, columnWidth, onWidthChange, onPipelineSelect }: PipelineConfigViewProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
@@ -53,6 +55,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const [isSaving, setIsSaving] = React.useState(false);
     const [isArchiving, setIsArchiving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isCloning, setIsCloning] = React.useState(false);
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
@@ -136,6 +139,35 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
             toast({ variant: 'destructive', title: 'Delete Failed', description: error });
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleClone = async () => {
+        if (!user || !pipelineId) return;
+        setIsCloning(true);
+        try {
+            const { clonePipelineAction } = await import('@/lib/pipeline-actions');
+            const res = await clonePipelineAction(pipelineId, user.uid);
+            if (res.success && res.id) {
+                toast({
+                    title: 'Pipeline Cloned Successfully',
+                    description: 'Stages and configurations have been duplicated.',
+                    actionConfig: {
+                        path: '/admin/pipeline',
+                        label: 'View Pipeline',
+                    },
+                });
+                if (onPipelineSelect) {
+                    onPipelineSelect(res.id);
+                }
+            } else {
+                throw new Error(res.error || 'Failed to clone pipeline');
+            }
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Clone Failed', description: error });
+        } finally {
+            setIsCloning(false);
         }
     };
 
@@ -422,6 +454,16 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <div className="flex flex-col gap-3">
+                                <Button 
+                                    type="button"
+                                    variant="outline" 
+                                    onClick={handleClone} 
+                                    disabled={isCloning} 
+                                    className="w-full h-9 rounded-xl font-bold text-xs border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition-all gap-2 flex items-center justify-center bg-transparent"
+                                >
+                                    {isCloning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4 text-indigo-500" />}
+                                    <span>Clone Pipeline Settings & Stages</span>
+                                </Button>
                                 {pipeline?.isArchived ? (
                                     <Button 
                                         variant="outline" 
