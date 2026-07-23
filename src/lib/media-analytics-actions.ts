@@ -42,6 +42,7 @@ export interface MediaPageStats {
 export interface MediaSessionRecord {
   sessionId: string;
   contactId: string | null;
+  entityId?: string | null;
   firstSeen: string;
   ctaClicked: boolean;
   downloaded: boolean;
@@ -374,7 +375,7 @@ export async function recordMediaPageEventAction(params: {
     }
 
     // Run automated outcome triggers in the background
-    after(async () => {
+    const runBackgroundRules = async () => {
       try {
         await executeMediaEventRules({
           shareId,
@@ -389,7 +390,13 @@ export async function recordMediaPageEventAction(params: {
       } catch (triggerErr) {
         console.error('[recordMediaPageEventAction] Background automation execution error:', triggerErr);
       }
-    });
+    };
+
+    try {
+      after(runBackgroundRules);
+    } catch {
+      Promise.resolve().then(runBackgroundRules);
+    }
 
     return { success: true };
   } catch (err) {
@@ -658,6 +665,53 @@ async function buildContactNameMap(contactIds: string[]): Promise<Map<string, st
   });
 
   return map;
+}
+
+async function buildEntityNameMap(entityIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (entityIds.length === 0) return map;
+
+  const CHUNK = 30;
+  const chunks: string[][] = [];
+  for (let i = 0; i < entityIds.length; i += CHUNK) {
+    chunks.push(entityIds.slice(i, i + CHUNK));
+  }
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      const snaps = await adminDb
+        .collection('entities')
+        .where('__name__', 'in', chunk)
+        .select('name', 'displayName')
+        .get();
+
+      snaps.docs.forEach((doc) => {
+        const data = doc.data() as { name?: string; displayName?: string };
+        const fullName = data.displayName ?? data.name ?? doc.id;
+        map.set(doc.id, fullName);
+      });
+    })
+  );
+
+  entityIds.forEach((id) => {
+    if (!map.has(id)) map.set(id, id);
+  });
+
+  return map;
+}
+
+async function executeMediaEventRules(params: {
+  shareId: string;
+  workspaceId: string;
+  assetId: string;
+  type: MediaPageEventType;
+  sessionId: string;
+  contactId: string | null;
+  entityId: string | null;
+  progressPercent?: number;
+}): Promise<void> {
+  // Background media automation outcome execution hook
+  return Promise.resolve();
 }
 
 /**

@@ -58,8 +58,9 @@ export async function POST(request: NextRequest) {
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
     // Security Check: Enforce tenant organization boundary
-    if (automation.organizationId && automation.organizationId !== organizationId) {
-      console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${automation.organizationId}) requested for org ${organizationId}`);
+    const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
+    if (autoOrgId && autoOrgId !== organizationId) {
+      console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${autoOrgId}) requested for org ${organizationId}`);
       return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
     }
 

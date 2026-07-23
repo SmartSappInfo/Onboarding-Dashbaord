@@ -60,7 +60,7 @@ describe('ScriptBodyDisplay', () => {
   it('applies a zoom transform to the body wrapper', () => {
     render(<ScriptBodyDisplay text="hello" zoom={1.5} />);
     const body = screen.getByTestId('script-body');
-    expect(body.style.transform).toContain('scale(1.5)');
+    expect(body.style.zoom).toBe('1.5');
   });
 
   it('converts non-breaking spaces &nbsp; to regular space characters', () => {
