@@ -362,21 +362,63 @@ export async function recordMediaPageEventAction(params: {
                     workspaceId,
                     organizationId,
                     contactId: contactId || undefined,
-                  });
-                }
-              }
-            }
-          } catch (err) {
-            console.error('[MEDIA_AUTOMATION] Fallback execute rules failed:', err);
-          }
-        }).catch(err => console.error('[MEDIA_AUTOMATION] Fallback run failed:', err));
+        }
+      } else {
+        const data = sessionSnap.data() as MediaSessionRecord;
+        const updates: Record<string, unknown> = {
+          updatedAt: now,
+        };
+
+        if (contactId && !data.contactId) {
+          updates.contactId = contactId;
+        }
+        if (entityId && !data.entityId) {
+          updates.entityId = entityId;
+        }
+        if (type === 'cta_click') {
+          updates.ctaClicked = true;
+        }
+        if (type === 'download') {
+          updates.downloaded = true;
+        }
+        if (progressPercent !== null && progressPercent !== undefined && Number(progressPercent) > (data.maxProgress || 0)) {
+          updates.maxProgress = Number(progressPercent);
+        }
+        if (sessionTimeSeconds !== null && sessionTimeSeconds !== undefined && Number(sessionTimeSeconds) > (data.sessionTimeSeconds || 0)) {
+          updates.sessionTimeSeconds = Number(sessionTimeSeconds);
+        }
+
+        const oldAgents = data.userAgents || [];
+        if (!oldAgents.includes(userAgent)) {
+          updates.userAgents = [...oldAgents, userAgent];
+        }
+
+        transaction.update(sessionRef, updates);
       }
-    }
+    });
+
+    // Run automated outcome triggers in the background
+    after(async () => {
+      try {
+        await executeMediaEventRules({
+          shareId,
+          workspaceId,
+          assetId,
+          type,
+          sessionId,
+          contactId: contactId || null,
+          entityId: entityId || null,
+          progressPercent: progressPercent ?? undefined,
+        });
+      } catch (triggerErr) {
+        console.error('[recordMediaPageEventAction] Background automation execution error:', triggerErr);
+      }
+    });
 
     return { success: true };
   } catch (err) {
     console.error('[recordMediaPageEventAction] Error recording event:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown database error' };
+    return { success: false, error: 'Failed to record tracking event.' };
   }
 }
 
@@ -521,7 +563,7 @@ export async function getMediaShareDrilldownAction(
       ...(doc.data() as Omit<MediaSessionRecord, 'sessionId'>),
     })) as MediaSessionRecord[];
 
-    // Extract unique contact IDs to resolve profiles
+    // Extract unique contact IDs AND entity IDs to resolve profiles
     const contactIds = [
       ...new Set([
         ...rawEvents.map((e) => e.contactId).filter(Boolean),
@@ -529,24 +571,60 @@ export async function getMediaShareDrilldownAction(
       ]),
     ] as string[];
 
-    const contactNameMap = await buildContactNameMap(contactIds);
+    const entityIds = [
+      ...new Set([
+        ...(rawEvents as (MediaPageEvent & { entityId?: string })[]).map((e) => e.entityId).filter(Boolean),
+        ...rawSessions.map((s) => s.entityId).filter(Boolean),
+      ]),
+    ] as string[];
 
-    const recentEvents: MediaPageEventWithContact[] = rawEvents.map((event) => ({
-      ...event,
-      ...(event.contactId && {
-        contactName: contactNameMap.get(event.contactId),
-      }),
-    }));
+    const [contactNameMap, entityNameMap] = await Promise.all([
+      buildContactNameMap(contactIds),
+      buildEntityNameMap(entityIds),
+    ]);
 
-    const sessions: MediaSessionRecordWithContact[] = rawSessions.map((session) => ({
-      ...session,
-      ...(session.contactId && {
-        contactName: contactNameMap.get(session.contactId),
-      }),
-    }));
+    const recentEvents: MediaPageEventWithContact[] = rawEvents.map((event) => {
+      const eContactId = event.contactId;
+      const eEntityId = (event as MediaPageEvent & { entityId?: string }).entityId;
+      
+      const contactLabel = eContactId ? contactNameMap.get(eContactId) : undefined;
+      const entityLabel = eEntityId ? entityNameMap.get(eEntityId) : undefined;
 
-    const anonymousCount = rawSessions.filter((s) => !s.contactId).length;
-    const totalKnownContacts = contactIds.length;
+      let name = contactLabel;
+      if (contactLabel && entityLabel && contactLabel !== entityLabel) {
+        name = `${contactLabel} (${entityLabel})`;
+      } else if (!contactLabel && entityLabel) {
+        name = entityLabel;
+      }
+
+      return {
+        ...event,
+        ...(name && { contactName: name }),
+      };
+    });
+
+    const sessions: MediaSessionRecordWithContact[] = rawSessions.map((session) => {
+      const sContactId = session.contactId;
+      const sEntityId = session.entityId;
+
+      const contactLabel = sContactId ? contactNameMap.get(sContactId) : undefined;
+      const entityLabel = sEntityId ? entityNameMap.get(sEntityId) : undefined;
+
+      let name = contactLabel;
+      if (contactLabel && entityLabel && contactLabel !== entityLabel) {
+        name = `${contactLabel} (${entityLabel})`;
+      } else if (!contactLabel && entityLabel) {
+        name = entityLabel;
+      }
+
+      return {
+        ...session,
+        ...(name && { contactName: name }),
+      };
+    });
+
+    const anonymousCount = rawSessions.filter((s) => !s.contactId && !s.entityId).length;
+    const totalKnownContacts = new Set([...contactIds, ...entityIds]).size;
 
     return {
       title,
