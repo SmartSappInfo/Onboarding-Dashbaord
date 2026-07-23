@@ -181,10 +181,12 @@ export function ResendConfigSection({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[9px] font-semibold text-muted-foreground">Resend #{i + 1}</p>
                   <HeadlineIQOptimizer
-                    value={variant.title}
-                    previewValue={variant.previewText || ''}
+                    value={variant.title || templateSubject}
+                    previewValue={variant.previewText || templatePreviewText || ''}
                     onChange={(newVal) => updateVariant(i, { title: newVal })}
                     onPreviewChange={(newPreview) => updateVariant(i, { previewText: newPreview })}
+                    onApplyVariation={(newTitle, newPreview) => updateVariant(i, { title: newTitle, previewText: newPreview || '' })}
+                    emailContext={templateSubject ? `Original email subject: ${templateSubject}` : ''}
                     frameworkDefault={workspaceFramework}
                     organizationId={organizationId}
                     align="end"
