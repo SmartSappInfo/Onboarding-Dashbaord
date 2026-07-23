@@ -638,6 +638,14 @@ export async function enrollContactsInAutomationAction(
   return enrollContactsInAutomation(entityIds, automationId, workspaceId, userId, options);
 }
 
+export async function healStrandedMessageContactsAction(
+  workspaceId?: string,
+  userId?: string
+) {
+  const { healStrandedMessageContacts } = await import('./automations/healing');
+  return healStrandedMessageContacts(workspaceId, userId);
+}
+
 export async function manuallyReleaseAllWaitJobsAction(
   automationId: string,
   nodeId: string,

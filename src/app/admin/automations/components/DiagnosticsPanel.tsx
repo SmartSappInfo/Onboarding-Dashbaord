@@ -77,6 +77,45 @@ export function DiagnosticsPanel({
   const [isConfirmModalOpen, setIsConfirmModalOpen] = React.useState(false);
   const [isIrreversibleChecked, setIsIrreversibleChecked] = React.useState(false);
   const [isBulkResuming, setIsBulkResuming] = React.useState(false);
+  const [isHealing, setIsHealing] = React.useState(false);
+
+  const handleHealStrandedActionContacts = async () => {
+    if (!user || !activeWorkspaceId) return;
+    const confirmed = await confirm({
+      title: 'Heal & Advance Stranded Action Contacts',
+      description: 'This will scan all pending jobs/runs parked at messaging or notification action steps, resolve their downstream target nodes, and advance them cleanly to their next step without re-sending messages.',
+      confirmText: 'Run Healing Protocol',
+      cancelText: 'Cancel',
+      variant: 'default',
+    });
+    if (!confirmed) return;
+
+    setIsHealing(true);
+    try {
+      const { healStrandedMessageContactsAction } = await import('@/lib/automation-actions');
+      const res = await healStrandedMessageContactsAction(activeWorkspaceId, user.uid);
+      if (res.success) {
+        toast({
+          title: 'Healing Protocol Completed',
+          description: `Found ${res.totalFound} stranded contact(s). Successfully advanced ${res.healedCount} to downstream steps (${res.completedRunsCount} runs completed).`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Healing Protocol Failed',
+          description: res.errors.join(', ') || 'Failed to complete healing sweep.',
+        });
+      }
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Server action failure.',
+      });
+    } finally {
+      setIsHealing(false);
+    }
+  };
 
   // Memoized query to fetch automation runs in real-time
   const runsQuery = useMemoFirebase(() => {
@@ -385,15 +424,33 @@ export function DiagnosticsPanel({
               ))}
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search contact or run ID..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-8 h-8 text-xs rounded-lg bg-muted/20 border-border/40 focus-visible:ring-primary/25"
-              />
+            {/* Search Input & Heal Action Button */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search contact or run ID..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-8 h-8 text-xs rounded-lg bg-muted/20 border-border/40 focus-visible:ring-primary/25"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isHealing}
+                onClick={handleHealStrandedActionContacts}
+                title="Advance stranded contacts from action steps to downstream steps"
+                className="h-8 px-2.5 text-[10px] font-bold border-border/60 hover:bg-muted/80 text-foreground rounded-lg shrink-0 flex items-center gap-1 active:scale-[0.97] transition-transform"
+              >
+                {isHealing ? (
+                  <Loader2 size={12} className="animate-spin text-primary" />
+                ) : (
+                  <Activity size={12} className="text-primary" />
+                )}
+                <span>Heal Actions</span>
+              </Button>
             </div>
           </div>
 
