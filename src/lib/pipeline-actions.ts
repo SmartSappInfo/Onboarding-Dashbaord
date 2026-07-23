@@ -168,6 +168,114 @@ export async function archivePipelineAction(id: string, isArchived: boolean, use
 }
 
 /**
+ * Clones an existing pipeline along with its stage configuration.
+ * Content, deals, and contacts associated with the source pipeline ARE NOT cloned.
+ */
+export async function clonePipelineAction(
+    pipelineId: string,
+    userId: string,
+    customName?: string
+): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+        if (!pipelineId || !userId) {
+            throw new Error("Pipeline ID and User ID are required.");
+        }
+
+        const sourceDocSnap = await adminDb.collection('pipelines').doc(pipelineId).get();
+        if (!sourceDocSnap.exists) {
+            throw new Error("Source pipeline not found.");
+        }
+
+        const sourceData = sourceDocSnap.data() as Partial<Pipeline>;
+        const targetWorkspaceId = sourceData.workspaceIds?.[0] || sourceData.workspaceId;
+        if (!targetWorkspaceId) {
+            throw new Error("Source pipeline is missing workspace information.");
+        }
+
+        // 0. Permission Check
+        const permission = await canUser(userId, 'operations', 'pipeline', 'create', targetWorkspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        const timestamp = new Date().toISOString();
+        const newName = customName?.trim() || `${sourceData.name || 'Pipeline'} (Copy)`;
+
+        // Fetch all onboarding stages belonging to the source pipeline
+        const stagesSnap = await adminDb.collection('onboardingStages')
+            .where('pipelineId', '==', pipelineId)
+            .get();
+
+        const sortedStageDocs = stagesSnap.docs.sort((a, b) => {
+            const orderA = a.data().order ?? 0;
+            const orderB = b.data().order ?? 0;
+            return orderA - orderB;
+        });
+
+        // Prepare new pipeline document reference
+        const newPipelineRef = adminDb.collection('pipelines').doc();
+        const newPipelineId = newPipelineRef.id;
+
+        const newStageIds: string[] = [];
+        const operations: Array<{ ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown> }> = [];
+
+        // Map stage documents
+        sortedStageDocs.forEach((stageDoc) => {
+            const stageData = stageDoc.data();
+            const newStageRef = adminDb.collection('onboardingStages').doc();
+            newStageIds.push(newStageRef.id);
+
+            const { id: _oldId, pipelineId: _oldPipelineId, createdAt: _oldCreated, updatedAt: _oldUpdated, ...cleanStageData } = stageData;
+
+            operations.push({
+                ref: newStageRef,
+                data: {
+                    ...cleanStageData,
+                    id: newStageRef.id,
+                    pipelineId: newPipelineId,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                }
+            });
+        });
+
+        // Add new pipeline operation
+        const { id: _oldPId, isDefault: _oldDef, createdAt: _oldCreated, updatedAt: _oldUpdated, ...cleanPipelineData } = sourceData;
+
+        operations.push({
+            ref: newPipelineRef,
+            data: {
+                ...cleanPipelineData,
+                id: newPipelineId,
+                name: newName,
+                isDefault: false,
+                stageIds: newStageIds,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+            }
+        });
+
+        // Commit operations in chunks of 200 to prevent Firestore batch size limits
+        const chunkSize = 200;
+        for (let i = 0; i < operations.length; i += chunkSize) {
+            const chunk = operations.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+            chunk.forEach(op => {
+                batch.set(op.ref, op.data);
+            });
+            await batch.commit();
+        }
+
+        revalidatePath('/admin/pipeline');
+        return { success: true, id: newPipelineId };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Unknown error occurred while cloning pipeline.';
+        console.error('>>> [PIPELINE:CLONE] Failed:', error);
+        return { success: false, error };
+    }
+}
+
+/**
  * Creates a default pipeline for a workspace based on its industry vertical.
  * Uses the pipeline template from INDUSTRY_CONFIG for the specified industry.
  * 
