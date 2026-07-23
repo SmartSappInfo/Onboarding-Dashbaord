@@ -523,8 +523,12 @@ export async function enrollContactsInAutomation(
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
-      return { success: false, error: 'Unauthorized workspace mapping for this automation' };
+    // Resolve effective workspace ID for target enrollment
+    let effectiveWorkspaceId = workspaceId;
+    if (automation.workspaceIds?.length) {
+      if (!workspaceId || !automation.workspaceIds.includes(workspaceId)) {
+        effectiveWorkspaceId = automation.workspaceIds[0];
+      }
     }
 
     if (!automation.isActive) {
@@ -532,11 +536,13 @@ export async function enrollContactsInAutomation(
     }
 
     // 2. Fetch the workspace to resolve organizationId
-    const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
-    if (!wsSnap.exists) {
-      return { success: false, error: 'Workspace not found' };
+    let organizationId = 'default';
+    if (effectiveWorkspaceId) {
+      const wsSnap = await adminDb.collection('workspaces').doc(effectiveWorkspaceId).get();
+      if (wsSnap.exists) {
+        organizationId = wsSnap.data()?.organizationId || 'default';
+      }
     }
-    const organizationId = wsSnap.data()?.organizationId || 'default';
 
     // 3. Query contacts from entities and workspace_entities
     const targets: Array<{
@@ -655,7 +661,7 @@ export async function enrollContactsInAutomation(
         concurrentBatch.map(chunk => 
           scheduleBulkTriggerTask({
             automationId,
-            workspaceId,
+            workspaceId: effectiveWorkspaceId,
             organizationId,
             trigger: 'MANUAL_ENROLLMENT',
             targets: chunk,

@@ -14,10 +14,9 @@ async function resolveRequestBaseUrl(): Promise<string> {
     const headersList = await headers();
     const host = headersList.get('x-forwarded-host') || headersList.get('host');
     if (host) {
-      const proto = headersList.get('x-forwarded-proto') || 'https';
-      const cleanProto = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : proto;
-      const cleanHost = host.replace('localhost', '127.0.0.1');
-      return `${cleanProto}://${cleanHost}`;
+      const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+      const proto = isLocal ? 'http' : (headersList.get('x-forwarded-proto') || 'https');
+      return `${proto}://${host}`;
     }
   } catch {
     // Fallback when called outside Next.js request context (e.g. background scripts)
@@ -91,6 +90,27 @@ async function dispatchLocalHttpWorker(endpoint: string, payload: Record<string,
           console.info(`[GCP-TASKS-FALLBACK] Worker ${endpoint} executed task ${taskKey} successfully.`);
         }
       } catch (fetchErr) {
+        try {
+          const altHost = resolvedBaseUrl.includes('127.0.0.1')
+            ? resolvedBaseUrl.replace('127.0.0.1', 'localhost')
+            : resolvedBaseUrl.includes('localhost')
+            ? resolvedBaseUrl.replace('localhost', '127.0.0.1')
+            : null;
+          if (altHost) {
+            const altRes = await fetch(`${altHost}${endpoint}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-cloud-tasks-secret': SECRET,
+              },
+              body: JSON.stringify(payload),
+            });
+            if (altRes.ok) {
+              console.info(`[GCP-TASKS-FALLBACK] Worker ${endpoint} executed task ${taskKey} successfully via fallback ${altHost}.`);
+              return;
+            }
+          }
+        } catch {}
         console.error(`[GCP-TASKS-FALLBACK] Network error executing worker ${endpoint} for task ${taskKey}:`, fetchErr);
       }
     }, 10);

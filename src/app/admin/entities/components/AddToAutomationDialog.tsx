@@ -380,7 +380,7 @@ export function AddToAutomationDialog({
                 </div>
               ) : (
                 <Select
-                  value={selectedAutomationId || undefined}
+                  value={selectedAutomationId ?? ''}
                   onValueChange={setSelectedAutomationId}
                 >
                   <SelectTrigger className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-semibold transition-all">
