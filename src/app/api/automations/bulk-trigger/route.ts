@@ -6,7 +6,7 @@ import type { Automation } from '@/lib/types';
 // Force dynamic execution
 export const dynamic = 'force-dynamic';
 
-const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
+const SECRET = process.env.CLOUD_TASKS_SECRET || 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf';
 
 interface TargetPayload {
   entityId: string;
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Security Check: Validate Secret Header Handshake
     const clientSecret = request.headers.get('x-cloud-tasks-secret');
-    if (!clientSecret || (clientSecret !== SECRET && clientSecret !== 'local-secret')) {
+    const validSecrets = new Set([SECRET, 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf', 'local-secret']);
+    if (!clientSecret || !validSecrets.has(clientSecret)) {
       console.warn('[BULK-TRIGGER-WORKER] Unauthorized request attempt.');
       return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
     }
