@@ -255,12 +255,12 @@ export async function handleSendMessage(
           throw new Error(result.error || 'Template message sending failed.');
         }
       }
-    } catch (err: any) {
-      console.warn(`[AUTOMATION] Message node failed for ${recipient}, swallowing error to continue traverse. Error:`, err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.warn(`[AUTOMATION] Message node failed for ${recipient}:`, errorMessage);
       
-      const errMsg = String(err.message || '').toLowerCase();
       // Only mark as invalid if the provider rejected it due to bad formatting or a permanent block
-      if (errMsg.includes('400') || errMsg.includes('validation') || errMsg.includes('invalid') || errMsg.includes('bounce')) {
+      if (errorMessage.toLowerCase().includes('400') || errorMessage.toLowerCase().includes('validation') || errorMessage.toLowerCase().includes('invalid') || errorMessage.toLowerCase().includes('bounce')) {
         try {
           const { ContactHygieneRepository } = await import('../../hygiene-repository');
           await ContactHygieneRepository.commitBatch([[recipient, {
@@ -274,6 +274,7 @@ export async function handleSendMessage(
           console.warn('[AUTOMATION] Failed to update hygiene for bad email:', hygieneErr);
         }
       }
+      throw err;
     }
 
     // Rate limit pacing delay (~9 req/s per node loop)

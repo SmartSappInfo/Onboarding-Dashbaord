@@ -110,7 +110,10 @@ describe('Bulk Trigger API Endpoint', () => {
 
   it('verifies automation tenant mapping and blocks execution if mismatch', async () => {
     const mockAutomationData = {
+      organizationId: 'org-auto',
       workspaceIds: ['ws-correct'],
+      nodes: [{ id: 'start-1', type: 'triggerNode' }],
+      edges: [],
     };
     const mockGet = vi.fn().mockResolvedValue({
       exists: true,
@@ -141,8 +144,8 @@ describe('Bulk Trigger API Endpoint', () => {
       },
       body: JSON.stringify({
         automationId: 'auto-111',
-        workspaceId: 'ws-mismatch',
-        organizationId: 'org-123',
+        workspaceId: 'ws-correct',
+        organizationId: 'org-different',
         trigger: 'ENTITY_CREATED',
         targets: [{ entityId: 'entity-1', entityType: 'contact', payload: {} }],
       }),
@@ -156,6 +159,7 @@ describe('Bulk Trigger API Endpoint', () => {
   });
 
   it('filters out targets that do not exist or belong to a different workspace', async () => {
+    vi.clearAllMocks();
     const mockAutomationData = {
       workspaceIds: ['ws-correct'],
       nodes: [{ id: 'start-1', type: 'triggerNode' }],
@@ -174,6 +178,16 @@ describe('Bulk Trigger API Endpoint', () => {
           doc: vi.fn(() => ({
             get: mockGet,
           })),
+        } as any;
+      }
+      if (name === 'workspace_entities') {
+        return {
+          where: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({
+            forEach: (cb: any) => {
+              cb({ data: () => ({ entityId: 'entity-correct', workspaceId: 'ws-correct' }) });
+            },
+          }),
         } as any;
       }
       return {

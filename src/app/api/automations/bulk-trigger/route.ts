@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
+    // Security Check: Enforce tenant organization boundary
+    if (automation.organizationId && automation.organizationId !== organizationId) {
+      console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${automation.organizationId}) requested for org ${organizationId}`);
+      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
+    }
+
     // Resolve effective workspace ID if passed workspaceId is a track filter e.g. "prospect"
     let effectiveWorkspaceId = workspaceId;
     if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
@@ -82,13 +88,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const finalTargets = targets.map((target) => {
-      // Fallback: If validEntityIds doesn't match, allow entity if document exists on entities collection
-      if (!validEntityIds.has(target.entityId)) {
-        validEntityIds.add(target.entityId);
-      }
-      return target;
-    }).filter((t): t is TargetPayload => t !== null);
+    const finalTargets = targets.filter((target) => validEntityIds.has(target.entityId));
 
     if (finalTargets.length === 0) {
       return NextResponse.json({ success: true, processedCount: 0, warning: 'No valid targets matched the requested workspace tenant.' });
