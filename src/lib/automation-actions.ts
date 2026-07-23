@@ -942,3 +942,66 @@ export async function executeMessageStatusAutomationsAction(
     return { success: false, executedCount: 0, error: errMsg };
   }
 }
+
+export async function resendFailedMessageAction(
+  logId: string,
+  userId: string
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    if (!logId || typeof logId !== 'string') {
+      throw new Error('Message Log ID is required.');
+    }
+    const { adminDb } = await import('./firebase-admin');
+    const logSnap = await adminDb.collection('message_logs').doc(logId).get();
+    if (!logSnap.exists) {
+      throw new Error('Message log not found.');
+    }
+    const workspaceId = logSnap.data()?.workspaceId || 'onboarding';
+
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
+    const { resendFailedMessage } = await import('./automations/run-management');
+    return await resendFailedMessage(logId, userId);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function bulkResendFailedMessagesAction(
+  automationId: string,
+  workspaceId: string,
+  userId: string,
+  logIds?: string[],
+  resendAll?: boolean
+) {
+  try {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('UserId is required.');
+    }
+    if (!workspaceId) {
+      throw new Error('WorkspaceId is required.');
+    }
+    if (!automationId) {
+      throw new Error('AutomationId is required.');
+    }
+    const { assertAutomationManagePermission } = await import('./automation-permissions');
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
+    const { scheduleBulkResendMessagesTask } = await import('./gcp-tasks-client');
+    return await scheduleBulkResendMessagesTask({
+      automationId,
+      workspaceId,
+      userId,
+      logIds,
+      resendAll,
+    });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
