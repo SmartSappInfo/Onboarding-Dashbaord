@@ -169,7 +169,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
         } finally {
             setIsLoading(false);
         }
-    }, [firestore, activeWorkspaceId, asset.id, asset.name]);
+    }, [firestore, activeWorkspaceId, asset.id, asset.name, asset.type]);
 
     React.useEffect(() => {
         if (!slug.trim()) {
@@ -385,8 +385,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl w-[95vw] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0 text-left">
+            <DialogContent className="max-w-6xl w-full h-[100dvh] md:w-[95vw] md:h-[90vh] md:max-h-[800px] md:rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl flex flex-col">
+                <DialogHeader className="p-6 md:p-8 bg-muted/30 border-b shrink-0 text-left">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm">
                             <Share2 className="h-6 w-6" aria-hidden="true" />
@@ -405,9 +405,9 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                         <Loader2 className="h-8 w-8 text-primary animate-spin" />
                     </div>
                 ) : (
-                    <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 bg-background text-left">
+                    <form onSubmit={handleSave} className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 bg-background text-left divide-y md:divide-y-0 md:divide-x divide-border/40 overflow-y-auto md:overflow-hidden">
                         {/* Configuration Side */}
-                        <div className="p-8 border-r border-border/40 space-y-6 max-h-[60vh] overflow-y-auto">
+                        <div className="p-6 md:p-8 space-y-6 md:overflow-y-auto md:h-full">
                             <div className="space-y-4">
                                 <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
                                     <Sparkles className="h-3.5 w-3.5 text-primary" /> Personalized Content
@@ -488,7 +488,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                         <select
                                             value={ctaType}
                                             onChange={(e) => {
-                                                setCtaType(e.target.value as any);
+                                                setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'page' | 'external');
                                                 setCtaTargetId('');
                                             }}
                                             className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -551,7 +551,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Action Behavior</Label>
                                                 <select
                                                     value={ctaMode}
-                                                    onChange={(e) => setCtaMode(e.target.value as any)}
+                                                    onChange={(e) => setCtaMode(e.target.value as 'modal' | 'redirect' | 'replace')}
                                                     className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
                                                 >
                                                     <option value="redirect">Redirect (New Tab - _blank)</option>
@@ -564,7 +564,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Activation Gate</Label>
                                                     <select
                                                         value={ctaActivationGate}
-                                                        onChange={(e) => setCtaActivationGate(e.target.value as any)}
+                                                        onChange={(e) => setCtaActivationGate(e.target.value as 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete')}
                                                         className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
                                                     >
                                                          <option value="immediate">Active Immediately (Before play)</option>
@@ -609,7 +609,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                         </div>
 
                         {/* Links & Embed Codes Side */}
-                        <div className="p-8 bg-muted/15 flex flex-col justify-between max-h-[60vh] overflow-y-auto">
+                        <div className="p-6 md:p-8 bg-muted/15 flex flex-col justify-between md:overflow-y-auto md:h-full">
                             <div className="space-y-6">
                                 <div className="flex items-center gap-2 border-b pb-3 border-border/40">
                                     <button
@@ -652,7 +652,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     type="button"
                                                     size="icon" 
                                                     onClick={() => copyText(asset.url, 'direct')} 
-                                                    className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted"
+                                                    className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100"
                                                 >
                                                     {copiedDirect ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                                                 </Button>
@@ -674,7 +674,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     type="button"
                                                     size="icon" 
                                                     onClick={() => copyText(publicUrl, 'public')} 
-                                                    className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted"
+                                                    className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100"
                                                 >
                                                     {copiedPublic ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                                                 </Button>
@@ -703,7 +703,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                         <Button
                                             type="button"
                                             onClick={() => copyText(iframeCode, 'iframe')}
-                                            className="w-full h-11 rounded-xl bg-card border hover:bg-muted font-bold text-xs gap-2"
+                                            className="w-full h-11 rounded-xl bg-card border hover:bg-muted font-bold text-xs gap-2 active:scale-[0.97] transition-transform duration-100"
                                         >
                                             {copiedIframe ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                                             {copiedIframe ? 'Copied Code' : 'Copy Embed Code'}
@@ -713,11 +713,11 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                             </div>
 
                             <DialogFooter className="pt-6 mt-6 border-t border-border/40 shrink-0 flex justify-between items-center sm:justify-between">
-                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8 cursor-pointer">Discard</Button>
+                                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="rounded-xl font-bold h-12 px-8 cursor-pointer active:scale-[0.97] transition-transform duration-100">Discard</Button>
                                 <Button 
                                     type="submit" 
                                     disabled={isSaving || !title.trim() || isSlugChecking || slugStatus === 'conflict' || slugStatus === 'too-short'} 
-                                    className="rounded-xl font-bold h-12 px-10 shadow-lg cursor-pointer transition-all active:scale-95 gap-2"
+                                    className="rounded-xl font-bold h-12 px-10 shadow-lg cursor-pointer transition-all active:scale-[0.97] gap-2"
                                 >
                                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                                     Save Config
