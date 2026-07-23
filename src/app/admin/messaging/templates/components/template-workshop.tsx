@@ -2328,21 +2328,21 @@ export function TemplateWorkshop({
     const [isAlternativesOpen, setIsAlternativesOpen] = React.useState(false);
 
     const handleSubjectChange = React.useCallback((val: string) => {
-        const cleaned = stripHtml(val);
-        setSubject(cleaned);
-        setManualSubject(cleaned);
+        setSubject(val);
+        setManualSubject(val);
         setActiveOptionIndex(null);
     }, []);
 
     const handlePreviewTextChange = React.useCallback((val: string) => {
-        const cleaned = stripHtml(val);
-        setPreviewText(cleaned);
-        setManualPreviewText(cleaned);
+        setPreviewText(val);
+        setManualPreviewText(val);
         setActiveOptionIndex(null);
     }, []);
 
     const [body, setBody] = React.useState(initialTemplate?.body || '');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
+
+    const sanitizedEmailContext = React.useMemo(() => stripHtml(body), [body]);
 
     // ── WhatsApp submission details ────────────────────────────────────────
     // Meta requires a sample value per variable, a language and a category when a
@@ -4639,7 +4639,7 @@ export function TemplateWorkshop({
                                                                 previewValue={previewText}
                                                                 onChange={handleSubjectChange}
                                                                 onPreviewChange={handlePreviewTextChange}
-                                                                emailContext={stripHtml(body)}
+                                                                emailContext={sanitizedEmailContext}
                                                                 organizationId={activeOrganizationId || undefined}
                                                                 frameworkDefault={activeWorkspace?.defaultCopywritingFramework || 'aida'}
                                                                 align="end"
