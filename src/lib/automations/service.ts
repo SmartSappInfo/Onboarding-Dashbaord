@@ -523,25 +523,12 @@ export async function enrollContactsInAutomation(
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    // Resolve effective workspace ID for target enrollment
-    let effectiveWorkspaceId = workspaceId;
-    if (automation.workspaceIds?.length) {
-      if (!workspaceId || !automation.workspaceIds.includes(workspaceId)) {
-        effectiveWorkspaceId = automation.workspaceIds[0];
-      }
-    }
+    // Resolve effective workspace ID and organization ID via single source of truth resolver
+    const { resolveWorkspaceGuid } = await import('./workspace-resolver');
+    const { workspaceId: effectiveWorkspaceId, organizationId } = await resolveWorkspaceGuid(workspaceId, automation);
 
     if (!automation.isActive) {
       return { success: false, error: 'Cannot enroll in an inactive automation' };
-    }
-
-    // 2. Fetch the workspace to resolve organizationId
-    let organizationId = 'default';
-    if (effectiveWorkspaceId) {
-      const wsSnap = await adminDb.collection('workspaces').doc(effectiveWorkspaceId).get();
-      if (wsSnap.exists) {
-        organizationId = wsSnap.data()?.organizationId || 'default';
-      }
     }
 
     // 3. Query contacts from entities and workspace_entities
@@ -627,7 +614,7 @@ export async function enrollContactsInAutomation(
             entityId,
             entityType,
             payload: {
-              workspaceId,
+              workspaceId: effectiveWorkspaceId,
               startedBy: userId,
               manualEnrollment: true,
               contactId: contact.id || entityId,
@@ -672,7 +659,7 @@ export async function enrollContactsInAutomation(
 
     logAutomationEvent('info', 'manual_enrollment_scheduled', {
       automationId,
-      workspaceId,
+      workspaceId: effectiveWorkspaceId,
       enrolledCount: targets.length,
       userId,
     });

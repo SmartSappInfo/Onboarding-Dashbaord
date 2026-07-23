@@ -40,23 +40,17 @@ export async function executeAutomation(
   }
 
   const timestamp = new Date().toISOString();
-  let organizationId = '';
-  if (triggerPayload.workspaceId) {
-    try {
-      const wsSnap = await adminDb.collection('workspaces').doc(triggerPayload.workspaceId as string).get();
-      if (wsSnap?.exists) {
-        organizationId = (wsSnap.data()?.organizationId as string) || '';
-      }
-    } catch (e) {
-      console.warn('[AUTOMATION] Failed to fetch workspace snap for organizationId:', e);
-    }
-  }
+  const { resolveWorkspaceGuid } = await import('./workspace-resolver');
+  const { workspaceId: effectiveWorkspaceId, organizationId } = await resolveWorkspaceGuid(
+    triggerPayload.workspaceId as string,
+    automation
+  );
 
   let entityName = triggerPayload.entityName as string | undefined || triggerPayload.displayName as string | undefined || triggerPayload.name as string | undefined;
-  if (!entityName && triggerPayload.entityId && triggerPayload.workspaceId) {
+  if (!entityName && triggerPayload.entityId && effectiveWorkspaceId) {
     try {
       const { resolveContact } = await import('../contact-adapter');
-      const contact = await resolveContact(triggerPayload.entityId as string, triggerPayload.workspaceId as string);
+      const contact = await resolveContact(triggerPayload.entityId as string, effectiveWorkspaceId);
       if (contact?.name) {
         entityName = contact.name;
       }
@@ -70,13 +64,14 @@ export async function executeAutomation(
     automationName: automation.name,
     triggerData: {
       ...triggerPayload,
+      workspaceId: effectiveWorkspaceId,
       ...(entityName ? { entityName } : {}),
     },
     status: 'running',
     startedAt: timestamp,
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as string | undefined,
-    workspaceId: triggerPayload.workspaceId as string | undefined,
+    workspaceId: effectiveWorkspaceId,
     contactId: triggerPayload.contactId as string | undefined,
     contactName: triggerPayload.contactName as string | undefined || (triggerPayload.contactId ? entityName : undefined),
   });
@@ -90,7 +85,7 @@ export async function executeAutomation(
         description: `Added to automation: "${automation.name || automation.id}"`,
         source: 'system',
         organizationId,
-        workspaceId: triggerPayload.workspaceId as string,
+        workspaceId: effectiveWorkspaceId,
         entityId: triggerPayload.entityId as string,
         entityType: (triggerPayload.entityType as any) || 'contact',
         userId: (triggerPayload.actorId as string) || 'system',
@@ -112,15 +107,19 @@ export async function executeAutomation(
   notifyAutomationStarted({
     automationId: automation.id,
     automationName: automation.name ?? automation.id,
-    workspaceId: triggerPayload.workspaceId as string ?? '',
+    workspaceId: effectiveWorkspaceId,
   }).catch(() => { /* non-fatal */ });
 
   const context: ExecutionContext = {
     entityId: triggerPayload.entityId as string | undefined,
     entityType: triggerPayload.entityType as ExecutionContext['entityType'],
-    workspaceId: triggerPayload.workspaceId as string,
+    workspaceId: effectiveWorkspaceId,
     organizationId,
-    payload: triggerPayload,
+    payload: {
+      ...triggerPayload,
+      workspaceId: effectiveWorkspaceId,
+      organizationId,
+    },
     automationId: automation.id,
     runId: runRef.id,
     chainDepth: (triggerPayload._chainDepth as number | undefined) ?? chainDepth,

@@ -28,14 +28,13 @@ export function AutomationPendingJobsProvider({
   const firestore = useFirestore();
 
   const jobsQuery = useMemoFirebase(() => {
-    if (!firestore || !automationId || !workspaceId) return null;
+    if (!firestore || !automationId) return null;
     return query(
       collection(firestore, 'automation_jobs'),
       where('automationId', '==', automationId),
-      where('workspaceId', '==', workspaceId),
       where('status', '==', 'pending')
     );
-  }, [firestore, automationId, workspaceId]);
+  }, [firestore, automationId]);
 
   const { data: jobs, isLoading } = useCollection<Record<string, unknown>>(jobsQuery);
 

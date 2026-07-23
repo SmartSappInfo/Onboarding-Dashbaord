@@ -58,11 +58,9 @@ export async function POST(request: NextRequest) {
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    // Resolve effective workspace ID if passed workspaceId is a track filter e.g. "prospect"
-    let effectiveWorkspaceId = workspaceId;
-    if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
-      effectiveWorkspaceId = automation.workspaceIds[0];
-    }
+    // Resolve effective workspace ID and organization ID via single source of truth resolver
+    const { resolveWorkspaceGuid } = await import('@/lib/automations/workspace-resolver');
+    const { workspaceId: effectiveWorkspaceId, organizationId: resolvedOrgId } = await resolveWorkspaceGuid(workspaceId, automation);
 
     // Security Check: Enforce tenant organization boundary
     const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
