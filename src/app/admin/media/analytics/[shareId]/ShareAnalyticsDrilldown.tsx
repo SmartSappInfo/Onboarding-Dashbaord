@@ -289,8 +289,17 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                       data.sessions.map((session) => (
                         <tr key={session.sessionId} className="border-b border-border hover:bg-muted/10 transition-colors text-xs">
                           <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
-                            <div className="flex items-center gap-2">
-                              <span>{session.contactName || 'Anonymous Visitor'}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {session.contactName ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-extrabold text-foreground text-xs">{session.contactName}</span>
+                                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0">
+                                    <Sparkles className="h-2.5 w-2.5" /> Identified
+                                  </Badge>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground font-medium text-xs">Anonymous Visitor</span>
+                              )}
                               {session.userAgents && session.userAgents.length > 1 && (
                                 <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[8px] px-1.5 py-0 rounded font-black uppercase tracking-wider shrink-0">
                                   Shared Link
