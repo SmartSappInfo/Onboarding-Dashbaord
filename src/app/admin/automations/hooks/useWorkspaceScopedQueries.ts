@@ -89,6 +89,15 @@ export function useWorkspaceScopedQueries() {
     return query(collection(firestore, 'field_groups'), where('workspaceId', '==', activeWorkspaceId), orderBy('order', 'asc'));
   }, [firestore, activeWorkspaceId]);
 
+  // Call Campaigns - workspace-scoped
+  const campaignsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (!activeWorkspaceId) {
+      return query(collection(firestore, 'call_campaigns'), orderBy('name', 'asc'));
+    }
+    return query(collection(firestore, 'call_campaigns'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+  }, [firestore, activeWorkspaceId]);
+
   const { data: users } = useCollection<UserProfile>(usersQuery);
   const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
   const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
@@ -99,12 +108,21 @@ export function useWorkspaceScopedQueries() {
   const { data: automations } = useCollection<Automation>(automationsQuery);
   const { data: appFields } = useCollection<any>(appFieldsQuery);
   const { data: fieldGroups } = useCollection<any>(groupsQuery);
+  const { data: callCampaigns } = useCollection<{ id: string; name: string }>(campaignsQuery);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     if (!activeWorkspaceId) return users;
     return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
   }, [users, activeWorkspaceId]);
+
+  const meetingTypesList = useMemo(() => [
+    { id: 'masterclass_fee', name: 'Masterclass Fee Collection' },
+    { id: 'discovery_call', name: 'Discovery Call' },
+    { id: 'onboarding_session', name: 'Onboarding Session' },
+    { id: 'support_consultation', name: 'Support Consultation' },
+    { id: 'strategy_review', name: 'Strategy Review' },
+  ], []);
 
   return {
     users: filteredUsers,
@@ -117,6 +135,8 @@ export function useWorkspaceScopedQueries() {
     automations: automations || [],
     appFields: appFields || [],
     fieldGroups: fieldGroups || [],
+    callCampaigns: callCampaigns || [],
+    meetingTypes: meetingTypesList,
     activeWorkspaceId,
   };
 }

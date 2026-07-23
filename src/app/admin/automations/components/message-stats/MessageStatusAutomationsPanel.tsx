@@ -22,7 +22,15 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import type {
   MessageDeliveryStatusEvent,
@@ -34,7 +42,8 @@ import type {
 interface MessageStatusAutomationsPanelProps {
   statusRules: MessageStatusRule[];
   onChangeRules: (updatedRules: MessageStatusRule[]) => void;
-  pipelines?: Array<{ id: string; name: string; stages?: Array<{ id: string; name: string }> }>;
+  pipelines?: Array<{ id: string; name: string; workspaceIds?: string[]; stages?: Array<{ id: string; name: string }> }>;
+  stages?: Array<{ id: string; name: string; pipelineId?: string }>;
   automations?: Array<{ id: string; name: string }>;
   users?: Array<{ id?: string; uid?: string; displayName?: string; email?: string }>;
   callCampaigns?: Array<{ id: string; name: string }>;
@@ -98,12 +107,36 @@ export function MessageStatusAutomationsPanel({
   statusRules,
   onChangeRules,
   pipelines = [],
+  stages = [],
   automations = [],
   users = [],
   callCampaigns = [],
   meetingTypes = [],
 }: MessageStatusAutomationsPanelProps): React.ReactElement {
   const [expandedEvent, setExpandedEvent] = React.useState<MessageDeliveryStatusEvent | null>('opened');
+  const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId?: string };
+
+  const availablePipelines = React.useMemo(() => {
+    if (!pipelines) return [];
+    if (!activeWorkspaceId) return pipelines;
+    return pipelines.filter((p) => {
+      const wsIds = p.workspaceIds;
+      if (!wsIds || wsIds.length === 0) return true;
+      return wsIds.includes(activeWorkspaceId);
+    });
+  }, [pipelines, activeWorkspaceId]);
+
+  const getStagesForPipeline = React.useCallback(
+    (pipeId: string) => {
+      if (!pipeId) return [];
+      const selectedPipe = pipelines.find((p) => p.id === pipeId);
+      if (selectedPipe?.stages && selectedPipe.stages.length > 0) {
+        return selectedPipe.stages;
+      }
+      return (stages || []).filter((s) => s.pipelineId === pipeId);
+    },
+    [pipelines, stages]
+  );
 
   const getRuleForEvent = (evt: MessageDeliveryStatusEvent): MessageStatusRule => {
     const existing = statusRules.find((r) => r.event === evt);
@@ -308,18 +341,27 @@ export function MessageStatusAutomationsPanel({
                             {act.type === 'add_to_campaign' ? (
                               <div className="space-y-1">
                                 <Label className="text-[10px] font-semibold text-muted-foreground">Call Campaign</Label>
-                                <select
+                                <Select
                                   value={act.campaignId || ''}
-                                  onChange={(e) => updateActionConfig(evt, act.id, { campaignId: e.target.value })}
-                                  className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+                                  onValueChange={(val) => updateActionConfig(evt, act.id, { campaignId: val })}
                                 >
-                                  <option value="">Select Call Campaign...</option>
-                                  {callCampaigns.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs">
+                                    <SelectValue placeholder="Select Call Campaign..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                    {callCampaigns.length === 0 ? (
+                                      <SelectItem value="__none__" disabled className="text-xs text-muted-foreground">
+                                        No call campaigns found
+                                      </SelectItem>
+                                    ) : (
+                                      callCampaigns.map((c) => (
+                                        <SelectItem key={c.id} value={c.id} className="text-xs cursor-pointer">
+                                          {c.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             ) : null}
 
@@ -327,35 +369,60 @@ export function MessageStatusAutomationsPanel({
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                   <Label className="text-[10px] font-semibold text-muted-foreground">Pipeline</Label>
-                                  <select
+                                  <Select
                                     value={act.pipelineId || ''}
-                                    onChange={(e) => updateActionConfig(evt, act.id, { pipelineId: e.target.value, stageId: '' })}
-                                    className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+                                    onValueChange={(val) => updateActionConfig(evt, act.id, { pipelineId: val, stageId: '' })}
                                   >
-                                    <option value="">Select Pipeline...</option>
-                                    {pipelines.map((p) => (
-                                      <option key={p.id} value={p.id}>
-                                        {p.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs">
+                                      <SelectValue placeholder="Select Pipeline..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                      {availablePipelines.length === 0 ? (
+                                        <SelectItem value="__none__" disabled className="text-xs text-muted-foreground">
+                                          No pipelines found
+                                        </SelectItem>
+                                      ) : (
+                                        availablePipelines.map((p) => (
+                                          <SelectItem key={p.id} value={p.id} className="text-xs cursor-pointer">
+                                            {p.name}
+                                          </SelectItem>
+                                        ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
 
                                 <div className="space-y-1">
                                   <Label className="text-[10px] font-semibold text-muted-foreground">Target Stage</Label>
-                                  <select
-                                    value={act.stageId || ''}
-                                    onChange={(e) => updateActionConfig(evt, act.id, { stageId: e.target.value })}
-                                    disabled={!act.pipelineId}
-                                    className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs disabled:opacity-50"
-                                  >
-                                    <option value="">Select Stage...</option>
-                                    {(pipelines.find((p) => p.id === act.pipelineId)?.stages || []).map((s) => (
-                                      <option key={s.id} value={s.id}>
-                                        {s.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  {(() => {
+                                    const pipeStages = getStagesForPipeline(act.pipelineId || '');
+                                    return (
+                                      <Select
+                                        value={act.stageId || ''}
+                                        onValueChange={(val) => updateActionConfig(evt, act.id, { stageId: val })}
+                                        disabled={!act.pipelineId || pipeStages.length === 0}
+                                      >
+                                        <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs disabled:opacity-50">
+                                          <SelectValue
+                                            placeholder={
+                                              !act.pipelineId
+                                                ? "Select Pipeline first..."
+                                                : pipeStages.length === 0
+                                                ? "No stages found"
+                                                : "Select Stage..."
+                                            }
+                                          />
+                                        </SelectTrigger>
+                                        <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                          {pipeStages.map((s) => (
+                                            <SelectItem key={s.id} value={s.id} className="text-xs cursor-pointer">
+                                              {s.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             ) : null}
@@ -363,39 +430,57 @@ export function MessageStatusAutomationsPanel({
                             {act.type === 'enroll_automation' ? (
                               <div className="space-y-1">
                                 <Label className="text-[10px] font-semibold text-muted-foreground">Target Automation</Label>
-                                <select
+                                <Select
                                   value={act.automationId || ''}
-                                  onChange={(e) => updateActionConfig(evt, act.id, { automationId: e.target.value })}
-                                  className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+                                  onValueChange={(val) => updateActionConfig(evt, act.id, { automationId: val })}
                                 >
-                                  <option value="">Select Destination Automation...</option>
-                                  {automations.map((a) => (
-                                    <option key={a.id} value={a.id}>
-                                      {a.name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs">
+                                    <SelectValue placeholder="Select Destination Automation..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                    {automations.length === 0 ? (
+                                      <SelectItem value="__none__" disabled className="text-xs text-muted-foreground">
+                                        No automations found
+                                      </SelectItem>
+                                    ) : (
+                                      automations.map((a) => (
+                                        <SelectItem key={a.id} value={a.id} className="text-xs cursor-pointer">
+                                          {a.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             ) : null}
 
                             {act.type === 'assign_user' ? (
                               <div className="space-y-1">
                                 <Label className="text-[10px] font-semibold text-muted-foreground">Assign Lead Owner</Label>
-                                <select
+                                <Select
                                   value={act.assignedUserId || ''}
-                                  onChange={(e) => updateActionConfig(evt, act.id, { assignedUserId: e.target.value })}
-                                  className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+                                  onValueChange={(val) => updateActionConfig(evt, act.id, { assignedUserId: val })}
                                 >
-                                  <option value="">Select User Owner...</option>
-                                  {users.map((u) => {
-                                    const userIdVal = u.uid || u.id || '';
-                                    return (
-                                      <option key={userIdVal} value={userIdVal}>
-                                        {u.displayName || u.email || userIdVal}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
+                                  <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs">
+                                    <SelectValue placeholder="Select User Owner..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                    {users.length === 0 ? (
+                                      <SelectItem value="__none__" disabled className="text-xs text-muted-foreground">
+                                        No users found
+                                      </SelectItem>
+                                    ) : (
+                                      users.map((u) => {
+                                        const userIdVal = u.uid || u.id || '';
+                                        return (
+                                          <SelectItem key={userIdVal} value={userIdVal} className="text-xs cursor-pointer">
+                                            {u.displayName || u.email || userIdVal}
+                                          </SelectItem>
+                                        );
+                                      })
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             ) : null}
 
@@ -426,18 +511,27 @@ export function MessageStatusAutomationsPanel({
                             {act.type === 'send_meeting' ? (
                               <div className="space-y-1">
                                 <Label className="text-[10px] font-semibold text-muted-foreground">Meeting Booking Flow</Label>
-                                <select
+                                <Select
                                   value={act.meetingTypeId || ''}
-                                  onChange={(e) => updateActionConfig(evt, act.id, { meetingTypeId: e.target.value })}
-                                  className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
+                                  onValueChange={(val) => updateActionConfig(evt, act.id, { meetingTypeId: val })}
                                 >
-                                  <option value="">Select Meeting Type...</option>
-                                  {meetingTypes.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                      {m.name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <SelectTrigger className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs">
+                                    <SelectValue placeholder="Select Meeting Type..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="border border-border bg-popover text-popover-foreground shadow-xl">
+                                    {meetingTypes.length === 0 ? (
+                                      <SelectItem value="__none__" disabled className="text-xs text-muted-foreground">
+                                        No meeting types found
+                                      </SelectItem>
+                                    ) : (
+                                      meetingTypes.map((m) => (
+                                        <SelectItem key={m.id} value={m.id} className="text-xs cursor-pointer">
+                                          {m.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             ) : null}
                           </div>

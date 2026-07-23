@@ -569,6 +569,8 @@ export function NodeInspector({
         automations,
         appFields,
         fieldGroups,
+        callCampaigns,
+        meetingTypes,
     } = useWorkspaceScopedQueries();
 
     const updateConfig = (updates: Record<string, unknown>) => {
@@ -930,10 +932,11 @@ export function NodeInspector({
                                             statusRules={(config?.statusRules as import('@/lib/types').MessageStatusRule[]) || []}
                                             onChangeRules={(rules) => updateConfig({ statusRules: rules })}
                                             pipelines={pipelines}
+                                            stages={stages}
                                             automations={automations}
                                             users={users}
-                                            callCampaigns={[]}
-                                            meetingTypes={[]}
+                                            callCampaigns={callCampaigns}
+                                            meetingTypes={meetingTypes}
                                         />
                                     ) : (
                                         /* The actual config form — NO list, just properties */
