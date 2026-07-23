@@ -32,10 +32,12 @@ export function PipelineStageSelector({
   const { activeWorkspaceId } = useWorkspace();
 
   const onPipelineChangeRef = React.useRef(onPipelineChange);
-  onPipelineChangeRef.current = onPipelineChange;
-
   const onStageChangeRef = React.useRef(onStageChange);
-  onStageChangeRef.current = onStageChange;
+
+  React.useEffect(() => {
+    onPipelineChangeRef.current = onPipelineChange;
+    onStageChangeRef.current = onStageChange;
+  });
 
   // Fetch workspace pipelines
   const pipelinesQuery = useMemoFirebase(() => {
