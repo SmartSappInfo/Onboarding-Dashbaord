@@ -29,7 +29,7 @@ const mockDocGet = vi.fn().mockImplementation(async () => {
         name: 'Test Entity',
         slug: 'test-entity',
         entityContacts: [
-          { id: 'c_primary', name: 'Joe Primary', email: 'joe@primary.com', phone: '+1234567890', isPrimary: true }
+          { id: 'c_primary', name: 'Joe Primary', firstName: 'Joe', lastName: 'Primary', email: 'joe@primary.com', phone: '+1234567890', isPrimary: true }
         ],
       }),
     };
@@ -135,6 +135,7 @@ vi.mock('../resend-service', () => ({ sendEmail: vi.fn().mockResolvedValue({}) }
 vi.mock('../messaging-actions', () => ({
   previewCampaignAudience: vi.fn(),
   resolveRecipientContacts: vi.fn(),
+  resolveTagVariables: vi.fn().mockResolvedValue({}),
 }));
 vi.mock('../activity-logger', () => ({ logActivity: vi.fn() }));
 
@@ -284,11 +285,13 @@ describe('executeScriptActionAction', () => {
       ...ctx
     }, 'user_1');
     expect(res.success).toBe(true);
-    expect(sendSms).toHaveBeenCalledWith({
-      recipient: '+1234567890',
-      message: 'Hello {{FIRST_NAME}}',
-      sender: 'SmartSapp'
-    });
+    expect(sendSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipient: '+1234567890',
+        message: 'Hello Joe',
+        sender: 'SmartSapp',
+      })
+    );
   });
 
   it('executes SEND_EMAIL against the contact', async () => {
@@ -299,11 +302,13 @@ describe('executeScriptActionAction', () => {
       ...ctx
     }, 'user_1');
     expect(res.success).toBe(true);
-    expect(sendEmail).toHaveBeenCalledWith({
-      to: 'joe@primary.com',
-      subject: 'Email Subject',
-      html: 'Hello {{FIRST_NAME}}'
-    });
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'joe@primary.com',
+        subject: 'Email Subject',
+        html: 'Hello Joe',
+      })
+    );
   });
 
   it('executes SEND_WHATSAPP against the contact', async () => {

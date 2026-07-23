@@ -959,6 +959,7 @@ export class FieldsVariablesService {
     valuesMap.set('CURRENT_CONTACT_PHONE', valuesMap.get('contact_phone') || '');
     valuesMap.set('CURRENT_CONTACT_EMAIL', valuesMap.get('contact_email') || '');
     valuesMap.set('AGENT_NAME', valuesMap.get('user_name') || valuesMap.get('assigned_to') || 'Agent');
+    valuesMap.set('FIRST_NAME', valuesMap.get('first_name') || (valuesMap.get('contact_name') ? String(valuesMap.get('contact_name')).split(' ')[0] : ''));
 
     return valuesMap;
   }
