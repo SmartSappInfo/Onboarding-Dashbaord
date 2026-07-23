@@ -85,18 +85,40 @@ export function getContrastColor(hex: string): string {
 }
 
 /**
- * Strips all HTML tags from a string to return plain text.
+ * Strips all HTML tags, script/style blocks, embedded CSS rules, and HTML entities from a string to return clean plain text.
  */
 export function stripHtml(html: string): string {
   if (!html) return '';
   return html
-    .replace(/<[a-zA-Z\/][^>]*>/g, '') // remove tags
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    // 1. Remove HTML comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // 2. Remove <style> blocks including internal CSS rules
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    // 3. Remove <script> blocks including internal JS scripts
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    // 4. Remove <xml> and <?xml> blocks
+    .replace(/<xml[^>]*>[\s\S]*?<\/xml>/gi, '')
+    .replace(/<\?xml[^>]*\?>/gi, '')
+    // 5. Remove <head> blocks
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+    // 6. Remove leftover CSS declaration blocks (e.g. #outlook a { ... } or body { ... } or @media ... { ... })
+    .replace(/(?:[a-zA-Z0-9_\-\.\#\s,>+~:]+)?\{[^}]*\}/g, '')
+    // 7. Remove remaining HTML/XML tags
+    .replace(/<[^>]+>/g, '')
+    // 8. Decode HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&rsquo;/gi, "'")
+    .replace(/&lsquo;/gi, "'")
+    .replace(/&rdquo;/gi, '"')
+    .replace(/&ldquo;/gi, '"')
+    // 9. Clean up multiple spaces and empty lines
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n/g, '\n')
     .trim();
 }
 

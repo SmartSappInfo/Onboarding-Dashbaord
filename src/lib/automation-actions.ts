@@ -993,13 +993,14 @@ export async function bulkResendFailedMessagesAction(
     await assertAutomationManagePermission(userId, [workspaceId], 'edit');
 
     const { scheduleBulkResendMessagesTask } = await import('./gcp-tasks-client');
-    return await scheduleBulkResendMessagesTask({
+    const taskId = await scheduleBulkResendMessagesTask({
       automationId,
       workspaceId,
       userId,
       logIds,
       resendAll,
     });
+    return { success: true, taskId };
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errMsg };

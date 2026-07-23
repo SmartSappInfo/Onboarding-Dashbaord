@@ -52,7 +52,7 @@ import {
     GripVertical,
     Upload
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSidebar, SidebarContext } from '@/components/ui/sidebar';
@@ -142,16 +142,6 @@ async function uploadArchitectImage(file: File, workspaceId: string): Promise<st
     return getDownloadURL(snapshot.ref);
 }
 
-function stripHtml(html: string): string {
-    if (!html) return '';
-    return html
-        .replace(/<[^>]*>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .trim();
-}
 
 interface SortableLayerItemProps {
     id: string;

@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { analyzeHeadline } from '@/lib/services/headline-iq';
 import { generateHeadlineVariationsAction } from '@/app/actions/headline-iq-actions';
 import type { HeadlineVariation } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 
 export interface HeadlineIQOptimizerProps {
   value: string;
@@ -44,7 +44,7 @@ export function HeadlineIQOptimizer({
 }: HeadlineIQOptimizerProps): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const [framework, setFramework] = React.useState<'aida' | '4us' | 'pas'>(frameworkDefault);
-  const [contextText, setContextText] = React.useState(emailContext);
+  const [contextText, setContextText] = React.useState(() => stripHtml(emailContext));
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [variations, setVariations] = React.useState<HeadlineVariation[]>([]);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
@@ -56,7 +56,7 @@ export function HeadlineIQOptimizer({
 
   // Sync contextText when emailContext prop changes
   React.useEffect(() => {
-    setContextText(emailContext);
+    setContextText(stripHtml(emailContext));
   }, [emailContext]);
 
   // Clear suggestions when the baseline value changes
@@ -78,10 +78,10 @@ export function HeadlineIQOptimizer({
     setErrorMsg(null);
     try {
       const response = await generateHeadlineVariationsAction({
-        currentTitle: value,
-        currentPreviewText: previewValue,
+        currentTitle: stripHtml(value),
+        currentPreviewText: stripHtml(previewValue),
         framework,
-        emailContext: contextText,
+        emailContext: stripHtml(contextText),
         organizationId,
       });
 

@@ -43,8 +43,16 @@ import {
   Tag as TagIcon,
   UserPlus,
   ClipboardList,
-  X
+  X,
+  RotateCw,
+  ChevronDown
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AddToCampaignDialog } from '@/app/admin/entities/components/AddToCampaignDialog';
 import { AddToAutomationDialog } from '@/app/admin/entities/components/AddToAutomationDialog';
@@ -330,6 +338,48 @@ export function MessageNodeLogsDialog({
   // Bulk resend state
   const [isBulkResendLoading, setIsBulkResendLoading] = React.useState(false);
   const [isManualAutomationsLoading, setIsManualAutomationsLoading] = React.useState(false);
+  const [retryingLogIds, setRetryingLogIds] = React.useState<Set<string>>(new Set());
+  const [resendProgress, setResendProgress] = React.useState<{ processed: number; total: number } | null>(null);
+
+  const handleSingleRowRetry = async (logId: string) => {
+    if (!user?.uid) return;
+    setRetryingLogIds((prev) => new Set(prev).add(logId));
+    try {
+      const { resendFailedMessageAction } = await import('@/lib/automation-actions');
+      const res = await resendFailedMessageAction(logId, user.uid);
+      if (res.success) {
+        toast({
+          title: 'Message Resent',
+          description: 'Failed message attempt was resent successfully.',
+        });
+        const [logsData, statsData] = await Promise.all([
+          getMessageNodeLogsAction(automationId, nodeId),
+          getMessageNodeStatsAction(automationId, nodeId)
+        ]);
+        setLogs(logsData);
+        if (statsData) setNodeStats(statsData);
+      } else {
+        toast({
+          title: 'Retry Failed',
+          description: res.error || 'Unable to resend message.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({
+        title: 'Retry Failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setRetryingLogIds((prev) => {
+        const next = new Set(prev);
+        next.delete(logId);
+        return next;
+      });
+    }
+  };
 
   const handleRunManualStatusAutomations = async () => {
     const targetLogs = logsToExport;
@@ -1118,29 +1168,77 @@ export function MessageNodeLogsDialog({
     }
   };
 
-  const handleBulkResend = async () => {
+  const handleBulkResend = async (logIdsToResend?: string[]) => {
     if (!activeWorkspaceId || !user?.uid) return;
-    setIsBulkResendLoading(true);
-    try {
-      const { resendFailedMessagesAction } = await import('@/lib/automation-actions');
-      const sourceLogs = selectedLogIds.size > 0 
-        ? logs.filter(log => selectedLogIds.has(log.id)) 
-        : filteredLogs;
-      const failedLogs = sourceLogs.map(l => l.id);
-      await resendFailedMessagesAction(automationId, activeWorkspaceId, user.uid, failedLogs, false);
+    const isSelectedMode = Boolean(logIdsToResend && logIdsToResend.length > 0);
+    const sourceLogs = isSelectedMode
+      ? logs.filter((l) => logIdsToResend!.includes(l.id) && isLogFailed(l))
+      : (selectedLogIds.size > 0
+          ? logs.filter((l) => selectedLogIds.has(l.id) && isLogFailed(l))
+          : filteredLogs.filter(isLogFailed));
+
+    const failedLogIds = sourceLogs.map((l) => l.id);
+
+    if (failedLogIds.length === 0) {
       toast({
-        title: 'Resend task queued',
-        description: `Successfully queued ${failedLogs.length} failed messages to be resent.`,
+        title: 'No Failed Messages',
+        description: 'There are no failed message logs to resend in this selection.',
       });
+      return;
+    }
+
+    setIsBulkResendLoading(true);
+    setResendProgress({ processed: 0, total: failedLogIds.length });
+
+    try {
+      const { resendFailedMessageAction } = await import('@/lib/automation-actions');
+      const CHUNK_SIZE = 50;
+      let successfulCount = 0;
+      let failedCount = 0;
+
+      for (let i = 0; i < failedLogIds.length; i += CHUNK_SIZE) {
+        const chunk = failedLogIds.slice(i, i + CHUNK_SIZE);
+        
+        for (const logId of chunk) {
+          try {
+            const res = await resendFailedMessageAction(logId, user.uid);
+            if (res.success) {
+              successfulCount++;
+            } else {
+              failedCount++;
+            }
+          } catch {
+            failedCount++;
+          }
+          setResendProgress((prev) => (prev ? { ...prev, processed: prev.processed + 1 } : null));
+        }
+      }
+
+      toast({
+        title: 'Bulk Resend Complete',
+        description: `Successfully resent ${successfulCount} failed message(s). ${failedCount > 0 ? `${failedCount} attempt(s) failed.` : ''}`,
+        actionConfig: {
+          path: `/admin/automations/${automationId}/edit`,
+          label: 'View Automation',
+        },
+      });
+
       setSelectedLogIds(new Set());
+      const [logsData, statsData] = await Promise.all([
+        getMessageNodeLogsAction(automationId, nodeId),
+        getMessageNodeStatsAction(automationId, nodeId)
+      ]);
+      setLogs(logsData);
+      if (statsData) setNodeStats(statsData);
     } catch (error: unknown) {
       toast({
         title: 'Resend Failed',
-        description: error instanceof Error ? error.message : 'Failed to queue resend task.',
+        description: error instanceof Error ? error.message : 'Failed to execute resend task.',
         variant: 'destructive',
       });
     } finally {
       setIsBulkResendLoading(false);
+      setResendProgress(null);
     }
   };
 
@@ -1392,7 +1490,7 @@ export function MessageNodeLogsDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleBulkResend}
+                  onClick={() => handleBulkResend()}
                   disabled={isBulkResendLoading}
                   className="h-9 px-3 rounded-lg text-xs font-bold border-amber-500/20 text-amber-500 hover:text-amber-400 hover:bg-amber-500/5 transition-all duration-150 active:scale-95 flex items-center gap-1.5 shrink-0"
                 >
@@ -1427,19 +1525,56 @@ export function MessageNodeLogsDialog({
           </div>
         </div>
 
+        {/* Progress Indicator for Resend Jobs */}
+        {resendProgress && (
+          <div className="flex items-center justify-between gap-3 p-3 px-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 my-2 shrink-0 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+              <span className="text-xs font-bold">
+                Resending failed messages... ({resendProgress.processed}/{resendProgress.total})
+              </span>
+            </div>
+            <div className="w-32 bg-amber-500/20 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-amber-500 h-full transition-all duration-200 rounded-full"
+                style={{ width: `${Math.round((resendProgress.processed / resendProgress.total) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Multi-Select Floating Bulk Operations Action Dock */}
         {selectedLogIds.size > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 px-4 rounded-xl bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl my-2 shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 px-4 rounded-xl bg-card/95 text-card-foreground border border-border shadow-xl backdrop-blur-md my-2 shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-200">
             <div className="flex items-center gap-2">
-              <div className="h-6 px-2 rounded-md bg-primary/20 flex items-center justify-center">
+              <div className="h-6 px-2 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
                 <span className="font-mono text-xs font-black text-primary">{selectedLogIds.size}</span>
               </div>
-              <span className="text-xs font-bold text-slate-200">
+              <span className="text-xs font-bold text-foreground">
                 Selected ({selectedEntityIds.length} Entities)
               </span>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Retry Selected Button if failed messages are selected */}
+              {logs.some((l) => selectedLogIds.has(l.id) && isLogFailed(l)) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleBulkResend(Array.from(selectedLogIds))}
+                  disabled={isBulkResendLoading}
+                  className="h-8 text-xs font-bold gap-1.5 rounded-lg border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 active:scale-[0.97]"
+                >
+                  {isBulkResendLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RotateCw className="h-3.5 w-3.5" />
+                  )}
+                  <span>Retry Selected</span>
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="ghost"
@@ -1456,84 +1591,54 @@ export function MessageNodeLogsDialog({
                 <span className="hidden sm:inline">Run Status Automations</span>
               </Button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCampaignModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-indigo-400 hover:bg-indigo-500/10 active:scale-[0.97]"
-              >
-                <PhoneCall className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Call Campaign</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsDealModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97]"
-              >
-                <DollarSign className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Pipeline Stage</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAutomationModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-sky-400 hover:bg-sky-500/10 active:scale-[0.97]"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Add to Automation</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsTagModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-violet-400 hover:bg-violet-500/10 active:scale-[0.97]"
-              >
-                <TagIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Manage Tags</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAssignModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-amber-400 hover:bg-amber-500/10 active:scale-[0.97]"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Assign Owner</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsTaskModalOpen(true)}
-                disabled={selectedEntityIds.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 rounded-lg text-slate-200 hover:text-blue-400 hover:bg-blue-500/10 active:scale-[0.97]"
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Create Task</span>
-              </Button>
+              {/* Compact Dropdown Menu for Secondary CRM Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedEntityIds.length === 0}
+                    className="h-8 text-xs font-bold gap-1.5 rounded-lg border-border/80 text-foreground hover:bg-accent active:scale-[0.97]"
+                  >
+                    <span>Actions</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 p-1.5 rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+                  <DropdownMenuItem onClick={() => setIsCampaignModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <PhoneCall className="h-3.5 w-3.5 text-indigo-500" />
+                    <span>Call Campaign</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsDealModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Pipeline Stage</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsAutomationModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <Sparkles className="h-3.5 w-3.5 text-sky-500" />
+                    <span>Add to Automation</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsTagModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <TagIcon className="h-3.5 w-3.5 text-violet-500" />
+                    <span>Manage Tags</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsAssignModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <UserPlus className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Assign Owner</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsTaskModalOpen(true)} className="text-xs font-medium gap-2 py-2 cursor-pointer rounded-lg">
+                    <ClipboardList className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Create Task</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => setSelectedLogIds(new Set())}
-                className="h-7 w-7 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 ml-1"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent ml-1"
                 title="Clear Selection"
               >
                 <X className="h-4 w-4" />
@@ -1585,9 +1690,28 @@ export function MessageNodeLogsDialog({
                           workspaceId={log.workspaceId || 'global'}
                           cachedContact={cachedContact}
                         />
-                        <p className="text-[10px] text-muted-foreground">
-                          {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <p className="text-[10px] text-muted-foreground">
+                            {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, yyyy HH:mm') : '-'}
+                          </p>
+                          {isLogFailed(log) && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={retryingLogIds.has(log.id)}
+                              onClick={() => handleSingleRowRetry(log.id)}
+                              className="h-7 px-2 text-[10px] font-bold gap-1 rounded-md border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 active:scale-[0.97]"
+                            >
+                              {retryingLogIds.has(log.id) ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RotateCw className="h-3 w-3" />
+                              )}
+                              <span>Retry</span>
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1610,7 +1734,7 @@ export function MessageNodeLogsDialog({
                     <TableHead className="w-[160px] text-xs">Contact Person</TableHead>
                     <TableHead className="w-[140px] text-xs">Sent At</TableHead>
                     <TableHead className="w-[110px] text-xs text-center">Status</TableHead>
-                    <TableHead className="w-[50px] text-xs text-right"></TableHead>
+                    <TableHead className="w-[80px] text-xs text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1647,6 +1771,22 @@ export function MessageNodeLogsDialog({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {hasFailed && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={retryingLogIds.has(log.id)}
+                                className="h-7 w-7 rounded-md hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-amber-500 active:scale-[0.97]"
+                                onClick={() => handleSingleRowRetry(log.id)}
+                                title="Retry Failed Message"
+                              >
+                                {retryingLogIds.has(log.id) ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <RotateCw className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
                             {entityId && channel === 'email' && hasFailed && (
                               <Button
                                 variant="ghost"
