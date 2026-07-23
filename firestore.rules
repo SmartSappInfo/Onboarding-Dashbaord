@@ -899,20 +899,17 @@ service cloud.firestore {
 
     // --- Call Centre ---
     match /call_scripts/{scriptId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow list: if isAuthorized();
+      allow get, list: if isSignedIn();
       allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
     }
 
     match /call_campaigns/{campaignId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow list: if isAuthorized();
+      allow get, list: if isSignedIn();
       allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
     }
 
     match /call_queue_items/{queueItemId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
-      allow list: if isAuthorized();
+      allow get, list: if isSignedIn();
       allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId) || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
     }
 

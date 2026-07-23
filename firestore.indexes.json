@@ -3103,6 +3103,20 @@
       ]
     },
     {
+      "collectionGroup": "call_campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "workspace_contacts",
       "queryScope": "COLLECTION",
       "fields": [

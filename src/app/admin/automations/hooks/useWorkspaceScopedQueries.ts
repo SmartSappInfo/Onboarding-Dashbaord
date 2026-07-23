@@ -93,9 +93,9 @@ export function useWorkspaceScopedQueries() {
   const campaignsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     if (!activeWorkspaceId) {
-      return query(collection(firestore, 'call_campaigns'), orderBy('name', 'asc'));
+      return query(collection(firestore, 'call_campaigns'));
     }
-    return query(collection(firestore, 'call_campaigns'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'call_campaigns'), where('workspaceId', '==', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
 
   const { data: users } = useCollection<UserProfile>(usersQuery);
@@ -116,6 +116,11 @@ export function useWorkspaceScopedQueries() {
     return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
   }, [users, activeWorkspaceId]);
 
+  const sortedCallCampaigns = useMemo(() => {
+    if (!callCampaigns) return [];
+    return [...callCampaigns].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [callCampaigns]);
+
   const meetingTypesList = useMemo(() => [
     { id: 'masterclass_fee', name: 'Masterclass Fee Collection' },
     { id: 'discovery_call', name: 'Discovery Call' },
@@ -135,7 +140,7 @@ export function useWorkspaceScopedQueries() {
     automations: automations || [],
     appFields: appFields || [],
     fieldGroups: fieldGroups || [],
-    callCampaigns: callCampaigns || [],
+    callCampaigns: sortedCallCampaigns,
     meetingTypes: meetingTypesList,
     activeWorkspaceId,
   };
