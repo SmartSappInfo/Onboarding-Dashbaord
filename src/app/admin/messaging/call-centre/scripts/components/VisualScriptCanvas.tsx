@@ -382,6 +382,13 @@ function getDescendantIds(nodeId: string, edges: Edge[]): Set<string> {
   return descendants;
 }
 
+/** Stable constants for ReactFlow props to prevent warning #002 and re-render thrashing */
+const DEFAULT_DELETE_KEY_CODES: string[] = ['Delete', 'Backspace'];
+const DEFAULT_EDGE_OPTIONS = {
+  type: 'deletable',
+  style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+};
+
 export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, VisualScriptCanvasProps>(
   function VisualScriptCanvas({
     nodes,
@@ -524,15 +531,12 @@ export const VisualScriptCanvas = React.forwardRef<VisualScriptCanvasHandle, Vis
         defaultViewport={{ x: 200, y: 80, zoom: 0.65 }}
         minZoom={0.2}
         maxZoom={2}
-        deleteKeyCode={['Delete', 'Backspace']}
+        deleteKeyCode={DEFAULT_DELETE_KEY_CODES}
         // Arrow keys are repurposed for step-to-step navigation by the parent builder,
         // so disable ReactFlow's built-in arrow-key node nudging to avoid conflicts.
         disableKeyboardA11y
         selectionOnDrag={false}
-        defaultEdgeOptions={{
-          type: 'deletable',
-          style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 }
-        }}
+        defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         onMove={(event, vp) => { viewportRef.current = vp; }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="hsl(var(--border))" />

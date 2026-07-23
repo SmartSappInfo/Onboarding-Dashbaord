@@ -101,6 +101,9 @@ const edgeTypes = {
     deletable: WorkflowEdge,
 };
 
+/** Stable snap grid constant to prevent React Flow warning #002 */
+const DEFAULT_SNAP_GRID: [number, number] = [15, 15];
+
 const AutomationStepLibraryModal = dynamic(() => import('./AutomationStepLibraryModal'), { ssr: false });
 
 const MAX_HISTORY = 60;
@@ -1550,7 +1553,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                 connectionLineType={ConnectionLineType.SmoothStep}
                 fitView
                 snapToGrid
-                snapGrid={[15, 15]}
+                snapGrid={DEFAULT_SNAP_GRID}
                 className="bg-background"
             >
                 <Background color="#cbd5e1" gap={30} size={1} />
