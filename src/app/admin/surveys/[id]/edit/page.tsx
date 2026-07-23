@@ -144,6 +144,10 @@ const formSchema = z.object({
   }).default({ email: false, sms: false }),
   autoTags: z.array(z.string()).default([]),
   autoAutomations: z.array(z.string()).default([]),
+  autoPipelineEnabled: z.boolean().default(false),
+  autoPipelineId: z.string().optional(),
+  autoPipelineStageId: z.string().optional(),
+  autoPipelineMode: z.enum(['fallback', 'additional']).default('fallback'),
   allowCrossVisibility: z.boolean().default(false),
   allowResubmission: z.boolean().default(false),
   aiMetadata: z.object({

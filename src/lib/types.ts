@@ -1931,6 +1931,10 @@ export interface Survey {
   };
   autoTags?: string[];
   autoAutomations?: string[];
+  autoPipelineEnabled?: boolean;
+  autoPipelineId?: string;
+  autoPipelineStageId?: string;
+  autoPipelineMode?: 'fallback' | 'additional';
   allowCrossVisibility?: boolean; // When true, assigned users can see all submissions (default: false = own only)
   allowResubmission?: boolean; // When true, shows "Submit Another Response" button on thank you/result pages
   aiMetadata?: {
@@ -2061,6 +2065,9 @@ export interface SurveyResultRule {
   automationEnabled?: boolean;
   triggerAutomationId?: string;
   messagingEnabled?: boolean;
+  pipelineEnabled?: boolean;
+  pipelineId?: string;
+  pipelineStageId?: string;
 }
 
 export interface SurveyResultPage {
