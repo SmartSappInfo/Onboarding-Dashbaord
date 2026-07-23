@@ -101,15 +101,8 @@ export async function executeMessageStatusAutomations(
         switch (action.type) {
           case 'add_tags': {
             if (action.tagIds && action.tagIds.length > 0) {
-              const { addTagsToContactAction } = await import('../tag-actions');
-              for (const tagId of action.tagIds) {
-                await addTagsToContactAction({
-                  contactId: effectiveContactId,
-                  contactType: 'workspace_entity',
-                  tagId,
-                  userId,
-                });
-              }
+              const { applyTagsAction } = await import('../tag-actions');
+              await applyTagsAction(entityId, 'entity', action.tagIds, userId);
               executedCount++;
             }
             break;
@@ -117,15 +110,8 @@ export async function executeMessageStatusAutomations(
 
           case 'remove_tags': {
             if (action.tagIds && action.tagIds.length > 0) {
-              const { removeTagsFromContactAction } = await import('../tag-actions');
-              for (const tagId of action.tagIds) {
-                await removeTagsFromContactAction({
-                  contactId: effectiveContactId,
-                  contactType: 'workspace_entity',
-                  tagId,
-                  userId,
-                });
-              }
+              const { removeTagsAction } = await import('../tag-actions');
+              await removeTagsAction(entityId, 'entity', action.tagIds, userId);
               executedCount++;
             }
             break;
@@ -141,16 +127,16 @@ export async function executeMessageStatusAutomations(
           }
 
           case 'move_deal': {
-            if (action.pipelineId && action.stageId) {
+            if (action.pipelineId) {
               const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
               await bulkCreateDealsAction({
                 entityIds: [entityId],
-                pipelineId: action.pipelineId,
-                stageId: action.stageId,
-                title: 'Automated Event Deal',
-                value: 0,
                 workspaceId,
-                userId,
+                organizationId: '',
+                pipelineId: action.pipelineId,
+                dealNamePattern: 'Automated Event Deal',
+                value: 0,
+                assignmentStrategy: 'unassigned',
               });
               executedCount++;
             }
@@ -160,7 +146,7 @@ export async function executeMessageStatusAutomations(
           case 'enroll_automation': {
             if (action.automationId) {
               const { enrollContactsInAutomationAction } = await import('../automation-actions');
-              await enrollContactsInAutomationAction(action.automationId, [entityId], workspaceId, userId);
+              await enrollContactsInAutomationAction([entityId], action.automationId, workspaceId, userId);
               executedCount++;
             }
             break;
@@ -180,23 +166,25 @@ export async function executeMessageStatusAutomations(
 
           case 'create_task': {
             if (action.taskTitle) {
-              const resolvedTitle = FieldsVariablesService.resolveTemplateVariables(
+              const resolvedTitle = await FieldsVariablesService.resolveTemplateVariables(
                 action.taskTitle,
-                { entityId, contactId: effectiveContactId }
+                { workspaceId, entityId, recipientContact: effectiveContactId }
               );
-              const resolvedDesc = FieldsVariablesService.resolveTemplateVariables(
+              const resolvedDesc = await FieldsVariablesService.resolveTemplateVariables(
                 action.taskDescription || '',
-                { entityId, contactId: effectiveContactId }
+                { workspaceId, entityId, recipientContact: effectiveContactId }
               );
 
               const { bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
               await bulkCreateTasksAction({
                 entityIds: [entityId],
+                workspaceId,
+                organizationId: '',
                 title: resolvedTitle,
                 description: resolvedDesc,
-                assignedToUserId: action.assignedUserId || userId,
-                workspaceId,
-                userId,
+                priority: 'high',
+                category: 'Automation Follow-up',
+                dueDaysOffset: 1,
               });
               executedCount++;
             }
@@ -208,9 +196,9 @@ export async function executeMessageStatusAutomations(
               const { bulkRegisterParticipantsAction } = await import('../../app/actions/bulk-meeting-actions');
               await bulkRegisterParticipantsAction({
                 entityIds: [entityId],
-                meetingTypeId: action.meetingTypeId,
+                meetingId: action.meetingTypeId,
                 workspaceId,
-                userId,
+                sendInvites: true,
               });
               executedCount++;
             }

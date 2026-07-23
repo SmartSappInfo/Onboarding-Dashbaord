@@ -36,7 +36,7 @@ interface MessageStatusAutomationsPanelProps {
   onChangeRules: (updatedRules: MessageStatusRule[]) => void;
   pipelines?: Array<{ id: string; name: string; stages?: Array<{ id: string; name: string }> }>;
   automations?: Array<{ id: string; name: string }>;
-  users?: Array<{ uid: string; displayName?: string; email?: string }>;
+  users?: Array<{ id?: string; uid?: string; displayName?: string; email?: string }>;
   callCampaigns?: Array<{ id: string; name: string }>;
   meetingTypes?: Array<{ id: string; name: string }>;
 }
@@ -387,11 +387,14 @@ export function MessageStatusAutomationsPanel({
                                   className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs"
                                 >
                                   <option value="">Select User Owner...</option>
-                                  {users.map((u) => (
-                                    <option key={u.uid} value={u.uid}>
-                                      {u.displayName || u.email || u.uid}
-                                    </option>
-                                  ))}
+                                  {users.map((u) => {
+                                    const userIdVal = u.uid || u.id || '';
+                                    return (
+                                      <option key={userIdVal} value={userIdVal}>
+                                        {u.displayName || u.email || userIdVal}
+                                      </option>
+                                    );
+                                  })}
                                 </select>
                               </div>
                             ) : null}
