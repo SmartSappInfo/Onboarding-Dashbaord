@@ -57,17 +57,17 @@ export async function POST(request: NextRequest) {
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
-    // Security Check: Enforce tenant organization boundary
-    const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
-    if (autoOrgId && autoOrgId !== organizationId) {
-      console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${autoOrgId}) requested for org ${organizationId}`);
-      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
-    }
-
     // Resolve effective workspace ID if passed workspaceId is a track filter e.g. "prospect"
     let effectiveWorkspaceId = workspaceId;
     if (automation.workspaceIds?.length && !automation.workspaceIds.includes(workspaceId)) {
       effectiveWorkspaceId = automation.workspaceIds[0];
+    }
+
+    // Security Check: Enforce tenant organization boundary
+    const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
+    if (autoOrgId && organizationId && organizationId !== 'default' && autoOrgId !== 'default' && autoOrgId !== organizationId) {
+      console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${autoOrgId}) requested for org ${organizationId}`);
+      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
     }
 
     // 4. Security Check: Validate tenant isolation for all targets in batches
@@ -87,6 +87,18 @@ export async function POST(request: NextRequest) {
           validEntityIds.add(data.entityId);
         }
       });
+
+      // Check global entities collection for any missing IDs in chunk
+      const missingChunkIds = chunk.filter(id => !validEntityIds.has(id));
+      if (missingChunkIds.length > 0) {
+        const entityRefs = missingChunkIds.map(id => adminDb.collection('entities').doc(id));
+        const entitySnaps = await adminDb.getAll(...entityRefs);
+        entitySnaps.forEach(entitySnap => {
+          if (entitySnap.exists) {
+            validEntityIds.add(entitySnap.id);
+          }
+        });
+      }
     }
 
     const finalTargets = targets.filter((target) => validEntityIds.has(target.entityId));
@@ -113,7 +125,7 @@ export async function POST(request: NextRequest) {
             ...target.payload,
             entityId: target.entityId,
             entityType: target.entityType,
-            workspaceId,
+            workspaceId: effectiveWorkspaceId,
             organizationId,
             _firingTrigger: trigger,
           };
