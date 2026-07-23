@@ -28,6 +28,11 @@ import type { MediaAsset } from '@/lib/types';
 import type { TemplateVariable } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { checkSlugAvailabilityAction } from '@/lib/media-analytics-actions';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scripts/components/OutcomeAutomationsEditor';
+import { useWorkspaceScopedQueries } from '@/app/admin/automations/hooks/useWorkspaceScopedQueries';
+import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
+import type { CallOutcomeAutomation } from '@/lib/types';
 
 interface ShareMediaDialogProps {
     asset: MediaAsset;
@@ -52,6 +57,7 @@ interface ShareConfig {
     slug?: string;
     createdAt?: string;
     updatedAt?: string;
+    automationRules?: Record<string, CallOutcomeAutomation[]>;
 }
 
 interface SurveyDoc {
@@ -96,6 +102,29 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [isSaved, setIsSaved] = React.useState<boolean>(false);
     
+    const scopedData = useWorkspaceScopedQueries();
+    
+    // Event-based automations
+    const [automationRules, setAutomationRules] = React.useState<Record<string, CallOutcomeAutomation[]>>({});
+    const [activeTrigger, setActiveTrigger] = React.useState<string>('on_view');
+
+    const actionData = React.useMemo<ActionConfigDataSources>(() => ({
+        tags: (scopedData.allTags || []).map(t => ({ id: t.id, name: t.name })),
+        stages: (scopedData.stages || []).map(s => ({ id: s.id, name: s.name, pipelineId: s.pipelineId })),
+        pipelines: (scopedData.pipelines || []).map(p => ({ id: p.id, name: p.name })),
+        meetings: (scopedData.meetingTypes || []).map(m => ({ id: m.id, title: m.name })),
+        activeMeetings: [],
+        callCampaigns: (scopedData.callCampaigns || []).map(c => ({ id: c.id, name: c.name })),
+        workspaceUsers: (scopedData.users || []).map(u => ({ id: u.id, name: u.name || '', email: u.email || '' })),
+    }), [scopedData]);
+
+    const handleRulesChange = React.useCallback((nextRules: CallOutcomeAutomation[]) => {
+        setAutomationRules(prev => ({
+            ...prev,
+            [activeTrigger]: nextRules
+        }));
+    }, [activeTrigger]);
+    
     // Lists of options
     const [surveys, setSurveys] = React.useState<SurveyDoc[]>([]);
     const [pdfs, setPdfs] = React.useState<PdfDoc[]>([]);
@@ -136,6 +165,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaPopoverEnabled(data.ctaPopoverEnabled || false);
                 setCtaActivationGate(data.ctaActivationGate || 'immediate');
                 setSlug(data.slug || '');
+                setAutomationRules(data.automationRules || {});
                 setIsSaved(true);
             } else {
                 // Generate a fresh random doc ID
@@ -162,6 +192,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaPopoverEnabled(false);
                 setCtaActivationGate('immediate');
                 setSlug('');
+                setAutomationRules({});
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -342,6 +373,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaPopoverEnabled,
                 ctaActivationGate,
                 slug: sanitizedSlug,
+                automationRules,
                 updatedAt: new Date().toISOString(),
             };
 
@@ -407,205 +439,255 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ) : (
                     <form onSubmit={handleSave} className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 bg-background text-left divide-y md:divide-y-0 md:divide-x divide-border/40 overflow-y-auto md:overflow-hidden">
                         {/* Configuration Side */}
-                        <div className="p-6 md:p-8 space-y-6 md:overflow-y-auto md:h-full">
-                            <div className="space-y-4">
-                                <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
-                                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Personalized Content
-                                </h3>
+                        <div className="p-6 md:p-8 md:overflow-y-auto md:h-full text-left">
+                            <Tabs defaultValue="general" className="w-full flex flex-col h-full">
+                                <TabsList className="grid grid-cols-2 bg-muted/40 p-1 rounded-xl mb-6 shrink-0">
+                                    <TabsTrigger value="general" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm active:scale-[0.97]">General Settings</TabsTrigger>
+                                    <TabsTrigger value="automations" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm active:scale-[0.97]">CRM Automations</TabsTrigger>
+                                </TabsList>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom Title</Label>
-                                    <SlashInput 
-                                        value={title}
-                                        onChange={setTitle}
-                                        variables={variables}
-                                        placeholder="Enter shared media title..."
-                                        className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
-                                    />
-                                </div>
+                                <TabsContent value="general" className="space-y-6 outline-none mt-0">
+                                    <div className="space-y-4">
+                                        <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
+                                            <Sparkles className="h-3.5 w-3.5 text-primary" /> Personalized Content
+                                        </h3>
 
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom Description</Label>
-                                    <SlashTextarea 
-                                        value={description}
-                                        onChange={setDescription}
-                                        variables={variables}
-                                        placeholder="Add descriptive content supporting variables..."
-                                        className="min-h-[100px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
-                                    />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <div className="flex justify-between items-center ml-1">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground">Custom URL Slug (Optional)</Label>
-                                        {isSlugChecking && (
-                                            <span className="text-[9px] font-bold text-primary flex items-center gap-1">
-                                                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying...
-                                            </span>
-                                        )}
-                                        {!isSlugChecking && slugStatus === 'available' && (
-                                            <span className="text-[9px] font-bold text-emerald-500">
-                                                ✓ Slug available
-                                            </span>
-                                        )}
-                                        {!isSlugChecking && slugStatus === 'conflict' && (
-                                            <span className="text-[9px] font-bold text-destructive">
-                                                ✗ Slug already in use
-                                            </span>
-                                        )}
-                                        {!isSlugChecking && slugStatus === 'too-short' && (
-                                            <span className="text-[9px] font-bold text-amber-500">
-                                                ⚠ Too short (min 3 chars)
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
-                                        <Input 
-                                            value={slug}
-                                            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
-                                            placeholder="custom-link-name"
-                                            className={cn(
-                                                "h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 w-full",
-                                                slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border border-emerald-500/20 bg-emerald-500/5",
-                                                slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5",
-                                                slugStatus === 'too-short' && "focus:ring-amber-500/20 focus:border-amber-500 border border-amber-500/20 bg-amber-500/5"
-                                            )}
-                                        />
-                                    </div>
-                                    <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-4 border-t border-dashed border-border/60">
-                                <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
-                                    <Layers className="h-3.5 w-3.5 text-primary" /> Call-To-Action Button
-                                </h3>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5 text-left">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Action Type</Label>
-                                        <select
-                                            value={ctaType}
-                                            onChange={(e) => {
-                                                setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'page' | 'external');
-                                                setCtaTargetId('');
-                                            }}
-                                            className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
-                                        >
-                                            <option value="none">None</option>
-                                            <option value="survey">Survey</option>
-                                            <option value="form">Form (PDF)</option>
-                                            <option value="page">Landing Page</option>
-                                            <option value="external">External Link</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Text</Label>
-                                        <Input
-                                            value={ctaText}
-                                            onChange={(e) => setCtaText(e.target.value)}
-                                            placeholder="e.g. Get Started"
-                                            disabled={ctaType === 'none'}
-                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
-                                        />
-                                    </div>
-                                </div>
-
-                                {ctaType !== 'none' && (
-                                    <>
-                                        <div className="space-y-1.5 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
-                                                {ctaType === 'external' ? 'Destination URL' : 'Target Resource'}
-                                            </Label>
-                                            {ctaType === 'external' ? (
-                                                <Input
-                                                    value={ctaTargetId}
-                                                    onChange={(e) => setCtaTargetId(e.target.value)}
-                                                    placeholder="https://example.com"
-                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
-                                                />
-                                            ) : (
-                                                <select
-                                                    value={ctaTargetId}
-                                                    onChange={(e) => setCtaTargetId(e.target.value)}
-                                                    className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
-                                                >
-                                                    <option value="">Select resource...</option>
-                                                    {ctaType === 'survey' && surveys.map((s) => (
-                                                        <option key={s.id} value={s.id}>{s.internalName}</option>
-                                                    ))}
-                                                    {ctaType === 'form' && pdfs.map((f) => (
-                                                        <option key={f.id} value={f.id}>{f.name}</option>
-                                                    ))}
-                                                    {ctaType === 'page' && pages.map((p) => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </select>
-                                            )}
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom Title</Label>
+                                            <SlashInput 
+                                                value={title}
+                                                onChange={setTitle}
+                                                variables={variables}
+                                                placeholder="Enter shared media title..."
+                                                className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                            />
                                         </div>
 
-                                        <div className={`grid gap-4 ${asset.type === 'video' || asset.type === 'audio' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Custom Description</Label>
+                                            <SlashTextarea 
+                                                value={description}
+                                                onChange={setDescription}
+                                                variables={variables}
+                                                placeholder="Add descriptive content supporting variables..."
+                                                className="min-h-[100px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center ml-1">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground">Custom URL Slug (Optional)</Label>
+                                                {isSlugChecking && (
+                                                    <span className="text-[9px] font-bold text-primary flex items-center gap-1">
+                                                        <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying...
+                                                    </span>
+                                                )}
+                                                {!isSlugChecking && slugStatus === 'available' && (
+                                                    <span className="text-[9px] font-bold text-emerald-500">
+                                                        ✓ Slug available
+                                                    </span>
+                                                )}
+                                                {!isSlugChecking && slugStatus === 'conflict' && (
+                                                    <span className="text-[9px] font-bold text-destructive">
+                                                        ✗ Slug already in use
+                                                    </span>
+                                                )}
+                                                {!isSlugChecking && slugStatus === 'too-short' && (
+                                                    <span className="text-[9px] font-bold text-amber-500">
+                                                        ⚠ Too short (min 3 chars)
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2 items-center">
+                                                <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
+                                                <Input 
+                                                    value={slug}
+                                                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                                                    placeholder="custom-link-name"
+                                                    className={cn(
+                                                        "h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 w-full",
+                                                        slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border border-emerald-500/20 bg-emerald-500/5",
+                                                        slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5",
+                                                        slugStatus === 'too-short' && "focus:ring-amber-500/20 focus:border-amber-500 border border-amber-500/20 bg-amber-500/5"
+                                                    )}
+                                                />
+                                            </div>
+                                            <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-4 border-t border-dashed border-border/60">
+                                        <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
+                                            <Layers className="h-3.5 w-3.5 text-primary" /> Call-To-Action Button
+                                        </h3>
+
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5 text-left">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Action Behavior</Label>
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Action Type</Label>
                                                 <select
-                                                    value={ctaMode}
-                                                    onChange={(e) => setCtaMode(e.target.value as 'modal' | 'redirect' | 'replace')}
+                                                    value={ctaType}
+                                                    onChange={(e) => {
+                                                        setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'page' | 'external');
+                                                        setCtaTargetId('');
+                                                    }}
                                                     className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
                                                 >
-                                                    <option value="redirect">Redirect (New Tab - _blank)</option>
-                                                    <option value="modal">Show inside Modal Dialog</option>
-                                                    <option value="replace">Reload Current Page (Same Tab)</option>
+                                                    <option value="none">None</option>
+                                                    <option value="survey">Survey</option>
+                                                    <option value="form">Form (PDF)</option>
+                                                    <option value="page">Landing Page</option>
+                                                    <option value="external">External Link</option>
                                                 </select>
                                             </div>
-                                            {(asset.type === 'video' || asset.type === 'audio') && (
-                                                <div className="space-y-1.5 text-left">
-                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Activation Gate</Label>
-                                                    <select
-                                                        value={ctaActivationGate}
-                                                        onChange={(e) => setCtaActivationGate(e.target.value as 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete')}
-                                                        className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
-                                                    >
-                                                         <option value="immediate">Active Immediately (Before play)</option>
-                                                         <option value="quarter">Unlock 25% (Quarter) Through</option>
-                                                         <option value="half">Unlock halfway (50%) Through</option>
-                                                         <option value="threequarters">Unlock 75% (Three-quarters) Through</option>
-                                                         <option value="complete">Unlock on Playback Complete (100%)</option>
-                                                    </select>
-                                                </div>
-                                            )}
+
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Button Text</Label>
+                                                <Input
+                                                    value={ctaText}
+                                                    onChange={(e) => setCtaText(e.target.value)}
+                                                    placeholder="e.g. Get Started"
+                                                    disabled={ctaType === 'none'}
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                                />
+                                            </div>
                                         </div>
 
-                                         <div className="space-y-3 text-left">
-                                             <div className="flex items-center justify-between">
-                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Pretext (Above Button)</Label>
-                                                 <div className="flex items-center gap-2">
-                                                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Popover when done playing</span>
-                                                     <button
-                                                         type="button"
-                                                         role="switch"
-                                                         aria-checked={ctaPopoverEnabled}
-                                                         onClick={() => setCtaPopoverEnabled(!ctaPopoverEnabled)}
-                                                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ctaPopoverEnabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
-                                                     >
-                                                         <span
-                                                             className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${ctaPopoverEnabled ? 'translate-x-4' : 'translate-x-0'}`}
-                                                         />
-                                                     </button>
-                                                 </div>
-                                             </div>
-                                             <SlashTextarea 
-                                                 value={ctaPretext}
-                                                 onChange={setCtaPretext}
-                                                 variables={variables}
-                                                 placeholder="Enter pretext layout above button supporting variables..."
-                                                 className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
-                                             />
-                                         </div>
-                                    </>
-                                )}
-                            </div>
+                                        {ctaType !== 'none' && (
+                                            <>
+                                                <div className="space-y-1.5 text-left">
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                                                        {ctaType === 'external' ? 'Destination URL' : 'Target Resource'}
+                                                    </Label>
+                                                    {ctaType === 'external' ? (
+                                                        <Input
+                                                            value={ctaTargetId}
+                                                            onChange={(e) => setCtaTargetId(e.target.value)}
+                                                            placeholder="https://example.com"
+                                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                                        />
+                                                    ) : (
+                                                        <select
+                                                            value={ctaTargetId}
+                                                            onChange={(e) => setCtaTargetId(e.target.value)}
+                                                            className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                        >
+                                                            <option value="">Select resource...</option>
+                                                            {ctaType === 'survey' && surveys.map((s) => (
+                                                                <option key={s.id} value={s.id}>{s.internalName}</option>
+                                                            ))}
+                                                            {ctaType === 'form' && pdfs.map((f) => (
+                                                                <option key={f.id} value={f.id}>{f.name}</option>
+                                                            ))}
+                                                            {ctaType === 'page' && pages.map((p) => (
+                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                </div>
+
+                                                <div className={`grid gap-4 ${asset.type === 'video' || asset.type === 'audio' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                                    <div className="space-y-1.5 text-left">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Trigger Mode</Label>
+                                                        <select
+                                                            value={ctaMode}
+                                                            onChange={(e) => setCtaMode(e.target.value as 'modal' | 'redirect' | 'replace')}
+                                                            className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                        >
+                                                            <option value="modal">Popup Overlay</option>
+                                                            <option value="redirect">Direct Redirect</option>
+                                                            <option value="replace">Inline Replacement</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {(asset.type === 'video' || asset.type === 'audio') && (
+                                                        <div className="space-y-1.5 text-left">
+                                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Unlock Milestone</Label>
+                                                            <select
+                                                                value={ctaActivationGate}
+                                                                onChange={(e) => setCtaActivationGate(e.target.value as 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete')}
+                                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                            >
+                                                                <option value="immediate">Show Immediately</option>
+                                                                <option value="quarter">Watch 25%</option>
+                                                                <option value="half">Watch 50%</option>
+                                                                <option value="threequarters">Watch 75%</option>
+                                                                <option value="complete">Watch 100%</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-3 text-left">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">CTA Pretext (Above Button)</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Popover when done playing</span>
+                                                            <button
+                                                                type="button"
+                                                                role="switch"
+                                                                aria-checked={ctaPopoverEnabled}
+                                                                onClick={() => setCtaPopoverEnabled(!ctaPopoverEnabled)}
+                                                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none active:scale-[0.97] transition-transform ${ctaPopoverEnabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-800'}`}
+                                                            >
+                                                                <span
+                                                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${ctaPopoverEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <SlashTextarea 
+                                                        value={ctaPretext}
+                                                        onChange={setCtaPretext}
+                                                        variables={variables}
+                                                        placeholder="Enter pretext layout above button supporting variables..."
+                                                        className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="automations" className="space-y-4 outline-none mt-0">
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col gap-1.5 text-left">
+                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Event Trigger</Label>
+                                            <select
+                                                value={activeTrigger}
+                                                onChange={(e) => setActiveTrigger(e.target.value)}
+                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                            >
+                                                <option value="on_view">Recipient Lands on Page</option>
+                                                {(asset.type === 'video' || asset.type === 'audio') && (
+                                                    <>
+                                                        <option value="on_play">Recipient Clicks Play</option>
+                                                        <option value="on_progress_25">Recipient Watches 25%</option>
+                                                        <option value="on_progress_50">Recipient Watches 50% (Halfway)</option>
+                                                        <option value="on_progress_75">Recipient Watches 75%</option>
+                                                        <option value="on_complete">Recipient Completes Playback</option>
+                                                    </>
+                                                )}
+                                                <option value="on_cta_click">Recipient Clicks CTA Button</option>
+                                                <option value="on_download">Recipient Downloads/Saves Asset</option>
+                                            </select>
+                                            <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">
+                                                Configure actions to execute automatically when this trigger event is registered.
+                                            </p>
+                                        </div>
+
+                                        <div className="border-t border-dashed border-border/60 pt-4 text-left">
+                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1 mb-2 block">
+                                                Trigger Actions List
+                                            </Label>
+                                            <OutcomeAutomationsEditor
+                                                automations={automationRules[activeTrigger] || []}
+                                                onChange={handleRulesChange}
+                                                data={actionData}
+                                            />
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
 
                         {/* Links & Embed Codes Side */}

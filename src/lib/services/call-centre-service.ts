@@ -1117,10 +1117,43 @@ export class CallCentreService {
         case 'CHANGE_STAGE': {
           if (!params.stageId) return { success: false, error: 'No stage configured.' };
           const stageSnap = await adminDb.collection('onboardingStages').doc(params.stageId).get();
-          const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
+          if (!stageSnap.exists) return { success: false, error: 'Stage not found.' };
+          const stageData = stageSnap.data();
+          const currentStageName = stageData?.name || 'Unknown';
+          const pipelineId = params.pipelineId || stageData?.pipelineId;
+
+          if (!pipelineId) return { success: false, error: 'Could not resolve pipeline.' };
+
+          // Sync deal to prevent duplicates
+          const dealsSnap = await adminDb.collection('deals')
+            .where('entityId', '==', entityId)
+            .where('pipelineId', '==', pipelineId)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
+
+          const { updateDealStageAction, createDeal } = await import('../../app/actions/deal-actions');
+
+          if (!dealsSnap.empty) {
+            const dealId = dealsSnap.docs[0].id;
+            await updateDealStageAction(dealId, params.stageId);
+          } else {
+            const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+            const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
+            await createDeal({
+              entityId,
+              workspaceId,
+              organizationId,
+              pipelineId,
+              stageId: params.stageId,
+              stageName: currentStageName,
+              name: `Deal for ${entityName}`,
+            });
+          }
+
           const patch: { stageId: string; currentStageName: string; pipelineId?: string } =
             { stageId: params.stageId, currentStageName };
-          if (params.pipelineId) patch.pipelineId = params.pipelineId; // cross-pipeline move
+          patch.pipelineId = pipelineId;
           await updateEntityAction(
             entityId,
             patch,
@@ -1137,6 +1170,34 @@ export class CallCentreService {
           }
           const stageSnap = await adminDb.collection('onboardingStages').doc(params.stageId).get();
           const currentStageName = stageSnap.exists ? stageSnap.data()?.name || 'Unknown' : 'Unknown';
+
+          // Sync deal to prevent duplicates
+          const dealsSnap = await adminDb.collection('deals')
+            .where('entityId', '==', entityId)
+            .where('pipelineId', '==', params.pipelineId)
+            .where('status', '==', 'open')
+            .limit(1)
+            .get();
+
+          const { updateDealStageAction, createDeal } = await import('../../app/actions/deal-actions');
+
+          if (!dealsSnap.empty) {
+            const dealId = dealsSnap.docs[0].id;
+            await updateDealStageAction(dealId, params.stageId);
+          } else {
+            const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+            const entityName = entitySnap.exists ? entitySnap.data()?.name || 'Contact' : 'Contact';
+            await createDeal({
+              entityId,
+              workspaceId,
+              organizationId,
+              pipelineId: params.pipelineId,
+              stageId: params.stageId,
+              stageName: currentStageName,
+              name: `Deal for ${entityName}`,
+            });
+          }
+
           await updateEntityAction(
             entityId,
             { pipelineId: params.pipelineId, stageId: params.stageId, currentStageName },

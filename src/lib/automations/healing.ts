@@ -3,7 +3,7 @@ import type { Automation, AutomationJob } from '../types';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
 import { logAutomationEvent } from '../automation-log';
-import { assertAutomationUserId, assertAutomationManagePermission } from '../automation-permissions';
+import { assertAutomationManagePermission } from '../automation-permissions';
 
 export interface HealResult {
   success: boolean;
@@ -50,11 +50,8 @@ export async function healStrandedMessageContacts(
   };
 
   try {
-    if (userId) {
-      assertAutomationUserId(userId);
-      if (workspaceId) {
-        await assertAutomationManagePermission(userId, [workspaceId], 'edit');
-      }
+    if (userId && workspaceId) {
+      await assertAutomationManagePermission(userId, [workspaceId], 'edit');
     }
 
     // Cache loaded automation blueprints in memory during sweep to minimize Firestore reads
@@ -84,12 +81,13 @@ export async function healStrandedMessageContacts(
     const strandedJobs: AutomationJob[] = [];
 
     for (const doc of jobsSnap.docs) {
-      const job = { id: doc.id, ...doc.data() } as AutomationJob;
+      const jobData = doc.data() as Record<string, unknown>;
+      const job: AutomationJob = { id: doc.id, ...jobData } as AutomationJob;
       const automation = await getAutomation(job.automationId);
       if (!automation) continue;
 
       const targetId = job.targetNodeId;
-      const sourceId = job.sourceNodeId;
+      const sourceId = jobData.sourceNodeId as string | undefined;
       const isResendCheck = targetId === '__resend_check__';
 
       const checkNodeId = isResendCheck ? (sourceId || targetId) : (targetId || sourceId);
@@ -141,8 +139,10 @@ export async function healStrandedMessageContacts(
             continue;
           }
 
+          const jobData = job as unknown as Record<string, unknown>;
+          const sourceNodeId = jobData.sourceNodeId as string | undefined;
           const isResendCheck = job.targetNodeId === '__resend_check__';
-          const strandedNodeId = isResendCheck ? job.sourceNodeId! : (job.targetNodeId || job.sourceNodeId!);
+          const strandedNodeId = isResendCheck ? sourceNodeId! : (job.targetNodeId || sourceNodeId!);
           const currentNode = automation.nodes?.find((n) => n.id === strandedNodeId);
 
           if (!currentNode) {
@@ -152,10 +152,11 @@ export async function healStrandedMessageContacts(
 
           // Resolve context
           const payload = (job.payload || {}) as Record<string, unknown>;
+          const resolvedWorkspaceId = job.workspaceId || workspaceId || 'default';
           const context: ExecutionContext = {
             entityId: (payload.entityId as string) || undefined,
-            entityType: (payload.entityType as ExecutionContext['entityType']) || 'contact',
-            workspaceId: job.workspaceId,
+            entityType: (payload.entityType as ExecutionContext['entityType']) || undefined,
+            workspaceId: resolvedWorkspaceId,
             automationId: job.automationId,
             runId: job.runId,
             payload,

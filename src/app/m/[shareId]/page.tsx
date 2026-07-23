@@ -241,6 +241,7 @@ export default async function PublicMediaShareRoute({
     let resolvedDescription = config.description || '';
     let resolvedCtaPretext = config.ctaPretext || '';
     let resolvedContactId = '';
+    let resolvedEntityId = '';
 
     try {
         const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
@@ -308,6 +309,8 @@ export default async function PublicMediaShareRoute({
             paramsRecord
         );
 
+        resolvedEntityId = entityCtx.entityId || '';
+
         const context = {
             workspaceId: config.workspaceId,
             entityId: entityCtx.entityId || undefined,
@@ -340,6 +343,7 @@ export default async function PublicMediaShareRoute({
             isEmbed={isEmbed}
             searchParams={resolvedSearchParams}
             contactId={resolvedContactId || undefined}
+            entityId={resolvedEntityId || undefined}
         />
     );
 }

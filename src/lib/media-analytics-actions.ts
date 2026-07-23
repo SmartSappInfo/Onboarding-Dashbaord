@@ -1,8 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { adminDb, FieldValue } from './firebase-admin';
+import type { CallOutcomeAutomation } from './types';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ export async function recordMediaPageEventAction(params: {
   type: MediaPageEventType;
   sessionId: string;
   contactId?: string | null;
+  entityId?: string | null;
   progressPercent?: number;
   sessionTimeSeconds?: number;
 }): Promise<{ success: boolean; error?: string }> {
@@ -121,6 +123,7 @@ export async function recordMediaPageEventAction(params: {
     type,
     sessionId,
     contactId = null,
+    entityId = null,
     progressPercent = null,
     sessionTimeSeconds = null,
   } = params;
@@ -280,6 +283,94 @@ export async function recordMediaPageEventAction(params: {
       });
     }
 
+    // 4. Trigger event-based CRM automations asynchronously (non-blocking)
+    let triggerKey: string | null = null;
+    if (type === 'view') {
+      triggerKey = 'on_view';
+    } else if (type === 'media_play') {
+      triggerKey = 'on_play';
+    } else if (type === 'media_progress') {
+      if (progressPercent === 25) triggerKey = 'on_progress_25';
+      else if (progressPercent === 50) triggerKey = 'on_progress_50';
+      else if (progressPercent === 75) triggerKey = 'on_progress_75';
+    } else if (type === 'media_complete') {
+      triggerKey = 'on_complete';
+    } else if (type === 'cta_click') {
+      triggerKey = 'on_cta_click';
+    } else if (type === 'download') {
+      triggerKey = 'on_download';
+    }
+
+    if (entityId && triggerKey) {
+      try {
+        after(async () => {
+          try {
+            const configSnap = await adminDb.collection('media_shares').doc(shareId).get();
+            if (configSnap.exists) {
+              const data = configSnap.data();
+              const automationRules = data?.automationRules as Record<string, CallOutcomeAutomation[]> | undefined;
+              const rules = automationRules?.[triggerKey!];
+
+              if (rules && rules.length > 0) {
+                const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+                const organizationId = wsSnap.exists ? wsSnap.data()?.organizationId || 'default' : 'default';
+
+                const { CallCentreService } = await import('./services/call-centre-service');
+                for (const rule of rules) {
+                  const result = await CallCentreService.executeScriptAction({
+                    actionType: rule.type,
+                    actionConfig: rule.params,
+                    entityId,
+                    userId: 'system-media-automation',
+                    workspaceId,
+                    organizationId,
+                    contactId: contactId || undefined,
+                  });
+                  if (!result.success && !result.unsupported) {
+                    console.error(`>>> [MEDIA_AUTOMATION] Automation rule "${rule.type}" failed:`, result.error);
+                  }
+                }
+              }
+            }
+          } catch (execErr) {
+            console.error('[MEDIA_AUTOMATION] Error running media page trigger rules:', execErr);
+          }
+        });
+      } catch {
+        // Fallback for non-after runtimes (e.g. testing)
+        Promise.resolve().then(async () => {
+          try {
+            const configSnap = await adminDb.collection('media_shares').doc(shareId).get();
+            if (configSnap.exists) {
+              const data = configSnap.data();
+              const automationRules = data?.automationRules as Record<string, CallOutcomeAutomation[]> | undefined;
+              const rules = automationRules?.[triggerKey!];
+
+              if (rules && rules.length > 0) {
+                const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+                const organizationId = wsSnap.exists ? wsSnap.data()?.organizationId || 'default' : 'default';
+
+                const { CallCentreService } = await import('./services/call-centre-service');
+                for (const rule of rules) {
+                  await CallCentreService.executeScriptAction({
+                    actionType: rule.type,
+                    actionConfig: rule.params,
+                    entityId,
+                    userId: 'system-media-automation',
+                    workspaceId,
+                    organizationId,
+                    contactId: contactId || undefined,
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[MEDIA_AUTOMATION] Fallback execute rules failed:', err);
+          }
+        }).catch(err => console.error('[MEDIA_AUTOMATION] Fallback run failed:', err));
+      }
+    }
+
     return { success: true };
   } catch (err) {
     console.error('[recordMediaPageEventAction] Error recording event:', err);
@@ -375,8 +466,6 @@ export async function getMediaShareDrilldownAction(
   if (!shareId || !workspaceId) return null;
 
   try {
-    const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(shareId);
-    
     // Authorization Check
     const configSnap = await adminDb.collection('media_shares').doc(shareId).get();
     let finalShareId = shareId;

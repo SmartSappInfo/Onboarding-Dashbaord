@@ -28,6 +28,7 @@ interface MediaShareClientProps {
     isEmbed: boolean;
     searchParams: Record<string, string>;
     contactId?: string;
+    entityId?: string;
 }
 
 export default function MediaShareClient({
@@ -46,6 +47,7 @@ export default function MediaShareClient({
     isEmbed,
     searchParams,
     contactId,
+    entityId,
 }: MediaShareClientProps) {
     const [isPlaying, setIsPlaying] = React.useState(false);
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -79,10 +81,11 @@ export default function MediaShareClient({
             type,
             sessionId,
             contactId,
+            entityId,
             progressPercent,
             sessionTimeSeconds: elapsed,
         });
-    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId]);
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, entityId]);
 
     React.useEffect(() => {
         logEvent('view');
@@ -102,12 +105,13 @@ export default function MediaShareClient({
                 type: 'media_progress',
                 sessionId,
                 contactId,
+                entityId,
                 sessionTimeSeconds: elapsed,
             }).catch(() => {});
         }, 15000);
 
         return () => clearInterval(interval);
-    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, isAnyPlaying]);
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, entityId, isAnyPlaying]);
 
     React.useEffect(() => {
         const sendBeacon = () => {
