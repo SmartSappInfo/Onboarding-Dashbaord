@@ -333,7 +333,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     // Only perform fallback/correction once workspaces have finished loading.
     // This prevents aggressive resetting to the default workspace during partial cache hits.
     if (isInitialized && !isWorkspacesLoading && orgWorkspaces && orgWorkspaces.length > 0 && accessibleWorkspaces.length > 0) {
-        const isMatchingOrg = orgWorkspaces.every(w => w.organizationId === activeOrganizationId);
+        const isMatchingOrg = isSuperAdmin || orgWorkspaces.every(w => w.organizationId === activeOrganizationId);
         if (!isMatchingOrg) return; // Wait for query to reload matching org workspaces
 
         let currentId = activeWorkspaceId;
@@ -363,7 +363,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             }
         }
     }
-  }, [isInitialized, isWorkspacesLoading, orgWorkspaces, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization, profile, activeOrganizationId]);
+  }, [isInitialized, isWorkspacesLoading, orgWorkspaces, accessibleWorkspaces, activeWorkspaceId, pathname, searchParams, router, activeOrganization, profile, activeOrganizationId, isSuperAdmin]);
 
   // 6.3. Client-Side Path Workspace Transition Synchronizer
   React.useEffect(() => {
