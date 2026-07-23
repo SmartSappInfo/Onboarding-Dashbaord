@@ -133,7 +133,7 @@ export async function executeMessageStatusAutomations(
 
           case 'add_to_campaign': {
             if (action.campaignId) {
-              const { addContactsToCallCampaignAction } = await import('../campaign-actions');
+              const { addContactsToCallCampaignAction } = await import('../call-centre-actions');
               await addContactsToCallCampaignAction(action.campaignId, [entityId], workspaceId, userId);
               executedCount++;
             }
@@ -142,7 +142,7 @@ export async function executeMessageStatusAutomations(
 
           case 'move_deal': {
             if (action.pipelineId && action.stageId) {
-              const { bulkCreateDealsAction } = await import('../deal-actions');
+              const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
               await bulkCreateDealsAction({
                 entityIds: [entityId],
                 pipelineId: action.pipelineId,
@@ -189,7 +189,7 @@ export async function executeMessageStatusAutomations(
                 { entityId, contactId: effectiveContactId }
               );
 
-              const { bulkCreateTasksAction } = await import('../task-actions');
+              const { bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
               await bulkCreateTasksAction({
                 entityIds: [entityId],
                 title: resolvedTitle,
@@ -205,7 +205,7 @@ export async function executeMessageStatusAutomations(
 
           case 'send_meeting': {
             if (action.meetingTypeId) {
-              const { bulkRegisterParticipantsAction } = await import('../meeting-actions');
+              const { bulkRegisterParticipantsAction } = await import('../../app/actions/bulk-meeting-actions');
               await bulkRegisterParticipantsAction({
                 entityIds: [entityId],
                 meetingTypeId: action.meetingTypeId,
