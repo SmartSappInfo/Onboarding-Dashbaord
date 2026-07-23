@@ -362,40 +362,16 @@ export async function recordMediaPageEventAction(params: {
                     workspaceId,
                     organizationId,
                     contactId: contactId || undefined,
-        }
-      } else {
-        const data = sessionSnap.data() as MediaSessionRecord;
-        const updates: Record<string, unknown> = {
-          updatedAt: now,
-        };
-
-        if (contactId && !data.contactId) {
-          updates.contactId = contactId;
-        }
-        if (entityId && !data.entityId) {
-          updates.entityId = entityId;
-        }
-        if (type === 'cta_click') {
-          updates.ctaClicked = true;
-        }
-        if (type === 'download') {
-          updates.downloaded = true;
-        }
-        if (progressPercent !== null && progressPercent !== undefined && Number(progressPercent) > (data.maxProgress || 0)) {
-          updates.maxProgress = Number(progressPercent);
-        }
-        if (sessionTimeSeconds !== null && sessionTimeSeconds !== undefined && Number(sessionTimeSeconds) > (data.sessionTimeSeconds || 0)) {
-          updates.sessionTimeSeconds = Number(sessionTimeSeconds);
-        }
-
-        const oldAgents = data.userAgents || [];
-        if (!oldAgents.includes(userAgent)) {
-          updates.userAgents = [...oldAgents, userAgent];
-        }
-
-        transaction.update(sessionRef, updates);
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[MEDIA_AUTOMATION] Fallback execute rules failed:', err);
+          }
+        }).catch((err) => console.error('[MEDIA_AUTOMATION] Fallback run failed:', err));
       }
-    });
+    }
 
     // Run automated outcome triggers in the background
     after(async () => {
