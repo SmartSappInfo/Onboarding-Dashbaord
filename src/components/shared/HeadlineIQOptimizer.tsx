@@ -26,6 +26,7 @@ export interface HeadlineIQOptimizerProps {
   previewValue?: string;
   onChange: (val: string) => void;
   onPreviewChange?: (val: string) => void;
+  onApplyVariation?: (title: string, previewText?: string) => void;
   emailContext?: string;
   organizationId?: string;
   frameworkDefault?: 'aida' | '4us' | 'pas';
@@ -37,6 +38,7 @@ export function HeadlineIQOptimizer({
   previewValue = '',
   onChange,
   onPreviewChange,
+  onApplyVariation,
   emailContext = '',
   organizationId,
   frameworkDefault = 'aida',
@@ -290,9 +292,13 @@ export function HeadlineIQOptimizer({
                     <button
                       type="button"
                       onClick={() => {
-                        onChange(v.title);
-                        if (onPreviewChange && v.previewText) {
-                          onPreviewChange(v.previewText);
+                        if (onApplyVariation) {
+                          onApplyVariation(v.title, v.previewText);
+                        } else {
+                          onChange(v.title);
+                          if (onPreviewChange && v.previewText) {
+                            onPreviewChange(v.previewText);
+                          }
                         }
                         setOpen(false);
                       }}
