@@ -78,8 +78,9 @@ export async function resolveWorkspaceGuid(
 
   // 3. Ultimate Fallback: Default workspace mapping
   const fallbackWorkspaceId = automation?.workspaceIds?.[0] || candidateWorkspaceId || 'default';
+  const fallbackOrgId = (automation as unknown as Record<string, unknown>)?.organizationId as string | undefined || 'default';
   return {
     workspaceId: fallbackWorkspaceId,
-    organizationId: 'default',
+    organizationId: fallbackOrgId,
   };
 }

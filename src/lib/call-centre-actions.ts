@@ -444,14 +444,16 @@ export async function addContactsToCallCampaignAction(
   contactOverrides?: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[],
   contactScope?: 'primary' | 'signatories' | 'all'
 ): Promise<{ success: boolean; count: number; error?: string }> {
-  const perm = await verifyPermission(userId, 'edit', workspaceId);
+  const { resolveWorkspaceGuid } = await import('./automations/workspace-resolver');
+  const { workspaceId: effectiveWorkspaceId } = await resolveWorkspaceGuid(workspaceId);
+  const perm = await verifyPermission(userId, 'edit', effectiveWorkspaceId);
   if (!perm.granted) return { success: false, count: 0, error: perm.reason };
 
   try {
     const result = await CallCentreService.addContactsToCampaign(
       campaignId,
       entityIds,
-      workspaceId,
+      effectiveWorkspaceId,
       userId,
       contactOverrides,
       contactScope
@@ -459,8 +461,9 @@ export async function addContactsToCallCampaignAction(
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;
-  } catch (error: any) {
-    return { success: false, count: 0, error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, count: 0, error: errMsg };
   }
 }
 

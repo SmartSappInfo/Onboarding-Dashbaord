@@ -25,7 +25,8 @@ async function resolveTargetDealId(config: DealAutomationActionConfig, context: 
     
     if (!context.entityId) return null;
     
-    const targetWorkspaceId = config.workspaceId || context.workspaceId;
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
     let query = adminDb.collection('deals')
         .where('entityId', '==', context.entityId)
         .where('workspaceId', '==', targetWorkspaceId)
@@ -45,11 +46,16 @@ async function resolveTargetDealId(config: DealAutomationActionConfig, context: 
 
 /**
  * Automation Handler: CREATE_DEAL
+ * 
+ * SECURITY BOUNDARY:
+ * Resolves the canonical target Workspace GUID via `resolveWorkspaceGuid` to ensure deal entity links,
+ * pipeline queries, and template variable replacements strictly use valid Workspace GUIDs.
  */
 export async function handleCreateDeal(config: DealAutomationActionConfig, context: ExecutionContext) {
     if (!context.entityId) throw new Error("Entity context missing for deal creation");
     
-    const targetWorkspaceId = config.workspaceId || context.workspaceId;
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
 
     // Auto-link entity to target workspace if needed
     if (targetWorkspaceId !== context.workspaceId) {

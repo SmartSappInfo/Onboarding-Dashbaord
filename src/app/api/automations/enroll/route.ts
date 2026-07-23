@@ -9,13 +9,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required parameters (automationId, entityId, workspaceId)' }, { status: 400 });
     }
 
-    const { resolveWorkspaceGuid } = await import('@/lib/automations/workspace-resolver');
-    const { workspaceId: effectiveWorkspaceId } = await resolveWorkspaceGuid(workspaceId);
-
     const triggerPayload = {
       entityId,
       entityType: entityType || 'contact',
-      workspaceId: effectiveWorkspaceId,
+      workspaceId,
       ...payload,
       startedBy: 'manual_enrollment',
     };

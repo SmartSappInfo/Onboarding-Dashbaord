@@ -545,11 +545,8 @@ export async function resumePausedRun(
         batch.update(doc.ref, { status: 'pending' });
         const jobData = doc.data();
         if (jobData.targetNodeId) {
-          let workspaceId = run.workspaceId || jobData.workspaceId;
-          if (!workspaceId) {
-            const autoSnap = await adminDb.collection('automations').doc(run.automationId).get();
-            workspaceId = autoSnap.data()?.workspaceIds?.[0];
-          }
+          const { resolveWorkspaceGuid } = await import('./workspace-resolver');
+          const { workspaceId } = await resolveWorkspaceGuid(run.workspaceId || jobData.workspaceId);
           if (!workspaceId) {
             console.error(`[RESUME] Cannot resume job ${doc.id} for run ${runId}: missing workspaceId.`);
             continue;

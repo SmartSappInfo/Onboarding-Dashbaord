@@ -11,8 +11,9 @@ import type { EntityType, Automation, EntityContact, Entity } from '../../types'
  */
 async function resolveOrgId(context: ExecutionContext): Promise<string> {
   if (context.organizationId) return context.organizationId;
-  const snap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
-  return (snap.data()?.organizationId as string) || '';
+  const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+  const { organizationId } = await resolveWorkspaceGuid(context.workspaceId);
+  return organizationId;
 }
 
 const NATIVE_ENTITY_FIELDS_LIST = [

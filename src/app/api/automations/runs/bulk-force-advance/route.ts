@@ -34,9 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing automationId, workspaceId, or userId' }, { status: 400 });
     }
 
-    const { resolveWorkspaceGuid } = await import('@/lib/automations/workspace-resolver');
-    const { workspaceId: effectiveWorkspaceId } = await resolveWorkspaceGuid(workspaceId);
-
     if (!advanceAllWaiting && (!runIds || runIds.length === 0)) {
       return NextResponse.json({ success: true, processedCount: 0 });
     }
@@ -54,7 +51,7 @@ export async function POST(request: NextRequest) {
       // Sweep mode for all active/waiting/paused runs
       const snap = await adminDb.collection('automation_runs')
         .where('automationId', '==', automationId)
-        .where('workspaceId', '==', effectiveWorkspaceId)
+        .where('workspaceId', '==', workspaceId)
         .where('status', 'in', ['running', 'paused', 'waiting'])
         .orderBy('startedAt', 'desc')
         .limit(CHUNK_SIZE)
