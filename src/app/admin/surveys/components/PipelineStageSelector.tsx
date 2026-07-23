@@ -31,6 +31,12 @@ export function PipelineStageSelector({
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
 
+  const onPipelineChangeRef = React.useRef(onPipelineChange);
+  onPipelineChangeRef.current = onPipelineChange;
+
+  const onStageChangeRef = React.useRef(onStageChange);
+  onStageChangeRef.current = onStageChange;
+
   // Fetch workspace pipelines
   const pipelinesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -46,9 +52,9 @@ export function PipelineStageSelector({
   // Auto-select first pipeline if none selected and pipelines exist
   React.useEffect(() => {
     if (!pipelineId && pipelines && pipelines.length > 0) {
-      onPipelineChange(pipelines[0].id);
+      onPipelineChangeRef.current(pipelines[0].id);
     }
-  }, [pipelineId, pipelines, onPipelineChange]);
+  }, [pipelineId, pipelines]);
 
   // Fetch stages for active pipeline
   const stagesQuery = useMemoFirebase(() => {
@@ -65,9 +71,9 @@ export function PipelineStageSelector({
   // Auto-select first stage if none selected and stages exist
   React.useEffect(() => {
     if (pipelineId && (!stageId || stageId === 'none') && stages && stages.length > 0) {
-      onStageChange(stages[0].id);
+      onStageChangeRef.current(stages[0].id);
     }
-  }, [pipelineId, stageId, stages, onStageChange]);
+  }, [pipelineId, stageId, stages]);
 
   return (
     <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-4', className)}>

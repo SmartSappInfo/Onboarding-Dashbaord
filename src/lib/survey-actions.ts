@@ -587,44 +587,51 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 responseId: docRef.id,
               };
 
-              // Execute Matched Result Rule Pipeline Action
-              if (matchedRulePipelineAction) {
-                await addOrMoveEntityInPipeline({
-                  entityId: finalEntityId,
-                  entityName: finalEntityName,
-                  workspaceId,
-                  organizationId,
-                  pipelineId: matchedRulePipelineAction.pipelineId,
-                  stageId: matchedRulePipelineAction.stageId,
-                  scoreDetails: {
-                    ...scoreDetailsPayload,
-                    label: matchedRulePipelineAction.label,
-                  },
-                }).catch((err) => console.error('[survey-actions] Outcome rule pipeline action error:', err));
-              }
+              // Wrap pipeline routing execution in Next.js after() for non-blocking <50ms response speed
+              after(async () => {
+                try {
+                  // Execute Matched Result Rule Pipeline Action
+                  if (matchedRulePipelineAction) {
+                    await addOrMoveEntityInPipeline({
+                      entityId: finalEntityId,
+                      entityName: finalEntityName,
+                      workspaceId,
+                      organizationId,
+                      pipelineId: matchedRulePipelineAction.pipelineId,
+                      stageId: matchedRulePipelineAction.stageId,
+                      scoreDetails: {
+                        ...scoreDetailsPayload,
+                        label: matchedRulePipelineAction.label,
+                      },
+                    }).catch((err) => console.error('[survey-actions] Outcome rule pipeline action error:', err));
+                  }
 
-              // Execute Workbench Pipeline Action
-              if (workbenchPipelineAction) {
-                // Avoid redundant execution if workbench points to exact same pipeline & stage as outcome rule
-                if (
-                  !matchedRulePipelineAction ||
-                  matchedRulePipelineAction.pipelineId !== workbenchPipelineAction.pipelineId ||
-                  matchedRulePipelineAction.stageId !== workbenchPipelineAction.stageId
-                ) {
-                  await addOrMoveEntityInPipeline({
-                    entityId: finalEntityId,
-                    entityName: finalEntityName,
-                    workspaceId,
-                    organizationId,
-                    pipelineId: workbenchPipelineAction.pipelineId,
-                    stageId: workbenchPipelineAction.stageId,
-                    scoreDetails: {
-                      ...scoreDetailsPayload,
-                      label: 'Workbench Automations',
-                    },
-                  }).catch((err) => console.error('[survey-actions] Workbench pipeline action error:', err));
+                  // Execute Workbench Pipeline Action
+                  if (workbenchPipelineAction) {
+                    // Avoid redundant execution if workbench points to exact same pipeline & stage as outcome rule
+                    if (
+                      !matchedRulePipelineAction ||
+                      matchedRulePipelineAction.pipelineId !== workbenchPipelineAction.pipelineId ||
+                      matchedRulePipelineAction.stageId !== workbenchPipelineAction.stageId
+                    ) {
+                      await addOrMoveEntityInPipeline({
+                        entityId: finalEntityId,
+                        entityName: finalEntityName,
+                        workspaceId,
+                        organizationId,
+                        pipelineId: workbenchPipelineAction.pipelineId,
+                        stageId: workbenchPipelineAction.stageId,
+                        scoreDetails: {
+                          ...scoreDetailsPayload,
+                          label: 'Workbench Automations',
+                        },
+                      }).catch((err) => console.error('[survey-actions] Workbench pipeline action error:', err));
+                    }
+                  }
+                } catch (bgError) {
+                  console.error('[survey-actions] Background pipeline routing error:', bgError);
                 }
-              }
+              });
             }
           }
         }
@@ -1821,6 +1828,24 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
       };
 
       await adminDb.collection('deals').doc(dealId).update(updatePayload);
+
+      // Record CRM activity timeline event for deal stage movement
+      await logActivity({
+        entityId,
+        workspaceId,
+        organizationId: organizationId || 'default',
+        userId: 'system-survey',
+        type: 'deal_stage_changed',
+        source: 'survey_pipeline_routing',
+        description: `Deal "${existingData.name || 'Open Deal'}" moved to stage "${stageName || stageId}" via survey outcome`,
+        metadata: {
+          dealId,
+          pipelineId,
+          stageId,
+          score: scoreDetails.score,
+          responseId: scoreDetails.responseId,
+        },
+      }).catch((err) => console.error('[survey-actions] Activity log for deal stage move failed:', err));
 
       return { success: true, dealId, action: 'moved' };
     } else {
