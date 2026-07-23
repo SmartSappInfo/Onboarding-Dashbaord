@@ -57,6 +57,48 @@ async function executeWithRetry<T>(
   }
 }
 
+function isQueueNotFoundError(err: unknown): boolean {
+  if (!err) return false;
+  const errorObj = err as { code?: number; status?: number; message?: string; details?: string };
+  const message = String(errorObj.message || errorObj.details || '');
+  const code = errorObj.code ?? errorObj.status ?? 0;
+  return (
+    code === 5 ||
+    message.includes('NOT_FOUND') ||
+    message.includes('Queue does not exist') ||
+    message.includes('5 NOT_FOUND')
+  );
+}
+
+async function dispatchLocalHttpWorker(endpoint: string, payload: Record<string, unknown>, taskKey: string) {
+  try {
+    const resolvedBaseUrl = await resolveRequestBaseUrl();
+    console.warn(`[GCP-TASKS-FALLBACK] Cloud Tasks queue not available. Executing fallback HTTP dispatch for task "${taskKey}" to endpoint "${endpoint}"`);
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`${resolvedBaseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cloud-tasks-secret': SECRET,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`[GCP-TASKS-FALLBACK] Worker ${endpoint} returned error: ${response.status} - ${text}`);
+        } else {
+          console.info(`[GCP-TASKS-FALLBACK] Worker ${endpoint} executed task ${taskKey} successfully.`);
+        }
+      } catch (fetchErr) {
+        console.error(`[GCP-TASKS-FALLBACK] Network error executing worker ${endpoint} for task ${taskKey}:`, fetchErr);
+      }
+    }, 10);
+  } catch (err) {
+    console.error(`[GCP-TASKS-FALLBACK] Error initiating local HTTP worker for task ${taskKey}:`, err);
+  }
+}
+
 // Instantiate Cloud Tasks Client safely and dynamically to prevent bundler errors
 let clientInstance: CloudTasksClient | null = null;
 let isInitialized = false;
@@ -272,29 +314,54 @@ export async function scheduleDelayTask({
     // Non-fatal if the task did not exist
   }
 
-  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
-  console.info(`[GCP-TASKS] Scheduled task ${response.name} for ${executeAt}`);
+  try {
+    const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
+    console.info(`[GCP-TASKS] Scheduled task ${response.name} for ${executeAt}`);
 
-  // Create audit log job document in Firestore
-  if (!skipDbUpdate) {
-    await adminDb.collection('automation_jobs').doc(taskKey).set({
-      id: taskKey,
-      runId,
-      automationId,
-      targetNodeId: nodeId,
-      sourceNodeId: sourceNodeId || nodeId,
-      payload,
-      workspaceId,
-      status: 'pending',
-      executeAt,
-      queue,
-      type: 'gcp_task',
-      createdAt: new Date().toISOString(),
-      gcpTaskName: response.name, // Store actual GCP task name for robust cancellation
-    });
+    // Create audit log job document in Firestore
+    if (!skipDbUpdate) {
+      await adminDb.collection('automation_jobs').doc(taskKey).set({
+        id: taskKey,
+        runId,
+        automationId,
+        targetNodeId: nodeId,
+        sourceNodeId: sourceNodeId || nodeId,
+        payload,
+        workspaceId,
+        status: 'pending',
+        executeAt,
+        queue,
+        type: 'gcp_task',
+        createdAt: new Date().toISOString(),
+        gcpTaskName: response.name, // Store actual GCP task name for robust cancellation
+      });
+    }
+
+    return response.name || taskKey;
+  } catch (err) {
+    if (isQueueNotFoundError(err)) {
+      void dispatchLocalHttpWorker('/api/automations/resume', taskPayload, taskKey);
+      if (!skipDbUpdate) {
+        await adminDb.collection('automation_jobs').doc(taskKey).set({
+          id: taskKey,
+          runId,
+          automationId,
+          targetNodeId: nodeId,
+          sourceNodeId: sourceNodeId || nodeId,
+          payload,
+          workspaceId,
+          status: 'pending',
+          executeAt,
+          queue,
+          type: 'gcp_task_fallback',
+          createdAt: new Date().toISOString(),
+          gcpTaskName: taskKey,
+        });
+      }
+      return taskKey;
+    }
+    throw err;
   }
-
-  return response.name || taskKey;
 }
 
 /**
@@ -454,10 +521,17 @@ export async function scheduleBulkTriggerTask({
     },
   };
 
-  const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
-  console.info(`[GCP-TASKS] Scheduled bulk trigger task ${response.name}`);
-
-  return response.name || taskKey;
+  try {
+    const [response] = await executeWithRetry(() => client.createTask({ parent, task }));
+    console.info(`[GCP-TASKS] Scheduled bulk trigger task ${response.name}`);
+    return response.name || taskKey;
+  } catch (err) {
+    if (isQueueNotFoundError(err)) {
+      void dispatchLocalHttpWorker('/api/automations/bulk-trigger', taskPayload, taskKey);
+      return taskKey;
+    }
+    throw err;
+  }
 }
 
 export interface BulkRetryTaskOptions {
@@ -546,6 +620,10 @@ export async function scheduleBulkRetryTask({
     const [response] = await client.createTask(requestObj);
     return response.name || taskKey;
   } catch (error) {
+    if (isQueueNotFoundError(error)) {
+      void dispatchLocalHttpWorker('/api/automations/runs/bulk-retry', taskPayload, taskKey);
+      return taskKey;
+    }
     console.error(`[GCP-TASKS] Failed to schedule bulk retry task ${taskKey}:`, error);
     throw error;
   }
@@ -631,6 +709,10 @@ export async function scheduleBulkResendMessagesTask({
     const [response] = await client.createTask(requestObj);
     return response.name || taskKey;
   } catch (error) {
+    if (isQueueNotFoundError(error)) {
+      void dispatchLocalHttpWorker('/api/automations/messages/bulk-resend', taskPayload, taskKey);
+      return taskKey;
+    }
     console.error(`[GCP-TASKS] Failed to schedule bulk resend messages task ${taskKey}:`, error);
     throw error;
   }
@@ -719,6 +801,10 @@ export async function scheduleBulkForceAdvanceTask({
     const [response] = await client.createTask(requestObj);
     return response.name || taskKey;
   } catch (error) {
+    if (isQueueNotFoundError(error)) {
+      void dispatchLocalHttpWorker('/api/automations/runs/bulk-force-advance', taskPayload, taskKey);
+      return taskKey;
+    }
     console.error(`[GCP-TASKS] Failed to schedule bulk force advance task ${taskKey}:`, error);
     throw error;
   }
