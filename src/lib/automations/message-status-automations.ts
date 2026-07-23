@@ -1,6 +1,6 @@
 import { adminDb } from '../firebase-admin';
 import { logAutomationEvent } from '../automation-log';
-import { FieldsVariablesService } from '../services/fields-variables-service';
+import { FieldsVariablesService } from '../services/fields-variables-service-impl';
 import {
   normalizeMessageNodeConfig,
   type MessageDeliveryStatusEvent,
