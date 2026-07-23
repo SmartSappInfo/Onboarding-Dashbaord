@@ -170,7 +170,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
         { n: 3, label: 'Automations', icon: Zap },
-        { n: 4, label: 'Results', icon: BarChart3 },
+        { n: 4, label: 'Result', icon: BarChart3 },
         { n: 5, label: 'Publish', icon: Share2 }
     ];
 

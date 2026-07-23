@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap, GitMerge } from 'lucide-react';
 import type { SurveyResultPage, SenderProfile } from '@/lib/types';
+import { PipelineStageSelector } from './PipelineStageSelector';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -60,6 +61,7 @@ function SortableRuleItem({
     const tagEnabled = watch(`resultRules.${index}.tagEnabled`);
     const automationEnabled = watch(`resultRules.${index}.automationEnabled`);
     const messagingEnabled = watch(`resultRules.${index}.messagingEnabled`);
+    const pipelineEnabled = watch(`resultRules.${index}.pipelineEnabled`);
 
     return (
         <div ref={setNodeRef} style={style} className="flex flex-col gap-4 p-6 border-2 rounded-2xl bg-card group relative hover:border-primary/30 transition-all shadow-sm">
@@ -147,7 +149,7 @@ function SortableRuleItem({
                 </div>
 
                 {/* Toggles Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Tag Toggle */}
                     <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
                         <Label htmlFor={`tag-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
@@ -199,6 +201,25 @@ function SortableRuleItem({
                             className="scale-90 data-[state=checked]:bg-primary"
                         />
                     </div>
+
+                    {/* Pipeline Toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 hover:bg-muted/30 transition-all">
+                        <Label htmlFor={`pipeline-toggle-${index}`} className="text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer select-none">
+                            <GitMerge className="h-3.5 w-3.5 text-primary/70" /> Move in Pipeline
+                        </Label>
+                        <Switch 
+                            id={`pipeline-toggle-${index}`}
+                            checked={!!pipelineEnabled} 
+                            onCheckedChange={(val) => {
+                                setValue(`resultRules.${index}.pipelineEnabled`, val, { shouldDirty: true });
+                                if (!val) {
+                                    setValue(`resultRules.${index}.pipelineId`, '', { shouldDirty: true });
+                                    setValue(`resultRules.${index}.pipelineStageId`, '', { shouldDirty: true });
+                                }
+                            }} 
+                            className="scale-90 data-[state=checked]:bg-primary"
+                        />
+                    </div>
                 </div>
 
                 {/* Configurations */}
@@ -245,6 +266,21 @@ function SortableRuleItem({
                                 )}
                             />
                             <p className="text-[9px] text-muted-foreground font-medium">Executes the chosen workflow automatically on outcome match.</p>
+                        </div>
+                    )}
+
+                    {/* Pipeline Configuration */}
+                    {pipelineEnabled && (
+                        <div className="space-y-2.5 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            <Label className="text-xs font-bold text-slate-700">Add or Move in Pipeline</Label>
+                            <PipelineStageSelector
+                                pipelineId={watch(`resultRules.${index}.pipelineId`)}
+                                stageId={watch(`resultRules.${index}.pipelineStageId`)}
+                                onPipelineChange={(pId) => setValue(`resultRules.${index}.pipelineId`, pId, { shouldDirty: true })}
+                                onStageChange={(sId) => setValue(`resultRules.${index}.pipelineStageId`, sId, { shouldDirty: true })}
+                                compact
+                            />
+                            <p className="text-[9px] text-muted-foreground font-medium">Moves existing deal or creates a new deal in the targeted pipeline stage when the score matches this range.</p>
                         </div>
                     )}
 

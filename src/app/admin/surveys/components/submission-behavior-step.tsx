@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Zap, Database, Tags, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Search, Check, PlusCircle } from 'lucide-react';
+import { Zap, Database, Tags, ArrowRight, Table as TableIcon, Plus, Trash2, ListTree, Search, Check, PlusCircle, GitMerge } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import WebhookManager from './webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import ExternalNotificationConfig from './external-notification-config';
 import SurveyLeadCaptureCard from './survey-lead-capture-card';
+import { PipelineStageSelector } from './PipelineStageSelector';
 
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
@@ -406,6 +407,77 @@ export default function SubmissionBehaviorStep() {
                                 These automations will be executed immediately after the submission is validated.
                             </p>
                         </div>
+                    </div>
+
+                    {/* Pipeline Routing */}
+                    <div className="pt-6 border-t border-dashed space-y-5">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <GitMerge className="h-4 w-4 text-primary" />
+                                <Label className="text-sm font-semibold">Add or Move in Pipeline</Label>
+                            </div>
+                            <Switch 
+                                checked={!!watch('autoPipelineEnabled')}
+                                onCheckedChange={(val) => {
+                                    setValue('autoPipelineEnabled', val, { shouldDirty: true });
+                                    if (!val) {
+                                        setValue('autoPipelineId', '', { shouldDirty: true });
+                                        setValue('autoPipelineStageId', '', { shouldDirty: true });
+                                    }
+                                }}
+                                className="scale-90 data-[state=checked]:bg-primary"
+                            />
+                        </div>
+
+                        {watch('autoPipelineEnabled') && (
+                            <div className="space-y-4 p-5 rounded-2xl border bg-muted/20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <PipelineStageSelector
+                                    pipelineId={watch('autoPipelineId')}
+                                    stageId={watch('autoPipelineStageId')}
+                                    onPipelineChange={(pId) => setValue('autoPipelineId', pId, { shouldDirty: true })}
+                                    onStageChange={(sId) => setValue('autoPipelineStageId', sId, { shouldDirty: true })}
+                                />
+
+                                <div className="space-y-2 pt-2 border-t border-border/40">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Execution Strategy</Label>
+                                    <Controller
+                                        name="autoPipelineMode"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('fallback')}
+                                                    className={cn(
+                                                        "p-3 rounded-xl border text-left transition-all min-h-[44px] flex flex-col justify-center",
+                                                        (field.value || 'fallback') === 'fallback' 
+                                                            ? "bg-card border-primary ring-1 ring-primary/30 shadow-sm" 
+                                                            : "bg-background border-border/50 opacity-70 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <span className="text-xs font-bold text-foreground">Fallback Automation</span>
+                                                    <span className="text-[9px] text-muted-foreground font-semibold">Executes ONLY IF no individual score result rule moves the deal.</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('additional')}
+                                                    className={cn(
+                                                        "p-3 rounded-xl border text-left transition-all min-h-[44px] flex flex-col justify-center",
+                                                        field.value === 'additional' 
+                                                            ? "bg-card border-primary ring-1 ring-primary/30 shadow-sm" 
+                                                            : "bg-background border-border/50 opacity-70 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <span className="text-xs font-bold text-foreground">Additional Automation</span>
+                                                    <span className="text-[9px] text-muted-foreground font-semibold">ALWAYS executes alongside individual result stage moves.</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
