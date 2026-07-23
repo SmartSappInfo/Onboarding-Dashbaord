@@ -64,6 +64,8 @@ export interface MediaShareAnalyticsDoc {
 }
 
 export interface MediaAnalyticsResult {
+  title?: string;
+  assetName?: string;
   stats: MediaPageStats;
   recentEvents: MediaPageEventWithContact[];
   sessions: MediaSessionRecordWithContact[];
@@ -385,7 +387,7 @@ export async function recordMediaPageEventAction(params: {
  */
 export async function listMediaSharesWithStatsAction(
   workspaceId: string
-): Promise<{ shareId: string; title: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
+): Promise<{ shareId: string; title: string; assetName: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
   if (!workspaceId) return [];
 
   try {
@@ -408,6 +410,7 @@ export async function listMediaSharesWithStatsAction(
     // Fetch corresponding assets in chunks of 30
     const assetIds = configsSnap.docs.map((d) => d.data().assetId).filter(Boolean);
     const assetTypeMap = new Map<string, string>();
+    const assetNameMap = new Map<string, string>();
 
     if (assetIds.length > 0) {
       const CHUNK = 30;
@@ -416,10 +419,11 @@ export async function listMediaSharesWithStatsAction(
         const assetsSnap = await adminDb
           .collection('media')
           .where('__name__', 'in', chunk)
-          .select('type')
+          .select('name', 'type')
           .get();
         assetsSnap.docs.forEach((doc) => {
           assetTypeMap.set(doc.id, String(doc.data().type || ''));
+          assetNameMap.set(doc.id, String(doc.data().name || ''));
         });
       }
     }
@@ -445,6 +449,7 @@ export async function listMediaSharesWithStatsAction(
       return {
         shareId: d.id,
         title: config?.title || d.id,
+        assetName: assetNameMap.get(assetId) || '',
         type: assetTypeMap.get(assetId) || 'video',
         stats: statsMap.get(d.id) || { ...DEFAULT_STATS },
         updatedAt: d.data().updatedAt || d.data().createdAt || '',
@@ -468,6 +473,7 @@ export async function getMediaShareDrilldownAction(
   try {
     // Authorization Check
     const configSnap = await adminDb.collection('media_shares').doc(shareId).get();
+    let configData = configSnap.exists ? configSnap.data() : null;
     let finalShareId = shareId;
     if (!configSnap.exists) {
       // Fallback lookup by slug
@@ -477,12 +483,20 @@ export async function getMediaShareDrilldownAction(
         .limit(1)
         .get();
       if (slugSnap.empty) return null;
-      const data = slugSnap.docs[0].data();
-      if (data.workspaceId !== workspaceId) return null;
+      configData = slugSnap.docs[0].data();
+      if (configData?.workspaceId !== workspaceId) return null;
       finalShareId = slugSnap.docs[0].id;
     } else {
-      const data = configSnap.data();
-      if (data?.workspaceId !== workspaceId) return null;
+      if (configData?.workspaceId !== workspaceId) return null;
+    }
+
+    const title = String(configData?.title || '');
+    let assetName = '';
+    if (configData?.assetId) {
+      const assetSnap = await adminDb.collection('media').doc(configData.assetId).get();
+      if (assetSnap.exists) {
+        assetName = String(assetSnap.data()?.name || '');
+      }
     }
 
     const finalPageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(finalShareId);
@@ -535,6 +549,8 @@ export async function getMediaShareDrilldownAction(
     const totalKnownContacts = contactIds.length;
 
     return {
+      title,
+      assetName,
       stats,
       recentEvents,
       sessions,

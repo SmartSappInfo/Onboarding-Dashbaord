@@ -6,19 +6,16 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { 
   getMediaShareDrilldownAction, 
   MediaAnalyticsResult, 
-  MediaSessionRecordWithContact, 
   MediaPageEventWithContact 
 } from '@/lib/media-analytics-actions';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Eye, PlayCircle, MousePointerClick, Download, ArrowLeft,
-  Clock, User, Loader2, CheckCircle2, XCircle, BarChart3, ListCollapse
+  ArrowLeft, User, Loader2, CheckCircle2, XCircle, BarChart3, ListCollapse, Sparkles
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
-import { cn } from '@/lib/utils';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
@@ -133,6 +130,12 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
         {/* Header Block */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="flex flex-col items-start">
+            {data.assetName && (
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary mb-1 pl-1">
+                <Sparkles className="h-3 w-3" />
+                <span>Asset: {data.assetName}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 mb-1">
               <Button 
                 variant="ghost" 
@@ -143,7 +146,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-                Link Engagement Drilldown
+                {data.title || 'Link Engagement Drilldown'}
               </h1>
             </div>
             <p className="text-muted-foreground text-xs leading-relaxed pl-1 font-mono">

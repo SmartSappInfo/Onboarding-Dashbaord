@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import { 
     Loader2, Share2, Copy, Check, Globe, Code, 
-    Sparkles, RefreshCw, Layers, Save 
+    Sparkles, RefreshCw, Layers, Save, Film 
 } from 'lucide-react';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
@@ -424,6 +424,10 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                             <Share2 className="h-6 w-6" aria-hidden="true" />
                         </div>
                         <div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary mb-0.5">
+                                <Sparkles className="h-3 w-3" aria-hidden="true" />
+                                <span>Asset: {asset.name}</span>
+                            </div>
                             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Share Media Asset</DialogTitle>
                             <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
                                 Configure public links, personalized context mapping, and iframe embed targets.
@@ -449,7 +453,14 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                     <TabsContent value="general" className="space-y-6 outline-none mt-0">
                                         <div className="space-y-4">
-                                            <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
+                                            <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+                                                    <Film className="h-3.5 w-3.5" /> Media Asset Reference
+                                                </span>
+                                                <span className="font-extrabold text-foreground truncate max-w-[280px]">{asset.name}</span>
+                                            </div>
+
+                                            <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2 pt-2">
                                                 <Sparkles className="h-3.5 w-3.5 text-primary" /> Personalized Content
                                             </h3>
 
