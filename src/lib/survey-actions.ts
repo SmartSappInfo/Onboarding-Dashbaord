@@ -14,6 +14,8 @@ import { resolveContact } from './contact-adapter';
 import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
+import { createDeal } from '../app/actions/deal-actions';
+import { stripHtml } from './utils';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
@@ -535,6 +537,94 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
               // Fire SURVEY_SUBMITTED trigger for each matching automation
               await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload);
+            }
+
+            // Pipeline Routing Automation Execution (Outcome Rules & Workbench Automations)
+            if (surveyData) {
+              const score = responseData.score !== undefined ? responseData.score : 0;
+              const maxScore = surveyData.maxScore || 100;
+              const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+
+              // 1. Evaluate score outcome rules
+              let matchedRulePipelineAction: { pipelineId: string; stageId: string; label?: string } | null = null;
+              if (surveyData.scoringEnabled && surveyData.resultRules?.length) {
+                const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
+                const matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
+                if (matchedRule?.pipelineEnabled && matchedRule.pipelineId && matchedRule.pipelineStageId) {
+                  matchedRulePipelineAction = {
+                    pipelineId: matchedRule.pipelineId,
+                    stageId: matchedRule.pipelineStageId,
+                    label: matchedRule.label,
+                  };
+                }
+              }
+
+              // 2. Evaluate Workbench Pipeline Automation
+              let workbenchPipelineAction: { pipelineId: string; stageId: string } | null = null;
+              if (surveyData.autoPipelineEnabled && surveyData.autoPipelineId && surveyData.autoPipelineStageId) {
+                const mode = surveyData.autoPipelineMode || 'fallback';
+                if (mode === 'fallback') {
+                  if (!matchedRulePipelineAction) {
+                    workbenchPipelineAction = {
+                      pipelineId: surveyData.autoPipelineId,
+                      stageId: surveyData.autoPipelineStageId,
+                    };
+                  }
+                } else if (mode === 'additional') {
+                  workbenchPipelineAction = {
+                    pipelineId: surveyData.autoPipelineId,
+                    stageId: surveyData.autoPipelineStageId,
+                  };
+                }
+              }
+
+              const scoreDetailsPayload = {
+                score,
+                maxScore,
+                percentage,
+                submittedAt: new Date().toISOString(),
+                surveyTitle: surveyData.title,
+                responseId: docRef.id,
+              };
+
+              // Execute Matched Result Rule Pipeline Action
+              if (matchedRulePipelineAction) {
+                await addOrMoveEntityInPipeline({
+                  entityId: finalEntityId,
+                  entityName: finalEntityName,
+                  workspaceId,
+                  organizationId,
+                  pipelineId: matchedRulePipelineAction.pipelineId,
+                  stageId: matchedRulePipelineAction.stageId,
+                  scoreDetails: {
+                    ...scoreDetailsPayload,
+                    label: matchedRulePipelineAction.label,
+                  },
+                }).catch((err) => console.error('[survey-actions] Outcome rule pipeline action error:', err));
+              }
+
+              // Execute Workbench Pipeline Action
+              if (workbenchPipelineAction) {
+                // Avoid redundant execution if workbench points to exact same pipeline & stage as outcome rule
+                if (
+                  !matchedRulePipelineAction ||
+                  matchedRulePipelineAction.pipelineId !== workbenchPipelineAction.pipelineId ||
+                  matchedRulePipelineAction.stageId !== workbenchPipelineAction.stageId
+                ) {
+                  await addOrMoveEntityInPipeline({
+                    entityId: finalEntityId,
+                    entityName: finalEntityName,
+                    workspaceId,
+                    organizationId,
+                    pipelineId: workbenchPipelineAction.pipelineId,
+                    stageId: workbenchPipelineAction.stageId,
+                    scoreDetails: {
+                      ...scoreDetailsPayload,
+                      label: 'Workbench Automations',
+                    },
+                  }).catch((err) => console.error('[survey-actions] Workbench pipeline action error:', err));
+                }
+              }
             }
           }
         }
@@ -1654,5 +1744,109 @@ export async function logSurveyStartedAction(params: {
     const errorMsg = error instanceof Error ? error.message : 'Unknown survey start log failure';
     console.error('[logSurveyStartedAction] Error:', errorMsg);
     return { success: false, error: errorMsg };
+  }
+}
+
+export interface PipelineRouteParams {
+  entityId: string;
+  entityName?: string | null;
+  workspaceId: string;
+  organizationId: string;
+  pipelineId: string;
+  stageId: string;
+  scoreDetails: {
+    score: number;
+    maxScore: number;
+    label?: string;
+    percentage?: number;
+    submittedAt: string;
+    surveyTitle: string;
+    responseId: string;
+  };
+}
+
+export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Promise<{ success: boolean; dealId?: string; action?: 'created' | 'moved'; error?: string }> {
+  try {
+    const { entityId, entityName, workspaceId, organizationId, pipelineId, stageId, scoreDetails } = params;
+    if (!entityId || !workspaceId || !pipelineId || !stageId) {
+      return { success: false, error: 'Missing required parameters for pipeline routing' };
+    }
+
+    // 1. Resolve target stageName from onboardingStages
+    let stageName: string | undefined;
+    try {
+      const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
+      if (stageSnap.exists) {
+        stageName = stageSnap.data()?.name as string | undefined;
+      }
+    } catch (e) {
+      console.warn('[survey-actions] Failed to fetch stageName:', e);
+    }
+
+    // Format score details summary cleanly (plain text)
+    const scoreStr = `${scoreDetails.score}/${scoreDetails.maxScore}`;
+    const pctStr = scoreDetails.percentage !== undefined ? ` (${scoreDetails.percentage}%)` : '';
+    const outcomeLabelStr = scoreDetails.label ? ` | Outcome: "${stripHtml(scoreDetails.label)}"` : '';
+    const formattedScoreSummary = `Score: ${scoreStr}${pctStr}${outcomeLabelStr} | Submitted: ${scoreDetails.submittedAt} | Survey: "${stripHtml(scoreDetails.surveyTitle)}"`;
+
+    // 2. Query open deal for this entity in the targeted workspace & pipeline
+    const dealsSnap = await adminDb
+      .collection('deals')
+      .where('entityId', '==', entityId)
+      .where('workspaceId', '==', workspaceId)
+      .where('status', '==', 'open')
+      .where('pipelineId', '==', pipelineId)
+      .orderBy('updatedAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (!dealsSnap.empty) {
+      // 3. Open deal found → Move stage and update score details
+      const existingDealDoc = dealsSnap.docs[0];
+      const existingData = existingDealDoc.data();
+      const dealId = existingDealDoc.id;
+
+      const existingDescription = existingData.description || '';
+      const updatedDescription = existingDescription
+        ? `${existingDescription}\n\n[Survey Score Update - ${new Date().toLocaleDateString()}]\n${formattedScoreSummary}`
+        : `[Survey Score Summary]\n${formattedScoreSummary}`;
+
+      const updatePayload: Record<string, unknown> = {
+        stageId,
+        ...(stageName ? { stageName } : {}),
+        description: updatedDescription,
+        updatedAt: new Date().toISOString(),
+        'customFields.lastSurveyScore': scoreDetails.score,
+        'customFields.lastSurveyScoreDetails': formattedScoreSummary,
+      };
+
+      await adminDb.collection('deals').doc(dealId).update(updatePayload);
+
+      return { success: true, dealId, action: 'moved' };
+    } else {
+      // 4. No open deal found → Create a new deal in the targeted pipeline & stage
+      const resolvedName = entityName ? `[Lead] ${entityName} - ${stripHtml(scoreDetails.surveyTitle)}` : `Survey Lead - ${stripHtml(scoreDetails.surveyTitle)}`;
+
+      const createRes = await createDeal({
+        entityId,
+        workspaceId,
+        organizationId: organizationId || 'default',
+        pipelineId,
+        stageId,
+        name: resolvedName,
+        value: 0,
+        description: `[Survey Score Summary]\n${formattedScoreSummary}`,
+        suppressAutomations: true,
+      });
+
+      if (createRes.error) {
+        return { success: false, error: createRes.error };
+      }
+
+      return { success: true, dealId: createRes.id, action: 'created' };
+    }
+  } catch (error) {
+    console.error('[survey-actions] addOrMoveEntityInPipeline Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
