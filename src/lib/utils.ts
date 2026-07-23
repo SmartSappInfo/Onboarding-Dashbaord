@@ -101,9 +101,7 @@ export function stripHtml(html: string): string {
     .replace(/<\?xml[^>]*\?>/gi, '')
     // 5. Remove <head> blocks
     .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
-    // 6. Remove leftover CSS declaration blocks (e.g. #outlook a { ... } or body { ... } or @media ... { ... })
-    .replace(/(?:[a-zA-Z0-9_\-\.\#\s,>+~:]+)?\{[^}]*\}/g, '')
-    // 7. Remove remaining HTML/XML tags
+    // 6. Remove remaining HTML/XML tags
     .replace(/<[^>]+>/g, '')
     // 8. Decode HTML entities
     .replace(/&nbsp;/gi, ' ')
