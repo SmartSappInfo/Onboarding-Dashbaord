@@ -188,7 +188,7 @@ function getQueueName(channel?: QueueChannel): string {
   const suffix = channel === 'email' ? 'email-delivery-queue' :
                  channel === 'sms' ? 'sms-delivery-queue' :
                  channel === 'whatsapp' ? 'whatsapp-delivery-queue' :
-                 channel === 'bulk' ? 'bulk-trigger-queue' :
+                 channel === 'bulk' ? 'bulk-trigger-queue-v2' :
                  'default-delivery-queue';
   return `${QUEUE_PREFIX}${suffix}`;
 }
