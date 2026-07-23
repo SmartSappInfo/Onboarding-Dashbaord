@@ -8,6 +8,14 @@ const SECRET = process.env.CLOUD_TASKS_SECRET || 'local-secret';
 const BASE_URL = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://go.smartsapp.com' : 'http://127.0.0.1:3000');
 const QUEUE_PREFIX = process.env.GCP_QUEUE_PREFIX ? `${process.env.GCP_QUEUE_PREFIX}-` : '';
 
+async function resolvePublicBaseUrl(): Promise<string> {
+  const envUrl = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
+  }
+  return 'https://go.smartsapp.com';
+}
+
 async function resolveRequestBaseUrl(): Promise<string> {
   try {
     const { headers } = await import('next/headers');
@@ -311,11 +319,13 @@ export async function scheduleDelayTask({
     payload,
   };
 
+  const publicBaseUrl = await resolvePublicBaseUrl();
+
   const task = {
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${resolvedBaseUrl}/api/automations/resume`,
+      url: `${publicBaseUrl}/api/automations/resume`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
@@ -528,11 +538,13 @@ export async function scheduleBulkTriggerTask({
     targets,
   };
 
+  const publicBaseUrl = await resolvePublicBaseUrl();
+
   const task = {
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${resolvedBaseUrl}/api/automations/bulk-trigger`,
+      url: `${publicBaseUrl}/api/automations/bulk-trigger`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
@@ -618,11 +630,13 @@ export async function scheduleBulkRetryTask({
     retryAll,
   };
 
+  const publicBaseUrl = await resolvePublicBaseUrl();
+
   const task = {
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${resolvedBaseUrl}/api/automations/runs/bulk-retry`,
+      url: `${publicBaseUrl}/api/automations/runs/bulk-retry`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
@@ -710,11 +724,13 @@ export async function scheduleBulkResendMessagesTask({
     resendAll,
   };
 
+  const publicBaseUrl = await resolvePublicBaseUrl();
+
   const task = {
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${resolvedBaseUrl}/api/automations/messages/bulk-resend`,
+      url: `${publicBaseUrl}/api/automations/messages/bulk-resend`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
@@ -802,11 +818,13 @@ export async function scheduleBulkForceAdvanceTask({
     advanceAllWaiting,
   };
 
+  const publicBaseUrl = await resolvePublicBaseUrl();
+
   const task = {
     name: formattedTaskName,
     httpRequest: {
       httpMethod: 'POST' as const,
-      url: `${resolvedBaseUrl}/api/automations/runs/bulk-force-advance`,
+      url: `${publicBaseUrl}/api/automations/runs/bulk-force-advance`,
       headers: {
         'Content-Type': 'application/json',
         'x-cloud-tasks-secret': SECRET,
