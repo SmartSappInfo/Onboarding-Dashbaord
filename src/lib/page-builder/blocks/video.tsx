@@ -63,7 +63,20 @@ registerBlock({
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const fileInputRef = useRef<HTMLInputElement>(null);
     // eslint-disable-next-line react-hooks/rules-of-hooks
+    const linkInputRef = useRef<HTMLInputElement>(null);
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { toast } = useToast();
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      if (showLinkInput) {
+        // Cautious: Wait briefly for the UI rendering pass to place focus inside the textbox
+        const timer = setTimeout(() => {
+          linkInputRef.current?.focus();
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }, [showLinkInput]);
 
     const handleApplyLink = () => {
       if (!pastedLink) return;
@@ -155,7 +168,7 @@ registerBlock({
                 <Button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-11 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 shadow-md shadow-emerald-500/10"
                 >
                   <Upload className="w-4 h-4" /> Upload Video File
                 </Button>
@@ -166,7 +179,7 @@ registerBlock({
                     setChangeSourceOpen(false);
                     setVideoLibraryOpen(true);
                   }}
-                  className="w-full h-11 rounded-xl text-xs font-bold bg-slate-800 border-slate-750 text-slate-200 hover:bg-slate-750 flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
                   <FolderHeart className="w-4 h-4 text-emerald-500" /> Select from Media Gallery
                 </Button>
@@ -174,7 +187,7 @@ registerBlock({
                   type="button"
                   variant="outline"
                   onClick={() => setShowLinkInput(true)}
-                  className="w-full h-11 rounded-xl text-xs font-bold bg-slate-800 border-slate-750 text-slate-200 hover:bg-slate-750 flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
                   <LinkIcon className="w-4 h-4 text-emerald-500" /> Paste Video Link (YouTube, Vimeo, etc.)
                 </Button>
@@ -183,6 +196,8 @@ registerBlock({
               <div className="space-y-4 mt-4 text-left">
                 <p className="text-xs text-slate-400">Paste a link to YouTube, Vimeo, Loom, or a direct video URL:</p>
                 <Input
+                  autoFocus
+                  ref={linkInputRef}
                   type="text"
                   placeholder="https://youtube.com/watch?v=..."
                   value={pastedLink}
