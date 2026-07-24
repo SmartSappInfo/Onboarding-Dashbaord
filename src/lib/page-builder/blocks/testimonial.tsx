@@ -418,7 +418,6 @@ registerBlock({
     }
 
     if (props.preset === 'split-video') {
-      const videoCaptionText = props.videoCaption || 'How Sunflower School cleared their debtors lists without stress';
       return (
         <div 
           className={cn(
@@ -430,40 +429,15 @@ registerBlock({
         >
           {/* Left-hand side: Content Column */}
           <div className="flex-1 flex flex-col justify-between self-stretch py-1">
-            {/* Header: School Name, Subtitle, and Logo */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <InlineEditable
-                  tagName="p"
-                  isEdit={ctx.mode === 'edit'}
-                  data-block-id={_block.id}
-                  data-prop-key="schoolName"
-                  data-rich="false"
-                  onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className={cn("text-lg font-extrabold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text", props.cardTextColor ? "" : "text-slate-900 dark:text-white")}
-                  value={props.schoolName || 'Sunflower School'}
-                  html={false}
-                />
-                <InlineEditable
-                  tagName="p"
-                  isEdit={ctx.mode === 'edit'}
-                  data-block-id={_block.id}
-                  data-prop-key="schoolSubtitle"
-                  data-rich="false"
-                  onChange={(val) => ctx.onPropChange?.({ schoolSubtitle: val })}
-                  className={cn("text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
-                  value={props.schoolSubtitle || 'Ghana'}
-                  html={false}
-                />
-              </div>
-
+            {/* Header: School Logo, School Name, and Subtitle */}
+            <div className="flex items-center gap-3">
               {/* School Logo */}
               <div className="relative group/logo cursor-pointer shrink-0">
                 {props.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={props.logoUrl} alt="School Logo" className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-450 flex items-center justify-center text-xs font-bold border border-slate-200 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-555 dark:text-slate-450 flex items-center justify-center text-xs font-bold border border-slate-200 dark:border-slate-700">
                     LOGO
                   </div>
                 )}
@@ -487,6 +461,31 @@ registerBlock({
                     />
                   </>
                 )}
+              </div>
+
+              <div className="space-y-0.5 text-left">
+                <InlineEditable
+                  tagName="p"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="schoolName"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
+                  className={cn("text-lg font-extrabold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text block", props.cardTextColor ? "" : "text-slate-900 dark:text-white")}
+                  value={props.schoolName || 'Sunflower School'}
+                  html={false}
+                />
+                <InlineEditable
+                  tagName="p"
+                  isEdit={ctx.mode === 'edit'}
+                  data-block-id={_block.id}
+                  data-prop-key="schoolSubtitle"
+                  data-rich="false"
+                  onChange={(val) => ctx.onPropChange?.({ schoolSubtitle: val })}
+                  className={cn("text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5 block", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
+                  value={props.schoolSubtitle || 'Ghana'}
+                  html={false}
+                />
               </div>
             </div>
 
@@ -565,58 +564,18 @@ registerBlock({
                       </div>
                     )}
 
-                    {/* Watermark Logo on cover */}
-                    <div className="absolute top-4 left-4 flex items-center gap-1.5 text-white/95 font-bold text-xs select-none pointer-events-none drop-shadow-md">
-                      <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] text-white">S</div>
-                      <span>SmartSapp</span>
-                    </div>
-
                     {/* Tap To Watch Play button overlay */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/15 group-hover:bg-black/25 transition-colors duration-300">
                       <span className="text-[10px] font-black tracking-widest text-white uppercase mb-2 drop-shadow-md opacity-90">Tap To Watch Video</span>
-                      <div className="relative">
-                        <div className="w-14 h-14 rounded-full bg-[#EF5A5A] text-white flex items-center justify-center shadow-lg shadow-red-500/35 transform transition-transform duration-300 group-hover:scale-110 active:scale-95">
+                      <div className="relative flex items-center justify-center">
+                        {/* Pulsing blue outer ring */}
+                        <div className="absolute -inset-2.5 rounded-full bg-blue-500/40 animate-pulse scale-105" />
+                        <div className="absolute -inset-1 rounded-full bg-blue-500/25 animate-ping opacity-75" />
+                        {/* Solid play button */}
+                        <div className="relative w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/35 transform transition-transform duration-300 group-hover:scale-110 active:scale-95">
                           <Play className="w-6 h-6 fill-current ml-0.5" />
                         </div>
-                        {/* Hand click cursor overlay */}
-                        <div className="absolute -bottom-3 -right-3 z-10 select-none pointer-events-none animate-bounce">
-                          <svg viewBox="0 0 24 24" className="w-8 h-8 select-none pointer-events-none" fill="none" stroke="black" strokeWidth="1.5">
-                            <path d="M5.5 10v7A5.5 5.5 0 0 0 11 22.5h3.5a5.5 5.5 0 0 0 5.5-5.5v-6.5a2 2 0 0 0-4 0v1.5a1 1 0 0 1-2 0v-4a2 2 0 0 0-4 0v4.5a1 1 0 0 1-2 0V4a2 2 0 0 0-4 0v6" fill="white" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
                       </div>
-                    </div>
-
-                    {/* Bottom visual cover caption */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10 text-center select-text">
-                      {ctx.mode === 'edit' ? (
-                        <InlineEditable
-                          tagName="p"
-                          isEdit={true}
-                          data-block-id={_block.id}
-                          data-prop-key="videoCaption"
-                          data-rich="false"
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(val) => ctx.onPropChange?.({ videoCaption: val })}
-                          className="text-xs font-black text-white outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 inline-block cursor-text"
-                          value={props.videoCaption || 'How Sunflower School cleared their debtors lists without stress'}
-                          html={false}
-                        />
-                      ) : (
-                        <p className="text-xs font-black text-white">
-                          {(() => {
-                            const raw = videoCaptionText;
-                            const parts = raw.split(/(Sunflower School|debtors lists)/gi);
-                            return parts.map((part, pI) => {
-                              const low = part.toLowerCase();
-                              if (low === 'sunflower school' || low === 'debtors lists') {
-                                return <span key={pI} className="text-[#FFD369]">{part}</span>;
-                              }
-                              return part;
-                            });
-                          })()}
-                        </p>
-                      )}
                     </div>
                     {changeControls}
                   </div>
