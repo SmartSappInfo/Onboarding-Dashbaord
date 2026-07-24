@@ -60,7 +60,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                     <Label className="text-[9px] font-bold text-slate-500 uppercase">When This Happens</Label>
                                     <Select value={trigger.event} onValueChange={(val: any) => onUpdateTrigger(trigger.id, { event: val })}>
                                         <SelectTrigger className="h-8 text-[10px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                        <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                             <SelectItem value="page_load" className="text-[10px]">Page Loaded</SelectItem>
                                             <SelectItem value="block_click" className="text-[10px]">Block Clicked</SelectItem>
                                             <SelectItem value="form_submitted" className="text-[10px]">Form Submitted</SelectItem>
@@ -93,7 +93,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
 
                                             <Select value={action.type} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { type: val, config: {} })}>
                                                 <SelectTrigger className="h-8 text-[10px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue /></SelectTrigger>
-                                                <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                     <SelectItem value="open_modal" className="text-[10px]">Open Modal</SelectItem>
                                                     <SelectItem value="trigger_automation" className="text-[10px]">Start Automation</SelectItem>
                                                     <SelectItem value="scroll_to" className="text-[10px]">Scroll to Section</SelectItem>
@@ -107,7 +107,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <Select value={action.config.modalType || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, modalType: val } })}>
                                                             <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Type..." /></SelectTrigger>
-                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                                 <SelectItem value="form" className="text-[9px]">Form</SelectItem>
                                                                 <SelectItem value="survey" className="text-[9px]">Survey</SelectItem>
                                                                 <SelectItem value="agreement" className="text-[9px]">Agreement</SelectItem>
@@ -115,7 +115,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                                         </Select>
                                                         <Select value={action.config.targetId || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, targetId: val } })}>
                                                             <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Target..." /></SelectTrigger>
-                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                                 {action.config.modalType === 'survey' && surveys.map(s => <SelectItem key={s.id} value={s.id} className="text-[9px]">{s.title}</SelectItem>)}
                                                                 {action.config.modalType === 'form' && forms.map(f => <SelectItem key={f.id} value={f.id} className="text-[9px]">{f.internalName || f.title}</SelectItem>)}
                                                                 {(!action.config.modalType || action.config.modalType === 'agreement') && <SelectItem value="none" disabled className="text-[9px]">Select type first</SelectItem>}
@@ -125,7 +125,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                                     {action.config.modalType === 'survey' && (
                                                         <Select value={action.config.surveyResultMode || 'modal'} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, surveyResultMode: val } })}>
                                                             <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Result Display..." /></SelectTrigger>
-                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                            <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                                 <SelectItem value="modal" className="text-[9px]">Show inside Modal</SelectItem>
                                                                 <SelectItem value="parent" className="text-[9px]">Redirect parent page</SelectItem>
                                                             </SelectContent>
@@ -137,7 +137,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                             {action.type === 'scroll_to' && (
                                                 <Select value={action.config.targetId || ''} onValueChange={(val) => onUpdateAction(trigger.id, action.id, { config: { ...action.config, targetId: val } })}>
                                                     <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Section..." /></SelectTrigger>
-                                                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                         {(version?.structureJson.sections || []).map((s, si) => (
                                                             <SelectItem key={s.id} value={s.id} className="text-[10px]">Section {si + 1}</SelectItem>
                                                         ))}
@@ -148,7 +148,7 @@ const TriggerPanel = React.memo(function TriggerPanel({
                                             {action.type === 'trigger_automation' && (
                                                 <Select value={action.config.automationId || ''} onValueChange={(val: any) => onUpdateAction(trigger.id, action.id, { config: { automationId: val } })}>
                                                     <SelectTrigger className="h-7 text-[9px] font-semibold bg-slate-900 border-slate-700 rounded-lg text-slate-300"><SelectValue placeholder="Automation..." /></SelectTrigger>
-                                                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                                                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                                                         {automations.map(a => <SelectItem key={a.id} value={a.id} className="text-[9px]">{a.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>

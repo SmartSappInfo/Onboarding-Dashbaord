@@ -119,7 +119,7 @@ const ThemePanel = React.memo(function ThemePanel({ page, themes, onApplyTheme, 
                     <SelectTrigger className="h-8 text-[10px] font-semibold bg-slate-800 border-slate-700 rounded-lg text-slate-300">
                         <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+                    <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
                         {['Inter', 'DM Sans', 'Plus Jakarta Sans', 'Space Grotesk', 'Outfit', 'Satoshi', 'General Sans', 'Sora', 'Cabinet Grotesk', 'Manrope'].map(f => (
                             <SelectItem key={f} value={f} className="text-[10px]" style={{ fontFamily: f }}>{f}</SelectItem>
                         ))}

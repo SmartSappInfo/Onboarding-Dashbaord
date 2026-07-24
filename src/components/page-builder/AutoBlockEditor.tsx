@@ -161,7 +161,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
             {field.options.map((opt) => (
               <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
             ))}
@@ -188,7 +188,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200">
             <SelectValue placeholder={`Choose a ${field.resource}...`} />
           </SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
             {list.map((r) => (
               <SelectItem key={r.id} value={r.id} className="text-xs">
                 {r.label}
@@ -204,7 +204,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="No animation" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
             <SelectItem value="none" className="text-xs">None</SelectItem>
             <SelectItem value="fade-in" className="text-xs">Fade In</SelectItem>
             <SelectItem value="slide-up" className="text-xs">Slide Up</SelectItem>
@@ -219,7 +219,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="Default Font" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700">
+          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
             <SelectItem value="heading" className="text-xs">Heading Font</SelectItem>
             <SelectItem value="body" className="text-xs">Body Font</SelectItem>
             <SelectItem value="sans" className="text-xs">Sans-Serif</SelectItem>
