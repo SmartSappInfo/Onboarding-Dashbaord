@@ -562,7 +562,6 @@ function ColumnCell({
                             selected={selectedBlockId === block.id}
                             onSelect={() => {
                                 onSelectBlock(block.id);
-                                onSetTab('edit');
                             }}
                             onRemove={() => onRemoveBlock(block.id)}
                             onMove={(dir) => onMoveBlock(block.id, dir)}
@@ -2528,7 +2527,6 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                 onClick={() => {
                                     if (item.type === 'block' && item.id) {
                                         onSelectBlock(item.id);
-                                        onSetTab('edit');
                                     } else if (item.type === 'section' && item.id) {
                                         onSelectBlock(null);
                                         onEditSection(item.id);

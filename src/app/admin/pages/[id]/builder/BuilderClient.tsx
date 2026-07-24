@@ -1082,7 +1082,12 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                     page={page ? { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' } : undefined}
                     selectedSectionId={builder.selectedSectionId}
                     selectedColumnIndex={builder.selectedColumnIndex}
-                    onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
+                    onSelectBlock={(id) => {
+                        builder.dispatch({ type: 'SELECT_BLOCK', payload: id });
+                        if (id) {
+                            setIsRightSidebarExpanded(true);
+                        }
+                    }}
                     showHeader={page?.settings?.showHeader}
                     showFooter={page?.settings?.showFooter}
 
