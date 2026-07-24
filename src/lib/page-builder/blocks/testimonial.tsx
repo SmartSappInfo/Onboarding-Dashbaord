@@ -756,8 +756,8 @@ registerBlock({
                         <div className="absolute -inset-2.5 rounded-full bg-blue-500/40 animate-pulse scale-105" />
                         <div className="absolute -inset-1 rounded-full bg-blue-500/25 animate-ping opacity-75" />
                         {/* Solid play button */}
-                        <div className="relative w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/35 transform transition-transform duration-300 group-hover:scale-110 active:scale-95">
-                          <Play className="w-6 h-6 fill-current ml-0.5" />
+                        <div className="relative w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/35 transform transition-transform duration-300 group-hover:scale-110 active:scale-95">
+                          <Play className="w-5 h-5 fill-current ml-0.5" />
                         </div>
                       </div>
                     </div>
