@@ -40,6 +40,15 @@ export function EmbeddedSurvey({
 }: EmbeddedSurveyProps) {
   const [size, setSize] = useState({ height: 600, width: 512 });
 
+  // Helper: Appends active tracking query parameters from the parent host window
+  // Cautious: Only execute in client context. Safe fallback for server-side pre-renders.
+  const getTrackingQueryStr = (): string => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    const entityId = params.get('entityId') || params.get('entity');
+    return entityId ? `&entityId=${encodeURIComponent(entityId)}` : '';
+  };
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'survey_submitted' && event.data?.surveyId === surveyId) {
@@ -66,7 +75,8 @@ export function EmbeddedSurvey({
   }, [surveyId, onClose]);
 
   if (displayMode === 'inline' || isInModal) {
-    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}`;
+    const trackingStr = getTrackingQueryStr();
+    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
     return (
       <div 
         className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
@@ -106,7 +116,11 @@ export function EmbeddedSurvey({
         </div>
       )}
       <Button
-        onClick={() => window.open(`/surveys/${surveyId}${pageId ? `?ref=${pageId}` : ''}`, '_blank', 'noopener,noreferrer')}
+        onClick={() => {
+          const trackingStr = getTrackingQueryStr();
+          const targetUrl = `/surveys/${surveyId}${pageId ? `?ref=${pageId}` : ''}${trackingStr ? (pageId ? trackingStr : `?${trackingStr.substring(1)}`) : ''}`;
+          window.open(targetUrl, '_blank', 'noopener,noreferrer');
+        }}
         className={cn(
           "w-full h-14 rounded-2xl font-bold text-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200 gap-2 flex items-center justify-center",
           buttonStyle === 'glass' && 'backdrop-blur-md border border-white/30',
