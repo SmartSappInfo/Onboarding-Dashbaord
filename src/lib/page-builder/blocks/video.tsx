@@ -84,12 +84,14 @@ registerBlock({
     if (!finalVideoUrl) {
       if (ctx.mode !== 'edit') return <></>;
       return (
-        <div 
-          onClick={() => setVideoLibraryOpen(true)}
-          className="h-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-850 transition-colors"
-        >
-          <Film className="w-8 h-8 text-slate-600 animate-pulse" />
-          <span className="text-xs text-slate-500 font-medium">Click to select video from media library</span>
+        <>
+          <div 
+            onClick={() => setVideoLibraryOpen(true)}
+            className="h-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-850 transition-colors"
+          >
+            <Film className="w-8 h-8 text-slate-600 animate-pulse" />
+            <span className="text-xs text-slate-500 font-medium">Click to select video from media library</span>
+          </div>
           {ctx.page?.workspaceId && (
             <MediaSelectorDialog
               open={videoLibraryOpen}
@@ -109,7 +111,7 @@ registerBlock({
               workspaceId={ctx.page.workspaceId}
             />
           )}
-        </div>
+        </>
       );
     }
 

@@ -1260,22 +1260,24 @@ export default function NewEntityPage() {
                <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
                  <AlertTriangle className="h-5 w-5" /> Potential Duplicate Found
                </AlertDialogTitle>
-               <AlertDialogDescription className="space-y-4">
-                 <p>
-                   We found existing records that match the name, email, or phone number of the {singular.toLowerCase()} you are trying to create.
-                 </p>
-                 <div className="bg-muted/50 p-4 rounded-xl max-h-40 overflow-y-auto space-y-2 text-sm text-left">
-                   {duplicateWarning?.map((dup: any) => (
-                     <div key={dup.entityId} className="flex flex-col">
-                       <span className="font-semibold text-foreground">{dup.name}</span>
-                       <span className="text-muted-foreground text-xs font-mono">{dup.reason}</span>
-                     </div>
-                   ))}
-                 </div>
-                 <p className="text-xs font-medium">
-                   Since a contact person can own multiple {singular.toLowerCase()}s, you may proceed if this is intentional. Do you want to ignore this warning and create it anyway?
-                 </p>
-               </AlertDialogDescription>
+               <AlertDialogDescription asChild>
+                  <div className="space-y-4 text-sm text-muted-foreground">
+                    <p>
+                      We found existing records that match the name, email, or phone number of the {singular.toLowerCase()} you are trying to create.
+                    </p>
+                    <div className="bg-muted/50 p-4 rounded-xl max-h-40 overflow-y-auto space-y-2 text-sm text-left">
+                      {duplicateWarning?.map((dup: any) => (
+                        <div key={dup.entityId} className="flex flex-col">
+                          <span className="font-semibold text-foreground">{dup.name}</span>
+                          <span className="text-muted-foreground text-xs font-mono">{dup.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs font-medium">
+                      Since a contact person can own multiple {singular.toLowerCase()}s, you may proceed if this is intentional. Do you want to ignore this warning and create it anyway?
+                    </p>
+                  </div>
+                </AlertDialogDescription>
              </AlertDialogHeader>
              <AlertDialogFooter>
                <AlertDialogCancel className="rounded-xl border-border">Cancel</AlertDialogCancel>
@@ -1304,13 +1306,15 @@ export default function NewEntityPage() {
                 <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
                   <AlertTriangle className="h-5 w-5" /> Overwrite Form Data?
                 </AlertDialogTitle>
-                <AlertDialogDescription className="space-y-3">
-                  <p>
-                    You have already entered some data in the form. Extracting data via the AI Architect will overwrite existing fields.
-                  </p>
-                  <p className="text-xs font-medium">
-                    Are you sure you want to proceed and overwrite the current form inputs?
-                  </p>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-3 text-sm text-muted-foreground">
+                    <p>
+                      You have already entered some data in the form. Extracting data via the AI Architect will overwrite existing fields.
+                    </p>
+                    <p className="text-xs font-medium">
+                      Are you sure you want to proceed and overwrite the current form inputs?
+                    </p>
+                  </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

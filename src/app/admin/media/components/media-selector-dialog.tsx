@@ -41,27 +41,41 @@ export default function MediaSelectorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-  <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
-    <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30 shrink-0">
-      <DialogTitle className="text-2xl font-semibold tracking-tight">{title}</DialogTitle>
-      <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
-        {description || (effectiveWorkspaceId 
-            ? `Choose an institutional asset for the ${effectiveWorkspaceId} workspace or upload a new one.`
-            : "Browse available assets across the platform."
-        )}
-      </DialogDescription>
-    </DialogHeader>
-    
-    <MediaLibraryBrowser 
-      onSelectAsset={onSelectAsset}
-      filterType={filterType}
-      workspaceId={effectiveWorkspaceId}
-    />
-    
-    <div className="p-4 border-t bg-muted/30 shrink-0 flex justify-end">
-      <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl px-8">Close Library</Button>
-    </div>
-  </DialogContent>
+      <DialogContent 
+        className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30 shrink-0">
+          <DialogTitle className="text-2xl font-semibold tracking-tight">{title}</DialogTitle>
+          <DialogDescription className="text-xs font-bold text-muted-foreground text-left">
+            {description || (effectiveWorkspaceId 
+                ? `Choose an institutional asset for the ${effectiveWorkspaceId} workspace or upload a new one.`
+                : "Browse available assets across the platform."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <MediaLibraryBrowser 
+          onSelectAsset={onSelectAsset}
+          filterType={filterType}
+          workspaceId={effectiveWorkspaceId}
+        />
+        
+        <div className="p-4 border-t bg-muted/30 shrink-0 flex justify-end">
+          <Button 
+            type="button"
+            variant="ghost" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onOpenChange(false);
+            }} 
+            className="font-bold rounded-xl px-8"
+          >
+            Close Library
+          </Button>
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }

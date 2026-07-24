@@ -83,12 +83,14 @@ registerBlock({
     if (!props.src) {
       if (ctx.mode !== 'edit') return <></>;
       return (
-        <div 
-          onClick={() => setLibraryOpen(true)}
-          className="h-40 rounded-xl border-2 border-dashed border-slate-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-900/50 transition-colors"
-        >
-          <ImageIcon className="w-8 h-8 text-slate-300 dark:text-zinc-700" />
-          <span className="text-xs text-slate-400 dark:text-zinc-500 font-medium">Click to select image from media library</span>
+        <>
+          <div 
+            onClick={() => setLibraryOpen(true)}
+            className="h-40 rounded-xl border-2 border-dashed border-slate-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-900/50 transition-colors"
+          >
+            <ImageIcon className="w-8 h-8 text-slate-300 dark:text-zinc-700" />
+            <span className="text-xs text-slate-400 dark:text-zinc-500 font-medium">Click to select image from media library</span>
+          </div>
           {ctx.page?.workspaceId && (
             <MediaSelectorDialog
               open={libraryOpen}
@@ -101,7 +103,7 @@ registerBlock({
               workspaceId={ctx.page.workspaceId}
             />
           )}
-        </div>
+        </>
       );
     }
 
