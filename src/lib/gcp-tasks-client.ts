@@ -2,7 +2,7 @@ import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
 
 // Configurations
-const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || 'studio-9220106300-f74cb';
+const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
 const LOCATION = process.env.GCP_LOCATION || 'us-central1';
 const SECRET = process.env.CLOUD_TASKS_SECRET || 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf';
 const BASE_URL = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'production' ? 'https://go.smartsapp.com' : 'http://127.0.0.1:3000');
@@ -32,8 +32,12 @@ async function resolveRequestBaseUrl(): Promise<string> {
   return BASE_URL;
 }
 
-function resolveServiceAccountEmail(): string | undefined {
-  return process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.SERVICE_ACCOUNT_EMAIL || undefined;
+function resolveServiceAccountEmail(): string {
+  return (
+    process.env.GCP_SERVICE_ACCOUNT_EMAIL ||
+    process.env.SERVICE_ACCOUNT_EMAIL ||
+    `${PROJECT || 'studio-9220106300-f74cb'}@appspot.gserviceaccount.com`
+  );
 }
 
 // Global cache for local mock timers in emulator mode (Next.js HMR-resilient)
@@ -144,22 +148,18 @@ let isInitialized = false;
  * - In Cloud Run / App Hosting / production environments, default to real Cloud Tasks
  *   client initialization using Application Default Credentials (ADC).
  */
-function checkIsEmulator(): boolean {
-  if (process.env.FORCE_GCP_TASKS === 'true') return false;
-  return (
-    process.env.USE_GCP_TASKS_EMULATOR === 'true' ||
-    (process.env.NODE_ENV !== 'production' &&
-      !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
-      !process.env.K_SERVICE)
-  );
-}
+const isEmulator = 
+  process.env.USE_GCP_TASKS_EMULATOR === 'true' || 
+  (process.env.FORCE_GCP_TASKS !== 'true' && 
+   process.env.NODE_ENV !== 'production' && 
+   !process.env.GOOGLE_APPLICATION_CREDENTIALS && 
+   !process.env.K_SERVICE);
 
 async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
   if (isInitialized) {
     return clientInstance;
   }
 
-  const isEmulator = checkIsEmulator();
   if (!isEmulator) {
     try {
       const { CloudTasksClient: Constructor } = await import('@google-cloud/tasks');
@@ -265,7 +265,7 @@ export async function scheduleDelayTask({
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     // Emulator mode: Schedule using Node setTimeout
     console.info(`[GCP-TASKS-EMULATOR] Scheduling task ${taskKey} on queue "${queue}" for ${executeAt}`);
     
@@ -353,12 +353,10 @@ export async function scheduleDelayTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
     scheduleTime: {
       seconds: scheduleTimeSeconds,
@@ -443,7 +441,7 @@ export async function cancelDelayTask(
     console.info(`[GCP-TASKS-EMULATOR] Cancelled local task: ${taskKey}`);
   }
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     // Update audit state
     if (!skipDbUpdate) {
       await adminDb.collection('automation_jobs').doc(taskKey).update({
@@ -525,7 +523,7 @@ export async function scheduleBulkTriggerTask({
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk trigger task ${taskKey} on queue "${queue}"`);
     
     // Trigger immediately in a macro-task to let request thread finish
@@ -579,12 +577,10 @@ export async function scheduleBulkTriggerTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -625,7 +621,7 @@ export async function scheduleBulkRetryTask({
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk retry task ${taskKey} on queue "${queue}"`);
     
     setTimeout(async () => {
@@ -678,12 +674,10 @@ export async function scheduleBulkRetryTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -726,7 +720,7 @@ export async function scheduleBulkResendMessagesTask({
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk resend messages task ${taskKey} on queue "${queue}"`);
     
     setTimeout(async () => {
@@ -779,12 +773,10 @@ export async function scheduleBulkResendMessagesTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -827,7 +819,7 @@ export async function scheduleBulkForceAdvanceTask({
   const client = await getCloudTasksClient();
   const resolvedBaseUrl = await resolveRequestBaseUrl();
 
-  if (checkIsEmulator() || !client) {
+  if (isEmulator || !client) {
     console.info(`[GCP-TASKS-EMULATOR] Scheduling bulk force advance task ${taskKey} on queue "${queue}"`);
     
     setTimeout(async () => {
@@ -880,12 +872,10 @@ export async function scheduleBulkForceAdvanceTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 

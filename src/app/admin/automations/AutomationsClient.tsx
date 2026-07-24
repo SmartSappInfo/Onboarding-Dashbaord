@@ -99,44 +99,49 @@ const MESSAGE_ACTION_TYPES = new Set([
 ]);
 
 // Helper component for visual thumb preview of automation steps
-const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => {
+interface MiniNode {
+    id: string;
+    type?: string;
+    position?: {
+        x: number;
+        y: number;
+    };
+    data?: {
+        label?: string;
+        actionType?: string;
+    };
+}
+
+interface MiniEdge {
+    id: string;
+    source: string;
+    target: string;
+}
+
+const MiniFlowPreview = ({ nodes, edges }: { nodes?: MiniNode[]; edges?: MiniEdge[] }) => {
     if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
         return <span className="text-[10px] text-muted-foreground/60 italic">No steps</span>;
     }
 
-    // Find bounding box to scale positions
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
+    // Find the root node (trigger node is first choice, otherwise min Y)
+    const rootNode = nodes.find(n => n.type === 'triggerNode') || [...nodes].sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0))[0];
+    if (!rootNode) return <span className="text-[10px] text-muted-foreground/60 italic">No steps</span>;
 
-    nodes.forEach(n => {
+    const rootX = rootNode.position?.x ?? 0;
+    const rootY = rootNode.position?.y ?? 0;
+
+    // Helper to calculate relative coordinates scaled to 0.25x
+    const getCoords = (n: MiniNode) => {
         const x = n.position?.x ?? 0;
         const y = n.position?.y ?? 0;
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-    });
-
-    const pad = 10;
-    const width = 48;
-    const height = 48;
-
-    const rangeX = maxX - minX;
-    const rangeY = maxY - minY;
-    const maxRange = Math.max(rangeX, rangeY);
-    const scale = maxRange === 0 ? 1 : (width - pad * 2) / maxRange;
-
-    const getCoords = (n: any) => {
-        const x = n.position?.x ?? 0;
-        const y = n.position?.y ?? 0;
-        const px = maxRange === 0 ? width / 2 : pad + (x - minX) * scale + (width - pad * 2 - rangeX * scale) / 2;
-        const py = maxRange === 0 ? height / 2 : pad + (y - minY) * scale + (height - pad * 2 - rangeY * scale) / 2;
+        
+        // Center root node horizontally at x=60 (middle of 120px card) and top at y=18
+        const px = 60 + (x - rootX) * 0.25;
+        const py = 18 + (y - rootY) * 0.25;
         return { x: px, y: py };
     };
 
-    const getNodeVisual = (node: any) => {
+    const getNodeVisual = (node: MiniNode) => {
         const type = node.type;
         const actionType = node.data?.actionType;
 
@@ -171,25 +176,37 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
     };
 
     return (
-        <div className="relative w-12 h-12 rounded-xl border border-border/40 bg-muted/15 overflow-hidden shadow-inner shrink-0 transition-all hover:bg-muted/25 hover:border-border/60">
+        <div 
+            className="relative w-[120px] h-[80px] rounded-xl border border-border/40 bg-muted/5 overflow-hidden shadow-inner shrink-0 transition-all hover:bg-muted/10 hover:border-border/60 cursor-pointer"
+            style={{
+                backgroundImage: 'radial-gradient(hsl(var(--muted-foreground) / 0.15) 0.8px, transparent 0.8px)',
+                backgroundSize: '8px 8px',
+            }}
+        >
             {/* Render Edges */}
             {Array.isArray(edges) && edges.map((edge) => {
                 const sourceNode = nodes.find(n => n.id === edge.source);
                 const targetNode = nodes.find(n => n.id === edge.target);
                 if (!sourceNode || !targetNode) return null;
+
                 const src = getCoords(sourceNode);
                 const tgt = getCoords(targetNode);
+
+                // Start from bottom of parent chip and connect to top of child chip
+                // Since chip height is 20px, half height is 10px
+                const y1 = src.y + 10;
+                const y2 = tgt.y - 10;
 
                 return (
                     <svg key={edge.id} className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
                         <line 
                             x1={src.x} 
-                            y1={src.y} 
+                            y1={y1} 
                             x2={tgt.x} 
-                            y2={tgt.y} 
+                            y2={y2} 
                             stroke="currentColor" 
-                            className="text-muted-foreground/30" 
-                            strokeWidth="1" 
+                            className="text-muted-foreground/35" 
+                            strokeWidth="1.2" 
                         />
                     </svg>
                 );
@@ -198,6 +215,10 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
             {/* Render Nodes */}
             {nodes.map((node) => {
                 const { x, y } = getCoords(node);
+                
+                // If the node coordinates fall completely outside the visible card (plus padding), skip rendering
+                if (x < -40 || x > 160 || y < -20 || y > 100) return null;
+
                 const { IconComponent, colorClasses } = getNodeVisual(node);
                 
                 return (
@@ -206,7 +227,7 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
                             <TooltipTrigger asChild>
                                 <div 
                                     className={cn(
-                                        "absolute w-[18px] h-[18px] rounded-md border flex items-center justify-center shadow-xs hover:scale-125 hover:shadow-md transition-all cursor-pointer bg-background z-10",
+                                        "absolute w-[56px] h-[20px] rounded-md border flex items-center gap-1.5 shadow-xs hover:scale-105 transition-all bg-background z-10 px-1.5 overflow-hidden",
                                         colorClasses
                                     )}
                                     style={{ 
@@ -215,7 +236,10 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
                                         transform: 'translate(-50%, -50%)'
                                     }}
                                 >
-                                    <IconComponent className="h-2.5 w-2.5 stroke-[2.5]" />
+                                    <IconComponent className="h-2 w-2 shrink-0" />
+                                    <span style={{ fontSize: '5px' }} className="font-bold text-foreground truncate select-none leading-none pt-0.5">
+                                        {node.data?.label || node.type}
+                                    </span>
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent className="text-[9px] font-semibold py-1 px-2">
@@ -225,6 +249,9 @@ const MiniFlowPreview = ({ nodes, edges }: { nodes?: any[]; edges?: any[] }) => 
                     </TooltipProvider>
                 );
             })}
+
+            {/* Subtle bottom fade to indicate unzoomed flow continues downstream */}
+            <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none z-20" />
         </div>
     );
 };
@@ -982,7 +1009,7 @@ export default function AutomationsClient() {
                                                 <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4">
                                                     Workflow & Trigger Description
                                                 </TableHead>
-                                                <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
+                                                <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center w-36">
                                                     Flow Preview
                                                 </TableHead>
                                                 <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
@@ -1010,7 +1037,7 @@ export default function AutomationsClient() {
                                                                 </div>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-6"><Skeleton className="h-10 w-8 mx-auto rounded" /></TableCell>
+                                                        <TableCell className="py-6"><Skeleton className="h-[80px] w-[120px] mx-auto rounded-xl" /></TableCell>
                                                         <TableCell className="py-6 text-center"><Skeleton className="h-6 w-24 mx-auto rounded" /></TableCell>
                                                         <TableCell className="py-6 text-center"><Skeleton className="h-6 w-12 rounded-full mx-auto" /></TableCell>
                                                         <TableCell className="pr-6 py-6 text-right"><Skeleton className="h-8 w-16 rounded-xl ml-auto" /></TableCell>
@@ -1245,7 +1272,7 @@ export default function AutomationsClient() {
                                             <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 pl-6">
                                                 Archived Workflow & Trigger Description
                                             </TableHead>
-                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
+                                            <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center w-36">
                                                 Flow Preview
                                             </TableHead>
                                             <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-bold py-4 text-center">
@@ -1269,7 +1296,7 @@ export default function AutomationsClient() {
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="py-6"><Skeleton className="h-10 w-8 mx-auto rounded" /></TableCell>
+                                                    <TableCell className="py-6"><Skeleton className="h-[80px] w-[120px] mx-auto rounded-xl" /></TableCell>
                                                     <TableCell className="py-6 text-center"><Skeleton className="h-6 w-24 mx-auto rounded" /></TableCell>
                                                     <TableCell className="pr-6 py-6 text-right"><Skeleton className="h-8 w-16 rounded-xl ml-auto" /></TableCell>
                                                 </TableRow>
