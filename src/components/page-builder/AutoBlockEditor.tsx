@@ -169,11 +169,19 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
         </Select>
       );
     case 'resource': {
-      let list: ReadonlyArray<{ id: string; label: string }> = [];
+      // Extended interface for list item to support subLabel for survey/form resource selectors
+      // Cautious: Ensure list items are strictly typed. Avoid 'any'.
+      let list: ReadonlyArray<{ id: string; label: string; subLabel?: string }> = [];
       if (field.resource === 'form') {
         list = (resources.forms || []).map((f) => ({ id: f.id, label: f.internalName ?? f.title }));
       } else if (field.resource === 'survey') {
-        list = (resources.surveys || []).map((s) => ({ id: s.id, label: s.title }));
+        // Surveys display internalName as the primary identifier (label) and public title as the subLabel
+        // If the public title is identical to the internal name, we omit the subLabel to avoid redundancy
+        list = (resources.surveys || []).map((s) => ({
+          id: s.id,
+          label: s.internalName || s.title,
+          subLabel: s.title !== s.internalName ? s.title : undefined,
+        }));
       } else if (field.resource === 'agreement') {
         list = (resources.agreements || []).map((a) => ({ id: a.id, label: a.title }));
       } else if (field.resource === 'meeting') {
@@ -190,8 +198,14 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
           </SelectTrigger>
           <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
             {list.map((r) => (
-              <SelectItem key={r.id} value={r.id} className="text-xs">
-                {r.label}
+              <SelectItem key={r.id} value={r.id} className="text-xs py-1.5 focus:bg-slate-700/50">
+                <div className="flex flex-col gap-0.5 text-left max-w-[240px]">
+                  {/* Escaped label rendering to prevent raw HTML/script leakage */}
+                  <span className="font-semibold text-slate-100 truncate">{r.label}</span>
+                  {r.subLabel && (
+                    <span className="text-[10px] text-slate-400 font-medium truncate">{r.subLabel}</span>
+                  )}
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
