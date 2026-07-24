@@ -372,7 +372,7 @@ registerBlock({
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
                 className={cn(
                   "text-base md:text-lg font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full transition-colors duration-300", 
-                  props.cardTextColor ? "" : (isDark ? "text-slate-850" : "text-slate-100")
+                  props.cardTextColor ? "" : (isDark ? "text-slate-900" : "text-slate-100")
                 )}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
@@ -389,7 +389,7 @@ registerBlock({
             <div className="text-left space-y-0.5">
               <div className={cn(
                 "text-xs md:text-sm font-semibold flex items-center gap-1 transition-colors duration-300", 
-                props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-300")
+                props.cardTextColor ? "" : (isDark ? "text-slate-600" : "text-slate-300")
               )}>
                 <InlineEditable
                   tagName="span"
@@ -415,7 +415,7 @@ registerBlock({
                   onChange={(val) => ctx.onPropChange?.({ role: val })}
                   className={cn(
                     "outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal transition-colors duration-300", 
-                    props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-400")
+                    props.cardTextColor ? "" : (isDark ? "text-slate-600" : "text-slate-400")
                   )}
                   value={props.role || 'Role'}
                   html={false}
@@ -433,7 +433,7 @@ registerBlock({
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
                   className={cn(
                     "text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block transition-colors duration-300", 
-                    props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-400")
+                    props.cardTextColor ? "" : (isDark ? "text-slate-600" : "text-slate-400")
                   )}
                   value={props.schoolName || 'School Name'}
                   html={false}
