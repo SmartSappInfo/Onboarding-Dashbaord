@@ -101,7 +101,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       elementRef.current.innerHTML = convertToVisualHtml(targetVal);
     }
     lastValueRef.current = targetVal;
-  }, [value, html, hasMounted]);
+  }, [value, html, hasMounted, isEdit]);
 
   // Filter dropdown variables list
   const filteredVars = useMemo(() => {
