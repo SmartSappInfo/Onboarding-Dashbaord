@@ -267,6 +267,21 @@ registerBlock({
         const timer = setTimeout(() => {
           linkInputRef.current?.focus();
         }, 50);
+
+        // Safely capture clipboard contents if it is a link
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText) {
+          navigator.clipboard.readText()
+            .then((text) => {
+              const trimmed = text?.trim();
+              if (trimmed && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
+                setPastedLink(trimmed);
+              }
+            })
+            .catch((err) => {
+              console.warn('Clipboard auto-read declined or blocked:', err);
+            });
+        }
+
         return () => clearTimeout(timer);
       }
     }, [showLinkInput]);
