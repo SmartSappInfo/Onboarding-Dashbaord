@@ -19,6 +19,7 @@ import { submitStandaloneFormAction } from '@/lib/form-actions';
 import { getThemesAction } from '@/lib/theme-actions';
 import { recordPageViewAction, recordInteractionAction } from '@/lib/analytics-actions';
 import { useSearchParams } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import type { CampaignPageTheme } from '@/lib/types';
 import { PaymentMethodCard } from '@/components/portal/PaymentMethodCard';
 import Footer from '@/components/footer';
@@ -213,16 +214,17 @@ export default function PublicPageClient({
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
+    const { setTheme, resolvedTheme: activeTheme } = useTheme();
+
     // Separate the page theme mode from the viewer's system/browser preferences:
-    // Intercept next-themes and system browser preferences, and force the root 'dark' class
-    // list state to strictly match the campaign page's own themeMode setting.
+    // Sync theme to match pageThemeMode on load or if the page settings change.
     useEffect(() => {
+        const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
+        
+        // Immediately enforce the theme on HTML and body to prevent any flash
         const root = document.documentElement;
         const body = document.body;
-        const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
-        const isDark = pageThemeMode === 'dark';
-
-        if (isDark) {
+        if (pageThemeMode === 'dark') {
             root.classList.add('dark');
             body.classList.add('dark');
         } else {
@@ -230,27 +232,22 @@ export default function PublicPageClient({
             body.classList.remove('dark');
         }
 
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    if (isDark) {
-                        if (!root.classList.contains('dark')) root.classList.add('dark');
-                        if (!body.classList.contains('dark')) body.classList.add('dark');
-                    } else {
-                        if (root.classList.contains('dark')) root.classList.remove('dark');
-                        if (body.classList.contains('dark')) body.classList.remove('dark');
-                    }
-                }
-            });
-        });
+        // Set next-themes state so that the theme toggle button works correctly
+        setTheme(pageThemeMode);
+    }, [page?.settings?.themeOverrides?.themeMode, setTheme]);
 
-        observer.observe(root, { attributes: true, attributeFilter: ['class'] });
-        observer.observe(body, { attributes: true, attributeFilter: ['class'] });
-
-        return () => {
-            observer.disconnect();
-        };
-    }, [page?.settings?.themeOverrides?.themeMode]);
+    // Keep HTML and body classes in sync with activeTheme when manually toggled by the user
+    useEffect(() => {
+        const root = document.documentElement;
+        const body = document.body;
+        if (activeTheme === 'dark') {
+            root.classList.add('dark');
+            body.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+            body.classList.remove('dark');
+        }
+    }, [activeTheme]);
 
     // Fallback: Resolve variables client-side if preloadedVariables was empty but query params exist
     useEffect(() => {
