@@ -129,7 +129,7 @@ registerBlock({
     };
 
     const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
-      <>
+      <div className="contents" onClick={(e) => e.stopPropagation()}>
         <input
           ref={fileInputRef}
           type="file"
@@ -231,7 +231,7 @@ registerBlock({
           filterType="video"
           workspaceId={ctx.page.workspaceId}
         />
-      </>
+      </div>
     );
 
     if (!finalVideoUrl) {

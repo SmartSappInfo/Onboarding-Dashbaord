@@ -322,7 +322,7 @@ registerBlock({
     };
 
     const changeControls = ctx.mode === 'edit' && ctx.page?.workspaceId && (
-      <>
+      <div className="contents" onClick={(e) => e.stopPropagation()}>
         <input
           ref={fileInputRef}
           type="file"
@@ -449,7 +449,7 @@ registerBlock({
           filterType="image"
           workspaceId={ctx.page.workspaceId}
         />
-      </>
+      </div>
     );
 
     const isCustomBg = props.cardBgType && props.cardBgType !== 'default';
@@ -732,7 +732,10 @@ registerBlock({
               ) : (
                 <>
                   <div
-                    onClick={() => setModalOpen(true)}
+                    onClick={() => {
+                      if (ctx.mode === 'edit' || ctx.isThumbnail) return;
+                      setModalOpen(true);
+                    }}
                     className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-pointer group shadow-sm transition-all"
                   >
                     {finalThumbnailUrl ? (
@@ -810,7 +813,10 @@ registerBlock({
           ) : (
             <>
               <div 
-                onClick={() => setModalOpen(true)}
+                onClick={() => {
+                  if (ctx.mode === 'edit' || ctx.isThumbnail) return;
+                  setModalOpen(true);
+                }}
                 className={cn("relative aspect-video w-full rounded-xl overflow-hidden mb-4 cursor-pointer group shadow-sm transition-all border", isDark ? "border-slate-850 bg-slate-900" : "border-slate-200 bg-slate-100")}
               >
                 {finalThumbnailUrl ? (
