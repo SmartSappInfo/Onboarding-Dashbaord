@@ -120,6 +120,7 @@ interface CanvasProps {
     onDuplicateBlock: (blockId: string) => void;
     onRemoveSection: (sectionId: string) => void;
     onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
+    onDuplicateSection: (sectionId: string) => void;
     onInsertSection?: (index: number) => void;
     onEditSection: (sectionId: string, columnIndex?: number | null) => void;
     onSaveSectionAsTemplate: (section: PageSection) => void;
@@ -164,7 +165,7 @@ class ZoomPointerSensor extends PointerSensor {
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, editMode, canvasMode, selected }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, onDuplicate, editMode, canvasMode, selected }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -173,6 +174,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     onMove: (dir: 'up' | 'down') => void;
     onSave: () => void;
     onEdit: () => void;
+    onDuplicate: () => void;
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
     selected?: boolean;
@@ -297,6 +299,17 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                             title="Save as Template"
                         >
                             <FolderHeart className="w-4 h-4" aria-hidden="true" />
+                        </button>
+
+                        {/* Clone Section button */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-emerald-400 hover:bg-slate-800/50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            aria-label="Clone Section"
+                            title="Clone Section"
+                        >
+                            <Copy className="w-4 h-4" aria-hidden="true" />
                         </button>
 
                         {/* Delete button */}
@@ -807,6 +820,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onDuplicateBlock,
     onRemoveSection,
     onMoveSection,
+    onDuplicateSection,
     onInsertSection,
     onEditSection,
     onSaveSectionAsTemplate,
@@ -1943,6 +1957,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     onMove={(dir) => onMoveSection(section.id, dir)}
                                                     onSave={() => onSaveSectionAsTemplate(section)}
                                                     onEdit={() => onEditSection(section.id)}
+                                                    onDuplicate={() => onDuplicateSection(section.id)}
                                                     editMode={editMode}
                                                     canvasMode={canvasMode}
                                                     selected={selectedSectionId === section.id}

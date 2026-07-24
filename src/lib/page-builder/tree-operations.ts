@@ -287,6 +287,32 @@ export function duplicateBlock(
   };
 }
 
+/** Duplicate a section, inserting a deep clone (with new section and block ids) directly after the source. */
+export function duplicateSection(
+  structure: CampaignPageStructure,
+  sectionId: string,
+): CampaignPageStructure {
+  const idx = structure.sections.findIndex((s) => s.id === sectionId);
+  if (idx === -1) return structure;
+
+  const original = structure.sections[idx];
+  
+  const clonedBlocks = original.blocks.map((block) => ({
+    ...structuredClone(block),
+    id: genId(block.type),
+  }));
+
+  const clone: PageSection = {
+    ...structuredClone(original),
+    id: genId('sec'),
+    blocks: clonedBlocks,
+  };
+
+  const sections = [...structure.sections];
+  sections.splice(idx + 1, 0, clone);
+  return { ...structure, sections };
+}
+
 /** Locate a block and its containing section, or `null` if absent. */
 export function findBlock(
   structure: CampaignPageStructure,

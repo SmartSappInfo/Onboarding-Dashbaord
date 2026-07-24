@@ -281,6 +281,9 @@ export function useBuilderState() {
     const removeSection = useCallback((sectionId: string) => {
         updateStructure(s => tree.removeSection(s, sectionId));
     }, [updateStructure]);
+    const duplicateSection = useCallback((sectionId: string) => {
+        updateStructure(s => tree.duplicateSection(s, sectionId));
+    }, [updateStructure]);
 
     const moveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
         updateStructure(s => tree.moveSection(s, sectionId, direction));
@@ -504,6 +507,7 @@ export function useBuilderState() {
         addSection,
         insertSection,
         removeSection,
+        duplicateSection,
         moveSection,
         updateSectionProps,
         reorderSections,
