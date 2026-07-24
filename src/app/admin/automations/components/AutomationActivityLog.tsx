@@ -379,12 +379,16 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
       await Promise.all(
         missingIds.map(async (id) => {
           try {
-            let snap = await getDoc(doc(firestore, 'workspace_entities', id));
+            let snap = await getDoc(doc(firestore, 'entities', id));
+            if (!snap.exists()) {
+              snap = await getDoc(doc(firestore, 'workspace_entities', id));
+            }
             if (!snap.exists()) {
               snap = await getDoc(doc(firestore, 'schools', id));
             }
             if (snap.exists()) {
-              const name = snap.data()?.name as string;
+              const data = snap.data();
+              const name = (data?.name || data?.displayName || data?.name) as string;
               if (name) {
                 updates[id] = name;
               }
