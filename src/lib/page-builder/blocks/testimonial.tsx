@@ -223,6 +223,7 @@ registerBlock({
     const finalThumbnailUrl = props.videoData?.thumbnailUrl || props.thumbnailUrl || '';
     const hasVideo = finalVideoUrl;
     const playInline = props.playMode === 'inline';
+    const isMobileOrTablet = ctx.viewport === 'mobile' || ctx.viewport === 'tablet';
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const [modalOpen, setModalOpen] = useState(false);
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -306,7 +307,8 @@ registerBlock({
       return (
         <div 
           className={cn(
-            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card font-figtree transition-colors duration-300",
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex gap-6 md:gap-8 shadow-2xl relative group/card font-figtree transition-colors duration-300",
+            isMobileOrTablet ? "flex-col items-start" : "flex-col sm:flex-row items-center sm:items-start",
             isCustomBg ? "" : (isDark ? "bg-white" : "bg-gradient-to-br from-[#0B1528] to-[#1E2E4A]"),
             props.cardBorderColor ? "" : (isDark ? "border border-slate-200/60" : "border border-slate-800/40")
           )}
@@ -446,7 +448,6 @@ registerBlock({
     }
 
     if (props.preset === 'split-video') {
-      const isMobileOrTablet = ctx.viewport === 'mobile' || ctx.viewport === 'tablet';
       return (
         <div 
           className={cn(
