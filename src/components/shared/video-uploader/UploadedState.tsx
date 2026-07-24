@@ -81,8 +81,8 @@ export function UploadedState({
   const videoName = getFilenameFromUrl(videoUrl);
 
   return (
-    <div className="w-full flex flex-col gap-4 border border-border/80 bg-background/50 rounded-2xl p-4 md:p-6 shadow-sm">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+    <div className="w-full flex flex-col gap-4 border border-border/80 bg-background/50 rounded-2xl p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-6 items-start">
         
         {/* Left Side: Drag & Drop Video Uploader / Changer */}
         <div className="flex flex-col gap-3 h-full">

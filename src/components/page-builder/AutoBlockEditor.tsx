@@ -362,6 +362,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
 
             // Conditional field visibility for Testimonial / Testimonial Grid custom background elements
             if (block.type === 'testimonial' || block.type === 'testimonial_grid') {
+              if (field.key === 'avatarUrl' && props.preset === 'split-video') return null;
               if (field.key === 'cardBgColor' && props.cardBgType !== 'color' && props.cardBgType !== 'image') return null;
               if (field.key === 'cardBgGradientFrom' && props.cardBgType !== 'gradient') return null;
               if (field.key === 'cardBgGradientTo' && props.cardBgType !== 'gradient') return null;
