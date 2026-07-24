@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -165,7 +165,7 @@ class ZoomPointerSensor extends PointerSensor {
 }
 
 // ─── Sortable Section Wrapper ────────────────────────────────────────────
-function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, onDuplicate, editMode, canvasMode, selected }: {
+function SortableSection({ section, idx, total, children, onRemove, onMove, onSave, onEdit, onDuplicate, editMode, canvasMode, selected, panOffset, zoom }: {
     section: PageSection;
     idx: number;
     total: number;
@@ -178,8 +178,39 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
     editMode: 'columns' | 'components';
     canvasMode: 'edit' | 'preview';
     selected?: boolean;
+    panOffset: { x: number; y: number };
+    zoom: number;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id, disabled: canvasMode === 'preview' });
+
+    const innerRef = useRef<HTMLDivElement | null>(null);
+    const setRefs = useCallback((node: HTMLDivElement | null) => {
+        innerRef.current = node;
+        setNodeRef(node);
+    }, [setNodeRef]);
+
+    const [toolbarTop, setToolbarTop] = useState(16);
+
+    useLayoutEffect(() => {
+        if (!innerRef.current) return;
+        const workspaceEl = innerRef.current.closest('.canvas-workspace-bg');
+        if (!workspaceEl) return;
+
+        const sectionRect = innerRef.current.getBoundingClientRect();
+        const workspaceRect = workspaceEl.getBoundingClientRect();
+        const zoomFactor = zoom || 0.9;
+
+        // Stick toolbar to the top of the workspace viewport (+16px margin) when scrolled past
+        const targetScreenY = workspaceRect.top + 16;
+        const screenOffset = targetScreenY - sectionRect.top;
+        const localOffset = screenOffset / zoomFactor;
+        
+        const sectionHeight = sectionRect.height / zoomFactor;
+        const maxTop = Math.max(16, sectionHeight - 200);
+        const clampedTop = Math.min(Math.max(16, localOffset), maxTop);
+        
+        setToolbarTop(clampedTop);
+    }, [panOffset, zoom]);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -193,7 +224,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
 
     return (
         <div
-            ref={setNodeRef}
+            ref={setRefs}
             style={style}
             onClick={(e) => {
                 if (!isPreview) {
@@ -221,11 +252,12 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                 <div className="absolute inset-y-0 -left-16 w-16 pointer-events-none z-40">
                     <div
                         className={cn(
-                            "sticky top-4 w-16 pl-2 pr-4 py-2 transition-all duration-300",
+                            "absolute w-16 pl-2 pr-4 py-2 transition-all duration-300",
                             selected
                                 ? "opacity-100 scale-100 pointer-events-auto"
                                 : "opacity-0 scale-95 pointer-events-none group-hover/section:opacity-100 group-hover/section:scale-100 group-hover/section:pointer-events-auto"
                         )}
+                        style={{ top: toolbarTop }}
                     >
                     <div
                         className={cn(
@@ -1963,6 +1995,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                     editMode={editMode}
                                                     canvasMode={canvasMode}
                                                     selected={selectedSectionId === section.id}
+                                                    panOffset={panOffset}
+                                                    zoom={zoom}
                                                 >
                                                     {bgType === 'video' && sectionProps.backgroundVideoUrl && isMounted && (
                                                         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
