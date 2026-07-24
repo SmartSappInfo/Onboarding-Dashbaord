@@ -1336,6 +1336,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         interpolate,
         resources,
         page,
+        viewport,
         onPropChange: (patch: Record<string, unknown>) => onUpdateBlockProps(blockId, patch)
     });
 

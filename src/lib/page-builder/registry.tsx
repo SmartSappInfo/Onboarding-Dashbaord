@@ -24,6 +24,7 @@ export type BlockMode = 'edit' | 'view';
 export interface BlockRenderContext {
   mode: BlockMode;
   theme: ResolvedTheme;
+  viewport?: 'desktop' | 'tablet' | 'mobile';
   /** Substitutes `{{key}}` tokens (e.g. UTM params) in author text. */
   interpolate: (text: string) => string;
   /** Read-only resources (forms/surveys/agreements) a block may reference. */

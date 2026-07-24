@@ -418,10 +418,12 @@ registerBlock({
     }
 
     if (props.preset === 'split-video') {
+      const isMobileOrTablet = ctx.viewport === 'mobile' || ctx.viewport === 'tablet';
       return (
         <div 
           className={cn(
-            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col md:flex-row gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card font-figtree",
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card font-figtree",
+            isMobileOrTablet ? "flex-col-reverse" : "flex-col-reverse md:flex-row",
             isCustomBg ? "" : "bg-white dark:bg-slate-950",
             props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
           )}
