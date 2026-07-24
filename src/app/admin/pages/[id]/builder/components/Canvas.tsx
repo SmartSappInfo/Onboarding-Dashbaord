@@ -218,14 +218,15 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
         >
             {/* Professional Section Left Toolbar Panel */}
             {!isPreview && (
-                <div
-                    className={cn(
-                        "absolute -left-16 top-4 w-16 pl-2 pr-4 py-2 z-40 transition-all duration-300",
-                        selected
-                            ? "opacity-100 scale-100 pointer-events-auto"
-                            : "opacity-0 scale-95 pointer-events-none group-hover/section:opacity-100 group-hover/section:scale-100 group-hover/section:pointer-events-auto"
-                    )}
-                >
+                <div className="absolute inset-y-0 -left-16 w-16 pointer-events-none z-40">
+                    <div
+                        className={cn(
+                            "sticky top-4 w-16 pl-2 pr-4 py-2 transition-all duration-300",
+                            selected
+                                ? "opacity-100 scale-100 pointer-events-auto"
+                                : "opacity-0 scale-95 pointer-events-none group-hover/section:opacity-100 group-hover/section:scale-100 group-hover/section:pointer-events-auto"
+                        )}
+                    >
                     <div
                         className={cn(
                             "w-10 bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center py-2.5 gap-2 shadow-xl",
@@ -324,7 +325,8 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
                         </button>
                     </div>
                 </div>
-            )}
+            </div>
+        )}
 
             {children}
         </div>
@@ -841,7 +843,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onAppendSection,
 }, ref) => {
     // Canvas Viewport Panning & Zooming Engine States
-    const [zoom, setZoom] = useState(1.0);
+    const [zoom, setZoom] = useState(0.9);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [panToolActive, setPanToolActive] = useState(false);
