@@ -43,10 +43,18 @@ export function useBuilderResources(): BuilderResources {
             setLoadingResources(true);
             try {
                 const [aSnap, sSnap, fSnap, pSnap, tList, sList, mSnap, qrSnap] = await Promise.all([
-                    getDocs(query(collection(firestore, 'automations'), where('isActive', '==', true))),
-                    getDocs(query(collection(firestore, 'surveys'), where('status', '==', 'published'))),
-                    getDocs(query(collection(firestore, 'forms'), where('status', '==', 'published'))),
-                    getDocs(query(collection(firestore, 'pdfs'), where('isContractDocument', '==', true))),
+                    activeWorkspaceId
+                        ? getDocs(query(collection(firestore, 'automations'), where('isActive', '==', true), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+                        : Promise.resolve({ docs: [] }),
+                    activeWorkspaceId
+                        ? getDocs(query(collection(firestore, 'surveys'), where('status', '==', 'published'), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+                        : Promise.resolve({ docs: [] }),
+                    activeWorkspaceId
+                        ? getDocs(query(collection(firestore, 'forms'), where('status', '==', 'published'), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+                        : Promise.resolve({ docs: [] }),
+                    activeWorkspaceId
+                        ? getDocs(query(collection(firestore, 'pdfs'), where('isContractDocument', '==', true), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+                        : Promise.resolve({ docs: [] }),
                     getThemesAction(organizationId),
                     getSectionTemplatesAction(organizationId),
                     activeWorkspaceId 
