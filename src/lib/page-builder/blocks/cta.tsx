@@ -15,6 +15,8 @@ const schema = z.object({
   qrId: z.string().default(''),
   openInModal: z.boolean().default(false),
   surveyResultMode: z.enum(['modal', 'parent']).default('modal'),
+  // Option to toggle parameter context tracking (default enabled to prevent tracking loss)
+  trackEntity: z.boolean().default(true),
 });
 type CtaProps = z.infer<typeof schema>;
 
@@ -43,6 +45,7 @@ registerBlock({
     { kind: 'resource', key: 'meetingId', label: 'Meeting Target', resource: 'meeting' },
     { kind: 'resource', key: 'qrId', label: 'QR Code Target', resource: 'qr' },
     { kind: 'boolean', key: 'openInModal', label: 'Open in Modal Popup' },
+    { kind: 'boolean', key: 'trackEntity', label: 'Track Entity context (Pass to next page)' },
     { kind: 'select', key: 'surveyResultMode', label: 'Survey Result Display', options: [
       { value: 'modal', label: 'Show inside Modal' },
       { value: 'parent', label: 'Redirect parent page' },
@@ -61,6 +64,32 @@ registerBlock({
     const style = isOutline
       ? { borderColor: ctx.theme.colors.primary, color: ctx.theme.colors.primary, borderWidth: 2 }
       : { backgroundColor: ctx.theme.colors.primary, color: '#ffffff' };
+
+    // Helper: Appends active tracking query parameters from the window to redirect destinations
+    // Cautious: Ensure URL parsing doesn't crash on invalid URLs. Fallback gracefully.
+    const appendTrackingParams = (targetUrl: string): string => {
+      if (!props.trackEntity) return targetUrl;
+      if (typeof window === 'undefined') return targetUrl;
+      const currentParams = new URLSearchParams(window.location.search);
+      const entityId = currentParams.get('entityId') || currentParams.get('entity');
+      if (!entityId) return targetUrl;
+
+      try {
+        const isAbsolute = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
+        let urlObj: URL;
+        if (isAbsolute) {
+          urlObj = new URL(targetUrl);
+        } else {
+          urlObj = new URL(targetUrl, window.location.origin);
+        }
+        urlObj.searchParams.set('entityId', entityId);
+        return isAbsolute ? urlObj.toString() : urlObj.pathname + urlObj.search + urlObj.hash;
+      } catch (e) {
+        // Fallback for custom routing schemes or malformed paths
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        return `${targetUrl}${separator}entityId=${encodeURIComponent(entityId)}`;
+      }
+    };
 
     return (
       <div className="flex justify-center py-4">
@@ -87,20 +116,20 @@ registerBlock({
             } else {
               // Direct navigation / redirection
               if (props.actionType === 'url') {
-                if (props.url) window.open(props.url, '_blank', 'noopener,noreferrer');
+                if (props.url) window.open(appendTrackingParams(props.url), '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'form' && props.formId) {
-                window.open(`/f/${props.formId}`, '_blank', 'noopener,noreferrer');
+                window.open(appendTrackingParams(`/f/${props.formId}`), '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'survey' && props.surveyId) {
-                window.open(`/surveys/${props.surveyId}`, '_blank', 'noopener,noreferrer');
+                window.open(appendTrackingParams(`/surveys/${props.surveyId}`), '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'meeting' && props.meetingId) {
                 const meeting = ctx.resources.meetings?.find((m) => m.id === props.meetingId);
                 const typeSlug = meeting?.type?.id === 'parent' ? 'parent-engagement' : (meeting?.type?.slug || 'parent-engagement');
                 const targetSlug = meeting?.slug || props.meetingId;
-                window.open(`/meetings/${typeSlug}/${targetSlug}`, '_blank', 'noopener,noreferrer');
+                window.open(appendTrackingParams(`/meetings/${typeSlug}/${targetSlug}`), '_blank', 'noopener,noreferrer');
               } else if (props.actionType === 'qr' && props.qrId) {
                 const qr = ctx.resources.qrCodes?.find((q) => q.id === props.qrId);
                 const targetUrl = qr?.slug ? `/q/${qr.slug}` : (qr?.redirectUrl || '');
-                if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                if (targetUrl) window.open(appendTrackingParams(targetUrl), '_blank', 'noopener,noreferrer');
               }
             }
           }}
