@@ -333,6 +333,7 @@ export async function scheduleDelayTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.SERVICE_ACCOUNT_EMAIL;
 
   const task = {
     name: formattedTaskName,
@@ -344,6 +345,12 @@ export async function scheduleDelayTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+      ...(serviceAccountEmail ? {
+        oidcToken: {
+          serviceAccountEmail,
+          audience: publicBaseUrl,
+        },
+      } : {}),
     },
     scheduleTime: {
       seconds: scheduleTimeSeconds,
@@ -552,6 +559,7 @@ export async function scheduleBulkTriggerTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.SERVICE_ACCOUNT_EMAIL;
 
   const task = {
     name: formattedTaskName,
@@ -563,6 +571,12 @@ export async function scheduleBulkTriggerTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+      ...(serviceAccountEmail ? {
+        oidcToken: {
+          serviceAccountEmail,
+          audience: publicBaseUrl,
+        },
+      } : {}),
     },
   };
 
