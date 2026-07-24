@@ -322,7 +322,7 @@ export function UploadedState({
               <Input
                 id="video-meta-title"
                 type="text"
-                placeholder="Enter video title..."
+                placeholder="Enter video title…"
                 value={localTitle}
                 onChange={(e) => setLocalTitle(e.target.value)}
                 onBlur={handleBlur}
@@ -336,7 +336,7 @@ export function UploadedState({
               </Label>
               <Textarea
                 id="video-meta-desc"
-                placeholder="Enter video description..."
+                placeholder="Enter video description…"
                 value={localDescription}
                 onChange={(e) => setLocalDescription(e.target.value)}
                 onBlur={handleBlur}
