@@ -138,6 +138,7 @@ export function VideoUploader({
       onChange({
         ...value,
         videoUrl: downloadUrl,
+        thumbnailUrl: '', // Reset thumbnail for new file upload
         fileName: file.name,
         fileSize: sizeStr
       });
@@ -214,13 +215,11 @@ export function VideoUploader({
   };
 
   const handleVideoLinkConfirm = (url: string) => {
-    // Attempt to derive YouTube thumbnail if not already present
-    let derivedThumb = value.thumbnailUrl;
-    if (!derivedThumb) {
-      const ytid = extractYouTubeID(url);
-      if (ytid) {
-        derivedThumb = `https://img.youtube.com/vi/${ytid}/maxresdefault.jpg`;
-      }
+    // Reset thumbnail and extract new YouTube thumbnail if it is a YouTube URL
+    let derivedThumb = '';
+    const ytid = extractYouTubeID(url);
+    if (ytid) {
+      derivedThumb = `https://img.youtube.com/vi/${ytid}/maxresdefault.jpg`;
     }
 
     onChange({
@@ -357,6 +356,7 @@ export function VideoUploader({
               onChange({
                 ...value,
                 videoUrl: asset.url,
+                thumbnailUrl: '', // Reset thumbnail for new gallery selection
                 fileName: asset.name,
                 fileSize: asset.size ? `${(asset.size / (1024 * 1024)).toFixed(1)} MB` : undefined
               });

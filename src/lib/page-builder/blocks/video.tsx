@@ -68,7 +68,7 @@ registerBlock({
             ctx.onPropChange?.({
               videoData: {
                 videoUrl: asset.url,
-                thumbnailUrl: props.videoData?.thumbnailUrl || '',
+                thumbnailUrl: '', // Reset thumbnail for new video selection
                 title: props.videoData?.title || '',
                 description: props.videoData?.description || '',
               }
@@ -100,7 +100,7 @@ registerBlock({
                 ctx.onPropChange?.({
                   videoData: {
                     videoUrl: asset.url,
-                    thumbnailUrl: props.videoData?.thumbnailUrl || '',
+                    thumbnailUrl: '', // Reset thumbnail for new video selection
                     title: props.videoData?.title || '',
                     description: props.videoData?.description || '',
                   }
