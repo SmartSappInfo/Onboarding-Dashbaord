@@ -300,13 +300,15 @@ registerBlock({
 
     const isCustomBg = props.cardBgType && props.cardBgType !== 'default';
 
+    const isDark = ctx.themeMode === 'dark';
+
     if (props.preset === 'horizontal-dark') {
       return (
         <div 
           className={cn(
             "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card font-figtree transition-colors duration-300",
-            isCustomBg ? "" : "bg-gradient-to-br from-[#0B1528] to-[#1E2E4A] dark:from-white dark:to-white",
-            props.cardBorderColor ? "" : "border border-slate-800/40 dark:border-slate-200/60"
+            isCustomBg ? "" : (isDark ? "bg-white" : "bg-gradient-to-br from-[#0B1528] to-[#1E2E4A]"),
+            props.cardBorderColor ? "" : (isDark ? "border border-slate-200/60" : "border border-slate-800/40")
           )}
           style={getCardStyle(props)}
         >
@@ -318,10 +320,18 @@ registerBlock({
               <img 
                 src={props.avatarUrl} 
                 alt={props.author} 
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] object-cover shadow-lg border border-white/10 dark:border-slate-200/60 transition-colors duration-300" 
+                className={cn(
+                  "w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] object-cover shadow-lg transition-colors duration-300 border",
+                  isDark ? "border-slate-200/60" : "border-white/10"
+                )} 
               />
             ) : (
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] bg-slate-850 dark:bg-slate-100 border border-slate-700/50 dark:border-slate-200 text-slate-400 dark:text-slate-500 flex items-center justify-center text-xs font-bold shadow-lg transition-colors duration-300">
+              <div className={cn(
+                "w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] flex items-center justify-center text-xs font-bold shadow-lg transition-colors duration-300 border",
+                isDark 
+                  ? "bg-slate-100 border-slate-200 text-slate-500" 
+                  : "bg-slate-850 border-slate-700/50 text-slate-400"
+              )}>
                 {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
               </div>
             )}
@@ -358,18 +368,27 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className={cn("text-base md:text-lg font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full transition-colors duration-300", props.cardTextColor ? "" : "text-slate-100 dark:text-slate-800")}
+                className={cn(
+                  "text-base md:text-lg font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full transition-colors duration-300", 
+                  props.cardTextColor ? "" : (isDark ? "text-slate-850" : "text-slate-100")
+                )}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
             </div>
 
             {/* Horizontal line divider */}
-            <div className="border-t border-white/10 dark:border-slate-200 w-full my-4 transition-colors duration-300" />
+            <div className={cn(
+              "border-t w-full my-4 transition-colors duration-300",
+              isDark ? "border-slate-200" : "border-white/10"
+            )} />
 
             {/* Author, Role & School Name Info */}
             <div className="text-left space-y-0.5">
-              <div className={cn("text-xs md:text-sm font-semibold flex items-center gap-1 transition-colors duration-300", props.cardTextColor ? "" : "text-slate-300 dark:text-slate-500")}>
+              <div className={cn(
+                "text-xs md:text-sm font-semibold flex items-center gap-1 transition-colors duration-300", 
+                props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-300")
+              )}>
                 <InlineEditable
                   tagName="span"
                   isEdit={ctx.mode === 'edit'}
@@ -377,7 +396,10 @@ registerBlock({
                   data-prop-key="author"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ author: val })}
-                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-bold transition-colors duration-300", props.cardTextColor ? "" : "text-white dark:text-slate-900")}
+                  className={cn(
+                    "outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-bold transition-colors duration-300", 
+                    props.cardTextColor ? "" : (isDark ? "text-slate-900" : "text-white")
+                  )}
                   value={props.author || 'Author Name'}
                   html={false}
                 />
@@ -389,7 +411,10 @@ registerBlock({
                   data-prop-key="role"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ role: val })}
-                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal transition-colors duration-300", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
+                  className={cn(
+                    "outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal transition-colors duration-300", 
+                    props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-400")
+                  )}
                   value={props.role || 'Role'}
                   html={false}
                 />
@@ -404,7 +429,10 @@ registerBlock({
                   data-prop-key="schoolName"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className={cn("text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block transition-colors duration-300", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
+                  className={cn(
+                    "text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block transition-colors duration-300", 
+                    props.cardTextColor ? "" : (isDark ? "text-slate-500" : "text-slate-400")
+                  )}
                   value={props.schoolName || 'School Name'}
                   html={false}
                 />
@@ -424,8 +452,8 @@ registerBlock({
           className={cn(
             "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card font-figtree",
             isMobileOrTablet ? "flex-col-reverse" : "flex-col-reverse md:flex-row",
-            isCustomBg ? "" : "bg-white dark:bg-slate-950",
-            props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
+            isCustomBg ? "" : (isDark ? "bg-slate-950" : "bg-white"),
+            props.cardBorderColor ? "" : (isDark ? "border border-slate-850" : "border border-slate-200/60")
           )}
           style={getCardStyle(props)}
         >
@@ -437,9 +465,9 @@ registerBlock({
               <div className="relative group/logo cursor-pointer shrink-0">
                 {props.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={props.logoUrl} alt="School Logo" className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
+                  <img src={props.logoUrl} alt="School Logo" className={cn("w-10 h-10 rounded-full object-cover shadow-sm border", isDark ? "border-slate-800" : "border-slate-200")} />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-555 dark:text-slate-450 flex items-center justify-center text-xs font-bold border border-slate-200 dark:border-slate-700">
+                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border", isDark ? "bg-slate-800 text-slate-400 border-slate-700" : "bg-slate-100 text-slate-500 border-slate-200")}>
                     LOGO
                   </div>
                 )}
@@ -473,7 +501,7 @@ registerBlock({
                   data-prop-key="schoolName"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className={cn("text-lg font-extrabold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text block", props.cardTextColor ? "" : "text-slate-900 dark:text-white")}
+                  className={cn("text-lg font-extrabold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text block", props.cardTextColor ? "" : (isDark ? "text-white" : "text-slate-900"))}
                   value={props.schoolName || 'Sunflower School'}
                   html={false}
                 />
@@ -484,7 +512,7 @@ registerBlock({
                   data-prop-key="schoolSubtitle"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolSubtitle: val })}
-                  className={cn("text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5 block", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
+                  className={cn("text-xs outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text mt-0.5 block", props.cardTextColor ? "" : (isDark ? "text-slate-400" : "text-slate-500"))}
                   value={props.schoolSubtitle || 'Ghana'}
                   html={false}
                 />
@@ -500,14 +528,14 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className={cn("text-base font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
+                className={cn("text-base font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1", props.cardTextColor ? "" : (isDark ? "text-slate-200" : "text-slate-800"))}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
             </div>
 
             {/* Quote Author */}
-            <div className={cn("flex items-center gap-1.5 text-xs font-medium", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}>
+            <div className={cn("flex items-center gap-1.5 text-xs font-medium", props.cardTextColor ? "" : (isDark ? "text-slate-400" : "text-slate-500"))}>
               <span>-</span>
               <InlineEditable
                 tagName="span"
@@ -516,7 +544,7 @@ registerBlock({
                 data-prop-key="author"
                 data-rich="false"
                 onChange={(val) => ctx.onPropChange?.({ author: val })}
-                className={cn("font-bold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text", props.cardTextColor ? "" : "text-slate-700 dark:text-slate-300")}
+                className={cn("font-bold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text", props.cardTextColor ? "" : (isDark ? "text-slate-300" : "text-slate-700"))}
                 value={props.author || 'Author'}
                 html={false}
               />
@@ -539,7 +567,7 @@ registerBlock({
           <div className="flex-1 w-full md:max-w-md shrink-0">
             {hasVideo ? (
               playInline ? (
-                <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 group">
+                <div className={cn("relative aspect-video w-full rounded-2xl overflow-hidden border group", isDark ? "border-slate-850 bg-slate-900" : "border-slate-200 bg-slate-100")}>
                   <VideoEmbed
                     url={finalVideoUrl}
                     thumbnailUrl={finalThumbnailUrl || undefined}
@@ -610,14 +638,14 @@ registerBlock({
       <figure 
         className={cn(
           "max-w-lg mx-auto p-6 rounded-2xl text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card font-figtree",
-          isCustomBg ? "" : "bg-slate-50/70 dark:bg-slate-950/40",
-          props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
+          isCustomBg ? "" : (isDark ? "bg-slate-950/40" : "bg-slate-50/70"),
+          props.cardBorderColor ? "" : (isDark ? "border border-slate-850" : "border border-slate-200/60")
         )}
         style={getCardStyle(props)}
       >
         {hasVideo ? (
           playInline ? (
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 group">
+            <div className={cn("relative aspect-video w-full rounded-xl overflow-hidden mb-4 group border", isDark ? "border-slate-850 bg-slate-900" : "border-slate-200 bg-slate-100")}>
               <VideoEmbed
                 url={finalVideoUrl}
                 thumbnailUrl={finalThumbnailUrl || undefined}
@@ -629,7 +657,7 @@ registerBlock({
             <>
               <div 
                 onClick={() => setModalOpen(true)}
-                className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 mb-4 cursor-pointer group shadow-sm transition-all"
+                className={cn("relative aspect-video w-full rounded-xl overflow-hidden mb-4 cursor-pointer group shadow-sm transition-all border", isDark ? "border-slate-850 bg-slate-900" : "border-slate-200 bg-slate-100")}
               >
                 {finalThumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -639,7 +667,7 @@ registerBlock({
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                   />
                 ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-200/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
+                  <div className={cn("absolute inset-0 flex flex-col items-center justify-center", isDark ? "bg-slate-900/50 text-slate-400" : "bg-slate-200/50 text-slate-500")}>
                     <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Testimonial</span>
                   </div>
                 )}
@@ -677,18 +705,18 @@ registerBlock({
           data-prop-key="quote"
           data-rich="true"
           onChange={(val) => ctx.onPropChange?.({ quote: val })}
-          className={cn("text-sm italic leading-relaxed font-normal outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
+          className={cn("text-sm italic leading-relaxed font-normal outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]", props.cardTextColor ? "" : (isDark ? "text-slate-200" : "text-slate-800"))}
           value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
           html={true}
         />
         
-        <figcaption className="flex items-center justify-center gap-3 pt-2 border-t border-slate-200 dark:border-slate-850/50">
+        <figcaption className={cn("flex items-center justify-center gap-3 pt-2 border-t", isDark ? "border-slate-850/50" : "border-slate-200")}>
           <div className="relative group/avatar cursor-pointer">
             {props.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={props.avatarUrl} alt={props.author} width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-800 shadow-sm" />
+              <img src={props.avatarUrl} alt={props.author} width={36} height={36} className={cn("w-9 h-9 rounded-full object-cover shadow-sm border", isDark ? "border-slate-800" : "border-slate-200")} />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 flex items-center justify-center text-[10px] font-bold">
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold", isDark ? "bg-slate-800 text-slate-400" : "bg-slate-200 text-slate-700")}>
                 {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
               </div>
             )}
@@ -721,7 +749,7 @@ registerBlock({
               data-prop-key="author"
               data-rich="false"
               onChange={(val) => ctx.onPropChange?.({ author: val })}
-              className={cn("text-xs font-black outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text", props.cardTextColor ? "" : "text-slate-900 dark:text-slate-100")}
+              className={cn("text-xs font-black outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] inline-block cursor-text", props.cardTextColor ? "" : (isDark ? "text-slate-100" : "text-slate-900"))}
               value={props.author || 'Author Name'}
               html={false}
             />
@@ -733,7 +761,7 @@ registerBlock({
                 data-prop-key="role"
                 data-rich="false"
                 onChange={(val) => ctx.onPropChange?.({ role: val })}
-                className={cn("text-[10px] font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5", props.cardTextColor ? "" : "text-slate-500 dark:text-slate-400")}
+                className={cn("text-[10px] font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 min-w-[20px] block cursor-text mt-0.5", props.cardTextColor ? "" : (isDark ? "text-slate-400" : "text-slate-500"))}
                 value={ctx.mode === 'edit' ? (props.role || 'Role / Company') : props.role}
                 html={false}
               />

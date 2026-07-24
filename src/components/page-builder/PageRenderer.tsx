@@ -37,6 +37,9 @@ export interface PageRendererPage {
     customScriptsAllowed?: boolean;
     showHeader?: boolean;
     showFooter?: boolean;
+    themeOverrides?: {
+      themeMode?: 'light' | 'dark';
+    };
   };
 }
 
@@ -367,8 +370,9 @@ export function PageRenderer({
       page: { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' },
       allowScripts: page.settings.customScriptsAllowed ?? false,
       isThumbnail: !!isThumbnail,
+      themeMode: page.settings.themeOverrides?.themeMode || 'light',
     }),
-    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed, isThumbnail],
+    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed, isThumbnail, page.settings.themeOverrides?.themeMode],
   );
 
   const sections = version.structureJson.sections;

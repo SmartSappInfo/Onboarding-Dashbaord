@@ -1337,6 +1337,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         resources,
         page,
         viewport,
+        themeMode,
         onPropChange: (patch: Record<string, unknown>) => onUpdateBlockProps(blockId, patch)
     });
 
