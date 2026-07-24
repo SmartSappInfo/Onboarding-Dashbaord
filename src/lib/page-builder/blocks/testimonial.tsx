@@ -304,9 +304,9 @@ registerBlock({
       return (
         <div 
           className={cn(
-            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card font-figtree",
-            isCustomBg ? "" : "bg-gradient-to-br from-[#0F172A] to-[#1E293B] dark:from-[#080C14] dark:to-[#0D1321]",
-            props.cardBorderColor ? "" : "border border-slate-800/40"
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card font-figtree transition-colors duration-300",
+            isCustomBg ? "" : "bg-gradient-to-br from-[#0B1528] to-[#1E2E4A] dark:from-white dark:to-white",
+            props.cardBorderColor ? "" : "border border-slate-800/40 dark:border-slate-200/60"
           )}
           style={getCardStyle(props)}
         >
@@ -318,10 +318,10 @@ registerBlock({
               <img 
                 src={props.avatarUrl} 
                 alt={props.author} 
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] object-cover shadow-lg border border-white/10" 
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] object-cover shadow-lg border border-white/10 dark:border-slate-200/60 transition-colors duration-300" 
               />
             ) : (
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] bg-slate-800 border border-slate-700/50 text-slate-400 flex items-center justify-center text-xs font-bold shadow-lg">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[2rem] bg-slate-850 dark:bg-slate-100 border border-slate-700/50 dark:border-slate-200 text-slate-400 dark:text-slate-500 flex items-center justify-center text-xs font-bold shadow-lg transition-colors duration-300">
                 {props.author ? props.author.slice(0, 2).toUpperCase() : 'AN'}
               </div>
             )}
@@ -358,18 +358,18 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className={cn("text-base md:text-lg font-medium leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full", props.cardTextColor ? "" : "text-white")}
+                className={cn("text-base md:text-lg font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 w-full transition-colors duration-300", props.cardTextColor ? "" : "text-slate-100 dark:text-slate-800")}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
             </div>
 
             {/* Horizontal line divider */}
-            <div className="border-t border-white/10 w-full my-4" />
+            <div className="border-t border-white/10 dark:border-slate-200 w-full my-4 transition-colors duration-300" />
 
             {/* Author, Role & School Name Info */}
             <div className="text-left space-y-0.5">
-              <div className={cn("text-xs md:text-sm font-semibold flex items-center gap-1", props.cardTextColor ? "" : "text-slate-300 dark:text-slate-400")}>
+              <div className={cn("text-xs md:text-sm font-semibold flex items-center gap-1 transition-colors duration-300", props.cardTextColor ? "" : "text-slate-300 dark:text-slate-500")}>
                 <InlineEditable
                   tagName="span"
                   isEdit={ctx.mode === 'edit'}
@@ -377,7 +377,7 @@ registerBlock({
                   data-prop-key="author"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ author: val })}
-                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-bold", props.cardTextColor ? "" : "text-white")}
+                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-bold transition-colors duration-300", props.cardTextColor ? "" : "text-white dark:text-slate-900")}
                   value={props.author || 'Author Name'}
                   html={false}
                 />
@@ -389,7 +389,7 @@ registerBlock({
                   data-prop-key="role"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ role: val })}
-                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal", props.cardTextColor ? "" : "text-slate-355")}
+                  className={cn("outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text font-normal transition-colors duration-300", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
                   value={props.role || 'Role'}
                   html={false}
                 />
@@ -404,7 +404,7 @@ registerBlock({
                   data-prop-key="schoolName"
                   data-rich="false"
                   onChange={(val) => ctx.onPropChange?.({ schoolName: val })}
-                  className={cn("text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
+                  className={cn("text-[10px] md:text-xs font-medium outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-0.5 cursor-text inline-block transition-colors duration-300", props.cardTextColor ? "" : "text-slate-400 dark:text-slate-500")}
                   value={props.schoolName || 'School Name'}
                   html={false}
                 />
