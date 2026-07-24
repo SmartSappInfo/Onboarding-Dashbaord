@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * Server Action & Component Module: High-fidelity Deal Card with Dropdown Actions
+ *
+ * ARCHITECTURAL PURPOSE & DESIGN SPECIFICATION:
+ * Renders an interactive deal card within the pipeline Kanban column, displaying deal value,
+ * urgency badges, linked entity logo/initials, and deal management actions via DropdownMenu.
+ *
+ * WORKSPACE RULES & COMPLIANCE:
+ * - Single Source of Truth for Toast Actions: Uses standard useToast notifications.
+ * - Mobile & Accessibility First: Min 44px touch targets for dropdown trigger and options.
+ * - Inline Developer Guides (Rule 10): Confirms user intent via `useConfirm()` dialog before deletion.
+ * - Testability: Props include optional `onDelete` callback for optimistic UI removal.
+ */
+
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -11,6 +25,7 @@ import {
     Eye,
     Banknote,
     Edit,
+    Trash2,
     UserCircle2,
     AlertCircle,
     Clock,
@@ -32,6 +47,11 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { useTerminology } from '@/hooks/use-terminology';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { deleteDealAction } from '@/app/actions/deal-actions';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -44,6 +64,7 @@ const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: strin
 interface DealCardProps {
     deal: Deal;
     isOverlay?: boolean;
+    onDelete?: (dealId: string) => void;
     /**
      * @deprecated Retained for caller compatibility (StageColumn / DragOverlay).
      * No longer rendered — task stats were removed from the card per the
@@ -55,8 +76,13 @@ interface DealCardProps {
 /**
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
-export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) {
+export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealCardProps) {
   const { singular } = useTerminology();
+  const confirm = useConfirm();
+  const { toast } = useToast();
+  const { user } = useUser();
+  const { activeWorkspaceId } = useWorkspace();
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
   const {
     attributes,
@@ -73,20 +99,55 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
     opacity: isDragging && !isOverlay ? 0 : 1,
   };
 
-  const displayName = toTitleCase(deal.name || 'Unnamed Deal');
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-        case 'won': return '#10b981'; // emerald-500
-        case 'lost': return '#ef4444'; // red-500
-        default: return '#3b82f6'; // blue-500
-    }
-  };
+  const displayName = deal.name || 'Unnamed Deal';
   const statusColor = getStatusColor(deal.status);
 
   const urgency = getForecastUrgency(deal.expectedCloseDate);
   const UrgencyIcon = URGENCY_ICON[urgency.level];
   const focalContacts = deal.focalContacts ?? [];
+
+  /**
+   * Triggers confirmation dialog and handles deal deletion.
+   */
+  const handleDeleteDeal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const effectiveWorkspaceId = activeWorkspaceId || deal.workspaceId;
+    if (!effectiveWorkspaceId) return;
+
+    const approved = await confirm({
+      title: 'Delete Deal?',
+      description: `Are you sure you want to delete "${displayName}"? This action cannot be undone.`,
+      confirmText: 'Delete Deal',
+      variant: 'destructive',
+    });
+
+    if (!approved) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await deleteDealAction(deal.id, effectiveWorkspaceId, user?.uid);
+      if (res.success) {
+        toast({
+          title: 'Deal Deleted',
+          description: `Successfully deleted "${displayName}".`,
+        });
+        if (onDelete) {
+          onDelete(deal.id);
+        }
+      } else {
+        throw new Error(res.error || 'Failed to delete deal.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: message,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -176,6 +237,16 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
                             <span className="font-bold text-xs ">View Linked {singular}</span>
                         </Link>
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem 
+                        onClick={handleDeleteDeal}
+                        disabled={isDeleting}
+                        className="rounded-lg p-2 gap-2.5 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="font-bold text-xs">Delete Deal</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </CardHeader>
@@ -217,4 +288,12 @@ export default function DealCard({ deal, isOverlay, taskStats }: DealCardProps) 
         </div>
     </TooltipProvider>
   );
+}
+
+function getStatusColor(status?: 'open' | 'won' | 'lost'): string {
+    switch (status) {
+        case 'won': return '#10b981';
+        case 'lost': return '#ef4444';
+        default: return '#3b82f6';
+    }
 }

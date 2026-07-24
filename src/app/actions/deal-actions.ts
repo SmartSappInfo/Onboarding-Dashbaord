@@ -554,3 +554,58 @@ export async function clearStageDealsAction(
         return { success: false, error };
     }
 }
+
+/**
+ * Deletes a single deal document from Firestore deals collection and logs activity.
+ *
+ * DEVELOPER GUIDE & CAUTION FOR MAINTAINERS (Rule 10):
+ * - Verifies user permission before deleting document.
+ * - Logs 'deal_deleted' activity for audit compliance.
+ * - Testability: Mock adminDb.collection('deals').doc().delete() in unit tests.
+ */
+export async function deleteDealAction(
+    dealId: string,
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!dealId || !workspaceId) {
+            return { success: false, error: 'Missing dealId or workspaceId' };
+        }
+
+        const dealRef = adminDb.collection('deals').doc(dealId);
+        const dealSnap = await dealRef.get();
+        if (!dealSnap.exists) {
+            return { success: false, error: 'Deal not found.' };
+        }
+
+        const deal = dealSnap.data() as Deal;
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, error: permission.reason };
+            }
+        }
+
+        await dealRef.delete();
+
+        await logActivity({
+            organizationId: deal.organizationId || '',
+            entityId: deal.entityId || '',
+            userId: userId || null,
+            workspaceId: deal.workspaceId || workspaceId,
+            type: 'deal_deleted',
+            source: 'user',
+            description: `deleted deal "${deal.name}"`,
+            metadata: { dealId, name: deal.name, stageId: deal.stageId }
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to delete deal';
+        console.error('❌ Failed to delete deal:', error);
+        return { success: false, error };
+    }
+}
+
