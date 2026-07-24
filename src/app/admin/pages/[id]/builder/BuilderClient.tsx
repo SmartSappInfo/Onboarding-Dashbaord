@@ -216,7 +216,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         forms: resources.forms.map((f) => ({
             id: f.id, title: f.title ?? f.internalName ?? 'Untitled', internalName: f.internalName,
         })),
-        surveys: resources.surveys.map((s) => ({ id: s.id, title: s.title ?? 'Untitled' })),
+        surveys: resources.surveys.map((s) => ({ id: s.id, title: s.title ?? 'Untitled', internalName: s.internalName })),
         agreements: [],
         meetings: resources.meetings.map((m) => ({
             id: m.id,

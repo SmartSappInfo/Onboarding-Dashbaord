@@ -3895,6 +3895,7 @@ export interface FormResource {
 export interface SurveyResource {
   id: string;
   title: string;
+  internalName?: string;
 }
 
 export interface AgreementResource {

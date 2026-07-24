@@ -180,7 +180,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
         list = (resources.surveys || []).map((s) => ({
           id: s.id,
           label: s.internalName || s.title,
-          subLabel: s.title !== s.internalName ? s.title : undefined,
+          subLabel: s.internalName && s.title !== s.internalName ? s.title : undefined,
         }));
       } else if (field.resource === 'agreement') {
         list = (resources.agreements || []).map((a) => ({ id: a.id, label: a.title }));
