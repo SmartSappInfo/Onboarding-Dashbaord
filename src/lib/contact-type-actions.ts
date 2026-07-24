@@ -34,10 +34,26 @@ export async function getEffectiveContactTypes(
     let orgOverrides: ContactTypeEntry[] | undefined;
     let wsOverrides: ContactTypeEntry[] | undefined;
 
+    let effectiveWorkspaceId = workspaceId;
+    let effectiveOrganizationId = organizationId;
+
+    if (workspaceId) {
+        try {
+            const { resolveWorkspaceGuid } = await import('./automations/workspace-resolver');
+            const resolved = await resolveWorkspaceGuid(workspaceId);
+            effectiveWorkspaceId = resolved.workspaceId;
+            if (!effectiveOrganizationId || effectiveOrganizationId === 'default') {
+                effectiveOrganizationId = resolved.organizationId;
+            }
+        } catch (err) {
+            console.warn('[contact-type-actions] Failed to resolve workspace GUID:', err);
+        }
+    }
+
     try {
         // Fetch organization-level overrides
-        if (organizationId) {
-            const orgDocId = getContactTypeTemplateId('organization', entityType, organizationId);
+        if (effectiveOrganizationId && effectiveOrganizationId !== 'default') {
+            const orgDocId = getContactTypeTemplateId('organization', entityType, effectiveOrganizationId);
             const orgSnap = await adminDb.collection('contact_type_templates').doc(orgDocId).get();
             if (orgSnap.exists) {
                 const data = orgSnap.data();
@@ -46,8 +62,8 @@ export async function getEffectiveContactTypes(
         }
 
         // Fetch workspace-level overrides
-        if (workspaceId) {
-            const wsDocId = getContactTypeTemplateId('workspace', entityType, workspaceId);
+        if (effectiveWorkspaceId) {
+            const wsDocId = getContactTypeTemplateId('workspace', entityType, effectiveWorkspaceId);
             const wsSnap = await adminDb.collection('contact_type_templates').doc(wsDocId).get();
             if (wsSnap.exists) {
                 const data = wsSnap.data();

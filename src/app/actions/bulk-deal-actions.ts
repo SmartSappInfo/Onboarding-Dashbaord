@@ -1,11 +1,11 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, Pipeline, WorkspaceEntity } from '@/lib/types';
+import type { Deal, Pipeline, WorkspaceEntity, DealFocalContact } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 
-interface BulkDealCreationData {
+export interface BulkDealCreationData {
   entityIds: string[];
   workspaceId: string;
   organizationId: string;
@@ -13,6 +13,12 @@ interface BulkDealCreationData {
   dealNamePattern: string; // e.g. "{{entityName}} - 2026 Expansion"
   value: number;
   assignmentStrategy: 'direct' | 'unassigned' | 'pipeline';
+  /** Optional contact identifier or recipient email to link specific focal contact */
+  contactId?: string;
+  /** Optional email subject line / title for engagement tracking description */
+  messageSubject?: string | null;
+  /** Optional email preheader / preview text for engagement tracking description */
+  messagePreviewText?: string | null;
 }
 
 export async function bulkCreateDealsAction(data: BulkDealCreationData) {
@@ -25,6 +31,9 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
       dealNamePattern,
       value,
       assignmentStrategy,
+      contactId,
+      messageSubject,
+      messagePreviewText,
     } = data;
 
     if (entityIds.length === 0) {
@@ -102,15 +111,27 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
       const chunk = entityIds.slice(i, i + chunkLimit);
       const batch = adminDb.batch();
 
-      // Fetch all entities in this chunk from Firestore
+      // Dual-key lookup: attempt `${workspaceId}_${id}` as primary, with `id` fallback
       const entityRefs = chunk.map(id =>
         adminDb.collection('workspace_entities').doc(`${workspaceId}_${id}`)
       );
       
       const entitySnapshots = await adminDb.getAll(...entityRefs);
 
-      entitySnapshots.forEach(snap => {
-        if (!snap.exists) return;
+      for (let idx = 0; idx < chunk.length; idx++) {
+        const id = chunk[idx];
+        let snap = entitySnapshots[idx];
+
+        // ARCHITECTURAL CAUTION: Dual-key fallback lookup if `${workspaceId}_${id}` doesn't exist
+        if (!snap || !snap.exists) {
+          const fallbackSnap = await adminDb.collection('workspace_entities').doc(id).get();
+          if (fallbackSnap.exists) {
+            snap = fallbackSnap;
+          } else {
+            continue;
+          }
+        }
+
         const entity = snap.data() as WorkspaceEntity;
 
         let assignedTo = null;
@@ -142,15 +163,69 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
           assignedTo = null;
         }
 
-        // Replace pattern placeholders
-        const dealName = dealNamePattern.replace('{{entityName}}', entity.displayName || 'Entity');
+        // ARCHITECTURAL NOTE: Dynamic entity name resolution
+        const entityName = entity.displayName || (entity as unknown as Record<string, string>).name || (entity as unknown as Record<string, string>).entityName || 'Entity';
+        let pattern = dealNamePattern || '{{entityName}}';
+        if (pattern === 'Automated Event Deal') {
+          pattern = '{{entityName}} - Opened Email';
+        }
+        const dealName = pattern
+          .replace(/\{\{entityName\}\}/g, entityName)
+          .replace(/\{\{entity_name\}\}/g, entityName);
+
+        // ARCHITECTURAL NOTE: Contact Linking (focalContacts)
+        // If contactId is passed, match specific contact in entity. Fallback to entity's primary contact.
+        let resolvedFocalContacts: DealFocalContact[] = [];
+        const entityContacts = entity.entityContacts || [];
+        const focalContacts = entity.focalContacts || [];
+
+        if (contactId && (entityContacts.length > 0 || focalContacts.length > 0)) {
+          const all = [...entityContacts, ...focalContacts];
+          const matched = all.find(c =>
+            c.id === contactId ||
+            (c.email && c.email.toLowerCase() === contactId.toLowerCase()) ||
+            (c.phone && c.phone === contactId)
+          );
+          if (matched) {
+            resolvedFocalContacts = [{
+              id: matched.id || contactId,
+              name: matched.name || 'Contact',
+              role: matched.role || undefined,
+              email: matched.email || undefined,
+              phone: matched.phone || undefined,
+            }];
+          }
+        }
+
+        if (resolvedFocalContacts.length === 0 && entityContacts.length > 0) {
+          const primary = entityContacts.find(c => c.isPrimary) || entityContacts[0];
+          resolvedFocalContacts = [{
+            id: primary.id,
+            name: primary.name,
+            role: primary.role || undefined,
+            email: primary.email || undefined,
+            phone: primary.phone || undefined,
+          }];
+        } else if (resolvedFocalContacts.length === 0 && focalContacts.length > 0) {
+          resolvedFocalContacts = [focalContacts[0]];
+        }
+
+        // ARCHITECTURAL NOTE: Structured Email Engagement Description
+        const descParts: string[] = [];
+        if (messageSubject) {
+          descParts.push(`Opened Email: "${messageSubject}"`);
+        }
+        if (messagePreviewText) {
+          descParts.push(`Preheader: "${messagePreviewText}"`);
+        }
+        const description = descParts.length > 0 ? descParts.join('\n') : null;
 
         // Create deal ref
         const newDealRef = adminDb.collection('deals').doc();
         const dealData: Omit<Deal, 'id'> = {
           organizationId,
           workspaceId,
-          entityId: entity.entityId,
+          entityId: entity.entityId || id,
           pipelineId,
           stageId,
           ...(stageName ? { stageName } : {}),
@@ -158,6 +233,9 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
           value: value || 0,
           status: 'open',
           assignedTo,
+          focalContacts: resolvedFocalContacts,
+          description,
+          source: 'automation',
           expectedCloseDate: calculatedCloseDate,
           createdAt: now,
           updatedAt: now,
@@ -165,7 +243,7 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
 
         batch.set(newDealRef, dealData);
         processedResults.push(newDealRef.id);
-      });
+      }
 
       // Commit this chunk's operations
       await batch.commit();

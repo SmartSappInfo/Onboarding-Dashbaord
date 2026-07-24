@@ -18,6 +18,10 @@ export interface ExecuteMessageStatusAutomationsInput {
   workspaceId: string;
   userId?: string;
   runId?: string;
+  /** Optional message subject line / title for populating deal engagement summary */
+  messageSubject?: string | null;
+  /** Optional preheader / preview text for populating deal engagement summary */
+  messagePreviewText?: string | null;
 }
 
 export interface ExecuteMessageStatusAutomationsResult {
@@ -30,6 +34,12 @@ export interface ExecuteMessageStatusAutomationsResult {
 /**
  * Idempotently executes configured per-message status rules (e.g. opened, clicked, bounced)
  * for a specific lead/contact when a delivery milestone or manual action occurs.
+ *
+ * ARCHITECTURAL GUIDELINES & CAUTION:
+ * - When rule is 'move_deal', we trigger `bulkCreateDealsAction` passing entityId, effectiveContactId,
+ *   messageSubject, and messagePreviewText so created deals are properly linked to focal contacts
+ *   and carry the email open summary in description.
+ * - Testability: Ensure `bulkCreateDealsAction` receives non-empty contactId and email metadata.
  */
 export async function executeMessageStatusAutomations(
   input: ExecuteMessageStatusAutomationsInput
@@ -44,6 +54,8 @@ export async function executeMessageStatusAutomations(
     workspaceId,
     userId = 'system',
     runId = 'manual',
+    messageSubject,
+    messagePreviewText,
   } = input;
 
   if (!automationId || !nodeId || !eventStatus || !entityId || !workspaceId) {
@@ -128,15 +140,20 @@ export async function executeMessageStatusAutomations(
 
           case 'move_deal': {
             if (action.pipelineId) {
+              // ARCHITECTURAL NOTE: Pass effectiveContactId, messageSubject, and messagePreviewText
+              // so bulkCreateDealsAction populates focalContacts and sets structured email summary in description.
               const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
               await bulkCreateDealsAction({
                 entityIds: [entityId],
                 workspaceId,
                 organizationId: '',
                 pipelineId: action.pipelineId,
-                dealNamePattern: 'Automated Event Deal',
+                dealNamePattern: '{{entityName}} - Opened Email',
                 value: 0,
                 assignmentStrategy: 'unassigned',
+                contactId: effectiveContactId,
+                messageSubject,
+                messagePreviewText,
               });
               executedCount++;
             }
