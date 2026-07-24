@@ -181,6 +181,8 @@ async function handleAutomationMessageEvent(
             recipient: log.recipient,
             workspaceId: log.workspaceId || log.workspaceIds?.[0] || 'onboarding',
             runId: log.runId,
+            messageSubject: log.subject || log.title || null,
+            messagePreviewText: log.previewText || null,
           })
         )
         .catch((err: unknown) =>

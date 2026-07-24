@@ -122,6 +122,31 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             rest.expectedCloseDate
         );
 
+        // ARCHITECTURAL NOTE & CAUTION: Contact Resolution for Deals
+        // If focalContacts is not explicitly passed, automatically populate primary contact from entity
+        // so pipeline cards display contact avatar/initials badges (Requirement 10 & 18).
+        let resolvedFocalContacts: DealFocalContact[] = data.focalContacts ?? [];
+        const legacyFocal = ((entity as unknown as Record<string, unknown>).focalContacts as Array<Record<string, string>> | undefined) || [];
+        if (resolvedFocalContacts.length === 0 && entity.entityContacts && entity.entityContacts.length > 0) {
+            const primary = entity.entityContacts.find(c => c.isPrimary) || entity.entityContacts[0];
+            resolvedFocalContacts = [{
+                id: primary.id,
+                name: primary.name,
+                role: primary.typeLabel || undefined,
+                email: primary.email || undefined,
+                phone: primary.phone || undefined,
+            }];
+        } else if (resolvedFocalContacts.length === 0 && legacyFocal.length > 0) {
+            const legacy = legacyFocal[0];
+            resolvedFocalContacts = [{
+                id: legacy.id || 'contact_1',
+                name: legacy.name || 'Contact',
+                role: legacy.role || legacy.typeLabel || undefined,
+                email: legacy.email || undefined,
+                phone: legacy.phone || undefined,
+            }];
+        }
+
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
             workspaceId,
@@ -135,10 +160,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
             expectedCloseDate: calculatedCloseDate,
             description: rest.description || null,
-            // Set explicitly — `rest` is never spread into the document, so this
-            // would be silently dropped if left to the spread. Bulk/automation/import
-            // creation paths have no person context and default this to [].
-            focalContacts: data.focalContacts ?? [],
+            focalContacts: resolvedFocalContacts,
             customFields: rest.customFields || {},
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

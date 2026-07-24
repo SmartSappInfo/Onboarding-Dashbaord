@@ -177,23 +177,37 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
         // If contactId is passed, match specific contact in entity. Fallback to entity's primary contact.
         let resolvedFocalContacts: DealFocalContact[] = [];
         const entityContacts = entity.entityContacts || [];
-        const focalContacts = entity.focalContacts || [];
+        const legacyFocal = ((entity as unknown as Record<string, unknown>).focalContacts as Array<Record<string, string>> | undefined) || [];
 
-        if (contactId && (entityContacts.length > 0 || focalContacts.length > 0)) {
-          const all = [...entityContacts, ...focalContacts];
-          const matched = all.find(c =>
+        if (contactId && (entityContacts.length > 0 || legacyFocal.length > 0)) {
+          const matchedEntityContact = entityContacts.find(c =>
             c.id === contactId ||
             (c.email && c.email.toLowerCase() === contactId.toLowerCase()) ||
             (c.phone && c.phone === contactId)
           );
-          if (matched) {
+          if (matchedEntityContact) {
             resolvedFocalContacts = [{
-              id: matched.id || contactId,
-              name: matched.name || 'Contact',
-              role: matched.role || undefined,
-              email: matched.email || undefined,
-              phone: matched.phone || undefined,
+              id: matchedEntityContact.id || contactId,
+              name: matchedEntityContact.name || 'Contact',
+              role: matchedEntityContact.typeLabel || undefined,
+              email: matchedEntityContact.email || undefined,
+              phone: matchedEntityContact.phone || undefined,
             }];
+          } else {
+            const matchedLegacy = legacyFocal.find(c =>
+              c.id === contactId ||
+              (c.email && c.email.toLowerCase() === contactId.toLowerCase()) ||
+              (c.phone && c.phone === contactId)
+            );
+            if (matchedLegacy) {
+              resolvedFocalContacts = [{
+                id: matchedLegacy.id || contactId,
+                name: matchedLegacy.name || 'Contact',
+                role: matchedLegacy.role || matchedLegacy.typeLabel || undefined,
+                email: matchedLegacy.email || undefined,
+                phone: matchedLegacy.phone || undefined,
+              }];
+            }
           }
         }
 
@@ -202,12 +216,19 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
           resolvedFocalContacts = [{
             id: primary.id,
             name: primary.name,
-            role: primary.role || undefined,
+            role: primary.typeLabel || undefined,
             email: primary.email || undefined,
             phone: primary.phone || undefined,
           }];
-        } else if (resolvedFocalContacts.length === 0 && focalContacts.length > 0) {
-          resolvedFocalContacts = [focalContacts[0]];
+        } else if (resolvedFocalContacts.length === 0 && legacyFocal.length > 0) {
+          const legacy = legacyFocal[0];
+          resolvedFocalContacts = [{
+            id: legacy.id || 'contact_1',
+            name: legacy.name || 'Contact',
+            role: legacy.role || legacy.typeLabel || undefined,
+            email: legacy.email || undefined,
+            phone: legacy.phone || undefined,
+          }];
         }
 
         // ARCHITECTURAL NOTE: Structured Email Engagement Description

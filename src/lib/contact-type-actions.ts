@@ -34,41 +34,45 @@ export async function getEffectiveContactTypes(
     let orgOverrides: ContactTypeEntry[] | undefined;
     let wsOverrides: ContactTypeEntry[] | undefined;
 
-    let effectiveWorkspaceId = workspaceId;
-    let effectiveOrganizationId = organizationId;
+    try {
+        let effectiveOrgId = organizationId;
+        let effectiveWsId = workspaceId;
 
-    if (workspaceId) {
-        try {
+        if (workspaceId) {
             const { resolveWorkspaceGuid } = await import('./automations/workspace-resolver');
             const resolved = await resolveWorkspaceGuid(workspaceId);
-            effectiveWorkspaceId = resolved.workspaceId;
-            if (!effectiveOrganizationId || effectiveOrganizationId === 'default') {
-                effectiveOrganizationId = resolved.organizationId;
-            }
-        } catch (err) {
-            console.warn('[contact-type-actions] Failed to resolve workspace GUID:', err);
-        }
-    }
-
-    try {
-        // Fetch organization-level overrides
-        if (effectiveOrganizationId && effectiveOrganizationId !== 'default') {
-            const orgDocId = getContactTypeTemplateId('organization', entityType, effectiveOrganizationId);
-            const orgSnap = await adminDb.collection('contact_type_templates').doc(orgDocId).get();
-            if (orgSnap.exists) {
-                const data = orgSnap.data();
-                orgOverrides = data?.types as ContactTypeEntry[] | undefined;
+            effectiveWsId = resolved.workspaceId;
+            if (!effectiveOrgId && resolved.organizationId && resolved.organizationId !== 'default') {
+                effectiveOrgId = resolved.organizationId;
             }
         }
 
-        // Fetch workspace-level overrides
-        if (effectiveWorkspaceId) {
-            const wsDocId = getContactTypeTemplateId('workspace', entityType, effectiveWorkspaceId);
-            const wsSnap = await adminDb.collection('contact_type_templates').doc(wsDocId).get();
-            if (wsSnap.exists) {
-                const data = wsSnap.data();
-                wsOverrides = data?.types as ContactTypeEntry[] | undefined;
-            }
+        const fetchPromises: Promise<void>[] = [];
+
+        if (effectiveOrgId) {
+            const orgDocId = getContactTypeTemplateId('organization', entityType, effectiveOrgId);
+            fetchPromises.push(
+                adminDb.collection('contact_type_templates').doc(orgDocId).get().then((snap) => {
+                    if (snap.exists) {
+                        orgOverrides = snap.data()?.types as ContactTypeEntry[] | undefined;
+                    }
+                })
+            );
+        }
+
+        if (effectiveWsId) {
+            const wsDocId = getContactTypeTemplateId('workspace', entityType, effectiveWsId);
+            fetchPromises.push(
+                adminDb.collection('contact_type_templates').doc(wsDocId).get().then((snap) => {
+                    if (snap.exists) {
+                        wsOverrides = snap.data()?.types as ContactTypeEntry[] | undefined;
+                    }
+                })
+            );
+        }
+
+        if (fetchPromises.length > 0) {
+            await Promise.all(fetchPromises);
         }
     } catch (error) {
         // If Firestore reads fail, fall back to system defaults silently
