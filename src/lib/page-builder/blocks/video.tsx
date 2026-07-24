@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { Film, Play, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
 import VideoEmbed from '@/components/video-embed';
