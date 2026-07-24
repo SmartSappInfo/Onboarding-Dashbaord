@@ -131,10 +131,21 @@ async function dispatchLocalHttpWorker(endpoint: string, payload: Record<string,
 let clientInstance: CloudTasksClient | null = null;
 let isInitialized = false;
 
+/**
+ * Resolves whether GCP Cloud Tasks should run in local emulator mode.
+ * 
+ * SPECIFICATION & ARCHITECTURAL RULES (context7):
+ * - If USE_GCP_TASKS_EMULATOR is explicitly 'true', use local Node.js timers emulator.
+ * - If FORCE_GCP_TASKS is 'true', force real Google Cloud Tasks queue dispatches.
+ * - In Cloud Run / App Hosting / production environments, default to real Cloud Tasks
+ *   client initialization using Application Default Credentials (ADC).
+ */
 const isEmulator = 
   process.env.USE_GCP_TASKS_EMULATOR === 'true' || 
-  !PROJECT || 
-  (process.env.NODE_ENV !== 'production' && !process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  (process.env.FORCE_GCP_TASKS !== 'true' && 
+   process.env.NODE_ENV !== 'production' && 
+   !process.env.GOOGLE_APPLICATION_CREDENTIALS && 
+   !process.env.K_SERVICE);
 
 async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
   if (isInitialized) {
@@ -145,8 +156,10 @@ async function getCloudTasksClient(): Promise<CloudTasksClient | null> {
     try {
       const { CloudTasksClient: Constructor } = await import('@google-cloud/tasks');
       clientInstance = new Constructor();
+      console.info(`[GCP-TASKS] CloudTasksClient initialized for project "${PROJECT}" in location "${LOCATION}".`);
     } catch (err) {
       console.warn('[GCP-TASKS] Failed to initialize Google Cloud Tasks client. Falling back to EMULATOR mode.', err);
+      clientInstance = null;
     }
   } else {
     console.info('[GCP-TASKS] Running in EMULATOR mode (Local development). Tasks will execute using local timers.');
