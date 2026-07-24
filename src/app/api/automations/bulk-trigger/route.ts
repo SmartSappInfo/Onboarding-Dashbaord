@@ -24,10 +24,14 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Security Check: Validate Secret Header Handshake
+    // 1. Security Check: Validate Secret Header Handshake or GCP Cloud Tasks Proxy Header
     const clientSecret = request.headers.get('x-cloud-tasks-secret');
+    const gcpQueueHeader = request.headers.get('x-cloudtasks-queuename') || request.headers.get('x-appengine-queuename');
     const validSecrets = new Set([SECRET, 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf', 'local-secret']);
-    if (!clientSecret || !validSecrets.has(clientSecret)) {
+
+    const isAuthorized = (clientSecret && validSecrets.has(clientSecret)) || Boolean(gcpQueueHeader);
+
+    if (!isAuthorized) {
       console.warn('[BULK-TRIGGER-WORKER] Unauthorized request attempt.');
       return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
     }
@@ -42,8 +46,9 @@ export async function POST(request: NextRequest) {
       targets?: TargetPayload[];
     };
 
-    if (!automationId || !workspaceId || !organizationId || !trigger || !targets || !Array.isArray(targets)) {
-      return NextResponse.json({ error: 'Missing automationId, workspaceId, organizationId, trigger, or targets' }, { status: 400 });
+    if (!automationId || !workspaceId || !trigger || !targets || !Array.isArray(targets)) {
+      console.warn('[BULK-TRIGGER-WORKER] Invalid payload parameters:', { automationId, workspaceId, trigger, targetsCount: targets?.length });
+      return NextResponse.json({ success: true, processedCount: 0, warning: 'Missing required parameters in bulk task payload.' }, { status: 200 });
     }
 
     if (targets.length === 0) {
@@ -54,7 +59,8 @@ export async function POST(request: NextRequest) {
     const autoRef = adminDb.collection('automations').doc(automationId);
     const autoSnap = await autoRef.get();
     if (!autoSnap.exists) {
-      return NextResponse.json({ error: 'Automation not found' }, { status: 404 });
+      console.warn(`[BULK-TRIGGER-WORKER] Automation ${automationId} not found. Acknowledging task to clear queue.`);
+      return NextResponse.json({ success: true, processedCount: 0, warning: 'Automation doc not found.' }, { status: 200 });
     }
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
 
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
     const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
     if (autoOrgId && organizationId && organizationId !== 'default' && autoOrgId !== 'default' && autoOrgId !== organizationId) {
       console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${autoOrgId}) requested for org ${organizationId}`);
-      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
+      return NextResponse.json({ success: true, processedCount: 0, warning: 'Tenant organization boundary mismatch.' }, { status: 200 });
     }
 
     // 4. Security Check: Validate tenant isolation for all targets in batches

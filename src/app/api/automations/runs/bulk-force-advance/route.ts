@@ -18,10 +18,14 @@ interface BulkForceAdvanceRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Security Check: Validate Secret Header Handshake
+    // 1. Security Check: Validate Secret Header Handshake or GCP Cloud Tasks Proxy Header
     const clientSecret = request.headers.get('x-cloud-tasks-secret');
+    const gcpQueueHeader = request.headers.get('x-cloudtasks-queuename') || request.headers.get('x-appengine-queuename');
     const validSecrets = new Set([SECRET, 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf', 'local-secret']);
-    if (!clientSecret || !validSecrets.has(clientSecret)) {
+
+    const isAuthorized = (clientSecret && validSecrets.has(clientSecret)) || Boolean(gcpQueueHeader);
+
+    if (!isAuthorized) {
       console.warn('[BULK-FORCE-ADVANCE-WORKER] Unauthorized request attempt.');
       return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
     }
