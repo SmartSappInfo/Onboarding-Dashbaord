@@ -32,6 +32,14 @@ async function resolveRequestBaseUrl(): Promise<string> {
   return BASE_URL;
 }
 
+function resolveServiceAccountEmail(): string {
+  return (
+    process.env.GCP_SERVICE_ACCOUNT_EMAIL ||
+    process.env.SERVICE_ACCOUNT_EMAIL ||
+    `${PROJECT || 'studio-9220106300-f74cb'}@appspot.gserviceaccount.com`
+  );
+}
+
 // Global cache for local mock timers in emulator mode (Next.js HMR-resilient)
 const globalRef = globalThis as unknown as { localTimers?: Map<string, NodeJS.Timeout> };
 if (!globalRef.localTimers) {
@@ -333,7 +341,7 @@ export async function scheduleDelayTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
-  const serviceAccountEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.SERVICE_ACCOUNT_EMAIL;
+  const serviceAccountEmail = resolveServiceAccountEmail();
 
   const task = {
     name: formattedTaskName,
@@ -345,12 +353,10 @@ export async function scheduleDelayTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
     scheduleTime: {
       seconds: scheduleTimeSeconds,
@@ -559,7 +565,7 @@ export async function scheduleBulkTriggerTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
-  const serviceAccountEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL || process.env.SERVICE_ACCOUNT_EMAIL;
+  const serviceAccountEmail = resolveServiceAccountEmail();
 
   const task = {
     name: formattedTaskName,
@@ -571,12 +577,10 @@ export async function scheduleBulkTriggerTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
-      ...(serviceAccountEmail ? {
-        oidcToken: {
-          serviceAccountEmail,
-          audience: publicBaseUrl,
-        },
-      } : {}),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -658,6 +662,7 @@ export async function scheduleBulkRetryTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = resolveServiceAccountEmail();
 
   const task = {
     name: formattedTaskName,
@@ -669,6 +674,10 @@ export async function scheduleBulkRetryTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -752,6 +761,7 @@ export async function scheduleBulkResendMessagesTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = resolveServiceAccountEmail();
 
   const task = {
     name: formattedTaskName,
@@ -763,6 +773,10 @@ export async function scheduleBulkResendMessagesTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
@@ -846,6 +860,7 @@ export async function scheduleBulkForceAdvanceTask({
   };
 
   const publicBaseUrl = await resolvePublicBaseUrl();
+  const serviceAccountEmail = resolveServiceAccountEmail();
 
   const task = {
     name: formattedTaskName,
@@ -857,6 +872,10 @@ export async function scheduleBulkForceAdvanceTask({
         'x-cloud-tasks-secret': SECRET,
       },
       body: Buffer.from(JSON.stringify(taskPayload)).toString('base64'),
+      oidcToken: {
+        serviceAccountEmail,
+        audience: publicBaseUrl,
+      },
     },
   };
 
