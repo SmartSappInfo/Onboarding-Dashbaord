@@ -1217,7 +1217,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                     <div className="flex flex-col gap-2">
                                         <Button 
                                             variant="outline" 
-                                            className="w-full text-xs font-semibold justify-start border-slate-800 bg-slate-900/30 hover:bg-slate-900/60"
+                                            className="w-full h-11 text-xs font-semibold justify-start border border-slate-800 bg-slate-900/30 text-slate-200 hover:text-white hover:bg-slate-800/80 hover:border-slate-700 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                                             onClick={() => {
                                                 setEditingHeader(true);
                                                 setEditingFooter(false);
@@ -1230,7 +1230,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                         </Button>
                                         <Button 
                                             variant="outline" 
-                                            className="w-full text-xs font-semibold justify-start border-slate-800 bg-slate-900/30 hover:bg-slate-900/60"
+                                            className="w-full h-11 text-xs font-semibold justify-start border border-slate-800 bg-slate-900/30 text-slate-200 hover:text-white hover:bg-slate-800/80 hover:border-slate-700 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                                             onClick={() => {
                                                 setEditingFooter(true);
                                                 setEditingHeader(false);
