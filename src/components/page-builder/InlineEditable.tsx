@@ -315,7 +315,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
   }
 
   return (
-    <div className="relative inline-block w-full">
+    <div className={cn("relative inline-block", tagName !== 'span' && "w-full")}>
       <Tag
         ref={elementRef}
         contentEditable={true}
