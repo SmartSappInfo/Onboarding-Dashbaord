@@ -304,7 +304,7 @@ registerBlock({
       return (
         <div 
           className={cn(
-            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card",
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col sm:flex-row items-center sm:items-start gap-6 md:gap-8 shadow-2xl relative group/card font-figtree",
             isCustomBg ? "" : "bg-gradient-to-br from-[#0F172A] to-[#1E293B] dark:from-[#080C14] dark:to-[#0D1321]",
             props.cardBorderColor ? "" : "border border-slate-800/40"
           )}
@@ -421,7 +421,7 @@ registerBlock({
       return (
         <div 
           className={cn(
-            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col md:flex-row gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card",
+            "max-w-5xl mx-auto p-6 md:p-8 rounded-3xl text-left flex flex-col md:flex-row gap-6 md:gap-8 items-center shadow-xl backdrop-blur-sm relative group/card font-figtree",
             isCustomBg ? "" : "bg-white dark:bg-slate-950",
             props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
           )}
@@ -498,7 +498,7 @@ registerBlock({
                 data-prop-key="quote"
                 data-rich="true"
                 onChange={(val) => ctx.onPropChange?.({ quote: val })}
-                className={cn("text-base font-semibold leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
+                className={cn("text-base font-normal leading-relaxed outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
                 value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
                 html={true}
               />
@@ -607,7 +607,7 @@ registerBlock({
     return (
       <figure 
         className={cn(
-          "max-w-lg mx-auto p-6 rounded-2xl text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card",
+          "max-w-lg mx-auto p-6 rounded-2xl text-center space-y-4 shadow-xl backdrop-blur-sm relative group/card font-figtree",
           isCustomBg ? "" : "bg-slate-50/70 dark:bg-slate-950/40",
           props.cardBorderColor ? "" : "border border-slate-200/60 dark:border-slate-850"
         )}
@@ -675,7 +675,7 @@ registerBlock({
           data-prop-key="quote"
           data-rich="true"
           onChange={(val) => ctx.onPropChange?.({ quote: val })}
-          className={cn("text-sm italic leading-relaxed font-semibold outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
+          className={cn("text-sm italic leading-relaxed font-normal outline-none focus:ring-1 focus:ring-emerald-500/30 rounded px-1 min-w-[20px]", props.cardTextColor ? "" : "text-slate-800 dark:text-slate-200")}
           value={ctx.mode === 'edit' ? props.quote : ctx.interpolate(props.quote)}
           html={true}
         />
