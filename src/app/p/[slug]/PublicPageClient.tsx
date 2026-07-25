@@ -32,7 +32,7 @@ import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
 import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
 import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 import { PageRenderer } from '@/components/page-builder/PageRenderer';
-import { resolveTheme } from '@/lib/page-builder/resolve-theme';
+import { resolveTheme, isColorLight } from '@/lib/page-builder/resolve-theme';
 import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
 import { parseStructure } from '@/lib/page-builder/schema';
 import { PageTracking } from '@/components/page-builder/PageTracking';
@@ -411,16 +411,25 @@ export default function PublicPageClient({
     const secondaryColor = orgBranding?.brandSecondaryColor || '#8b5cf6';
     const brandFont = orgBranding?.brandFontFamily || 'Inter';
 
-    const resolvedTheme = resolveTheme({
-        overrides: page.settings.themeOverrides,
-        branding: orgBranding
-            ? {
-                  brandPrimaryColor: orgBranding.brandPrimaryColor,
-                  brandSecondaryColor: orgBranding.brandSecondaryColor,
-                  brandFontFamily: orgBranding.brandFontFamily,
-              }
-            : null,
-    });
+    const currentThemeMode = (activeTheme === 'dark' || activeTheme === 'light')
+        ? activeTheme
+        : (page?.settings?.themeOverrides?.themeMode || 'light');
+
+    const resolvedTheme = React.useMemo(() => {
+        return resolveTheme({
+            overrides: {
+                ...page?.settings?.themeOverrides,
+                themeMode: currentThemeMode,
+            },
+            branding: orgBranding
+                ? {
+                      brandPrimaryColor: orgBranding.brandPrimaryColor,
+                      brandSecondaryColor: orgBranding.brandSecondaryColor,
+                      brandFontFamily: orgBranding.brandFontFamily,
+                  }
+                : null,
+        });
+    }, [page?.settings?.themeOverrides, currentThemeMode, orgBranding]);
 
     const themeStyles = `
         :root {
@@ -452,11 +461,11 @@ export default function PublicPageClient({
         return resolveTextWithMap(text, map, true);
     };
 
-    const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
+    const isDarkTheme = currentThemeMode === 'dark';
 
     return (
         <div 
-            className={cn("min-h-screen flex flex-col transition-colors duration-500 relative overflow-x-hidden font-body", pageThemeMode === 'dark' ? "dark" : "light")}
+            className={cn("min-h-screen flex flex-col transition-colors duration-500 relative overflow-x-hidden font-body", isDarkTheme ? "dark" : "light")}
             style={{
                 backgroundColor: resolvedTheme.colors.background,
                 color: resolvedTheme.colors.text,
