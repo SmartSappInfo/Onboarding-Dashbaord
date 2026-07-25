@@ -100,7 +100,8 @@ export function EmbeddedMeeting({
         className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
         style={{
           height: isInModal ? `${size.height}px` : '600px',
-          maxHeight: '100%',
+          maxHeight: isInModal ? '85vh' : '100%',
+          overflowY: isInModal ? 'auto' : 'hidden'
         }}
       >
         <iframe

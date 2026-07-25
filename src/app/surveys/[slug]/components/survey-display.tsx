@@ -247,7 +247,7 @@ export default function SurveyDisplay({
     if (isSubmitted) {
         return (
             <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
-                <div className={cn("min-h-screen flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+                <div className={cn(isEmbedded ? "min-h-0 h-auto" : "min-h-screen", "flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
                 {isPreviewMode && (
                     <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
@@ -361,7 +361,7 @@ export default function SurveyDisplay({
 
     return (
         <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
-            <div className={cn("min-h-screen flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+            <div className={cn(isEmbedded ? "min-h-0 h-auto" : "min-h-screen", "flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
             {isPreviewMode && (
                 <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
