@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -307,6 +307,8 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
     // 3. Transform to Entity/Lead if enabled (Task 12)
     let finalEntityId = responseData.entityId || null;
+    let finalEntityName = '';
+    let finalContactName = '';
     const isFormMode = surveyData?.createEntity && surveyData?.leadCaptureMode === 'form';
 
     if (surveyData && surveyData.createEntity && surveyData.entityMapping && !isFormMode) {
@@ -375,7 +377,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
         // Accept entity.name OR contact.name as the entity name source
         const resolvedName = overriddenEntityName || eName || cName || '';
-        const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+        finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
         
         const resolvedEmail = overriddenContactEmail || cEmail || '';
         const resolvedPhone = overriddenContactPhone || cPhone || '';
@@ -441,7 +443,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             };
           }
 
-          const finalContactName = overriddenContactName || cName || finalEntityName;
+          finalContactName = overriddenContactName || cName || finalEntityName;
 
           const entityPayload: {
             name: string;
