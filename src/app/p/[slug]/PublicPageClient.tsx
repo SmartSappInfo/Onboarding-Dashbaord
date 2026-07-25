@@ -217,6 +217,26 @@ export default function PublicPageClient({
     const { setTheme, resolvedTheme: activeTheme } = useTheme();
     const hasInitializedTheme = useRef(false);
 
+    const currentThemeMode = (activeTheme === 'dark' || activeTheme === 'light')
+        ? activeTheme
+        : (page?.settings?.themeOverrides?.themeMode || 'light');
+
+    const resolvedTheme = React.useMemo(() => {
+        return resolveTheme({
+            overrides: {
+                ...page?.settings?.themeOverrides,
+                themeMode: currentThemeMode,
+            },
+            branding: orgBranding
+                ? {
+                      brandPrimaryColor: orgBranding.brandPrimaryColor,
+                      brandSecondaryColor: orgBranding.brandSecondaryColor,
+                      brandFontFamily: orgBranding.brandFontFamily,
+                  }
+                : null,
+        });
+    }, [page?.settings?.themeOverrides, currentThemeMode, orgBranding]);
+
     // Separate the page theme mode from the viewer's system/browser preferences:
     // Sync theme to match pageThemeMode on load or if the page settings change.
     useEffect(() => {
@@ -411,25 +431,7 @@ export default function PublicPageClient({
     const secondaryColor = orgBranding?.brandSecondaryColor || '#8b5cf6';
     const brandFont = orgBranding?.brandFontFamily || 'Inter';
 
-    const currentThemeMode = (activeTheme === 'dark' || activeTheme === 'light')
-        ? activeTheme
-        : (page?.settings?.themeOverrides?.themeMode || 'light');
 
-    const resolvedTheme = React.useMemo(() => {
-        return resolveTheme({
-            overrides: {
-                ...page?.settings?.themeOverrides,
-                themeMode: currentThemeMode,
-            },
-            branding: orgBranding
-                ? {
-                      brandPrimaryColor: orgBranding.brandPrimaryColor,
-                      brandSecondaryColor: orgBranding.brandSecondaryColor,
-                      brandFontFamily: orgBranding.brandFontFamily,
-                  }
-                : null,
-        });
-    }, [page?.settings?.themeOverrides, currentThemeMode, orgBranding]);
 
     const themeStyles = `
         :root {
