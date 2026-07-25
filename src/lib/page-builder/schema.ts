@@ -37,7 +37,7 @@ export const navItemSchema = z.object({
 });
 
 export const headerSettingsSchema = z.object({
-  preset: z.enum(['native', 'minimal', 'full-nav', 'cta-only', 'search-nav']).default('native'),
+  preset: z.enum(['native', 'minimal', 'full-nav', 'cta-only', 'search-nav', 'card-nav']).default('native'),
   overlap: z.boolean().default(false),
   sticky: z.boolean().default(false),
   floating: z.boolean().default(false),
@@ -45,6 +45,10 @@ export const headerSettingsSchema = z.object({
   showCta: z.boolean().default(false),
   ctaText: z.string().optional(),
   ctaUrl: z.string().optional(),
+  ctaLinkType: z.enum(['url', 'scroll', 'action']).default('url'),
+  ctaTargetSectionId: z.string().optional(),
+  ctaAction: z.enum(['receipt_request', 'open_modal_form', 'open_modal_survey', 'open_modal_agreement']).optional(),
+  ctaSurveyResultMode: z.enum(['modal', 'parent']).default('modal'),
   showPhone: z.boolean().default(false),
   phoneNumber: z.string().optional(),
   navItems: z.array(navItemSchema).default([]),

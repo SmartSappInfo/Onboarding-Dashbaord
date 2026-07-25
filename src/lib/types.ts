@@ -3702,6 +3702,10 @@ export interface PageHeaderSettings {
   showCta: boolean;
   ctaText?: string;
   ctaUrl?: string;
+  ctaLinkType?: 'url' | 'scroll' | 'action';
+  ctaTargetSectionId?: string;
+  ctaAction?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
+  ctaSurveyResultMode?: 'modal' | 'parent';
   showPhone: boolean;
   phoneNumber?: string;
   navItems: HeaderNavItem[];
