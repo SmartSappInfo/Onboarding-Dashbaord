@@ -201,7 +201,7 @@ export function updateBlockProps(
 export function moveBlock(
   structure: CampaignPageStructure,
   blockId: string,
-  direction: 'up' | 'down',
+  direction: 'up' | 'down' | 'top' | 'bottom',
 ): CampaignPageStructure {
   return {
     ...structure,
@@ -211,8 +211,19 @@ export function moveBlock(
       if (index === -1) return section;
       if (direction === 'up' && index === 0) return section;
       if (direction === 'down' && index === blocks.length - 1) return section;
-      const target = direction === 'up' ? index - 1 : index + 1;
-      [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+      if (direction === 'top' && index === 0) return section;
+      if (direction === 'bottom' && index === blocks.length - 1) return section;
+
+      if (direction === 'top') {
+        const [moved] = blocks.splice(index, 1);
+        if (moved) blocks.unshift(moved);
+      } else if (direction === 'bottom') {
+        const [moved] = blocks.splice(index, 1);
+        if (moved) blocks.push(moved);
+      } else {
+        const target = direction === 'up' ? index - 1 : index + 1;
+        [blocks[index], blocks[target]] = [blocks[target], blocks[index]];
+      }
       return { ...section, blocks };
     }),
   };

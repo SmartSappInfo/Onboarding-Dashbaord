@@ -398,7 +398,7 @@ export function useBuilderState() {
         updateStructure(s => tree.updateBlockProps(s, blockId, newProps));
     }, [updateStructure]);
 
-    const moveBlock = useCallback((blockId: string, direction: 'up' | 'down') => {
+    const moveBlock = useCallback((blockId: string, direction: 'up' | 'down' | 'top' | 'bottom') => {
         updateStructure(s => tree.moveBlock(s, blockId, direction));
     }, [updateStructure]);
 

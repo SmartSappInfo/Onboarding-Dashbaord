@@ -27,6 +27,8 @@ import {
     Trash2,
     ArrowUp,
     ArrowDown,
+    ArrowUpToLine,
+    ArrowDownToLine,
     ArrowLeft,
     ArrowRight,
     FolderHeart,
@@ -116,7 +118,7 @@ interface CanvasProps {
     onSetTab: (tab: string) => void;
     onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
     onRemoveBlock: (blockId: string) => void;
-    onMoveBlock: (blockId: string, direction: 'up' | 'down') => void;
+    onMoveBlock: (blockId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
     onDuplicateBlock: (blockId: string) => void;
     onRemoveSection: (sectionId: string) => void;
     onMoveSection: (sectionId: string, direction: 'up' | 'down') => void;
@@ -394,7 +396,7 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
     selected: boolean;
     onSelect: () => void;
     onRemove: () => void;
-    onMove: (dir: 'up' | 'down') => void;
+    onMove: (dir: 'up' | 'down' | 'top' | 'bottom') => void;
     onDuplicate: () => void;
     children: React.ReactNode;
     canvasMode: 'edit' | 'preview';
@@ -448,11 +450,17 @@ function SortableBlock({ block, bIdx, total, selected, onSelect, onRemove, onMov
                     >
                         <GripVertical className="w-2.5 h-2.5 text-slate-800 dark:text-slate-200" aria-hidden="true" />
                     </div>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('top'); }} aria-label="Move block to top" title="Move block to top">
+                        <ArrowUpToLine className="w-2.5 h-2.5" aria-hidden="true" />
+                    </Button>
                     <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === 0} onClick={(e) => { e.stopPropagation(); onMove('up'); }} aria-label="Move block up" title="Move block up">
                         <ArrowUp className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
                     <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('down'); }} aria-label="Move block down" title="Move block down">
                         <ArrowDown className="w-2.5 h-2.5" aria-hidden="true" />
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 disabled:opacity-30 transition-colors" disabled={bIdx === total - 1} onClick={(e) => { e.stopPropagation(); onMove('bottom'); }} aria-label="Move block to bottom" title="Move block to bottom">
+                        <ArrowDownToLine className="w-2.5 h-2.5" aria-hidden="true" />
                     </Button>
                     <Button variant="secondary" size="icon" className="h-5 w-5 rounded-full shadow-md bg-white dark:bg-zinc-900 text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-150 dark:border-zinc-800 transition-colors" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} aria-label="Duplicate block" title="Duplicate block">
                         <Copy className="w-2.5 h-2.5" aria-hidden="true" />
@@ -497,7 +505,7 @@ function ColumnCell({
     onSelectBlock: (id: string | null) => void;
     onSetTab: (tab: string) => void;
     onRemoveBlock: (blockId: string) => void;
-    onMoveBlock: (blockId: string, direction: 'up' | 'down') => void;
+    onMoveBlock: (blockId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
     onDuplicateBlock: (blockId: string) => void;
     editCtx: (blockId: string) => BlockRenderContext;
     editMode: 'columns' | 'components';
@@ -3053,6 +3061,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             onMouseDown={(e) => {
                                 e.preventDefault();
                                 if (selectedBlockId && !getBlockStructuralState(selectedBlockId).isFirst) {
+                                    onMoveBlock(selectedBlockId, 'top');
+                                }
+                            }}
+                            disabled={!selectedBlockId || getBlockStructuralState(selectedBlockId).isFirst}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-550 hover:text-slate-950 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Block to Top"
+                        >
+                            <ArrowUpToLine className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId && !getBlockStructuralState(selectedBlockId).isFirst) {
                                     onMoveBlock(selectedBlockId, 'up');
                                 }
                             }}
@@ -3074,6 +3095,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                             title="Move Block Down"
                         >
                             <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                if (selectedBlockId && !getBlockStructuralState(selectedBlockId).isLast) {
+                                    onMoveBlock(selectedBlockId, 'bottom');
+                                }
+                            }}
+                            disabled={!selectedBlockId || getBlockStructuralState(selectedBlockId).isLast}
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-550 hover:text-slate-950 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            title="Move Block to Bottom"
+                        >
+                            <ArrowDownToLine className="h-3.5 w-3.5" />
                         </button>
                         <button
                             onMouseDown={(e) => {
