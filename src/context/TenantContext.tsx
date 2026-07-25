@@ -71,6 +71,7 @@ async function resolveWorkspaceFromPathname(pathname: string, firestore: unknown
     else if (section === 'meetings') collectionName = 'meetings';
     else if (section === 'entities') collectionName = 'workspace_entities';
     else if (section === 'deals') collectionName = 'deals';
+    else if (section === 'pages') collectionName = 'campaign_pages';
     else if (section === 'finance' && segments[3] === 'contracts' && segments[4] && !keywords.includes(segments[4])) {
       collectionName = 'contracts';
       const contractId = segments[4];
