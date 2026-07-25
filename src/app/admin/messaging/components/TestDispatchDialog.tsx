@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * Server Action & UI Component: Minimalist Test Dispatch Dialog
+ * Server Action & UI Component: Minimalist Searchable Test Dispatch Dialog
  *
  * ARCHITECTURAL PURPOSE & DESIGN SPECIFICATION:
  * Enables administrators to send test emails, SMS, or WhatsApp dispatches.
  * Provides dual testing modes:
- * 1. "Selected Entity": Pulls real workspace entity details and auto-resolves recipient and template variables.
+ * 1. "Selected Entity": Features a searchable Popover + Command Combobox listing workspace entities.
+ *    Selecting an entity automatically resolves target recipient email/phone and template variables.
  * 2. "Custom Values": Allows manual input of custom values for template variables.
  *
  * WORKSPACE RULES & COMPLIANCE:
@@ -36,7 +37,9 @@ import {
     FlaskConical,
     Building2,
     Sliders,
-    Zap
+    Zap,
+    Check,
+    ChevronsUpDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendMessage, sendRawMessage } from '@/lib/messaging-engine';
@@ -48,13 +51,15 @@ import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import type { WorkspaceEntity } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+    Command,
+    CommandInput,
+    CommandList,
+    CommandEmpty,
+    CommandGroup,
+    CommandItem,
+} from '@/components/ui/command';
 
 interface TestDispatchDialogProps {
     open: boolean;
@@ -94,6 +99,7 @@ export default function TestDispatchDialog({
     const [entities, setEntities] = React.useState<WorkspaceEntity[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>(entityId || '');
     const [isLoadingEntities, setIsLoadingEntities] = React.useState(false);
+    const [entitySearchOpen, setEntitySearchOpen] = React.useState(false);
 
     // ── Rate Limiter: 5 dispatches per 60 seconds sliding window ──────────
     const MAX_DISPATCHES = 5;
@@ -165,7 +171,7 @@ export default function TestDispatchDialog({
         const q = query(
             collection(firestore, 'workspace_entities'),
             where('workspaceId', '==', activeWorkspaceId),
-            limit(50)
+            limit(100)
         );
 
         getDocs(q)
@@ -243,6 +249,8 @@ export default function TestDispatchDialog({
 
         setLocalVariables(resolvedVars);
     };
+
+    const selectedEntity = entities.find((e) => e.entityId === selectedEntityId || e.id === selectedEntityId);
 
     const handleSend = async () => {
         if (!recipient.trim()) {
@@ -363,33 +371,63 @@ export default function TestDispatchDialog({
                                 </button>
                             </div>
 
-                            {/* ENTITY SELECTION DROPDOWN */}
+                            {/* SEARCHABLE ENTITY SELECTION COMBOBOX */}
                             {testMode === 'entity' && (
                                 <div className="space-y-2 animate-in fade-in duration-200">
                                     <Label className="text-xs font-semibold text-muted-foreground ml-0.5">
                                         Select {singular} to Test With
                                     </Label>
-                                    <Select
-                                        value={selectedEntityId}
-                                        onValueChange={handleEntityChange}
-                                        disabled={isLoadingEntities || entities.length === 0}
-                                    >
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-border/50 text-xs font-medium px-3.5">
-                                            <SelectValue placeholder={isLoadingEntities ? "Loading entities..." : `Choose a ${singular.toLowerCase()}...`} />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl border-border/50">
-                                            {entities.map((e) => (
-                                                <SelectItem key={e.entityId || e.id} value={e.entityId || e.id} className="text-xs font-medium">
-                                                    {e.displayName || (e as unknown as Record<string, string>).name}
-                                                </SelectItem>
-                                            ))}
-                                            {entities.length === 0 && !isLoadingEntities && (
-                                                <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
-                                                    No {singular.toLowerCase()} records found
-                                                </SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
+                                    <Popover open={entitySearchOpen} onOpenChange={setEntitySearchOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={entitySearchOpen}
+                                                disabled={isLoadingEntities || entities.length === 0}
+                                                className="w-full h-11 justify-between rounded-xl bg-muted/20 border-border/50 text-xs font-medium px-3.5 text-left"
+                                            >
+                                                <span className="truncate">
+                                                    {selectedEntity
+                                                        ? selectedEntity.displayName || (selectedEntity as unknown as Record<string, string>).name
+                                                        : isLoadingEntities
+                                                        ? `Loading ${singular.toLowerCase()}s...`
+                                                        : `Choose a ${singular.toLowerCase()}...`}
+                                                </span>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-xl border-border/50 shadow-2xl" align="start">
+                                            <Command className="rounded-xl">
+                                                <CommandInput placeholder={`Search ${singular.toLowerCase()}...`} className="h-10 text-xs" />
+                                                <CommandList className="max-h-60 overflow-y-auto p-1 scrollbar-thin">
+                                                    <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
+                                                        No {singular.toLowerCase()} found.
+                                                    </CommandEmpty>
+                                                    <CommandGroup>
+                                                        {entities.map((e) => {
+                                                            const eId = e.entityId || e.id;
+                                                            const eName = e.displayName || (e as unknown as Record<string, string>).name;
+                                                            const isSelected = selectedEntityId === eId;
+                                                            return (
+                                                                <CommandItem
+                                                                    key={eId}
+                                                                    value={eName}
+                                                                    onSelect={() => {
+                                                                        handleEntityChange(eId);
+                                                                        setEntitySearchOpen(false);
+                                                                    }}
+                                                                    className="text-xs font-medium rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer"
+                                                                >
+                                                                    <span className="truncate">{eName}</span>
+                                                                    {isSelected && <Check className="h-4 w-4 text-primary shrink-0 ml-2" />}
+                                                                </CommandItem>
+                                                            );
+                                                        })}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             )}
 
