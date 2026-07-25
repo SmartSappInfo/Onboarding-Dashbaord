@@ -92,28 +92,99 @@ export function HeaderSettingsControl({
 
           <div className="pt-2 border-t border-slate-800/40 space-y-3">
             <ToggleRow label="Show CTA Button" checked={!!header.showCta} onChange={(v) => onUpdateHeader({ showCta: v })} />
+            {/* CTA Button Settings Config Block */}
             {header.showCta && (
-              <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-300">
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-bold text-slate-500 uppercase">Button Label</Label>
-                  <input
-                    type="text"
-                    value={header.ctaText || ''}
-                    onChange={(e) => onUpdateHeader({ ctaText: e.target.value })}
-                    placeholder="Request Quote"
-                    className="w-full h-9 px-2 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-200 outline-none"
-                  />
+              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg space-y-2 animate-in fade-in duration-300">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Button Label</Label>
+                    <input
+                      type="text"
+                      value={header.ctaText || ''}
+                      onChange={(e) => onUpdateHeader({ ctaText: e.target.value })}
+                      placeholder="Request Quote"
+                      className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Type</Label>
+                    <select
+                      value={header.ctaLinkType || 'url'}
+                      onChange={(e) => onUpdateHeader({ 
+                        ctaLinkType: e.target.value as PageHeaderSettings['ctaLinkType'],
+                        ctaUrl: '',
+                        ctaTargetSectionId: '',
+                        ctaAction: undefined
+                      })}
+                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="url">URL Redirect</option>
+                      <option value="scroll">Scroll to Section</option>
+                      <option value="action">Trigger Page Action</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-bold text-slate-500 uppercase">Button Link</Label>
-                  <input
-                    type="text"
-                    value={header.ctaUrl || ''}
-                    onChange={(e) => onUpdateHeader({ ctaUrl: e.target.value })}
-                    placeholder="/apply"
-                    className="w-full h-9 px-2 text-xs bg-slate-900 border border-slate-700 rounded-lg text-slate-200 outline-none"
-                  />
-                </div>
+
+                {(header.ctaLinkType === 'url' || !header.ctaLinkType) && (
+                  <div className="space-y-1 animate-in fade-in duration-200">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Redirect URL Link</Label>
+                    <input
+                      type="text"
+                      value={header.ctaUrl || ''}
+                      onChange={(e) => onUpdateHeader({ ctaUrl: e.target.value })}
+                      placeholder="https://example.com"
+                      className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    />
+                  </div>
+                )}
+
+                {header.ctaLinkType === 'scroll' && (
+                  <div className="space-y-1 animate-in fade-in duration-200">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Section</Label>
+                    <select
+                      value={header.ctaTargetSectionId || ''}
+                      onChange={(e) => onUpdateHeader({ ctaTargetSectionId: e.target.value })}
+                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="">Select a Section...</option>
+                      {(structure.sections || []).map((sec, sIdx) => {
+                        const heading = (sec.props as { heading?: string })?.heading || `Section ${sIdx + 1}`;
+                        return <option key={sec.id} value={sec.id}>{heading}</option>;
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                {header.ctaLinkType === 'action' && (
+                  <div className="space-y-1 animate-in fade-in duration-200">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Overlay Action</Label>
+                    <select
+                      value={header.ctaAction || ''}
+                      onChange={(e) => onUpdateHeader({ ctaAction: e.target.value as PageHeaderSettings['ctaAction'] })}
+                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="">Select Action...</option>
+                      <option value="receipt_request">Open Receipt Request Modal</option>
+                      <option value="open_modal_form">Open Form Modal</option>
+                      <option value="open_modal_survey">Open Survey Modal</option>
+                      <option value="open_modal_agreement">Open Agreement Modal</option>
+                    </select>
+                  </div>
+                )}
+
+                {header.ctaLinkType === 'action' && header.ctaAction === 'open_modal_survey' && (
+                  <div className="space-y-1 animate-in fade-in duration-200">
+                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Survey Result Display</Label>
+                    <select
+                      value={header.ctaSurveyResultMode || 'modal'}
+                      onChange={(e) => onUpdateHeader({ ctaSurveyResultMode: e.target.value as PageHeaderSettings['ctaSurveyResultMode'] })}
+                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    >
+                      <option value="modal">Show inside Modal</option>
+                      <option value="parent">Redirect parent page</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
