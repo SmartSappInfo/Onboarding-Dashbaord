@@ -16,9 +16,10 @@ import { themeToCssVars, isColorLight } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import type { 
   BuilderResources, CampaignPageVersion, ResolvedTheme, 
-  OrgBranding, PageHeaderSettings, PageFooterSettings 
+  OrgBranding, PageHeaderSettings, PageFooterSettings, HeaderNavItem
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { recordInteractionAction } from '@/lib/analytics-actions';
 import '@/lib/page-builder/blocks'; // side-effect: register all blocks
 import { Button } from '@/components/ui/button';
 import { 
@@ -168,9 +169,11 @@ interface CardNavMenuProps {
   headerSettings: PageHeaderSettings;
   orgBranding: OrgBranding | null;
   theme: ResolvedTheme;
+  onNavItemClick: (item: HeaderNavItem) => void;
+  onCtaClick: () => void;
 }
 
-function CardNavMenu({ headerSettings, orgBranding, theme }: CardNavMenuProps) {
+function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, onCtaClick }: CardNavMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const primaryColor = theme?.colors?.primary || '#3B5FFF';
@@ -246,7 +249,10 @@ function CardNavMenu({ headerSettings, orgBranding, theme }: CardNavMenuProps) {
         <div className="flex items-center gap-4">
           {headerSettings.showCta && (
             <Button 
-              onClick={() => headerSettings.ctaUrl && window.open(headerSettings.ctaUrl, '_self')}
+              onClick={() => {
+                setIsOpen(false);
+                onCtaClick();
+              }}
               className="h-9 px-5 rounded-full font-bold text-xs text-white flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
               style={{ backgroundColor: primaryColor }}
             >
@@ -281,7 +287,7 @@ function CardNavMenu({ headerSettings, orgBranding, theme }: CardNavMenuProps) {
 
       {/* Overlay fullscreen card menu */}
       <div className={cn(
-        "card-nav-overlay fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 opacity-0 invisible",
+        "card-nav-overlay fixed inset-0 z-55 bg-slate-950/95 backdrop-blur-lg flex flex-col p-6 opacity-0 invisible",
         isOpen ? "pointer-events-auto" : "pointer-events-none"
       )}>
         {/* Header inside overlay */}
@@ -319,9 +325,7 @@ function CardNavMenu({ headerSettings, orgBranding, theme }: CardNavMenuProps) {
               } as React.CSSProperties}
               onClick={() => {
                 setIsOpen(false);
-                if (item.url) {
-                  window.open(item.url, '_self');
-                }
+                onNavItemClick(item);
               }}
             >
               <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 group-hover:translate-x-[-4px] group-hover:translate-y-[4px] transition-all duration-300">
@@ -397,10 +401,22 @@ export function PageRenderer({
     overrideOrg: false
   };
 
+  // Link interaction click logging helper
+  const trackLinkClick = useCallback((linkId: string) => {
+    // Swallowing errors is critical to ensure analytics logging errors never disrupt client execution
+    recordInteractionAction(page.id, linkId).catch(() => {});
+  }, [page.id]);
+
   // Nav Item click handler
-  const handleNavItemClick = useCallback((item: typeof headerSettings.navItems[0]) => {
+  const handleNavItemClick = useCallback((item: HeaderNavItem) => {
+    trackLinkClick(item.id);
     if (item.linkType === 'url' && item.url) {
-      window.open(item.url, item.url.startsWith('http') ? '_blank' : '_self');
+      const targetUrl = item.url.trim();
+      if (targetUrl.toLowerCase().startsWith('javascript:')) {
+        console.warn('[Security] blocked javascript URI in redirect');
+        return;
+      }
+      window.open(targetUrl, targetUrl.startsWith('http') ? '_blank' : '_self');
     } else if (item.linkType === 'scroll' && item.targetSectionId) {
       const element = document.getElementById(item.targetSectionId);
       if (element) {
@@ -425,7 +441,44 @@ export function PageRenderer({
         fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: item.surveyResultMode }));
       }
     }
-  }, [fireTrigger, resources]);
+  }, [fireTrigger, resources, trackLinkClick]);
+
+  // CTA Button click handler
+  const handleCtaClick = useCallback(() => {
+    trackLinkClick('header-cta');
+    const linkType = headerSettings.ctaLinkType || 'url';
+    if (linkType === 'url' && headerSettings.ctaUrl) {
+      const targetUrl = headerSettings.ctaUrl.trim();
+      if (targetUrl.toLowerCase().startsWith('javascript:')) {
+        console.warn('[Security] blocked javascript URI in CTA redirect');
+        return;
+      }
+      window.open(targetUrl, targetUrl.startsWith('http') ? '_blank' : '_self');
+    } else if (linkType === 'scroll' && headerSettings.ctaTargetSectionId) {
+      const element = document.getElementById(headerSettings.ctaTargetSectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else if (linkType === 'action' && headerSettings.ctaAction) {
+      if (headerSettings.ctaAction === 'receipt_request') {
+        fireTrigger('block_click', 'cta-1');
+      } else {
+        let type = 'form';
+        let targetId = '';
+        if (headerSettings.ctaAction === 'open_modal_form') {
+          type = 'form';
+          targetId = resources.forms?.[0]?.id || '';
+        } else if (headerSettings.ctaAction === 'open_modal_survey') {
+          type = 'survey';
+          targetId = resources.surveys?.[0]?.id || '';
+        } else if (headerSettings.ctaAction === 'open_modal_agreement') {
+          type = 'agreement';
+          targetId = resources.agreements?.[0]?.id || '';
+        }
+        fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: headerSettings.ctaSurveyResultMode }));
+      }
+    }
+  }, [headerSettings, fireTrigger, resources, trackLinkClick]);
 
   return (
     <div style={isMounted ? cssVars : undefined} className="flex flex-col min-h-screen">
@@ -456,6 +509,8 @@ export function PageRenderer({
                 headerSettings={headerSettings}
                 orgBranding={orgBranding}
                 theme={theme}
+                onNavItemClick={handleNavItemClick}
+                onCtaClick={handleCtaClick}
               />
             ) : headerSettings.preset === 'minimal' ? (
               <div className="flex items-center justify-center w-full">
@@ -469,7 +524,7 @@ export function PageRenderer({
               <div className="flex justify-end w-full">
                 {headerSettings.showCta && (
                   <Button 
-                    onClick={() => headerSettings.ctaUrl && window.open(headerSettings.ctaUrl, '_self')}
+                    onClick={handleCtaClick}
                     className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white"
                   >
                     {headerSettings.ctaText || 'Get Started'}
@@ -519,7 +574,7 @@ export function PageRenderer({
                   )}
                   {headerSettings.showCta && (
                     <Button 
-                      onClick={() => headerSettings.ctaUrl && window.open(headerSettings.ctaUrl, '_self')}
+                      onClick={handleCtaClick}
                       className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white"
                     >
                       {headerSettings.ctaText || 'Get Started'}
