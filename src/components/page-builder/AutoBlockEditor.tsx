@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, X, Settings2, FolderHeart } from 'lucide-react';
+import { PlusCircle, X, Settings2, FolderHeart, ChevronDown, ChevronUp } from 'lucide-react';
 import { getBlock } from '@/lib/page-builder/registry';
 import type { BlockField } from '@/lib/page-builder/fields';
 import { genId } from '@/lib/page-builder/tree-operations';
@@ -261,16 +261,35 @@ interface ListFieldProps {
 
 function ListField({ field, value, resources, workspaceId, onChange }: ListFieldProps) {
   const items = value.map((it) => (isRecord(it) ? it : {}));
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(0); // Default expand the first item
 
   const addItem = () => {
     const item: Record<string, unknown> = { id: genId('item') };
     for (const f of field.itemFields) item[f.key] = '';
     onChange([...items, item]);
+    // Automatically expand the newly added item
+    setExpandedIndex(items.length);
   };
   const updateItem = (idx: number, patch: Record<string, unknown>) => {
     onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   };
-  const removeItem = (idx: number) => onChange(items.filter((_, i) => i !== idx));
+  const removeItem = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+    if (expandedIndex === idx) {
+      setExpandedIndex(null);
+    } else if (expandedIndex !== null && expandedIndex > idx) {
+      setExpandedIndex(expandedIndex - 1);
+    }
+  };
+
+  const getPreviewLabel = (item: Record<string, unknown>, index: number) => {
+    const candidate = item.label || item.title || item.name || item.text;
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+    const singularLabel = field.label.endsWith('s') ? field.label.slice(0, -1) : field.label;
+    return `${singularLabel} #${index + 1}`;
+  };
 
   return (
     <div className="space-y-3">
@@ -280,20 +299,53 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
           <PlusCircle className="w-3 h-3 mr-1" /> Add
         </Button>
       </div>
-      <div className="space-y-3">
-        {items.map((item, idx) => (
-          <div key={asString(item.id) || idx} className="p-3 bg-slate-800 rounded-xl border border-slate-700 relative space-y-2">
-            <Button variant="ghost" size="sm" onClick={() => removeItem(idx)} className="absolute top-1 right-1 h-5 w-5 p-0 text-slate-500 hover:text-red-400">
-              <X className="w-3 h-3" />
-            </Button>
-            {field.itemFields.map((itf) => (
-              <div key={itf.key} className="space-y-1">
-                <Label className="text-[9px] font-bold text-slate-500 uppercase">{itf.label}</Label>
-                <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
+      <div className="space-y-2">
+        {items.map((item, idx) => {
+          const isExpanded = expandedIndex === idx;
+          return (
+            <div key={asString(item.id) || idx} className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden transition-all duration-200">
+              {/* Header Bar */}
+              <div 
+                className="flex items-center justify-between p-3 bg-slate-900/40 hover:bg-slate-850/40 cursor-pointer select-none transition-colors"
+                onClick={() => setExpandedIndex(isExpanded ? null : idx)}
+              >
+                <div className="flex items-center gap-2">
+                  {isExpanded ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  )}
+                  <span className="text-[11px] font-bold text-slate-300 truncate max-w-[160px]">
+                    {getPreviewLabel(item, idx)}
+                  </span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeItem(idx);
+                  }} 
+                  className="h-6 w-6 p-0 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
               </div>
-            ))}
-          </div>
-        ))}
+
+              {/* Collapsible Content */}
+              {isExpanded && (
+                <div className="p-3 border-t border-slate-800 bg-slate-950/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {field.itemFields.map((itf) => (
+                    <div key={itf.key} className="space-y-1 text-left">
+                      <Label className="text-[9px] font-bold text-slate-500 uppercase">{itf.label}</Label>
+                      <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {items.length === 0 ? <p className="text-[10px] text-slate-500 text-center py-3 italic">No items yet</p> : null}
       </div>
     </div>

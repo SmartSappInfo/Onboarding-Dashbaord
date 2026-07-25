@@ -90,7 +90,7 @@ import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { UnifiedVariable } from '@/lib/types/variables';
 import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
-import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { getBlock, type BlockRenderContext } from '@/lib/page-builder/registry';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import '@/lib/page-builder/blocks'; // register all blocks
 import { useToast } from '@/hooks/use-toast';
@@ -224,6 +224,7 @@ function SortableSection({ section, idx, total, children, onRemove, onMove, onSa
 
     return (
         <div
+            id={section.id}
             ref={setRefs}
             style={style}
             onClick={(e) => {
@@ -2542,6 +2543,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <span className="text-[6px] text-slate-500 font-black text-center mb-1 uppercase tracking-wider">Map</span>
                     {version.structureJson.sections.map((sec, sIdx) => {
                         const label = (sec.props.name as string) || (sec.props.category as string) || `Section ${sIdx + 1}`;
+                        const isSelected = selectedSectionId === sec.id;
                         return (
                             <button
                                 key={sec.id}
@@ -2552,16 +2554,138 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                 }}
                                 className={cn(
                                     "w-3.5 h-3.5 rounded-full flex items-center justify-center border transition-all active:scale-95 group/map relative",
-                                    selectedSectionId === sec.id
-                                        ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-                                        : "border-slate-800 bg-slate-900 hover:border-slate-700 text-slate-400"
+                                    isSelected
+                                        ? "border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)] scale-110"
+                                        : "border-slate-800 bg-slate-900 hover:border-slate-700 text-slate-400 hover:scale-105"
                                 )}
                                 title={label}
                             >
                                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                                {/* Floating Tooltip */}
-                                <span className="absolute right-9 scale-0 group-hover/map:scale-100 bg-slate-900 border border-slate-800 text-slate-350 px-2 py-0.5 rounded text-[8px] font-black tracking-wider uppercase whitespace-nowrap shadow-xl transition-all origin-right z-50">
-                                    {label}
+                                
+                                {/* Rich Hover Popover Card */}
+                                <span className="absolute right-9 opacity-0 pointer-events-none group-hover/map:opacity-100 group-hover/map:pointer-events-auto bg-slate-950/95 border border-slate-850 text-slate-300 p-3 rounded-xl w-56 flex flex-col gap-2 shadow-2xl transition-all duration-200 origin-right translate-x-2 group-hover/map:translate-x-0 z-50 text-left backdrop-blur-sm">
+                                    <div className="flex items-center justify-between border-b border-slate-900 pb-1.5">
+                                        <span className="text-[9px] font-black text-slate-200 truncate uppercase tracking-wider">
+                                            {label}
+                                        </span>
+                                        <span className="text-[8px] font-mono font-bold text-emerald-500 bg-emerald-500/10 px-1 rounded">
+                                            #{sIdx + 1}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Section heading text preview if available */}
+                                    {(() => {
+                                        const blocksList = sec.blocks || [];
+                                        const titleBlock = blocksList.find((b: any) => b.props?.title || b.props?.text || b.props?.heading || b.props?.headline);
+                                        const rawVal = titleBlock
+                                            ? (titleBlock.props?.title || titleBlock.props?.text || titleBlock.props?.heading || titleBlock.props?.headline || '')
+                                            : '';
+                                        const previewText = typeof rawVal === 'string'
+                                            ? rawVal.replace(/<[^>]*>/g, '').trim()
+                                            : '';
+                                        if (previewText) {
+                                            return (
+                                                <p className="text-[9px] italic text-slate-400 line-clamp-2 leading-relaxed">
+                                                    "{previewText.length > 50 ? previewText.substring(0, 48) + '...' : previewText}"
+                                                </p>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
+                                    {/* Miniature skeletal wireframe representation */}
+                                    <div className="bg-slate-900/60 border border-slate-900 rounded-lg p-2 flex flex-col gap-1.5 justify-center items-stretch my-0.5">
+                                        {(sec.blocks || []).map((b: any, bIdx: number) => {
+                                            if (b.type === 'title') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="h-1.5 w-3/4 bg-slate-800 rounded" />
+                                                );
+                                            }
+                                            if (b.type === 'text') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="space-y-1">
+                                                        <div className="h-1 w-full bg-slate-850 rounded" />
+                                                        <div className="h-1 w-5/6 bg-slate-850 rounded" />
+                                                    </div>
+                                                );
+                                            }
+                                            if (b.type === 'cta') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="flex gap-1 justify-start mt-0.5">
+                                                        {b.props?.buttons && Array.isArray(b.props.buttons) && b.props.buttons.length > 0 ? (
+                                                            (b.props.buttons as any[]).map((btn: any, btnIdx: number) => (
+                                                                <div 
+                                                                    key={btn.id || btnIdx} 
+                                                                    className={cn(
+                                                                        "h-3 px-1.5 rounded-full border text-[5px] font-black uppercase flex items-center justify-center scale-90 origin-left select-none",
+                                                                        btn.variant === 'primary' 
+                                                                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" 
+                                                                            : "bg-slate-800/80 border-slate-700/80 text-slate-400"
+                                                                    )}
+                                                                >
+                                                                    {btn.label || 'Btn'}
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="h-3 w-10 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[5px] font-black flex items-center justify-center uppercase scale-90 origin-left">
+                                                                {b.props?.label || 'Btn'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            if (b.type === 'image') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="h-5 rounded bg-slate-800 border border-slate-750 flex items-center justify-center text-[5px] text-slate-500 font-bold uppercase">
+                                                        🖼️ Image
+                                                    </div>
+                                                );
+                                            }
+                                            if (b.type === 'video') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="h-5 rounded bg-slate-800 border border-slate-750 flex items-center justify-center text-[5px] text-slate-500 font-bold uppercase">
+                                                        📺 Video
+                                                    </div>
+                                                );
+                                            }
+                                            if (b.type === 'form' || b.type === 'survey') {
+                                                return (
+                                                    <div key={b.id || bIdx} className="bg-slate-900 border border-slate-850 p-1.5 rounded space-y-1">
+                                                        <div className="h-1 w-1/3 bg-slate-800 rounded" />
+                                                        <div className="h-3 w-full bg-slate-850 rounded border border-slate-800" />
+                                                        <div className="h-3 w-1/2 bg-emerald-500/20 border border-emerald-500/40 rounded flex items-center justify-center text-[5px] text-emerald-400 font-black uppercase">
+                                                            Submit
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                        {(sec.blocks || []).length === 0 && (
+                                            <div className="text-[7px] text-slate-600 text-center py-1 italic select-none">
+                                                Empty Section
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Components Badge Stack */}
+                                    <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {(sec.blocks || []).map((b: any, bIdx: number) => {
+                                            const blockDef = getBlock(b.type);
+                                            const blockLabel = blockDef?.label || b.type;
+                                            return (
+                                                <span 
+                                                    key={b.id || bIdx} 
+                                                    className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 tracking-widest"
+                                                >
+                                                    {blockLabel}
+                                                </span>
+                                            );
+                                        })}
+                                        {(sec.blocks || []).length === 0 && (
+                                            <span className="text-[8px] text-slate-600 italic">Empty Section</span>
+                                        )}
+                                    </div>
                                 </span>
                             </button>
                         );

@@ -37,6 +37,29 @@ const schema = z.object({
 
   // Upgraded multi-button list field
   buttons: z.array(buttonItemSchema).optional(),
+}).transform((data) => {
+  if (!data.buttons || data.buttons.length === 0) {
+    return {
+      ...data,
+      buttons: [
+        {
+          id: 'btn_legacy',
+          label: data.label,
+          url: data.url,
+          variant: data.variant,
+          actionType: data.actionType,
+          formId: data.formId,
+          surveyId: data.surveyId,
+          meetingId: data.meetingId,
+          qrId: data.qrId,
+          openInModal: data.openInModal,
+          surveyResultMode: data.surveyResultMode,
+          trackEntity: data.trackEntity,
+        }
+      ]
+    };
+  }
+  return data;
 });
 
 type CtaProps = z.infer<typeof schema>;
