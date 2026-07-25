@@ -50,7 +50,7 @@ export function useBuilderResources(): BuilderResources {
                         ? getDocs(query(collection(firestore, 'surveys'), where('status', '==', 'published'), where('workspaceIds', 'array-contains', activeWorkspaceId)))
                         : Promise.resolve({ docs: [] }),
                     activeWorkspaceId
-                        ? getDocs(query(collection(firestore, 'forms'), where('status', '==', 'published'), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+                        ? getDocs(query(collection(firestore, 'forms'), where('status', '==', 'published'), where('workspaceId', '==', activeWorkspaceId)))
                         : Promise.resolve({ docs: [] }),
                     activeWorkspaceId
                         ? getDocs(query(collection(firestore, 'pdfs'), where('isContractDocument', '==', true), where('workspaceIds', 'array-contains', activeWorkspaceId)))
