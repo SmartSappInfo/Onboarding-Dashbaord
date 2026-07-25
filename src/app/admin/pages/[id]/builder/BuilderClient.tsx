@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { collection, query, doc, getDoc, updateDoc, setDoc, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -255,6 +255,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     const [isMobile, setIsMobile] = useState(false);
     const { resolvedTheme } = useTheme();
     const sidebar = useSidebar();
+
+    // Track the latest value of resolvedTheme for clean cleanup restoration on unmount
+    const resolvedThemeRef = useRef(resolvedTheme);
+    useEffect(() => {
+        resolvedThemeRef.current = resolvedTheme;
+    }, [resolvedTheme]);
+
     // Separate canvas viewport theme from the app's global workspace theme:
     // Intercept next-themes changes and strip global 'dark' class from html/body elements on mount
     // using a MutationObserver to ensure no background dark-mode leakage into light-mode canvases.
@@ -282,16 +289,15 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         observer.observe(root, { attributes: true, attributeFilter: ['class'] });
         observer.observe(body, { attributes: true, attributeFilter: ['class'] });
 
-        const isDark = resolvedTheme === 'dark';
-
         return () => {
             observer.disconnect();
-            if (isDark) {
+            // Restore global workspace theme class ONLY upon actual page unmount
+            if (resolvedThemeRef.current === 'dark') {
                 root.classList.add('dark');
                 body.classList.add('dark');
             }
         };
-    }, [resolvedTheme]);
+    }, []);
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);

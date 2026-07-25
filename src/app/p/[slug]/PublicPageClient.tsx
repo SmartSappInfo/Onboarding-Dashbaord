@@ -215,10 +215,14 @@ export default function PublicPageClient({
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
     const { setTheme, resolvedTheme: activeTheme } = useTheme();
+    const hasInitializedTheme = useRef(false);
 
     // Separate the page theme mode from the viewer's system/browser preferences:
     // Sync theme to match pageThemeMode on load or if the page settings change.
     useEffect(() => {
+        if (!page) return;
+        if (hasInitializedTheme.current) return;
+
         const pageThemeMode = page?.settings?.themeOverrides?.themeMode || 'light';
         
         // Immediately enforce the theme on HTML and body to prevent any flash
@@ -234,10 +238,12 @@ export default function PublicPageClient({
 
         // Set next-themes state so that the theme toggle button works correctly
         setTheme(pageThemeMode);
-    }, [page?.settings?.themeOverrides?.themeMode, setTheme]);
+        hasInitializedTheme.current = true;
+    }, [page?.settings?.themeOverrides?.themeMode, setTheme, page]);
 
     // Keep HTML and body classes in sync with activeTheme when manually toggled by the user
     useEffect(() => {
+        if (!hasInitializedTheme.current) return;
         const root = document.documentElement;
         const body = document.body;
         if (activeTheme === 'dark') {
@@ -754,7 +760,7 @@ export default function PublicPageClient({
 
             {/* ─── Global Modal Container (Trigger Engine) ─── */}
             <Dialog open={!!modalState} onOpenChange={(open) => !open && setModalState(null)}>
-                <DialogContent className="sm:max-w-lg rounded-3xl p-0 overflow-hidden border-0 shadow-2xl font-body">
+                <DialogContent className="sm:max-w-lg rounded-3xl p-0 overflow-y-auto max-h-[90vh] md:max-h-[85vh] border-0 shadow-2xl font-body scrollbar-thin">
                     <DialogTitle className="sr-only">
                         {modalState?.type === 'form' ? 'Form' : modalState?.type === 'survey' ? 'Survey' : 'Document'}
                     </DialogTitle>
