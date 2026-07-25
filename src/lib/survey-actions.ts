@@ -664,21 +664,86 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     
     // 6. Handle Notifications (Admin & External)
     if (surveyData && !isFormMode) {
+      let matchedRule: SurveyResultRule | undefined;
+      const score = responseData.score !== undefined ? responseData.score : 0;
+      if (surveyData.scoringEnabled && surveyData.resultRules?.length) {
+        const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
+        matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
+      }
+
+      const resultMsg = matchedRule?.message || matchedRule?.description || matchedRule?.title || matchedRule?.label || '';
+      const resultTitle = matchedRule?.title || matchedRule?.label || surveyData.title || '';
+      const resultDesc = matchedRule?.description || '';
+      const outcomeLabel = matchedRule?.label || matchedRule?.title || '';
+
+      // Persist outcome details on response document for auditability
+      if (matchedRule || resultMsg || outcomeLabel) {
+        await docRef.update({
+          resultMessage: resultMsg || null,
+          resultTitle: resultTitle || null,
+          resultDescription: resultDesc || null,
+          outcome: outcomeLabel || null,
+          matchedRuleId: matchedRule?.id || null,
+        }).catch((err) => console.warn('[survey-actions] Failed to persist outcome on response doc:', err));
+      }
+
+      let resolvedRespondentName = responseData.respondentName;
+      if (!resolvedRespondentName && finalEntityId) {
+        try {
+          const contact = await resolveContact(finalEntityId, workspaceId);
+          if (contact) {
+            resolvedRespondentName = contact.name || contact.schoolData?.name;
+          }
+        } catch (e) {
+          // ignore fallback
+        }
+      }
+      if (!resolvedRespondentName) {
+        resolvedRespondentName = finalContactName || finalEntityName || 'Respondent';
+      }
+
+      const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      const baseUrl = getBaseUrl();
+
       const notificationVars = {
-        ...responseData.answers.reduce((acc: any, ans: any) => ({ ...acc, [ans.questionId]: ans.value }), {}),
+        ...responseData.answers.reduce((acc: any, ans: any) => ({
+          ...acc,
+          [ans.questionId]: Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value)
+        }), {}),
         survey_title: surveyData.title,
+        surveyTitle: surveyData.title,
         survey_id: surveyId,
         surveyId: surveyId,
         submission_id: docRef.id,
         submissionId: docRef.id,
         responseId: docRef.id,
         workspaceId,
-        entityId: finalEntityId,
+        entityId: finalEntityId || '',
         score: responseData.score !== undefined ? responseData.score : 0,
         survey_score: responseData.score !== undefined ? responseData.score : 0,
         max_score: surveyData.maxScore || 100,
-        respondent_name: responseData.respondentName || "",
-        respondentName: responseData.respondentName || ""
+        maxScore: surveyData.maxScore || 100,
+        respondent_name: resolvedRespondentName,
+        respondentName: resolvedRespondentName,
+        contact_name: resolvedRespondentName,
+        contactName: resolvedRespondentName,
+        entity_name: finalEntityName || resolvedRespondentName,
+        entityName: finalEntityName || resolvedRespondentName,
+        result_message: resultMsg,
+        resultMessage: resultMsg,
+        result_title: resultTitle,
+        resultTitle: resultTitle,
+        result_description: resultDesc,
+        resultDescription: resultDesc,
+        outcome_label: outcomeLabel,
+        outcomeLabel: outcomeLabel,
+        survey_result: resultTitle || resultMsg,
+        survey_link: `${baseUrl}/surveys/${surveyData.slug || surveyId}`,
+        surveyLink: `${baseUrl}/surveys/${surveyData.slug || surveyId}`,
+        dashboard_url: `${baseUrl}/admin/surveys/${surveyId}/results`,
+        dashboardUrl: `${baseUrl}/admin/surveys/${surveyId}/results`,
+        submission_link: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
+        submissionLink: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
       };
 
       // Internal Team Alerts
@@ -1335,12 +1400,45 @@ async function triggerPostSubmissionAutomations(
   respondentPhone: string | null,
   outcomeId?: string | null
 ): Promise<void> {
+  let matchedRule: SurveyResultRule | undefined;
+  if (outcomeId) {
+    matchedRule = surveyData.resultRules?.find(r => r.id === outcomeId);
+  } else if (surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
+    const score = responseData.score;
+    const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
+    matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
+  }
+
+  const resultMsg = matchedRule?.message || matchedRule?.description || matchedRule?.title || matchedRule?.label || '';
+  const resultTitle = matchedRule?.title || matchedRule?.label || surveyData.title || '';
+  const resultDesc = matchedRule?.description || '';
+  const outcomeLabel = matchedRule?.label || matchedRule?.title || '';
+
+  let resolvedRespondentName = responseData.respondentName;
+  if (!resolvedRespondentName && entityId) {
+    try {
+      const contact = await resolveContact(entityId, workspaceId);
+      if (contact) {
+        resolvedRespondentName = contact.name || contact.schoolData?.name;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  if (!resolvedRespondentName) {
+    resolvedRespondentName = 'Respondent';
+  }
+
+  const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const baseUrl = getBaseUrl();
+
   const notificationVars: Record<string, string | number> = {
     ...responseData.answers.reduce((acc, ans) => ({
       ...acc,
       [ans.questionId]: Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value)
     }), {}),
     survey_title: surveyData.title,
+    surveyTitle: surveyData.title,
     survey_id: surveyData.id,
     surveyId: surveyData.id,
     submission_id: responseId,
@@ -1351,8 +1449,26 @@ async function triggerPostSubmissionAutomations(
     score: responseData.score !== undefined ? responseData.score : 0,
     survey_score: responseData.score !== undefined ? responseData.score : 0,
     max_score: surveyData.maxScore || 100,
-    respondent_name: responseData.respondentName || '',
-    respondentName: responseData.respondentName || ''
+    maxScore: surveyData.maxScore || 100,
+    respondent_name: resolvedRespondentName,
+    respondentName: resolvedRespondentName,
+    contact_name: resolvedRespondentName,
+    contactName: resolvedRespondentName,
+    result_message: resultMsg,
+    resultMessage: resultMsg,
+    result_title: resultTitle,
+    resultTitle: resultTitle,
+    result_description: resultDesc,
+    resultDescription: resultDesc,
+    outcome_label: outcomeLabel,
+    outcomeLabel: outcomeLabel,
+    survey_result: resultTitle || resultMsg,
+    survey_link: `${baseUrl}/surveys/${surveyData.slug || surveyData.id}`,
+    surveyLink: `${baseUrl}/surveys/${surveyData.slug || surveyData.id}`,
+    dashboard_url: `${baseUrl}/admin/surveys/${surveyData.id}/results`,
+    dashboardUrl: `${baseUrl}/admin/surveys/${surveyData.id}/results`,
+    submission_link: `${baseUrl}/admin/surveys/${surveyData.id}/results?submissionId=${responseId}`,
+    submissionLink: `${baseUrl}/admin/surveys/${surveyData.id}/results?submissionId=${responseId}`,
   };
 
   // 1. Webhook
