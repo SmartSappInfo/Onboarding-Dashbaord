@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Square } from 'lucide-react';
 import { registerBlock } from '../registry';
+import { isColorLight } from '../resolve-theme';
 
 const schema = z.object({
   maxWidth: z.enum(['sm', 'md', 'lg', 'full']).default('lg'),
@@ -36,10 +37,15 @@ registerBlock({
   schema,
   render: (props: ContainerProps, _block, ctx) => {
     const children = ctx.renderChildren?.() ?? [];
+    const isDarkTheme = ctx.themeMode === 'dark';
+    const bg = (isDarkTheme && props.background && isColorLight(props.background))
+      ? '#18181b'
+      : props.background;
+
     return (
       <div
         className="mx-auto w-full space-y-6"
-        style={{ maxWidth: MAX_WIDTH[props.maxWidth], padding: props.padding, background: props.background }}
+        style={{ maxWidth: MAX_WIDTH[props.maxWidth], padding: props.padding, background: bg }}
       >
         {children.length > 0 ? (
           children

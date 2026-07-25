@@ -12,7 +12,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BlockRenderer } from './BlockRenderer';
-import { themeToCssVars } from '@/lib/page-builder/resolve-theme';
+import { themeToCssVars, isColorLight } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import type { 
   BuilderResources, CampaignPageVersion, ResolvedTheme, 
@@ -360,6 +360,8 @@ export function PageRenderer({
     setIsMounted(true);
   }, []);
 
+  const isDarkTheme = !isColorLight(theme.colors.background);
+
   const ctx = useMemo<BlockRenderContext>(
     () => ({
       mode: 'view',
@@ -370,9 +372,9 @@ export function PageRenderer({
       page: { id: page.id, organizationId: page.organizationId, workspaceId: page.workspaceIds?.[0] || '' },
       allowScripts: page.settings.customScriptsAllowed ?? false,
       isThumbnail: !!isThumbnail,
-      themeMode: page.settings.themeOverrides?.themeMode || 'light',
+      themeMode: isDarkTheme ? 'dark' : 'light',
     }),
-    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed, isThumbnail, page.settings.themeOverrides?.themeMode],
+    [theme, interpolate, resources, fireTrigger, page.id, page.organizationId, page.workspaceIds, page.settings.customScriptsAllowed, isThumbnail, isDarkTheme],
   );
 
   const sections = version.structureJson.sections;
@@ -426,7 +428,7 @@ export function PageRenderer({
   }, [fireTrigger, resources]);
 
   return (
-    <div style={cssVars} className="flex flex-col min-h-screen">
+    <div style={isMounted ? cssVars : undefined} className="flex flex-col min-h-screen">
       
       {/* ─── DYNAMIC HEADER RENDERER ───────────────────────────────── */}
       {page.settings.showHeader !== false && (
@@ -601,6 +603,17 @@ export function PageRenderer({
             ? `calc(${padTop} + ${headerSettings.floating ? '5.5rem' : '4.5rem'})`
             : padTop;
 
+          // Dynamic section background adjustments for dark theme mode (zinc-900/zinc-950 counterparts)
+          const finalSectionBg = bgType === 'color' && sectionProps.backgroundColor
+            ? (isDarkTheme && isColorLight(sectionProps.backgroundColor) ? '#18181b' : sectionProps.backgroundColor)
+            : undefined;
+
+          const gradientFrom = sectionProps.gradientFrom || '#3B5FFF';
+          const gradientTo = sectionProps.gradientTo || '#7C3AED';
+
+          const finalGradientFrom = isDarkTheme && isColorLight(gradientFrom) ? '#18181b' : gradientFrom;
+          const finalGradientTo = isDarkTheme && isColorLight(gradientTo) ? '#09090b' : gradientTo;
+
           const sectionStyle: React.CSSProperties = {
             position: 'relative',
             overflow: 'hidden',
@@ -609,9 +622,9 @@ export function PageRenderer({
             paddingLeft: padLeft,
             paddingRight: padRight,
             minHeight: minHeight,
-            backgroundColor: bgType === 'color' ? sectionProps.backgroundColor : undefined,
+            backgroundColor: finalSectionBg,
             backgroundImage: bgType === 'gradient'
-              ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${sectionProps.gradientFrom || '#3B5FFF'}, ${sectionProps.gradientTo || '#7C3AED'})`
+              ? `linear-gradient(${sectionProps.gradientAngle ?? 135}deg, ${finalGradientFrom}, ${finalGradientTo})`
               : bgType === 'image' && sectionProps.backgroundImageUrl ? `url(${sectionProps.backgroundImageUrl})` : undefined,
             backgroundAttachment: sectionProps.backgroundAttachment || 'scroll',
             backgroundSize: sectionProps.backgroundSize || 'cover',

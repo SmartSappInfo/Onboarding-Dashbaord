@@ -4,6 +4,7 @@ import { Type } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { sanitizeHtml } from '../sanitize';
 import { cn } from '@/lib/utils';
+import { isColorLight } from '../resolve-theme';
 
 const schema = z.object({
   content: z.string().default('<p>Start writing your content here…</p>'),
@@ -278,10 +279,19 @@ registerBlock({
 
     const defaultFont = resolveFont(props.fontFamily as string | undefined);
     
+    // Determine effective light text layout dynamically based on block setting and system theme
+    const isDarkTheme = ctx.themeMode === 'dark';
+    const effectiveIsLight = isLight || isDarkTheme;
+
     // Theme and Preset based text colors
-    const defaultColor = props.textColor || (isLight
+    const baseColor = effectiveIsLight
       ? (preset === 'disclaimer' ? '#94a3b8' : preset === 'quote' ? '#cbd5e1' : '#f1f5f9')
-      : (preset === 'disclaimer' ? '#64748b' : preset === 'quote' ? '#475569' : ctx.theme.colors.text || '#334155'));
+      : (preset === 'disclaimer' ? '#64748b' : preset === 'quote' ? '#475569' : ctx.theme.colors.text || '#334155');
+
+    // Override custom colors if they are too dark in dark mode to preserve contrast
+    const defaultColor = (isDarkTheme && props.textColor && !isColorLight(props.textColor))
+      ? '#f1f5f9'
+      : (props.textColor || baseColor);
 
     const defaultAlign = props.textAlign || 'left';
 
@@ -303,13 +313,13 @@ registerBlock({
         font-size: ${defaultSize} !important;
       }
       #text-block-${blockId} a {
-        color: ${isLight ? '#60a5fa' : '#2563eb'} !important;
+        color: ${effectiveIsLight ? '#60a5fa' : '#2563eb'} !important;
         text-decoration: underline !important;
       }
     `;
 
     const quoteContainerClass = preset === 'quote' 
-      ? isLight 
+      ? effectiveIsLight 
         ? "border-l-4 pl-4 border-blue-400 italic py-1.5 bg-slate-500/5 rounded-r" 
         : "border-l-4 pl-4 border-[#3B5FFF] italic py-1.5 bg-slate-500/5 rounded-r"
       : "";

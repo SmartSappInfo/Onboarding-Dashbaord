@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { HelpCircle } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { cn } from '@/lib/utils';
+import { isColorLight } from '../resolve-theme';
 
 const item = z.object({
   id: z.string(),
@@ -81,26 +82,38 @@ registerBlock({
   ],
   render: (props: FaqProps, _block, ctx) => {
     const isLight = props.textColorMode === 'light';
+    const isDarkTheme = ctx.themeMode === 'dark';
+    const effectiveIsLight = isLight || isDarkTheme;
 
     if (props.items.length === 0) {
       if (ctx.mode !== 'edit') return <></>;
       return <p className="text-xs text-slate-400 italic text-center py-4 select-none">No FAQ items configured yet</p>;
     }
 
-    const itemBorderClass = isLight 
+    const itemBorderClass = effectiveIsLight 
       ? "border-white/10 bg-white/5" 
       : "border-black/10 bg-black/[0.02]";
 
-    const headerBorderClass = isLight
+    const headerBorderClass = effectiveIsLight
       ? "border-white/5"
       : "border-black/5";
 
+    const defaultQuestionColor = props.customQuestionColor || (effectiveIsLight ? '#ffffff' : '#1e293b');
+    const finalQuestionColor = (isDarkTheme && defaultQuestionColor && !isColorLight(defaultQuestionColor))
+      ? '#ffffff'
+      : defaultQuestionColor;
+
     const questionStyle: React.CSSProperties = {
-      color: props.customQuestionColor || (isLight ? '#ffffff' : '#1e293b'),
+      color: finalQuestionColor,
     };
 
+    const defaultAnswerColor = props.customAnswerColor || (effectiveIsLight ? 'rgba(255, 255, 255, 0.75)' : ctx.theme.colors.text || '#334155');
+    const finalAnswerColor = (isDarkTheme && defaultAnswerColor && !isColorLight(defaultAnswerColor))
+      ? 'rgba(255, 255, 255, 0.75)'
+      : defaultAnswerColor;
+
     const answerStyle: React.CSSProperties = {
-      color: props.customAnswerColor || (isLight ? 'rgba(255, 255, 255, 0.75)' : ctx.theme.colors.text || '#334155'),
+      color: finalAnswerColor,
     };
 
     return (
@@ -109,7 +122,7 @@ registerBlock({
           <details key={it.id} className={cn("group rounded-xl border overflow-hidden transition-all duration-300", itemBorderClass)}>
             <summary className="flex items-center justify-between p-5 cursor-pointer select-none font-bold text-sm outline-none">
               <span style={questionStyle}>{ctx.interpolate(it.question)}</span>
-              <span className={cn("ml-2 group-open:rotate-180 transition-transform duration-200", isLight ? "text-white/40" : "text-slate-400")}>▾</span>
+              <span className={cn("ml-2 group-open:rotate-180 transition-transform duration-200", effectiveIsLight ? "text-white/40" : "text-slate-400")}>▾</span>
             </summary>
             <div className={cn("px-5 pb-5 text-sm leading-relaxed border-t pt-3", headerBorderClass)} style={answerStyle}>
               {ctx.interpolate(it.answer)}
