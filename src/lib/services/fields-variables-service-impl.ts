@@ -877,9 +877,6 @@ export class FieldsVariablesService {
           valuesMap.set('survey_link', `${baseUrl}/surveys/${surveySlug}`);
           valuesMap.set('dashboard_url', `${baseUrl}/admin/surveys/${context.surveyId}/results`);
           valuesMap.set('submission_link', `${baseUrl}/admin/surveys/${context.surveyId}/results?submissionId=${responseId}`);
-        }
-          valuesMap.set('result_url', personalizedUrl);
-          valuesMap.set('survey_results_link', personalizedUrl);
 
           if (responseData.answers && typeof responseData.answers === 'object') {
             if (Array.isArray(responseData.answers)) {
