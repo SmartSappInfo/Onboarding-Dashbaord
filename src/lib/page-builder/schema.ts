@@ -36,6 +36,18 @@ export const navItemSchema = z.object({
   surveyResultMode: z.enum(['modal', 'parent']).optional(),
 });
 
+export const headerCtaButtonSchema = z.object({
+  id: z.string(),
+  label: z.string().default('Button'),
+  style: z.enum(['primary', 'outline', 'ghost']).default('primary'),
+  linkType: z.enum(['url', 'scroll', 'action']).default('url'),
+  url: z.string().optional(),
+  targetSectionId: z.string().optional(),
+  action: z.enum(['receipt_request', 'open_modal_form', 'open_modal_survey', 'open_modal_agreement']).optional(),
+  surveyResultMode: z.enum(['modal', 'parent']).default('modal'),
+  actionTargetId: z.string().optional(),
+});
+
 export const headerSettingsSchema = z.object({
   preset: z.enum(['native', 'minimal', 'full-nav', 'cta-only', 'search-nav', 'card-nav']).default('native'),
   overlap: z.boolean().default(false),
@@ -52,6 +64,7 @@ export const headerSettingsSchema = z.object({
   showPhone: z.boolean().default(false),
   phoneNumber: z.string().optional(),
   navItems: z.array(navItemSchema).default([]),
+  buttons: z.array(headerCtaButtonSchema).default([]),
 });
 
 export const footerSettingsSchema = z.object({

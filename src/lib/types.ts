@@ -3693,6 +3693,18 @@ export interface HeaderNavItem {
   surveyResultMode?: 'modal' | 'parent';
 }
 
+export interface HeaderCtaButton {
+  id: string;
+  label: string;
+  style: 'primary' | 'outline' | 'ghost';
+  linkType: 'url' | 'scroll' | 'action';
+  url?: string;
+  targetSectionId?: string;
+  action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
+  surveyResultMode?: 'modal' | 'parent';
+  actionTargetId?: string;
+}
+
 export interface PageHeaderSettings {
   preset: 'native' | 'minimal' | 'full-nav' | 'cta-only' | 'search-nav' | 'card-nav';
   overlap: boolean;
@@ -3709,6 +3721,7 @@ export interface PageHeaderSettings {
   showPhone: boolean;
   phoneNumber?: string;
   navItems: HeaderNavItem[];
+  buttons?: HeaderCtaButton[];
 }
 
 export interface PageFooterSettings {

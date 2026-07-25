@@ -6,7 +6,7 @@
  * and emits it as CSS variables via `themeToCssVars`, so every block can read
  * `var(--pb-color-primary)` etc. regardless of where the value originated.
  */
-import type { CampaignPage, CampaignPageTheme, ResolvedTheme } from '@/lib/types';
+import type { CampaignPage, CampaignPageTheme, ResolvedTheme, PageHeaderSettings, HeaderCtaButton } from '@/lib/types';
 
 type ThemeOverrides = NonNullable<CampaignPage['settings']['themeOverrides']>;
 
@@ -130,4 +130,29 @@ export function themeToCssVars(theme: ResolvedTheme): Record<string, string> {
     '--pb-font-size': theme.typography.baseSize,
     '--pb-radius': theme.ui.borderRadius,
   };
+}
+
+/**
+ * Normalizes PageHeaderSettings CTA configurations into a list of buttons
+ * supporting up to 3 button configurations with backward compatibility.
+ * 
+ * CAUTION: Ensure fallback IDs match the tracking analytics mappings.
+ */
+export function getNormalizedHeaderButtons(header: PageHeaderSettings): HeaderCtaButton[] {
+  if (header.buttons && header.buttons.length > 0) {
+    return header.buttons;
+  }
+  if (header.showCta) {
+    return [{
+      id: 'header-cta-1',
+      label: header.ctaText || 'Get Started',
+      style: 'primary',
+      linkType: header.ctaLinkType || 'url',
+      url: header.ctaUrl,
+      targetSectionId: header.ctaTargetSectionId,
+      action: header.ctaAction,
+      surveyResultMode: header.ctaSurveyResultMode || 'modal',
+    }];
+  }
+  return [];
 }

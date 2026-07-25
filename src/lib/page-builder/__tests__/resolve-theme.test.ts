@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { CampaignPageTheme } from '@/lib/types';
-import { resolveTheme, themeToCssVars, DEFAULT_THEME } from '../resolve-theme';
+import type { CampaignPageTheme, PageHeaderSettings } from '@/lib/types';
+import { resolveTheme, themeToCssVars, DEFAULT_THEME, getNormalizedHeaderButtons } from '../resolve-theme';
 
 const theme: CampaignPageTheme = {
   id: 't1',
@@ -85,5 +85,66 @@ describe('themeToCssVars', () => {
     expect(vars['--pb-color-primary']).toBe('#111111');
     expect(vars['--pb-font-heading']).toBe('Sora');
     expect(vars['--pb-radius']).toBe('0.5rem');
+  });
+});
+
+describe('getNormalizedHeaderButtons', () => {
+  it('should map legacy header settings correctly when no buttons array exists', () => {
+    const legacyHeader: PageHeaderSettings = {
+      preset: 'native',
+      overlap: false,
+      sticky: false,
+      floating: false,
+      showSearch: false,
+      showCta: true,
+      ctaText: 'Apply Now',
+      ctaUrl: '/apply',
+      ctaLinkType: 'url',
+      showPhone: false,
+      navItems: []
+    };
+    const buttons = getNormalizedHeaderButtons(legacyHeader);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].label).toBe('Apply Now');
+    expect(buttons[0].url).toBe('/apply');
+    expect(buttons[0].style).toBe('primary');
+  });
+
+  it('should return empty list when showCta is false and buttons array is empty', () => {
+    const header: PageHeaderSettings = {
+      preset: 'native',
+      overlap: false,
+      sticky: false,
+      floating: false,
+      showSearch: false,
+      showCta: false,
+      showPhone: false,
+      navItems: []
+    };
+    const buttons = getNormalizedHeaderButtons(header);
+    expect(buttons).toHaveLength(0);
+  });
+
+  it('should return buttons array directly if populated', () => {
+    const header: PageHeaderSettings = {
+      preset: 'native',
+      overlap: false,
+      sticky: false,
+      floating: false,
+      showSearch: false,
+      showCta: true,
+      showPhone: false,
+      navItems: [],
+      buttons: [
+        { id: 'b1', label: 'B1', style: 'outline', linkType: 'url', url: '/b1' },
+        { id: 'b2', label: 'B2', style: 'ghost', linkType: 'scroll', targetSectionId: 'sec-2' }
+      ]
+    };
+    const buttons = getNormalizedHeaderButtons(header);
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].id).toBe('b1');
+    expect(buttons[0].style).toBe('outline');
+    expect(buttons[1].id).toBe('b2');
+    expect(buttons[1].style).toBe('ghost');
   });
 });
