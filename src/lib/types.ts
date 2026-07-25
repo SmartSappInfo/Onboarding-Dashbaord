@@ -2048,6 +2048,9 @@ export interface SurveyLogicBlock extends SurveyElement {
 export interface SurveyResultRule {
   id: string;
   label: string;
+  title?: string;
+  description?: string;
+  message?: string;
   minScore: number;
   maxScore: number;
   priority: number;
