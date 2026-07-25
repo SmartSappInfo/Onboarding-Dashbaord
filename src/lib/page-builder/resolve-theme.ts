@@ -47,6 +47,41 @@ function pick(...candidates: Array<string | undefined | null>): string | undefin
   return undefined;
 }
 
+/**
+ * Evaluate color brightness to determine if a hex/rgb color is light-contrast.
+ * This is used to adjust colors dynamically in dark mode to preserve readability (XSS-safe).
+ * 
+ * CAUTION: Ensure valid input parsing; defaults to true if unparseable.
+ */
+export function isColorLight(hex: string): boolean {
+  if (!hex || hex === 'transparent') return true;
+  const color = hex.replace('#', '').trim();
+  if (color.length === 3) {
+    const r = parseInt(color[0] + color[0], 16);
+    const g = parseInt(color[1] + color[1], 16);
+    const b = parseInt(color[2] + color[2], 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128;
+  } else if (color.length === 6) {
+    const r = parseInt(color.substring(0, 2), 16);
+    const g = parseInt(color.substring(2, 4), 16);
+    const b = parseInt(color.substring(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128;
+  }
+  if (color.startsWith('rgb')) {
+    const match = color.match(/\d+/g);
+    if (match && match.length >= 3) {
+      const r = parseInt(match[0], 10);
+      const g = parseInt(match[1], 10);
+      const b = parseInt(match[2], 10);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 128;
+    }
+  }
+  return true;
+}
+
 export function resolveTheme(input: ResolveThemeInput = {}): ResolvedTheme {
   const { theme, overrides, branding } = input;
   const font = overrides?.typography?.primaryFont;
@@ -56,13 +91,19 @@ export function resolveTheme(input: ResolveThemeInput = {}): ResolvedTheme {
   const defaultBg = isDark ? '#09090b' : d.colors.background;
   const defaultText = isDark ? '#f8fafc' : d.colors.text;
 
+  // Resolve raw candidates based on precedence: override > selected theme > org branding > default
+  const resolvedBg = pick(overrides?.background, theme?.colors.background) ?? defaultBg;
+  const resolvedText = pick(theme?.colors.text) ?? defaultText;
+  const resolvedAccent = pick(overrides?.accent, theme?.colors.accent) ?? (isDark ? '#27272a' : d.colors.accent);
+
   return {
     colors: {
       primary: pick(overrides?.primary, theme?.colors.primary, branding?.brandPrimaryColor) ?? d.colors.primary,
       secondary: pick(overrides?.secondary, theme?.colors.secondary, branding?.brandSecondaryColor) ?? d.colors.secondary,
-      background: pick(overrides?.background, theme?.colors.background) ?? defaultBg,
-      text: pick(theme?.colors.text) ?? defaultText,
-      accent: pick(overrides?.accent, theme?.colors.accent) ?? d.colors.accent,
+      // Adjust background, text, and accent dynamically in dark mode to prevent contrast clashes
+      background: isDark ? (isColorLight(resolvedBg) ? '#09090b' : resolvedBg) : resolvedBg,
+      text: isDark ? (isColorLight(resolvedText) ? resolvedText : '#f8fafc') : resolvedText,
+      accent: isDark ? (isColorLight(resolvedAccent) ? '#27272a' : resolvedAccent) : resolvedAccent,
     },
     typography: {
       headingFont: pick(font, theme?.typography.headingFont, branding?.brandFontFamily) ?? d.typography.headingFont,

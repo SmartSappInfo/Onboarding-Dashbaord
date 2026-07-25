@@ -45,6 +45,38 @@ describe('resolveTheme precedence', () => {
     const r = resolveTheme({ theme, overrides: { primary: '' } });
     expect(r.colors.primary).toBe('#111111');
   });
+
+  describe('dark mode overrides', () => {
+    it('overrides light backgrounds to dark default in dark theme mode', () => {
+      const res = resolveTheme({
+        overrides: { themeMode: 'dark', background: '#ffffff' }
+      });
+      expect(res.colors.background).toBe('#09090b');
+    });
+
+    it('overrides dark text to light default in dark theme mode', () => {
+      const res = resolveTheme({
+        theme: { ...theme, colors: { ...theme.colors, text: '#000000' } },
+        overrides: { themeMode: 'dark' }
+      });
+      expect(res.colors.text).toBe('#f8fafc');
+    });
+
+    it('keeps custom dark backgrounds as-is in dark theme mode', () => {
+      const res = resolveTheme({
+        overrides: { themeMode: 'dark', background: '#1e293b' }
+      });
+      expect(res.colors.background).toBe('#1e293b');
+    });
+
+    it('keeps custom light text as-is in dark theme mode', () => {
+      const res = resolveTheme({
+        theme: { ...theme, colors: { ...theme.colors, text: '#e2e8f0' } },
+        overrides: { themeMode: 'dark' }
+      });
+      expect(res.colors.text).toBe('#e2e8f0');
+    });
+  });
 });
 
 describe('themeToCssVars', () => {
