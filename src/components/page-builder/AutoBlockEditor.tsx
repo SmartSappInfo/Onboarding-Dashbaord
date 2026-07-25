@@ -335,12 +335,29 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
               {/* Collapsible Content */}
               {isExpanded && (
                 <div className="p-3 border-t border-slate-800 bg-slate-950/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  {field.itemFields.map((itf) => (
-                    <div key={itf.key} className="space-y-1 text-left">
-                      <Label className="text-[9px] font-bold text-slate-500 uppercase">{itf.label}</Label>
-                      <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
-                    </div>
-                  ))}
+                  {field.itemFields.map((itf) => {
+                    // Conditional visibility for list item fields based on actionType
+                    if (item.actionType !== undefined) {
+                      if (itf.key === 'url' && item.actionType !== 'url') return null;
+                      if (itf.key === 'formId' && item.actionType !== 'form') return null;
+                      if (itf.key === 'surveyId' && item.actionType !== 'survey') return null;
+                      if (itf.key === 'meetingId' && item.actionType !== 'meeting') return null;
+                      if (itf.key === 'qrId' && item.actionType !== 'qr') return null;
+                      if (itf.key === 'surveyResultMode' && item.actionType !== 'survey') return null;
+
+                      // Open in modal and track entity properties only apply to modal-compatible resource actions
+                      if ((itf.key === 'openInModal' || itf.key === 'trackEntity') && !['form', 'survey', 'meeting'].includes(String(item.actionType))) {
+                        return null;
+                      }
+                    }
+
+                    return (
+                      <div key={itf.key} className="space-y-1 text-left">
+                        <Label className="text-[9px] font-bold text-slate-500 uppercase">{itf.label}</Label>
+                        <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
