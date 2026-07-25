@@ -10,13 +10,14 @@
  * avoid JS motion on first paint.
  */
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BlockRenderer } from './BlockRenderer';
-import { themeToCssVars, isColorLight } from '@/lib/page-builder/resolve-theme';
+import { themeToCssVars, isColorLight, getNormalizedHeaderButtons } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import type { 
   BuilderResources, CampaignPageVersion, ResolvedTheme, 
-  OrgBranding, PageHeaderSettings, PageFooterSettings, HeaderNavItem
+  OrgBranding, PageHeaderSettings, PageFooterSettings, HeaderNavItem, HeaderCtaButton
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { recordInteractionAction } from '@/lib/analytics-actions';
@@ -170,10 +171,11 @@ interface CardNavMenuProps {
   orgBranding: OrgBranding | null;
   theme: ResolvedTheme;
   onNavItemClick: (item: HeaderNavItem) => void;
-  onCtaClick: () => void;
+  buttons: HeaderCtaButton[];
+  onButtonClick: (btn: HeaderCtaButton) => void;
 }
 
-function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, onCtaClick }: CardNavMenuProps) {
+function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, buttons, onButtonClick }: CardNavMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const primaryColor = theme?.colors?.primary || '#3B5FFF';
@@ -246,19 +248,25 @@ function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, onCta
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          {headerSettings.showCta && (
+        <div className="flex items-center gap-2">
+          {headerSettings.showCta && buttons.map((btn) => (
             <Button 
+              key={btn.id}
               onClick={() => {
                 setIsOpen(false);
-                onCtaClick();
+                onButtonClick(btn);
               }}
-              className="h-9 px-5 rounded-full font-bold text-xs text-white flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
-              style={{ backgroundColor: primaryColor }}
+              className={cn(
+                "h-9 px-4 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform",
+                btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
+                "bg-[#3B5FFF] text-white"
+              )}
+              style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
             >
-              <span>{headerSettings.ctaText || 'Get Started'}</span>
+              <span>{btn.label || 'Get Started'}</span>
             </Button>
-          )}
+          ))}
 
           <button
             type="button"
@@ -358,6 +366,7 @@ export function PageRenderer({
   variablesMap = {},
   isThumbnail = false,
 }: PageRendererProps) {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -401,11 +410,26 @@ export function PageRenderer({
     overrideOrg: false
   };
 
+  const headerButtons = getNormalizedHeaderButtons(headerSettings);
+
   // Link interaction click logging helper
   const trackLinkClick = useCallback((linkId: string) => {
     // Swallowing errors is critical to ensure analytics logging errors never disrupt client execution
     recordInteractionAction(page.id, linkId).catch(() => {});
   }, [page.id]);
+
+  // Helper to identify internal relative paths vs absolute/external URLs
+  const isInternalLink = useCallback((url: string): boolean => {
+    if (!url) return false;
+    const trimmed = url.trim().toLowerCase();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('//')) {
+      return false;
+    }
+    if (trimmed.startsWith('mailto:') || trimmed.startsWith('tel:') || trimmed.startsWith('javascript:')) {
+      return false;
+    }
+    return true;
+  }, []);
 
   // Nav Item click handler
   const handleNavItemClick = useCallback((item: HeaderNavItem) => {
@@ -416,7 +440,13 @@ export function PageRenderer({
         console.warn('[Security] blocked javascript URI in redirect');
         return;
       }
-      window.open(targetUrl, targetUrl.startsWith('http') ? '_blank' : '_self');
+      if (isInternalLink(targetUrl)) {
+        // Use client-side router transition for internal relative links
+        router.push(targetUrl);
+      } else {
+        // Open external links in a new window/tab securely
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
     } else if (item.linkType === 'scroll' && item.targetSectionId) {
       const element = document.getElementById(item.targetSectionId);
       if (element) {
@@ -430,55 +460,61 @@ export function PageRenderer({
         let targetId = '';
         if (item.action === 'open_modal_form') {
           type = 'form';
-          targetId = resources.forms?.[0]?.id || '';
+          targetId = item.actionTargetId || resources.forms?.[0]?.id || '';
         } else if (item.action === 'open_modal_survey') {
           type = 'survey';
-          targetId = resources.surveys?.[0]?.id || '';
+          targetId = item.actionTargetId || resources.surveys?.[0]?.id || '';
         } else if (item.action === 'open_modal_agreement') {
           type = 'agreement';
-          targetId = resources.agreements?.[0]?.id || '';
+          targetId = item.actionTargetId || resources.agreements?.[0]?.id || '';
         }
         fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: item.surveyResultMode }));
       }
     }
-  }, [fireTrigger, resources, trackLinkClick]);
+  }, [fireTrigger, resources, trackLinkClick, isInternalLink, router]);
 
-  // CTA Button click handler
-  const handleCtaClick = useCallback(() => {
-    trackLinkClick('header-cta');
-    const linkType = headerSettings.ctaLinkType || 'url';
-    if (linkType === 'url' && headerSettings.ctaUrl) {
-      const targetUrl = headerSettings.ctaUrl.trim();
+  // Unified CTA Button click handler
+  const handleButtonClick = useCallback((btn: HeaderCtaButton) => {
+    trackLinkClick(btn.id);
+    const linkType = btn.linkType || 'url';
+    if (linkType === 'url' && btn.url) {
+      const targetUrl = btn.url.trim();
       if (targetUrl.toLowerCase().startsWith('javascript:')) {
         console.warn('[Security] blocked javascript URI in CTA redirect');
         return;
       }
-      window.open(targetUrl, targetUrl.startsWith('http') ? '_blank' : '_self');
-    } else if (linkType === 'scroll' && headerSettings.ctaTargetSectionId) {
-      const element = document.getElementById(headerSettings.ctaTargetSectionId);
+      if (isInternalLink(targetUrl)) {
+        // Use client-side router transition for internal relative links
+        router.push(targetUrl);
+      } else {
+        // Open external links in a new window/tab securely
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
+    } else if (linkType === 'scroll' && btn.targetSectionId) {
+      const element = document.getElementById(btn.targetSectionId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    } else if (linkType === 'action' && headerSettings.ctaAction) {
-      if (headerSettings.ctaAction === 'receipt_request') {
+    } else if (linkType === 'action' && btn.action) {
+      if (btn.action === 'receipt_request') {
         fireTrigger('block_click', 'cta-1');
       } else {
         let type = 'form';
         let targetId = '';
-        if (headerSettings.ctaAction === 'open_modal_form') {
+        if (btn.action === 'open_modal_form') {
           type = 'form';
-          targetId = resources.forms?.[0]?.id || '';
-        } else if (headerSettings.ctaAction === 'open_modal_survey') {
+          targetId = btn.actionTargetId || resources.forms?.[0]?.id || '';
+        } else if (btn.action === 'open_modal_survey') {
           type = 'survey';
-          targetId = resources.surveys?.[0]?.id || '';
-        } else if (headerSettings.ctaAction === 'open_modal_agreement') {
+          targetId = btn.actionTargetId || resources.surveys?.[0]?.id || '';
+        } else if (btn.action === 'open_modal_agreement') {
           type = 'agreement';
-          targetId = resources.agreements?.[0]?.id || '';
+          targetId = btn.actionTargetId || resources.agreements?.[0]?.id || '';
         }
-        fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: headerSettings.ctaSurveyResultMode }));
+        fireTrigger('open_modal_resource', JSON.stringify({ type, targetId, resultMode: btn.surveyResultMode }));
       }
     }
-  }, [headerSettings, fireTrigger, resources, trackLinkClick]);
+  }, [fireTrigger, resources, trackLinkClick, isInternalLink, router]);
 
   return (
     <div style={isMounted ? cssVars : undefined} className="flex flex-col min-h-screen">
@@ -510,7 +546,8 @@ export function PageRenderer({
                 orgBranding={orgBranding}
                 theme={theme}
                 onNavItemClick={handleNavItemClick}
-                onCtaClick={handleCtaClick}
+                buttons={headerButtons}
+                onButtonClick={handleButtonClick}
               />
             ) : headerSettings.preset === 'minimal' ? (
               <div className="flex items-center justify-center w-full">
@@ -521,15 +558,22 @@ export function PageRenderer({
                 )}
               </div>
             ) : headerSettings.preset === 'cta-only' ? (
-              <div className="flex justify-end w-full">
-                {headerSettings.showCta && (
+              <div className="flex justify-end items-center gap-2 w-full">
+                {headerSettings.showCta && headerButtons.map((btn) => (
                   <Button 
-                    onClick={handleCtaClick}
-                    className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white"
+                    key={btn.id}
+                    onClick={() => handleButtonClick(btn)}
+                    className={cn(
+                      "h-9 px-5 rounded-full font-bold text-xs",
+                      btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                      btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-850" :
+                      "bg-[#3B5FFF] text-white"
+                    )}
+                    style={btn.style === 'primary' || !btn.style ? { backgroundColor: theme?.colors?.primary || '#3B5FFF' } : undefined}
                   >
-                    {headerSettings.ctaText || 'Get Started'}
+                    {btn.label || 'Get Started'}
                   </Button>
-                )}
+                ))}
               </div>
             ) : (
               <div className="flex items-center justify-between w-full">
@@ -553,7 +597,7 @@ export function PageRenderer({
                     </nav>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
                     <div className="relative max-w-xs hidden sm:block">
                       <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -567,19 +611,27 @@ export function PageRenderer({
                   {headerSettings.showPhone && headerSettings.phoneNumber && (
                     <a 
                       href={`tel:${headerSettings.phoneNumber}`}
-                      className="text-xs font-bold text-slate-600 dark:text-slate-350 flex items-center gap-1 hover:text-[#3B5FFF] transition-colors"
+                      onClick={() => trackLinkClick('header-phone')}
+                      className="text-xs font-bold text-slate-600 dark:text-slate-350 flex items-center gap-1 hover:text-[#3B5FFF] transition-colors mr-2"
                     >
                       <Phone className="h-3 w-3" /> {headerSettings.phoneNumber}
                     </a>
                   )}
-                  {headerSettings.showCta && (
+                  {headerSettings.showCta && headerButtons.map((btn) => (
                     <Button 
-                      onClick={handleCtaClick}
-                      className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white"
+                      key={btn.id}
+                      onClick={() => handleButtonClick(btn)}
+                      className={cn(
+                        "h-9 px-5 rounded-full font-bold text-xs",
+                        btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                        btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-850" :
+                        "bg-[#3B5FFF] text-white"
+                      )}
+                      style={btn.style === 'primary' || !btn.style ? { backgroundColor: theme?.colors?.primary || '#3B5FFF' } : undefined}
                     >
-                      {headerSettings.ctaText || 'Get Started'}
+                      {btn.label || 'Get Started'}
                     </Button>
-                  )}
+                  ))}
                 </div>
               </div>
             )}

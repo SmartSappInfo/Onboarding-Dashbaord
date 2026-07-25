@@ -34,6 +34,7 @@ export const navItemSchema = z.object({
   targetSectionId: z.string().optional(),
   action: z.enum(['receipt_request', 'open_modal_form', 'open_modal_survey', 'open_modal_agreement']).optional(),
   surveyResultMode: z.enum(['modal', 'parent']).optional(),
+  actionTargetId: z.string().optional(),
 });
 
 export const headerCtaButtonSchema = z.object({

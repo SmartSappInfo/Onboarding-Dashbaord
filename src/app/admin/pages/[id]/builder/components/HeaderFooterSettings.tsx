@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { 
   Plus, Trash2, Mail, Phone, Globe, MapPin 
 } from 'lucide-react';
 import type { 
-  CampaignPage, PageHeaderSettings, PageFooterSettings, HeaderNavItem, CampaignPageStructure
+  CampaignPage, PageHeaderSettings, PageFooterSettings, HeaderNavItem, CampaignPageStructure, BuilderResources, HeaderCtaButton
 } from '@/lib/types';
+import { getNormalizedHeaderButtons } from '@/lib/page-builder/resolve-theme';
+import { ActionTargetModal } from './ActionTargetModal';
 
 interface HeaderSettingsControlProps {
   readonly page: CampaignPage;
   readonly structure: CampaignPageStructure;
+  readonly resources: BuilderResources;
   readonly onUpdateHeader: (updates: Partial<PageHeaderSettings>) => void;
   readonly onUpdateSettings: (updates: Partial<CampaignPage['settings']>) => void;
 }
@@ -19,6 +22,7 @@ interface HeaderSettingsControlProps {
 export function HeaderSettingsControl({ 
   page, 
   structure, 
+  resources,
   onUpdateHeader, 
   onUpdateSettings 
 }: HeaderSettingsControlProps) {
@@ -32,6 +36,27 @@ export function HeaderSettingsControl({
     showPhone: false,
     navItems: []
   };
+
+  const [activeTargetSelector, setActiveTargetSelector] = useState<{ type: 'button' | 'navItem'; id: string } | null>(null);
+
+  const normalizedButtons = getNormalizedHeaderButtons(header);
+
+  const handleSelectTarget = useCallback((targetId: string) => {
+    if (!activeTargetSelector) return;
+    if (activeTargetSelector.type === 'button') {
+      const updated = normalizedButtons.map(btn => 
+        btn.id === activeTargetSelector.id ? { ...btn, actionTargetId: targetId } : btn
+      );
+      onUpdateHeader({ buttons: updated });
+    } else {
+      onUpdateHeader({
+        navItems: (header.navItems || []).map(item =>
+          item.id === activeTargetSelector.id ? { ...item, actionTargetId: targetId } : item
+        )
+      });
+    }
+    setActiveTargetSelector(null);
+  }, [activeTargetSelector, normalizedButtons, header.navItems, onUpdateHeader]);
 
   const handleAddNavItem = useCallback(() => {
     const newItem: HeaderNavItem = {
@@ -91,98 +116,232 @@ export function HeaderSettingsControl({
           </div>
 
           <div className="pt-2 border-t border-slate-800/40 space-y-3">
-            <ToggleRow label="Show CTA Button" checked={!!header.showCta} onChange={(v) => onUpdateHeader({ showCta: v })} />
-            {/* CTA Button Settings Config Block */}
+            <ToggleRow 
+              label="Show CTA Buttons" 
+              checked={!!header.showCta} 
+              onChange={(v) => {
+                onUpdateHeader({ 
+                  showCta: v,
+                  buttons: v ? (normalizedButtons.length > 0 ? normalizedButtons : [{
+                    id: `cta-${Date.now()}`,
+                    label: 'Action Button',
+                    style: 'primary',
+                    linkType: 'url',
+                    url: '#',
+                  }]) : []
+                });
+              }} 
+            />
+
             {header.showCta && (
-              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg space-y-2 animate-in fade-in duration-300">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Button Label</Label>
-                    <input
-                      type="text"
-                      value={header.ctaText || ''}
-                      onChange={(e) => onUpdateHeader({ ctaText: e.target.value })}
-                      placeholder="Request Quote"
-                      className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Type</Label>
-                    <select
-                      value={header.ctaLinkType || 'url'}
-                      onChange={(e) => onUpdateHeader({ 
-                        ctaLinkType: e.target.value as PageHeaderSettings['ctaLinkType'],
-                        ctaUrl: '',
-                        ctaTargetSectionId: '',
-                        ctaAction: undefined
-                      })}
-                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg space-y-3 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Action Buttons</Label>
+                  {normalizedButtons.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newBtn: HeaderCtaButton = {
+                          id: `cta-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                          label: `Button ${normalizedButtons.length + 1}`,
+                          style: 'primary',
+                          linkType: 'url',
+                          url: '#',
+                        };
+                        onUpdateHeader({
+                          buttons: [...normalizedButtons, newBtn]
+                        });
+                      }}
+                      className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
                     >
-                      <option value="url">URL Redirect</option>
-                      <option value="scroll">Scroll to Section</option>
-                      <option value="action">Trigger Page Action</option>
-                    </select>
-                  </div>
+                      <Plus className="h-3 w-3" /> Add Button
+                    </button>
+                  )}
                 </div>
 
-                {(header.ctaLinkType === 'url' || !header.ctaLinkType) && (
-                  <div className="space-y-1 animate-in fade-in duration-200">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Redirect URL Link</Label>
-                    <input
-                      type="text"
-                      value={header.ctaUrl || ''}
-                      onChange={(e) => onUpdateHeader({ ctaUrl: e.target.value })}
-                      placeholder="https://example.com"
-                      className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
-                    />
-                  </div>
-                )}
+                {normalizedButtons.length === 0 ? (
+                  <p className="text-[10px] text-slate-500 italic text-center py-2">No buttons configured.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {normalizedButtons.map((btn, idx) => (
+                      <div key={btn.id} className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-2.5 relative animate-in fade-in duration-205">
+                        <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5 mb-1.5">
+                          <span className="text-[10px] font-semibold text-slate-300">Button #{idx + 1}: {btn.label || 'Untitled'}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = normalizedButtons.filter(b => b.id !== btn.id);
+                              onUpdateHeader({ 
+                                buttons: updated,
+                                showCta: updated.length > 0
+                              });
+                            }}
+                            className="text-slate-500 hover:text-red-400 transition-colors"
+                            aria-label="Remove Button"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
 
-                {header.ctaLinkType === 'scroll' && (
-                  <div className="space-y-1 animate-in fade-in duration-200">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Section</Label>
-                    <select
-                      value={header.ctaTargetSectionId || ''}
-                      onChange={(e) => onUpdateHeader({ ctaTargetSectionId: e.target.value })}
-                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
-                    >
-                      <option value="">Select a Section...</option>
-                      {(structure.sections || []).map((sec, sIdx) => {
-                        const heading = (sec.props as { heading?: string })?.heading || `Section ${sIdx + 1}`;
-                        return <option key={sec.id} value={sec.id}>{heading}</option>;
-                      })}
-                    </select>
-                  </div>
-                )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Button Label</Label>
+                            <input
+                              type="text"
+                              value={btn.label}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, label: e.target.value } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                              placeholder="Request Quote"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Button Style</Label>
+                            <select
+                              value={btn.style || 'primary'}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, style: e.target.value as HeaderCtaButton['style'] } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-1.5 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                            >
+                              <option value="primary">Solid Primary</option>
+                              <option value="outline">Outline</option>
+                              <option value="ghost">Ghost Link</option>
+                            </select>
+                          </div>
+                        </div>
 
-                {header.ctaLinkType === 'action' && (
-                  <div className="space-y-1 animate-in fade-in duration-200">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Overlay Action</Label>
-                    <select
-                      value={header.ctaAction || ''}
-                      onChange={(e) => onUpdateHeader({ ctaAction: e.target.value as PageHeaderSettings['ctaAction'] })}
-                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
-                    >
-                      <option value="">Select Action...</option>
-                      <option value="receipt_request">Open Receipt Request Modal</option>
-                      <option value="open_modal_form">Open Form Modal</option>
-                      <option value="open_modal_survey">Open Survey Modal</option>
-                      <option value="open_modal_agreement">Open Agreement Modal</option>
-                    </select>
-                  </div>
-                )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Link Type</Label>
+                            <select
+                              value={btn.linkType || 'url'}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? {
+                                  ...b,
+                                  linkType: e.target.value as HeaderCtaButton['linkType'],
+                                  url: '',
+                                  targetSectionId: '',
+                                  action: undefined,
+                                  actionTargetId: undefined
+                                } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-1.5 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                            >
+                              <option value="url">URL Redirect</option>
+                              <option value="scroll">Scroll to Section</option>
+                              <option value="action">Trigger Page Action</option>
+                            </select>
+                          </div>
 
-                {header.ctaLinkType === 'action' && header.ctaAction === 'open_modal_survey' && (
-                  <div className="space-y-1 animate-in fade-in duration-200">
-                    <Label className="text-[8px] font-bold text-slate-500 uppercase">Survey Result Display</Label>
-                    <select
-                      value={header.ctaSurveyResultMode || 'modal'}
-                      onChange={(e) => onUpdateHeader({ ctaSurveyResultMode: e.target.value as PageHeaderSettings['ctaSurveyResultMode'] })}
-                      className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
-                    >
-                      <option value="modal">Show inside Modal</option>
-                      <option value="parent">Redirect parent page</option>
-                    </select>
+                          {btn.linkType === 'action' && (
+                            <div className="space-y-1">
+                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
+                              <select
+                                value={btn.action || ''}
+                                onChange={(e) => {
+                                  const updated = normalizedButtons.map(b => b.id === btn.id ? {
+                                    ...b,
+                                    action: e.target.value as HeaderCtaButton['action'],
+                                    actionTargetId: undefined
+                                  } : b);
+                                  onUpdateHeader({ buttons: updated });
+                                }}
+                                className="w-full h-8 px-1.5 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none"
+                              >
+                                <option value="">Select Action...</option>
+                                <option value="receipt_request">Open Receipt Request</option>
+                                <option value="open_modal_form">Open Form Modal</option>
+                                <option value="open_modal_survey">Open Survey Modal</option>
+                                <option value="open_modal_agreement">Open Agreement Modal</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        {btn.linkType === 'url' && (
+                          <div className="space-y-1 animate-in fade-in duration-200">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Redirect URL Link</Label>
+                            <input
+                              type="text"
+                              value={btn.url || ''}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, url: e.target.value } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              placeholder="https://example.com"
+                              className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                            />
+                          </div>
+                        )}
+
+                        {btn.linkType === 'scroll' && (
+                          <div className="space-y-1 animate-in fade-in duration-200">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Section</Label>
+                            <select
+                              value={btn.targetSectionId || ''}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, targetSectionId: e.target.value } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-1.5 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none"
+                            >
+                              <option value="">Select a Section...</option>
+                              {(structure.sections || []).map((sec, sIdx) => {
+                                const heading = (sec.props as { heading?: string })?.heading || `Section ${sIdx + 1}`;
+                                return <option key={sec.id} value={sec.id}>{heading}</option>;
+                              })}
+                            </select>
+                          </div>
+                        )}
+
+                        {btn.linkType === 'action' && btn.action === 'open_modal_survey' && (
+                          <div className="space-y-1 animate-in fade-in duration-200">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Survey Result Display</Label>
+                            <select
+                              value={btn.surveyResultMode || 'modal'}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, surveyResultMode: e.target.value as HeaderCtaButton['surveyResultMode'] } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-1.5 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none"
+                            >
+                              <option value="modal">Show inside Modal</option>
+                              <option value="parent">Redirect parent page</option>
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Action Target Selector Trigger Button */}
+                        {btn.linkType === 'action' && btn.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(btn.action) && (
+                          <div className="space-y-1 pt-1 animate-in fade-in duration-200">
+                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Resource</Label>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTargetSelector({ type: 'button', id: btn.id })}
+                              className="w-full h-8 px-2 text-[10px] flex items-center justify-between bg-slate-900 border border-slate-800 rounded-md text-slate-300 hover:border-emerald-500/50 hover:bg-slate-950 transition-colors"
+                            >
+                              <span className="truncate">
+                                {btn.actionTargetId 
+                                  ? `${btn.action === 'open_modal_form' ? 'Form' : btn.action === 'open_modal_survey' ? 'Survey' : 'Agreement'}: ${
+                                      btn.action === 'open_modal_form' 
+                                        ? (resources.forms.find(f => f.id === btn.actionTargetId)?.title || btn.actionTargetId)
+                                        : btn.action === 'open_modal_survey'
+                                        ? (resources.surveys.find(s => s.id === btn.actionTargetId)?.title || btn.actionTargetId)
+                                        : (resources.agreements.find(a => a.id === btn.actionTargetId)?.title || btn.actionTargetId)
+                                    }`
+                                  : 'Click to select resource...'}
+                              </span>
+                              <Plus className="h-3 w-3 shrink-0 ml-1 text-slate-500" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -322,6 +481,31 @@ export function HeaderSettingsControl({
                           </select>
                         </div>
                       )}
+
+                      {/* Action Target Selector Trigger Button for NavItem */}
+                      {item.linkType === 'action' && item.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(item.action) && (
+                        <div className="space-y-1 pt-1 animate-in fade-in duration-200">
+                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Resource</Label>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTargetSelector({ type: 'navItem', id: item.id })}
+                            className="w-full h-8 px-2 text-[10px] flex items-center justify-between bg-slate-950 border border-slate-700 rounded-md text-slate-300 hover:border-emerald-500/50 hover:bg-slate-900 transition-colors"
+                          >
+                            <span className="truncate">
+                              {item.actionTargetId 
+                                ? `${item.action === 'open_modal_form' ? 'Form' : item.action === 'open_modal_survey' ? 'Survey' : 'Agreement'}: ${
+                                    item.action === 'open_modal_form' 
+                                      ? (resources.forms.find(f => f.id === item.actionTargetId)?.title || item.actionTargetId)
+                                      : item.action === 'open_modal_survey'
+                                      ? (resources.surveys.find(s => s.id === item.actionTargetId)?.title || item.actionTargetId)
+                                      : (resources.agreements.find(a => a.id === item.actionTargetId)?.title || item.actionTargetId)
+                                  }`
+                                : 'Click to select resource...'}
+                            </span>
+                            <Plus className="h-3 w-3 shrink-0 ml-1 text-slate-500" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -329,6 +513,28 @@ export function HeaderSettingsControl({
             </div>
           )}
         </div>
+      )}
+
+      {activeTargetSelector && (
+        <ActionTargetModal
+          isOpen={true}
+          onOpenChange={(open) => {
+            if (!open) setActiveTargetSelector(null);
+          }}
+          onSelect={(action, targetId) => handleSelectTarget(targetId)}
+          resources={resources}
+          defaultTab={
+            (() => {
+              if (activeTargetSelector.type === 'button') {
+                const btn = normalizedButtons.find(b => b.id === activeTargetSelector.id);
+                return btn?.action === 'open_modal_form' ? 'form' : btn?.action === 'open_modal_survey' ? 'survey' : btn?.action === 'open_modal_agreement' ? 'agreement' : undefined;
+              } else {
+                const item = (header.navItems || []).find(i => i.id === activeTargetSelector.id);
+                return item?.action === 'open_modal_form' ? 'form' : item?.action === 'open_modal_survey' ? 'survey' : item?.action === 'open_modal_agreement' ? 'agreement' : undefined;
+              }
+            })()
+          }
+        />
       )}
     </div>
   );

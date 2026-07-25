@@ -16,6 +16,7 @@ interface ActionTargetModalProps {
   readonly onOpenChange: (open: boolean) => void;
   readonly resources: BuilderResources;
   readonly onSelect: (action: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement', targetId: string) => void;
+  readonly defaultTab?: 'form' | 'survey' | 'agreement';
 }
 
 /**
@@ -27,9 +28,16 @@ interface ActionTargetModalProps {
  * - Review styling classes to ensure contrast matches editor themes.
  * - Testability: Ensure buttons trigger the correct callbacks with appropriate parameters.
  */
-export function ActionTargetModal({ isOpen, onOpenChange, resources, onSelect }: ActionTargetModalProps) {
+export function ActionTargetModal({ isOpen, onOpenChange, resources, onSelect, defaultTab }: ActionTargetModalProps) {
   const [search, setSearch] = React.useState('');
-  const [activeTab, setActiveTab] = React.useState<'form' | 'survey' | 'agreement'>('form');
+  const [activeTab, setActiveTab] = React.useState<'form' | 'survey' | 'agreement'>(defaultTab || 'form');
+
+  // Sync activeTab when defaultTab changes or modal opens
+  React.useEffect(() => {
+    if (isOpen && defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [isOpen, defaultTab]);
 
   // Reset search when opening/closing
   React.useEffect(() => {

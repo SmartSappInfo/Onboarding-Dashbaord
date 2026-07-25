@@ -217,7 +217,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             id: f.id, title: f.title ?? f.internalName ?? 'Untitled', internalName: f.internalName,
         })),
         surveys: resources.surveys.map((s) => ({ id: s.id, title: s.title ?? 'Untitled', internalName: s.internalName })),
-        agreements: [],
+        agreements: resources.agreements.map((a) => ({ id: a.id, title: a.title ?? 'Untitled' })),
         meetings: resources.meetings.map((m) => ({
             id: m.id,
             title: m.title ?? 'Untitled',
@@ -232,7 +232,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
         qrCodes: resources.qrCodes.map((q) => ({
             id: q.id, title: q.name ?? 'Untitled QR', slug: q.shortPath, redirectUrl: q.redirectUrl,
         })),
-    }), [resources.forms, resources.surveys, resources.meetings, resources.qrCodes]);
+    }), [resources.forms, resources.surveys, resources.meetings, resources.qrCodes, resources.agreements]);
     const selectedTheme = React.useMemo(() => {
         if (!builder.page?.themeId || !resources.themes) return null;
         return resources.themes.find((t) => t.id === builder.page?.themeId) || null;
@@ -1177,6 +1177,7 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 <HeaderSettingsControl
                                     page={page}
                                     structure={version.structureJson}
+                                    resources={builderResources}
                                     onUpdateHeader={handleUpdateHeader}
                                     onUpdateSettings={handleUpdateSettings}
                                 />

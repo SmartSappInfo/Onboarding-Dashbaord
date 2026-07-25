@@ -3691,6 +3691,7 @@ export interface HeaderNavItem {
   targetSectionId?: string;
   action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
   surveyResultMode?: 'modal' | 'parent';
+  actionTargetId?: string;
 }
 
 export interface HeaderCtaButton {

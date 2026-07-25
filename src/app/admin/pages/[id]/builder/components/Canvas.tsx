@@ -86,7 +86,8 @@ import {
 } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings, HeaderCtaButton } from '@/lib/types';
+import { getNormalizedHeaderButtons, isColorLight } from '@/lib/page-builder/resolve-theme';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
@@ -653,6 +654,17 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader, theme }: Card
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const primaryColor = theme?.colors?.primary || '#3B5FFF';
+    const buttons = getNormalizedHeaderButtons(headerSettings);
+
+    const handleUpdateButtonLabel = (index: number, newLabel: string) => {
+        if (headerSettings.ctaButtons && headerSettings.ctaButtons.length > 0) {
+            const updatedButtons = [...headerSettings.ctaButtons];
+            updatedButtons[index] = { ...updatedButtons[index], label: newLabel };
+            onUpdateHeader?.({ ctaButtons: updatedButtons });
+        } else {
+            onUpdateHeader?.({ ctaText: newLabel });
+        }
+    };
 
     useGSAP(() => {
         // Prevent layout collision or state flicker during rapid toggle clicks
@@ -722,24 +734,33 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader, theme }: Card
                     )}
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {headerSettings.showCta && (
+                <div className="flex items-center gap-2">
+                    {headerSettings.showCta && buttons.map((btn, idx) => (
                         <Button 
-                            className="h-9 px-5 rounded-full font-bold text-xs text-white flex items-center justify-center gap-1 active:scale-[0.98] transition-transform"
-                            style={{ backgroundColor: primaryColor }}
+                            key={btn.id}
+                            className={cn(
+                                "h-9 px-5 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform",
+                                btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                                btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
+                                "bg-[#3B5FFF] text-white"
+                            )}
+                            style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
                             disabled={!isEditMode}
                         >
                             <InlineEditable
                                 tagName="span"
                                 isEdit={isEditMode}
-                                onChange={(val) => onUpdateHeader?.({ ctaText: val })}
-                                className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block"
+                                onChange={(val) => handleUpdateButtonLabel(idx, val)}
+                                className={cn(
+                                    "outline-none border-0 bg-transparent font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto",
+                                    btn.style === 'outline' || btn.style === 'ghost' ? "text-slate-800 dark:text-white" : "text-white"
+                                )}
                                 onClick={(e) => e.stopPropagation()}
-                                value={headerSettings.ctaText || 'Get Started'}
+                                value={btn.label || 'Get Started'}
                                 html={false}
                             />
                         </Button>
-                    )}
+                    ))}
 
                     <button
                         type="button"
@@ -1759,6 +1780,19 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         navItems: []
                                     };
                                     const isEditMode = canvasMode === 'edit';
+                                    const buttons = getNormalizedHeaderButtons(headerSettings);
+                                    const primaryColor = theme?.colors?.primary || '#3B5FFF';
+
+                                    const handleUpdateButtonLabel = (index: number, newLabel: string) => {
+                                        if (headerSettings.ctaButtons && headerSettings.ctaButtons.length > 0) {
+                                            const updatedButtons = [...headerSettings.ctaButtons];
+                                            updatedButtons[index] = { ...updatedButtons[index], label: newLabel };
+                                            onUpdateHeader?.({ ctaButtons: updatedButtons });
+                                        } else {
+                                            onUpdateHeader?.({ ctaText: newLabel });
+                                        }
+                                    };
+
                                     return (
                                         <div 
                                             onClick={onClickHeader}
@@ -1796,20 +1830,33 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                         <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
                                                     </div>
                                                 ) : headerSettings.preset === 'cta-only' ? (
-                                                     <div className="flex justify-end w-full">
-                                                         {headerSettings.showCta && (
-                                                             <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
+                                                     <div className="flex justify-end w-full gap-2">
+                                                         {headerSettings.showCta && buttons.map((btn, idx) => (
+                                                             <Button 
+                                                                 key={btn.id}
+                                                                 className={cn(
+                                                                     "h-9 px-5 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform pointer-events-auto",
+                                                                     btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                                                                     btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
+                                                                     "bg-[#3B5FFF] text-white"
+                                                                 )}
+                                                                 style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
+                                                                 disabled={!isEditMode}
+                                                             >
                                                                   <InlineEditable
                                                                       tagName="span"
                                                                       isEdit={isEditMode}
-                                                                      onChange={(val) => onUpdateHeader?.({ ctaText: val })}
-                                                                      className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                      onChange={(val) => handleUpdateButtonLabel(idx, val)}
+                                                                      className={cn(
+                                                                          "outline-none border-0 bg-transparent font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto",
+                                                                          btn.style === 'outline' || btn.style === 'ghost' ? "text-slate-800 dark:text-white" : "text-white"
+                                                                      )}
                                                                       onClick={(e) => e.stopPropagation()}
-                                                                      value={headerSettings.ctaText || 'Get Started'}
+                                                                      value={btn.label || 'Get Started'}
                                                                       html={false}
                                                                   />
                                                              </Button>
-                                                         )}
+                                                         ))}
                                                      </div>
                                                  ) : (
                                                      <div className="flex items-center justify-between w-full">
@@ -1864,17 +1911,34 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                  </span>
                                                              )}
                                                              {headerSettings.showCta && (
-                                                                 <Button className="h-9 px-5 rounded-full font-bold text-xs bg-[#3B5FFF] text-white flex items-center justify-center gap-1 pointer-events-auto" disabled={!isEditMode}>
-                                                                     <InlineEditable
-                                                                         tagName="span"
-                                                                         isEdit={isEditMode}
-                                                                         onChange={(val) => onUpdateHeader?.({ ctaText: val })}
-                                                                         className="outline-none border-0 bg-transparent text-white font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto"
-                                                                         onClick={(e) => e.stopPropagation()}
-                                                                         value={headerSettings.ctaText || 'Get Started'}
-                                                                         html={false}
-                                                                     />
-                                                                 </Button>
+                                                                 <div className="flex items-center gap-2">
+                                                                     {buttons.map((btn, idx) => (
+                                                                         <Button 
+                                                                             key={btn.id}
+                                                                             className={cn(
+                                                                                 "h-9 px-5 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform pointer-events-auto",
+                                                                                 btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                                                                                 btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
+                                                                                 "bg-[#3B5FFF] text-white"
+                                                                             )}
+                                                                             style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
+                                                                             disabled={!isEditMode}
+                                                                         >
+                                                                             <InlineEditable
+                                                                                 tagName="span"
+                                                                                 isEdit={isEditMode}
+                                                                                 onChange={(val) => handleUpdateButtonLabel(idx, val)}
+                                                                                 className={cn(
+                                                                                     "outline-none border-0 bg-transparent font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto",
+                                                                                     btn.style === 'outline' || btn.style === 'ghost' ? "text-slate-800 dark:text-white" : "text-white"
+                                                                                 )}
+                                                                                 onClick={(e) => e.stopPropagation()}
+                                                                                 value={btn.label || 'Get Started'}
+                                                                                 html={false}
+                                                                             />
+                                                                         </Button>
+                                                                     ))}
+                                                                 </div>
                                                              )}
                                                         </div>
                                                     </div>
