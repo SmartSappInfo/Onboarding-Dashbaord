@@ -4166,7 +4166,23 @@ export interface FormSubmissionActions {
     };
   };
   webhooks: string[]; // URLs or Webhook document IDs
-  entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // only if 'bound'
+  entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // Legacy fallback
+  /** Comprehensive Lead & Entity Capture Configuration */
+  entityCapture?: FormEntityCaptureSettings;
+}
+
+export type FormEntityScope = 'workspace_default' | 'institution' | 'family' | 'person';
+export type FormEntityHandlingStrategy = 'create_or_update' | 'create_new' | 'update_matching';
+
+/**
+ * Lead & Entity Capture configuration for Form Submissions (Bound and Global forms).
+ */
+export interface FormEntityCaptureSettings {
+  enabled: boolean; // Enable automatic CRM Lead Entity capture
+  entityScope?: FormEntityScope; // Target entity scope (default: workspace_default)
+  handlingStrategy?: FormEntityHandlingStrategy; // Contact matching and entity creation strategy
+  leadSource?: string; // Custom lead source identifier tag
+  autoAssign?: boolean; // Auto-assign to active workspace users
 }
 
 export interface FormSubmission {

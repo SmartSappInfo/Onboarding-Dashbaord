@@ -22,8 +22,8 @@ import { createTagAction } from '@/lib/tag-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
-import { normalizeSuccessBehavior } from '@/lib/tracking-utils';
-import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link } from 'lucide-react';
+import { normalizeSuccessBehavior, normalizeFormEntityCapture } from '@/lib/tracking-utils';
+import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home } from 'lucide-react';
 import BuilderCanvas from './components/BuilderCanvas';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
@@ -1013,7 +1013,23 @@ export default function EditFormPage() {
             )}
 
             {/* ── Step 3: Actions ── */}
-            {step === 3 && (
+            {step === 3 && (() => {
+              const normalizedEntityCapture = normalizeFormEntityCapture(formData.formType || 'global', formData.actions);
+              const updateEntityCapture = (patch: Partial<FormEntityCaptureSettings>) => {
+                const currentActions = (formData.actions || { tags: [], automations: [], webhooks: [] }) as FormSubmissionActions;
+                const currentCapture = normalizeFormEntityCapture(formData.formType || 'global', currentActions);
+                const updatedCapture: FormEntityCaptureSettings = {
+                  ...currentCapture,
+                  ...patch,
+                };
+                updateField('actions', {
+                  ...currentActions,
+                  entityCapture: updatedCapture,
+                  entityHandling: updatedCapture.handlingStrategy,
+                });
+              };
+
+              return (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 {/* ── 1. Thank You Page & Post-Submission Redirection (First Configuration on Actions) ── */}
                 <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
@@ -1048,7 +1064,7 @@ export default function EditFormPage() {
                             updateField('successBehavior', { ...current, presentation: 'modal' });
                           }}
                           className={cn(
-                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background',
+                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background active:scale-[0.97]',
                             (formData.successBehavior?.presentation || 'modal') === 'modal'
                               ? 'border-primary ring-2 ring-primary/10 shadow-sm'
                               : 'border-border/60 hover:border-primary/40'
@@ -1072,7 +1088,7 @@ export default function EditFormPage() {
                             updateField('successBehavior', { ...current, presentation: 'page' });
                           }}
                           className={cn(
-                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background',
+                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background active:scale-[0.97]',
                             formData.successBehavior?.presentation === 'page'
                               ? 'border-primary ring-2 ring-primary/10 shadow-sm'
                               : 'border-border/60 hover:border-primary/40'
@@ -1408,28 +1424,10 @@ export default function EditFormPage() {
                         }}
                       />
                     </div>
-
-                    {/* Entity Handling (only for bound forms) */}
-                    {formData.formType === 'bound' && (
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Handling</Label>
-                        <Select
-                          value={formData.actions?.entityHandling || 'create_new'}
-                          onValueChange={v => updateField('actions', { ...formData.actions!, entityHandling: v as any })}
-                        >
-                          <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="create_new">Create New Entity</SelectItem>
-                            <SelectItem value="update_matching">Update Matching Entity</SelectItem>
-                            <SelectItem value="create_or_update">Create or Update</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </motion.div>
-            )}
+            ); })()}
 
             {/* ── Step 4: Share ── */}
             {step === 4 && (

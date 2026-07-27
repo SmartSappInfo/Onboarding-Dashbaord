@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 import { COLLECTIONS } from './collection-constants';
 import { submissionsToCSV, normaliseSubmissionData } from './forms-utils';
+import { normalizeFormEntityCapture } from './tracking-utils';
 import { z } from 'zod';
 
 /**
@@ -210,9 +211,6 @@ export async function cloneFormAction(formId: string, userId: string) {
   }
 }
 
-/**
- * Toggles a form between published and draft status.
- */
 export async function toggleFormStatusAction(id: string, newStatus: 'published' | 'draft' | 'archived', userId: string) {
   try {
     const ref = adminDb.collection('forms').doc(id);
@@ -242,6 +240,33 @@ export async function toggleFormStatusAction(id: string, newStatus: 'published' 
 }
 
 /**
+ * Updates an existing form definition.
+ */
+export async function updateFormAction(formId: string, data: Partial<Form>, userId: string, workspaceId: string, organizationId?: string) {
+  try {
+    // 0. Permission Check
+    const allowed = await canUser(userId, workspaceId, 'manage_settings', organizationId);
+    if (!allowed) throw new Error('Unauthorized: Missing manage_settings permission');
+
+    const updatePayload: Record<string, any> = {
+      ...data,
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    delete updatePayload.id; // Protect ID mutation
+    delete updatePayload.createdAt;
+    delete updatePayload.submissionCount;
+
+    await adminDb.collection('forms').doc(formId).update(updatePayload);
+    revalidatePath(REVALIDATION_PATH);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating form:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Processes a form submission from the public renderer or campaign pages.
  * Handles persistence, entity binding, tagging, and global automation triggers.
  */
@@ -252,6 +277,7 @@ export async function processFormSubmissionAction(input: {
   sourcePageId?: string; // If embedded in a campaign page
   ipAddress?: string;
   userAgent?: string;
+  metadata?: Record<string, string>;
 }) {
   try {
     const timestamp = new Date().toISOString();
@@ -262,15 +288,16 @@ export async function processFormSubmissionAction(input: {
     if (!formSnap.exists) throw new Error('Form not found');
     const form = { id: formSnap.id, ...formSnap.data() } as Form;
 
-    // 2. Resolve entityId (Bound Forms)
+    // 2. Evaluate Lead & Entity Capture Settings
+    const captureSettings = normalizeFormEntityCapture(form.formType || 'global', form.actions);
     let resolvedEntityId = input.entityId || null;
 
-    if (form.formType === 'bound' && !resolvedEntityId) {
+    if (captureSettings.enabled && !resolvedEntityId) {
       const email = input.data.email || input.data.primaryEmail;
       const phone = input.data.phone || input.data.primaryPhone;
       const displayName = input.data.name || input.data.displayName || input.data.schoolName || 'Form Contact';
 
-      const entityHandling = form.actions?.entityHandling || 'create_or_update';
+      const entityHandling = captureSettings.handlingStrategy;
 
       // Try to match existing entity by email or phone within the workspace
       if ((email || phone) && (entityHandling === 'update_matching' || entityHandling === 'create_or_update')) {
@@ -309,6 +336,10 @@ export async function processFormSubmissionAction(input: {
         }
       });
 
+      if (captureSettings.leadSource) {
+        customData.leadSource = captureSettings.leadSource;
+      }
+
       if (resolvedEntityId && entityHandling !== 'create_new') {
         const { updateEntityAction } = await import('./entity-actions');
         
@@ -337,7 +368,7 @@ export async function processFormSubmissionAction(input: {
           form.organizationId
         );
       } else if (entityHandling !== 'update_matching') {
-        // Create new entity
+        // Create new entity lead
         const { createEntityAction } = await import('./entity-actions');
         const contacts = [];
         if (email || phone) {
@@ -364,12 +395,16 @@ export async function processFormSubmissionAction(input: {
           entityPayload.customData = customData;
         }
 
-        const entityType = form.contactScope || 'person';
+        let entityType = captureSettings.entityScope;
+        if (!entityType || entityType === 'workspace_default') {
+          entityType = (form.contactScope || 'person') as any;
+        }
+
         const createRes = await createEntityAction(
           entityPayload,
           `system-form-${form.id}`,
           form.workspaceId,
-          entityType,
+          entityType as any,
           form.organizationId,
           true // forceCreate to avoid duplicate error loop
         );

@@ -1,4 +1,31 @@
-import type { FormSuccessBehavior, RedirectMode } from './types';
+import type { FormSuccessBehavior, RedirectMode, FormEntityCaptureSettings, FormSubmissionActions } from './types';
+
+/**
+ * Normalizes Form Lead & Entity Capture settings for bound or global forms.
+ * Guarantees zero-downtime backward compatibility for legacy forms storing actions.entityHandling.
+ *
+ * @param formType - 'bound' | 'global'
+ * @param actions - Partial FormSubmissionActions object from Firestore
+ * @returns Fully populated Required<FormEntityCaptureSettings>
+ */
+export function normalizeFormEntityCapture(
+  formType: 'bound' | 'global',
+  actions?: Partial<FormSubmissionActions> | null
+): Required<FormEntityCaptureSettings> {
+  const customCapture = actions?.entityCapture;
+  const legacyStrategy = actions?.entityHandling || 'create_or_update';
+
+  const defaultEnabled = formType === 'bound' ? true : false;
+  const enabled = customCapture?.enabled !== undefined ? customCapture.enabled : defaultEnabled;
+
+  return {
+    enabled,
+    entityScope: customCapture?.entityScope || 'workspace_default',
+    handlingStrategy: customCapture?.handlingStrategy || legacyStrategy,
+    leadSource: (customCapture?.leadSource ?? '').trim(),
+    autoAssign: customCapture?.autoAssign === true,
+  };
+}
 
 /**
  * Supported tracking query parameter keys tracked across SmartSapp pages and form embeds.
