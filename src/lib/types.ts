@@ -4022,6 +4022,42 @@ export interface AppField {
 }
 
 /**
+ * Redirection Mode after form submission:
+ * - 'none': Display Thank You message only (no redirect)
+ * - 'immediate': Redirect immediately upon submission
+ * - 'delay': Display Thank You message and countdown timer, then auto-redirect
+ * - 'button': Display Thank You message with a CTA button that redirects on click
+ */
+export type RedirectMode = 'none' | 'immediate' | 'delay' | 'button';
+
+/**
+ * Presentation style when the form is opened inside a popup modal:
+ * - 'modal': Keep Thank You view inside the same modal
+ * - 'page': Navigate/redirect host page to a full standalone Thank You page
+ */
+export type ThankYouPresentation = 'modal' | 'page';
+
+/**
+ * Post-Submission Thank You Page & Redirection Configuration
+ * Fully backward-compatible with legacy `{ type: 'message' | 'redirect', value: string }` structures.
+ */
+export interface FormSuccessBehavior {
+  /** Legacy fallback fields for zero-downtime backward compatibility */
+  type?: 'message' | 'redirect';
+  value?: string;
+
+  /** Comprehensive Thank You & Redirection Schema */
+  thankYouTitle?: string; // Custom header (default: "Thank You!")
+  thankYouMessage?: string; // Custom body description
+  presentation?: ThankYouPresentation; // 'modal' (same modal) | 'page' (standalone page)
+  redirectMode?: RedirectMode; // 'none' | 'immediate' | 'delay' | 'button'
+  redirectUrl?: string; // Target URL (internal path or external URL)
+  redirectDelaySeconds?: number; // Countdown seconds for 'delay' mode (default: 5)
+  redirectButtonText?: string; // Label for button in 'button' mode (default: "Continue")
+  preserveTrackingParams?: boolean; // Forward captured tracking codes to redirectUrl (default: true)
+}
+
+/**
  * Form Builder Data Models
  */
 export interface Form {
@@ -4038,10 +4074,7 @@ export interface Form {
   contactScope?: 'institution' | 'family' | 'person'; // Only populated if bound
   fields: FormFieldInstance[];
   theme: FormThemeConfig;
-  successBehavior: {
-    type: 'message' | 'redirect';
-    value: string; // The message text or redirect URL
-  };
+  successBehavior: FormSuccessBehavior;
   actions: FormSubmissionActions;
   status: 'draft' | 'published' | 'archived';
   submissionCount: number;
