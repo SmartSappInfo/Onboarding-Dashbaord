@@ -56,8 +56,6 @@ describe('Automation Step Logger', () => {
         durationMs: 100,
         metadata: { actionType: 'SEND_MESSAGE' },
       },
-      currentNodeId: 'node-action-1',
-      currentNodeLabel: 'Send email',
     });
   });
 
@@ -97,8 +95,35 @@ describe('Automation Step Logger', () => {
           resumedAt: '2026-06-07T04:00:00.000Z',
         },
       },
-      currentNodeId: 'node-delay-1',
-      currentNodeLabel: 'Wait 15m',
+    });
+  });
+
+  it('updates currentNodeId and currentNodeLabel when logging a wait step', async () => {
+    mockGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ steps: {} }),
+    });
+    mockUpdate.mockResolvedValue(undefined);
+
+    await logStepExecution('run-1', {
+      nodeId: 'node-delay-2',
+      nodeType: 'delayNode',
+      nodeLabel: 'Wait 1h',
+      status: 'waiting',
+      executedAt: '2026-06-07T01:00:00.000Z',
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith({
+      'steps.node-delay-2': {
+        nodeId: 'node-delay-2',
+        nodeType: 'delayNode',
+        nodeLabel: 'Wait 1h',
+        status: 'waiting',
+        executedAt: '2026-06-07T01:00:00.000Z',
+        metadata: {},
+      },
+      currentNodeId: 'node-delay-2',
+      currentNodeLabel: 'Wait 1h',
     });
   });
 

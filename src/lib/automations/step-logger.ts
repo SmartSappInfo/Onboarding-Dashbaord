@@ -64,9 +64,12 @@ export async function logStepExecution(
     };
 
     // Track the contact's current position for the Activity Log.
-    // Write on success (completed step) and waiting (delay node) so the
-    // log always reflects the last meaningful node the contact reached.
-    if (entry.status === 'success' || entry.status === 'waiting') {
+    // CAUTION: Only write on status === 'waiting' (which denotes non-transient holding steps
+    // like delay/wait nodes). Transient steps (e.g. action nodes, condition/logic splits) execute
+    // synchronously and should NOT update the current position. This prevents contacts from being
+    // listed as waiting inside action or logic nodes. Error execution handlers (like traverse.ts)
+    // will explicitly overwrite these fields if a failure occurs at a transient step.
+    if (entry.status === 'waiting') {
       updatePayload['currentNodeId'] = entry.nodeId;
       updatePayload['currentNodeLabel'] = entry.nodeLabel;
     }
