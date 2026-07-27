@@ -119,13 +119,20 @@ export default function ShareEmbedDialog({
 <div id="smartsapp-modal-${uniqueId}" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 999999; padding: 16px; opacity: 0; transition: opacity 0.3s ease;">
   <div style="position: relative; width: 100%; max-width: 600px; height: 80%; max-height: 700px; background: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); transform: scale(0.95); transition: transform 0.3s ease; display: flex; flex-direction: column;">
     <button onclick="closeSmartSappModal_${uniqueId}()" style="position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); background: #ffffff; color: #64748b; font-size: 20px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); z-index: 10;" aria-label="Close">&times;</button>
-    <iframe src="${safeUrl}" style="width: 100%; flex: 1; border: none; background: transparent;"></iframe>
+    <iframe id="smartsapp-iframe-${uniqueId}" src="${safeUrl}" style="width: 100%; flex: 1; border: none; background: transparent;"></iframe>
   </div>
 </div>
 
 <script>
   function openSmartSappModal_${uniqueId}() {
     var m = document.getElementById('smartsapp-modal-${uniqueId}');
+    var iframe = document.getElementById('smartsapp-iframe-${uniqueId}');
+    if (iframe && window.location.search && !iframe.getAttribute('data-params-appended')) {
+      var currentSrc = iframe.src;
+      var joiner = currentSrc.indexOf('?') !== -1 ? '&' : '?';
+      iframe.src = currentSrc + joiner + window.location.search.substring(1);
+      iframe.setAttribute('data-params-appended', 'true');
+    }
     m.style.display = 'flex';
     setTimeout(function() {
       m.style.opacity = '1';
@@ -138,6 +145,14 @@ export default function ShareEmbedDialog({
     m.firstElementChild.style.transform = 'scale(0.95)';
     setTimeout(function() { m.style.display = 'none'; }, 300);
   }
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'smartsapp:redirect') {
+      closeSmartSappModal_${uniqueId}();
+      if (e.data.url && e.data.presentation === 'page') {
+        window.location.href = e.data.url;
+      }
+    }
+  });
 </script>`;
     }
 
@@ -150,13 +165,20 @@ export default function ShareEmbedDialog({
   <div style="padding: 16px; display: flex; justify-content: flex-start; background: #ffffff; position: absolute; top: 0; left: 0; right: 0; height: 60px; z-index: 10;">
     <button onclick="closeSmartSappDrawer_${uniqueId}()" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); background: #ffffff; color: #64748b; font-size: 20px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04);" aria-label="Close">&times;</button>
   </div>
-  <iframe src="${safeUrl}" style="width: 100%; flex: 1; border: none; background: transparent; padding-top: 60px;"></iframe>
+  <iframe id="smartsapp-drawer-iframe-${uniqueId}" src="${safeUrl}" style="width: 100%; flex: 1; border: none; background: transparent; padding-top: 60px;"></iframe>
 </div>
 
 <script>
   function openSmartSappDrawer_${uniqueId}() {
     var o = document.getElementById('smartsapp-drawer-overlay-${uniqueId}');
     var d = document.getElementById('smartsapp-drawer-${uniqueId}');
+    var iframe = document.getElementById('smartsapp-drawer-iframe-${uniqueId}');
+    if (iframe && window.location.search && !iframe.getAttribute('data-params-appended')) {
+      var currentSrc = iframe.src;
+      var joiner = currentSrc.indexOf('?') !== -1 ? '&' : '?';
+      iframe.src = currentSrc + joiner + window.location.search.substring(1);
+      iframe.setAttribute('data-params-appended', 'true');
+    }
     o.style.display = 'block';
     d.style.display = 'block';
     setTimeout(function() {
@@ -174,6 +196,14 @@ export default function ShareEmbedDialog({
       d.style.display = 'none';
     }, 350);
   }
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'smartsapp:redirect') {
+      closeSmartSappDrawer_${uniqueId}();
+      if (e.data.url && e.data.presentation === 'page') {
+        window.location.href = e.data.url;
+      }
+    }
+  });
 </script>`;
     }
 
