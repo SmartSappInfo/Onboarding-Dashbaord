@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useForm, Controller, useWatch, type Control, type FieldErrors, type FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addDoc, collection, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
@@ -159,7 +159,7 @@ const generateSchema = (elements: SurveyElement[]) => {
     return z.object(baseSchemaObject);
 };
 
-const isValueEmpty = (value: any, questionType: string, allowOther?: boolean): boolean => {
+const isValueEmpty = (value: unknown, questionType: string, allowOther?: boolean): boolean => {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
@@ -364,8 +364,8 @@ const ElementRenderer = ({
     simulatedValues
 }: { 
     element: SurveyElement; 
-    control: any, 
-    errors: any; 
+    control: Control<FieldValues>; 
+    errors: FieldErrors<FieldValues>; 
     isVisible: boolean; 
     isRequired: boolean; 
     surveyId: string; 
@@ -393,7 +393,7 @@ const ElementRenderer = ({
         const textAlign = question.style?.textAlign || 'left';
         const isTextInput = ['text', 'email', 'phone', 'number', 'link'].includes(question.type);
         
-        const handleValueChange = (val: any, onChange: (v: any) => void) => {
+        const handleValueChange = (val: unknown, onChange: (v: unknown) => void) => {
             onChange(val);
             clearError(question.id);
             if (question.autoAdvance && onAutoAdvance && (question.type === 'multiple-choice' || question.type === 'yes-no')) {
@@ -762,7 +762,7 @@ const ElementRenderer = ({
     }
 }
 
-const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: any): boolean => {
+const evaluateCondition = (answer: unknown, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: unknown): boolean => {
     const strAnswer = String(answer ?? '');
     switch (operator) {
         case 'isEqualTo': return strAnswer === String(targetValue);
@@ -1142,7 +1142,7 @@ export default function SurveyForm({
         return true;
     }, [currentPageIndex, pages.length, isPageVisible]);
 
-    const calculateScore = (data: any) => {
+    const calculateScore = (data: Record<string, unknown>) => {
         if (!survey.scoringEnabled) return undefined;
         let total = 0;
         survey.elements.filter(isQuestion).forEach(q => {
@@ -1172,7 +1172,7 @@ export default function SurveyForm({
         return [...survey.resultRules].sort((a, b) => a.priority - b.priority).find(rule => score >= rule.minScore && score <= rule.maxScore);
     };
 
-    const validateAllRequired = (data: any) => {
+    const validateAllRequired = (data: Record<string, unknown>) => {
         const missing: { id: string, label: string, pageIndex: number }[] = [];
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
@@ -1464,8 +1464,8 @@ export default function SurveyForm({
                         const res = await triggerSurveyWebhook(survey.webhookId!, payload);
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('webhook', 'success');
-                    } catch (e: any) {
-                        updateAutomationStatus('webhook', 'failed', e.message);
+                    } catch (e: unknown) {
+                        updateAutomationStatus('webhook', 'failed', (e as Error).message);
                     }
                 };
                 automationPromises.push(webhookTask());
@@ -1487,8 +1487,8 @@ export default function SurveyForm({
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('email_ack', 'success');
-                    } catch (e: any) {
-                        updateAutomationStatus('email_ack', 'failed', e.message);
+                    } catch (e: unknown) {
+                        updateAutomationStatus('email_ack', 'failed', (e as Error).message);
                     }
                 };
                 automationPromises.push(emailTask());
@@ -1510,8 +1510,8 @@ export default function SurveyForm({
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('sms_ack', 'success');
-                    } catch (e: any) {
-                        updateAutomationStatus('sms_ack', 'failed', e.message);
+                    } catch (e: unknown) {
+                        updateAutomationStatus('sms_ack', 'failed', (e as Error).message);
                     }
                 };
                 automationPromises.push(smsTask());
@@ -1531,8 +1531,8 @@ export default function SurveyForm({
                             variables: { ...variables, event_type: 'Survey Completion' }
                         });
                         updateAutomationStatus('admin_alert', 'success');
-                    } catch (e: any) {
-                        updateAutomationStatus('admin_alert', 'failed', e.message);
+                    } catch (e: unknown) {
+                        updateAutomationStatus('admin_alert', 'failed', (e as Error).message);
                     }
                 };
                 automationPromises.push(adminTask());
@@ -1573,13 +1573,14 @@ export default function SurveyForm({
             }
             setIsSubmitting(false);
 
-        } catch (error: any) {
-            updateAutomationStatus('db', 'failed', error.message);
+        } catch (error: unknown) {
+            const err = error as Error;
+            updateAutomationStatus('db', 'failed', err.message);
             console.error("Submission failed:", error);
             
             // Emit permission error only if it's likely a real permission issue, 
             // otherwise emit a generic submission error.
-            if (error.message?.includes('permission') || error.message?.includes('denied')) {
+            if (err.message?.includes('permission') || err.message?.includes('denied')) {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({ 
                     path: `surveys/${survey.id}/responses`, 
                     operation: 'create', 
@@ -1837,9 +1838,13 @@ export default function SurveyForm({
                                 </div>
                             )}
                             
-                            
-                             <Card className="border-t-4 border-t-primary shadow-2xl rounded-2xl overflow-hidden bg-card text-foreground">
-                                <CardContent className="p-6 sm:p-8 space-y-6 sm:space-y-8 text-left">
+                            {/* 
+                               Card Container Styling:
+                               When embedded (isEmbedded === true), render with transparent background, no side borders, and zero extra padding
+                               so the survey blends seamlessly into host page builder containers or modal dialogs without solid dark box overlays.
+                             */}
+                             <Card className={cn("border-t-4 border-t-primary rounded-2xl overflow-hidden transition-all duration-300", isEmbedded ? "bg-transparent border-x-0 border-b-0 shadow-none p-0" : "bg-card shadow-2xl text-foreground")}>
+                                <CardContent className={cn("space-y-6 sm:space-y-8 text-left", isEmbedded ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {
                                             if (el.id === pageSection?.id) return null;
