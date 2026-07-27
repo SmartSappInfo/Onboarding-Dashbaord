@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { normalizeFormEntityCapture } from '../tracking-utils';
 import type { FormSubmissionActions } from '../types';
 

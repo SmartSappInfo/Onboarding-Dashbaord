@@ -240,33 +240,6 @@ export async function toggleFormStatusAction(id: string, newStatus: 'published' 
 }
 
 /**
- * Updates an existing form definition.
- */
-export async function updateFormAction(formId: string, data: Partial<Form>, userId: string, workspaceId: string, organizationId?: string) {
-  try {
-    // 0. Permission Check
-    const allowed = await canUser(userId, workspaceId, 'manage_settings', organizationId);
-    if (!allowed) throw new Error('Unauthorized: Missing manage_settings permission');
-
-    const updatePayload: Record<string, any> = {
-      ...data,
-      updatedAt: FieldValue.serverTimestamp(),
-    };
-
-    delete updatePayload.id; // Protect ID mutation
-    delete updatePayload.createdAt;
-    delete updatePayload.submissionCount;
-
-    await adminDb.collection('forms').doc(formId).update(updatePayload);
-    revalidatePath(REVALIDATION_PATH);
-    return { success: true };
-  } catch (error: any) {
-    console.error('Error updating form:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
  * Processes a form submission from the public renderer or campaign pages.
  * Handles persistence, entity binding, tagging, and global automation triggers.
  */
