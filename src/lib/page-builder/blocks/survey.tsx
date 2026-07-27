@@ -71,6 +71,7 @@ registerBlock({
             buttonText={props.buttonText}
             buttonStyle={props.buttonStyle}
             primaryColor={ctx.theme.colors.primary}
+            themeMode={ctx.themeMode || 'light'}
           />
         );
       }

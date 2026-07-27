@@ -20,6 +20,11 @@ interface EmbeddedSurveyProps {
   buttonStyle?: 'primary' | 'secondary' | 'glass' | 'glow';
   primaryColor?: string;
   resultMode?: 'modal' | 'parent';
+  /**
+   * Theme mode inherited from the host page or page builder context ('light' | 'dark').
+   * Passed as a query parameter (&theme=...) to the iframe survey to ensure zero FOUC and perfect visual match.
+   */
+  themeMode?: 'light' | 'dark';
 }
 
 export function EmbeddedSurvey({ 
@@ -36,7 +41,8 @@ export function EmbeddedSurvey({
   buttonText = 'Start Survey',
   buttonStyle = 'primary',
   primaryColor = '#3B5FFF',
-  resultMode
+  resultMode,
+  themeMode
 }: EmbeddedSurveyProps) {
   const [size, setSize] = useState({ height: 600, width: 512 });
 
@@ -76,20 +82,22 @@ export function EmbeddedSurvey({
 
   if (displayMode === 'inline' || isInModal) {
     const trackingStr = getTrackingQueryStr();
-    const embedUrl = `/surveys/${surveyId}?embed=true${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
+    const themeStr = themeMode ? `&theme=${encodeURIComponent(themeMode)}` : '';
+    const embedUrl = `/surveys/${surveyId}?embed=true${themeStr}${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
     return (
       <div 
         className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
         style={{
           height: isInModal ? `${size.height}px` : '600px',
           maxHeight: isInModal ? '85vh' : '100%',
-          overflowY: isInModal ? 'auto' : 'hidden'
+          overflowY: isInModal ? 'auto' : 'hidden',
+          backgroundColor: 'transparent'
         }}
       >
         <iframe
           src={embedUrl}
           className="w-full flex-grow border-0 bg-transparent"
-          style={{ height: '100%' }}
+          style={{ height: '100%', background: 'transparent' }}
           title="Embedded Survey"
           allow="geolocation; microphone; camera"
         />

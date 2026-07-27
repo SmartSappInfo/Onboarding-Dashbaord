@@ -792,6 +792,7 @@ export default function PublicPageClient({
                             onClose={() => setModalState(null)} 
                             isInModal={true} 
                             resultMode={modalState.resultMode}
+                            themeMode={isDarkTheme ? 'dark' : 'light'}
                         />
                     )}
                     {modalState?.type === 'meeting' && page && (
