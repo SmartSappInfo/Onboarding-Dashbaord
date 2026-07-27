@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { submitStandaloneFormAction } from '@/lib/form-actions';
 import { FormView, type FormFieldDef } from './FormView';
 import type { AppField, FormFieldInstance } from '@/lib/types';
+import { extractTrackingParams, appendTrackingParams } from '@/lib/tracking-utils';
 
 interface StandaloneForm {
   title: string;
@@ -122,32 +123,25 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
         fields={resolvedFields}
         submitLabel={form.settings?.submitButtonLabel || 'Submit'}
         onSubmit={async (data) => {
-          // Retrieve stored UTM parameters from sessionStorage
-          const storedUtm = typeof window !== 'undefined' ? sessionStorage.getItem(`utm_${pageId}`) : null;
-          let utmData: Record<string, string> | null = null;
-          if (storedUtm) {
-            try {
-              utmData = JSON.parse(storedUtm);
-            } catch (e) {
-              console.error('Failed to parse UTM data:', e);
-            }
-          }
-          
-          // Pass UTM data as metadata
-          const metadata: Record<string, string> = { sourcePageId: pageId || '' };
-          if (utmData) {
-            metadata.utmSource = utmData.source || '';
-            metadata.utmMedium = utmData.medium || '';
-            metadata.utmCampaign = utmData.campaign || '';
-            metadata.utmTerm = utmData.term || '';
-            metadata.utmContent = utmData.content || '';
-          }
+          // Extract tracking parameters from URL, referrer, and sessionStorage
+          const extractedTracking = extractTrackingParams();
+          const metadata: Record<string, string> = {
+            sourcePageId: pageId || '',
+            ...extractedTracking,
+          };
 
           const res = await submitStandaloneFormAction(formId, data, workspaceId, organizationId, metadata);
           if (res.success) {
             setSubmitted(true);
-            if (!isInModal && form.settings?.redirectUrl) {
-              setTimeout(() => { window.location.href = form.settings!.redirectUrl!; }, 2000);
+            if (form.settings?.redirectUrl) {
+              const targetUrl = appendTrackingParams(form.settings.redirectUrl, extractedTracking);
+              if (isInModal) {
+                if (typeof window !== 'undefined') {
+                  window.parent.postMessage({ type: 'smartsapp:redirect', url: targetUrl }, '*');
+                }
+              } else {
+                setTimeout(() => { window.location.href = targetUrl; }, 1500);
+              }
             }
           } else {
             toast({ title: 'Error', description: res.error, variant: 'destructive' });

@@ -17,6 +17,8 @@ import type { OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
 
+import { extractTrackingParams } from '@/lib/tracking-utils';
+
 interface ResolvedField extends FormFieldInstance {
   fieldDefinition: AppField;
 }
@@ -38,9 +40,15 @@ export default function FormRenderer({
 }: FormRendererProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trackingParams, setTrackingParams] = useState<Record<string, string>>({});
 
   // Auto-report iframe height if embedded
   useIframeHeightReporter(form.slug);
+
+  // Extract tracking parameters from URL/referrer/sessionStorage on mount
+  useEffect(() => {
+    setTrackingParams(extractTrackingParams());
+  }, []);
 
   // 1. Build Dynamic Zod Schema
   const schemaObject: Record<string, any> = {};
@@ -97,6 +105,7 @@ export default function FormRenderer({
         formId: form.id,
         data,
         entityId,
+        metadata: trackingParams,
       });
 
       if (result.success) {
@@ -113,7 +122,14 @@ export default function FormRenderer({
   };
 
   if (isSubmitted) {
-    return <FormSuccessScreen form={form} orgBranding={orgBranding} />;
+    return (
+      <FormSuccessScreen 
+        form={form} 
+        orgBranding={orgBranding} 
+        trackingParams={trackingParams}
+        isInModal={isEmbed}
+      />
+    );
   }
 
   // 4. Styles based on Theme
