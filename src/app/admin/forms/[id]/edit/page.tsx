@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { doc, collection, query, where, orderBy, updateDoc, addDoc } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions, SeoConfig, UserProfile } from '@/lib/types';
+import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions, SeoConfig, UserProfile, FormEntityCaptureSettings } from '@/lib/types';
 import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { useToast } from '@/hooks/use-toast';

@@ -958,6 +958,7 @@ export default function SurveyForm({
     const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const isEmbedded = searchParams?.get('embed') === 'true';
     const { toast } = useToast();
 
     const interpolateText = React.useCallback((text: string | undefined | null): string => {
@@ -1142,7 +1143,7 @@ export default function SurveyForm({
         return true;
     }, [currentPageIndex, pages.length, isPageVisible]);
 
-    const calculateScore = (data: Record<string, unknown>) => {
+    const calculateScore = (data: Record<string, any>) => {
         if (!survey.scoringEnabled) return undefined;
         let total = 0;
         survey.elements.filter(isQuestion).forEach(q => {
@@ -1172,7 +1173,7 @@ export default function SurveyForm({
         return [...survey.resultRules].sort((a, b) => a.priority - b.priority).find(rule => score >= rule.minScore && score <= rule.maxScore);
     };
 
-    const validateAllRequired = (data: Record<string, unknown>) => {
+    const validateAllRequired = (data: Record<string, any>) => {
         const missing: { id: string, label: string, pageIndex: number }[] = [];
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
@@ -1589,7 +1590,7 @@ export default function SurveyForm({
             } else {
                 toast({
                     title: "Submission Error",
-                    description: error.message || "Something went wrong while saving your response. Please try again.",
+                    description: err.message || "Something went wrong while saving your response. Please try again.",
                     variant: "destructive"
                 });
             }
