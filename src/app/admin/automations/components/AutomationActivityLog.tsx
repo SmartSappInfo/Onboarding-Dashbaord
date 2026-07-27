@@ -157,6 +157,24 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const confirm = useConfirm();
   const { activeWorkspaceId } = useWorkspace();
 
+  const getVisualStepNumberForTable = React.useCallback((nodeId: string): number | null => {
+    const sortedNonTriggerNodes = [...nodes]
+      .filter((n) => n.type !== 'triggerNode')
+      .sort((a, b) => {
+        const ay = typeof a.position?.y === 'number' ? a.position.y : 0;
+        const by = typeof b.position?.y === 'number' ? b.position.y : 0;
+        const ax = typeof a.position?.x === 'number' ? a.position.x : 0;
+        const bx = typeof b.position?.x === 'number' ? b.position.x : 0;
+        if (Math.abs(ay - by) < 5) {
+          return ax - bx;
+        }
+        return ay - by;
+      });
+
+    const idx = sortedNonTriggerNodes.findIndex((n) => n.id === nodeId);
+    return idx !== -1 ? idx + 1 : null;
+  }, [nodes]);
+
   const [entityNames, setEntityNames] = React.useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -867,11 +885,20 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
             </div>
 
             {/* Current Step */}
-            {selectedRun.currentNodeLabel && (
+            {(selectedRun.currentNodeId || selectedRun.currentNodeLabel) && (
               <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2">
                 <div className={cn('h-2 w-2 rounded-full', statusCfg.color, selectedRun.status === 'running' && 'animate-pulse')} />
                 <span className="text-[10px] font-bold text-muted-foreground">Current Step:</span>
-                <span className="text-xs font-bold text-foreground">{selectedRun.currentNodeLabel}</span>
+                <span className="text-xs font-bold text-foreground">
+                  {(() => {
+                    if (!selectedRun.currentNodeId) return selectedRun.currentNodeLabel || '—';
+                    const node = nodes.find(n => n.id === selectedRun.currentNodeId);
+                    if (!node) return selectedRun.currentNodeLabel || '—';
+                    const stepNum = getVisualStepNumberForTable(selectedRun.currentNodeId);
+                    const label = (node.data?.label as string) || node.type || 'Step';
+                    return stepNum ? `${label} (Step #${stepNum})` : label;
+                  })()}
+                </span>
               </div>
             )}
 
@@ -1155,7 +1182,14 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                     </td>
                     <td className="px-3 py-2.5">
                       <span className="text-[10px] font-medium text-foreground/70">
-                        {run.currentNodeLabel || '—'}
+                        {(() => {
+                          if (!run.currentNodeId) return run.currentNodeLabel || '—';
+                          const node = nodes.find(n => n.id === run.currentNodeId);
+                          if (!node) return run.currentNodeLabel || '—';
+                          const stepNum = getVisualStepNumberForTable(run.currentNodeId);
+                          const label = (node.data?.label as string) || node.type || 'Step';
+                          return stepNum ? `${label} (Step #${stepNum})` : label;
+                        })()}
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
