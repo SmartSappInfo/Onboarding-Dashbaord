@@ -17,10 +17,10 @@ import { updateFormAction } from '@/lib/forms-actions';
 import { useFormHistory } from '@/hooks/use-form-history';
 import FieldsSidebar, { SYSTEM_CONSTANT_FIELDS } from './components/FieldsSidebar';
 import PropertiesSidebar from './components/PropertiesSidebar';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { createTagAction } from '@/lib/tag-actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
+import { normalizeSuccessBehavior } from '@/lib/tracking-utils';
+import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link } from 'lucide-react';
 import BuilderCanvas from './components/BuilderCanvas';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
@@ -163,6 +163,7 @@ export default function EditFormPage() {
   const lastSavedRevisionRef = React.useRef<number>(0);
   const [isPendingSave, startSaveTransition] = React.useTransition();
   const [isShareOpen, setIsShareOpen] = React.useState(false);
+  const [isLinkPickerOpen, setIsLinkPickerOpen] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -881,39 +882,6 @@ export default function EditFormPage() {
                       </CardContent>
                     </Card>
 
-                    {/* Success Behavior */}
-                    <Card className="rounded-2xl border border-border shadow-sm bg-card">
-                      <CardHeader>
-                        <CardTitle className="text-base font-semibold">After Submission</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4 text-left">
-                        <Select
-                          value={formData.successBehavior?.type || 'message'}
-                          onValueChange={v => updateField('successBehavior', { type: v as any, value: formData.successBehavior?.value || '' })}
-                        >
-                          <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="message">Show Thank You Message</SelectItem>
-                            <SelectItem value="redirect">Redirect to URL</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {formData.successBehavior?.type === 'message' ? (
-                          <Textarea
-                            value={formData.successBehavior?.value || ''}
-                            onChange={e => updateField('successBehavior', { ...formData.successBehavior!, value: e.target.value })}
-                            placeholder="Thank you for your submission!"
-                            className="rounded-xl min-h-[60px] resize-none bg-muted/20 border-none"
-                          />
-                        ) : (
-                          <Input
-                            value={formData.successBehavior?.value || ''}
-                            onChange={e => updateField('successBehavior', { ...formData.successBehavior!, value: e.target.value })}
-                            placeholder="https://example.com/thank-you"
-                            className="h-11 rounded-xl bg-muted/20 border-none"
-                          />
-                        )}
-                      </CardContent>
-                    </Card>
                   </div>
                 </div>
               </motion.div>
@@ -1042,9 +1010,300 @@ export default function EditFormPage() {
             )}
 
             {/* ── Step 3: Actions ── */}
-            {/* ── Step 3: Actions ── */}
             {step === 3 && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                {/* ── 1. Thank You Page & Post-Submission Redirection (First Configuration on Actions) ── */}
+                <Card className="rounded-2xl border border-border/80 shadow-sm bg-card overflow-hidden">
+                  <CardHeader className="bg-muted/10 border-b border-border/40 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base font-semibold flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          Thank You Page & Post-Submission Redirection
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Configure what respondents see or where they get redirected after submitting this form.
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] font-mono uppercase bg-primary/5 text-primary border-primary/20">
+                        First Action
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6 pt-6 text-left">
+                    {/* Presentation Location (Modal Behavior) */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 ml-1">
+                        <Layout className="h-3.5 w-3.5 text-primary" /> Modal Presentation Location
+                      </Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = normalizeSuccessBehavior(formData.successBehavior);
+                            updateField('successBehavior', { ...current, presentation: 'modal' });
+                          }}
+                          className={cn(
+                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background',
+                            (formData.successBehavior?.presentation || 'modal') === 'modal'
+                              ? 'border-primary ring-2 ring-primary/10 shadow-sm'
+                              : 'border-border/60 hover:border-primary/40'
+                          )}
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                            <Layout className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold">Open in Same Modal</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                              Keep the thank you screen/redirect inside the existing popup modal container.
+                            </p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = normalizeSuccessBehavior(formData.successBehavior);
+                            updateField('successBehavior', { ...current, presentation: 'page' });
+                          }}
+                          className={cn(
+                            'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background',
+                            formData.successBehavior?.presentation === 'page'
+                              ? 'border-primary ring-2 ring-primary/10 shadow-sm'
+                              : 'border-border/60 hover:border-primary/40'
+                          )}
+                        >
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                            <ExternalLink className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold">Open as Standalone Page</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                              Close the popup modal and open/navigate host page to a full standalone page.
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Redirection Mode Options */}
+                    <div className="space-y-2 pt-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 ml-1">
+                        <Zap className="h-3.5 w-3.5 text-primary" /> Redirection & Completion Behavior
+                      </Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          {
+                            mode: 'none' as const,
+                            title: 'Show Thank You Message Only',
+                            desc: 'Display thank you message without auto-redirecting.',
+                            icon: Check,
+                          },
+                          {
+                            mode: 'immediate' as const,
+                            title: 'Redirect Immediately',
+                            desc: 'Navigate directly to target URL upon submission.',
+                            icon: ExternalLink,
+                          },
+                          {
+                            mode: 'delay' as const,
+                            title: 'Auto-Redirect after Delay',
+                            desc: 'Show message with countdown timer, then disappear/redirect.',
+                            icon: RotateCcw,
+                          },
+                          {
+                            mode: 'button' as const,
+                            title: 'Redirect on Button Click',
+                            desc: 'Show thank you message with an interactive action button.',
+                            icon: ArrowRight,
+                          },
+                        ].map((item) => {
+                          const current = normalizeSuccessBehavior(formData.successBehavior);
+                          const isSelected = current.redirectMode === item.mode;
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.mode}
+                              type="button"
+                              onClick={() => {
+                                updateField('successBehavior', {
+                                  ...current,
+                                  redirectMode: item.mode,
+                                  type: item.mode === 'immediate' ? 'redirect' : 'message',
+                                });
+                              }}
+                              className={cn(
+                                'p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 bg-background active:scale-[0.97]',
+                                isSelected
+                                  ? 'border-primary ring-2 ring-primary/10 shadow-sm'
+                                  : 'border-border/60 hover:border-primary/40'
+                              )}
+                            >
+                              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold">{item.title}</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{item.desc}</p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Thank You Header & Body Content */}
+                    <div className="space-y-4 pt-2 border-t border-border/40">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold ml-1">Thank You Title</Label>
+                        <Input
+                          value={formData.successBehavior?.thankYouTitle ?? 'Thank You!'}
+                          onChange={(e) => {
+                            const current = normalizeSuccessBehavior(formData.successBehavior);
+                            updateField('successBehavior', { ...current, thankYouTitle: e.target.value });
+                          }}
+                          placeholder="Thank You!"
+                          className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold ml-1">Thank You Message</Label>
+                        <Textarea
+                          value={formData.successBehavior?.thankYouMessage ?? formData.successBehavior?.value ?? ''}
+                          onChange={(e) => {
+                            const current = normalizeSuccessBehavior(formData.successBehavior);
+                            updateField('successBehavior', {
+                              ...current,
+                              thankYouMessage: e.target.value,
+                              value: e.target.value,
+                            });
+                          }}
+                          placeholder="Thanks for sharing your contact details. A team member will reach out to you shortly."
+                          className="rounded-xl min-h-[80px] resize-none bg-muted/20 border-none text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Target Link & LinkPicker Integration */}
+                    {normalizeSuccessBehavior(formData.successBehavior).redirectMode !== 'none' && (
+                      <div className="space-y-4 pt-2 border-t border-border/40 animate-in fade-in duration-200">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold ml-1">Target Redirect URL</Label>
+                            <Popover open={isLinkPickerOpen} onOpenChange={setIsLinkPickerOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-[10px] font-bold uppercase tracking-wider rounded-lg gap-1 border-primary/30 text-primary hover:bg-primary/10 active:scale-[0.97]"
+                                >
+                                  <Link className="h-3 w-3" /> Select Workspace Link
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 p-0 border-none shadow-2xl rounded-2xl" align="end">
+                                <LinkPicker
+                                  onSelect={(url) => {
+                                    const current = normalizeSuccessBehavior(formData.successBehavior);
+                                    updateField('successBehavior', {
+                                      ...current,
+                                      redirectUrl: url,
+                                      value: url,
+                                    });
+                                    setIsLinkPickerOpen(false);
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+
+                          <Input
+                            value={formData.successBehavior?.redirectUrl ?? ''}
+                            onChange={(e) => {
+                              const current = normalizeSuccessBehavior(formData.successBehavior);
+                              updateField('successBehavior', {
+                                ...current,
+                                redirectUrl: e.target.value,
+                                value: e.target.value,
+                              });
+                            }}
+                            placeholder="https://example.com/thank-you or /surveys/my-survey"
+                            className="h-11 rounded-xl bg-muted/20 border-none font-mono text-xs"
+                          />
+                        </div>
+
+                        {/* Delay Countdown seconds (for 'delay' mode) */}
+                        {normalizeSuccessBehavior(formData.successBehavior).redirectMode === 'delay' && (
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold ml-1">Redirect Countdown (Seconds)</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={formData.successBehavior?.redirectDelaySeconds ?? 5}
+                              onChange={(e) => {
+                                const current = normalizeSuccessBehavior(formData.successBehavior);
+                                const num = parseInt(e.target.value, 10);
+                                updateField('successBehavior', {
+                                  ...current,
+                                  redirectDelaySeconds: isNaN(num) || num < 1 ? 5 : num,
+                                });
+                              }}
+                              className="h-11 rounded-xl bg-muted/20 border-none w-32 font-bold"
+                            />
+                            <p className="text-[10px] text-muted-foreground ml-1">
+                              The thank you screen will display with a countdown badge before automatically navigating.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Button Label (for 'button' mode) */}
+                        {normalizeSuccessBehavior(formData.successBehavior).redirectMode === 'button' && (
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold ml-1">Redirect Button Label</Label>
+                            <Input
+                              value={formData.successBehavior?.redirectButtonText ?? 'Continue'}
+                              onChange={(e) => {
+                                const current = normalizeSuccessBehavior(formData.successBehavior);
+                                updateField('successBehavior', {
+                                  ...current,
+                                  redirectButtonText: e.target.value,
+                                });
+                              }}
+                              placeholder="Continue to Site"
+                              className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                            />
+                          </div>
+                        )}
+
+                        {/* Preserve Tracking Switch */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="space-y-0.5 ml-1">
+                            <Label className="text-xs font-semibold">Forward Tracking Parameters</Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              Automatically pass UTM parameters, tracking codes, and ref IDs to the redirect URL.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.successBehavior?.preserveTrackingParams !== false}
+                            onCheckedChange={(checked) => {
+                              const current = normalizeSuccessBehavior(formData.successBehavior);
+                              updateField('successBehavior', {
+                                ...current,
+                                preserveTrackingParams: checked,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* ── 2. Tags, Webhooks & Notifications Card ── */}
                 <Card className="rounded-2xl border-none shadow-sm">
                   <CardHeader>
                     <CardTitle className="text-base font-semibold">Post-Submission Actions</CardTitle>
