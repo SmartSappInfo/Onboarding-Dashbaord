@@ -16,7 +16,9 @@ import SaveStatusIndicator, { type SaveStatus } from './components/SaveStatusInd
 import { updateFormAction } from '@/lib/forms-actions';
 import { useFormHistory } from '@/hooks/use-form-history';
 import FieldsSidebar, { SYSTEM_CONSTANT_FIELDS } from './components/FieldsSidebar';
-import PropertiesSidebar from './components/PropertiesSidebar';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { createTagAction } from '@/lib/tag-actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
 import { normalizeSuccessBehavior } from '@/lib/tracking-utils';
