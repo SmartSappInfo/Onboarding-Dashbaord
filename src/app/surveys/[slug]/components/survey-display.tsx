@@ -155,8 +155,26 @@ export default function SurveyDisplay({
     const activeContacts = activeEntity?.contacts || [];
 
     React.useEffect(() => {
+        // 1. Initial theme set from URL query parameter (e.g., &theme=light or &theme=dark)
         if (themeParam === 'dark' || themeParam === 'light') {
             setTheme(themeParam);
+        }
+
+        // 2. Dynamic postMessage theme synchronization from parent host window (e.g. Page Builder theme switch)
+        // Security guard: Validate requested theme strictly against 'light' | 'dark' enum to prevent arbitrary data execution.
+        const handlePostMessage = (event: MessageEvent) => {
+            if (event.data && typeof event.data === 'object') {
+                const type = event.data.type;
+                const requestedTheme = event.data.theme;
+                if ((type === 'theme_change' || type === 'set_theme') && (requestedTheme === 'dark' || requestedTheme === 'light')) {
+                    setTheme(requestedTheme);
+                }
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('message', handlePostMessage);
+            return () => window.removeEventListener('message', handlePostMessage);
         }
     }, [themeParam, setTheme]);
 
@@ -299,7 +317,7 @@ export default function SurveyDisplay({
                         </div>
                     </div>
                 )}
-                 <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
+                 {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />}
                  <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
                         <div className="flex justify-center mb-6">
@@ -413,7 +431,7 @@ export default function SurveyDisplay({
                     </div>
                 </div>
             )}
-            <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
+            {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />}
             <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
                 <div className="max-w-4xl w-full mx-auto px-4">
                     {/* Branding logo and Title are now handled natively inside SurveyForm to support both client-side and studio-preview consistency */}

@@ -343,6 +343,7 @@ export default async function PublicSurveyPage({
         }
         html, body {
             background-color: ${isEmbedded ? 'transparent !important' : 'var(--background)'};
+            background: ${isEmbedded ? 'transparent !important' : 'var(--background)'};
         }
         body {
             font-family: ${brandFont}, sans-serif;
