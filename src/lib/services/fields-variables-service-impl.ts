@@ -282,7 +282,7 @@ export class FieldsVariablesService {
             elements.forEach((el) => {
               if (el && el.id && (el.title || el.text)) {
                 // Determine if it is a question
-                const isQ = 'isRequired' in el || ['text', 'long-text', 'email', 'phone', 'number', 'link', 'yes-no', 'multiple-choice', 'checkboxes'].includes(el.type);
+                const isQ = 'isRequired' in el || ['text', 'long-text', 'email', 'phone', 'number', 'link', 'yes-no', 'multiple-choice', 'checkboxes'].includes(el.type || '');
                 if (isQ) {
                   const plainText = (el.title || el.text || '').replace(/<[^>]*>/gm, '').trim();
                   safePush({
