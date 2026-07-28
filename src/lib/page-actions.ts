@@ -43,6 +43,13 @@ export async function duplicatePageAction(pageId: string, userId: string) {
       slug: newSlug,
       status: 'draft',
       publishedVersionId: null, // New page starts as draft
+      campaignId: null, // Do not carry over campaign connection
+      stats: {
+        views: 0,
+        uniques: 0,
+        conversions: 0,
+        clicks: 0
+      },
       createdBy: userId,
       createdAt: timestamp,
       updatedAt: timestamp

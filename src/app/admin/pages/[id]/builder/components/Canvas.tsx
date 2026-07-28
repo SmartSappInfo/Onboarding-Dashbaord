@@ -657,10 +657,10 @@ function CardNavMenu({ headerSettings, isEditMode, onUpdateHeader, theme }: Card
     const buttons = getNormalizedHeaderButtons(headerSettings);
 
     const handleUpdateButtonLabel = (index: number, newLabel: string) => {
-        if (headerSettings.ctaButtons && headerSettings.ctaButtons.length > 0) {
-            const updatedButtons = [...headerSettings.ctaButtons];
+        if (headerSettings.buttons && headerSettings.buttons.length > 0) {
+            const updatedButtons = [...headerSettings.buttons];
             updatedButtons[index] = { ...updatedButtons[index], label: newLabel };
-            onUpdateHeader?.({ ctaButtons: updatedButtons });
+            onUpdateHeader?.({ buttons: updatedButtons });
         } else {
             onUpdateHeader?.({ ctaText: newLabel });
         }
@@ -1784,10 +1784,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                     const primaryColor = theme?.colors?.primary || '#3B5FFF';
 
                                     const handleUpdateButtonLabel = (index: number, newLabel: string) => {
-                                        if (headerSettings.ctaButtons && headerSettings.ctaButtons.length > 0) {
-                                            const updatedButtons = [...headerSettings.ctaButtons];
+                                        if (headerSettings.buttons && headerSettings.buttons.length > 0) {
+                                            const updatedButtons = [...headerSettings.buttons];
                                             updatedButtons[index] = { ...updatedButtons[index], label: newLabel };
-                                            onUpdateHeader?.({ ctaButtons: updatedButtons });
+                                            onUpdateHeader?.({ buttons: updatedButtons });
                                         } else {
                                             onUpdateHeader?.({ ctaText: newLabel });
                                         }
