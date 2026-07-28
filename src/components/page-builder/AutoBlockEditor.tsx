@@ -160,10 +160,10 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     case 'select':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue /></SelectTrigger>
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
             {field.options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+              <SelectItem key={opt.value} value={opt.value} className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">{opt.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -193,17 +193,17 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       }
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200">
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50">
             <SelectValue placeholder={`Choose a ${field.resource}...`} />
           </SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
             {list.map((r) => (
-              <SelectItem key={r.id} value={r.id} className="text-xs py-1.5 focus:bg-slate-700/50">
+              <SelectItem key={r.id} value={r.id} className="text-xs py-2 text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white cursor-pointer font-medium">
                 <div className="flex flex-col gap-0.5 text-left max-w-[240px]">
                   {/* Escaped label rendering to prevent raw HTML/script leakage */}
-                  <span className="font-semibold text-slate-100 truncate">{r.label}</span>
+                  <span className="font-bold text-slate-100 truncate">{r.label}</span>
                   {r.subLabel && (
-                    <span className="text-[10px] text-slate-400 font-medium truncate">{r.subLabel}</span>
+                    <span className="text-[10px] text-slate-300 font-semibold truncate">{r.subLabel}</span>
                   )}
                 </div>
               </SelectItem>
@@ -217,28 +217,28 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     case 'animation':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="No animation" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
-            <SelectItem value="none" className="text-xs">None</SelectItem>
-            <SelectItem value="fade-in" className="text-xs">Fade In</SelectItem>
-            <SelectItem value="slide-up" className="text-xs">Slide Up</SelectItem>
-            <SelectItem value="slide-down" className="text-xs">Slide Down</SelectItem>
-            <SelectItem value="slide-left" className="text-xs">Slide Left</SelectItem>
-            <SelectItem value="slide-right" className="text-xs">Slide Right</SelectItem>
-            <SelectItem value="zoom-in" className="text-xs">Zoom In</SelectItem>
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="No animation" /></SelectTrigger>
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+            <SelectItem value="none" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">None</SelectItem>
+            <SelectItem value="fade-in" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Fade In</SelectItem>
+            <SelectItem value="slide-up" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Up</SelectItem>
+            <SelectItem value="slide-down" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Down</SelectItem>
+            <SelectItem value="slide-left" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Left</SelectItem>
+            <SelectItem value="slide-right" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Right</SelectItem>
+            <SelectItem value="zoom-in" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Zoom In</SelectItem>
           </SelectContent>
         </Select>
       );
     case 'font-family':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200"><SelectValue placeholder="Default Font" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-800 border-slate-700 text-slate-200">
-            <SelectItem value="heading" className="text-xs">Heading Font</SelectItem>
-            <SelectItem value="body" className="text-xs">Body Font</SelectItem>
-            <SelectItem value="sans" className="text-xs">Sans-Serif</SelectItem>
-            <SelectItem value="serif" className="text-xs">Serif</SelectItem>
-            <SelectItem value="mono" className="text-xs">Monospace</SelectItem>
+          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="Default Font" /></SelectTrigger>
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+            <SelectItem value="heading" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Heading Font</SelectItem>
+            <SelectItem value="body" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Body Font</SelectItem>
+            <SelectItem value="sans" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Sans-Serif</SelectItem>
+            <SelectItem value="serif" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Serif</SelectItem>
+            <SelectItem value="mono" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Monospace</SelectItem>
           </SelectContent>
         </Select>
       );
@@ -303,19 +303,19 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
         {items.map((item, idx) => {
           const isExpanded = expandedIndex === idx;
           return (
-            <div key={asString(item.id) || idx} className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden transition-all duration-200">
+            <div key={asString(item.id) || idx} className="bg-slate-900 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm transition-all duration-200">
               {/* Header Bar */}
               <div 
-                className="flex items-center justify-between p-3 bg-slate-900/40 hover:bg-slate-850/40 cursor-pointer select-none transition-colors"
+                className="flex items-center justify-between p-3 bg-slate-800/90 hover:bg-slate-800 cursor-pointer select-none transition-colors border-b border-slate-700/50"
                 onClick={() => setExpandedIndex(isExpanded ? null : idx)}
               >
                 <div className="flex items-center gap-2">
                   {isExpanded ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                    <ChevronUp className="w-4 h-4 text-slate-200" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                    <ChevronDown className="w-4 h-4 text-slate-200" />
                   )}
-                  <span className="text-[11px] font-bold text-slate-300 truncate max-w-[160px]">
+                  <span className="text-xs font-bold text-slate-100 truncate max-w-[180px]">
                     {getPreviewLabel(item, idx)}
                   </span>
                 </div>
@@ -326,7 +326,7 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
                     e.stopPropagation();
                     removeItem(idx);
                   }} 
-                  className="h-6 w-6 p-0 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
+                  className="h-6 w-6 p-0 text-slate-300 hover:text-red-400 hover:bg-red-500/20 rounded-lg"
                 >
                   <X className="w-3.5 h-3.5" />
                 </Button>

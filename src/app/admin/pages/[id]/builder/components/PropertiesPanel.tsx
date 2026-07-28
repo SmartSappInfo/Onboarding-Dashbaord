@@ -22,7 +22,7 @@ interface PropertiesPanelProps {
   readonly onUpdate: (props: Record<string, unknown>) => void;
 }
 
-const TAB_TRIGGER_CLASS = 'text-[10px] py-1 rounded-md font-bold uppercase tracking-wider data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400';
+const TAB_TRIGGER_CLASS = 'text-[10px] py-1 rounded-md font-bold uppercase tracking-wider text-slate-300 hover:text-slate-100 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400';
 const INPUT_CLASS = 'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
 
 export const PropertiesPanel = React.memo(function PropertiesPanel({
@@ -92,17 +92,17 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
   return (
     <div className="space-y-6 animate-in fade-in duration-300 select-none text-slate-200">
       {/* State Override Selector Controls */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 flex flex-col gap-2 shadow-sm">
         <div className="flex items-center justify-between">
-          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+          <Label className="text-[10px] font-black uppercase text-slate-200 tracking-wider flex items-center gap-1.5">
             <Sliders className="w-3.5 h-3.5 text-emerald-400" />
             Style State Target
           </Label>
-          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider bg-slate-950 border border-slate-850 px-1 rounded select-none">
+          <span className="text-[9px] text-slate-200 font-bold uppercase tracking-wider bg-slate-950 border border-slate-700 px-1.5 py-0.5 rounded select-none">
             {activeState} override
           </span>
         </div>
-        <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-950 rounded-lg">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950 rounded-lg border border-slate-800">
           {(['default', 'hover', 'focus', 'disabled'] as const).map((st) => (
             <button
               key={st}
@@ -111,8 +111,8 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               className={cn(
                 "py-1 text-[9px] font-black uppercase tracking-wider rounded transition-all",
                 activeState === st 
-                  ? "bg-emerald-500/10 text-emerald-400" 
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                  : "text-slate-300 hover:text-white hover:bg-slate-900"
               )}
             >
               {st}

@@ -97,7 +97,7 @@ export function HeaderSettingsControl({
       {page.settings.showHeader && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold text-slate-500 uppercase">Header Preset Layout</Label>
+            <Label className="text-[10px] font-bold text-slate-200 uppercase">Header Preset Layout</Label>
             <select
               value={header.preset}
               onChange={(e) => onUpdateHeader({ preset: e.target.value as PageHeaderSettings['preset'] })}
@@ -140,7 +140,7 @@ export function HeaderSettingsControl({
             {header.showCta && (
               <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg space-y-3 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Action Buttons</Label>
+                  <Label className="text-[10px] font-bold text-slate-200 uppercase">Action Buttons</Label>
                   {normalizedButtons.length < 3 && (
                     <button
                       type="button"
@@ -189,7 +189,7 @@ export function HeaderSettingsControl({
 
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Button Label</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Button Label</Label>
                             <input
                               type="text"
                               value={btn.label}
@@ -202,7 +202,7 @@ export function HeaderSettingsControl({
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Button Style</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Button Style</Label>
                             <select
                               value={btn.style || 'primary'}
                               onChange={(e) => {
@@ -220,7 +220,7 @@ export function HeaderSettingsControl({
 
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Link Type</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Link Type</Label>
                             <select
                               value={btn.linkType || 'url'}
                               onChange={(e) => {
@@ -244,7 +244,7 @@ export function HeaderSettingsControl({
 
                           {btn.linkType === 'action' && (
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
+                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Overlay Action</Label>
                               <select
                                 value={btn.action || ''}
                                 onChange={(e) => {
@@ -270,7 +270,7 @@ export function HeaderSettingsControl({
                         {btn.linkType === 'url' && (
                           <div className="space-y-1 animate-in fade-in duration-200">
                             <div className="flex items-center justify-between">
-                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Redirect URL Link</Label>
+                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Redirect URL Link</Label>
                               <Popover
                                 open={openLinkPickerId === `btn-${btn.id}`}
                                 onOpenChange={(open) => setOpenLinkPickerId(open ? `btn-${btn.id}` : null)}
@@ -309,7 +309,7 @@ export function HeaderSettingsControl({
 
                         {btn.linkType === 'scroll' && (
                           <div className="space-y-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Section</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Section</Label>
                             <select
                               value={btn.targetSectionId || ''}
                               onChange={(e) => {
@@ -329,7 +329,7 @@ export function HeaderSettingsControl({
 
                         {btn.linkType === 'action' && btn.action === 'open_modal_survey' && (
                           <div className="space-y-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Survey Result Display</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Survey Result Display</Label>
                             <select
                               value={btn.surveyResultMode || 'modal'}
                               onChange={(e) => {
@@ -347,7 +347,7 @@ export function HeaderSettingsControl({
                         {/* Action Target Selector Trigger Button */}
                         {btn.linkType === 'action' && btn.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(btn.action) && (
                           <div className="space-y-1 pt-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Resource</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Resource</Label>
                             <button
                               type="button"
                               onClick={() => setActiveTargetSelector({ type: 'button', id: btn.id })}
@@ -385,7 +385,7 @@ export function HeaderSettingsControl({
                           </div>
                           {btn.enableTracking !== false && (
                             <div className="space-y-1 animate-in fade-in duration-200">
-                              <Label className="text-[8px] font-bold text-slate-500 uppercase">Custom Tracking Tag / ID (Optional)</Label>
+                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Custom Tracking Tag / ID (Optional)</Label>
                               <input
                                 type="text"
                                 value={btn.trackingId || ''}
@@ -411,7 +411,7 @@ export function HeaderSettingsControl({
             <ToggleRow label="Show Phone Link" checked={!!header.showPhone} onChange={(v) => onUpdateHeader({ showPhone: v })} />
             {header.showPhone && (
               <div className="space-y-1 animate-in fade-in duration-300">
-                <Label className="text-[9px] font-bold text-slate-500 uppercase">Phone Number</Label>
+                <Label className="text-[9px] font-bold text-slate-200 uppercase">Phone Number</Label>
                 <input
                   type="text"
                   value={header.phoneNumber || ''}
@@ -426,7 +426,7 @@ export function HeaderSettingsControl({
           {(header.preset === 'full-nav' || header.preset === 'search-nav' || header.preset === 'card-nav') && (
             <div className="pt-3 border-t border-slate-800/40 space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">Menu Items</Label>
+                <Label className="text-[10px] font-bold text-slate-200 uppercase">Menu Items</Label>
                 <button
                   type="button"
                   onClick={handleAddNavItem}
@@ -453,7 +453,7 @@ export function HeaderSettingsControl({
                       
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Link Text</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Link Text</Label>
                           <input
                             type="text"
                             value={item.label}
@@ -462,7 +462,7 @@ export function HeaderSettingsControl({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Type</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Type</Label>
                           <select
                             value={item.linkType}
                             onChange={(e) => handleUpdateNavItem(item.id, { 
@@ -483,7 +483,7 @@ export function HeaderSettingsControl({
                       {item.linkType === 'url' && (
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <Label className="text-[8px] font-bold text-slate-500 uppercase">URL Link</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">URL Link</Label>
                             <Popover
                               open={openLinkPickerId === `nav-${item.id}`}
                               onOpenChange={(open) => setOpenLinkPickerId(open ? `nav-${item.id}` : null)}
@@ -518,7 +518,7 @@ export function HeaderSettingsControl({
 
                       {item.linkType === 'scroll' && (
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Section</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Section</Label>
                           <select
                             value={item.targetSectionId || ''}
                             onChange={(e) => handleUpdateNavItem(item.id, { targetSectionId: e.target.value })}
@@ -535,7 +535,7 @@ export function HeaderSettingsControl({
 
                       {item.linkType === 'action' && (
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Overlay Action</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Overlay Action</Label>
                           <select
                             value={item.action || ''}
                             onChange={(e) => handleUpdateNavItem(item.id, { action: e.target.value as HeaderNavItem['action'] })}
@@ -552,7 +552,7 @@ export function HeaderSettingsControl({
 
                       {item.linkType === 'action' && item.action === 'open_modal_survey' && (
                         <div className="space-y-1 animate-in fade-in duration-200">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Survey Result Display</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Survey Result Display</Label>
                           <select
                             value={item.surveyResultMode || 'modal'}
                             onChange={(e) => handleUpdateNavItem(item.id, { surveyResultMode: e.target.value as HeaderNavItem['surveyResultMode'] })}
@@ -567,7 +567,7 @@ export function HeaderSettingsControl({
                       {/* Action Target Selector Trigger Button for NavItem */}
                       {item.linkType === 'action' && item.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(item.action) && (
                         <div className="space-y-1 pt-1 animate-in fade-in duration-200">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">Target Resource</Label>
+                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Resource</Label>
                           <button
                             type="button"
                             onClick={() => setActiveTargetSelector({ type: 'navItem', id: item.id })}
@@ -604,7 +604,7 @@ export function HeaderSettingsControl({
                         </div>
                         {item.enableTracking !== false && (
                           <div className="space-y-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-500 uppercase">Custom Tracking Tag / ID (Optional)</Label>
+                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Custom Tracking Tag / ID (Optional)</Label>
                             <input
                               type="text"
                               value={item.trackingId || ''}
