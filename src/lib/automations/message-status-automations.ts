@@ -18,6 +18,13 @@ export interface ExecuteMessageStatusAutomationsInput {
   workspaceId: string;
   userId?: string;
   runId?: string;
+  /**
+   * Organization ID for multi-tenant boundary enforcement.
+   * CAUTION: Must be forwarded to all downstream deal/task creation actions
+   * to prevent cross-tenant data leakage. If omitted, downstream actions
+   * will receive an empty string which is still valid but limits scoping.
+   */
+  organizationId?: string;
   /** Optional message subject line / title for populating deal engagement summary */
   messageSubject?: string | null;
   /** Optional preheader / preview text for populating deal engagement summary */
@@ -54,6 +61,7 @@ export async function executeMessageStatusAutomations(
     workspaceId,
     userId = 'system',
     runId = 'manual',
+    organizationId = '',
     messageSubject,
     messagePreviewText,
   } = input;
@@ -66,11 +74,33 @@ export async function executeMessageStatusAutomations(
   const dedupKey = `${runId}_${nodeId}_${eventStatus}_${entityId}_${effectiveContactId}`.replace(/[/\\#?%]/g, '_');
 
   try {
-    // 1. Atomic Idempotency Check in Firestore
+    // 1. ATOMIC EARLY DEDUPLICATION GUARD
+    // CAUTION: This is the primary concurrency protection for webhook-driven automations.
+    // Firestore's `create()` fails atomically with error code 6 (ALREADY_EXISTS) if the
+    // document already exists. By calling create() BEFORE executing any side effects,
+    // we guarantee exactly-once execution even under rapid concurrent webhook delivery.
+    // DO NOT replace this with get()+set() — that pattern has a race window.
     const dedupRef = adminDb.collection('automation_message_event_executions').doc(dedupKey);
-    const dedupSnap = await dedupRef.get();
-    if (dedupSnap.exists && dedupSnap.data()?.status === 'completed') {
-      return { success: true, executedCount: 0, skippedDuplicate: true };
+    try {
+      await dedupRef.create({
+        status: 'processing',
+        automationId,
+        nodeId,
+        eventStatus,
+        entityId,
+        contactId: effectiveContactId,
+        workspaceId,
+        organizationId,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (createErr: unknown) {
+      // CAUTION: Error code 6 = ALREADY_EXISTS in Firestore/gRPC.
+      // Any other error code is unexpected and should propagate.
+      const errCode = (createErr as { code?: number })?.code;
+      if (errCode === 6) {
+        return { success: true, executedCount: 0, skippedDuplicate: true };
+      }
+      throw createErr;
     }
 
     // 2. Fetch Automation Node Config
@@ -180,10 +210,12 @@ export async function executeMessageStatusAutomations(
                   : '{{entityName}} - Opened Email';
 
                 const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
+                // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
+                // Using '' as fallback is safe but limits cross-org query scoping.
                 await bulkCreateDealsAction({
                   entityIds: [entityId],
                   workspaceId,
-                  organizationId: '',
+                  organizationId,
                   pipelineId: action.pipelineId,
                   stageId: targetStageId,
                   dealNamePattern: dynamicPattern,
@@ -232,10 +264,11 @@ export async function executeMessageStatusAutomations(
               );
 
               const { bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
+              // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
               await bulkCreateTasksAction({
                 entityIds: [entityId],
                 workspaceId,
-                organizationId: '',
+                organizationId,
                 title: resolvedTitle,
                 description: resolvedDesc,
                 priority: 'high',
@@ -270,14 +303,10 @@ export async function executeMessageStatusAutomations(
       }
     }
 
-    // 4. Mark Idempotency Record
-    await dedupRef.set({
-      automationId,
-      nodeId,
-      eventStatus,
-      entityId,
-      contactId: effectiveContactId,
-      workspaceId,
+    // 4. Mark Idempotency Record as completed
+    // CAUTION: This updates the document created by the atomic lock above.
+    // The document already exists from step 1, so we use update() here, not set().
+    await dedupRef.update({
       executedCount,
       status: 'completed',
       executedAt: new Date().toISOString(),

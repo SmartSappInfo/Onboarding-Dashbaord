@@ -203,8 +203,12 @@ async function handleInbound(conn: WhatsAppConnection, ev: InboundMessageEvent) 
 
   // Trigger 'replied' status automations if this inbound reply correlates to an active outbound automation message
   try {
+    // CAUTION: organizationId scoping is critical for multi-tenant isolation.
+    // Without this filter, a reply from phone +1234 could match an outbound message
+    // from a different organization that sent to the same phone number.
     const lastOutboundSnap = await adminDb
       .collection('message_logs')
+      .where('organizationId', '==', conn.organizationId)
       .where('recipient', '==', ev.from)
       .where('direction', '==', 'outbound')
       .orderBy('createdAt', 'desc')
@@ -215,6 +219,8 @@ async function handleInbound(conn: WhatsAppConnection, ev: InboundMessageEvent) 
       const outboundLog = lastOutboundSnap.docs[0].data() as import('@/lib/types').MessageLog;
       if (outboundLog.automationId && outboundLog.nodeId && outboundLog.entityId) {
         const { executeMessageStatusAutomations } = await import('@/lib/automations/message-status-automations');
+        // CAUTION: organizationId MUST be forwarded from the webhook connection context
+        // to enforce multi-tenant boundary in downstream deal/task creation.
         await executeMessageStatusAutomations({
           automationId: outboundLog.automationId,
           nodeId: outboundLog.nodeId,
@@ -223,6 +229,7 @@ async function handleInbound(conn: WhatsAppConnection, ev: InboundMessageEvent) 
           contactId: outboundLog.recipient,
           recipient: outboundLog.recipient,
           workspaceId: outboundLog.workspaceId || outboundLog.workspaceIds?.[0] || 'onboarding',
+          organizationId: conn.organizationId,
           runId: outboundLog.runId,
           messageSubject: outboundLog.subject || outboundLog.title || null,
           messagePreviewText: outboundLog.previewText || null,
@@ -328,24 +335,28 @@ async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
       ev.status === 'failed' ? 'bounced' : null;
 
     if (mappedStatusEvent && log.entityId) {
-      import('@/lib/automations/message-status-automations')
-        .then(({ executeMessageStatusAutomations }) =>
-          executeMessageStatusAutomations({
-            automationId: log.automationId!,
-            nodeId: log.nodeId!,
-            eventStatus: mappedStatusEvent,
-            entityId: log.entityId!,
-            contactId: log.recipient,
-            recipient: log.recipient,
-            workspaceId: log.workspaceId || log.workspaceIds?.[0] || 'onboarding',
-            runId: log.runId,
-            messageSubject: log.subject || log.title || null,
-            messagePreviewText: log.previewText || null,
-          })
-        )
-        .catch((err: unknown) =>
-          console.warn('>>> [WA-WEBHOOK] message status automation execution failed (non-fatal):', err)
-        );
+      // CAUTION: Must use `await` here, not an un-awaited .then() chain.
+      // Inside Next.js after(), un-awaited promises risk being killed by
+      // serverless lambda freeze before the automation completes execution.
+      // organizationId is forwarded from the log document for multi-tenant isolation.
+      try {
+        const { executeMessageStatusAutomations } = await import('@/lib/automations/message-status-automations');
+        await executeMessageStatusAutomations({
+          automationId: log.automationId!,
+          nodeId: log.nodeId!,
+          eventStatus: mappedStatusEvent,
+          entityId: log.entityId!,
+          contactId: log.recipient,
+          recipient: log.recipient,
+          workspaceId: log.workspaceId || log.workspaceIds?.[0] || 'onboarding',
+          organizationId: log.organizationId || conn.organizationId,
+          runId: log.runId,
+          messageSubject: log.subject || log.title || null,
+          messagePreviewText: log.previewText || null,
+        });
+      } catch (autoErr: unknown) {
+        console.warn('>>> [WA-WEBHOOK] message status automation execution failed (non-fatal):', autoErr);
+      }
     }
   }
 

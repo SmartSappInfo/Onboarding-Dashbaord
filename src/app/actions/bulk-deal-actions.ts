@@ -88,20 +88,26 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
         }
       });
 
-      // Fetch initial user deal stats
-      for (const uid of activeEligibleUserIds) {
-        const snap = await adminDb.collection('deals')
-          .where('assignedTo.userId', '==', uid)
-          .where('status', '==', 'open')
-          .get();
-        if (activeStrategy === 'round-robin') {
-          userStats[uid] = snap.size;
-        } else {
-          let totalVal = 0;
-          snap.forEach(d => totalVal += (d.data().value || 0));
-          userStats[uid] = totalVal;
-        }
-      }
+      // Fetch initial user deal stats — parallelized for performance
+      // CAUTION: workspaceId scoping is critical here. Without it, deal counts
+      // from other workspaces inflate the user's load metric, causing unfair
+      // round-robin or value-based assignment skew.
+      await Promise.all(
+        activeEligibleUserIds.map(async (uid: string) => {
+          const snap = await adminDb.collection('deals')
+            .where('assignedTo.userId', '==', uid)
+            .where('workspaceId', '==', workspaceId)
+            .where('status', '==', 'open')
+            .get();
+          if (activeStrategy === 'round-robin') {
+            userStats[uid] = snap.size;
+          } else {
+            let totalVal = 0;
+            snap.forEach(d => totalVal += (d.data().value || 0));
+            userStats[uid] = totalVal;
+          }
+        })
+      );
     }
 
     const now = new Date().toISOString();
