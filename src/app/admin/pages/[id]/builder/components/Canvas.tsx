@@ -999,14 +999,57 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     const canvasRef = useRef<HTMLDivElement>(null);
     const savedSelectionRangeRef = useRef<Range | null>(null);
 
+    const saveCurrentSelection = useCallback(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        if (!range || range.collapsed || sel.toString().length === 0) return;
+
+        let activeEl = document.activeElement as HTMLElement | null;
+        const workspace = workspaceRef.current;
+        if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
+            if (activeContentEditableRef.current) {
+                activeEl = activeContentEditableRef.current;
+            } else if (selectedBlockId) {
+                activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            }
+        }
+        if (activeEl && (activeEl.contains(range.commonAncestorContainer) || (workspace && workspace.contains(range.commonAncestorContainer)))) {
+            savedSelectionRangeRef.current = range.cloneRange();
+        }
+    }, [selectedBlockId]);
+
+    const restoreSelection = useCallback((targetEl: HTMLElement): Range | null => {
+        let sel = window.getSelection();
+        let range: Range | null = null;
+        if (sel && sel.rangeCount > 0) {
+            range = sel.getRangeAt(0);
+        }
+
+        if ((!range || range.collapsed || !targetEl.contains(range.commonAncestorContainer)) && savedSelectionRangeRef.current) {
+            const savedRange = savedSelectionRangeRef.current;
+            if (!savedRange.collapsed && (targetEl.contains(savedRange.commonAncestorContainer) || targetEl.contains(savedRange.startContainer))) {
+                range = savedRange;
+                if (sel) {
+                    try {
+                        sel.removeAllRanges();
+                        sel.addRange(savedRange);
+                    } catch (_e) {}
+                }
+            }
+        }
+        return range;
+    }, []);
+
     React.useLayoutEffect(() => {
         if (savedSelectionRangeRef.current) {
             const sel = window.getSelection();
             if (sel) {
-                sel.removeAllRanges();
-                sel.addRange(savedSelectionRangeRef.current);
+                try {
+                    sel.removeAllRanges();
+                    sel.addRange(savedSelectionRangeRef.current);
+                } catch (_e) {}
             }
-            savedSelectionRangeRef.current = null;
         }
     });
 
@@ -1072,6 +1115,11 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             tb.style.display = 'flex';
         };
 
+        const handleSelection = () => {
+            saveCurrentSelection();
+            updatePosition();
+        };
+
         const rafId = requestAnimationFrame(() => {
             updatePosition();
         });
@@ -1079,7 +1127,9 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         const timeoutId = setTimeout(updatePosition, 50);
 
         window.addEventListener('resize', updatePosition);
-        document.addEventListener('selectionchange', updatePosition);
+        document.addEventListener('selectionchange', handleSelection);
+        document.addEventListener('mouseup', saveCurrentSelection);
+        document.addEventListener('keyup', saveCurrentSelection);
         document.addEventListener('focusin', updatePosition);
         document.addEventListener('focusout', updatePosition);
         
@@ -1087,11 +1137,13 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             cancelAnimationFrame(rafId);
             clearTimeout(timeoutId);
             window.removeEventListener('resize', updatePosition);
-            document.removeEventListener('selectionchange', updatePosition);
+            document.removeEventListener('selectionchange', handleSelection);
+            document.removeEventListener('mouseup', saveCurrentSelection);
+            document.removeEventListener('keyup', saveCurrentSelection);
             document.removeEventListener('focusin', updatePosition);
             document.removeEventListener('focusout', updatePosition);
         };
-    }, [selectedBlockId, activeBlockType, zoom, panOffset]);
+    }, [selectedBlockId, activeBlockType, zoom, panOffset, saveCurrentSelection]);
 
     // Bounded canvas offset constraint logic
     const clampPanOffset = useCallback((x: number, y: number, currentZoom: number) => {
@@ -1527,20 +1579,21 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     };
 
     const executeCommand = (command: string, value: string = '') => {
-        const sel = window.getSelection();
+        let sel = window.getSelection();
         let activeEl = document.activeElement as HTMLElement | null;
         if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
-            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            if (activeContentEditableRef.current) {
+                activeEl = activeContentEditableRef.current;
+            } else if (selectedBlockId) {
+                activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            }
         }
         if (!activeEl) return;
-        let range: Range | null = null;
-        if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
 
-        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl.contains(range.commonAncestorContainer);
+        let range = restoreSelection(activeEl);
+        const isSelectionCollapsed = !range || range.collapsed;
 
-        if (isSelectionCollapsed) {
+        if (isSelectionCollapsed && command !== 'formatBlock' && command !== 'justifyLeft' && command !== 'justifyCenter' && command !== 'justifyRight') {
             const selectAllRange = document.createRange();
             selectAllRange.selectNodeContents(activeEl);
             if (sel) {
@@ -1549,10 +1602,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             }
         }
 
+        try {
+            activeEl.focus();
+        } catch (_e) {}
+
         document.execCommand(command, false, value);
 
         if (sel && sel.rangeCount > 0) {
-            savedSelectionRangeRef.current = sel.getRangeAt(0);
+            savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
         } else {
             savedSelectionRangeRef.current = range;
         }
@@ -1568,19 +1625,20 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     };
 
     const applyStyleToSelection = (styleName: string, value: string) => {
-        const sel = window.getSelection();
+        let sel = window.getSelection();
         let activeEl = document.activeElement as HTMLElement | null;
         if (!activeEl || activeEl.getAttribute('contenteditable') !== 'true') {
-            activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            if (activeContentEditableRef.current) {
+                activeEl = activeContentEditableRef.current;
+            } else if (selectedBlockId) {
+                activeEl = document.getElementById(`text-block-${selectedBlockId}`);
+            }
         }
         if (!activeEl) return;
 
-        let range: Range | null = null;
-        if (sel && sel.rangeCount > 0) {
-            range = sel.getRangeAt(0);
-        }
+        let range = restoreSelection(activeEl);
 
-        const isSelectionCollapsed = !range || range.collapsed || sel?.toString().length === 0 || !activeEl.contains(range.commonAncestorContainer);
+        const isSelectionCollapsed = !range || range.collapsed;
 
         if (isSelectionCollapsed) {
             let propKey = '';
@@ -1597,6 +1655,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
             return;
         }
 
+        try {
+            activeEl.focus();
+        } catch (_e) {}
+
         if (styleName === 'font-family') {
             document.execCommand('fontName', false, value);
         } else if (styleName === 'font-size') {
@@ -1610,11 +1672,18 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                 }
             }
         } else if (styleName === 'color') {
-            document.execCommand('foreColor', false, value);
+            try {
+                document.execCommand('styleWithCSS', false, 'true');
+            } catch (_e) {}
+            if (value === 'inherit' || value === 'transparent' || value === 'reset') {
+                document.execCommand('removeFormat', false, '');
+            } else {
+                document.execCommand('foreColor', false, value);
+            }
         }
 
         if (sel && sel.rangeCount > 0) {
-            savedSelectionRangeRef.current = sel.getRangeAt(0);
+            savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
         }
 
         const blockId = activeEl.getAttribute('data-block-id') || selectedBlockId;
@@ -2958,19 +3027,37 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
 
                     {/* Text Color Picker */}
-                    <Popover>
+                    <Popover onOpenChange={(open) => { if (open) saveCurrentSelection(); }}>
                         <PopoverTrigger asChild>
                             <button
-                                onMouseDown={(e) => e.preventDefault()}
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    saveCurrentSelection();
+                                }}
+                                onClick={() => saveCurrentSelection()}
                                 className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors flex items-center justify-center"
                                 title="Text Color"
                             >
                                 <Baseline className="h-3.5 w-3.5" />
                             </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-48 bg-white border-slate-200 p-3 rounded-xl shadow-xl z-50 text-slate-800 font-body">
+                        <PopoverContent 
+                            className="w-52 bg-white border-slate-200 p-3 rounded-xl shadow-xl z-50 text-slate-800 font-body"
+                            onMouseDown={() => saveCurrentSelection()}
+                        >
                             <div className="space-y-3">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Preset Colors</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Preset Colors</Label>
+                                    <button
+                                        type="button"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => applyStyleToSelection('color', 'inherit')}
+                                        className="text-[9px] font-bold text-slate-400 hover:text-slate-700 underline cursor-pointer"
+                                        title="Remove custom text color from selection"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
                                 <div className="grid grid-cols-5 gap-1.5">
                                     {[
                                         '#3b82f6', // blue
@@ -2978,35 +3065,47 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         '#8b5cf6', // violet
                                         '#f97316', // orange
                                         '#ef4444', // red
-                                        '#09090b', // zinc-950
-                                        '#71717a', // zinc-500
-                                        '#f4f4f5', // zinc-100
-                                        '#38bdf8', // sky-400
-                                        '#a855f7'  // purple-500
+                                        '#09090b', // dark
+                                        '#64748b', // slate
+                                        '#ec4899', // pink
+                                        '#06b6d4', // cyan
+                                        '#eab308'  // yellow
                                     ].map((color) => (
                                         <button
                                             key={color}
+                                            type="button"
                                             onMouseDown={(e) => e.preventDefault()}
                                             onClick={() => applyStyleToSelection('color', color)}
-                                            className="w-5 h-5 rounded-full border border-slate-200 transition-transform hover:scale-110"
+                                            className="w-5 h-5 rounded-full border border-slate-200 transition-transform hover:scale-110 shadow-sm cursor-pointer"
                                             style={{ backgroundColor: color }}
+                                            title={color}
                                         />
                                     ))}
                                 </div>
                                 <div className="h-[1px] bg-slate-200 my-2" />
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Custom HEX</Label>
-                                    <Input
-                                        type="text"
-                                        placeholder="#000000"
-                                        className="h-7 text-xs bg-slate-50 border-slate-200 text-slate-800 rounded px-2 focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:ring-offset-0 outline-none focus:bg-white"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                applyStyleToSelection('color', e.currentTarget.value);
-                                            }
-                                        }}
-                                    />
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Custom Color</Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <input
+                                            type="color"
+                                            className="w-7 h-7 p-0.5 rounded border border-slate-200 bg-slate-50 cursor-pointer shrink-0"
+                                            onMouseDown={() => saveCurrentSelection()}
+                                            onChange={(e) => applyStyleToSelection('color', e.target.value)}
+                                            title="Pick custom color"
+                                        />
+                                        <Input
+                                            type="text"
+                                            placeholder="#000000"
+                                            className="h-7 text-xs bg-slate-50 border-slate-200 text-slate-800 rounded px-2 focus-visible:ring-1 focus-visible:ring-slate-300 focus-visible:ring-offset-0 outline-none focus:bg-white flex-1 font-mono"
+                                            onMouseDown={() => saveCurrentSelection()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    applyStyleToSelection('color', e.currentTarget.value);
+                                                }
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </PopoverContent>
