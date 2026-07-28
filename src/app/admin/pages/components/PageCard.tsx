@@ -262,8 +262,8 @@ export const PageCard = React.memo(function PageCard({
                 </DropdownMenuItem>
               ) : null}
 
-              {/* Delete — draft only; destructive action */}
-              {isDraft ? (
+              {/* Delete — draft or archived; destructive action */}
+              {isDraft || isArchived ? (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -271,7 +271,7 @@ export const PageCard = React.memo(function PageCard({
                     className="flex items-center gap-2 text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    {isArchived ? 'Delete Permanently' : 'Delete'}
                   </DropdownMenuItem>
                 </>
               ) : null}
@@ -345,12 +345,6 @@ export const PageCard = React.memo(function PageCard({
             className={cn('text-[9px] font-bold uppercase tracking-widest rounded-md px-1.5 py-0', statusCfg.className)}
           >
             {statusCfg.label}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="text-[9px] font-bold uppercase tracking-widest bg-primary/5 text-primary border-primary/20 rounded-md px-1.5 py-0"
-          >
-            {GOAL_LABEL[page.pageGoal] ?? page.pageGoal}
           </Badge>
         </div>
       </div>

@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, PlusCircle, LayoutList } from 'lucide-react';
+import { Search, PlusCircle, LayoutList, AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/context/TenantContext';
@@ -73,6 +73,9 @@ export default function PagesClient() {
   const [searchTerm,   setSearchTerm]   = React.useState('');
   const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<CampaignPage | null>(null);
+  const [confirmNameInput, setConfirmNameInput] = React.useState('');
+  const [confirmCheckbox, setConfirmCheckbox] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const [sharePage, setSharePage] = React.useState<CampaignPage | null>(null);
 
   // ── Firestore collection query ────────────────────────────────────────────
@@ -174,18 +177,31 @@ export default function PagesClient() {
 
   const handleDeleteRequest = React.useCallback((page: CampaignPage) => {
     setDeleteTarget(page);
+    setConfirmNameInput('');
+    setConfirmCheckbox(false);
   }, []);
 
   const handleDeleteConfirm = React.useCallback(async () => {
     if (!deleteTarget || !user) return;
-    const res = await deletePageAction(deleteTarget.id, user.uid);
-    if (res.success) {
-      toast({ title: 'Page Deleted' });
-    } else {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+    setIsDeleting(true);
+    try {
+      const res = await deletePageAction(deleteTarget.id, user.uid);
+      if (res.success) {
+        toast({ title: deleteTarget.status === 'archived' ? 'Archived Page Permanently Deleted' : 'Page Deleted' });
+      } else {
+        toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
+      }
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+      setConfirmNameInput('');
+      setConfirmCheckbox(false);
     }
-    setDeleteTarget(null);
   }, [deleteTarget, user, toast]);
+
+  const isArchivedTarget = deleteTarget?.status === 'archived';
+  const isNameMatched = confirmNameInput.trim().toLowerCase() === (deleteTarget?.name ?? '').trim().toLowerCase();
+  const isDoubleConfirmed = !isArchivedTarget || (confirmCheckbox && isNameMatched);
 
   const handleSettings = React.useCallback(
     (page: CampaignPage) => {
@@ -274,26 +290,93 @@ export default function PagesClient() {
       {/* ── Delete confirmation dialog ──────────────────────────────────── */}
       <AlertDialog
         open={!!deleteTarget}
-        onOpenChange={open => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={open => {
+          if (!open) {
+            setDeleteTarget(null);
+            setConfirmNameInput('');
+            setConfirmCheckbox(false);
+          }
+        }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className={cn(isArchivedTarget && "sm:max-w-md border-destructive/30 shadow-2xl")}>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{deleteTarget?.name}&quot;?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes the draft page and all its saved versions.
-              This action cannot be undone.
+            <div className="flex items-center gap-3 text-destructive mb-1">
+              <div className="p-2.5 rounded-2xl bg-destructive/10 text-destructive shrink-0">
+                {isArchivedTarget ? (
+                  <AlertTriangle className="h-5 w-5" />
+                ) : (
+                  <Trash2 className="h-5 w-5" />
+                )}
+              </div>
+              <AlertDialogTitle className="text-base font-bold text-foreground leading-snug">
+                {isArchivedTarget
+                  ? `Permanently Delete "${deleteTarget?.name}"?`
+                  : `Delete "${deleteTarget?.name}"?`}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+              {isArchivedTarget
+                ? `You are about to permanently delete this archived page and all its saved versions. This action cannot be undone.`
+                : `This permanently removes the draft page and all its saved versions. This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+
+          {/* Double Confirmation Section for Archived Pages */}
+          {isArchivedTarget && (
+            <div className="space-y-4 py-2 text-left">
+              <div className="p-3.5 rounded-xl border border-destructive/20 bg-destructive/5 space-y-2.5">
+                <p className="text-[11px] text-destructive font-bold flex items-center gap-1.5 uppercase tracking-wider">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Double Confirmation Required</span>
+                </p>
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={confirmCheckbox}
+                    onChange={(e) => setConfirmCheckbox(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-destructive/30 text-destructive focus:ring-destructive/20 cursor-pointer shrink-0"
+                  />
+                  <span className="text-[11px] text-foreground font-semibold leading-snug">
+                    I understand that permanently deleting this archived page is irreversible and will remove all page data.
+                  </span>
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground">
+                  Type <span className="text-foreground font-extrabold select-all px-1 py-0.5 rounded bg-muted/60">{deleteTarget?.name}</span> to confirm:
+                </label>
+                <Input
+                  value={confirmNameInput}
+                  onChange={(e) => setConfirmNameInput(e.target.value)}
+                  placeholder={deleteTarget?.name}
+                  className="h-10 text-xs font-semibold bg-background border-border rounded-xl focus-visible:ring-destructive/30"
+                />
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter className="pt-3 gap-2">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl font-semibold text-xs h-10 px-5">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              disabled={!isDoubleConfirmed || isDeleting}
               onClick={handleDeleteConfirm}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-xs rounded-xl h-10 px-5 shadow-sm active:scale-[0.97] transition-all"
             >
-              Delete Page
-            </AlertDialogAction>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  {isArchivedTarget ? 'Permanently Delete Page' : 'Delete Page'}
+                </>
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

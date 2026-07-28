@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
-import type { CampaignPage, CampaignPageVersion } from './types';
+import type { CampaignPage, CampaignPageVersion, CampaignPageStructure } from './types';
 
 /**
  * Clones a Campaign Page and its latest content version.
@@ -19,7 +19,7 @@ export async function duplicatePageAction(pageId: string, userId: string) {
     const originalPage = pageSnap.data() as CampaignPage;
     
     // Find the latest version to clone
-    let structureJson: any = { sections: [] };
+    let structureJson: CampaignPageStructure = { sections: [] };
     const versionsSnap = await adminDb.collection('campaign_page_versions')
       .where('pageId', '==', pageId)
       .orderBy('versionNumber', 'desc')
@@ -75,9 +75,10 @@ export async function duplicatePageAction(pageId: string, userId: string) {
 
     revalidatePath('/admin/pages');
     return { success: true, id: newPageId };
-  } catch (error: any) {
-    console.error('>>> [PAGE] Duplicate Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Failed to duplicate page';
+    console.error('>>> [PAGE] Duplicate Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -133,15 +134,16 @@ export async function updatePageStatusAction(
 
     revalidatePath('/admin/pages');
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [PAGE] Status Update Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Failed to update page status';
+    console.error('>>> [PAGE] Status Update Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
 /**
- * Permanently deletes a DRAFT Campaign Page and all its versions.
- * Guards against deleting published or archived pages.
+ * Permanently deletes a Draft or Archived Campaign Page and all its versions.
+ * Guards against deleting active published pages directly.
  *
  * @param pageId  Firestore document ID of the page.
  * @param userId  ID of the user performing the action (for audit).
@@ -164,9 +166,9 @@ export async function deletePageAction(
 
     const page = pageSnap.data() as CampaignPage;
 
-    // Safety guard: never delete published or archived pages from this action
-    if (page.status !== 'draft') {
-      return { success: false, error: 'Only draft pages can be deleted.' };
+    // Safety guard: published pages cannot be deleted directly (must be unpublished or archived first)
+    if (page.status === 'published') {
+      return { success: false, error: 'Published pages cannot be deleted directly. Please unpublish or archive the page first.' };
     }
 
     // Fetch all associated versions
@@ -184,9 +186,10 @@ export async function deletePageAction(
 
     revalidatePath('/admin/pages');
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [PAGE] Delete Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Failed to delete page';
+    console.error('>>> [PAGE] Delete Failed:', errorMsg);
+    return { success: false, error: errorMsg };
   }
 }
 
