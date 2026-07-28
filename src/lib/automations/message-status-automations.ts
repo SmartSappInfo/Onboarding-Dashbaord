@@ -140,21 +140,60 @@ export async function executeMessageStatusAutomations(
 
           case 'move_deal': {
             if (action.pipelineId) {
-              // ARCHITECTURAL NOTE: Pass effectiveContactId, messageSubject, and messagePreviewText
-              // so bulkCreateDealsAction populates focalContacts and sets structured email summary in description.
-              const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
-              await bulkCreateDealsAction({
-                entityIds: [entityId],
-                workspaceId,
-                organizationId: '',
-                pipelineId: action.pipelineId,
-                dealNamePattern: '{{entityName}} - Opened Email',
-                value: 0,
-                assignmentStrategy: 'unassigned',
-                contactId: effectiveContactId,
-                messageSubject,
-                messagePreviewText,
-              });
+              // ARCHITECTURAL GUIDELINE & CAUTION:
+              // Event-driven pipeline deal handling:
+              // 1. Search for an existing open deal for this entityId in the target pipeline.
+              // 2. If an open deal exists: transition its stage to targetStageId (if specified and different)
+              //    using updateDealStageAction, maintaining focal contacts and existing deal state.
+              // 3. If no open deal exists: create a deal via bulkCreateDealsAction targeting stageId with
+              //    dynamic deal name pattern reflecting the event (Opened, Clicked, Replied, Bounced).
+              const targetStageId = action.stageId;
+
+              const existingDealsSnap = await adminDb
+                .collection('deals')
+                .where('workspaceId', '==', workspaceId)
+                .where('entityId', '==', entityId)
+                .where('pipelineId', '==', action.pipelineId)
+                .where('status', '==', 'open')
+                .orderBy('updatedAt', 'desc')
+                .limit(1)
+                .get();
+
+              if (!existingDealsSnap.empty) {
+                const openDealDoc = existingDealsSnap.docs[0];
+                const currentStageId = openDealDoc.data().stageId as string | undefined;
+
+                if (targetStageId && currentStageId !== targetStageId) {
+                  const { updateDealStageAction } = await import('../../app/actions/deal-actions');
+                  const updateResult = await updateDealStageAction(openDealDoc.id, targetStageId);
+                  if (updateResult.error) {
+                    console.error(`[EVENT-AUTOMATION] Failed to update deal ${openDealDoc.id} stage to ${targetStageId}: ${updateResult.error}`);
+                  }
+                }
+              } else {
+                const dynamicPattern = eventStatus === 'clicked'
+                  ? '{{entityName}} - Clicked Link'
+                  : eventStatus === 'replied'
+                  ? '{{entityName}} - Replied Message'
+                  : eventStatus === 'bounced'
+                  ? '{{entityName}} - Delivery Failed'
+                  : '{{entityName}} - Opened Email';
+
+                const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
+                await bulkCreateDealsAction({
+                  entityIds: [entityId],
+                  workspaceId,
+                  organizationId: '',
+                  pipelineId: action.pipelineId,
+                  stageId: targetStageId,
+                  dealNamePattern: dynamicPattern,
+                  value: 0,
+                  assignmentStrategy: 'unassigned',
+                  contactId: effectiveContactId,
+                  messageSubject,
+                  messagePreviewText,
+                });
+              }
               executedCount++;
             }
             break;

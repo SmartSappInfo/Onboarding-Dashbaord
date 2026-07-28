@@ -10,6 +10,7 @@ export interface BulkDealCreationData {
   workspaceId: string;
   organizationId: string;
   pipelineId: string;
+  stageId?: string;
   dealNamePattern: string; // e.g. "{{entityName}} - 2026 Expansion"
   value: number;
   assignmentStrategy: 'direct' | 'unassigned' | 'pipeline';
@@ -28,6 +29,7 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
       workspaceId,
       organizationId,
       pipelineId,
+      stageId: requestedStageId,
       dealNamePattern,
       value,
       assignmentStrategy,
@@ -58,7 +60,7 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
 
     const calculatedCloseDate = calculateExpectedCloseDate(pipeline);
 
-    const stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
+    const stageId = requestedStageId || (stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id);
     const stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
 
     const activeStrategy = assignmentStrategy === 'pipeline'

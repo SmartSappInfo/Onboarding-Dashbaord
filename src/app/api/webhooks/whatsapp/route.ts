@@ -200,6 +200,38 @@ async function handleInbound(conn: WhatsAppConnection, ev: InboundMessageEvent) 
     providerStatus: 'received',
     metaMessageId: ev.metaMessageId,
   });
+
+  // Trigger 'replied' status automations if this inbound reply correlates to an active outbound automation message
+  try {
+    const lastOutboundSnap = await adminDb
+      .collection('message_logs')
+      .where('recipient', '==', ev.from)
+      .where('direction', '==', 'outbound')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (!lastOutboundSnap.empty) {
+      const outboundLog = lastOutboundSnap.docs[0].data() as import('@/lib/types').MessageLog;
+      if (outboundLog.automationId && outboundLog.nodeId && outboundLog.entityId) {
+        const { executeMessageStatusAutomations } = await import('@/lib/automations/message-status-automations');
+        await executeMessageStatusAutomations({
+          automationId: outboundLog.automationId,
+          nodeId: outboundLog.nodeId,
+          eventStatus: 'replied',
+          entityId: outboundLog.entityId,
+          contactId: outboundLog.recipient,
+          recipient: outboundLog.recipient,
+          workspaceId: outboundLog.workspaceId || outboundLog.workspaceIds?.[0] || 'onboarding',
+          runId: outboundLog.runId,
+          messageSubject: outboundLog.subject || outboundLog.title || null,
+          messagePreviewText: outboundLog.previewText || null,
+        });
+      }
+    }
+  } catch (inboundAutoErr) {
+    console.warn('>>> [WA-WEBHOOK] Inbound reply automation trigger failed (non-fatal):', inboundAutoErr);
+  }
 }
 
 async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
@@ -290,6 +322,31 @@ async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
     }).catch((e: unknown) =>
       console.warn('>>> [WA-WEBHOOK] node stat increment failed (non-fatal):', e)
     );
+
+    const mappedStatusEvent: import('@/lib/types').MessageDeliveryStatusEvent | null =
+      ev.status === 'read' ? 'opened' :
+      ev.status === 'failed' ? 'bounced' : null;
+
+    if (mappedStatusEvent && log.entityId) {
+      import('@/lib/automations/message-status-automations')
+        .then(({ executeMessageStatusAutomations }) =>
+          executeMessageStatusAutomations({
+            automationId: log.automationId!,
+            nodeId: log.nodeId!,
+            eventStatus: mappedStatusEvent,
+            entityId: log.entityId!,
+            contactId: log.recipient,
+            recipient: log.recipient,
+            workspaceId: log.workspaceId || log.workspaceIds?.[0] || 'onboarding',
+            runId: log.runId,
+            messageSubject: log.subject || log.title || null,
+            messagePreviewText: log.previewText || null,
+          })
+        )
+        .catch((err: unknown) =>
+          console.warn('>>> [WA-WEBHOOK] message status automation execution failed (non-fatal):', err)
+        );
+    }
   }
 
   // Feed campaign realtime stats, mirroring the Resend webhook.
