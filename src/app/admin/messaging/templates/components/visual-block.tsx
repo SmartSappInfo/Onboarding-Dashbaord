@@ -186,18 +186,25 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
     }
 }
 
+const pillCache = new Map<string, React.ReactNode>();
+
 /**
  * Renders text with inline variable badge pills.
  *
  * ARCHITECTURAL COMMENT & SAFETY NOTICE (Rule 10):
  * - Standard context (`isButtonContext = false`): Renders light-blue badge pills (`bg-blue-100/80 text-blue-700`) suitable for white body canvas background.
  * - Button context (`isButtonContext = true`): Renders translucent white badges (`bg-white/20 text-current border-white/30 font-mono`) that match button themes seamlessly.
+ * - Performance: Memoized via `pillCache` to prevent redundant regex splits on rapid keystrokes.
  * - CAUTION: Do NOT remove `isButtonContext` parameter or default values, as doing so will break button rendering inside visual block canvas previews.
  */
 function renderTextWithVariablePills(text: string, isButtonContext = false): React.ReactNode {
     if (!text) return null;
+    const cacheKey = `${isButtonContext ? 'btn:' : 'txt:'}${text}`;
+    if (pillCache.has(cacheKey)) {
+        return pillCache.get(cacheKey)!;
+    }
     const parts = text.split(/(\{\{[^{}]+\}\})/g);
-    return (
+    const node = (
         <span className={cn("whitespace-pre-wrap", isButtonContext ? "inline-flex items-center justify-center gap-1 leading-normal" : "")}>
             {parts.map((part, i) => {
                 if (part.startsWith('{{') && part.endsWith('}}')) {
@@ -225,6 +232,9 @@ function renderTextWithVariablePills(text: string, isButtonContext = false): Rea
             })}
         </span>
     );
+    if (pillCache.size > 500) pillCache.clear();
+    pillCache.set(cacheKey, node);
+    return node;
 }
 
 const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
@@ -289,7 +299,7 @@ export function VisualBlock({
         color: s.color || undefined,
         fontWeight: s.fontWeight || undefined,
         lineHeight: s.lineHeight || undefined,
-        textAlign: align as any,
+        textAlign: align as React.CSSProperties['textAlign'],
     };
 
     const combinedStyle = {

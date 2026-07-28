@@ -363,6 +363,7 @@ export function TemplatePreviewModal({
                             <div className="flex-1 bg-muted/10 relative overflow-hidden">
                                 <iframe 
                                     srcDoc={resolvedContent} 
+                                    sandbox="allow-same-origin allow-scripts"
                                     className="w-full h-full border-none bg-card" 
                                     title="Email Widescreen Browser Mockup" 
                                 />
@@ -423,6 +424,7 @@ export function TemplatePreviewModal({
                                 <div className="flex-1 bg-white dark:bg-zinc-900 relative">
                                     <iframe 
                                         srcDoc={resolvedContent} 
+                                        sandbox="allow-same-origin allow-scripts"
                                         className="w-full h-full border-none bg-card" 
                                         title="Email Mobile Phone Simulator" 
                                     />

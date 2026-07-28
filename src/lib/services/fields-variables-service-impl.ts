@@ -272,8 +272,14 @@ export class FieldsVariablesService {
             });
 
             // Expose each question answer dynamically
-            const elements = surveyData.elements || [];
-            elements.forEach((el: any) => {
+            const elements = (surveyData.elements || []) as Array<{
+              id?: string;
+              title?: string;
+              text?: string;
+              type?: string;
+              isRequired?: boolean;
+            }>;
+            elements.forEach((el) => {
               if (el && el.id && (el.title || el.text)) {
                 // Determine if it is a question
                 const isQ = 'isRequired' in el || ['text', 'long-text', 'email', 'phone', 'number', 'link', 'yes-no', 'multiple-choice', 'checkboxes'].includes(el.type);
@@ -852,8 +858,16 @@ export class FieldsVariablesService {
 
           if (!resultMsg && survey.scoringEnabled && survey.resultRules?.length && responseData.score !== undefined) {
             const scoreNum = Number(responseData.score);
-            const sortedRules = [...(survey.resultRules || [])].sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0));
-            const matched = sortedRules.find((r: any) => scoreNum >= (r.minScore || 0) && scoreNum <= (r.maxScore || 0));
+            const sortedRules = ([...(survey.resultRules || [])] as Array<{
+              priority?: number;
+              minScore?: number;
+              maxScore?: number;
+              message?: string;
+              description?: string;
+              title?: string;
+              label?: string;
+            }>).sort((a, b) => (a.priority || 0) - (b.priority || 0));
+            const matched = sortedRules.find((r) => scoreNum >= (r.minScore || 0) && scoreNum <= (r.maxScore || 0));
             if (matched) {
               resultMsg = matched.message || matched.description || matched.title || matched.label || '';
               resultTitle = matched.title || matched.label || '';
