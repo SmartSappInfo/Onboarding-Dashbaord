@@ -21,6 +21,7 @@ import type {
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { recordInteractionAction } from '@/lib/analytics-actions';
+import { extractTrackingParams, appendTrackingParams } from '@/lib/tracking-utils';
 import '@/lib/page-builder/blocks'; // side-effect: register all blocks
 import { Button } from '@/components/ui/button';
 import { 
@@ -433,12 +434,16 @@ export function PageRenderer({
 
   // Nav Item click handler
   const handleNavItemClick = useCallback((item: HeaderNavItem) => {
-    trackLinkClick(item.id);
+    trackLinkClick(item.trackingId || item.id);
     if (item.linkType === 'url' && item.url) {
-      const targetUrl = item.url.trim();
+      let targetUrl = item.url.trim();
       if (targetUrl.toLowerCase().startsWith('javascript:')) {
         console.warn('[Security] blocked javascript URI in redirect');
         return;
+      }
+      if (item.enableTracking !== false) {
+        const trackingParams = extractTrackingParams();
+        targetUrl = appendTrackingParams(targetUrl, trackingParams);
       }
       if (isInternalLink(targetUrl)) {
         // Use client-side router transition for internal relative links
@@ -454,7 +459,7 @@ export function PageRenderer({
       }
     } else if (item.linkType === 'action' && item.action) {
       if (item.action === 'receipt_request') {
-        fireTrigger('block_click', 'cta-1');
+        fireTrigger('block_click', item.trackingId || 'cta-1');
       } else {
         let type = 'form';
         let targetId = '';
@@ -475,13 +480,17 @@ export function PageRenderer({
 
   // Unified CTA Button click handler
   const handleButtonClick = useCallback((btn: HeaderCtaButton) => {
-    trackLinkClick(btn.id);
+    trackLinkClick(btn.trackingId || btn.id);
     const linkType = btn.linkType || 'url';
     if (linkType === 'url' && btn.url) {
-      const targetUrl = btn.url.trim();
+      let targetUrl = btn.url.trim();
       if (targetUrl.toLowerCase().startsWith('javascript:')) {
         console.warn('[Security] blocked javascript URI in CTA redirect');
         return;
+      }
+      if (btn.enableTracking !== false) {
+        const trackingParams = extractTrackingParams();
+        targetUrl = appendTrackingParams(targetUrl, trackingParams);
       }
       if (isInternalLink(targetUrl)) {
         // Use client-side router transition for internal relative links
@@ -497,7 +506,7 @@ export function PageRenderer({
       }
     } else if (linkType === 'action' && btn.action) {
       if (btn.action === 'receipt_request') {
-        fireTrigger('block_click', 'cta-1');
+        fireTrigger('block_click', btn.trackingId || 'cta-1');
       } else {
         let type = 'form';
         let targetId = '';

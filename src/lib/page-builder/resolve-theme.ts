@@ -140,7 +140,10 @@ export function themeToCssVars(theme: ResolvedTheme): Record<string, string> {
  */
 export function getNormalizedHeaderButtons(header: PageHeaderSettings): HeaderCtaButton[] {
   if (header.buttons && header.buttons.length > 0) {
-    return header.buttons;
+    return header.buttons.map((b) => ({
+      ...b,
+      enableTracking: b.enableTracking !== false,
+    }));
   }
   if (header.showCta) {
     return [{
@@ -152,6 +155,7 @@ export function getNormalizedHeaderButtons(header: PageHeaderSettings): HeaderCt
       targetSectionId: header.ctaTargetSectionId,
       action: header.ctaAction,
       surveyResultMode: header.ctaSurveyResultMode || 'modal',
+      enableTracking: true,
     }];
   }
   return [];

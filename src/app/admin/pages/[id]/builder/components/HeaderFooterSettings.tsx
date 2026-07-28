@@ -3,13 +3,16 @@
 import React, { useCallback, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { 
-  Plus, Trash2, Mail, Phone, Globe, MapPin 
+  Plus, Trash2, Mail, Phone, Globe, MapPin, Link as LinkIcon, Target 
 } from 'lucide-react';
 import type { 
   CampaignPage, PageHeaderSettings, PageFooterSettings, HeaderNavItem, CampaignPageStructure, BuilderResources, HeaderCtaButton
 } from '@/lib/types';
 import { getNormalizedHeaderButtons } from '@/lib/page-builder/resolve-theme';
 import { ActionTargetModal } from './ActionTargetModal';
+import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 
 interface HeaderSettingsControlProps {
   readonly page: CampaignPage;
@@ -38,6 +41,7 @@ export function HeaderSettingsControl({
   };
 
   const [activeTargetSelector, setActiveTargetSelector] = useState<{ type: 'button' | 'navItem'; id: string } | null>(null);
+  const [openLinkPickerId, setOpenLinkPickerId] = useState<string | null>(null);
 
   const normalizedButtons = getNormalizedHeaderButtons(header);
 
@@ -265,7 +269,31 @@ export function HeaderSettingsControl({
 
                         {btn.linkType === 'url' && (
                           <div className="space-y-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-400 uppercase">Redirect URL Link</Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[8px] font-bold text-slate-400 uppercase">Redirect URL Link</Label>
+                              <Popover
+                                open={openLinkPickerId === `btn-${btn.id}`}
+                                onOpenChange={(open) => setOpenLinkPickerId(open ? `btn-${btn.id}` : null)}
+                              >
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                  >
+                                    <LinkIcon className="h-3 w-3" /> Select Target
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-0 bg-slate-950 border border-slate-800 shadow-2xl" align="end">
+                                  <LinkPicker
+                                    onSelect={(selectedUrl) => {
+                                      const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, url: selectedUrl } : b);
+                                      onUpdateHeader({ buttons: updated });
+                                      setOpenLinkPickerId(null);
+                                    }}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                             <input
                               type="text"
                               value={btn.url || ''}
@@ -273,7 +301,7 @@ export function HeaderSettingsControl({
                                 const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, url: e.target.value } : b);
                                 onUpdateHeader({ buttons: updated });
                               }}
-                              placeholder="https://example.com"
+                              placeholder="https://example.com or /surveys/sample"
                               className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
                             />
                           </div>
@@ -340,6 +368,37 @@ export function HeaderSettingsControl({
                             </button>
                           </div>
                         )}
+
+                        {/* Link Tracking & Parameter Forwarding Settings */}
+                        <div className="pt-2 border-t border-slate-800/60 space-y-2 mt-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[9px] font-semibold text-slate-300 flex items-center gap-1.5">
+                              <Target className="h-3.5 w-3.5 text-emerald-400" /> Link Tracking & UTM Forwarding
+                            </Label>
+                            <Switch 
+                              checked={btn.enableTracking !== false} 
+                              onCheckedChange={(checked) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, enableTracking: checked } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }} 
+                            />
+                          </div>
+                          {btn.enableTracking !== false && (
+                            <div className="space-y-1 animate-in fade-in duration-200">
+                              <Label className="text-[8px] font-bold text-slate-500 uppercase">Custom Tracking Tag / ID (Optional)</Label>
+                              <input
+                                type="text"
+                                value={btn.trackingId || ''}
+                                onChange={(e) => {
+                                  const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, trackingId: e.target.value } : b);
+                                  onUpdateHeader({ buttons: updated });
+                                }}
+                                placeholder="e.g. cta_header_consultation"
+                                className="w-full h-7 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -423,12 +482,35 @@ export function HeaderSettingsControl({
 
                       {item.linkType === 'url' && (
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-500 uppercase">URL Link</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[8px] font-bold text-slate-500 uppercase">URL Link</Label>
+                            <Popover
+                              open={openLinkPickerId === `nav-${item.id}`}
+                              onOpenChange={(open) => setOpenLinkPickerId(open ? `nav-${item.id}` : null)}
+                            >
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                >
+                                  <LinkIcon className="h-3 w-3" /> Select Target
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 p-0 bg-slate-950 border border-slate-800 shadow-2xl" align="end">
+                                <LinkPicker
+                                  onSelect={(selectedUrl) => {
+                                    handleUpdateNavItem(item.id, { url: selectedUrl });
+                                    setOpenLinkPickerId(null);
+                                  }}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
                           <input
                             type="text"
                             value={item.url || ''}
                             onChange={(e) => handleUpdateNavItem(item.id, { url: e.target.value })}
-                            placeholder="https://example.com"
+                            placeholder="https://example.com or /p/survey-123"
                             className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
                           />
                         </div>
@@ -506,6 +588,33 @@ export function HeaderSettingsControl({
                           </button>
                         </div>
                       )}
+
+                      {/* Link Tracking & Parameter Forwarding Settings for Nav Items */}
+                      <div className="pt-2 border-t border-slate-800/60 space-y-2 mt-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[9px] font-semibold text-slate-300 flex items-center gap-1.5">
+                            <Target className="h-3.5 w-3.5 text-emerald-400" /> Link Tracking & UTM Forwarding
+                          </Label>
+                          <Switch 
+                            checked={item.enableTracking !== false} 
+                            onCheckedChange={(checked) => {
+                              handleUpdateNavItem(item.id, { enableTracking: checked });
+                            }} 
+                          />
+                        </div>
+                        {item.enableTracking !== false && (
+                          <div className="space-y-1 animate-in fade-in duration-200">
+                            <Label className="text-[8px] font-bold text-slate-500 uppercase">Custom Tracking Tag / ID (Optional)</Label>
+                            <input
+                              type="text"
+                              value={item.trackingId || ''}
+                              onChange={(e) => handleUpdateNavItem(item.id, { trackingId: e.target.value })}
+                              placeholder="e.g. nav_link_about"
+                              className="w-full h-7 px-2 text-[10px] bg-slate-950 border border-slate-800 rounded-md text-slate-200 outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

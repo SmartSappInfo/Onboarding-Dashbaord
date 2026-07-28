@@ -3692,6 +3692,8 @@ export interface HeaderNavItem {
   action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
   surveyResultMode?: 'modal' | 'parent';
   actionTargetId?: string;
+  enableTracking?: boolean; // Forward captured tracking codes/UTMs & track interactions (default: true)
+  trackingId?: string; // Optional custom tracking ID or tag for campaign analytics
 }
 
 export interface HeaderCtaButton {
@@ -3704,6 +3706,8 @@ export interface HeaderCtaButton {
   action?: 'receipt_request' | 'open_modal_form' | 'open_modal_survey' | 'open_modal_agreement';
   surveyResultMode?: 'modal' | 'parent';
   actionTargetId?: string;
+  enableTracking?: boolean; // Forward captured tracking codes/UTMs & track interactions (default: true)
+  trackingId?: string; // Optional custom tracking ID or tag for campaign analytics
 }
 
 export interface PageHeaderSettings {
