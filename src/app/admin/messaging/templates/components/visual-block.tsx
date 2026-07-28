@@ -186,14 +186,32 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
     }
 }
 
-function renderTextWithVariablePills(text: string): React.ReactNode {
+/**
+ * Renders text with inline variable badge pills.
+ *
+ * ARCHITECTURAL COMMENT & SAFETY NOTICE (Rule 10):
+ * - Standard context (`isButtonContext = false`): Renders light-blue badge pills (`bg-blue-100/80 text-blue-700`) suitable for white body canvas background.
+ * - Button context (`isButtonContext = true`): Renders translucent white badges (`bg-white/20 text-current border-white/30 font-mono`) that match button themes seamlessly.
+ * - CAUTION: Do NOT remove `isButtonContext` parameter or default values, as doing so will break button rendering inside visual block canvas previews.
+ */
+function renderTextWithVariablePills(text: string, isButtonContext = false): React.ReactNode {
     if (!text) return null;
     const parts = text.split(/(\{\{[^{}]+\}\})/g);
     return (
-        <span className="whitespace-pre-wrap">
+        <span className={cn("whitespace-pre-wrap", isButtonContext ? "inline-flex items-center justify-center gap-1 leading-normal" : "")}>
             {parts.map((part, i) => {
                 if (part.startsWith('{{') && part.endsWith('}}')) {
                     const varName = part.slice(2, -2).trim();
+                    if (isButtonContext) {
+                        return (
+                            <span 
+                                key={i} 
+                                className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-white/20 text-current font-mono text-[85%] font-bold border border-white/30 align-middle select-none shadow-xs"
+                            >
+                                {varName}
+                            </span>
+                        );
+                    }
                     return (
                         <span 
                             key={i} 
@@ -535,7 +553,7 @@ export function VisualBlock({
             return (
                 <div className={cn("w-full py-4 flex", alignFlexClass)}>
                     <div 
-                        className="inline-block transition-transform duration-200 active:scale-95 text-center"
+                        className="inline-flex items-center justify-center transition-all duration-200 active:scale-95 text-center leading-normal max-w-full overflow-hidden"
                         style={{
                             backgroundColor: btnBg,
                             color: btnColor,
@@ -543,12 +561,13 @@ export function VisualBlock({
                             padding: btnPadding,
                             fontWeight: s.fontWeight || 'bold',
                             fontFamily: s.fontFamily || undefined,
-                            fontSize: s.fontSize ? ensureUnit(s.fontSize) : '16px',
+                            fontSize: s.fontSize ? ensureUnit(s.fontSize) : '15px',
                             borderWidth: btnBorderWidth,
                             borderStyle: btnBorderStyle,
                             borderColor: btnBorderColor,
                             boxShadow: btnShadow,
                             textDecoration: btnTextDecoration,
+                            wordBreak: 'break-word',
                         }}
                     >
                         {isEditing ? (
@@ -563,10 +582,10 @@ export function VisualBlock({
                             />
                         ) : (
                             <span 
-                                className="font-bold select-text text-center inline-block"
+                                className="font-bold select-text text-center inline-flex items-center justify-center leading-snug"
                                 style={{ color: btnColor, font: 'inherit' }}
                             >
-                                {renderTextWithVariablePills(block.title || '')}
+                                {renderTextWithVariablePills(block.title || '', true)}
                             </span>
                         )}
                     </div>

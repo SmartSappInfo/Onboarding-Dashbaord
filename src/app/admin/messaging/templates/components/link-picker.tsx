@@ -33,9 +33,10 @@ const DYNAMIC_VARIABLES: ResourceItem[] = [
   { id: 'dyn-2', name: 'Personalized Form Link', path: '{{form_link}}' },
   { id: 'dyn-3', name: 'Personalized Agreement Link', path: '{{contract_link}}' },
   { id: 'dyn-4', name: 'Personalized Meeting Link', path: '{{meeting_link}}' },
-  { id: 'dyn-5', name: 'Add to Calendar Link', path: '{{calendar_link}}' },
-  { id: 'dyn-6', name: 'Unsubscribe Link', path: '{{unsubscribe_link}}' },
-  { id: 'dyn-7', name: 'Survey Results Link', path: '{{result_url}}' },
+  { id: 'dyn-5', name: 'Personalized Dashboard Link', path: '{{dashboard_link}}' },
+  { id: 'dyn-6', name: 'Add to Calendar Link', path: '{{calendar_link}}' },
+  { id: 'dyn-7', name: 'Unsubscribe Link', path: '{{unsubscribe_link}}' },
+  { id: 'dyn-8', name: 'Survey Results Link', path: '{{result_url}}' },
 ];
 
 export function LinkPicker({ onSelect }: LinkPickerProps) {

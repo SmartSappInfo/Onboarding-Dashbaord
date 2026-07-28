@@ -34,6 +34,7 @@ const MOCK_VARIABLES: Record<string, string> = {
     sender_name: 'Onboarding Team',
     meeting_link: 'https://smartsapp.com/meeting/join',
     survey_link: 'https://smartsapp.com/survey/feedback',
+    dashboard_link: 'https://smartsapp.com/admin/dashboard',
     form_link: 'https://smartsapp.com/form/submit',
     agreement_link: 'https://smartsapp.com/agreement/sign',
     meeting_time: 'Monday, Oct 24 at 10:00 AM',

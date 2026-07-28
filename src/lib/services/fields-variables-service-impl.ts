@@ -254,6 +254,7 @@ export class FieldsVariablesService {
               { key: 'result_description', label: 'Result Description', desc: 'Description of the matched outcome rule' },
               { key: 'survey_result', label: 'Survey Result', desc: 'Summary result text of the survey outcome' },
               { key: 'survey_link', label: 'Public Survey Link', desc: 'Direct URL to taking the survey' },
+              { key: 'dashboard_link', label: 'Personalized Dashboard Link', desc: 'Admin URL to view dashboard for survey, meeting, or contract' },
               { key: 'dashboard_url', label: 'Dashboard URL', desc: 'Admin URL to view survey submission dashboard' },
               { key: 'submission_link', label: 'Submission Link', desc: 'Direct URL to view individual survey response' },
             ];
@@ -984,6 +985,12 @@ export class FieldsVariablesService {
       }
     } else {
       valuesMap.set('encrypted_recipient_token', 'mock_encrypted_token_123');
+    }
+
+    // Default fallback for dashboard_link if not explicitly set by survey/meeting context
+    if (!valuesMap.has('dashboard_link') || !valuesMap.get('dashboard_link')) {
+      const baseUrl = getBaseUrl();
+      valuesMap.set('dashboard_link', `${baseUrl}/admin/dashboard`);
     }
 
     // Map legacy uppercase aliases to ensure compatibility with call centre templates
