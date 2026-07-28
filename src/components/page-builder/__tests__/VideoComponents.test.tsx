@@ -9,6 +9,17 @@ import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext, BlockMode } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks'; // side-effect: register all blocks
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 function createCtx(mode: BlockMode, isThumbnail = false): BlockRenderContext {
   return {
     mode,

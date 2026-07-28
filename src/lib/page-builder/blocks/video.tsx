@@ -312,9 +312,17 @@ registerBlock({
                 </div>
               )}
               {/* Play Button Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition-colors duration-300">
-                <div className="w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 transform transition-transform duration-300 group-hover:scale-110 active:scale-95">
-                  <Play className="w-5 h-5 fill-current ml-0.5" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/25 transition-colors duration-300">
+                <div className="relative flex items-center justify-center">
+                  {/* Outer animated ping ring */}
+                  <div className="absolute -inset-4 sm:-inset-5 rounded-full bg-emerald-500/35 animate-ping pointer-events-none" />
+                  {/* Soft pulsing aura ring */}
+                  <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-emerald-500/25 animate-pulse duration-1000 pointer-events-none" />
+                  
+                  {/* Main Play Button Circle */}
+                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.5)] border-2 border-white/30 transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_60px_rgba(16,185,129,0.7)] active:scale-95">
+                    <Play className="w-8 h-8 sm:w-10 sm:h-10 text-white fill-current ml-1 drop-shadow-md" />
+                  </div>
                 </div>
               </div>
             </div>
