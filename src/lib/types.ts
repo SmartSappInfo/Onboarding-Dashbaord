@@ -4055,6 +4055,7 @@ export interface FormSuccessBehavior {
   redirectDelaySeconds?: number; // Countdown seconds for 'delay' mode (default: 5)
   redirectButtonText?: string; // Label for button in 'button' mode (default: "Continue")
   preserveTrackingParams?: boolean; // Forward captured tracking codes to redirectUrl (default: true)
+  enableConfetti?: boolean; // Trigger celebration confetti explosion on thank you page (default: true)
 }
 
 /**

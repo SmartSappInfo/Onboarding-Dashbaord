@@ -52,6 +52,26 @@ export default function FormSuccessScreen({
   // Countdown state for 'delay' mode
   const [secondsLeft, setSecondsLeft] = useState<number>(config.redirectDelaySeconds);
 
+  // Track if confetti celebration explosion has fired
+  const hasConfettiFired = React.useRef(false);
+
+  // Trigger celebration confetti explosion on mount if enabled (default: true)
+  useEffect(() => {
+    if (config.enableConfetti !== false && !hasConfettiFired.current) {
+      hasConfettiFired.current = true;
+      import('canvas-confetti')
+        .then(({ default: confetti }) => {
+          confetti({
+            particleCount: 120,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'],
+          });
+        })
+        .catch((e) => console.error('[FormSuccessScreen] Confetti error:', e));
+    }
+  }, [config.enableConfetti]);
+
   // Perform actual navigation or parent postMessage trigger
   const executeRedirect = React.useCallback(() => {
     if (!finalRedirectUrl) return;

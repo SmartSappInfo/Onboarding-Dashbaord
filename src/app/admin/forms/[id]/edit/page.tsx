@@ -1317,6 +1317,28 @@ export default function EditFormPage() {
                             }}
                           />
                         </div>
+
+                        {/* Confetti Explosion Switch */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                          <div className="space-y-0.5 ml-1">
+                            <Label className="text-xs font-semibold flex items-center gap-1.5">
+                              <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Confetti Celebration Explosion
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              Trigger a celebration confetti animation when respondents complete the form.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.successBehavior?.enableConfetti !== false}
+                            onCheckedChange={(checked) => {
+                              const current = normalizeSuccessBehavior(formData.successBehavior);
+                              updateField('successBehavior', {
+                                ...current,
+                                enableConfetti: checked,
+                              });
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
                   </CardContent>

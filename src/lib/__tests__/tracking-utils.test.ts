@@ -17,6 +17,14 @@ describe('Tracking & Redirection Utilities', () => {
       expect(result.redirectDelaySeconds).toBe(5);
       expect(result.redirectButtonText).toBe('Continue');
       expect(result.preserveTrackingParams).toBe(true);
+      expect(result.enableConfetti).toBe(true);
+    });
+
+    it('should allow disabling confetti explosion', () => {
+      const result = normalizeSuccessBehavior({
+        enableConfetti: false,
+      });
+      expect(result.enableConfetti).toBe(false);
     });
 
     it('should normalize legacy type "message"', () => {

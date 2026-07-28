@@ -84,6 +84,7 @@ export function normalizeSuccessBehavior(
       : 5,
     redirectButtonText: (raw?.redirectButtonText ?? '').trim() || 'Continue',
     preserveTrackingParams: raw?.preserveTrackingParams !== false,
+    enableConfetti: raw?.enableConfetti !== false,
   };
 }
 
