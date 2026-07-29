@@ -61,7 +61,7 @@ export async function bulkApplyTagsToMediaContactsAction(
   let updatedCount = 0;
 
   try {
-    const BATCH_SIZE = 250;
+    const BATCH_SIZE = 150;
     for (let i = 0; i < cleanContactIds.length; i += BATCH_SIZE) {
       const chunk = cleanContactIds.slice(i, i + BATCH_SIZE);
       const batch = adminDb.batch();
@@ -132,7 +132,7 @@ export async function bulkMoveMediaContactsStageAction(
   let updatedCount = 0;
 
   try {
-    const BATCH_SIZE = 250;
+    const BATCH_SIZE = 150;
     for (let i = 0; i < cleanContactIds.length; i += BATCH_SIZE) {
       const chunk = cleanContactIds.slice(i, i + BATCH_SIZE);
       const batch = adminDb.batch();
