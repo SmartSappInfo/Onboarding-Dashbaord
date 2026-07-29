@@ -17,8 +17,8 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
       return null; // Already evaluated or not in a valid state
     }
 
-    const variantA = campaign.variants?.find(v => v.id === 'A')!;
-    const variantB = campaign.variants?.find(v => v.id === 'B')!;
+    const variantA = campaign.variants?.find(v => v.id === 'A');
+    const variantB = campaign.variants?.find(v => v.id === 'B');
 
     const statsA = variantA?.stats || { totalSent: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 };
     const statsB = variantB?.stats || { totalSent: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 };
@@ -85,7 +85,7 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
   const { previewCampaignAudience, resolveRecipientContacts } = await import('./messaging-actions');
   const audienceResult = await previewCampaignAudience({
     workspaceId: campaign.workspaceId,
-    filters: campaign.audienceDefinition?.filters as any,
+    filters: campaign.audienceDefinition?.filters,
     filterLogic: campaign.audienceDefinition?.filterLogic,
     includeTagIds: campaign.audienceDefinition?.tagIds,
     excludeTagIds: campaign.audienceDefinition?.excludeTagIds,
@@ -97,9 +97,15 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
     throw new Error('Failed to resolve audience during remainder dispatch');
   }
 
-  const recipients: any[] = [];
-  const contactRolesFilter = campaign.audienceDefinition?.filters?.find((f: any) => f.field === 'contactRoles');
-  const contactRoles = contactRolesFilter ? contactRolesFilter.value as string[] : null;
+  const recipients: Array<{
+    recipient: string;
+    variables: Record<string, string>;
+    entityId: string;
+    displayName: string;
+    campaignVariantId: 'A' | 'B';
+  }> = [];
+  const contactRolesFilter = campaign.audienceDefinition?.filters?.find((f: { field: string; value?: unknown }) => f.field === 'contactRoles');
+  const contactRoles = contactRolesFilter ? (contactRolesFilter.value as string[]) : null;
 
   for (const entity of audienceResult.preview!) {
     try {
@@ -128,7 +134,9 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
           campaignVariantId: winningVariantId,
         });
       }
-    } catch (err) {}
+    } catch (err: unknown) {
+      console.warn('[AB-TEST-EVALUATE] Recipient resolution skipped for entity:', entity.id, err);
+    }
   }
 
   if (recipients.length === 0) {
@@ -136,8 +144,8 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
     return;
   }
 
-  const winningVariant = campaign.variants?.find(v => v.id === winningVariantId)!;
-  let templateId = winningVariant.templateId || '';
+  const winningVariant = campaign.variants?.find(v => v.id === winningVariantId);
+  let templateId = winningVariant?.templateId || '';
 
   if (!templateId) {
     const ephemeralRef = await adminDb.collection('message_templates').add({
@@ -146,9 +154,9 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
       category: 'campaign',
       target: campaign.target,
       contentMode: campaign.contentMode || 'plain_text',
-      subject: winningVariant.customSubject || '',
-      body: winningVariant.customBody || '',
-      blocks: winningVariant.customBlocks || [],
+      subject: winningVariant?.customSubject || '',
+      body: winningVariant?.customBody || '',
+      blocks: winningVariant?.customBlocks || [],
       styleId: campaign.styleId || null,
       organizationId: campaign.organizationId,
       workspaceIds: [campaign.workspaceId],

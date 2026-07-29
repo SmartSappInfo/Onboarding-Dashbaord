@@ -4,6 +4,7 @@ import * as React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMessageNodeStats } from './useMessageNodeStats';
+import { MessageNodeLogsDialog } from './MessageNodeLogsDialog';
 
 interface MessageNodeStatsStripProps {
   automationId: string | undefined;
@@ -120,8 +121,6 @@ export function MessageNodeStatsStrip({
     </>
   );
 }
-
-import { MessageNodeLogsDialog } from './MessageNodeLogsDialog';
 
 function Stat({ 
   label, 

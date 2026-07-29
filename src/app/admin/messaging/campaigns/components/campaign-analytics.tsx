@@ -37,6 +37,32 @@ const CHART_COLORS = {
     targeted: '#3b82f6' // Blue 500
 };
 
+export interface CampaignAnalyticsStats {
+    totalTargeted: number;
+    totalSent: number;
+    totalFailed: number;
+    totalPending: number;
+    totalOpened: number;
+    totalClicked: number;
+    deliveryRate: number;
+    failureRate: number;
+}
+
+export interface CampaignRecipientItem {
+    recipient: string;
+    displayName: string;
+    status: string;
+    sentAt?: string;
+    error?: string;
+}
+
+export interface CampaignTimelinePoint {
+    timestamp: string;
+    sent: number;
+    opened: number;
+    clicked: number;
+}
+
 interface CampaignAnalyticsProps {
     campaign: MessageCampaign;
     onBack: () => void;
@@ -47,10 +73,10 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
     const { user } = useUser();
     const { toast } = useToast();
 
-    const [stats, setStats] = React.useState<any>(null);
+    const [stats, setStats] = React.useState<CampaignAnalyticsStats | null>(null);
     const [freshCampaign, setFreshCampaign] = React.useState<MessageCampaign>(campaign);
-    const [recipients, setRecipients] = React.useState<any[]>([]);
-    const [timeline, setTimeline] = React.useState<any[]>([]);
+    const [recipients, setRecipients] = React.useState<CampaignRecipientItem[]>([]);
+    const [timeline, setTimeline] = React.useState<CampaignTimelinePoint[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isResending, setIsResending] = React.useState(false);
     const [isEvaluating, setIsEvaluating] = React.useState(false);
@@ -77,7 +103,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             getCampaignRecipientBreakdown(campaign.id),
             getCampaignEngagementTimeline(campaign.id)
         ]);
-        if (statsResult.success) setStats(statsResult.stats);
+        if (statsResult.success && statsResult.stats) setStats(statsResult.stats);
         if (recipientResult.success) setRecipients(recipientResult.recipients || []);
         if (timelineResult.success) setTimeline(timelineResult.timeline || []);
         setIsLoading(false);
@@ -95,8 +121,9 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             await cancelCampaignABTest(campaign.id);
             toast({ title: 'Test Paused', description: 'The A/B test has been paused. Remainder dispatch is suspended.' });
             await loadData();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Pause Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            toast({ variant: 'destructive', title: 'Pause Failed', description: msg });
         } finally {
             setIsPausing(false);
             setPauseDialogOpen(false);
@@ -109,8 +136,9 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             await resumeCampaignABTest(campaign.id);
             toast({ title: 'Test Resumed', description: 'The A/B test has been resumed. A new evaluation job has been scheduled.' });
             await loadData();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Resume Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            toast({ variant: 'destructive', title: 'Resume Failed', description: msg });
         } finally {
             setIsResuming(false);
         }
@@ -122,8 +150,9 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
             await selectCampaignWinnerManual(campaign.id, winnerId);
             toast({ title: 'Winner Declared', description: `Variant ${winnerId} was declared the winner early.` });
             await loadData();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Evaluation Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            toast({ variant: 'destructive', title: 'Evaluation Failed', description: msg });
         } finally {
             setIsEvaluating(false);
         }
@@ -149,8 +178,9 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
         try {
             await cloneCampaign(firestore, campaign, user.uid);
             toast({ title: 'Campaign Cloned' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clone Failed', description: e.message });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            toast({ variant: 'destructive', title: 'Clone Failed', description: msg });
         }
     };
 
@@ -178,7 +208,7 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
 
     const cohortData = [
         { name: 'Opened', value: stats?.totalOpened || 0, color: CHART_COLORS.opened },
-        { name: 'Unopened', value: (stats?.totalSent || 0) - (stats?.totalOpened || 0), color: '#e2e8f0' },
+        { name: 'Unopened', value: Math.max(0, (stats?.totalSent || 0) - (stats?.totalOpened || 0)), color: '#e2e8f0' },
         { name: 'Failed', value: stats?.totalFailed || 0, color: CHART_COLORS.failed },
     ].filter(d => d.value > 0);
 
