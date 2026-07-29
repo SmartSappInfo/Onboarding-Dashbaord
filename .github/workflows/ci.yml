@@ -1,0 +1,102 @@
+# ==============================================================================
+# GitHub Actions CI Workflow - Next.js & Vitest Quality Pipeline
+# ==============================================================================
+# Purpose: Enforce strict typechecking, linting, unit/integration test suite
+# execution, and production Next.js compilation on Pull Requests and Pushes.
+# Memory Bounds: Explicitly set NODE_OPTIONS='--max-old-space-size=4096' on all
+# heavy Node processes to prevent OOM errors on GitHub runner instances.
+# ==============================================================================
+
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - deployment
+  pull_request:
+    branches:
+      - main
+      - deployment
+
+jobs:
+  typecheck-and-lint:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Architectural Pointer: Allocate 4GB heap to tsc to handle multi-route typechecking cleanly
+      - name: Run Typecheck
+        run: NODE_OPTIONS='--max-old-space-size=4096' pnpm typecheck
+
+      - name: Run ESLint
+        run: pnpm lint
+
+  unit-and-integration-tests:
+    name: Vitest Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Architectural Pointer: Allocate 4GB heap to Vitest runner to avoid worker exhaustion during property tests
+      - name: Run Vitest Test Suite
+        run: NODE_OPTIONS='--max-old-space-size=4096' pnpm test:run
+
+  build-verification:
+    name: Next.js Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Architectural Pointer: Verify production Turbopack compilation before deployment
+      - name: Production Build
+        run: pnpm build

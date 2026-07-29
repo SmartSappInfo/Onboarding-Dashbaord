@@ -1,0 +1,45 @@
+# ==============================================================================
+# GitHub Actions Workflow - Automated Firestore Rules & Indexes Deployment
+# ==============================================================================
+# Purpose: Automatically deploy updated firestore.rules and firestore.indexes.json
+# to Cloud Firestore whenever modifications are pushed to the deployment branch.
+# Secrets Required: FIREBASE_TOKEN (optional; set in GitHub Repo Secrets).
+# ==============================================================================
+
+name: Deploy Firestore Rules & Indexes
+
+on:
+  push:
+    branches:
+      - deployment
+    paths:
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+
+jobs:
+  deploy-firestore-rules-and-indexes:
+    name: Deploy Firestore Security Rules & Indexes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Architectural Pointer: Deploys security rules and composite indexes to Cloud Firestore
+      - name: Deploy to Firebase Firestore
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        run: npx -y firebase-tools deploy --only firestore --token "${{ secrets.FIREBASE_TOKEN }}"
