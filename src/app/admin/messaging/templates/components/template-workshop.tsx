@@ -996,6 +996,86 @@ const blockTypeTemplates: Record<string, Array<{
             })
         }
     ],
+    'dual-button': [
+        {
+            name: 'Primary & Ghost Dual Pair',
+            description: 'Solid primary CTA next to subtle ghost secondary action',
+            aspectRatio: 'aspect-[21/9]',
+            create: () => ({
+                id: `blk_dual_btn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'dual-button',
+                title: 'Book a Call',
+                link: 'https://',
+                secondaryTitle: 'Learn More',
+                secondaryLink: 'https://',
+                style: {
+                    variant: 'default',
+                    textAlign: 'center',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '700',
+                    fontSize: '15px'
+                },
+                secondaryStyle: {
+                    variant: 'ghost',
+                    color: '#4b5563',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '600',
+                    fontSize: '15px'
+                }
+            })
+        },
+        {
+            name: 'Primary & Outline Dual Pair',
+            description: 'Solid primary CTA alongside branded outline secondary button',
+            aspectRatio: 'aspect-[21/9]',
+            create: () => ({
+                id: `blk_dual_btn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'dual-button',
+                title: 'Enroll Now',
+                link: 'https://',
+                secondaryTitle: 'View Curriculum',
+                secondaryLink: 'https://',
+                style: {
+                    variant: 'default',
+                    textAlign: 'center',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '700',
+                    fontSize: '15px'
+                },
+                secondaryStyle: {
+                    variant: 'outline',
+                    backgroundColor: 'transparent',
+                    color: '#2563eb',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    borderColor: '#2563eb',
+                    borderRadius: '12px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '24px',
+                    paddingRight: '24px',
+                    fontWeight: '600',
+                    fontSize: '15px'
+                }
+            })
+        }
+    ],
     quote: [
         {
             name: 'Editorial Callout Quote',
@@ -1731,6 +1811,45 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                         className="inline-block text-[7.5px] font-bold truncate max-w-[120px] pointer-events-none text-center"
                     >
                         {block.title || 'Button'}
+                    </span>
+                </div>
+            );
+        }
+        case 'dual-button': {
+            const primaryBg = s.backgroundColor || '#2563eb';
+            const primaryFg = s.color || '#ffffff';
+            const ss = block.secondaryStyle ?? {};
+            const secondaryBg = ss.backgroundColor || (ss.variant === 'outline' ? 'transparent' : '#f3f4f6');
+            const secondaryFg = ss.color || (ss.variant === 'outline' ? '#2563eb' : '#4b5563');
+            const radius = s.borderRadius ? `${Math.max(4, parseInt(s.borderRadius) / 2)}px` : '6px';
+            const align = s.textAlign || 'center';
+            const justifyClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
+
+            return (
+                <div className={`w-full flex ${justifyClass} gap-1.5 py-2`}>
+                    <span 
+                        style={{
+                            ...miniStyle,
+                            backgroundColor: primaryBg,
+                            color: primaryFg,
+                            borderRadius: radius,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                        className="inline-block text-[7px] font-bold truncate max-w-[65px] pointer-events-none text-center"
+                    >
+                        {block.title || 'Primary'}
+                    </span>
+                    <span 
+                        style={{
+                            ...miniStyle,
+                            backgroundColor: secondaryBg,
+                            color: secondaryFg,
+                            borderRadius: radius,
+                            border: ss.borderWidth ? `${ss.borderWidth} ${ss.borderStyle || 'solid'} ${ss.borderColor || '#2563eb'}` : undefined
+                        }}
+                        className="inline-block text-[7px] font-semibold truncate max-w-[65px] pointer-events-none text-center"
+                    >
+                        {block.secondaryTitle || 'Secondary'}
                     </span>
                 </div>
             );
@@ -4398,9 +4517,13 @@ export function TemplateWorkshop({
                                                         <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-bottom-2 duration-300">
                                                             {(blockTypeTemplates[activeBlockSubView] || []).map(tpl => {
                                                                 const blockItem = tpl.create();
-                                                                const buttonBg = blockItem.style?.backgroundColor || undefined;
-                                                                const buttonBgImage = blockItem.style?.backgroundImage || undefined;
-                                                                const buttonBgSize = blockItem.style?.backgroundSize || undefined;
+                                                                // PURPOSE: For button and dual-button blocks, enforce a white card background
+                                                                // so the inner coloured button mini-pill renders clearly against a neutral backdrop.
+                                                                // Other block types (headings, audio, image) retain their custom block background.
+                                                                const isBtnBlock = blockItem.type === 'button' || blockItem.type === 'dual-button';
+                                                                const buttonBg = isBtnBlock ? '#ffffff' : (blockItem.style?.backgroundColor || undefined);
+                                                                const buttonBgImage = isBtnBlock ? undefined : (blockItem.style?.backgroundImage || undefined);
+                                                                const buttonBgSize = isBtnBlock ? undefined : (blockItem.style?.backgroundSize || undefined);
                                                                 return (
                                                                     <Tooltip key={tpl.name}>
                                                                         <TooltipTrigger asChild>

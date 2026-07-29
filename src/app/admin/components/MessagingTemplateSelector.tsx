@@ -196,27 +196,20 @@ const PickerCard = React.memo(function PickerCard({
     tmpl, isSelected, isPreviewed, onClick, onUse, onCloneAndEdit,
 }: PickerCardProps) {
     const isEmail = tmpl.channel === 'email';
-    const hasHtml = isEmail && (
-        (tmpl.contentMode === 'rich_builder' || !!tmpl.blocks?.length) ||
-        (tmpl.body && isHtmlContent(tmpl.body))
-    );
-    const textSnippet = React.useMemo(() => {
-        if (!isEmail) return tmpl.body || '';
+    /**
+     * PURPOSE: Compute actual HTML source document for email templates.
+     * Renders rich blocks to HTML via renderBlocksToHtml, plain text via plainTextToHtml,
+     * or raw HTML body. Passed to ResponsiveIframePreview for scaled live thumbnail previews.
+     *
+     * CAUTION: Performance-sensitive — memoized with React.useMemo to prevent re-computing on hover/selection.
+     * RELATED SURFACES: LivePreviewPane, InlineSelectedCard.
+     */
+    const emailSrcDoc = React.useMemo(() => {
+        if (!isEmail) return '';
         if (tmpl.contentMode === 'rich_builder' || tmpl.blocks?.length) {
-            const textParts: string[] = [];
-            tmpl.blocks?.forEach((b: any) => {
-                if (b.type === 'text' && b.content) textParts.push(b.content);
-                if (b.type === 'paragraph' && b.content) textParts.push(b.content);
-                if (b.type === 'heading' && b.content) textParts.push(b.content);
-                if (b.type === 'section' && b.blocks) {
-                    b.blocks.forEach((subB: any) => {
-                        if (subB.content) textParts.push(subB.content);
-                    });
-                }
-            });
-            return textParts.join(' ').replace(/<[^>]*>/g, '') || 'Rich Builder Template';
+            return renderBlocksToHtml(tmpl.blocks || [], {});
         }
-        return (tmpl.body || '').replace(/<[^>]*>/g, '');
+        return tmpl.contentMode === 'plain_text' ? plainTextToHtml(tmpl.body) : tmpl.body;
     }, [tmpl, isEmail]);
 
     return (
@@ -240,23 +233,15 @@ const PickerCard = React.memo(function PickerCard({
                 </div>
             )}
 
-            {/* Preview area */}
+            {/* Preview area — renders scaled live iframe preview matching the right Live Preview pane */}
             <div className="h-[200px] relative overflow-hidden rounded-t-2xl flex items-start justify-center">
                 {isEmail ? (
-                    hasHtml ? (
-                        <div className="w-full h-full bg-slate-50/50 dark:bg-zinc-950/10 p-4 overflow-hidden text-left flex flex-col gap-2 relative">
-                            <div className="flex flex-col gap-1 shrink-0">
-                                <div className="h-2 bg-foreground/10 rounded w-1/3" />
-                                <div className="h-1.5 bg-foreground/5 rounded w-2/3" />
-                            </div>
-                            <div className="h-px bg-border/40 shrink-0" />
-                            <p className="text-[9.5px] text-foreground/50 leading-relaxed font-sans whitespace-pre-wrap line-clamp-6 flex-1">
-                                {textSnippet}
-                            </p>
-                            <span className="absolute bottom-3 right-3 text-[8px] font-bold uppercase tracking-wider text-muted-foreground/30 px-1.5 py-0.5 bg-muted/30 border border-border rounded">
-                                HTML Layout
-                            </span>
-                        </div>
+                    emailSrcDoc ? (
+                        <ResponsiveIframePreview 
+                            srcDoc={emailSrcDoc}
+                            title={tmpl.name}
+                            className="pointer-events-none border-none bg-card rounded-t-2xl shadow-inner"
+                        />
                     ) : (
                         <div className="w-full h-full bg-muted/10 p-4 overflow-hidden">
                             <p className="text-[9.5px] text-foreground/40 leading-relaxed font-sans whitespace-pre-wrap line-clamp-9">

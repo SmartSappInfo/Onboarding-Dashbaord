@@ -63,6 +63,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     }, [variables]);
 
     const [showLinkPicker, setShowLinkPicker] = React.useState<boolean>(false);
+    const [showSecondaryLinkPicker, setShowSecondaryLinkPicker] = React.useState<boolean>(false);
     const [showAudioLinkPicker, setShowAudioLinkPicker] = React.useState<boolean>(false);
     const [showVideoLinkPicker, setShowVideoLinkPicker] = React.useState<boolean>(false);
     const [expandedSections, setExpandedSections] = React.useState<Record<string, boolean>>({
@@ -73,8 +74,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     });
 
     const titleInputRef = React.useRef<HTMLInputElement>(null);
-    const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const secondaryTitleInputRef = React.useRef<HTMLInputElement>(null);
     const linkInputRef = React.useRef<HTMLInputElement>(null);
+    const secondaryLinkInputRef = React.useRef<HTMLInputElement>(null);
+    const contentTextareaRef = React.useRef<HTMLTextAreaElement>(null);
     const audioRedirectInputRef = React.useRef<HTMLInputElement>(null);
     const videoRedirectInputRef = React.useRef<HTMLInputElement>(null);
     const dateInputRef = React.useRef<HTMLInputElement>(null);
@@ -149,10 +152,10 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     };
 
     // Relevance Flags for Accordion panels
-    const hasTypography = ['heading', 'text', 'quote', 'list', 'button', 'header', 'footer', 'rsvp', 'score-card'].includes(block.type);
+    const hasTypography = ['heading', 'text', 'quote', 'list', 'button', 'dual-button', 'header', 'footer', 'rsvp', 'score-card'].includes(block.type);
     const hasSpacing = true; // Spacing is universally applicable
-    const hasBorders = ['heading', 'text', 'quote', 'button', 'image', 'video', 'columns', 'score-card', 'rsvp'].includes(block.type);
-    const hasBackground = ['heading', 'text', 'quote', 'button', 'list', 'columns', 'score-card', 'logo', 'rsvp'].includes(block.type);
+    const hasBorders = ['heading', 'text', 'quote', 'button', 'dual-button', 'image', 'video', 'columns', 'score-card', 'rsvp'].includes(block.type);
+    const hasBackground = ['heading', 'text', 'quote', 'button', 'dual-button', 'list', 'columns', 'score-card', 'logo', 'rsvp'].includes(block.type);
 
     return (
         <div className="flex flex-col h-full bg-background animate-in fade-in slide-in-from-left-4 duration-300">
@@ -493,6 +496,194 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         <SelectItem value="link">Simple Link</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Dual-Button Settings (Primary + Secondary Controls) */}
+                    {block.type === 'dual-button' && (
+                        <div className="space-y-6 animate-in fade-in duration-200">
+                            {/* ── Primary Button Configuration ────────────────────────────── */}
+                            <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-4">
+                                <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                                    <span className="text-[11px] font-bold tracking-tight text-primary flex items-center gap-1.5">
+                                        <span className="h-2 w-2 rounded-full bg-primary" /> Primary CTA Button
+                                    </span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Button Label</Label>
+                                        <InlineVariablePicker 
+                                            targetRef={titleInputRef} 
+                                            currentValue={block.title || ''} 
+                                            onFieldChange={val => onUpdate({ title: val })} 
+                                        />
+                                    </div>
+                                    <SlashInput 
+                                        value={block.title || ''} 
+                                        onChange={val => onUpdate({ title: val })} 
+                                        variables={autocompleteVariables}
+                                        placeholder="Get Started"
+                                        className="font-bold rounded-xl h-11" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Target Link URL</Label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowLinkPicker(prev => !prev)}
+                                            className={`flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] ${
+                                                showLinkPicker 
+                                                    ? 'text-white bg-primary border-primary/20 hover:bg-primary/95' 
+                                                    : 'text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]'
+                                            }`}
+                                        >
+                                            <LinkIcon className="h-2.5 w-2.5" /> Choose Link Target
+                                        </button>
+                                    </div>
+                                    <div className="relative group flex items-center w-full">
+                                        <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                        <SlashInput 
+                                            value={block.link || ''} 
+                                            onChange={val => onUpdate({ link: val })} 
+                                            variables={autocompleteVariables}
+                                            placeholder="https://..."
+                                            className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8 w-full" 
+                                        />
+                                        <div className="absolute right-2 z-10">
+                                            <InlineVariablePicker 
+                                                targetRef={linkInputRef} 
+                                                currentValue={block.link || ''} 
+                                                onFieldChange={val => onUpdate({ link: val })} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {showLinkPicker && (
+                                        <LinkPicker 
+                                            onSelect={(url) => {
+                                                const hasTracking = block.link?.includes('ref={{encrypted_recipient_token}}');
+                                                let finalUrl = url;
+                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                    const joiner = finalUrl.includes('?') ? '&' : '?';
+                                                    finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ link: finalUrl });
+                                                setShowLinkPicker(false);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Theme Variant</Label>
+                                    <Select value={s.variant || 'default'} onValueChange={(val) => handleStyleUpdate({ variant: val })}>
+                                        <SelectTrigger className="h-10 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="default">Primary Solid</SelectItem>
+                                            <SelectItem value="outline">Branded Outline</SelectItem>
+                                            <SelectItem value="secondary">Soft Gray</SelectItem>
+                                            <SelectItem value="destructive">Warning Red</SelectItem>
+                                            <SelectItem value="ghost">Invisible Ghost</SelectItem>
+                                            <SelectItem value="link">Simple Link</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* ── Secondary Button Configuration ──────────────────────────── */}
+                            <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-4">
+                                <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                                    <span className="text-[11px] font-bold tracking-tight text-foreground/80 flex items-center gap-1.5">
+                                        <span className="h-2 w-2 rounded-full bg-slate-400" /> Secondary Action Button
+                                    </span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Button Label</Label>
+                                        <InlineVariablePicker 
+                                            targetRef={secondaryTitleInputRef} 
+                                            currentValue={block.secondaryTitle || ''} 
+                                            onFieldChange={val => onUpdate({ secondaryTitle: val })} 
+                                        />
+                                    </div>
+                                    <SlashInput 
+                                        value={block.secondaryTitle || ''} 
+                                        onChange={val => onUpdate({ secondaryTitle: val })} 
+                                        variables={autocompleteVariables}
+                                        placeholder="Learn More"
+                                        className="font-bold rounded-xl h-11" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Target Link URL</Label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowSecondaryLinkPicker(prev => !prev)}
+                                            className={`flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] ${
+                                                showSecondaryLinkPicker 
+                                                    ? 'text-white bg-primary border-primary/20 hover:bg-primary/95' 
+                                                    : 'text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]'
+                                            }`}
+                                        >
+                                            <LinkIcon className="h-2.5 w-2.5" /> Choose Link Target
+                                        </button>
+                                    </div>
+                                    <div className="relative group flex items-center w-full">
+                                        <div className="absolute left-3 text-muted-foreground/40 z-10"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                        <SlashInput 
+                                            value={block.secondaryLink || ''} 
+                                            onChange={val => onUpdate({ secondaryLink: val })} 
+                                            variables={autocompleteVariables}
+                                            placeholder="https://..."
+                                            className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9 pr-8 w-full" 
+                                        />
+                                        <div className="absolute right-2 z-10">
+                                            <InlineVariablePicker 
+                                                targetRef={secondaryLinkInputRef} 
+                                                currentValue={block.secondaryLink || ''} 
+                                                onFieldChange={val => onUpdate({ secondaryLink: val })} 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {showSecondaryLinkPicker && (
+                                        <LinkPicker 
+                                            onSelect={(url) => {
+                                                const ss = block.secondaryStyle ?? {};
+                                                const hasTracking = block.secondaryLink?.includes('ref={{encrypted_recipient_token}}');
+                                                let finalUrl = url;
+                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                    const joiner = finalUrl.includes('?') ? '&' : '?';
+                                                    finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
+                                                }
+                                                onUpdate({ secondaryLink: finalUrl });
+                                                setShowSecondaryLinkPicker(false);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Theme Variant</Label>
+                                    <Select 
+                                        value={block.secondaryStyle?.variant || 'outline'} 
+                                        onValueChange={(val) => {
+                                            const currentSS = block.secondaryStyle ?? {};
+                                            onUpdate({ secondaryStyle: { ...currentSS, variant: val } });
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-10 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="default">Primary Solid</SelectItem>
+                                            <SelectItem value="outline">Branded Outline</SelectItem>
+                                            <SelectItem value="secondary">Soft Gray</SelectItem>
+                                            <SelectItem value="destructive">Warning Red</SelectItem>
+                                            <SelectItem value="ghost">Invisible Ghost</SelectItem>
+                                            <SelectItem value="link">Simple Link</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     )}

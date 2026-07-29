@@ -11,10 +11,18 @@ import {
     Layout,
     Square,
     CalendarCheck,
-    Volume2
+    Volume2,
+    Layers2
 } from 'lucide-react';
 
-export const blockIcons: Record<string, React.ComponentType<any>> = {
+/**
+ * PURPOSE: Central registry mapping MessageBlock type keys to Lucide icons.
+ * Used in template workshop sidebar, canvas block wrappers, and block selector menus.
+ *
+ * CAUTION: When adding a new block type to MessageBlock in types.ts, add its icon here too.
+ * RELATED SURFACES: template-workshop.tsx, visual-block.tsx, block-inspector.tsx.
+ */
+export const blockIcons: Record<string, React.ComponentType<{ className?: string }>> = {
     heading: Heading1,
     text: Type,
     list: List,
@@ -22,6 +30,7 @@ export const blockIcons: Record<string, React.ComponentType<any>> = {
     video: Video,
     audio: Volume2,
     button: MousePointer2,
+    'dual-button': Layers2,
     quote: Quote,
     divider: Square,
     header: Layout,

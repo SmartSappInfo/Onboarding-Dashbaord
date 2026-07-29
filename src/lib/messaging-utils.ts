@@ -54,6 +54,24 @@ const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): strin
   return `${str}${defaultUnit}`;
 };
 
+/**
+ * PURPOSE: Sanitise href values before embedding in HTML email output or canvas previews.
+ * Strips dangerous protocols (javascript:, data:, vbscript:) to prevent XSS in email clients.
+ *
+ * CAUTION: Apply to ALL href values from user-controlled block.link / block.secondaryLink fields.
+ *          Do NOT skip this for preview-only surfaces — email previews render in iframes that
+ *          may execute scripts depending on the sandbox attribute.
+ *
+ * TESTABILITY: See dual-button-block.test.ts → 'sanitises javascript: href to #'.
+ * RELATED SURFACES: visual-block.tsx (canvas renderer), messaging-utils.ts (email export).
+ */
+function sanitizeHref(href: string): string {
+  const trimmed = href.trim();
+  // Reject dangerous protocols — case-insensitive, handles URL-encoding tricks
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '#';
+  return trimmed;
+}
+
 export function resolveVariables(text: unknown, variables: Record<string, unknown>): string {
   if (text === null || text === undefined) return '';
   const textStr = String(text);
@@ -544,6 +562,97 @@ export function renderBlocksToHtml(
           <div style="${outerStyle} margin: 24px 0;">
             <a href="${link}" style="background-color: ${btnBg}; color: ${btnColor}; padding: ${btnPadding}; ${btnTextDecoration} border-radius: ${btnRadius}; ${btnBorder ? `${btnBorder};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${btnFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${btnShadow}">
               ${title}
+            </a>
+          </div>
+        `;
+        break;
+      }
+
+      /**
+       * PURPOSE: Render two side-by-side CTA buttons (Primary + Secondary) in email-safe HTML.
+       * Uses table-based inline-block layout — NOT flexbox — for Outlook 2016–2019 compatibility.
+       *
+       * CAUTION: Email clients (especially Outlook on Windows) do not support CSS flexbox.
+       *          The two buttons MUST be displayed as inline-block separated by &nbsp; entities.
+       *          Test with Litmus or Email on Acid before sending campaigns using this block type.
+       *
+       * CAUTION: Both link values (block.link and block.secondaryLink) MUST pass through
+       *          sanitizeHref() to prevent XSS. Never skip sanitisation even in preview contexts.
+       *
+       * CAUTION: Both links must be absolutised via getBaseUrl() if they start with '/'.
+       *          Relative links are unroutable in email client contexts.
+       *
+       * RELATED SURFACES: visual-block.tsx (case 'dual-button'), block-inspector.tsx (ButtonConfigPanel),
+       *                   template-workshop.tsx (BlockTemplatePreview, blockTypeTemplates).
+       * TESTABILITY: See dual-button-block.test.ts for full coverage of this case.
+       */
+      case 'dual-button': {
+        // ── Primary button ──────────────────────────────────────────────────────
+        const primaryTitle = resolveVariables(block.title || 'Get Started', variables);
+        let primaryLink = resolveVariables(block.link || '#', variables);
+        if (primaryLink.startsWith('/')) primaryLink = `${getBaseUrl()}${primaryLink}`;
+        primaryLink = sanitizeHref(primaryLink);
+
+        const primaryVariant = s.variant || 'default';
+        const primaryColor = options?.style?.primaryColor || '#3B5FFF';
+        let primaryBg = s.backgroundColor;
+        let primaryFg = s.color;
+        let primaryBorderW = s.borderWidth ? ensureUnit(s.borderWidth) : '';
+        let primaryBorderS = s.borderStyle || '';
+        let primaryBorderC = s.borderColor || '';
+        let primaryShadow = `box-shadow: 0 10px 15px -3px ${options?.style?.primaryColor ? `${options.style.primaryColor}4D` : 'rgba(59,95,255,0.3)'};`;
+        let primaryTextDecoration = 'text-decoration: none;';
+
+        if (primaryVariant === 'default') { primaryBg = primaryBg || primaryColor; primaryFg = primaryFg || '#ffffff'; }
+        else if (primaryVariant === 'outline') { primaryBg = primaryBg || 'transparent'; primaryFg = primaryFg || primaryColor; primaryBorderW = primaryBorderW || '2px'; primaryBorderS = primaryBorderS || 'solid'; primaryBorderC = primaryBorderC || primaryColor; }
+        else if (primaryVariant === 'secondary') { primaryBg = primaryBg || '#f3f4f6'; primaryFg = primaryFg || '#1f2937'; }
+        else if (primaryVariant === 'destructive') { primaryBg = primaryBg || '#dc2626'; primaryFg = primaryFg || '#ffffff'; }
+        else if (primaryVariant === 'ghost') { primaryBg = primaryBg || 'transparent'; primaryFg = primaryFg || '#4b5563'; primaryShadow = ''; }
+        else if (primaryVariant === 'link') { primaryBg = primaryBg || 'transparent'; primaryFg = primaryFg || primaryColor; primaryShadow = ''; primaryTextDecoration = 'text-decoration: underline;'; }
+
+        const styleRadius = options?.style?.borderRadius;
+        const defaultRadius = styleRadius ? (hasUnit(styleRadius) ? styleRadius : `${styleRadius}px`) : '12px';
+        const primaryRadius = s.borderRadius ? (hasUnit(s.borderRadius) ? s.borderRadius : `${s.borderRadius}px`) : defaultRadius;
+        const primaryFontSize = fontSizeVal || '16px';
+        const primaryPadding = [s.paddingTop || '16px', s.paddingRight || '32px', s.paddingBottom || '16px', s.paddingLeft || '32px'].map(p => ensureUnit(p)).join(' ');
+        const primaryBorderStr = [primaryBorderW ? `border-width: ${primaryBorderW}` : '', primaryBorderS ? `border-style: ${primaryBorderS}` : '', primaryBorderC ? `border-color: ${primaryBorderC}` : ''].filter(Boolean).join('; ');
+
+        // ── Secondary button ─────────────────────────────────────────────────────
+        const ss = block.secondaryStyle ?? {};
+        const secondaryTitle = resolveVariables(block.secondaryTitle || 'Learn More', variables);
+        let secondaryLink = resolveVariables(block.secondaryLink || '#', variables);
+        if (secondaryLink.startsWith('/')) secondaryLink = `${getBaseUrl()}${secondaryLink}`;
+        secondaryLink = sanitizeHref(secondaryLink);
+
+        const secondaryVariant = ss.variant || 'outline';
+        let secondaryBg = ss.backgroundColor;
+        let secondaryFg = ss.color;
+        let secondaryBorderW = ss.borderWidth ? ensureUnit(ss.borderWidth) : '';
+        let secondaryBorderS = ss.borderStyle || '';
+        let secondaryBorderC = ss.borderColor || '';
+        let secondaryShadow = '';
+        let secondaryTextDecoration = 'text-decoration: none;';
+
+        if (secondaryVariant === 'default') { secondaryBg = secondaryBg || primaryColor; secondaryFg = secondaryFg || '#ffffff'; }
+        else if (secondaryVariant === 'outline') { secondaryBg = secondaryBg || 'transparent'; secondaryFg = secondaryFg || primaryColor; secondaryBorderW = secondaryBorderW || '2px'; secondaryBorderS = secondaryBorderS || 'solid'; secondaryBorderC = secondaryBorderC || primaryColor; }
+        else if (secondaryVariant === 'secondary') { secondaryBg = secondaryBg || '#f3f4f6'; secondaryFg = secondaryFg || '#1f2937'; }
+        else if (secondaryVariant === 'destructive') { secondaryBg = secondaryBg || '#dc2626'; secondaryFg = secondaryFg || '#ffffff'; }
+        else if (secondaryVariant === 'ghost') { secondaryBg = secondaryBg || 'transparent'; secondaryFg = secondaryFg || '#4b5563'; }
+        else if (secondaryVariant === 'link') { secondaryBg = secondaryBg || 'transparent'; secondaryFg = secondaryFg || primaryColor; secondaryTextDecoration = 'text-decoration: underline;'; }
+
+        const secondaryRadius = ss.borderRadius ? (hasUnit(ss.borderRadius) ? ss.borderRadius : `${ss.borderRadius}px`) : defaultRadius;
+        const secondaryFontSize = ss.fontSize ? ensureUnit(ss.fontSize) : primaryFontSize;
+        const secondaryPadding = [ss.paddingTop || '14px', ss.paddingRight || '28px', ss.paddingBottom || '14px', ss.paddingLeft || '28px'].map(p => ensureUnit(p)).join(' ');
+        const secondaryBorderStr = [secondaryBorderW ? `border-width: ${secondaryBorderW}` : '', secondaryBorderS ? `border-style: ${secondaryBorderS}` : '', secondaryBorderC ? `border-color: ${secondaryBorderC}` : ''].filter(Boolean).join('; ');
+
+        const outerAlignStyle = s.textAlign === 'left' ? 'text-align: left;' : s.textAlign === 'right' ? 'text-align: right;' : 'text-align: center;';
+
+        blockHtml = `
+          <div style="${outerAlignStyle} margin: 24px 0;">
+            <a href="${primaryLink}" style="background-color: ${primaryBg}; color: ${primaryFg}; padding: ${primaryPadding}; ${primaryTextDecoration} border-radius: ${primaryRadius}; ${primaryBorderStr ? `${primaryBorderStr};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${primaryFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${primaryShadow} margin-right: 12px; margin-bottom: 8px;">
+              ${primaryTitle}
+            </a><a href="${secondaryLink}" style="background-color: ${secondaryBg}; color: ${secondaryFg}; padding: ${secondaryPadding}; ${secondaryTextDecoration} border-radius: ${secondaryRadius}; ${secondaryBorderStr ? `${secondaryBorderStr};` : ''} font-weight: ${ss.fontWeight || '600'}; ${fontFamily} display: inline-block; font-size: ${secondaryFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${secondaryShadow} margin-bottom: 8px;">
+              ${secondaryTitle}
             </a>
           </div>
         `;

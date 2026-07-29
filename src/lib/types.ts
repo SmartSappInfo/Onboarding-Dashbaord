@@ -2833,9 +2833,42 @@ export interface MessageTemplate {
   updatedBy?: string;
 }
 
+/**
+ * Styling fields for a single button within a dual-button block.
+ * Mirrors the relevant subset of MessageBlock.style for independent per-button overrides.
+ *
+ * CAUTION: When adding a new style control to single buttons (e.g. in BlockInspector),
+ * also add it here so dual-button secondary buttons can inherit the same control.
+ * RELATED SURFACES: block-inspector.tsx (ButtonConfigPanel), visual-block.tsx (resolveSingleButtonStyles),
+ *                   messaging-utils.ts (case 'dual-button'), template-workshop.tsx (BlockTemplatePreview).
+ */
+export interface MessageBlockButtonStyle {
+  backgroundColor?: string;
+  color?: string;
+  borderRadius?: string;
+  borderWidth?: string;
+  borderStyle?: string;
+  borderColor?: string;
+  /** Same 6 variants as primary: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link' */
+  variant?: string;
+  fontWeight?: string;
+  fontSize?: string;
+  paddingTop?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
+}
+
 export interface MessageBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
+  /**
+   * IMPORTANT: 'dual-button' is a messaging-only block type.
+   * It is NOT available in survey result-page builders.
+   * CAUTION: If you add a new renderer (e.g. a new preview surface), add a 'dual-button' case.
+   * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx,
+   *                   template-workshop.tsx (BlockTemplatePreview + blockTypeTemplates).
+   */
+  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'dual-button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
   title?: string;
   content?: string;
   url?: string;
@@ -2894,6 +2927,28 @@ export interface MessageBlock {
     rules: MessageBlockRule[];
     matchType: 'all' | 'any';
   };
+  // ─── Dual-button fields (only used when type === 'dual-button') ─────────────
+  /**
+   * PURPOSE: Label for the secondary button in a dual-button block.
+   * CAUTION: Only meaningful when block.type === 'dual-button'.
+   *          Always access with nullish coalescing: block.secondaryTitle ?? 'Learn More'.
+   * TESTABILITY: Verify resolveVariables() is applied in messaging-utils case 'dual-button'.
+   */
+  secondaryTitle?: string;
+  /**
+   * PURPOSE: href for the secondary button. May contain {{variable}} tokens.
+   * CAUTION: Must be sanitised with sanitizeHref() before rendering (strips javascript:, data:, vbscript:).
+   *          Must be absolutised via getBaseUrl() if it starts with '/'.
+   * TESTABILITY: See dual-button-block.test.ts → 'sanitises javascript: secondaryLink'.
+   */
+  secondaryLink?: string;
+  /**
+   * PURPOSE: Independent style overrides for the secondary button.
+   * CAUTION: Always access as block.secondaryStyle ?? {} to avoid undefined property errors.
+   *          Use MessageBlockButtonStyle type — never use inline Record<string, string>.
+   * RELATED SURFACES: BlockInspector ButtonConfigPanel, resolveSingleButtonStyles() in visual-block.tsx.
+   */
+  secondaryStyle?: MessageBlockButtonStyle;
 }
 
 export interface MessageBlockRule {
