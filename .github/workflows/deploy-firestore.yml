@@ -39,7 +39,7 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Architectural Pointer: Deploys security rules and composite indexes to Cloud Firestore
+      # Architectural Pointer: Explicitly target project ID and run non-interactively in CI
       - name: Deploy to Firebase Firestore
         if: ${{ secrets.FIREBASE_TOKEN != '' }}
-        run: npx -y firebase-tools deploy --only firestore --token "${{ secrets.FIREBASE_TOKEN }}"
+        run: npx -y firebase-tools deploy --only firestore --project studio-9220106300-f74cb --non-interactive --token "${{ secrets.FIREBASE_TOKEN }}"
