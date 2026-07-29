@@ -165,7 +165,7 @@ export function plainTextToHtml(text: unknown, isDark?: boolean): string {
 /**
  * Evaluates block-level visibility logic against provided variables.
  */
-export function shouldShowBlock(block: MessageBlock, variables: Record<string, any>): boolean {
+export function shouldShowBlock(block: MessageBlock, variables: Record<string, unknown>): boolean {
   if (!block.visibilityLogic || !block.visibilityLogic.rules || block.visibilityLogic.rules.length === 0) {
     return true;
   }
@@ -244,7 +244,7 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
  */
 export function renderBlocksToHtml(
   blocks: MessageBlock[], 
-  variables: Record<string, any>, 
+  variables: Record<string, unknown>, 
   options?: { 
     width?: string, 
     backgroundColor?: string,
@@ -647,13 +647,32 @@ export function renderBlocksToHtml(
 
         const outerAlignStyle = s.textAlign === 'left' ? 'text-align: left;' : s.textAlign === 'right' ? 'text-align: right;' : 'text-align: center;';
 
+        /**
+         * PURPOSE: Dual-button HTML output wrapped in MSO conditional ghost tables for 100% Outlook desktop compatibility.
+         * Modern clients render standard inline-block elements; Outlook Word engine renders table cells.
+         */
         blockHtml = `
           <div style="${outerAlignStyle} margin: 24px 0;">
+            <!--[if mso]>
+            <table role="presentation" border="0" cellPadding="0" cellSpacing="0" style="display: inline-table; border-collapse: collapse;">
+              <tr>
+                <td valign="top" style="padding-right: 12px; padding-bottom: 8px;">
+            <![endif]-->
             <a href="${primaryLink}" style="background-color: ${primaryBg}; color: ${primaryFg}; padding: ${primaryPadding}; ${primaryTextDecoration} border-radius: ${primaryRadius}; ${primaryBorderStr ? `${primaryBorderStr};` : ''} ${fontWeight || 'font-weight: 800;'} ${fontFamily} display: inline-block; font-size: ${primaryFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${primaryShadow} margin-right: 12px; margin-bottom: 8px;">
               ${primaryTitle}
-            </a><a href="${secondaryLink}" style="background-color: ${secondaryBg}; color: ${secondaryFg}; padding: ${secondaryPadding}; ${secondaryTextDecoration} border-radius: ${secondaryRadius}; ${secondaryBorderStr ? `${secondaryBorderStr};` : ''} font-weight: ${ss.fontWeight || '600'}; ${fontFamily} display: inline-block; font-size: ${secondaryFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${secondaryShadow} margin-bottom: 8px;">
+            </a>
+            <!--[if mso]>
+                </td>
+                <td valign="top" style="padding-bottom: 8px;">
+            <![endif]-->
+            <a href="${secondaryLink}" style="background-color: ${secondaryBg}; color: ${secondaryFg}; padding: ${secondaryPadding}; ${secondaryTextDecoration} border-radius: ${secondaryRadius}; ${secondaryBorderStr ? `${secondaryBorderStr};` : ''} font-weight: ${ss.fontWeight || '600'}; ${fontFamily} display: inline-block; font-size: ${secondaryFontSize}; text-transform: uppercase; letter-spacing: 0.05em; ${secondaryShadow} margin-bottom: 8px;">
               ${secondaryTitle}
             </a>
+            <!--[if mso]>
+                </td>
+              </tr>
+            </table>
+            <![endif]-->
           </div>
         `;
         break;
