@@ -35,7 +35,7 @@ export interface MessagingTemplateSelectorProps {
     templateTypePrefix?: string;
     value?: string;
     onValueChange: (value: string) => void;
-    onSelect?: (template: MessageTemplate) => void;
+    onSelect?: (template: MessageTemplate | null) => void;
     placeholder?: string;
     className?: string;
     compact?: boolean;
