@@ -246,6 +246,95 @@ const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): strin
     return `${str}${defaultUnit}`;
 };
 
+/**
+ * PURPOSE: Sanitise href values before embedding in canvas preview anchor tags.
+ * Strips dangerous protocols (javascript:, data:, vbscript:) to prevent XSS.
+ *
+ * CAUTION: Apply this to ALL user-supplied link/secondaryLink fields before use in <a href>.
+ *          Email previews render in iframes — sandboxing is the first defence, but
+ *          sanitisation at the data level is the second defence.
+ *
+ * TESTABILITY: See dual-button-block.test.ts → 'sanitises javascript: href to #'.
+ * RELATED SURFACES: messaging-utils.ts has an identical function for email export.
+ *                   Keep both in sync if the pattern changes.
+ */
+function sanitizeHref(href: string): string {
+    const trimmed = href.trim();
+    if (/^(javascript|data|vbscript):/i.test(trimmed)) return '#';
+    return trimmed;
+}
+
+/**
+ * PURPOSE: Shared pure helper that maps a button variant key + style object to resolved
+ * colour/border/shadow CSS values. Eliminates code duplication between 'button' and
+ * 'dual-button' canvas cases.
+ *
+ * CAUTION: This is defined at MODULE LEVEL (not inside VisualBlock) to satisfy the
+ * vercel-react-best-practices rule 'rerender-no-inline-components'.
+ * Defining it inside the component would recreate it on every render.
+ *
+ * CAUTION: When adding new variant types (e.g. 'brand', 'tonal'), add them here
+ * AND in messaging-utils.ts case 'button' and case 'dual-button'. They must stay in sync.
+ *
+ * RELATED SURFACES: messaging-utils.ts (email export variant logic).
+ * TESTABILITY: Test with variant='ghost' — should produce transparent bg and no shadow.
+ */
+function resolveSingleButtonStyles(variant: string, style: {
+    backgroundColor?: string;
+    color?: string;
+    borderWidth?: string;
+    borderStyle?: string;
+    borderColor?: string;
+} = {}): {
+    bg: string;
+    fg: string;
+    borderWidth?: string;
+    borderStyle?: string;
+    borderColor?: string;
+    shadow: string;
+    textDecoration: string;
+} {
+    let bg = style.backgroundColor;
+    let fg = style.color;
+    let borderWidth = style.borderWidth ? `${style.borderWidth}px` : undefined;
+    let borderStyle = style.borderStyle ?? undefined;
+    let borderColor = style.borderColor ?? undefined;
+    let shadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)';
+    let textDecoration = 'none';
+
+    if (variant === 'default') {
+        bg = bg || 'var(--org-primary, rgb(37 99 235))';
+        fg = fg || '#ffffff';
+    } else if (variant === 'outline') {
+        bg = bg || 'transparent';
+        fg = fg || 'var(--org-primary, rgb(37 99 235))';
+        borderWidth = borderWidth || '2px';
+        borderStyle = borderStyle || 'solid';
+        borderColor = borderColor || 'var(--org-primary, rgb(37 99 235))';
+    } else if (variant === 'secondary') {
+        bg = bg || '#f3f4f6';
+        fg = fg || '#1f2937';
+    } else if (variant === 'destructive') {
+        bg = bg || '#dc2626';
+        fg = fg || '#ffffff';
+    } else if (variant === 'ghost') {
+        bg = bg || 'transparent';
+        fg = fg || '#4b5563';
+        shadow = 'none';
+    } else if (variant === 'link') {
+        bg = bg || 'transparent';
+        fg = fg || 'var(--org-primary, rgb(37 99 235))';
+        shadow = 'none';
+        textDecoration = 'underline';
+    } else {
+        // Fallback: treat unknown variants as 'default'
+        bg = bg || 'var(--org-primary, rgb(37 99 235))';
+        fg = fg || '#ffffff';
+    }
+
+    return { bg: bg ?? 'var(--org-primary, rgb(37 99 235))', fg: fg ?? '#ffffff', borderWidth, borderStyle, borderColor, shadow, textDecoration };
+}
+
 export function VisualBlock({ 
     block, 
     simulationVars, 
@@ -521,41 +610,19 @@ export function VisualBlock({
                 </div>
             );
         case 'button': {
+            // PURPOSE: Single CTA button block renderer.
+            // CAUTION: Uses resolveSingleButtonStyles() helper — if you change colour logic here,
+            //          update that helper so 'dual-button' inherits the same fix.
             const variant = s.variant || 'default';
-            
-            let btnBg = s.backgroundColor;
-            let btnColor = s.color;
-            let btnBorderWidth = s.borderWidth ? `${s.borderWidth}px` : undefined;
-            let btnBorderStyle = s.borderStyle || undefined;
-            let btnBorderColor = s.borderColor || undefined;
-            let btnShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-            let btnTextDecoration = 'none';
-
-            if (variant === 'default') {
-                btnBg = btnBg || 'var(--org-primary, rgb(37 99 235))';
-                btnColor = btnColor || '#ffffff';
-            } else if (variant === 'outline') {
-                btnBg = btnBg || 'transparent';
-                btnColor = btnColor || 'var(--org-primary, rgb(37 99 235))';
-                btnBorderWidth = btnBorderWidth || '2px';
-                btnBorderStyle = btnBorderStyle || 'solid';
-                btnBorderColor = btnBorderColor || 'var(--org-primary, rgb(37 99 235))';
-            } else if (variant === 'secondary') {
-                btnBg = btnBg || '#f3f4f6';
-                btnColor = btnColor || '#1f2937';
-            } else if (variant === 'destructive') {
-                btnBg = btnBg || '#dc2626';
-                btnColor = btnColor || '#ffffff';
-            } else if (variant === 'ghost') {
-                btnBg = btnBg || 'transparent';
-                btnColor = btnColor || '#4b5563';
-                btnShadow = 'none';
-            } else if (variant === 'link') {
-                btnBg = btnBg || 'transparent';
-                btnColor = btnColor || 'var(--org-primary, rgb(37 99 235))';
-                btnShadow = 'none';
-                btnTextDecoration = 'underline';
-            }
+            const { bg: btnBg, fg: btnColor, borderWidth: btnBorderWidth, borderStyle: btnBorderStyle,
+                    borderColor: btnBorderColor, shadow: btnShadow, textDecoration: btnTextDecoration
+            } = resolveSingleButtonStyles(variant, {
+                backgroundColor: s.backgroundColor,
+                color: s.color,
+                borderWidth: s.borderWidth,
+                borderStyle: s.borderStyle,
+                borderColor: s.borderColor,
+            });
 
             const btnRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '12px';
             const btnPadding = `${s.paddingTop || 14}px ${s.paddingRight || 28}px ${s.paddingBottom || 14}px ${s.paddingLeft || 28}px`;
@@ -563,7 +630,7 @@ export function VisualBlock({
             return (
                 <div className={cn("w-full py-4 flex", alignFlexClass)}>
                     <div 
-                        className="inline-flex items-center justify-center transition-all duration-200 active:scale-95 text-center leading-normal max-w-full overflow-hidden"
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal max-w-full overflow-hidden"
                         style={{
                             backgroundColor: btnBg,
                             color: btnColor,
@@ -599,6 +666,136 @@ export function VisualBlock({
                             </span>
                         )}
                     </div>
+                </div>
+            );
+        }
+
+        /**
+         * PURPOSE: Dual-button block — renders Primary (CTA) + Secondary buttons side by side.
+         * Each button is independently configurable via block.style (primary) and block.secondaryStyle (secondary).
+         *
+         * CAUTION: Do NOT use CSS flexbox in HTML email output for this block — email clients
+         *          (Outlook 2016-2019) do not support it. The canvas uses flexbox; the email export
+         *          (messaging-utils.ts case 'dual-button') uses inline-block.
+         *
+         * CAUTION: Both link fields must pass through sanitizeHref() to strip dangerous protocols.
+         *          Do NOT render raw block.link or block.secondaryLink in <a href> without this.
+         *
+         * CAUTION: Secondary button styles come from block.secondaryStyle ?? {} — ALWAYS use
+         *          nullish coalescing to prevent undefined property access crashes.
+         *
+         * RELATED SURFACES: messaging-utils.ts (case 'dual-button'), block-inspector.tsx (ButtonConfigPanel),
+         *                   template-workshop.tsx (BlockTemplatePreview, blockTypeTemplates).
+         * TESTABILITY: See dual-button-block.test.ts for rendering and link sanitisation tests.
+         */
+        case 'dual-button': {
+            // ── Primary button resolved styles ───────────────────────────────────────────────────
+            const primaryVariant = s.variant || 'default';
+            const primary = resolveSingleButtonStyles(primaryVariant, {
+                backgroundColor: s.backgroundColor,
+                color: s.color,
+                borderWidth: s.borderWidth,
+                borderStyle: s.borderStyle,
+                borderColor: s.borderColor,
+            });
+            const primaryRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '12px';
+            const primaryPadding = `${s.paddingTop || 14}px ${s.paddingRight || 28}px ${s.paddingBottom || 14}px ${s.paddingLeft || 28}px`;
+            const primaryLink = sanitizeHref(block.link || '#');
+
+            // ── Secondary button resolved styles ─────────────────────────────────────────────────
+            // ALWAYS access block.secondaryStyle with ?? {} guard to prevent undefined property errors.
+            const ss = block.secondaryStyle ?? {};
+            const secondaryVariant = ss.variant || 'outline';
+            const secondary = resolveSingleButtonStyles(secondaryVariant, {
+                backgroundColor: ss.backgroundColor,
+                color: ss.color,
+                borderWidth: ss.borderWidth,
+                borderStyle: ss.borderStyle,
+                borderColor: ss.borderColor,
+            });
+            const secondaryRadius = ss.borderRadius ? ensureUnit(ss.borderRadius) : primaryRadius;
+            const secondaryPadding = `${ss.paddingTop || 12}px ${ss.paddingRight || 24}px ${ss.paddingBottom || 12}px ${ss.paddingLeft || 24}px`;
+            const secondaryLink = sanitizeHref(block.secondaryLink || '#');
+
+            return (
+                <div className={cn("w-full py-4 flex flex-wrap gap-3", alignFlexClass)}>
+                    {/* ─ Primary Button ─ */}
+                    <a
+                        href={primaryLink}
+                        aria-label={block.title || 'Primary action'}
+                        onClick={(e) => { if (!block.link) e.preventDefault(); }}
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] flex-shrink-0"
+                        style={{
+                            backgroundColor: primary.bg,
+                            color: primary.fg,
+                            borderRadius: primaryRadius,
+                            padding: primaryPadding,
+                            fontWeight: s.fontWeight || 'bold',
+                            fontFamily: s.fontFamily || undefined,
+                            fontSize: s.fontSize ? ensureUnit(s.fontSize) : '15px',
+                            borderWidth: primary.borderWidth,
+                            borderStyle: primary.borderStyle,
+                            borderColor: primary.borderColor,
+                            boxShadow: primary.shadow,
+                            textDecoration: primary.textDecoration,
+                            wordBreak: 'break-word',
+                        }}
+                    >
+                        {isEditing ? (
+                            <SlashInput
+                                value={block.title || ''}
+                                onChange={(val) => onContentUpdate?.({ title: val })}
+                                variables={autocompleteVariables}
+                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                style={{ color: primary.fg, font: 'inherit', width: `${Math.max((block.title || '').length || 8, 4)}ch` }}
+                                placeholder="Get Started"
+                                onKeyDown={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <span className="font-bold select-text inline-flex items-center justify-center leading-snug" style={{ color: primary.fg, font: 'inherit' }}>
+                                {renderTextWithVariablePills(block.title || 'Get Started', true)}
+                            </span>
+                        )}
+                    </a>
+
+                    {/* ─ Secondary Button ─ */}
+                    <a
+                        href={secondaryLink}
+                        aria-label={block.secondaryTitle || 'Secondary action'}
+                        onClick={(e) => { if (!block.secondaryLink) e.preventDefault(); }}
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] flex-shrink-0"
+                        style={{
+                            backgroundColor: secondary.bg,
+                            color: secondary.fg,
+                            borderRadius: secondaryRadius,
+                            padding: secondaryPadding,
+                            fontWeight: ss.fontWeight || '600',
+                            fontFamily: s.fontFamily || undefined,
+                            fontSize: ss.fontSize ? ensureUnit(ss.fontSize) : (s.fontSize ? ensureUnit(s.fontSize) : '15px'),
+                            borderWidth: secondary.borderWidth,
+                            borderStyle: secondary.borderStyle,
+                            borderColor: secondary.borderColor,
+                            boxShadow: secondary.shadow,
+                            textDecoration: secondary.textDecoration,
+                            wordBreak: 'break-word',
+                        }}
+                    >
+                        {isEditing ? (
+                            <SlashInput
+                                value={block.secondaryTitle || ''}
+                                onChange={(val) => onContentUpdate?.({ secondaryTitle: val })}
+                                variables={autocompleteVariables}
+                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-semibold focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                style={{ color: secondary.fg, font: 'inherit', width: `${Math.max((block.secondaryTitle || '').length || 8, 4)}ch` }}
+                                placeholder="Learn More"
+                                onKeyDown={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <span className="font-semibold select-text inline-flex items-center justify-center leading-snug" style={{ color: secondary.fg, font: 'inherit' }}>
+                                {renderTextWithVariablePills(block.secondaryTitle || 'Learn More', true)}
+                            </span>
+                        )}
+                    </a>
                 </div>
             );
         }

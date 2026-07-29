@@ -377,7 +377,10 @@ export function CampaignAnalytics({ campaign, onBack }: CampaignAnalyticsProps) 
                         const varStats = variant?.stats || { totalTargeted: 0, totalSent: 0, totalFailed: 0, totalOpened: 0, totalClicked: 0, totalUnsubscribed: 0 };
                         
                         const openRate = varStats.totalSent > 0 ? (varStats.totalOpened / varStats.totalSent) * 100 : 0;
-                        const clickRate = varStats.totalSent > 0 ? (varStats.totalClicked / varStats.totalSent) * 100 : 0;
+                        // CLICK RATE (CTR): Uses totalOpened as denominator, not totalSent.
+                        // CTR measures click-through among openers. Keep in sync with
+                        // campaign-automation-jobs.ts and automation message stats components.
+                        const clickRate = varStats.totalOpened > 0 ? (varStats.totalClicked / varStats.totalOpened) * 100 : 0;
                         const unsubscribeRate = varStats.totalSent > 0 ? ((varStats.totalUnsubscribed || 0) / varStats.totalSent) * 100 : 0;
                         
                         const isWinner = freshCampaign.abTestConfig?.winningVariantId === varId;

@@ -736,7 +736,12 @@ export function MessageNodeLogsDialog({
   // Metrics helper
   const sentCount = stats.sent;
   const openRate = sentCount > 0 ? Math.round((stats.opened / sentCount) * 100) : 0;
-  const clickRate = sentCount > 0 ? Math.round((stats.clicked / sentCount) * 100) : 0;
+  // CLICK RATE (CTR): Uses opened as denominator, not sent.
+  // CTR measures engagement depth among openers, not raw delivery rate.
+  // Example: 24 clicks / 185 opened = 13% CTR (not 24/7011 = 0%)
+  // CAUTION: Keep in sync with MessageNodeStatsStrip, MessageNodeStatsPanel,
+  // campaign-analytics, and campaign-automation-jobs.
+  const clickRate = stats.opened > 0 ? Math.round((stats.clicked / stats.opened) * 100) : 0;
   const bounceRate = sentCount > 0 ? Math.round((stats.bounced / sentCount) * 100) : 0;
   const replyRate = sentCount > 0 ? Math.round((stats.replied / sentCount) * 100) : 0;
 

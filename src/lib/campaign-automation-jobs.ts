@@ -36,8 +36,14 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
         scoreA = statsA.totalSent > 0 ? statsA.totalOpened / statsA.totalSent : 0;
         scoreB = statsB.totalSent > 0 ? statsB.totalOpened / statsB.totalSent : 0;
       } else if (metric === 'click_rate') {
-        scoreA = statsA.totalSent > 0 ? statsA.totalClicked / statsA.totalSent : 0;
-        scoreB = statsB.totalSent > 0 ? statsB.totalClicked / statsB.totalSent : 0;
+        // CLICK RATE (CTR): Uses totalOpened as denominator, not totalSent.
+        // CTR measures click-through among openers, which is the industry-standard
+        // definition. Using sent inflates the denominator and penalizes variants
+        // with similar click counts but different delivery rates.
+        // CAUTION: This affects live AB test winner decisions. Keep in sync with
+        // campaign-analytics.tsx and automation message stats components.
+        scoreA = statsA.totalOpened > 0 ? statsA.totalClicked / statsA.totalOpened : 0;
+        scoreB = statsB.totalOpened > 0 ? statsB.totalClicked / statsB.totalOpened : 0;
       } else if (metric === 'low_unsubscribe_rate') {
         scoreA = statsA.totalSent > 0 ? (statsA.totalSent - (statsA.totalUnsubscribed || 0)) / statsA.totalSent : 1;
         scoreB = statsB.totalSent > 0 ? (statsB.totalSent - (statsB.totalUnsubscribed || 0)) / statsB.totalSent : 1;

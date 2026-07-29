@@ -33,6 +33,13 @@ export function MessageNodeStatsPanel({
   const resolvedChannel = stats?.channel ?? channel ?? 'email';
   const sent = stats?.sent ?? 0;
   const pct = (n: number) => (sent > 0 ? Math.round((n / sent) * 100) : 0);
+  // CLICK RATE (CTR): Uses opened as denominator, not sent.
+  // CTR measures engagement depth among openers. All other metrics (delivery,
+  // bounce, open rate) continue to use sent as denominator.
+  // CAUTION: Keep in sync with MessageNodeStatsStrip, MessageNodeLogsDialog,
+  // campaign-analytics, and campaign-automation-jobs.
+  const opened = stats?.opened ?? 0;
+  const clickPct = (n: number) => (opened > 0 ? Math.round((n / opened) * 100) : 0);
 
   const openLogs = (metric: string) => {
     setSelectedMetric(metric);
@@ -83,7 +90,7 @@ export function MessageNodeStatsPanel({
               <>
                 <StatCard label="Delivered" value={stats.delivered} sub={`${pct(stats.delivered)}%`} tone="info" onClick={() => openLogs('delivered')} />
                 <StatCard label="Opened" value={stats.opened} sub={`${pct(stats.opened)}%`} tone="success" onClick={() => openLogs('opened')} />
-                <StatCard label="Clicked" value={stats.clicked} sub={`${pct(stats.clicked)}%`} tone="success" onClick={() => openLogs('clicked')} />
+                <StatCard label="Clicked" value={stats.clicked} sub={`${clickPct(stats.clicked)}%`} tone="success" onClick={() => openLogs('clicked')} />
                 <StatCard label="Bounced" value={stats.bounced} sub={`${pct(stats.bounced)}%`} tone="danger" onClick={() => openLogs('bounced')} />
                 <StatCard label="Complaints" value={stats.complained} sub={`${pct(stats.complained)}%`} tone="danger" onClick={() => openLogs('bounced')} />
                 <StatCard label="Unsubscribed" value={stats.unsubscribed} sub={`${pct(stats.unsubscribed)}%`} tone="danger" onClick={() => openLogs('unsubscribed')} />

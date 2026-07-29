@@ -40,6 +40,12 @@ export function MessageNodeStatsStrip({
   const resolvedChannel = stats?.channel ?? channel ?? 'email';
   const sent = stats?.sent ?? 0;
   const pct = (n: number) => (sent > 0 ? Math.round((n / sent) * 100) : 0);
+  // CLICK RATE (CTR): Uses opened as denominator, not sent.
+  // CTR measures engagement depth among openers, not raw delivery rate.
+  // CAUTION: If you change this formula, also update MessageNodeStatsPanel,
+  // MessageNodeLogsDialog, campaign-analytics, and campaign-automation-jobs.
+  const opened = stats?.opened ?? 0;
+  const clickPct = (n: number) => (opened > 0 ? Math.round((n / opened) * 100) : 0);
 
   const openLogs = (metric: string) => {
     setSelectedMetric(metric);
@@ -62,7 +68,7 @@ export function MessageNodeStatsStrip({
           {resolvedChannel === 'email' ? (
             <>
               <Stat label="Open" value={stats?.opened ?? 0} pct={pct(stats?.opened ?? 0)} onClick={() => openLogs('opened')} />
-              <Stat label="Click" value={stats?.clicked ?? 0} pct={pct(stats?.clicked ?? 0)} onClick={() => openLogs('clicked')} />
+              <Stat label="Click" value={stats?.clicked ?? 0} pct={clickPct(stats?.clicked ?? 0)} onClick={() => openLogs('clicked')} />
             </>
           ) : resolvedChannel === 'sms' ? (
             <>
