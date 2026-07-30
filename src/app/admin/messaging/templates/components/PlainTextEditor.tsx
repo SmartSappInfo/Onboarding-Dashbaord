@@ -10,6 +10,7 @@ import { AlertTriangle, Link as LinkIcon } from 'lucide-react';
 import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkPicker } from './link-picker';
+import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
 
 interface PlainTextEditorProps {
     value: string;
@@ -72,7 +73,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         const textarea = textareaRef.current;
         if (!textarea) return;
 
-        let finalUrl = url;
+        let finalUrl = url.startsWith('/') ? ensureAbsoluteUrl(url) : url;
         if (track) {
             const joiner = finalUrl.includes('?') ? '&' : '?';
             finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
@@ -103,11 +104,13 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         };
     }, [insertVariable, registerInsertCallback]);
 
-    // O(1) lookup set for allowed variable keys — rebuilt only when variables change
-    const allowedKeySet = React.useMemo(
-        () => new Set(variables.map(v => v.key)),
-        [variables]
-    );
+    // O(1) lookup set for allowed variable keys — rebuilt only when variables change.
+    // Includes system tracking variables like 'encrypted_recipient_token' to prevent false-positive warnings.
+    const allowedKeySet = React.useMemo(() => {
+        const set = new Set(variables.map(v => v.key));
+        set.add('encrypted_recipient_token');
+        return set;
+    }, [variables]);
 
     // Map VariableDefinition to TemplateVariable format for useSlashAutocomplete
     const templateVars = React.useMemo<TemplateVariable[]>(() => {

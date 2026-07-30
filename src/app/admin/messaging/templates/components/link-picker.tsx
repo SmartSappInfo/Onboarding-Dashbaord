@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link, Search, ChevronDown } from 'lucide-react';
 import type { Survey, CampaignPage, BookingPage, QRCode } from '@/lib/types';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface LinkPickerProps {
   onSelect: (url: string) => void;
@@ -179,8 +180,18 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
       item.path.toLowerCase().includes(search.toLowerCase())
   );
 
+  /**
+   * PURPOSE: Selects a link target and formats internal relative paths as fully-qualified absolute URLs.
+   * Internal relative paths starting with '/' (e.g. '/m/9Kmtlz6ncX9Uf9dtWUo2') are automatically
+   * prepended with getBaseUrl() (e.g. 'https://go.smartsapp.com/m/9Kmtlz6ncX9Uf9dtWUo2').
+   * Dynamic variables starting with '{{' (e.g. '{{survey_link}}') remain variable tokens.
+   *
+   * CAUTION: Always use getBaseUrl() to resolve domain dynamically in browser context.
+   * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
+   */
   const handleSelect = (path: string) => {
-    onSelect(path);
+    const fullUrl = path.startsWith('/') ? `${getBaseUrl()}${path}` : path;
+    onSelect(fullUrl);
     setSearch('');
   };
 
@@ -229,19 +240,22 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             <div className="text-center py-12 text-sm text-muted-foreground/60">No matching published items found.</div>
           ) : (
             <div className="grid grid-cols-1 gap-1">
-              {filteredItems.map((item) => (
-                <button
-                  key={item.id || item.path}
-                  onClick={() => handleSelect(item.path)}
-                  className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
-                >
-                  <div>
-                    <div className="text-sm font-semibold text-slate-755">{item.name}</div>
-                    <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5">{item.path}</div>
-                  </div>
-                  <Link className="h-3.5 w-3.5 text-muted-foreground/30" />
-                </button>
-              ))}
+              {filteredItems.map((item) => {
+                const displayUrl = item.path.startsWith('/') ? `${getBaseUrl()}${item.path}` : item.path;
+                return (
+                  <button
+                    key={item.id || item.path}
+                    onClick={() => handleSelect(item.path)}
+                    className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200"
+                  >
+                    <div>
+                      <div className="text-sm font-semibold text-slate-755">{item.name}</div>
+                      <div className="text-[10px] font-mono text-muted-foreground/60 mt-0.5 truncate max-w-[320px]">{displayUrl}</div>
+                    </div>
+                    <Link className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 ml-2" />
+                  </button>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
