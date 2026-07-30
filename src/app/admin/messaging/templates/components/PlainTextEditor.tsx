@@ -324,8 +324,8 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
             )}
 
             {/* Status bar */}
-            <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-2">
+                <div className="flex flex-wrap items-center gap-2">
                     {channel === 'sms' && smsSegments ? (
                         <>
                             <Badge variant="outline" className="rounded-full h-6 px-3 text-[10px] font-bold tabular-nums">
@@ -356,8 +356,8 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
             </div>
 
             {/* Link Picker section */}
-            <div className="border border-border/80 rounded-2xl p-4 bg-muted/5 space-y-4 text-left mt-4 transition-all duration-200">
-                <div className="flex items-center justify-between">
+            <div className="border border-border/80 rounded-2xl p-3 sm:p-4 bg-muted/5 space-y-4 text-left mt-4 transition-all duration-200">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                         <LinkIcon className="h-3.5 w-3.5 text-primary" /> Insert Link with Tracking
                     </span>
@@ -365,7 +365,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                         type="button"
                         onClick={() => setShowLinkPicker(prev => !prev)}
                         className={cn(
-                            "flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                            "flex items-center justify-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto",
                             showLinkPicker
                                 ? "text-white bg-primary border-primary/20 hover:bg-primary/95"
                                 : "text-primary bg-primary/[0.04] border-primary/10 hover:bg-primary/[0.08]"

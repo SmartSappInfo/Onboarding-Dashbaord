@@ -326,7 +326,7 @@ function Stepper({ currentStep, onStepClick }: StepperProps) {
     ];
 
     return (
-        <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-xl border border-border/50 select-none">
+        <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-xl border border-border/50 select-none overflow-x-auto max-w-full no-scrollbar">
             {steps.map((s, index) => {
                 const isActive = currentStep === s.n;
                 const isCompleted = currentStep > s.n;
@@ -337,7 +337,7 @@ function Stepper({ currentStep, onStepClick }: StepperProps) {
                             type="button"
                             onClick={() => onStepClick(s.n)}
                             className={cn(
-                                "px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 outline-none select-none h-7",
+                                "px-2.5 sm:px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 sm:gap-1.5 outline-none select-none h-8 sm:h-7 shrink-0 min-h-[36px] sm:min-h-0 touch-manipulation",
                                 isActive 
                                     ? "bg-primary text-primary-foreground shadow-sm" 
                                     : isCompleted
@@ -355,7 +355,7 @@ function Stepper({ currentStep, onStepClick }: StepperProps) {
                             )}>
                                 {isCompleted ? '✓' : s.n}
                             </span>
-                            <span>{s.label}</span>
+                            <span className="truncate">{s.label}</span>
                         </button>
                         {index < steps.length - 1 && (
                             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/30 shrink-0"><path d="m9 18 6-6-6-6"/></svg>
