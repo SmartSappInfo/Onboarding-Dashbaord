@@ -657,8 +657,16 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
-    // Phase 7: Branded Link Tracking
-    if (trackLinks) {
+    // Phase 7: Branded Link Tracking & Stateless SMS Shortening
+    /**
+     * PURPOSE: Stateless short link transformation for multi-channel dispatches.
+     * Automatically active for SMS dispatches (unless trackLinks === false) to optimize message segment billing.
+     *
+     * CAUTION: Ensure contactId and entityId are correctly passed so recipient identity context is preserved.
+     * TESTABILITY: Tested via unit tests in src/lib/__tests__/short-link-pipeline.test.ts.
+     * RELATED SURFACES: link-tracking.ts, bulk-messaging.ts, /app/go/[linkId]/route.ts.
+     */
+    if (trackLinks || (template.channel === 'sms' && input.trackLinks !== false)) {
         const { transformBodyWithTracking } = await import('./link-tracking');
         // Find jobId and taskId from tags to associate the link
         const jobId = tags?.find(t => t.name === 'jobId')?.value || 'manual';
@@ -670,7 +678,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             campaignId: variables.campaignId || 'manual',
             jobId,
             taskId,
-            entityId: entityId || undefined,
+            entityId: resolvedEntityId || entityId || undefined,
             contactId,
             channel: (['email', 'sms', 'whatsapp'].includes(template.channel) ? template.channel : 'direct') as 'email' | 'sms' | 'whatsapp' | 'direct'
         });
@@ -1146,6 +1154,18 @@ export async function sendRawMessage(input: {
         if (channel === 'email' && resolvedPreviewText) {
             const { injectPreviewTextIntoHtml } = await import('./messaging-utils');
             resolvedBody = injectPreviewTextIntoHtml(resolvedBody, resolvedPreviewText);
+        }
+
+        if (channel === 'sms') {
+            const { transformBodyWithTracking } = await import('./link-tracking');
+            const contactId = (variables?.contactId as string | undefined) || undefined;
+            resolvedBody = await transformBodyWithTracking({
+                body: resolvedBody,
+                campaignId: (variables?.campaignId as string | undefined) || 'manual',
+                entityId: entityId || undefined,
+                contactId,
+                channel: 'sms'
+            });
         }
 
         // 7.8 Intercept Scheduling if scheduledAt is provided
