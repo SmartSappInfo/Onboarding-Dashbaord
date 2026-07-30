@@ -4415,13 +4415,20 @@ export function TemplateWorkshop({
                     )}
 
                     {step === 2 && (
-                        <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex flex-col md:flex-row select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
+                        <motion.div 
+                            key="step2" 
+                            {...stepTransition} 
+                            className={cn("absolute inset-0 flex flex-col md:flex-row select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}
+                            style={{ '--sidebar-width': `${variablesWidth}px` } as React.CSSProperties}
+                        >
+                            {/* Left Sidebar / Variables Panel — Bottom sheet drawer on mobile (< md), sidebar on desktop (md:) */}
                             <div 
                                 className={cn(
-                                    "border-b md:border-b-0 md:border-r bg-background flex flex-col shrink-0 relative shadow-xl transition-all duration-300 overflow-hidden",
-                                    isVariablesCollapsed ? "h-0 md:h-auto md:w-0 border-b-0 md:border-r-0 opacity-0 pointer-events-none" : "w-full h-[50vh] md:h-auto opacity-100"
-                                )} 
-                                style={isVariablesCollapsed ? { width: 0 } : (typeof window !== 'undefined' && window.innerWidth >= 768 ? { width: variablesWidth } : {})}
+                                    "bg-background flex flex-col shrink-0 relative transition-all duration-300 overflow-hidden z-40",
+                                    isVariablesCollapsed
+                                        ? "h-0 md:h-full md:w-0 border-0 opacity-0 pointer-events-none"
+                                        : "absolute inset-x-0 bottom-0 max-h-[40vh] border-t rounded-t-2xl shadow-2xl opacity-100 md:relative md:inset-auto md:max-h-none md:h-full md:w-[var(--sidebar-width)] md:rounded-none md:shadow-xl md:border-t-0 md:border-r"
+                                )}
                             >
                                 <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                     <div className="px-2 py-2 border-b bg-background shrink-0 text-left flex items-center gap-1.5">

@@ -12,6 +12,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LinkPicker } from './link-picker';
 import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
 
+/** Single SMS segment character limit (GSM-7 standard) */
+const SMS_SINGLE_SEGMENT_LIMIT = 160;
+/** Multi-part concatenated SMS segment character limit (6 bytes header per segment) */
+const SMS_CONCAT_SEGMENT_LIMIT = 153;
+
 interface PlainTextEditorProps {
     value: string;
     onChange: (value: string) => void;
@@ -112,30 +117,26 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         return set;
     }, [variables]);
 
-    // Map VariableDefinition to TemplateVariable format for useSlashAutocomplete
+    /**
+     * PURPOSE: Maps VariableDefinition items provided by FieldsVariablesService to
+     * TemplateVariable schema required by useSlashAutocomplete.
+     *
+     * CAUTION: Must preserve FieldsVariablesService SSOT categories and keys without custom string splitting.
+     * TESTABILITY: Autocomplete options reflect exact variable definitions from FieldsVariablesService.
+     * RELATED SURFACES: FieldsVariablesService, useSlashAutocomplete.
+     */
     const templateVars = React.useMemo<TemplateVariable[]>(() => {
-        return variables.map(v => {
-            let ctx = v.category;
-            if (v.id.startsWith('survey_')) {
-                const parts = v.id.split('_');
-                ctx = `survey_${parts[1]}`;
-            } else if (v.id.startsWith('pdf_')) {
-                const parts = v.id.split('_');
-                ctx = `pdf_${parts[1]}`;
-            }
-
-            return {
-                id: v.id || v.key,
-                name: v.key,
-                label: v.label,
-                description: `${v.label} (Source: ${v.source || 'system'})`,
-                dataType: (v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string') as any,
-                context: ctx as any,
-                exampleValue: v.constantValue || `{{${v.key}}}`,
-                isDynamic: v.source !== 'system',
-                isComputed: false
-            };
-        });
+        return variables.map(v => ({
+            id: v.id || v.key,
+            name: v.key,
+            label: v.label,
+            description: `${v.label} (Source: ${v.source || 'system'})`,
+            dataType: (v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string') as any,
+            context: (v.source || v.category || 'common') as any,
+            exampleValue: v.constantValue || `{{${v.key}}}`,
+            isDynamic: v.source !== 'system',
+            isComputed: false
+        }));
     }, [variables]);
 
     const {
@@ -203,14 +204,17 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         return tokens.filter(token => !allowedKeySet.has(token));
     }, [value, allowedKeySet]);
 
-    // SMS segment calculation
+    // SMS segment calculation using named constants
     const smsSegments = React.useMemo(() => {
         if (channel !== 'sms') return null;
         const len = value.length;
-        if (len <= 160) return { count: 1, remaining: 160 - len, charCount: len };
+        if (len <= SMS_SINGLE_SEGMENT_LIMIT) {
+            return { count: 1, remaining: SMS_SINGLE_SEGMENT_LIMIT - len, charCount: len };
+        }
+        const count = Math.ceil(len / SMS_CONCAT_SEGMENT_LIMIT);
         return {
-            count: Math.ceil(len / 153),
-            remaining: (Math.ceil(len / 153) * 153) - len,
+            count,
+            remaining: (count * SMS_CONCAT_SEGMENT_LIMIT) - len,
             charCount: len
         };
     }, [value, channel]);
@@ -228,35 +232,25 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                     onKeyDown={handleKeyDown}
                     onSelect={handleSelectChange}
                     placeholder={placeholder}
-                    aria-label={channel === 'sms' ? 'SMS message body' : 'Email body content'}
-                    className={cn(
-                        'min-h-[300px] rounded-2xl bg-muted/20 border-none shadow-inner p-6',
-                        'text-base leading-relaxed font-medium',
-                        'focus-visible:ring-2 focus-visible:ring-blue-500/20',
-                        'transition-shadow duration-200',
-                        isOverLimit && 'ring-2 ring-destructive/50',
-                        invalidTokens.length > 0 && 'ring-2 ring-amber-500/40'
-                    )}
+                    className="min-h-[160px] font-mono text-sm resize-y rounded-2xl border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed"
                 />
 
-                {/* Floating Autocomplete Dropdown Popover */}
-                {showAutocomplete && filteredVars.length > 0 && typeof document !== 'undefined' && createPortal(
+                {/* Autocomplete Dropdown */}
+                {showAutocomplete && filteredVars.length > 0 && createPortal(
                     <div
                         ref={dropdownRef}
                         style={{
-                            position: 'absolute',
                             top: `${coords.top}px`,
                             left: `${coords.left}px`,
-                            zIndex: 10000,
                         }}
-                        className="w-64 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
+                        className="fixed z-50 w-72 max-h-56 overflow-y-auto bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-xl p-1.5 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-100"
                     >
-                        {filteredVars.map((v, idx) => {
-                            const labelText = contextLabels && contextLabels[v.context]
-                                ? contextLabels[v.context]
-                                : String(v.context);
-                            
-                            const isSelected = idx === autocompleteIndex;
+                        {filteredVars.map((v, index) => {
+                            const isSelected = index === autocompleteIndex;
+                            const ctx = v.context || 'common';
+                            const labelText = contextLabels && contextLabels[ctx]
+                                ? contextLabels[ctx]
+                                : ctx.replace(/_/g, ' ');
                             
                             return (
                                 <button
@@ -276,7 +270,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                                         }
                                     }}
                                     className={cn(
-                                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                                        "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] justify-center touch-manipulation",
                                         isSelected
                                             ? "bg-primary text-primary-foreground"
                                             : "text-foreground hover:bg-muted"
