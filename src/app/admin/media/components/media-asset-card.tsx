@@ -34,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
     MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, 
     Link as LinkIcon, Eye, TextCursorInput, Share2, Layout, 
-    Check, CheckCircle2, ShieldCheck, Loader2
+    Check, CheckCircle2, ShieldCheck, Loader2, Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
@@ -82,9 +82,10 @@ const getLoomThumbnail = (url: string) => {
 interface MediaAssetCardProps {
   asset: MediaAsset;
   onCardClick?: (asset: MediaAsset) => void;
+  isConfigured?: boolean;
 }
 
-export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardProps) {
+export default function MediaAssetCard({ asset, onCardClick, isConfigured = false }: MediaAssetCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { allowedWorkspaces } = useWorkspace();
@@ -128,8 +129,8 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
         });
         toast({ title: 'Visibility Synchronized', description: `Shared with ${localWorkspaceIds.length} hubs.` });
         setIsVisibilityOpen(false);
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Update Failed', description: e instanceof Error ? e.message : 'Update failed.' });
     } finally {
         setIsUpdatingVisibility(false);
     }
@@ -143,7 +144,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
         const fileRef = ref(storage, asset.fullPath);
         try {
             await deleteObject(fileRef);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error deleting from storage: ", error);
         }
     }
@@ -278,11 +279,22 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
       {asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}
       {format(new Date(asset.createdAt), 'MMM d')}
     </span>
-    {asset.category && (
-      <span className="text-[8px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 border border-white/5 backdrop-blur-sm text-white/90">
-        {asset.category}
-      </span>
-    )}
+    <div className="flex items-center gap-1.5">
+      {isConfigured && (
+        <span 
+          title="Active Media Landing Page & Embed Configured"
+          className="inline-flex items-center gap-1 text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm animate-in fade-in zoom-in-95 duration-300"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Configured
+        </span>
+      )}
+      {asset.category && (
+        <span className="text-[8px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 border border-white/5 backdrop-blur-sm text-white/90">
+          {asset.category}
+        </span>
+      )}
+    </div>
   </div>
 </div>
 
@@ -292,24 +304,24 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
               variant="ghost"
               size="icon"
               onClick={() => setIsShareOpen(true)}
-              className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500 active:scale-95"
               title="Share / Embed"
             >
-              <Share2 size={16} />
+              <Share2 size={18} />
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={handleCopyUrl}
-              className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500 active:scale-95"
               title="Copy URL"
             >
-              {copied ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+              {copied ? <Check size={18} className="text-emerald-400" /> : <Copy size={18} />}
             </Button>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-  <Button variant="ghost" size="icon" className="h-9 w-9 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500">
+                <Button variant="ghost" size="icon" className="h-11 w-11 min-h-[44px] min-w-[44px] text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-500 active:scale-95">
                   <MoreVertical size={18} />
                 </Button>
               </DropdownMenuTrigger>
@@ -322,12 +334,12 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
                 </DropdownMenuItem>
 
  <DropdownMenuItem onClick={() => setIsShareOpen(true)} className="rounded-xl p-2.5 gap-3">
- <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><Share2 className="h-4 w-4" /></div>
+ <div className="p-1.5 bg-blue-50 dark:bg-blue-950/40 rounded-lg text-blue-600 dark:text-blue-400"><Share2 className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Share & Embed</span>
  </DropdownMenuItem>
 
  <DropdownMenuItem onClick={() => setIsVisibilityOpen(true)} className="rounded-xl p-2.5 gap-3">
- <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><Share2 className="h-4 w-4" /></div>
+ <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-emerald-600 dark:text-emerald-400"><Building2 className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Manage Visibility</span>
                 </DropdownMenuItem>
 

@@ -72,6 +72,29 @@ export default function MediaLibraryBrowser({
   
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
+  /**
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+   * To prevent listener proliferation (creating N Firestore listeners for N asset cards),
+   * we subscribe to media_shares ONCE per workspace and compute a Set of configured asset IDs.
+   * We pass isConfigured={configuredAssetIds.has(asset.id)} into <MediaAssetCard />.
+   */
+  const sharesQuery = useMemoFirebase(() => {
+    if (!firestore || !effectiveWorkspaceId) return null;
+    return query(collection(firestore, 'media_shares'), where('workspaceId', '==', effectiveWorkspaceId));
+  }, [firestore, effectiveWorkspaceId]);
+
+  const { data: sharesData } = useCollection<{ id: string; assetId: string }>(sharesQuery);
+
+  const configuredAssetIds = useMemo(() => {
+    const set = new Set<string>();
+    if (sharesData) {
+      sharesData.forEach((s) => {
+        if (s.assetId) set.add(s.assetId);
+      });
+    }
+    return set;
+  }, [sharesData]);
+
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     
@@ -91,7 +114,7 @@ export default function MediaLibraryBrowser({
         isCompact && "p-4 gap-2"
       )}>
       {!filterType && (
-        <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full sm:w-auto">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaAsset['type'])} className="w-full sm:w-auto">
           <TabsList className="bg-background border shadow-sm h-10 p-1 rounded-xl">
             {TABS.map(tab => (
               <TabsTrigger 
@@ -149,7 +172,12 @@ export default function MediaLibraryBrowser({
                 ))
               ) : filteredAssets.length > 0 ? (
                 filteredAssets.map(asset => (
-                  <MediaAssetCard key={asset.id} asset={asset} onCardClick={onSelectAsset} />
+                  <MediaAssetCard 
+                    key={asset.id} 
+                    asset={asset} 
+                    isConfigured={configuredAssetIds.has(asset.id)}
+                    onCardClick={onSelectAsset} 
+                  />
                 ))
               ) : (
                 <div className="col-span-full py-32 text-center flex flex-col items-center justify-center gap-6 opacity-40 border-4 border-dashed rounded-[3rem] bg-muted/5">
