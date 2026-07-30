@@ -166,23 +166,40 @@ export async function transferMediaAutomationsAction(
     }
 
     let updatedCount = 0;
+    let failedChunks = 0;
+
     for (const chunk of writeChunks) {
-      const batch = adminDb.batch();
-      chunk.forEach((op) => {
-        if (op.isNew) {
-          batch.set(op.docRef, op.payload);
-        } else {
-          batch.update(op.docRef, op.payload);
-        }
-      });
-      await batch.commit();
-      updatedCount += chunk.length;
+      try {
+        const batch = adminDb.batch();
+        chunk.forEach((op) => {
+          if (op.isNew) {
+            batch.set(op.docRef, op.payload);
+          } else {
+            batch.update(op.docRef, op.payload);
+          }
+        });
+        await batch.commit();
+        updatedCount += chunk.length;
+      } catch (chunkErr) {
+        console.error('[transferMediaAutomationsAction] Chunk batch commit failed:', chunkErr);
+        failedChunks += 1;
+      }
+    }
+
+    if (updatedCount === 0 && failedChunks > 0) {
+      return {
+        success: false,
+        count: 0,
+        message: 'Failed to write automation rules to target media assets.',
+      };
     }
 
     return {
       success: true,
       count: updatedCount,
-      message: `Successfully transferred automation rules to ${updatedCount} media asset${updatedCount === 1 ? '' : 's'}.`,
+      message: failedChunks > 0 
+        ? `Transferred rules to ${updatedCount} asset${updatedCount === 1 ? '' : 's'} (${failedChunks} batch chunk${failedChunks === 1 ? '' : 's'} encountered errors).`
+        : `Successfully transferred automation rules to ${updatedCount} media asset${updatedCount === 1 ? '' : 's'}.`,
     };
   } catch (err) {
     console.error('[transferMediaAutomationsAction] Execution error:', err);

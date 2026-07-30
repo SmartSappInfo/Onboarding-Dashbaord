@@ -165,7 +165,15 @@ export async function GET(
  */
 function buildDestinationUrl(originalUrl: string, entityId?: string, channel?: PageEventChannel): string {
   try {
-    const url = new URL(originalUrl);
+    const url = originalUrl.startsWith('http')
+      ? new URL(originalUrl)
+      : new URL(originalUrl, 'https://localhost');
+
+    // XSS / Open Redirect Safeguard: Enforce safe web protocols
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return '/';
+    }
+
     if (entityId) url.searchParams.set('ref', entityId);
     if (channel) url.searchParams.set('ch', channel);
     return url.toString();
