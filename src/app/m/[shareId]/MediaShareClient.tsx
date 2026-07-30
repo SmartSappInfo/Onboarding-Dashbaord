@@ -7,6 +7,52 @@ import {
     Play, Pause, Volume2, ArrowRight, ChevronRight, X, Lock 
 } from 'lucide-react';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
+
+interface YTPlayerEvent {
+  data: number;
+  target?: YTPlayer;
+}
+
+interface YTPlayerOptions {
+  videoId?: string;
+  playerVars?: {
+    autoplay?: 0 | 1;
+    rel?: 0 | 1;
+    modestbranding?: 0 | 1;
+    enablejsapi?: 0 | 1;
+    controls?: 0 | 1;
+  };
+  events?: {
+    onStateChange?: (event: YTPlayerEvent) => void;
+    onReady?: (event: YTPlayerEvent) => void;
+  };
+}
+
+interface YTPlayer {
+  destroy: () => void;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  getCurrentTime?: () => number;
+  getDuration?: () => number;
+}
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (elementId: string, options: YTPlayerOptions) => YTPlayer;
+      PlayerState: {
+        UNSTARTED?: number;
+        ENDED: number;
+        PLAYING?: number;
+        PAUSED?: number;
+        BUFFERING?: number;
+        CUED?: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
 import Footer from '@/components/footer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { nanoid } from 'nanoid';
@@ -265,17 +311,29 @@ export default function MediaShareClient({
         return { isEmbeddable: false, embedUrl: null };
     };
 
+    const youtubeVideoId = React.useMemo(() => {
+        if (!asset.url) return null;
+        const match = asset.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
+        return match ? match[1] : null;
+    }, [asset.url]);
+
     const { isEmbeddable, embedUrl } = parseEmbedUrl(asset.url);
 
     const [isCtaUnlocked, setIsCtaUnlocked] = React.useState(false);
 
+    /**
+     * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+     * Non-video assets and immediate CTA gates unlock immediately.
+     * For YouTube videos, we track playback via the YouTube IFrame API, so we do NOT unlock
+     * immediately if a specific CTA gate (quarter, half, complete) is selected.
+     */
     const shouldUnlockImmediately = React.useMemo(() => {
         return (
             ctaActivationGate === 'immediate' ||
             (asset.type !== 'video' && asset.type !== 'audio') ||
-            (asset.type === 'video' && isEmbeddable)
+            (asset.type === 'video' && isEmbeddable && !youtubeVideoId)
         );
-    }, [ctaActivationGate, asset.type, isEmbeddable]);
+    }, [ctaActivationGate, asset.type, isEmbeddable, youtubeVideoId]);
 
     React.useEffect(() => {
         if (shouldUnlockImmediately) {
@@ -284,6 +342,151 @@ export default function MediaShareClient({
             setIsCtaUnlocked(false);
         }
     }, [shouldUnlockImmediately]);
+
+    // YouTube IFrame Player API tracking state
+    const ytPlayerRef = React.useRef<YTPlayer | null>(null);
+    const ytIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+    const iframeId = React.useMemo(() => `yt-player-${shareId}`, [shareId]);
+
+    const stopYtProgressInterval = React.useCallback(() => {
+        if (ytIntervalRef.current) {
+            clearInterval(ytIntervalRef.current);
+            ytIntervalRef.current = null;
+        }
+    }, []);
+
+    const startYtProgressInterval = React.useCallback(() => {
+        stopYtProgressInterval();
+        ytIntervalRef.current = setInterval(() => {
+            if (!ytPlayerRef.current) return;
+            const curr = (ytPlayerRef.current.getCurrentTime ? ytPlayerRef.current.getCurrentTime() : 0) || 0;
+            const dur = (ytPlayerRef.current.getDuration ? ytPlayerRef.current.getDuration() : 0) || 0;
+
+            if (!loggedPlay.current && curr > 0) {
+                loggedPlay.current = true;
+                logEvent('media_play');
+            }
+
+            if (dur > 0) {
+                // 25% milestone
+                if (curr >= dur * 0.25) {
+                    if (ctaActivationGate === 'quarter') setIsCtaUnlocked(true);
+                    if (!loggedQuarter.current) {
+                        loggedQuarter.current = true;
+                        logEvent('media_progress', 25);
+                    }
+                }
+                // 50% milestone
+                if (curr >= dur * 0.5) {
+                    if (ctaActivationGate === 'half') setIsCtaUnlocked(true);
+                    if (!loggedHalf.current) {
+                        loggedHalf.current = true;
+                        logEvent('media_progress', 50);
+                    }
+                }
+                // 75% milestone
+                if (curr >= dur * 0.75) {
+                    if (ctaActivationGate === 'threequarters') setIsCtaUnlocked(true);
+                    if (!loggedThreeQuarters.current) {
+                        loggedThreeQuarters.current = true;
+                        logEvent('media_progress', 75);
+                    }
+                }
+            }
+        }, 1000);
+    }, [ctaActivationGate, logEvent, stopYtProgressInterval]);
+
+    // Handle YouTube Player State Change
+    const handleYtStateChange = React.useCallback((event: { data: number }) => {
+        const YTState = window.YT?.PlayerState;
+        if (!YTState) return;
+
+        const playingCode = YTState.PLAYING ?? 1;
+        const pausedCode = YTState.PAUSED ?? 2;
+        const endedCode = YTState.ENDED;
+
+        if (event.data === playingCode) {
+            setIsVideoPlaying(true);
+            setIsPlaybackFinished(false);
+            if (!loggedPlay.current) {
+                loggedPlay.current = true;
+                logEvent('media_play');
+            }
+            startYtProgressInterval();
+        } else if (event.data === pausedCode) {
+            stopYtProgressInterval();
+        } else if (event.data === endedCode) {
+            stopYtProgressInterval();
+            setIsPlaybackFinished(true);
+            setIsVideoPlaying(false);
+            if (['complete', 'threequarters', 'half', 'quarter'].includes(ctaActivationGate)) {
+                setIsCtaUnlocked(true);
+            }
+            if (!loggedComplete.current) {
+                loggedComplete.current = true;
+                logEvent('media_complete');
+                logEvent('media_progress', 100);
+            }
+        }
+    }, [ctaActivationGate, logEvent, startYtProgressInterval, stopYtProgressInterval]);
+
+    // Initialize YouTube IFrame Player API
+    React.useEffect(() => {
+        if (!youtubeVideoId || asset.type !== 'video') return;
+
+        // Adblocker/script timeout fallback: unlock CTA after 3s if script fails to load
+        const fallbackTimer = setTimeout(() => {
+            if (!window.YT) {
+                console.warn('[YouTube API] Script load timeout/blocked by adblocker. Falling back to unlock CTA.');
+                setIsCtaUnlocked(true);
+            }
+        }, 3000);
+
+        const initPlayer = () => {
+            if (!window.YT?.Player) return;
+            try {
+                ytPlayerRef.current = new window.YT.Player(iframeId, {
+                    events: {
+                        onStateChange: handleYtStateChange,
+                    },
+                });
+            } catch (err) {
+                console.warn('[YouTube API] Player init error:', err);
+                setIsCtaUnlocked(true);
+            }
+        };
+
+        if (window.YT && window.YT.Player) {
+            initPlayer();
+        } else {
+            const existingScript = document.getElementById('yt-iframe-api');
+            if (!existingScript) {
+                const tag = document.createElement('script');
+                tag.id = 'yt-iframe-api';
+                tag.src = 'https://www.youtube.com/iframe_api';
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+            }
+
+            const previousOnReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = () => {
+                if (previousOnReady) previousOnReady();
+                initPlayer();
+            };
+        }
+
+        return () => {
+            clearTimeout(fallbackTimer);
+            stopYtProgressInterval();
+            if (ytPlayerRef.current) {
+                try {
+                    ytPlayerRef.current.destroy();
+                } catch {
+                    // Ignore destroy errors on unmount
+                }
+            }
+        };
+    }, [youtubeVideoId, asset.type, iframeId, handleYtStateChange, stopYtProgressInterval]);
 
     const handleVideoTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         const video = e.currentTarget;
@@ -459,7 +662,8 @@ export default function MediaShareClient({
                                     </div>
                                 ) : (
                                     <iframe
-                                        src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                        id={iframeId}
+                                        src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
                                         className="w-full h-full border-none"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
@@ -778,7 +982,8 @@ export default function MediaShareClient({
                                     </div>
                                 ) : (
                                     <iframe
-                                        src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                        id={iframeId}
+                                        src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
                                         className="w-full h-full border-none"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen

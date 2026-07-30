@@ -28,33 +28,46 @@ type VideoState = 'idle' | 'playing' | 'finished';
 
 interface YTPlayerEvent {
   data: number;
-  target: YTPlayer;
+  target?: YTPlayer;
 }
 
 interface YTPlayerOptions {
-  videoId: string;
-  playerVars: {
-    autoplay: 0 | 1;
-    rel: 0 | 1;
-    modestbranding: 0 | 1;
-    enablejsapi: 0 | 1;
+  videoId?: string;
+  playerVars?: {
+    autoplay?: 0 | 1;
+    rel?: 0 | 1;
+    modestbranding?: 0 | 1;
+    enablejsapi?: 0 | 1;
+    controls?: 0 | 1;
   };
-  events: {
-    onStateChange: (event: YTPlayerEvent) => void;
+  events?: {
+    onStateChange?: (event: YTPlayerEvent) => void;
+    onReady?: (event: YTPlayerEvent) => void;
   };
 }
 
 interface YTPlayer {
   destroy: () => void;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  getCurrentTime?: () => number;
+  getDuration?: () => number;
 }
 
 declare global {
   interface Window {
-    YT: {
+    YT?: {
       Player: new (elementId: string, options: YTPlayerOptions) => YTPlayer;
-      PlayerState: { ENDED: number };
+      PlayerState: {
+        UNSTARTED?: number;
+        ENDED: number;
+        PLAYING?: number;
+        PAUSED?: number;
+        BUFFERING?: number;
+        CUED?: number;
+      };
     };
-    onYouTubeIframeAPIReady: () => void;
+    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -93,6 +106,7 @@ export default function CollectingFeesClient() {
     if (videoState !== 'playing') return;
 
     const initPlayer = () => {
+      if (!window.YT) return;
       playerRef.current = new window.YT.Player('yt-player', {
         videoId: YOUTUBE_VIDEO_ID,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, enablejsapi: 1 },

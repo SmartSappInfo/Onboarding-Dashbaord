@@ -130,17 +130,34 @@ export default function AddLinkButton() {
 
         const metadata = result.metadata;
 
+        /**
+         * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+         * When users paste video URLs (YouTube, Vimeo, Loom) via "Add Link", we auto-detect video links
+         * and set type to 'video' so the asset automatically appears under the Video Tab in the Media Library.
+         * We also compute high-resolution YouTube thumbnails if link metadata did not supply one.
+         */
+        const isVideoUrl = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|loom\.com\/(?:share|embed)\/|vimeo\.com\/)/i.test(data.url);
+        const assetType: 'video' | 'link' = isVideoUrl ? 'video' : 'link';
+
+        let thumbnail = metadata?.imageUrl ?? null;
+        if (!thumbnail && isVideoUrl) {
+          const ytMatch = data.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
+          if (ytMatch && ytMatch[1]) {
+            thumbnail = `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+          }
+        }
+
         const linkData = {
           name: metadata?.title || data.name,
           url: data.url,
-          type: 'link' as const,
+          type: assetType,
           uploadedBy: user.uid,
           workspaceIds: data.workspaceIds,
           category: data.category,
           createdAt: new Date().toISOString(),
           linkTitle: metadata?.title ?? null,
           linkDescription: metadata?.description ?? null,
-          previewImageUrl: metadata?.imageUrl ?? null,
+          previewImageUrl: thumbnail,
         };
 
         const mediaCollection = collection(firestore, 'media');
@@ -150,7 +167,7 @@ export default function AddLinkButton() {
             setIsDialogOpen(false);
             form.reset();
           })
-          .catch((error) => {
+          .catch((_error) => {
             const permissionError = new FirestorePermissionError({
                 path: mediaCollection.path,
                 operation: 'create',
