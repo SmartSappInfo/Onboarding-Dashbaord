@@ -53,7 +53,7 @@ import {
 import { 
   ArrowLeft, User, Loader2, CheckCircle2, XCircle, BarChart3, ListCollapse, Sparkles,
   Filter, Search, X, MoreVertical, Tag as TagIcon,
-  GitPullRequest, ExternalLink, Settings
+  GitPullRequest, ExternalLink, Settings, Play, Download, ChevronDown, Zap
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
@@ -68,8 +68,33 @@ import MediaAnalyticsBulkActionsBar from '../components/MediaAnalyticsBulkAction
 import { bulkApplyTagsToMediaContactsAction } from '@/lib/media-analytics-entity-actions';
 import { useToast } from '@/hooks/use-toast';
 
-export type MetricFilterType = 'ALL' | 'VIEWS' | 'PLAYS' | 'COMPLETED' | 'CTA_CLICKS' | 'DOWNLOADS' | 'LEADS_CAPTURED';
+export type ActivityFilterType = 
+  | 'ALL'
+  | 'PLAYED'
+  | 'WATCHED_25'
+  | 'WATCHED_50'
+  | 'WATCHED_75'
+  | 'COMPLETED'
+  | 'CTA_CLICKED'
+  | 'DOWNLOADED';
+
 export type IdentityFilterType = 'ALL' | 'IDENTIFIED' | 'ANONYMOUS';
+
+const ACTIVITY_FILTER_DEFINITIONS: {
+  key: ActivityFilterType;
+  label: string;
+  shortLabel: string;
+  icon: React.ElementType;
+}[] = [
+  { key: 'ALL', label: 'All Activities & Triggers', shortLabel: 'All Activities', icon: Filter },
+  { key: 'PLAYED', label: 'Started Playback (on_play)', shortLabel: 'Started Playback', icon: Play },
+  { key: 'WATCHED_25', label: 'Watched 25%+ (on_progress_25)', shortLabel: 'Watched 25%+', icon: BarChart3 },
+  { key: 'WATCHED_50', label: 'Watched 50%+ Halfway (on_progress_50)', shortLabel: 'Watched 50%+', icon: BarChart3 },
+  { key: 'WATCHED_75', label: 'Watched 75%+ (on_progress_75)', shortLabel: 'Watched 75%+', icon: BarChart3 },
+  { key: 'COMPLETED', label: 'Watched 100% Completed (on_complete)', shortLabel: 'Completed 100%', icon: CheckCircle2 },
+  { key: 'CTA_CLICKED', label: 'Clicked Call-To-Action (on_cta_click)', shortLabel: 'CTA Clicked', icon: ExternalLink },
+  { key: 'DOWNLOADED', label: 'Downloaded Asset (on_download)', shortLabel: 'Downloaded', icon: Download },
+];
 
 interface DrilldownProps {
   shareId: string;
@@ -120,12 +145,17 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
   };
 
   // Filter & Search States
-  const [metricFilter, setMetricFilter] = React.useState<MetricFilterType>('ALL');
+  const [activityFilter, setActivityFilter] = React.useState<ActivityFilterType>('ALL');
   const [identityFilter, setIdentityFilter] = React.useState<IdentityFilterType>('ALL');
   const [searchTerm, setSearchTerm] = React.useState('');
 
   // Bulk Selection States
   const [selectedSessionIds, setSelectedSessionIds] = React.useState<string[]>([]);
+
+  // Reset bulk selection whenever identity, activity, or search filters change to prevent desync
+  React.useEffect(() => {
+    setSelectedSessionIds([]);
+  }, [identityFilter, activityFilter, searchTerm]);
 
   // Single Row Tag Dialog State
   const [rowTagModalSession, setRowTagModalSession] = React.useState<MediaSessionRecordWithContact | null>(null);
@@ -192,33 +222,47 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
     ];
   }, [data]);
 
-  // Filtered Sessions Array
+  /**
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+   * Multi-dimensional filtering combines Identity (ALL | IDENTIFIED | ANONYMOUS),
+   * Activity Triggers (PLAYED, WATCHED_25, WATCHED_50, WATCHED_75, COMPLETED, CTA_CLICKED, DOWNLOADED),
+   * and text search. Filtering runs in-memory to prevent rate limit over-indexing on Firestore.
+   */
   const filteredSessions = React.useMemo(() => {
     if (!data || !data.sessions) return [];
 
     return data.sessions.filter((session) => {
-      // 1. Metric Filter
-      if (metricFilter === 'PLAYS' && session.maxProgress === 0 && session.sessionTimeSeconds === 0) {
-        return false;
-      }
-      if (metricFilter === 'COMPLETED' && session.maxProgress < 100) {
-        return false;
-      }
-      if (metricFilter === 'CTA_CLICKS' && !session.ctaClicked) {
-        return false;
-      }
-      if (metricFilter === 'DOWNLOADS' && !session.downloaded) {
-        return false;
-      }
-      if (metricFilter === 'LEADS_CAPTURED' && !session.contactName && !session.contactId && !session.entityId) {
-        return false;
-      }
-
-      // 2. Identity Filter
+      // 1. Identity Filter
       if (identityFilter === 'IDENTIFIED' && !session.contactName && !session.contactId && !session.entityId) {
         return false;
       }
       if (identityFilter === 'ANONYMOUS' && (session.contactName || session.contactId || session.entityId)) {
+        return false;
+      }
+
+      // 2. Activity / Progress Milestone Filter
+      const progress = session.maxProgress || 0;
+      const time = session.sessionTimeSeconds || 0;
+
+      if (activityFilter === 'PLAYED' && progress === 0 && time === 0) {
+        return false;
+      }
+      if (activityFilter === 'WATCHED_25' && progress < 25) {
+        return false;
+      }
+      if (activityFilter === 'WATCHED_50' && progress < 50) {
+        return false;
+      }
+      if (activityFilter === 'WATCHED_75' && progress < 75) {
+        return false;
+      }
+      if (activityFilter === 'COMPLETED' && progress < 100) {
+        return false;
+      }
+      if (activityFilter === 'CTA_CLICKED' && !session.ctaClicked) {
+        return false;
+      }
+      if (activityFilter === 'DOWNLOADED' && !session.downloaded) {
         return false;
       }
 
@@ -235,7 +279,38 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
       return true;
     });
-  }, [data, metricFilter, identityFilter, searchTerm]);
+  }, [data, identityFilter, activityFilter, searchTerm]);
+
+  // Filtered Events Array for Event Feed tab
+  const filteredEvents = React.useMemo(() => {
+    if (!data || !data.recentEvents) return [];
+
+    return data.recentEvents.filter((event) => {
+      // 1. Identity Filter
+      const isIdentified = !!(event.contactName || event.contactId);
+      if (identityFilter === 'IDENTIFIED' && !isIdentified) return false;
+      if (identityFilter === 'ANONYMOUS' && isIdentified) return false;
+
+      // 2. Activity Filter
+      if (activityFilter === 'PLAYED' && event.type !== 'media_play') return false;
+      if (activityFilter === 'WATCHED_25' && (event.type !== 'media_progress' || (event.progressPercent || 0) < 25)) return false;
+      if (activityFilter === 'WATCHED_50' && (event.type !== 'media_progress' || (event.progressPercent || 0) < 50)) return false;
+      if (activityFilter === 'WATCHED_75' && (event.type !== 'media_progress' || (event.progressPercent || 0) < 75)) return false;
+      if (activityFilter === 'COMPLETED' && event.type !== 'media_complete' && (event.progressPercent || 0) < 100) return false;
+      if (activityFilter === 'CTA_CLICKED' && event.type !== 'cta_click') return false;
+      if (activityFilter === 'DOWNLOADED' && event.type !== 'download') return false;
+
+      // 3. Search Filter
+      if (searchTerm.trim()) {
+        const queryStr = searchTerm.toLowerCase().trim();
+        const matchesName = event.contactName ? event.contactName.toLowerCase().includes(queryStr) : false;
+        const matchesSessionId = event.sessionId.toLowerCase().includes(queryStr);
+        if (!matchesName && !matchesSessionId) return false;
+      }
+
+      return true;
+    });
+  }, [data, identityFilter, activityFilter, searchTerm]);
 
   // Identified Sessions Subset (eligible for CRM actions)
   const identifiedSessions = React.useMemo(() => {
@@ -405,16 +480,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {/* 1. VIEWS CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'VIEWS' ? 'ALL' : 'VIEWS')}
+              onClick={() => setActivityFilter('ALL')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'VIEWS' 
+                activityFilter === 'ALL' && identityFilter === 'ALL'
                   ? 'border-primary ring-2 ring-primary/30 bg-primary/5 shadow-md' 
                   : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">Views</span>
-                {metricFilter === 'VIEWS' && (
+                {activityFilter === 'ALL' && identityFilter === 'ALL' && (
                   <Badge className="bg-primary text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -424,16 +499,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
             {/* 2. PLAYS CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'PLAYS' ? 'ALL' : 'PLAYS')}
+              onClick={() => setActivityFilter(activityFilter === 'PLAYED' ? 'ALL' : 'PLAYED')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'PLAYS' 
+                activityFilter === 'PLAYED' 
                   ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/5 shadow-md' 
                   : 'border-border bg-card hover:border-emerald-500/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">Plays</span>
-                {metricFilter === 'PLAYS' && (
+                {activityFilter === 'PLAYED' && (
                   <Badge className="bg-emerald-500 text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -443,16 +518,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
             {/* 3. COMPLETED CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
+              onClick={() => setActivityFilter(activityFilter === 'COMPLETED' ? 'ALL' : 'COMPLETED')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'COMPLETED' 
+                activityFilter === 'COMPLETED' 
                   ? 'border-violet-500 ring-2 ring-violet-500/30 bg-violet-500/5 shadow-md' 
                   : 'border-border bg-card hover:border-violet-500/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">Completed</span>
-                {metricFilter === 'COMPLETED' && (
+                {activityFilter === 'COMPLETED' && (
                   <Badge className="bg-violet-500 text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -462,16 +537,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
             {/* 4. CTA CLICKS CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'CTA_CLICKS' ? 'ALL' : 'CTA_CLICKS')}
+              onClick={() => setActivityFilter(activityFilter === 'CTA_CLICKED' ? 'ALL' : 'CTA_CLICKED')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'CTA_CLICKS' 
+                activityFilter === 'CTA_CLICKED' 
                   ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/5 shadow-md' 
                   : 'border-border bg-card hover:border-blue-500/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">CTA Clicks</span>
-                {metricFilter === 'CTA_CLICKS' && (
+                {activityFilter === 'CTA_CLICKED' && (
                   <Badge className="bg-blue-500 text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -481,16 +556,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
             {/* 5. DOWNLOADS CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'DOWNLOADS' ? 'ALL' : 'DOWNLOADS')}
+              onClick={() => setActivityFilter(activityFilter === 'DOWNLOADED' ? 'ALL' : 'DOWNLOADED')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'DOWNLOADS' 
+                activityFilter === 'DOWNLOADED' 
                   ? 'border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/5 shadow-md' 
                   : 'border-border bg-card hover:border-amber-500/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">Downloads</span>
-                {metricFilter === 'DOWNLOADS' && (
+                {activityFilter === 'DOWNLOADED' && (
                   <Badge className="bg-amber-500 text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -500,16 +575,16 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
             {/* 6. LEADS CAPTURED CARD */}
             <Card 
-              onClick={() => setMetricFilter(metricFilter === 'LEADS_CAPTURED' ? 'ALL' : 'LEADS_CAPTURED')}
+              onClick={() => setIdentityFilter(identityFilter === 'IDENTIFIED' ? 'ALL' : 'IDENTIFIED')}
               className={`rounded-2xl border transition-all duration-200 p-4 text-left cursor-pointer min-h-[44px] select-none active:scale-[0.98] ${
-                metricFilter === 'LEADS_CAPTURED' 
+                identityFilter === 'IDENTIFIED' 
                   ? 'border-purple-500 ring-2 ring-purple-500/30 bg-purple-500/5 shadow-md' 
                   : 'border-border bg-card hover:border-purple-500/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-muted-foreground uppercase block">Leads Captured</span>
-                {metricFilter === 'LEADS_CAPTURED' && (
+                {identityFilter === 'IDENTIFIED' && (
                   <Badge className="bg-purple-500 text-white text-[8px] px-1.5 py-0 rounded font-black uppercase">Active</Badge>
                 )}
               </div>
@@ -518,22 +593,38 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
             </Card>
           </div>
 
-          {/* Active Metric Filter Indicator Banner */}
-          {metricFilter !== 'ALL' && (
-            <div className="p-3 px-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between text-xs font-bold text-primary animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                <span>
-                  Filtering list by KPI metric: <strong>{metricFilter.replace('_', ' ')}</strong> ({filteredSessions.length} record(s) found)
+          {/* Active Filter Indicator Banner */}
+          {(activityFilter !== 'ALL' || identityFilter !== 'ALL') && (
+            <div className="p-3 px-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-primary animate-in fade-in duration-200 mb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Filter className="h-4 w-4 shrink-0" />
+                <span>Active Filters:</span>
+                {identityFilter !== 'ALL' && (
+                  <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 rounded-lg text-[10px] font-extrabold px-2 py-0.5 gap-1">
+                    Identity: {identityFilter}
+                    <X className="h-3 w-3 cursor-pointer hover:opacity-80 ml-1" onClick={() => setIdentityFilter('ALL')} />
+                  </Badge>
+                )}
+                {activityFilter !== 'ALL' && (
+                  <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 rounded-lg text-[10px] font-extrabold px-2 py-0.5 gap-1">
+                    Activity: {ACTIVITY_FILTER_DEFINITIONS.find((a) => a.key === activityFilter)?.shortLabel}
+                    <X className="h-3 w-3 cursor-pointer hover:opacity-80 ml-1" onClick={() => setActivityFilter('ALL')} />
+                  </Badge>
+                )}
+                <span className="text-muted-foreground font-semibold text-[11px]">
+                  ({filteredSessions.length} matching session{filteredSessions.length === 1 ? '' : 's'})
                 </span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMetricFilter('ALL')}
-                className="h-7 px-3 text-[10px] font-bold rounded-lg hover:bg-primary/20 text-primary gap-1"
+                onClick={() => {
+                  setActivityFilter('ALL');
+                  setIdentityFilter('ALL');
+                }}
+                className="h-8 px-3 text-[10px] font-bold rounded-lg hover:bg-primary/20 text-primary gap-1 active:scale-95 min-h-[36px]"
               >
-                <X className="h-3 w-3" /> Clear Metric Filter
+                <X className="h-3 w-3" /> Reset All Filters
               </Button>
             </div>
           )}
@@ -605,22 +696,68 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
           {/* Tab logs & Audience Identity Filters */}
           <Tabs defaultValue="sessions" className="w-full">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-              <TabsList className="bg-background h-11 p-1 rounded-xl border border-border shadow-sm w-fit">
-                <TabsTrigger value="sessions" className="rounded-lg font-bold text-xs px-6 gap-2 min-h-[38px]">
+              <TabsList className="bg-background h-12 p-1 rounded-xl border border-border shadow-sm w-fit">
+                <TabsTrigger value="sessions" className="rounded-lg font-bold text-xs px-6 gap-2 min-h-[44px]">
                   <User className="h-4 w-4" /> Viewer Sessions
                 </TabsTrigger>
-                <TabsTrigger value="events" className="rounded-lg font-bold text-xs px-6 gap-2 min-h-[38px]">
+                <TabsTrigger value="events" className="rounded-lg font-bold text-xs px-6 gap-2 min-h-[44px]">
                   <ListCollapse className="h-4 w-4" /> Event Feed
                 </TabsTrigger>
               </TabsList>
 
-              {/* Identity Segmented Pills & Search Filter */}
+              {/* Activity Dropdown & Identity Segmented Pills */}
               <div className="flex flex-col sm:flex-row items-center gap-3">
+                {/* Activity Milestone Dropdown */}
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`h-11 px-4 rounded-xl border font-bold text-xs gap-2 shrink-0 transition-all min-h-[44px] ${
+                        activityFilter !== 'ALL'
+                          ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary shadow-sm'
+                          : 'border-border bg-background hover:bg-muted/50 text-foreground'
+                      }`}
+                    >
+                      <Zap className="h-3.5 w-3.5 text-primary" />
+                      <span>
+                        {ACTIVITY_FILTER_DEFINITIONS.find((a) => a.key === activityFilter)?.shortLabel || 'Activity Filter'}
+                      </span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 border-border shadow-2xl">
+                    <DropdownMenuLabel className="text-[10px] font-black text-muted-foreground uppercase px-3 py-1.5">
+                      Filter by Triggered Activity
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="my-1" />
+                    {ACTIVITY_FILTER_DEFINITIONS.map((def) => {
+                      const Icon = def.icon;
+                      const isSelected = activityFilter === def.key;
+                      return (
+                        <DropdownMenuItem
+                          key={def.key}
+                          onClick={() => setActivityFilter(def.key)}
+                          className={`rounded-xl px-3 py-2.5 text-xs font-bold gap-3 cursor-pointer min-h-[44px] flex items-center justify-between ${
+                            isSelected ? 'bg-primary text-white font-black' : 'hover:bg-muted'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <Icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-primary'}`} />
+                            <span className="truncate">{def.label}</span>
+                          </div>
+                          {isSelected && <CheckCircle2 className="h-4 w-4 text-white shrink-0 ml-1" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <div className="flex items-center bg-muted/40 p-1 rounded-xl border border-border shrink-0 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setIdentityFilter('ALL')}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all min-h-[36px] ${
+                    className={`px-3 py-2 text-[10px] font-bold rounded-lg transition-all min-h-[44px] ${
                       identityFilter === 'ALL'
                         ? 'bg-background text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
@@ -631,7 +768,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                   <button
                     type="button"
                     onClick={() => setIdentityFilter('IDENTIFIED')}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all min-h-[36px] flex items-center gap-1 ${
+                    className={`px-3 py-2 text-[10px] font-bold rounded-lg transition-all min-h-[44px] flex items-center gap-1 ${
                       identityFilter === 'IDENTIFIED'
                         ? 'bg-primary text-white shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
@@ -642,7 +779,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                   <button
                     type="button"
                     onClick={() => setIdentityFilter('ANONYMOUS')}
-                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all min-h-[36px] ${
+                    className={`px-3 py-2 text-[10px] font-bold rounded-lg transition-all min-h-[44px] ${
                       identityFilter === 'ANONYMOUS'
                         ? 'bg-slate-800 text-white shadow-sm'
                         : 'text-muted-foreground hover:text-foreground'
@@ -851,10 +988,10 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
             <TabsContent value="events">
               <Card className="rounded-2xl border border-border bg-card shadow-sm p-4">
                 <div className="relative border-l border-border/80 pl-6 ml-2 space-y-6">
-                  {data.recentEvents.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-4 pl-2">No event records found.</p>
+                  {filteredEvents.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 pl-2">No event records match your active activity and audience filters.</p>
                   ) : (
-                    data.recentEvents.map((event) => (
+                    filteredEvents.map((event) => (
                       <div key={event.id} className="relative group">
                         {/* Timeline Dot */}
                         <div className="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background group-hover:scale-125 transition-transform" />
