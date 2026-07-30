@@ -586,6 +586,11 @@ service cloud.firestore {
       allow list: if isAuthorized();
     }
 
+    match /tracked_links/{linkId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Server-only Admin SDK
+    }
+
     // --- WhatsApp (Meta Cloud API) ---
     // Connections, sessions, and webhook idempotency markers hold encrypted
     // secrets and are written exclusively by the Admin SDK (server). Clients

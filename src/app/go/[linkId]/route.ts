@@ -87,6 +87,17 @@ export async function GET(
               const data = bookingSnap.docs[0].data();
               originalUrl = `/book/${bookingSnap.docs[0].id}`;
               workspaceIds = [data.workspaceId].filter(Boolean);
+            } else {
+              // 5. Search Campaign Pages
+              const campaignPageSnap = await adminDb.collection('campaign_pages')
+                .where('page_serial', '==', pageSerial)
+                .limit(1)
+                .get();
+              if (!campaignPageSnap.empty) {
+                const data = campaignPageSnap.docs[0].data();
+                originalUrl = `/p/${data.slug || campaignPageSnap.docs[0].id}`;
+                workspaceIds = [data.workspaceId].filter(Boolean);
+              }
             }
           }
         }
