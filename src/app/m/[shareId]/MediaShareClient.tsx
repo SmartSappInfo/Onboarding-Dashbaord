@@ -635,32 +635,38 @@ export default function MediaShareClient({
                     {asset.type === 'video' && (
                         <div className="relative w-full h-full bg-[#0B0F19] flex items-center justify-center overflow-hidden">
                             {isEmbeddable && embedUrl ? (
-                                !isVideoPlaying ? (
-                                    <div 
-                                        onClick={() => {
-                                            setIsPlaybackFinished(false);
-                                            setIsVideoPlaying(true);
-                                        }}
-                                        className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-black/35 z-20"
-                                    >
-                                        {thumbUrl && (
-                                            <img
-                                                src={thumbUrl}
-                                                alt={title}
-                                                className="absolute inset-0 w-full h-full object-cover opacity-80"
-                                            />
-                                        )}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                            <div className="relative">
-                                                <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
-                                                <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                                <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
-                                                    <Play className="w-8 h-8 fill-current ml-1" />
+                                <>
+                                    {!isVideoPlaying && (
+                                        <div 
+                                            onClick={() => {
+                                                setIsPlaybackFinished(false);
+                                                setIsVideoPlaying(true);
+                                                if (ytPlayerRef.current?.playVideo) {
+                                                    try {
+                                                        ytPlayerRef.current.playVideo();
+                                                    } catch (_err) {}
+                                                }
+                                            }}
+                                            className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-black/35 z-20"
+                                        >
+                                            {thumbUrl && (
+                                                <img
+                                                    src={thumbUrl}
+                                                    alt={title}
+                                                    className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                                />
+                                            )}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                    <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                    <div className="relative h-16 w-16 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-8 h-8 fill-current ml-1" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
+                                    )}
                                     <iframe
                                         id={iframeId}
                                         src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
@@ -668,7 +674,7 @@ export default function MediaShareClient({
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
                                     />
-                                )
+                                </>
                             ) : (
                                 <>
                                     <video
@@ -954,33 +960,39 @@ export default function MediaShareClient({
                     {asset.type === 'video' && (
                         <div className="relative w-full aspect-video md:aspect-[16/9] bg-slate-50 dark:bg-slate-950 flex items-center justify-center overflow-hidden z-10">
                             {isEmbeddable && embedUrl ? (
-                                !isVideoPlaying ? (
-                                    <div 
-                                        onClick={() => {
-                                            setIsPlaybackFinished(false);
-                                            setIsVideoPlaying(true);
-                                        }}
-                                        className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-slate-950 z-20"
-                                    >
-                                        {thumbUrl && (
-                                            <img
-                                                src={thumbUrl}
-                                                alt={title}
-                                                className="absolute inset-0 w-full h-full object-cover opacity-80"
-                                            />
-                                        )}
-                                        {/* Play Overlay */}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                                            <div className="relative">
-                                                <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
-                                                <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
-                                                <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
-                                                    <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                <>
+                                    {!isVideoPlaying && (
+                                        <div 
+                                            onClick={() => {
+                                                setIsPlaybackFinished(false);
+                                                setIsVideoPlaying(true);
+                                                if (ytPlayerRef.current?.playVideo) {
+                                                    try {
+                                                        ytPlayerRef.current.playVideo();
+                                                    } catch (_err) {}
+                                                }
+                                            }}
+                                            className="absolute inset-0 w-full h-full cursor-pointer flex items-center justify-center bg-slate-950 z-20"
+                                        >
+                                            {thumbUrl && (
+                                                <img
+                                                    src={thumbUrl}
+                                                    alt={title}
+                                                    className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                                />
+                                            )}
+                                            {/* Play Overlay */}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 rounded-full bg-primary/35 animate-ping" />
+                                                    <div className="absolute -inset-4 rounded-full bg-primary/20 animate-pulse duration-1000" />
+                                                    <div className="relative h-20 w-20 sm:h-24 sm:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(59,95,255,0.4)]">
+                                                        <Play className="w-10 h-10 sm:w-12 sm:h-12 fill-current ml-1" />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
+                                    )}
                                     <iframe
                                         id={iframeId}
                                         src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
@@ -988,7 +1000,7 @@ export default function MediaShareClient({
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
                                     />
-                                )
+                                </>
                             ) : (
                                 <>
                                     <video
