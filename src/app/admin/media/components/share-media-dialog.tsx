@@ -33,6 +33,8 @@ import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scri
 import { useWorkspaceScopedQueries } from '@/app/admin/automations/hooks/useWorkspaceScopedQueries';
 import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
 import type { CallOutcomeAutomation } from '@/lib/types';
+import ConfiguredAutomationsSummary from './ConfiguredAutomationsSummary';
+import TransferMediaAutomationsModal from './TransferMediaAutomationsModal';
 
 interface ShareMediaDialogProps {
     asset: MediaAsset;
@@ -107,6 +109,15 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     // Event-based automations
     const [automationRules, setAutomationRules] = React.useState<Record<string, CallOutcomeAutomation[]>>({});
     const [activeTrigger, setActiveTrigger] = React.useState<string>('on_view');
+    const [isTransferModalOpen, setIsTransferModalOpen] = React.useState<boolean>(false);
+
+    const handleClearTriggerRules = React.useCallback((triggerKey: string) => {
+        setAutomationRules(prev => {
+            const next = { ...prev };
+            delete next[triggerKey];
+            return next;
+        });
+    }, []);
 
     const actionData = React.useMemo<ActionConfigDataSources>(() => ({
         tags: (scopedData.allTags || []).map(t => ({ id: t.id, name: t.name })),
@@ -661,8 +672,36 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                     <TabsContent value="automations" className="space-y-4 outline-none mt-0">
                                         <div className="space-y-4">
-                                            <div className="flex flex-col gap-1.5 text-left">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Event Trigger</Label>
+                                            {/* Transfer Automations Header Bar */}
+                                            <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-card border border-border">
+                                                <div className="text-left">
+                                                    <p className="text-xs font-extrabold text-foreground">Rule Transfer & Replication</p>
+                                                    <p className="text-[10px] text-muted-foreground font-medium">
+                                                        Copy configured rules to other hosted {asset.type || 'video'} landing pages.
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() => setIsTransferModalOpen(true)}
+                                                    className="h-9 px-3 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
+                                                >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                    Transfer Rules
+                                                </Button>
+                                            </div>
+
+                                            {/* At-a-Glance Configured Rules Summary */}
+                                            <ConfiguredAutomationsSummary
+                                                automationRules={automationRules}
+                                                activeTrigger={activeTrigger}
+                                                onSelectTrigger={setActiveTrigger}
+                                                onClearTriggerRules={handleClearTriggerRules}
+                                                assetType={asset.type}
+                                            />
+
+                                            <div className="flex flex-col gap-1.5 text-left pt-2 border-t border-border">
+                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Select Event Trigger to Edit</Label>
                                                 <select
                                                     value={activeTrigger}
                                                     onChange={(e) => setActiveTrigger(e.target.value)}
@@ -688,7 +727,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                             <div className="border-t border-dashed border-border/60 pt-4 text-left">
                                                 <Label className="text-[10px] font-bold text-muted-foreground ml-1 mb-2 block">
-                                                    Trigger Actions List
+                                                    Trigger Actions List ({activeTrigger})
                                                 </Label>
                                                 <OutcomeAutomationsEditor
                                                     automations={automationRules[activeTrigger] || []}
@@ -821,6 +860,14 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                     </form>
                 )}
             </DialogContent>
+
+            {/* Transfer Media Automations Modal */}
+            <TransferMediaAutomationsModal
+                sourceAsset={asset}
+                automationRules={automationRules}
+                open={isTransferModalOpen}
+                onOpenChange={setIsTransferModalOpen}
+            />
         </Dialog>
     );
 }
