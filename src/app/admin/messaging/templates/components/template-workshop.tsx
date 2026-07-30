@@ -4049,31 +4049,44 @@ export function TemplateWorkshop({
                 </div>
 
                 {/* Compact centered stepper navigation */}
-                <div className="hidden lg:block">
+                <div className="hidden sm:block">
                     <Stepper currentStep={step} onStepClick={setStep} name={name} />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                     {step > 1 && (
                         <Button
                             variant="outline"
                             onClick={() => setIsTestModalOpen(true)}
-                            className="rounded-xl font-bold border-blue-200 text-blue-600 hover:bg-blue-50/55 h-9 px-4 gap-2 text-[10px] active:scale-95 transition-all"
+                            className="rounded-xl font-bold border-blue-200 text-blue-600 hover:bg-blue-50/55 h-9 px-3 sm:px-4 gap-1.5 text-[10px] sm:text-xs active:scale-95 transition-all min-h-[44px] sm:min-h-0"
                         >
-                            <FlaskConical className="h-4 w-4" /> Send Test
+                            <FlaskConical className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Send</span> Test
                         </Button>
                     )}
-                    <Button variant="ghost" onClick={onCancel} className="font-bold h-9 text-xs">Discard</Button>
+                    <Button variant="ghost" onClick={onCancel} className="font-bold h-9 text-xs min-h-[44px] sm:min-h-0">Discard</Button>
                     <Button
                         onClick={handleCommit}
                         disabled={isSaving || !name}
-                        className="rounded-xl font-semibold px-5 bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs transition-all active:scale-95"
+                        className="rounded-xl font-semibold px-4 sm:px-5 bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs transition-all active:scale-95 min-h-[44px] sm:min-h-0"
                     >
-                        {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                        Save Template
+                        {isSaving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                        Save
                     </Button>
                 </div>
             </header>
+
+            {/* Mobile Compact Step Bar (< sm screens) */}
+            <div className="sm:hidden px-4 py-2 bg-muted/20 border-b flex items-center justify-between text-xs font-semibold select-none">
+                <span className="text-muted-foreground">Step {step} of 4: <strong className="text-foreground">{step === 1 ? 'Details' : step === 2 ? 'Builder' : step === 3 ? 'Simulation' : 'Publish'}</strong></span>
+                <div className="flex items-center gap-1">
+                    {step > 1 && (
+                        <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold px-2 min-h-[36px]" onClick={() => setStep(step - 1)}>Prev</Button>
+                    )}
+                    {step < 4 && (
+                        <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold text-primary px-2 min-h-[36px]" onClick={() => setStep(step + 1)}>Next</Button>
+                    )}
+                </div>
+            </div>
 
             {mode === 'superadmin_blueprint' && (
                 <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center justify-center gap-3 shadow-sm z-10 relative">
