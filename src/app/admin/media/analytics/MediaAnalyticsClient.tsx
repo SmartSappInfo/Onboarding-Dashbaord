@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   BarChart3, Film, Music, Eye, PlayCircle, CheckCircle, 
   MousePointerClick, Download, Search, ChevronRight,
-  Loader2, Sparkles
+  Loader2
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
@@ -256,16 +256,15 @@ export default function MediaAnalyticsClient() {
                         <div className="space-y-0.5 text-left">
                           {item.assetName ? (
                             <>
-                              <h4 className="text-sm font-black text-foreground tracking-tight group-hover:text-primary transition-colors flex items-center gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{item.assetName}</span>
+                              <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight group-hover:text-primary transition-colors">
+                                {item.assetName}
                               </h4>
                               <p className="text-xs font-semibold text-muted-foreground leading-snug">
                                 {item.title}
                               </p>
                             </>
                           ) : (
-                            <h4 className="text-sm font-black text-foreground tracking-tight group-hover:text-primary transition-colors">
+                            <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight group-hover:text-primary transition-colors">
                               {item.title}
                             </h4>
                           )}

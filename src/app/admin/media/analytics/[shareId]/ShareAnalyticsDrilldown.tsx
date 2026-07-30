@@ -325,9 +325,8 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex flex-col items-start">
               {data.assetName && (
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary mb-1 pl-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Asset: {data.assetName}</span>
+                <div className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-1 pl-1">
+                  ASSET: {data.assetName}
                 </div>
               )}
               <div className="flex items-center gap-2 mb-1">

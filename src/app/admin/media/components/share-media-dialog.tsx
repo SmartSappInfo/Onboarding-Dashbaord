@@ -424,9 +424,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                             <Share2 className="h-6 w-6" aria-hidden="true" />
                         </div>
                         <div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary mb-0.5">
-                                <Sparkles className="h-3 w-3" aria-hidden="true" />
-                                <span>Asset: {asset.name}</span>
+                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white mb-0.5">
+                                Asset: {asset.name}
                             </div>
                             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Share Media Asset</DialogTitle>
                             <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
