@@ -372,6 +372,11 @@ export default function MediaShareClient({
                 ? new URL(ctaTargetUrl)
                 : new URL(ctaTargetUrl, window.location.origin);
 
+            // XSS / Open Redirect Safeguard: Enforce HTTP/HTTPS or relative origin protocols only
+            if (!['http:', 'https:'].includes(urlObj.protocol)) {
+                return '';
+            }
+
             // Copy forward search params
             Object.entries(searchParams).forEach(([key, val]) => {
                 if (key !== 'embed') {
@@ -578,10 +583,10 @@ export default function MediaShareClient({
                                 )}
                                 <Button
                                     onClick={handleCtaClick}
-                                    className="rounded-xl bg-primary hover:bg-primary/90 text-white font-extrabold h-9 px-6 text-[10px] uppercase tracking-wider cursor-pointer mx-auto flex items-center gap-1.5"
+                                    className="rounded-xl bg-primary hover:bg-primary/90 text-white font-extrabold h-11 min-h-[44px] px-6 text-xs uppercase tracking-wider cursor-pointer mx-auto flex items-center gap-1.5 active:scale-[0.97]"
                                 >
                                     {ctaText || 'Get Started'}
-                                    <ArrowRight className="h-3.5 w-3.5" />
+                                    <ArrowRight className="h-4 w-4" />
                                 </Button>
                                 <div>
                                     <button
@@ -601,7 +606,7 @@ export default function MediaShareClient({
                                                 setIsPlaying(true);
                                             }
                                         }}
-                                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                                        className="text-xs font-bold text-primary hover:underline cursor-pointer min-h-[44px] inline-flex items-center"
                                     >
                                         Replay
                                     </button>
@@ -631,15 +636,15 @@ export default function MediaShareClient({
                             disabled={!isCtaUnlocked}
                             size="sm" 
                             onClick={handleCtaClick} 
-                            className={`rounded-xl text-[10px] font-black h-8 px-4 flex items-center gap-1 shrink-0 cursor-pointer ${
+                            className={`rounded-xl text-xs font-black h-11 min-h-[44px] px-5 flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-[0.97] ${
                                 !isCtaUnlocked 
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60 border border-slate-700' 
                                     : 'bg-primary text-white hover:bg-primary/90'
                             }`}
                         >
-                            {!isCtaUnlocked && <Lock className="h-3.5 w-3.5" />}
+                            {!isCtaUnlocked && <Lock className="h-4 w-4" />}
                             {ctaText || 'Get Started'} 
-                            {isCtaUnlocked && <ChevronRight className="h-3.5 w-3.5" />}
+                            {isCtaUnlocked && <ChevronRight className="h-4 w-4" />}
                         </Button>
                     </div>
                 )}

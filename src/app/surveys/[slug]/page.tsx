@@ -107,9 +107,11 @@ export default async function PublicSurveyPage({
     }
 
     const channelRaw = (ch || (ref ? 'email' : 'direct')).toLowerCase();
-    const channel = (['email', 'sms', 'whatsapp', 'direct'] as const).includes(
-        channelRaw as any
-    ) ? channelRaw as 'email' | 'sms' | 'whatsapp' | 'direct' : 'direct';
+    const validChannels = ['email', 'sms', 'whatsapp', 'direct'] as const;
+    type ValidChannel = typeof validChannels[number];
+    const channel: ValidChannel = (validChannels as readonly string[]).includes(channelRaw) 
+        ? (channelRaw as ValidChannel) 
+        : 'direct';
 
     let resolvedWorkspaceId = survey.workspaceIds?.[0] || '';
     const incomingWs = workspaceId || ws;
@@ -274,9 +276,14 @@ export default async function PublicSurveyPage({
 
     // Block non-published surveys unless in preview mode
     if (survey.status !== 'published' && preview !== 'true') {
+        type UnavailableStatus = 'draft' | 'archived' | 'not_found';
+        const unavailableStatus: UnavailableStatus = (['draft', 'archived', 'not_found'] as const).includes(survey.status as UnavailableStatus)
+            ? (survey.status as UnavailableStatus)
+            : 'draft';
+
         return (
             <SurveyUnavailable 
-                status={survey.status as any || 'draft'} 
+                status={unavailableStatus} 
                 survey={survey} 
                 logoUrl={survey.logoUrl || entityLogoUrl || organizationLogoUrl} 
                 orgBranding={orgBranding}
