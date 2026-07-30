@@ -3,13 +3,12 @@ import { cache } from 'react';
 import type { Survey, EntityContact } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import SurveyUnavailable from '../components/survey-unavailable';
-import { notFound } from 'next/navigation';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { getOrgBranding } from '@/lib/org-branding';
 import { resolveSeoMetadata, mapLegacySurveySeo, normalizeParentImages } from '@/lib/seo';
 
-import { cn, stripHtml, safeDecodeURI } from '@/lib/utils';
+import { safeDecodeURI } from '@/lib/utils';
 
 
 export const dynamic = 'force-dynamic';
@@ -123,16 +122,27 @@ export default async function PublicSurveyPage({
     let resolvedRecipientContact: string | null = null;
     let resolvedContactId: string | null = null;
 
-    // Check secure context cookie first
+    /**
+     * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+     * Public survey routes MUST normalize incoming parameter aliases (contactId, cid, c, entityId, e)
+     * from searchParams in addition to cookieCtx and ref tokens. This guarantees that visitors navigating
+     * from media page CTA buttons or SMS/Email tracking URLs link their survey sessions directly to CRM profiles.
+     */
+    const rawContactParam = resolvedSearchParams.contactId || resolvedSearchParams.contact_id || resolvedSearchParams.cid || resolvedSearchParams.c || resolvedSearchParams.contact;
+    const rawEntityParam = resolvedSearchParams.entityId || resolvedSearchParams.entity_id || resolvedSearchParams.eid || resolvedSearchParams.e || resolvedSearchParams.entity;
+
+    if (rawContactParam) resolvedContactId = rawContactParam;
+    if (rawEntityParam) resolvedEntityId = rawEntityParam;
+
+    // Check secure context cookie fallback
     const { resolveOnboardingContext } = await import('@/lib/utils/context-resolver');
     const cookieCtx = await resolveOnboardingContext();
-    if (cookieCtx.contactId) {
+    if (cookieCtx.contactId && !resolvedContactId) {
         resolvedContactId = cookieCtx.contactId;
         resolvedEntityId = cookieCtx.entityId || resolvedEntityId;
     }
 
     const isEncrypted = ref ? ref.split(':').length === 3 : false;
-    console.log('[PublicSurveyPage] Incoming ref:', ref, 'isEncrypted:', isEncrypted);
 
     if (ref && isEncrypted) {
         try {
@@ -140,13 +150,13 @@ export default async function PublicSurveyPage({
             const decrypted = decryptToken(ref);
             if (decrypted) {
                 const [contactId, entityId] = decrypted.split(':');
-                resolvedContactId = contactId;
-                resolvedEntityId = entityId || resolvedEntityId;
+                if (contactId) resolvedContactId = contactId;
+                if (entityId) resolvedEntityId = entityId || resolvedEntityId;
             }
         } catch (err) {
             console.error('[PublicSurveyPage] Error executing direct token decryption:', err);
         }
-    } else if (ref && !isEncrypted) {
+    } else if (ref && !isEncrypted && !resolvedContactId) {
         // Fallback for raw legacy IDs
         resolvedContactId = ref;
     }

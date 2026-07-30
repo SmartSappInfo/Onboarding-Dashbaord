@@ -53,12 +53,16 @@ import {
 import { 
   ArrowLeft, User, Loader2, CheckCircle2, XCircle, BarChart3, ListCollapse, Sparkles,
   Filter, Search, X, MoreVertical, Tag as TagIcon,
-  GitPullRequest, ExternalLink
+  GitPullRequest, ExternalLink, Settings
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell 
 } from 'recharts';
+import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { MediaAsset } from '@/lib/types';
+import ShareMediaDialog from '../../components/share-media-dialog';
 import { TagSelector } from '@/components/tags/TagSelector';
 import MediaAnalyticsBulkActionsBar from '../components/MediaAnalyticsBulkActionsBar';
 import { bulkApplyTagsToMediaContactsAction } from '@/lib/media-analytics-entity-actions';
@@ -76,8 +80,44 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
 
+  const firestore = useFirestore();
   const [data, setData] = React.useState<MediaAnalyticsResult | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+
+  // Edit Media Page Modal States
+  const [isEditMediaOpen, setIsEditMediaOpen] = React.useState(false);
+  const [assetForEdit, setAssetForEdit] = React.useState<MediaAsset | null>(null);
+  const [isLoadingAsset, setIsLoadingAsset] = React.useState(false);
+
+  const handleOpenEditMedia = async () => {
+    if (!data?.assetId || !firestore) return;
+    if (assetForEdit) {
+      setIsEditMediaOpen(true);
+      return;
+    }
+    setIsLoadingAsset(true);
+    try {
+      const snap = await getDoc(doc(firestore, 'media', data.assetId));
+      if (snap.exists()) {
+        setAssetForEdit({ id: snap.id, ...snap.data() } as MediaAsset);
+        setIsEditMediaOpen(true);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Asset Not Found',
+          description: 'The associated media asset document could not be loaded.',
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load media asset.',
+      });
+    } finally {
+      setIsLoadingAsset(false);
+    }
+  };
 
   // Filter & Search States
   const [metricFilter, setMetricFilter] = React.useState<MetricFilterType>('ALL');
@@ -322,7 +362,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
       <TooltipProvider>
         <div className="space-y-6 pb-28 w-full text-left">
           {/* Header Block */}
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col items-start">
               {data.assetName && (
                 <div className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-1 pl-1">
@@ -346,6 +386,18 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
               <p className="text-muted-foreground text-xs leading-relaxed pl-1 font-mono">
                 Link ID: /m/{shareId}
               </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={handleOpenEditMedia}
+                disabled={isLoadingAsset}
+                className="h-11 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 text-white px-5 gap-2 shadow-sm active:scale-[0.97] min-h-[44px] shrink-0"
+              >
+                {isLoadingAsset ? <Loader2 className="h-4 w-4 animate-spin" /> : <Settings className="h-4 w-4" />}
+                Edit Media Page
+              </Button>
             </div>
           </div>
 
@@ -888,6 +940,18 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Media Landing Page Dialog */}
+          {assetForEdit && (
+            <ShareMediaDialog
+              asset={assetForEdit}
+              open={isEditMediaOpen}
+              onOpenChange={(open) => {
+                setIsEditMediaOpen(open);
+                if (!open) loadDrilldown();
+              }}
+            />
+          )}
         </div>
       </TooltipProvider>
     </PageContainerFluid>

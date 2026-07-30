@@ -359,7 +359,12 @@ export default function MediaShareClient({
         }
     }, [videoId, asset.previewImageUrl]);
 
-    // Call-To-Action Link Resolver with query params propagation
+    /**
+     * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+     * When viewers click CTA buttons or links on media pages, we MUST propagate their
+     * contact identity (contactId / entityId / ref) to the target destination (e.g. Survey or Landing Page).
+     * We combine URL searchParams AND server-resolved props so tracking is never lost.
+     */
     const getFinalCtaUrl = () => {
         if (!ctaTargetUrl) return '';
         try {
@@ -373,6 +378,14 @@ export default function MediaShareClient({
                     urlObj.searchParams.set(key, val);
                 }
             });
+
+            // Explicitly ensure server-resolved contactId and entityId are present
+            if (contactId && !urlObj.searchParams.has('contactId')) {
+                urlObj.searchParams.set('contactId', contactId);
+            }
+            if (entityId && !urlObj.searchParams.has('entityId')) {
+                urlObj.searchParams.set('entityId', entityId);
+            }
 
             return urlObj.toString();
         } catch {

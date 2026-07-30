@@ -65,6 +65,7 @@ export interface MediaShareAnalyticsDoc {
 }
 
 export interface MediaAnalyticsResult {
+  assetId?: string;
   title?: string;
   assetName?: string;
   stats: MediaPageStats;
@@ -610,6 +611,7 @@ export async function getMediaShareDrilldownAction(
     const totalKnownContacts = new Set([...contactIds, ...entityIds]).size;
 
     return {
+      assetId: configData?.assetId || undefined,
       title,
       assetName,
       stats,
@@ -700,7 +702,7 @@ async function buildEntityNameMap(entityIds: string[]): Promise<Map<string, stri
   return map;
 }
 
-async function executeMediaEventRules(params: {
+async function executeMediaEventRules(_params: {
   shareId: string;
   workspaceId: string;
   assetId: string;

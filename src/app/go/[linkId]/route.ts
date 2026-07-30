@@ -97,9 +97,21 @@ export async function GET(
         return NextResponse.redirect(new URL('/', req.url));
       }
 
-      // Write secure cookie with contact details and issue redirect
+      /**
+       * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+       * Mobile email clients (Gmail app, iOS Mail, WhatsApp in-app browser) and modern browsers with
+       * Intelligent Tracking Prevention (Safari ITP / Chrome third-party cookie caps) drop httpOnly cookies
+       * on 302 redirects. 
+       * 
+       * To guarantee 100% visitor identity continuity, we set the cookie AND explicitly append
+       * `contactId` and `entityId` to the query string of targetUrl.
+       */
       const { encryptToken } = await import('@/lib/crypto');
-      const response = NextResponse.redirect(new URL(originalUrl, req.url), 302);
+      const targetUrl = new URL(originalUrl, req.url);
+      if (contactId) targetUrl.searchParams.set('contactId', contactId);
+      if (entityId) targetUrl.searchParams.set('entityId', entityId);
+
+      const response = NextResponse.redirect(targetUrl, 302);
       
       const payload = JSON.stringify({
         contactId,
@@ -130,7 +142,7 @@ export async function GET(
       return NextResponse.redirect(new URL('/', req.url));
     }
 
-    // Build the destination URL, forwarding entity identity and channel
+    // Build the destination URL, forwarding entity identity, contactId, and channel
     const destinationUrl = buildDestinationUrl(linkData.originalUrl, linkData.entityId, linkData.channel);
 
     // Fire analytics in the background — 302 is never blocked
