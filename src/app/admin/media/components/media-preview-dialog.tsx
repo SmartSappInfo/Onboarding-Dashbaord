@@ -14,12 +14,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const getYouTubeEmbedUrl = (url: string) => {
   try {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i;
     const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      return `https://www.youtube.com/embed/${match[2]}`;
+    if (match && match[1]) {
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
     }
-  } catch (e) {}
+  } catch (e: unknown) {}
   return null;
 };
 
@@ -157,9 +157,21 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                     </div>
                 )}
                 {asset.type === 'video' && (
- <div className="w-full max-w-3xl shadow-2xl rounded-2xl overflow-hidden ring-1 ring-border bg-black">
- <video src={asset.url} controls className="w-full" />
+                  embedUrl ? (
+                    <div className="w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-border relative">
+                      <iframe
+                        src={embedUrl}
+                        className="w-full h-full border-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        title={asset.name}
+                      />
                     </div>
+                  ) : (
+                    <div className="w-full max-w-3xl shadow-2xl rounded-2xl overflow-hidden ring-1 ring-border bg-black">
+                      <video src={asset.url} controls className="w-full" />
+                    </div>
+                  )
                 )}
                 {asset.type === 'audio' && (
  <div className="w-full max-w-md p-8 bg-card rounded-2xl shadow-xl ring-1 ring-border">

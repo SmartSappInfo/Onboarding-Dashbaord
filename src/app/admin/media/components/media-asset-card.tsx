@@ -49,12 +49,12 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 const getYouTubeThumbnail = (url: string) => {
   try {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i;
     const match = url.match(regExp);
-    if (match && match[2].length === 11) {
-      return `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`;
+    if (match && match[1]) {
+      return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
     }
-  } catch (e) {}
+  } catch (e: unknown) {}
   return null;
 };
 
@@ -196,8 +196,8 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
   };
 
   const thirdPartyThumbnail = getYouTubeThumbnail(asset.url) || getVimeoThumbnail(asset.url) || getLoomThumbnail(asset.url);
-  const previewSrc = asset.type === 'image' ? asset.url : (asset.previewImageUrl || thirdPartyThumbnail || null);
-  const hasPreviewImage = asset.type === 'image' || (asset.type === 'link' && !!previewSrc);
+  const previewSrc = asset.type === 'image' ? asset.url : (asset.previewImageUrl || (asset as { previewUrl?: string }).previewUrl || thirdPartyThumbnail || null);
+  const hasPreviewImage = !!previewSrc;
 
   const isVideoAsset = asset.type === 'video' || 
     asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.mp4') ||
