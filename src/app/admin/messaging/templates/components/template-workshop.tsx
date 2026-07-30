@@ -50,7 +50,9 @@ import {
     Trash2,
     Search,
     GripVertical,
-    Upload
+    Upload,
+    PanelLeftClose,
+    PanelLeftOpen
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -2371,6 +2373,15 @@ export function TemplateWorkshop({
     const localClipboardRef = React.useRef<MessageBlock[] | null>(null);
     const [sidebarTab, setSidebarTab] = React.useState<'architect' | 'blocks' | 'variables' | 'validation'>('architect');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
+    /**
+     * PURPOSE: Manages collapsible panel state for desktop and mobile viewports.
+     * When true, collapses the variables/sidebar panel to give full 100% width to the main editor canvas.
+     *
+     * CAUTION: Ensure variable click-to-insert callbacks remain registered when collapsed.
+     * TESTABILITY: Toggleable via panel header button or editor canvas edge trigger.
+     * RELATED SURFACES: VariablesPanel.tsx, PlainTextEditor.tsx.
+     */
+    const [isVariablesCollapsed, setIsVariablesCollapsed] = React.useState<boolean>(false);
     const [isResizing, setIsResizing] = React.useState(false);
     const dragStartRef = React.useRef({ mouseX: 0, startWidth: 0 });
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
@@ -4391,24 +4402,24 @@ export function TemplateWorkshop({
                     )}
 
                     {step === 2 && (
-                        <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
+                        <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex flex-col md:flex-row select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
                             <div 
                                 className={cn(
-                                    "border-r bg-background flex flex-col shrink-0 relative shadow-xl",
-                                    !isResizing && "transition-all duration-300"
+                                    "border-b md:border-b-0 md:border-r bg-background flex flex-col shrink-0 relative shadow-xl transition-all duration-300 overflow-hidden",
+                                    isVariablesCollapsed ? "h-0 md:h-auto md:w-0 border-b-0 md:border-r-0 opacity-0 pointer-events-none" : "w-full h-[50vh] md:h-auto opacity-100"
                                 )} 
-                                style={{ width: variablesWidth }}
+                                style={isVariablesCollapsed ? { width: 0 } : (typeof window !== 'undefined' && window.innerWidth >= 768 ? { width: variablesWidth } : {})}
                             >
                                 <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
-                                    <div className="px-2 py-2 border-b bg-background shrink-0 text-left">
+                                    <div className="px-2 py-2 border-b bg-background shrink-0 text-left flex items-center gap-1.5">
                                         {contentMode === 'rich_builder' ? (
-                                            <TabsList className="grid w-full grid-cols-3 h-10 bg-background p-1 rounded-xl">
+                                            <TabsList className="grid flex-1 grid-cols-3 h-10 bg-background p-1 rounded-xl">
                                                 <TabsTrigger value="architect" className="text-[9px] font-semibold gap-1.5"><Sparkles className="h-3 w-3 text-blue-500" /> Architect</TabsTrigger>
                                                 <TabsTrigger value="blocks" className="text-[9px] font-semibold gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
                                                 <TabsTrigger value="variables" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Variables</TabsTrigger>
                                             </TabsList>
                                         ) : (
-                                            <TabsList className="grid w-full grid-cols-2 h-10 bg-background p-1 rounded-xl">
+                                            <TabsList className="grid flex-1 grid-cols-2 h-10 bg-background p-1 rounded-xl">
                                                 <TabsTrigger value="variables" className="text-[9px] font-semibold gap-1.5"><Database className="h-3 w-3" /> Variables</TabsTrigger>
                                                 <TabsTrigger value="validation" className="text-[9px] font-semibold gap-1.5 relative">
                                                     <AlertTriangle className="h-3 w-3" /> Validation
@@ -4423,6 +4434,16 @@ export function TemplateWorkshop({
                                                 </TabsTrigger>
                                             </TabsList>
                                         )}
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 transition-all active:scale-95"
+                                            onClick={() => setIsVariablesCollapsed(true)}
+                                            title="Collapse Panel"
+                                        >
+                                            <PanelLeftClose className="h-4 w-4" />
+                                        </Button>
                                     </div>
 
                                     <div className="flex-1 min-h-0 relative overflow-hidden bg-muted/5">
@@ -4676,8 +4697,21 @@ export function TemplateWorkshop({
                                 )}
                                 style={{ backgroundColor: wrapperStyles?.outerBg || 'transparent' }}
                             >
-                                <div className="h-14 shrink-0 bg-background border-b px-6 flex items-center justify-between z-10 shadow-sm text-left">
-                                    <div className="flex items-center gap-3.5 flex-wrap">
+                                <div className="h-14 shrink-0 bg-background border-b px-4 sm:px-6 flex items-center justify-between z-10 shadow-sm text-left">
+                                    <div className="flex items-center gap-2 sm:gap-3.5 flex-wrap">
+                                        {isVariablesCollapsed && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsVariablesCollapsed(false)}
+                                                className="h-8 gap-1.5 rounded-lg border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-bold text-[11px] transition-all animate-in fade-in slide-in-from-left-2 duration-200"
+                                                title="Expand Variables & Tools"
+                                            >
+                                                <PanelLeftOpen className="h-4 w-4" />
+                                                <span className="hidden sm:inline">Variables & Tools</span>
+                                            </Button>
+                                        )}
                                         {/* Undo/Redo controls */}
                                         <div className="flex items-center gap-1">
                                             <Button
