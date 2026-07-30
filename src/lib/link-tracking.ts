@@ -273,22 +273,53 @@ async function resolvePageSerialAndType(urlStr: string): Promise<{ pageSerial: n
         }
       }
     }
+    // 5. Campaign pages matching (/p/[slug])
+    if (pathname.includes('/p/')) {
+      const parts = pathname.split('/');
+      const slug = parts[parts.indexOf('p') + 1];
+      if (slug) {
+        const snap = await adminDb.collection('campaign_pages').where('slug', '==', slug).limit(1).get();
+        let doc: FirebaseFirestore.DocumentSnapshot | null = snap.empty ? null : snap.docs[0];
+        if (!doc) {
+          const directSnap = await adminDb.collection('campaign_pages').doc(slug).get();
+          if (directSnap.exists) doc = directSnap;
+        }
+        if (doc) {
+          let serial = doc.data()?.page_serial;
+          if (serial === undefined || serial === null) {
+            const { getNextSerial } = await import('./services/serial-allocator');
+            serial = await getNextSerial('pages');
+            await doc.ref.update({ page_serial: serial });
+          }
+          return { pageSerial: serial, type: 'campaign_page', id: doc.id };
+        }
+      }
+    }
   } catch (err) {
     // URL parsing failed or Firestore query failed
   }
   return null;
 }
 
+/**
+ * PURPOSE: Transforms message body URLs into stateless 11-character cryptographic short URLs (/go/[token]).
+ * Automatically strips bulky ?ref=... query parameters before resolving page serials.
+ * Ensures zero database writes during bulk or single SMS dispatches.
+ *
+ * CAUTION: Retains backwards compatibility for legacy stateful links if serial resolution is unavailable.
+ * TESTABILITY: Tested in src/lib/__tests__/short-link-pipeline.test.ts.
+ * RELATED SURFACES: messaging-engine.ts, bulk-messaging.ts, /app/go/[linkId]/route.ts.
+ */
 export async function transformBodyWithTracking(params: {
   body: string;
-  campaignId: string;
-  jobId: string;
-  taskId: string;
+  campaignId?: string;
+  jobId?: string;
+  taskId?: string;
   entityId?: string;
   contactId?: string;
   channel?: PageEventChannel;
 }): Promise<string> {
-  const { body, campaignId, jobId, taskId, entityId, contactId, channel } = params;
+  const { body, campaignId = '', jobId = '', taskId = '', entityId, contactId, channel } = params;
 
   // URL regex — matches http(s) URLs, stops at whitespace and common HTML terminators
   const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
@@ -302,11 +333,17 @@ export async function transformBodyWithTracking(params: {
   // Create all tracked links in parallel
   const trackedUrls = await Promise.all(
     uniqueUrls.map(async (url) => {
+      // Clean URL: strip existing ?ref=... query parameters before page serial matching
+      const cleanUrl = url
+        .replace(/([?&])ref=[^&\s]+/g, '$1')
+        .replace(/\?&/, '?')
+        .replace(/[?&]$/, '');
+
       // If contactId is provided, check if it's an internal page we can shorten statelessly to 11 chars
       if (contactId) {
         try {
           const contactSerial = await resolveContactSerial(contactId, entityId);
-          const pageInfo = await resolvePageSerialAndType(url);
+          const pageInfo = await resolvePageSerialAndType(cleanUrl);
           
           if (contactSerial !== null && pageInfo !== null) {
             const { encrypt64, packSerials, encodeBase58 } = await import('./utils/short-crypto');
@@ -319,7 +356,12 @@ export async function transformBodyWithTracking(params: {
           console.warn('[transformBodyWithTracking] Failed stateless link resolution:', err);
         }
       }
-      return createTrackedLink({ originalUrl: url, campaignId, jobId, taskId, entityId, channel });
+      
+      if (campaignId && jobId && taskId) {
+        return createTrackedLink({ originalUrl: cleanUrl, campaignId, jobId, taskId, entityId, channel });
+      }
+
+      return cleanUrl;
     })
   );
 
