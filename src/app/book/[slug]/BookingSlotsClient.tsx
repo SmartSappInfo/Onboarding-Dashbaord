@@ -29,9 +29,10 @@ interface BookingSlotsClientProps {
   bookingPage: BookingPage;
   initialDate: string;
   initialSlots: TimeSlot[];
+  preloadedVariables?: Record<string, string>;
 }
 
-export default function BookingSlotsClient({ bookingPage, initialDate, initialSlots }: BookingSlotsClientProps) {
+export default function BookingSlotsClient({ bookingPage, initialDate, initialSlots, preloadedVariables }: BookingSlotsClientProps) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = React.useState<string>(initialDate);
   const [slots, setSlots] = React.useState<TimeSlot[]>(initialSlots);
