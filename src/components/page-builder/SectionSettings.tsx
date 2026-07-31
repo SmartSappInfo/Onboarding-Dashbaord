@@ -144,7 +144,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200">
                 <SelectValue placeholder="Select Columns" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="1-col">1 Column (Full Width)</SelectItem>
                 <SelectItem value="2-col">2 Columns (50 / 50)</SelectItem>
                 <SelectItem value="3-col">3 Columns (33 / 33 / 33)</SelectItem>
@@ -160,7 +160,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200">
                 <SelectValue placeholder="Alignment" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="top">Top Align</SelectItem>
                 <SelectItem value="center">Center Align</SelectItem>
                 <SelectItem value="bottom">Bottom Align</SelectItem>
@@ -174,7 +174,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200">
                 <SelectValue placeholder="Gap" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="small">Small (16px)</SelectItem>
                 <SelectItem value="medium">Medium (32px)</SelectItem>
                 <SelectItem value="large">Large (48px)</SelectItem>
@@ -191,7 +191,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200">
                 <SelectValue placeholder="Background Type" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="none">Transparent / Clean</SelectItem>
                 <SelectItem value="color">Solid Color</SelectItem>
                 <SelectItem value="gradient">Gradient Background</SelectItem>
@@ -431,7 +431,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
                   <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 text-[11px] h-8">
                     <SelectValue placeholder="Overlay Type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+                  <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                     <SelectItem value="color">Solid Color</SelectItem>
                     <SelectItem value="gradient">Gradient Overlay</SelectItem>
                   </SelectContent>
@@ -540,7 +540,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
                 <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 h-10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+                <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                   <SelectItem value="none">None (0)</SelectItem>
                   <SelectItem value="small">Small (32px)</SelectItem>
                   <SelectItem value="medium">Medium (64px)</SelectItem>
@@ -569,7 +569,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
                 <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 h-10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+                <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                   <SelectItem value="none">None (0)</SelectItem>
                   <SelectItem value="small">Small (32px)</SelectItem>
                   <SelectItem value="medium">Medium (64px)</SelectItem>
@@ -599,7 +599,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 h-10">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="auto">Auto-Fit (Default)</SelectItem>
                 <SelectItem value="small">300px</SelectItem>
                 <SelectItem value="medium">500px</SelectItem>
@@ -628,7 +628,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 h-10">
                 <SelectValue placeholder="Devices" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="all">Show on all devices</SelectItem>
                 <SelectItem value="desktop">Desktop and tablet only</SelectItem>
                 <SelectItem value="mobile">Mobile viewport only</SelectItem>
@@ -645,7 +645,7 @@ export function SectionSettings({ section, onUpdate, workspaceId }: SectionSetti
               <SelectTrigger className="bg-slate-900 border border-slate-700 text-slate-200 h-10">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200">
+              <SelectContent className="bg-slate-900 border border-slate-700 text-slate-200 builder-popover-content">
                 <SelectItem value="all">Show to all visitors</SelectItem>
                 <SelectItem value="has_tag">Show only if visitor has Tag</SelectItem>
                 <SelectItem value="no_tag">Hide if visitor has Tag</SelectItem>

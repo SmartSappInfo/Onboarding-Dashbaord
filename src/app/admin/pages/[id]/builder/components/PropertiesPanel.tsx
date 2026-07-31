@@ -161,7 +161,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Heading theme font" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                 <SelectItem value="heading">Theme Heading Font</SelectItem>
                 <SelectItem value="body">Theme Body Font</SelectItem>
                 <SelectItem value="sans">System Sans-Serif</SelectItem>
@@ -179,7 +179,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Left align" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                 <SelectItem value="left">Left</SelectItem>
                 <SelectItem value="center">Center</SelectItem>
                 <SelectItem value="right">Right</SelectItem>
@@ -366,7 +366,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Select motion effect" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                 <SelectItem value="none">None (Immediate render)</SelectItem>
                 <SelectItem value="fade-in">Fade In</SelectItem>
                 <SelectItem value="slide-up">Slide Up</SelectItem>
@@ -389,7 +389,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <SelectTrigger className={INPUT_CLASS}>
                     <SelectValue placeholder="Select trigger point" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                     <SelectItem value="on-load">On Page Load</SelectItem>
                     <SelectItem value="on-scroll">On Scroll Into View</SelectItem>
                     <SelectItem value="on-hover">On Mouse Hover</SelectItem>
@@ -462,7 +462,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
                     <SelectValue placeholder="Select target..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                     <SelectItem value="title">Title / Heading</SelectItem>
                     <SelectItem value="subtitle">Subtitle / Subheading</SelectItem>
                     <SelectItem value="content">Main Content Text</SelectItem>
@@ -480,7 +480,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
                     <SelectValue placeholder="Select variable..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                     {variables.length > 0 ? (
                       variables.map((v) => (
                         <SelectItem key={v.key} value={`{{${v.key}}}`}>
@@ -535,7 +535,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="All devices" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                 <SelectItem value="all">Display on All Devices</SelectItem>
                 <SelectItem value="desktop">Desktop Breakpoints Only</SelectItem>
                 <SelectItem value="mobile">Mobile Devices Only</SelectItem>
@@ -552,7 +552,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Always render" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
                 <SelectItem value="all">Always Render Block</SelectItem>
                 <SelectItem value="has_tag">User Has Tenant Tags</SelectItem>
                 <SelectItem value="no_tag">User Lacks Tenant Tags</SelectItem>

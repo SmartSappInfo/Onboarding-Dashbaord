@@ -161,7 +161,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
             {field.options.map((opt) => (
               <SelectItem key={opt.value} value={opt.value} className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">{opt.label}</SelectItem>
             ))}
@@ -196,14 +196,14 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50">
             <SelectValue placeholder={`Choose a ${field.resource}...`} />
           </SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
             {list.map((r) => (
               <SelectItem key={r.id} value={r.id} className="text-xs py-2 text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white cursor-pointer font-medium">
                 <div className="flex flex-col gap-0.5 text-left max-w-[240px]">
-                  {/* Escaped label rendering to prevent raw HTML/script leakage */}
-                  <span className="font-bold text-slate-100 truncate">{r.label}</span>
+                  {/* Escaped label rendering with theme-aware contrast class */}
+                  <span className="font-bold text-slate-100 builder-option-label truncate">{r.label}</span>
                   {r.subLabel && (
-                    <span className="text-[10px] text-slate-300 font-semibold truncate">{r.subLabel}</span>
+                    <span className="text-[10px] text-slate-300 builder-option-sublabel font-semibold truncate">{r.subLabel}</span>
                   )}
                 </div>
               </SelectItem>
@@ -218,7 +218,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="No animation" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
             <SelectItem value="none" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">None</SelectItem>
             <SelectItem value="fade-in" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Fade In</SelectItem>
             <SelectItem value="slide-up" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Up</SelectItem>
@@ -233,7 +233,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="Default Font" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000]">
+          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
             <SelectItem value="heading" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Heading Font</SelectItem>
             <SelectItem value="body" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Body Font</SelectItem>
             <SelectItem value="sans" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Sans-Serif</SelectItem>

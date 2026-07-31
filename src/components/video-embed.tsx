@@ -38,6 +38,27 @@ function extractLoomID(url?: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Single source of truth for video play button overlays across inline and modal components.
+ * CAUTION: Reconciles play button size (compact w-12 h-12) and solid emerald visibility.
+ */
+export function VideoPlayButtonOverlay({ label = "Watch Video", className }: { label?: string; className?: string }) {
+  return (
+    <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-hover:bg-black/45 transition-colors duration-300", className)}>
+      {label && (
+        <span className="text-[10px] font-black tracking-widest text-white uppercase mb-2 drop-shadow-md opacity-90">{label}</span>
+      )}
+      <div className="relative flex items-center justify-center">
+        <div className="absolute -inset-3 rounded-full bg-emerald-500/35 animate-ping pointer-events-none" />
+        <div className="absolute -inset-1.5 rounded-full bg-emerald-500/25 animate-pulse duration-1000 pointer-events-none" />
+        <div className="relative w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.5)] border-2 border-white/40 transform transition-all duration-300 group-hover:scale-110 active:scale-95">
+          <Play className="w-5 h-5 text-white fill-current ml-0.5 drop-shadow-md" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface VideoEmbedProps {
   url?: string;
   thumbnailUrl?: string;
@@ -122,35 +143,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
             </div>
         )}
         
-        {/* Overlay Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10 opacity-70 group-hover:opacity-50 transition-opacity" />
-        
-        {/* Premium Large Play Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative flex items-center justify-center">
-            {/* Outer animated ping ring */}
-            <div className="absolute -inset-4 sm:-inset-6 rounded-full bg-primary/35 animate-ping pointer-events-none" />
-            {/* Soft pulsing aura ring */}
-            <div className="absolute -inset-2 sm:-inset-3 rounded-full bg-primary/25 animate-pulse duration-1000 pointer-events-none" />
-            
-            {/* Main Play Button Circle */}
-            <div className="relative h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(59,95,255,0.5)] border-2 border-white/30 transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_70px_rgba(59,95,255,0.7)] group-hover:bg-primary/95 active:scale-95">
-              <Play className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white fill-current ml-1 drop-shadow-md" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Video Info Overlay */}
-        <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 flex items-center justify-between opacity-90 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shrink-0">
-              <Play className="w-4 h-4 text-white fill-current ml-0.5" />
-            </div>
-            <p className="text-white font-bold text-sm sm:text-lg md:text-xl drop-shadow-lg leading-tight">
-              Watch Video
-            </p>
-          </div>
-        </div>
+        <VideoPlayButtonOverlay label="Watch Video" />
       </div>
     );
   }
@@ -171,7 +164,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
   }
 
   let embedUrl = "";
-  if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${disabled ? 0 : 1}&rel=0&modestbranding=1`;
+  if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${disabled ? 0 : 1}&rel=0&modestbranding=1&enablejsapi=1`;
   if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=${disabled ? 0 : 1}`;
   if (loomId) embedUrl = `https://www.loom.com/embed/${loomId}?autoplay=${disabled ? 0 : 1}`;
 
@@ -183,7 +176,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
         src={embedUrl}
         title="Video player"
         frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
         className={disabled ? "pointer-events-none" : undefined}
       ></iframe>

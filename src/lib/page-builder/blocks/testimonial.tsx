@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadPageMedia } from '../upload';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
-import VideoEmbed from '@/components/video-embed';
+import VideoEmbed, { VideoPlayButtonOverlay } from '@/components/video-embed';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import { cn } from '@/lib/utils';
 
@@ -800,19 +800,7 @@ registerBlock({
                       </div>
                     )}
 
-                    {/* Tap To Watch Play button overlay */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors duration-300">
-                      <span className="text-[10px] font-black tracking-widest text-white uppercase mb-3 drop-shadow-md opacity-90">Tap To Watch Video</span>
-                      <div className="relative flex items-center justify-center">
-                        {/* Pulsing blue outer ring */}
-                        <div className="absolute -inset-4 rounded-full bg-blue-500/40 animate-ping" />
-                        <div className="absolute -inset-2 rounded-full bg-blue-500/25 animate-pulse duration-1000" />
-                        {/* Solid play button */}
-                        <div className="relative w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.5)] border-2 border-white/30 transform transition-all duration-300 group-hover:scale-110 active:scale-95">
-                          <Play className="w-8 h-8 text-white fill-current ml-1 drop-shadow-md" />
-                        </div>
-                      </div>
-                    </div>
+                    <VideoPlayButtonOverlay label="Watch Video" />
                     {changeControls}
                   </div>
 
@@ -883,16 +871,7 @@ registerBlock({
                     <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Testimonial</span>
                   </div>
                 )}
-                {/* Play Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/45 transition-colors duration-300">
-                  <div className="relative flex items-center justify-center">
-                    <div className="absolute -inset-4 rounded-full bg-emerald-500/40 animate-ping" />
-                    <div className="absolute -inset-2 rounded-full bg-emerald-500/25 animate-pulse duration-1000" />
-                    <div className="relative w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.5)] border-2 border-white/30 transform transition-all duration-300 group-hover:scale-110 active:scale-95">
-                      <Play className="w-8 h-8 text-white fill-current ml-1 drop-shadow-md" />
-                    </div>
-                  </div>
-                </div>
+                <VideoPlayButtonOverlay label="Watch Video" />
                 {changeControls}
               </div>
               
