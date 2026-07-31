@@ -45,6 +45,67 @@ export function convertToCleanHtml(element: HTMLElement, htmlMode = false): stri
   return htmlMode ? clone.innerHTML : (clone.textContent || '');
 }
 
+/**
+ * Helper to safely capture the current selection caret offset relative to a root contentEditable element.
+ * CAUTION: Essential for contentEditable components to prevent caret position collapse to offset 0 during React re-renders.
+ */
+function saveCaretOffset(root: HTMLElement): number | null {
+  if (typeof window === 'undefined') return null;
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  if (!root.contains(range.startContainer)) return null;
+
+  const preCaretRange = range.cloneRange();
+  preCaretRange.selectNodeContents(root);
+  preCaretRange.setEnd(range.startContainer, range.startOffset);
+  return preCaretRange.toString().length;
+}
+
+/**
+ * Helper to restore a saved character caret offset within a contentEditable element.
+ */
+function restoreCaretOffset(root: HTMLElement, offset: number | null): void {
+  if (offset === null || typeof window === 'undefined') return;
+  const selection = window.getSelection();
+  if (!selection) return;
+
+  let currentOffset = 0;
+  let targetNode: Node | null = null;
+  let targetNodeOffset = 0;
+
+  const walk = (node: Node): boolean => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.nodeValue?.length || 0;
+      if (currentOffset + len >= offset) {
+        targetNode = node;
+        targetNodeOffset = offset - currentOffset;
+        return true;
+      }
+      currentOffset += len;
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        if (walk(node.childNodes[i])) return true;
+      }
+    }
+    return false;
+  };
+
+  walk(root);
+
+  if (targetNode) {
+    try {
+      const range = document.createRange();
+      range.setStart(targetNode, targetNodeOffset);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch {
+      // Fallback silently if range placement encounters edge node shift
+    }
+  }
+}
+
 export const InlineEditable: React.FC<InlineEditableProps> = ({
   value,
   onChange,
@@ -86,19 +147,36 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
   }, [workspaceId, organizationId, isEdit]);
 
   // Sync value from parent prop
+  // CAUTION & TESTABILITY: Must check if document.activeElement is inside elementRef.current to avoid
+  // overwriting innerHTML during active user typing. Overwriting innerHTML resets the caret to index 0,
+  // causing reversed typing direction (e.g. typing "Richard" yields "drahciR").
   useEffect(() => {
     if (!hasMounted || !elementRef.current) return;
     
-    // If the element is currently focused, do not overwrite the user's active typing
-    if (document.activeElement === elementRef.current) {
+    // Check if element or any of its child nodes hold active document focus
+    const isFocused = document.activeElement && (
+      document.activeElement === elementRef.current || 
+      elementRef.current.contains(document.activeElement)
+    );
+
+    const targetVal = value || '';
+
+    // If currently focused, update lastValueRef without destroying active user DOM nodes or caret
+    if (isFocused) {
+      lastValueRef.current = targetVal;
       return;
     }
 
-    const targetVal = value || '';
+    // Skip DOM updates if target match already established
+    if (lastValueRef.current === targetVal) {
+      return;
+    }
+
     const cleanCurrent = convertToCleanHtml(elementRef.current, html);
-    
     if (cleanCurrent !== targetVal) {
+      const savedCaret = saveCaretOffset(elementRef.current);
       elementRef.current.innerHTML = convertToVisualHtml(targetVal);
+      restoreCaretOffset(elementRef.current, savedCaret);
     }
     lastValueRef.current = targetVal;
   }, [value, html, hasMounted, isEdit]);

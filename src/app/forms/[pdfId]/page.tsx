@@ -121,26 +121,38 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 
 import { getOrgBranding } from '@/lib/org-branding';
 
-export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ entityId?: string }> }) {
+/**
+ * PURPOSE: Renders public PDF forms & document signing pages.
+ * Integrates SSOT FieldsVariablesService.resolveEntityContextFromParams to resolve recipient identity
+ * across encrypted ref tokens, contact/entity query aliases, and __onb_context session cookies.
+ *
+ * CAUTION: pdfForm.workspaceIds supplies tenant context for entity verification.
+ * TESTABILITY: Accessible via /forms/[pdfId] or /p/f/[slug].
+ * RELATED SURFACES: PdfFormRenderer.tsx, FieldsVariablesService.ts.
+ */
+export default async function PublicPdfFormPage({ 
+    params, 
+    searchParams 
+}: { 
+    params: Promise<{ pdfId: string }>;
+    searchParams: Promise<Record<string, string>>;
+}) {
     const { pdfId } = await params;
     const sParams = await searchParams;
 
-    // Check secure context cookie first
-    let cookieEntityId: string | undefined = undefined;
-    try {
-        const { resolveOnboardingContext } = await import('@/lib/utils/context-resolver');
-        const cookieCtx = await resolveOnboardingContext();
-        if (cookieCtx.entityId) {
-            cookieEntityId = cookieCtx.entityId;
-        }
-    } catch (cookieErr) {
-        console.warn('[PublicPdfFormPage] Failed to parse context cookie:', cookieErr);
-    }
+    // 1. Initial metadata fetch to extract workspace IDs
+    const rawData = await getPdfFormData(pdfId);
+    if (!rawData) notFound();
 
-    const finalEntityId = sParams.entityId || cookieEntityId;
-    const data = await getPdfFormData(pdfId, finalEntityId);
+    // 2. SSOT identity resolution across searchParams (ref, contactId, entityId) and cookie context
+    const workspaceIds = rawData.pdfForm.workspaceIds || [];
+    const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+    const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(workspaceIds, sParams);
 
-    if (!data) notFound();
+    const finalEntityId = entityCtx.entityId || sParams.entityId || undefined;
+    const data = finalEntityId && finalEntityId !== rawData.entity?.id
+        ? (await getPdfFormData(pdfId, finalEntityId)) || rawData
+        : rawData;
     
     // Resolve organizationId: from pdfForm or fallback to the first workspace's organization
     let organizationId = data.pdfForm.organizationId;

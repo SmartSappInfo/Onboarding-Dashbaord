@@ -191,8 +191,11 @@ registerBlock({
                   type="button"
                   variant="outline"
                   onClick={() => {
+                    // CAUTION: Decouple dialog teardown to prevent Radix UI focus trap race conditions
                     setChangeSourceOpen(false);
-                    setVideoLibraryOpen(true);
+                    setTimeout(() => {
+                      setVideoLibraryOpen(true);
+                    }, 50);
                   }}
                   className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
@@ -246,7 +249,12 @@ registerBlock({
 
         <MediaSelectorDialog
           open={videoLibraryOpen}
-          onOpenChange={setVideoLibraryOpen}
+          onOpenChange={(open) => {
+            setVideoLibraryOpen(open);
+            if (!open && typeof document !== 'undefined') {
+              setTimeout(() => { document.body.style.pointerEvents = ''; }, 50);
+            }
+          }}
           onSelectAsset={(asset) => {
             ctx.onPropChange?.({
               videoData: {
@@ -257,6 +265,9 @@ registerBlock({
               }
             });
             setVideoLibraryOpen(false);
+            if (typeof document !== 'undefined') {
+              setTimeout(() => { document.body.style.pointerEvents = ''; }, 50);
+            }
           }}
           filterType="video"
           workspaceId={ctx.page.workspaceId}
@@ -330,13 +341,16 @@ registerBlock({
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
               <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
                 <DialogTitle className="sr-only">Video Player</DialogTitle>
-                <iframe
-                  src={finalVideoUrl}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Video Block Playback"
-                />
+                {/* CAUTION: Use VideoEmbed instead of raw iframe to transform YouTube watch URLs into embed URLs and render HTML5 video players for hosted MP4 files */}
+                {modalOpen && (
+                  <VideoEmbed
+                    url={finalVideoUrl}
+                    thumbnailUrl={finalThumbnailUrl || undefined}
+                    autoPlay={true}
+                    disabled={false}
+                    className="w-full h-full border-0 rounded-none shadow-none"
+                  />
+                )}
               </DialogContent>
             </Dialog>
           </>

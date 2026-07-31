@@ -221,7 +221,12 @@ registerBlock({
                 {/* Optional Video Header */}
                 {hasVideo ? (
                   <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
-                    <VideoEmbed url={finalVideoUrl} thumbnailUrl={finalThumbnailUrl || undefined} className="border-0 shadow-none rounded-none w-full h-full" />
+                    <VideoEmbed
+                      url={finalVideoUrl}
+                      thumbnailUrl={finalThumbnailUrl || undefined}
+                      disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+                      className="border-0 shadow-none rounded-none w-full h-full"
+                    />
                     {item.badgeText && (
                       <div className="absolute bottom-3 left-3 z-30 pointer-events-none">
                         <span className="text-[9px] font-black uppercase tracking-widest text-slate-100 bg-black/60 px-2 py-0.5 rounded">

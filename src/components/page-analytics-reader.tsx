@@ -38,16 +38,19 @@ export function PageAnalyticsReader({
     hasRun.current = true;
 
     const ref = searchParams.get('ref');
+    const contactIdParam = searchParams.get('contactId') || searchParams.get('contact') || searchParams.get('cid') || searchParams.get('c');
+    const entityIdParam = searchParams.get('entityId') || searchParams.get('entity') || searchParams.get('eid') || searchParams.get('e');
     const channelParam = searchParams.get('ch') as PageEventChannel | null;
 
-    // Determine channel: explicit ?ch= > implied by ?ref= > direct
+    // Determine channel: explicit ?ch= > implied by tracking parameters > direct
     const channel: PageEventChannel =
-      channelParam ?? (ref ? 'email' : 'direct');
+      channelParam ?? (ref || contactIdParam ? 'email' : 'direct');
 
-    if (ref) {
-      const isEncrypted = ref.split(':').length === 3;
+    const detectedId = ref || contactIdParam || entityIdParam;
+    if (detectedId) {
+      const isEncrypted = detectedId.split(':').length === 3;
       if (isEncrypted) {
-        decryptRecipientAction(ref)
+        decryptRecipientAction(detectedId)
           .then((res) => {
             if (res.success && res.contactId) {
               onEntityDetected(res.contactId, channel);
@@ -57,7 +60,7 @@ export function PageAnalyticsReader({
             console.warn('[PageAnalyticsReader] Decryption action failed:', err);
           });
       } else {
-        onEntityDetected(ref, channel);
+        onEntityDetected(detectedId, channel);
       }
     }
 

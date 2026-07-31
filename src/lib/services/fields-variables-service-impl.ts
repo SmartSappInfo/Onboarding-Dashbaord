@@ -1058,31 +1058,82 @@ export class FieldsVariablesService {
    * Resolves the entityId and recipientContact identifier based on URL search query parameters.
    * Leverages automatic single-field indexes securely on the server-side to avoid compound index restrictions.
    */
+  /**
+   * PURPOSE: Single Source of Truth (SSOT) helper to resolve recipient identity (entityId & recipientContact)
+   * from searchParams (supports encrypted `ref` tokens, `contactId:entityId` tokens, `contactId`, `entityId`,
+   * `email`, `phone`, and query parameter aliases) with a safe fallback to the secure `__onb_context` session cookie.
+   *
+   * CAUTION: Must swallow non-fatal cookie or decryption errors so public landing page rendering is never blocked.
+   * Encrypted ref tokens are decrypted using AES-256-GCM (decryptToken).
+   *
+   * TESTABILITY: Tested in fields-variables-service.test.ts and survey-variable-pipeline.test.ts.
+   * RELATED SURFACES: PublicPageClient.tsx, PublicSurveyPage.tsx, PublicPdfFormPage.tsx, PublicBookingPage.tsx,
+   * PublicMediaSharePage.tsx, PageAnalyticsReader.tsx.
+   */
   static async resolveEntityContextFromParams(
     workspaceIds: string[],
     searchParams: Record<string, string>
   ): Promise<{ entityId: string | null; recipientContact: string | null }> {
-    const entityIdParam = searchParams.entityId || searchParams.entity;
+    let entityIdParam = searchParams.entityId || searchParams.entity || searchParams.eid || searchParams.e;
+    let contactIdParam = searchParams.contactId || searchParams.contact || searchParams.cid || searchParams.c;
     const emailParam = searchParams.email || searchParams.contactEmail;
     const phoneParam = searchParams.phone || searchParams.contactPhone;
-    const contactIdParam = searchParams.contactId || searchParams.contact;
+    const refParam = searchParams.ref || searchParams.r;
+
+    // 0. Parse 'ref' token parameter if present
+    if (refParam && !contactIdParam && !entityIdParam) {
+      if (refParam.split(':').length === 3) {
+        // 3-part encrypted AES-256-GCM token (contactId:entityId)
+        try {
+          const { decryptToken } = await import('@/lib/crypto');
+          const decrypted = decryptToken(refParam);
+          if (decrypted) {
+            const parts = decrypted.split(':');
+            if (parts[0]) contactIdParam = parts[0];
+            if (parts[1]) entityIdParam = parts[1];
+          }
+        } catch (decErr) {
+          console.warn('[FieldsVariablesService] Failed to decrypt ref token:', decErr);
+        }
+      } else if (refParam.includes(':')) {
+        // 2-part raw contactId:entityId token
+        const parts = refParam.split(':');
+        if (parts[0]) contactIdParam = parts[0];
+        if (parts[1]) entityIdParam = parts[1];
+      } else if (refParam.trim()) {
+        // Fallback: treat ref as entityId
+        entityIdParam = refParam.trim();
+      }
+    }
+
+    // 0.5. Fallback to secure __onb_context session cookie if URL searchParams yield no contact/entity
+    if (!contactIdParam && !entityIdParam && !emailParam && !phoneParam) {
+      try {
+        const { resolveOnboardingContext } = await import('@/lib/utils/context-resolver');
+        const cookieCtx = await resolveOnboardingContext();
+        if (cookieCtx.contactId) contactIdParam = cookieCtx.contactId;
+        if (cookieCtx.entityId) entityIdParam = cookieCtx.entityId || entityIdParam;
+      } catch (cookieErr) {
+        console.warn('[FieldsVariablesService] Cookie context fallback failed:', cookieErr);
+      }
+    }
 
     // 1. Direct Contact ID lookup
     if (contactIdParam) {
       try {
         let targetContactId = contactIdParam;
-        let targetEntityId: string | null = null;
+        let targetEntityId: string | null = entityIdParam || null;
         if (contactIdParam.includes(':')) {
           const parts = contactIdParam.split(':');
           targetContactId = parts[0];
-          targetEntityId = parts[1];
+          targetEntityId = parts[1] || targetEntityId;
         }
 
         if (!targetEntityId) {
           try {
             const contactSnap = await adminDb.collection('contacts').doc(targetContactId).get();
             if (contactSnap.exists) {
-              targetEntityId = contactSnap.data()?.entityId || null;
+              targetEntityId = (contactSnap.data()?.entityId as string) || null;
             }
           } catch (cErr) {
             console.warn('[FieldsVariablesService] Contacts collection lookup failed:', cErr);
@@ -1106,6 +1157,10 @@ export class FieldsVariablesService {
                 recipientContact: found.email || found.phone || null 
               };
             }
+            return {
+              entityId: targetEntityId,
+              recipientContact: emailParam || phoneParam || null
+            };
           }
         } else {
           // Fallback capped scan to avoid hanging the server when database size is huge
@@ -1130,7 +1185,7 @@ export class FieldsVariablesService {
       }
     }
 
-    // 2. Direct ID lookup
+    // 2. Direct Entity ID lookup
     if (entityIdParam) {
       try {
         const snap = await adminDb.collection('workspace_entities')
@@ -1148,7 +1203,7 @@ export class FieldsVariablesService {
       }
     }
 
-    // 2. Email-based lookup
+    // 3. Email-based lookup
     if (emailParam) {
       const cleanEmail = emailParam.toLowerCase().trim();
       if (cleanEmail) {
@@ -1185,7 +1240,7 @@ export class FieldsVariablesService {
       }
     }
 
-    // 3. Phone-based lookup
+    // 4. Phone-based lookup
     if (phoneParam) {
       const targetDigits = phoneParam.replace(/\D/g, '');
       if (targetDigits) {

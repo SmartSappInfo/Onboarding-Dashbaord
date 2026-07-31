@@ -5,12 +5,21 @@ import BookingSlotsClient from './BookingSlotsClient';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<Record<string, string>>;
 }
 
+/**
+ * PURPOSE: Renders public booking pages for scheduling appointments.
+ * Resolves recipient identity across ref tokens, searchParams, and __onb_context session cookies
+ * to auto-populate contact details.
+ *
+ * CAUTION: bookingPage.workspaceId supplies tenant context for entity verification.
+ * TESTABILITY: Accessible via /book/[slug].
+ * RELATED SURFACES: BookingSlotsClient.tsx, FieldsVariablesService.ts.
+ */
 export default async function PublicBookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { date } = await searchParams;
+  const sParams = await searchParams;
 
   // Retrieve published booking page by slug
   const pageRes = await getBookingPageBySlugAction(slug);
@@ -19,9 +28,31 @@ export default async function PublicBookingPage({ params, searchParams }: PagePr
   }
 
   const bookingPage = pageRes.data;
-  const targetDateStr = date || new Date().toISOString().split('T')[0];
+  const targetDateStr = sParams.date || new Date().toISOString().split('T')[0];
 
-  // Fetch slots
+  // Resolve recipient identity via SSOT FieldsVariablesService
+  let preloadedVariables: Record<string, string> = {};
+  if (bookingPage.workspaceId) {
+    try {
+      const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+      const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
+        [bookingPage.workspaceId],
+        sParams
+      );
+      if (entityCtx.entityId || entityCtx.recipientContact) {
+        const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
+        preloadedVariables = await getVariableValuesMapAction({
+          workspaceId: bookingPage.workspaceId,
+          entityId: entityCtx.entityId || undefined,
+          recipientContact: entityCtx.recipientContact || undefined,
+        });
+      }
+    } catch (err) {
+      console.warn('[PublicBookingPage] Failed to resolve recipient context:', err);
+    }
+  }
+
+  // Fetch available slots
   const slotsRes = await getAvailableSlotsAction(bookingPage.availabilityId, targetDateStr);
   const slots = slotsRes.success && slotsRes.data ? slotsRes.data : [];
 
@@ -35,6 +66,7 @@ export default async function PublicBookingPage({ params, searchParams }: PagePr
         bookingPage={bookingPage} 
         initialDate={targetDateStr} 
         initialSlots={slots} 
+        preloadedVariables={preloadedVariables}
       />
     </div>
   );

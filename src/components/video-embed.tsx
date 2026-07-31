@@ -6,6 +6,19 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Play } from 'lucide-react';
 
+/**
+ * Helper to validate external video URLs and prevent malicious XSS protocols (e.g., javascript:).
+ * CAUTION: Essential for security compliance to prevent arbitrary script execution.
+ */
+function sanitizeVideoUrl(rawUrl?: string): string | null {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return null;
+}
+
 function extractYouTubeID(url?: string): string | null {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
@@ -34,17 +47,25 @@ interface VideoEmbedProps {
 }
 
 const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled = false }: VideoEmbedProps) => {
+  const safeUrl = sanitizeVideoUrl(url);
   const [isPlaying, setIsPlaying] = React.useState(autoPlay && !disabled);
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
   
-  const videoId = extractYouTubeID(url);
-  const vimeoId = extractVimeoID(url);
-  const loomId = extractLoomID(url);
-  const isDirectFile = url ? /\.(mp4|webm|ogg)(\?|$)/i.test(url) : false;
+  const videoId = extractYouTubeID(safeUrl || undefined);
+  const vimeoId = extractVimeoID(safeUrl || undefined);
+  const loomId = extractLoomID(safeUrl || undefined);
+
+  // CAUTION: Detect direct hosted video files (.mp4, .webm, .mov, .m4v, Firebase Storage tokens, or direct media paths)
+  const isDirectFile = safeUrl 
+    ? (/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(safeUrl) || 
+       safeUrl.includes('/media%2Fvideo') || 
+       safeUrl.includes('/video/') || 
+       (!videoId && !vimeoId && !loomId && (safeUrl.startsWith('http://') || safeUrl.startsWith('https://')))) 
+    : false;
 
   React.useEffect(() => {
-    setIsPlaying(autoPlay);
-  }, [autoPlay]);
+    setIsPlaying(autoPlay && !disabled);
+  }, [autoPlay, disabled]);
 
   React.useEffect(() => {
     if (thumbnailUrl) {
@@ -136,12 +157,13 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
 
   if (isDirectFile) {
     return (
-        <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
+        <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black relative", disabled && "pointer-events-none", className)}>
             <video 
-                src={url} 
-                className="w-full h-full" 
-                controls 
-                autoPlay
+                src={safeUrl || url} 
+                className="w-full h-full object-cover" 
+                controls={!disabled} 
+                autoPlay={!disabled}
+                muted={disabled}
                 playsInline
             />
         </div>
@@ -149,12 +171,12 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
   }
 
   let embedUrl = "";
-  if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
-  if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1`;
-  if (loomId) embedUrl = `https://www.loom.com/embed/${loomId}?autoplay=1`;
+  if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${disabled ? 0 : 1}&rel=0&modestbranding=1`;
+  if (vimeoId) embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=${disabled ? 0 : 1}`;
+  if (loomId) embedUrl = `https://www.loom.com/embed/${loomId}?autoplay=${disabled ? 0 : 1}`;
 
   return (
-    <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
+    <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black relative", disabled && "pointer-events-none", className)}>
       <iframe
         width="100%"
         height="100%"
@@ -163,6 +185,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        className={disabled ? "pointer-events-none" : undefined}
       ></iframe>
     </div>
   );
