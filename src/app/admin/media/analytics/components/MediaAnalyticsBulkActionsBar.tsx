@@ -37,15 +37,15 @@ import {
   bulkMoveMediaContactsStageAction 
 } from '@/lib/media-analytics-entity-actions';
 
-interface PipelineStageItem {
+interface PipelineStageDoc {
   id: string;
   name: string;
+  order?: number;
 }
 
 interface PipelineDoc {
   id: string;
   name: string;
-  stages?: PipelineStageItem[];
 }
 
 interface MediaAnalyticsBulkActionsBarProps {
@@ -84,10 +84,21 @@ export default function MediaAnalyticsBulkActionsBar({
 
   const { data: pipelines } = useCollection<PipelineDoc>(pipelinesQuery);
 
-  const selectedPipeline = React.useMemo(() => {
-    if (!pipelines || !selectedPipelineId) return null;
-    return pipelines.find((p) => p.id === selectedPipelineId) || null;
-  }, [pipelines, selectedPipelineId]);
+  /**
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+   * In Firestore, pipeline stages live in the `onboardingStages` collection matching `where('pipelineId', '==', selectedPipelineId)`.
+   * Querying `onboardingStages` directly guarantees target stages dynamically load when a pipeline is selected.
+   */
+  const stagesQuery = useMemoFirebase(() => {
+    if (!firestore || !selectedPipelineId) return null;
+    return query(
+      collection(firestore, 'onboardingStages'),
+      where('pipelineId', '==', selectedPipelineId),
+      orderBy('order', 'asc')
+    );
+  }, [firestore, selectedPipelineId]);
+
+  const { data: stages, isLoading: isStagesLoading } = useCollection<PipelineStageDoc>(stagesQuery);
 
   const handleApplyTags = async () => {
     if (!activeWorkspaceId || selectedContactIds.length === 0 || selectedTagIds.length === 0) return;
@@ -311,17 +322,17 @@ export default function MediaAnalyticsBulkActionsBar({
               </Select>
             </div>
 
-            {selectedPipeline && (
+            {selectedPipelineId && (
               <div className="space-y-2 animate-in fade-in duration-200">
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
                   Target Stage
                 </Label>
                 <Select value={selectedStageId} onValueChange={setSelectedStageId}>
                   <SelectTrigger className="h-11 rounded-xl bg-background border-border text-xs font-bold min-h-[44px]">
-                    <SelectValue placeholder="Select target stage..." />
+                    <SelectValue placeholder={isStagesLoading ? "Loading stages..." : "Select target stage..."} />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border">
-                    {selectedPipeline.stages?.map((stage) => (
+                    {stages?.map((stage) => (
                       <SelectItem key={stage.id} value={stage.id} className="text-xs font-bold">
                         {stage.name}
                       </SelectItem>
