@@ -6,15 +6,14 @@ import { useFirestore } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Link, Search, ChevronDown } from 'lucide-react';
-import type { Survey, CampaignPage, BookingPage, QRCode } from '@/lib/types';
+import { Link, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface LinkPickerProps {
   onSelect: (url: string) => void;
 }
 
-interface ResourceItem {
+export interface ResourceItem {
   id: string;
   name: string;        // Internal Name (Prominent Heading)
   subtitle?: string;   // Page Title / Description (Secondary Subtitle)
@@ -46,98 +45,104 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const [search, setSearch] = React.useState<string>('');
   const [targetType, setTargetType] = React.useState<string>('dynamic');
+  const [loading, setLoading] = React.useState<boolean>(false);
 
-  const [surveys, setSurveys] = React.useState<ResourceItem[]>([]);
-  const [forms, setForms] = React.useState<ResourceItem[]>([]);
-  const [mediaShares, setMediaShares] = React.useState<ResourceItem[]>([]);
-  const [pages, setPages] = React.useState<ResourceItem[]>([]);
-  const [bookings, setBookings] = React.useState<ResourceItem[]>([]);
-  const [qrs, setQrs] = React.useState<ResourceItem[]>([]);
+  // Cached resource stores to avoid re-fetching on tab switches
+  const [resources, setResources] = React.useState<Record<string, ResourceItem[]>>({
+    dynamic: DYNAMIC_VARIABLES,
+    static: PREDEFINED_PAGES,
+  });
 
+  /**
+   * PURPOSE: Lazy-loads published workspace items for the active targetType tab on demand.
+   * Caches results in state so switching tabs avoids expensive network waterfalls or duplicate reads.
+   *
+   * CAUTION: Always respects isMounted flag to prevent state updates after unmount.
+   * TESTABILITY: Fetches only the selected target type dataset and stores in resources[targetType].
+   * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
+   */
   React.useEffect(() => {
     if (!firestore || !activeWorkspaceId) return;
+    if (targetType === 'dynamic' || targetType === 'static') return;
+    if (resources[targetType]) return; // Already cached in memory
 
-    const fetchResources = async () => {
+    let isMounted = true;
+    setLoading(true);
+
+    const fetchTargetResources = async () => {
       try {
-        // 1. Fetch Surveys
-        const surveySnap = await getDocs(
-          query(collection(firestore, 'surveys'), where('workspaceIds', 'array-contains', activeWorkspaceId))
-        );
-        const fetchedSurveys = surveySnap.docs.map((d) => {
-          const data = d.data() as Survey & { internalName?: string; name?: string };
-          const internalName = data.internalName || data.name || data.title || 'Untitled Survey';
-          const publicTitle = data.title && data.title !== internalName ? data.title : undefined;
-          return {
-            id: d.id,
-            name: internalName,
-            subtitle: publicTitle,
-            path: `/surveys/${data.slug || d.id}`,
-          };
-        });
-        setSurveys(fetchedSurveys);
+        let fetched: ResourceItem[] = [];
 
-        // 2. Fetch Forms
-        const formSnap = await getDocs(
-          query(collection(firestore, 'pdfs'), where('workspaceIds', 'array-contains', activeWorkspaceId))
-        );
-        const fetchedForms = formSnap.docs.map((d) => {
-          const data = d.data() as { name?: string; internalName?: string; title?: string; slug?: string };
-          const internalName = data.internalName || data.name || data.title || 'Untitled Form';
-          const publicTitle = data.title && data.title !== internalName ? data.title : undefined;
-          return {
-            id: d.id,
-            name: internalName,
-            subtitle: publicTitle,
-            path: `/p/f/${data.slug || d.id}`,
-          };
-        });
-        setForms(fetchedForms);
-
-        // 3. Fetch Pages
-        const pageSnap = await getDocs(
-          query(collection(firestore, 'campaign_pages'), where('workspaceIds', 'array-contains', activeWorkspaceId))
-        );
-        const fetchedPages = pageSnap.docs.map((d) => {
-          const data = d.data() as CampaignPage & { internalName?: string; headline?: string };
-          const internalName = data.internalName || data.name || data.title || 'Untitled Page';
-          const publicTitle = (data.title || data.headline) && (data.title || data.headline) !== internalName
-            ? (data.title || data.headline)
-            : undefined;
-          return {
-            id: d.id,
-            name: internalName,
-            subtitle: publicTitle,
-            path: `/p/${data.slug || d.id}`,
-          };
-        });
-        setPages(fetchedPages);
-
-        // 4. Fetch Bookings
-        const bookingSnap = await getDocs(
-          query(collection(firestore, 'booking_pages'), where('workspaceId', '==', activeWorkspaceId))
-        );
-        const fetchedBookings = bookingSnap.docs.map((d) => {
-          const data = d.data() as BookingPage & { internalName?: string; name?: string };
-          const internalName = data.internalName || data.name || data.title || 'Untitled Booking Page';
-          const publicTitle = data.title && data.title !== internalName ? data.title : undefined;
-          return {
-            id: d.id,
-            name: internalName,
-            subtitle: publicTitle,
-            path: `/book/${data.slug || d.id}`,
-          };
-        });
-        setBookings(fetchedBookings);
-
-        // 5. Fetch QRs
-        if (activeOrganizationId) {
-          const qrSnap = await getDocs(
+        if (targetType === 'surveys') {
+          const snap = await getDocs(
+            query(collection(firestore, 'surveys'), where('workspaceIds', 'array-contains', activeWorkspaceId))
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.internalName as string) || (data.name as string) || (data.title as string) || 'Untitled Survey';
+            const publicTitle = data.title && data.title !== internalName ? (data.title as string) : undefined;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicTitle,
+              path: `/surveys/${data.slug || d.id}`,
+            };
+          });
+        } else if (targetType === 'forms') {
+          const snap = await getDocs(
+            query(collection(firestore, 'pdfs'), where('workspaceIds', 'array-contains', activeWorkspaceId))
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.internalName as string) || (data.name as string) || (data.title as string) || 'Untitled Form';
+            const publicTitle = data.title && data.title !== internalName ? (data.title as string) : undefined;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicTitle,
+              path: `/p/f/${data.slug || d.id}`,
+            };
+          });
+        } else if (targetType === 'pages') {
+          const snap = await getDocs(
+            query(collection(firestore, 'campaign_pages'), where('workspaceIds', 'array-contains', activeWorkspaceId))
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.internalName as string) || (data.name as string) || (data.title as string) || 'Untitled Page';
+            const publicTitle = (data.title || data.headline) && (data.title || data.headline) !== internalName
+              ? (data.title || data.headline as string)
+              : undefined;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicTitle,
+              path: `/p/${data.slug || d.id}`,
+            };
+          });
+        } else if (targetType === 'bookings') {
+          const snap = await getDocs(
+            query(collection(firestore, 'booking_pages'), where('workspaceId', '==', activeWorkspaceId))
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.internalName as string) || (data.name as string) || (data.title as string) || 'Untitled Booking Page';
+            const publicTitle = data.title && data.title !== internalName ? (data.title as string) : undefined;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicTitle,
+              path: `/book/${data.slug || d.id}`,
+            };
+          });
+        } else if (targetType === 'qrs' && activeOrganizationId) {
+          const snap = await getDocs(
             collection(firestore, 'organizations', activeOrganizationId, 'workspaces', activeWorkspaceId, 'qr_codes')
           );
-          const fetchedQrs = qrSnap.docs.map((d) => {
-            const data = d.data() as QRCode & { internalName?: string; title?: string };
-            const internalName = data.name || data.internalName || 'Untitled QR';
-            const publicSubtitle = data.title || data.description || undefined;
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.name as string) || (data.internalName as string) || 'Untitled QR';
+            const publicSubtitle = (data.title as string) || (data.description as string) || undefined;
             return {
               id: d.id,
               name: internalName,
@@ -145,63 +150,47 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
               path: `/q/${data.shortPath || d.id}`,
             };
           });
-          setQrs(fetchedQrs);
+        } else if (targetType === 'media') {
+          const snap = await getDocs(
+            query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const effectiveSlug = (data.slug as string)?.trim() || d.id;
+            const internalName = (data.internalName as string) || (data.name as string) || (data.assetName as string) || (data.title as string) || 'Untitled Media Share';
+            const publicTitle = data.title && data.title !== internalName ? (data.title as string) : undefined;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicTitle,
+              path: `/m/${effectiveSlug}`,
+            };
+          });
         }
 
-        // 6. Fetch Shared Media Pages
-        const mediaSnap = await getDocs(
-          query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))
-        );
-        const fetchedMedia = mediaSnap.docs.map((d) => {
-          const data = d.data() as {
-            internalName?: string;
-            name?: string;
-            assetName?: string;
-            title?: string;
-            assetId?: string;
-            slug?: string;
-          };
-          const effectiveSlug = data.slug?.trim() || d.id;
-          const internalName = data.internalName || data.name || data.assetName || data.title || 'Untitled Media Share';
-          const publicTitle = data.title && data.title !== internalName ? data.title : undefined;
-          return {
-            id: d.id,
-            name: internalName,
-            subtitle: publicTitle,
-            path: `/m/${effectiveSlug}`,
-          };
-        });
-        setMediaShares(fetchedMedia);
+        if (isMounted) {
+          setResources((prev) => ({ ...prev, [targetType]: fetched }));
+        }
       } catch (error) {
-        console.error('[LinkPicker] Failed to fetch links:', error);
+        console.error(`[LinkPicker] Failed to fetch resources for targetType "${targetType}":`, error);
+        if (isMounted) {
+          setResources((prev) => ({ ...prev, [targetType]: [] }));
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchResources();
-  }, [firestore, activeWorkspaceId, activeOrganizationId]);
+    fetchTargetResources();
 
-  const getItemsForTarget = (): ResourceItem[] => {
-    switch (targetType) {
-      case 'dynamic':
-        return DYNAMIC_VARIABLES;
-      case 'surveys':
-        return surveys;
-      case 'forms':
-        return forms;
-      case 'media':
-        return mediaShares;
-      case 'pages':
-        return pages;
-      case 'bookings':
-        return bookings;
-      case 'qrs':
-        return qrs;
-      case 'static':
-        return PREDEFINED_PAGES;
-      default:
-        return [];
-    }
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [firestore, activeWorkspaceId, activeOrganizationId, targetType, resources]);
+
+  const activeItems = resources[targetType] || [];
 
   /**
    * PURPOSE: Filters available link items based on search query matching across internal name,
@@ -211,7 +200,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
    * TESTABILITY: Search matches on 'internalName', 'subtitle', or 'path'.
    * RELATED SURFACES: LinkPicker.tsx.
    */
-  const filteredItems = getItemsForTarget().filter(
+  const filteredItems = activeItems.filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       (item.subtitle && item.subtitle.toLowerCase().includes(search.toLowerCase())) ||
@@ -274,7 +263,12 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
         </div>
         
         <ScrollArea className="h-64 border border-border/50 rounded-2xl p-2 bg-muted/5 mt-2">
-          {filteredItems.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
+              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-xs font-semibold">Loading published items...</span>
+            </div>
+          ) : filteredItems.length === 0 ? (
             <div className="text-center py-12 text-sm text-muted-foreground/60">No matching published items found.</div>
           ) : (
             <div className="grid grid-cols-1 gap-1">
