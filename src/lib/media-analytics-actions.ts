@@ -413,7 +413,7 @@ export async function recordMediaPageEventAction(params: {
  */
 export async function listMediaSharesWithStatsAction(
   workspaceId: string
-): Promise<{ shareId: string; title: string; assetName: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
+): Promise<{ shareId: string; customSlug?: string; title: string; assetName: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
   if (!workspaceId) return [];
 
   try {
@@ -429,7 +429,11 @@ export async function listMediaSharesWithStatsAction(
     const configMap = new Map(
       configsSnap.docs.map((d) => {
         const data = d.data();
-        return [d.id, { title: String(data.title || ''), assetId: String(data.assetId || '') }];
+        return [d.id, { 
+          title: String(data.title || ''), 
+          assetId: String(data.assetId || ''),
+          slug: String(data.slug || '')
+        }];
       })
     );
 
@@ -474,6 +478,7 @@ export async function listMediaSharesWithStatsAction(
       const assetId = config?.assetId || '';
       return {
         shareId: d.id,
+        customSlug: config?.slug || '',
         title: config?.title || d.id,
         assetName: assetNameMap.get(assetId) || '',
         type: assetTypeMap.get(assetId) || 'video',

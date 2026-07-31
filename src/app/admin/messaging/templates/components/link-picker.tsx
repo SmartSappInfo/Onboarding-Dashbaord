@@ -135,11 +135,12 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
           query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))
         );
         const fetchedMedia = mediaSnap.docs.map((d) => {
-          const data = d.data() as { title?: string; assetId?: string };
+          const data = d.data() as { title?: string; assetId?: string; slug?: string };
+          const effectiveSlug = data.slug?.trim() || d.id;
           return {
             id: d.id,
             name: data.title || 'Untitled Media Share',
-            path: `/m/${d.id}`,
+            path: `/m/${effectiveSlug}`,
           };
         });
         setMediaShares(fetchedMedia);

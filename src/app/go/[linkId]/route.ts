@@ -75,7 +75,7 @@ export async function GET(
             .get();
           if (!mediaSnap.empty) {
             const data = mediaSnap.docs[0].data();
-            originalUrl = `/m/${mediaSnap.docs[0].id}`;
+            originalUrl = `/m/${data.slug || mediaSnap.docs[0].id}`;
             workspaceIds = [data.workspaceId].filter(Boolean);
           } else {
             // 4. Search Booking Pages

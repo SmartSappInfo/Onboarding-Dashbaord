@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 
 interface MediaShareStatsItem {
   shareId: string;
+  customSlug?: string;
   title: string;
   assetName?: string;
   type: string;
@@ -53,6 +54,7 @@ export default function MediaAnalyticsClient() {
     return shares.filter(s => 
       s.title.toLowerCase().includes(term) || 
       (s.assetName && s.assetName.toLowerCase().includes(term)) ||
+      (s.customSlug && s.customSlug.toLowerCase().includes(term)) ||
       s.shareId.toLowerCase().includes(term)
     );
   }, [shares, searchTerm]);
@@ -269,7 +271,7 @@ export default function MediaAnalyticsClient() {
                             </h4>
                           )}
                           <span className="text-[10px] text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded border border-border inline-block mt-0.5">
-                            /m/{item.shareId}
+                            /m/{item.customSlug || item.shareId}
                           </span>
                         </div>
                       </div>
