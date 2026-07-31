@@ -738,7 +738,8 @@ export default function MediaShareClient({
                             <div className="flex items-center gap-3 w-full mt-2">
                                 <button
                                     onClick={toggleAudioPlay}
-                                    className="p-3 bg-primary text-white rounded-xl active:scale-95 transition-all"
+                                    aria-label={isPlaying ? "Pause audio playback" : "Play audio playback"}
+                                    className="p-3 bg-primary text-white rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-all cursor-pointer"
                                 >
                                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                                 </button>

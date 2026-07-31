@@ -158,7 +158,7 @@ export default function MediaLibraryBrowser({
         isCompact && "p-4 gap-2"
       )}>
       {!filterType && (
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaAsset['type'])} className="w-full sm:w-auto">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaAsset['type'])} className="w-full sm:w-auto max-w-full overflow-x-auto no-scrollbar">
           <TabsList className="bg-background border shadow-sm h-10 p-1 rounded-xl">
             {TABS.map(tab => (
               <TabsTrigger 
