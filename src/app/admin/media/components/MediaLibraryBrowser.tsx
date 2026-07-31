@@ -11,9 +11,21 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
-import { Search, FolderOpen } from 'lucide-react';
+import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
+
+export type SourceFilterType = 'ALL' | 'HOSTED' | 'LINKED';
+export type SetupFilterType = 'ALL' | 'CONFIGURED' | 'STANDBY';
 
 const TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document', 'link'];
 const TAB_NAMES: Record<MediaAsset['type'], string> = {
@@ -40,6 +52,8 @@ export default function MediaLibraryBrowser({
   const firestore = useFirestore();
   const { activeWorkspaceId, isSuperAdmin } = useWorkspace();
   const [searchTerm, setSearchTerm] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
+  const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
   const [activeTab, setActiveTab] = useState(filterType || 'image');
   
   const effectiveWorkspaceId = forcedWorkspaceId || activeWorkspaceId;
@@ -95,17 +109,47 @@ export default function MediaLibraryBrowser({
     return set;
   }, [sharesData]);
 
+  /**
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+   * Multi-dimensional client-side filtering combines search term, Source Filter (Hosted MP4 vs Linked Video),
+   * and Setup Status Filter (Active Page vs Standby Asset) without triggering extra Firestore read queries.
+   */
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
     
-    if (!searchTerm) {
-      return assets;
-    }
+    return assets.filter(asset => {
+      // 1. Text Search Filter
+      if (searchTerm.trim() && !asset.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) {
+        return false;
+      }
 
-    return assets.filter(asset =>
-      asset.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [assets, searchTerm]);
+      // 2. Source Filter (Cloud-Hosted MP4 vs Linked YouTube/Vimeo/Loom)
+      const url = asset.url.toLowerCase();
+      const isLinked = asset.type === 'link' || 
+        url.includes('youtube.com') || 
+        url.includes('youtu.be') || 
+        url.includes('vimeo.com') || 
+        url.includes('loom.com');
+
+      if (sourceFilter === 'HOSTED' && isLinked) {
+        return false;
+      }
+      if (sourceFilter === 'LINKED' && !isLinked) {
+        return false;
+      }
+
+      // 3. Setup Status Filter (Configured vs Standby)
+      const isConfigured = configuredAssetIds.has(asset.id);
+      if (setupFilter === 'CONFIGURED' && !isConfigured) {
+        return false;
+      }
+      if (setupFilter === 'STANDBY' && isConfigured) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [assets, searchTerm, sourceFilter, setupFilter, configuredAssetIds]);
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-background">
@@ -143,9 +187,85 @@ export default function MediaLibraryBrowser({
               placeholder="Filter by name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 pl-9 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+              className="h-10 pl-9 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-xs"
             />
           </div>
+
+          {/* Source & Setup Filter Controls */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-10 px-3 rounded-xl border font-bold text-xs gap-1.5 shrink-0 transition-all min-h-[44px] ${
+                  sourceFilter !== 'ALL' || setupFilter !== 'ALL'
+                    ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary shadow-sm'
+                    : 'border-border bg-background hover:bg-muted/50 text-foreground'
+                }`}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {sourceFilter !== 'ALL'
+                    ? sourceFilter === 'HOSTED' ? 'Hosted MP4' : 'Linked Videos'
+                    : setupFilter !== 'ALL'
+                    ? setupFilter === 'CONFIGURED' ? 'Active Pages' : 'Standby Assets'
+                    : 'Filter Assets'}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-border shadow-2xl">
+              <DropdownMenuLabel className="text-[10px] font-black text-muted-foreground uppercase px-3 py-1">
+                Source Type
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => setSourceFilter('ALL')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${sourceFilter === 'ALL' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                All Video Sources
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSourceFilter('HOSTED')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${sourceFilter === 'HOSTED' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                <HardDrive className="h-3.5 w-3.5 text-indigo-400" />
+                Cloud-Hosted MP4
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSourceFilter('LINKED')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${sourceFilter === 'LINKED' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                <Youtube className="h-3.5 w-3.5 text-red-500" />
+                Linked / Embeds
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1.5" />
+
+              <DropdownMenuLabel className="text-[10px] font-black text-muted-foreground uppercase px-3 py-1">
+                Page Setup Status
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => setSetupFilter('ALL')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${setupFilter === 'ALL' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                All Setup Statuses
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSetupFilter('CONFIGURED')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${setupFilter === 'CONFIGURED' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                <Zap className="h-3.5 w-3.5 text-emerald-500" />
+                Active Pages (Configured)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSetupFilter('STANDBY')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${setupFilter === 'STANDBY' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                <span className="h-2 w-2 rounded-full bg-slate-400 ml-0.5 mr-0.5" />
+                Standby Assets (Unconfigured)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex items-center gap-2 shrink-0">
             <AddLinkButton />
             <UploadButton workspaceId={effectiveWorkspaceId} />

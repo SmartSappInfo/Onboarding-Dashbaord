@@ -34,7 +34,8 @@ import { Badge } from '@/components/ui/badge';
 import { 
     MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, 
     Link as LinkIcon, Eye, TextCursorInput, Share2, Layout, 
-    Check, CheckCircle2, ShieldCheck, Loader2, Building2
+    Check, CheckCircle2, ShieldCheck, Loader2, Building2,
+    Youtube, HardDrive, Link2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
@@ -195,6 +196,11 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
     }
   };
 
+  const isYouTube = !!getYouTubeThumbnail(asset.url);
+  const isVimeo = !!getVimeoThumbnail(asset.url);
+  const isLoom = !!getLoomThumbnail(asset.url);
+  const isLinkedVideo = isYouTube || isVimeo || isLoom || asset.type === 'link';
+
   const thirdPartyThumbnail = getYouTubeThumbnail(asset.url) || getVimeoThumbnail(asset.url) || getLoomThumbnail(asset.url);
   const previewSrc = asset.type === 'image' ? asset.url : (asset.previewImageUrl || (asset as { previewUrl?: string }).previewUrl || thirdPartyThumbnail || null);
   const hasPreviewImage = !!previewSrc;
@@ -212,10 +218,10 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
 
   return (
     <>
-  <Card className="group relative overflow-hidden rounded-3xl border-border/50 hover:shadow-2xl transition-all duration-700 bg-card">
- <CardContent className="p-0">
+      <Card className="group relative overflow-hidden rounded-3xl border-border/50 hover:shadow-2xl transition-all duration-700 bg-card">
+        <CardContent className="p-0">
           <div
- className="aspect-square w-full bg-background0 flex items-center justify-center cursor-pointer overflow-hidden relative"
+            className="aspect-square w-full bg-background0 flex items-center justify-center cursor-pointer overflow-hidden relative"
             onClick={handleMainClick}
           >
             {hasPreviewImage && previewSrc ? (
@@ -262,33 +268,54 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
                 <AssetIcon />
             )}
             
-            {/* Shared Indicator */}
-            {asset.workspaceIds && asset.workspaceIds.length > 1 && (
- <div className="absolute top-2 left-2 z-10">
-                    <Badge className="bg-primary/80 backdrop-blur-md text-[8px] font-semibold uppercase  px-2 h-5 border-none shadow-lg">
- <Share2 className="h-2.5 w-2.5 mr-1" /> Shared
-                    </Badge>
-                </div>
-            )}
+            {/* Top-Left Badges: Source Type (Hosted vs Linked) & Shared Status */}
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 flex-wrap">
+              {asset.type === 'video' && (
+                isLinkedVideo ? (
+                  <Badge className="bg-black/60 backdrop-blur-md text-[8px] font-black uppercase px-2 h-5 border border-white/10 shadow-md text-red-400 gap-1 tracking-wider">
+                    {isYouTube ? <Youtube className="h-3 w-3 text-red-500 fill-current" /> : <Link2 className="h-3 w-3 text-sky-400" />}
+                    Linked
+                  </Badge>
+                ) : (
+                  <Badge className="bg-black/60 backdrop-blur-md text-[8px] font-black uppercase px-2 h-5 border border-white/10 shadow-md text-indigo-300 gap-1 tracking-wider">
+                    <HardDrive className="h-3 w-3 text-indigo-400" />
+                    Hosted
+                  </Badge>
+                )
+              )}
+              {asset.workspaceIds && asset.workspaceIds.length > 1 && (
+                <Badge className="bg-primary/80 backdrop-blur-md text-[8px] font-semibold uppercase px-2 h-5 border-none shadow-lg">
+                  <Share2 className="h-2.5 w-2.5 mr-1" /> Shared
+                </Badge>
+              )}
+            </div>
           </div>
           
-  <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
-  <p className="text-sm font-semibold truncate leading-tight tracking-tight">{asset.name}</p>
-  <div className="flex items-center justify-between mt-1.5">
-    <span className="text-[9px] font-bold tabular-nums opacity-60">
-      {asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}
-      {format(new Date(asset.createdAt), 'MMM d')}
-    </span>
-    <div className="flex items-center gap-1.5">
-      {isConfigured && (
-        <span 
-          title="Active Media Landing Page & Embed Configured"
-          className="inline-flex items-center gap-1 text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm animate-in fade-in zoom-in-95 duration-300"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Configured
-        </span>
-      )}
+          <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5 text-white">
+            <p className="text-sm font-semibold truncate leading-tight tracking-tight">{asset.name}</p>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[9px] font-bold tabular-nums opacity-60">
+                {asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}
+                {format(new Date(asset.createdAt), 'MMM d')}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {isConfigured ? (
+                  <span 
+                    title="Active Media Landing Page & Embed Configured"
+                    className="inline-flex items-center gap-1 text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm animate-in fade-in zoom-in-95 duration-300"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Active Page
+                  </span>
+                ) : (
+                  <span 
+                    title="Unconfigured Standby Asset"
+                    className="inline-flex items-center gap-1 text-[8px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full bg-slate-800/60 text-slate-400 border border-slate-700/50 backdrop-blur-md shadow-sm opacity-60 group-hover:opacity-100 transition-opacity"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                    Standby
+                  </span>
+                )}
       {asset.category && (
         <span className="text-[8px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 border border-white/5 backdrop-blur-sm text-white/90">
           {asset.category}
