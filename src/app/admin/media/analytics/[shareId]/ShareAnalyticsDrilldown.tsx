@@ -96,11 +96,21 @@ const ACTIVITY_FILTER_DEFINITIONS: {
   { key: 'DOWNLOADED', label: 'Downloaded Asset (on_download)', shortLabel: 'Downloaded', icon: Download },
 ];
 
-interface DrilldownProps {
+/**
+ * SINGLE SOURCE OF TRUTH HELPER: Determines if a session or event has a valid identified CRM contact.
+ */
+export const isSessionIdentified = (item: { contactName?: string; contactId?: string | null; entityId?: string | null }): boolean => {
+  if (item.contactName && item.contactName !== 'Anonymous Visitor') return true;
+  if (item.contactId && !item.contactId.startsWith('anon_')) return true;
+  if (item.entityId && !item.entityId.startsWith('anon_')) return true;
+  return false;
+};
+
+interface ShareAnalyticsDrilldownProps {
   shareId: string;
 }
 
-export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
+export default function ShareAnalyticsDrilldown({ shareId }: ShareAnalyticsDrilldownProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
@@ -232,11 +242,12 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
     if (!data || !data.sessions) return [];
 
     return data.sessions.filter((session) => {
-      // 1. Identity Filter
-      if (identityFilter === 'IDENTIFIED' && !session.contactName && !session.contactId && !session.entityId) {
+      // 1. Identity Filter (SSOT)
+      const identified = isSessionIdentified(session);
+      if (identityFilter === 'IDENTIFIED' && !identified) {
         return false;
       }
-      if (identityFilter === 'ANONYMOUS' && (session.contactName || session.contactId || session.entityId)) {
+      if (identityFilter === 'ANONYMOUS' && identified) {
         return false;
       }
 
@@ -286,10 +297,10 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
     if (!data || !data.recentEvents) return [];
 
     return data.recentEvents.filter((event) => {
-      // 1. Identity Filter
-      const isIdentified = !!(event.contactName || event.contactId);
-      if (identityFilter === 'IDENTIFIED' && !isIdentified) return false;
-      if (identityFilter === 'ANONYMOUS' && isIdentified) return false;
+      // 1. Identity Filter (SSOT)
+      const identified = isSessionIdentified(event);
+      if (identityFilter === 'IDENTIFIED' && !identified) return false;
+      if (identityFilter === 'ANONYMOUS' && identified) return false;
 
       // 2. Activity Filter
       if (activityFilter === 'PLAYED' && event.type !== 'media_play') return false;
@@ -314,7 +325,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
 
   // Identified Sessions Subset (eligible for CRM actions)
   const identifiedSessions = React.useMemo(() => {
-    return filteredSessions.filter((s) => s.contactName || s.contactId || s.entityId);
+    return filteredSessions.filter(isSessionIdentified);
   }, [filteredSessions]);
 
   // Selected Identified Contacts metadata for bulk bar
@@ -842,7 +853,8 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                         </tr>
                       ) : (
                         filteredSessions.map((session) => {
-                          const isIdentified = !!(session.contactName || session.contactId || session.entityId);
+                          const isIdentified = isSessionIdentified(session);
+                          const contactDisplayName = session.contactName || session.contactId || session.entityId;
                           const isSelected = selectedSessionIds.includes(session.sessionId);
 
                           return (
@@ -857,7 +869,7 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={(c) => handleToggleRowSelect(session.sessionId, Boolean(c))}
-                                    aria-label={`Select session for ${session.contactName || session.sessionId}`}
+                                    aria-label={`Select session for ${contactDisplayName || session.sessionId}`}
                                   />
                                 ) : (
                                   <Tooltip>
@@ -874,9 +886,9 @@ export default function ShareAnalyticsDrilldown({ shareId }: DrilldownProps) {
                               </td>
                               <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  {session.contactName ? (
+                                  {isIdentified ? (
                                     <div className="flex items-center gap-1.5">
-                                      <span className="font-extrabold text-foreground text-xs">{session.contactName}</span>
+                                      <span className="font-extrabold text-foreground text-xs">{contactDisplayName}</span>
                                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0">
                                         <Sparkles className="h-2.5 w-2.5" /> Identified
                                       </Badge>

@@ -256,11 +256,20 @@ export async function recordMediaPageEventAction(params: {
           updates.sessionTimeSeconds = currentSessionTime;
         }
 
+        const sData = sessionSnap.exists ? (sessionSnap.data() as MediaSessionRecord) : null;
+        if (contactId && (!sData || !sData.contactId)) {
+          updates.contactId = contactId;
+        }
+        if (entityId && (!sData || !sData.entityId)) {
+          updates.entityId = entityId;
+        }
+
         if (!sessionSnap.exists) {
-          // Initialize session record
+          // Initialize session record with contact identity if available
           transaction.set(sessionRef, {
             sessionId,
             contactId: contactId || null,
+            entityId: entityId || null,
             firstSeen: now,
             ctaClicked: updates.ctaClicked || false,
             downloaded: updates.downloaded || false,
@@ -592,9 +601,24 @@ export async function getMediaShareDrilldownAction(
       };
     });
 
+    // Build a fallback session identity map from rawEvents so sessions whose parent docs
+    // weren't explicitly stamped with contactId/entityId inherit them dynamically.
+    const sessionEventIdentityMap = new Map<string, { contactId?: string; entityId?: string }>();
+    rawEvents.forEach((e) => {
+      const eEntityId = (e as MediaPageEvent & { entityId?: string }).entityId;
+      if (e.contactId || eEntityId) {
+        const existing = sessionEventIdentityMap.get(e.sessionId) || {};
+        sessionEventIdentityMap.set(e.sessionId, {
+          contactId: e.contactId || existing.contactId,
+          entityId: eEntityId || existing.entityId,
+        });
+      }
+    });
+
     const sessions: MediaSessionRecordWithContact[] = rawSessions.map((session) => {
-      const sContactId = session.contactId;
-      const sEntityId = session.entityId;
+      const eventIdentity = sessionEventIdentityMap.get(session.sessionId);
+      const sContactId = session.contactId || eventIdentity?.contactId || null;
+      const sEntityId = session.entityId || eventIdentity?.entityId || null;
 
       const contactLabel = sContactId ? contactNameMap.get(sContactId) : undefined;
       const entityLabel = sEntityId ? entityNameMap.get(sEntityId) : undefined;
@@ -608,11 +632,13 @@ export async function getMediaShareDrilldownAction(
 
       return {
         ...session,
+        contactId: sContactId,
+        entityId: sEntityId,
         ...(name && { contactName: name }),
       };
     });
 
-    const anonymousCount = rawSessions.filter((s) => !s.contactId && !s.entityId).length;
+    const anonymousCount = sessions.filter((s) => !s.contactId && !s.entityId).length;
     const totalKnownContacts = new Set([...contactIds, ...entityIds]).size;
 
     return {
