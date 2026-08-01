@@ -9,6 +9,12 @@ import { cn } from "@/lib/utils"
 
 const ToastProvider = ToastPrimitives.Provider
 
+/**
+ * PURPOSE: Global ToastViewport viewport container for toast notifications.
+ * CAUTION: z-[100000] is essential to guarantee that toast notifications float ON TOP of all modal dialogs,
+ * backdrop overlays, popovers, and drawer containers. Do not lower below z-[100000].
+ * TESTABILITY: Trigger error/success toasts while modal dialogs (e.g. Move Pipeline Stage) are open.
+ */
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
@@ -16,7 +22,7 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed bottom-0 left-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:flex-col md:max-w-[420px]",
+      "fixed bottom-0 left-0 z-[100000] flex max-h-screen w-full flex-col-reverse p-4 sm:flex-col md:max-w-[420px]",
       className
     )}
     {...props}

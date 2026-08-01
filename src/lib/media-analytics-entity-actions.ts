@@ -61,42 +61,66 @@ export async function bulkApplyTagsToMediaContactsAction(
   let updatedCount = 0;
 
   try {
-    const BATCH_SIZE = 150;
-    for (let i = 0; i < cleanContactIds.length; i += BATCH_SIZE) {
-      const chunk = cleanContactIds.slice(i, i + BATCH_SIZE);
+    // CAUTION: Cloud Firestore 'in' query operator strictly caps comparison values at 30 items.
+    // Slicing cleanContactIds into sub-chunks of max 30 prevents INVALID_ARGUMENT crashes.
+    const FIRESTORE_IN_LIMIT = 30;
+    for (let i = 0; i < cleanContactIds.length; i += FIRESTORE_IN_LIMIT) {
+      const chunk = cleanContactIds.slice(i, i + FIRESTORE_IN_LIMIT);
       const batch = adminDb.batch();
+      const updatedRefPaths = new Set<string>();
 
-      // Look up contacts collection docs
-      const contactSnaps = await adminDb
+      // Query contacts by doc ID (__name__) & entityId
+      const contactByDocId = await adminDb
         .collection('contacts')
         .where('workspaceId', '==', workspaceId)
         .where('__name__', 'in', chunk)
         .get();
 
-      contactSnaps.docs.forEach((docSnap) => {
-        batch.update(docSnap.ref, {
-          tagIds: FieldValue.arrayUnion(...cleanTagIds),
-          updatedAt: new Date().toISOString(),
-        });
-        updatedCount++;
-      });
+      const contactByEntityId = await adminDb
+        .collection('contacts')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', 'in', chunk)
+        .get();
 
-      // Look up workspace_entities docs
-      const entitySnaps = await adminDb
+      // Query workspace_entities by doc ID (__name__), entityId, & code (e.g. ec_086d1487)
+      const entityByDocId = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('__name__', 'in', chunk)
+        .get();
+
+      const entityByEntityId = await adminDb
         .collection('workspace_entities')
         .where('workspaceId', '==', workspaceId)
         .where('entityId', 'in', chunk)
         .get();
 
-      entitySnaps.docs.forEach((docSnap) => {
-        batch.update(docSnap.ref, {
-          tagIds: FieldValue.arrayUnion(...cleanTagIds),
-          updatedAt: new Date().toISOString(),
-        });
-        updatedCount++;
-      });
+      const entityByCode = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('code', 'in', chunk)
+        .get();
 
-      await batch.commit();
+      const applyTagUpdate = (docSnap: FirebaseFirestore.QueryDocumentSnapshot) => {
+        if (!updatedRefPaths.has(docSnap.ref.path)) {
+          updatedRefPaths.add(docSnap.ref.path);
+          batch.update(docSnap.ref, {
+            tagIds: FieldValue.arrayUnion(...cleanTagIds),
+            updatedAt: new Date().toISOString(),
+          });
+          updatedCount++;
+        }
+      };
+
+      contactByDocId.docs.forEach(applyTagUpdate);
+      contactByEntityId.docs.forEach(applyTagUpdate);
+      entityByDocId.docs.forEach(applyTagUpdate);
+      entityByEntityId.docs.forEach(applyTagUpdate);
+      entityByCode.docs.forEach(applyTagUpdate);
+
+      if (updatedRefPaths.size > 0) {
+        await batch.commit();
+      }
     }
 
     return { success: true, updatedCount };
@@ -132,42 +156,65 @@ export async function bulkMoveMediaContactsStageAction(
   let updatedCount = 0;
 
   try {
-    const BATCH_SIZE = 150;
-    for (let i = 0; i < cleanContactIds.length; i += BATCH_SIZE) {
-      const chunk = cleanContactIds.slice(i, i + BATCH_SIZE);
+    // CAUTION: Cloud Firestore 'in' query operator strictly caps comparison values at 30 items.
+    // Slicing cleanContactIds into sub-chunks of max 30 prevents INVALID_ARGUMENT crashes.
+    const FIRESTORE_IN_LIMIT = 30;
+    for (let i = 0; i < cleanContactIds.length; i += FIRESTORE_IN_LIMIT) {
+      const chunk = cleanContactIds.slice(i, i + FIRESTORE_IN_LIMIT);
       const batch = adminDb.batch();
+      const updatedRefPaths = new Set<string>();
 
-      const contactSnaps = await adminDb
+      const contactByDocId = await adminDb
         .collection('contacts')
         .where('workspaceId', '==', workspaceId)
         .where('__name__', 'in', chunk)
         .get();
 
-      contactSnaps.docs.forEach((docSnap) => {
-        batch.update(docSnap.ref, {
-          pipelineId,
-          stageId,
-          updatedAt: new Date().toISOString(),
-        });
-        updatedCount++;
-      });
+      const contactByEntityId = await adminDb
+        .collection('contacts')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', 'in', chunk)
+        .get();
 
-      const entitySnaps = await adminDb
+      const entityByDocId = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('__name__', 'in', chunk)
+        .get();
+
+      const entityByEntityId = await adminDb
         .collection('workspace_entities')
         .where('workspaceId', '==', workspaceId)
         .where('entityId', 'in', chunk)
         .get();
 
-      entitySnaps.docs.forEach((docSnap) => {
-        batch.update(docSnap.ref, {
-          pipelineId,
-          stageId,
-          updatedAt: new Date().toISOString(),
-        });
-        updatedCount++;
-      });
+      const entityByCode = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('code', 'in', chunk)
+        .get();
 
-      await batch.commit();
+      const applyStageUpdate = (docSnap: FirebaseFirestore.QueryDocumentSnapshot) => {
+        if (!updatedRefPaths.has(docSnap.ref.path)) {
+          updatedRefPaths.add(docSnap.ref.path);
+          batch.update(docSnap.ref, {
+            pipelineId,
+            stageId,
+            updatedAt: new Date().toISOString(),
+          });
+          updatedCount++;
+        }
+      };
+
+      contactByDocId.docs.forEach(applyStageUpdate);
+      contactByEntityId.docs.forEach(applyStageUpdate);
+      entityByDocId.docs.forEach(applyStageUpdate);
+      entityByEntityId.docs.forEach(applyStageUpdate);
+      entityByCode.docs.forEach(applyStageUpdate);
+
+      if (updatedRefPaths.size > 0) {
+        await batch.commit();
+      }
     }
 
     return { success: true, updatedCount };
