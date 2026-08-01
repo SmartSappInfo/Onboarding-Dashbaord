@@ -69,37 +69,20 @@ export async function bulkApplyTagsToMediaContactsAction(
       const batch = adminDb.batch();
       const updatedRefPaths = new Set<string>();
 
-      // Query contacts by doc ID (__name__) & entityId
-      const contactByDocId = await adminDb
-        .collection('contacts')
-        .where('workspaceId', '==', workspaceId)
-        .where('__name__', 'in', chunk)
-        .get();
-
-      const contactByEntityId = await adminDb
-        .collection('contacts')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', 'in', chunk)
-        .get();
-
-      // Query workspace_entities by doc ID (__name__), entityId, & code (e.g. ec_086d1487)
-      const entityByDocId = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('__name__', 'in', chunk)
-        .get();
-
-      const entityByEntityId = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', 'in', chunk)
-        .get();
-
-      const entityByCode = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('code', 'in', chunk)
-        .get();
+      // Run 5 index lookups concurrently via Promise.all for maximum high-load throughput
+      const [
+        contactByDocId,
+        contactByEntityId,
+        entityByDocId,
+        entityByEntityId,
+        entityByCode,
+      ] = await Promise.all([
+        adminDb.collection('contacts').where('workspaceId', '==', workspaceId).where('__name__', 'in', chunk).get(),
+        adminDb.collection('contacts').where('workspaceId', '==', workspaceId).where('entityId', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('__name__', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('entityId', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('code', 'in', chunk).get(),
+      ]);
 
       const applyTagUpdate = (docSnap: FirebaseFirestore.QueryDocumentSnapshot) => {
         if (!updatedRefPaths.has(docSnap.ref.path)) {
@@ -164,35 +147,20 @@ export async function bulkMoveMediaContactsStageAction(
       const batch = adminDb.batch();
       const updatedRefPaths = new Set<string>();
 
-      const contactByDocId = await adminDb
-        .collection('contacts')
-        .where('workspaceId', '==', workspaceId)
-        .where('__name__', 'in', chunk)
-        .get();
-
-      const contactByEntityId = await adminDb
-        .collection('contacts')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', 'in', chunk)
-        .get();
-
-      const entityByDocId = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('__name__', 'in', chunk)
-        .get();
-
-      const entityByEntityId = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', 'in', chunk)
-        .get();
-
-      const entityByCode = await adminDb
-        .collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('code', 'in', chunk)
-        .get();
+      // Run 5 index lookups concurrently via Promise.all for maximum high-load throughput
+      const [
+        contactByDocId,
+        contactByEntityId,
+        entityByDocId,
+        entityByEntityId,
+        entityByCode,
+      ] = await Promise.all([
+        adminDb.collection('contacts').where('workspaceId', '==', workspaceId).where('__name__', 'in', chunk).get(),
+        adminDb.collection('contacts').where('workspaceId', '==', workspaceId).where('entityId', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('__name__', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('entityId', 'in', chunk).get(),
+        adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).where('code', 'in', chunk).get(),
+      ]);
 
       const applyStageUpdate = (docSnap: FirebaseFirestore.QueryDocumentSnapshot) => {
         if (!updatedRefPaths.has(docSnap.ref.path)) {
