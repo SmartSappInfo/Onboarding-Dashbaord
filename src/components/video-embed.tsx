@@ -39,20 +39,32 @@ function extractLoomID(url?: string): string | null {
 }
 
 /**
- * Single source of truth for video play button overlays across inline and modal components.
- * CAUTION: Reconciles play button size (compact w-12 h-12) and solid emerald visibility.
+ * PURPOSE: Single source of truth for video play button overlays across inline play and modal components.
+ * CAUTION: Uses solid blue palette (bg-blue-600) matching the designer theme. Overlay container and inner rings use
+ * pointer-events-none & z-10 so mobile tap/click events pass cleanly to parent cards or buttons.
+ * TESTABILITY: Rendered in VideoEmbed thumbnail state, Testimonial cards, Video blocks, and Testimonial Grid headers.
+ * RELATED SURFACES: testimonial.tsx, video.tsx, testimonial-grid.tsx, PublicPageClient.tsx.
  */
-export function VideoPlayButtonOverlay({ label = "Watch Video", className }: { label?: string; className?: string }) {
+export function VideoPlayButtonOverlay({ 
+  label = "TAP TO WATCH VIDEO", 
+  className 
+}: { 
+  label?: string; 
+  className?: string 
+}) {
   return (
-    <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-hover:bg-black/45 transition-colors duration-300", className)}>
+    <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-hover:bg-black/45 transition-colors duration-300 pointer-events-none z-10 select-none", className)}>
       {label && (
-        <span className="text-[10px] font-black tracking-widest text-white uppercase mb-2 drop-shadow-md opacity-90">{label}</span>
+        <span className="text-[10px] font-black tracking-widest text-white uppercase mb-2.5 drop-shadow-md opacity-90">{label}</span>
       )}
       <div className="relative flex items-center justify-center">
-        <div className="absolute -inset-3 rounded-full bg-emerald-500/35 animate-ping pointer-events-none" />
-        <div className="absolute -inset-1.5 rounded-full bg-emerald-500/25 animate-pulse duration-1000 pointer-events-none" />
-        <div className="relative w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.5)] border-2 border-white/40 transform transition-all duration-300 group-hover:scale-110 active:scale-95">
-          <Play className="w-5 h-5 text-white fill-current ml-0.5 drop-shadow-md" />
+        {/* Pulsing blue outer aura rings matching designer palette */}
+        <div className="absolute -inset-3.5 rounded-full bg-blue-500/40 animate-ping pointer-events-none" />
+        <div className="absolute -inset-1.5 rounded-full bg-blue-500/25 animate-pulse duration-1000 pointer-events-none" />
+        
+        {/* Solid blue play button */}
+        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-[0_0_35px_rgba(37,99,235,0.6)] border-2 border-white/40 transform transition-all duration-300 group-hover:scale-110 active:scale-95">
+          <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-current ml-0.5 drop-shadow-md" />
         </div>
       </div>
     </div>
@@ -143,7 +155,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
             </div>
         )}
         
-        <VideoPlayButtonOverlay label="Watch Video" />
+        <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
       </div>
     );
   }

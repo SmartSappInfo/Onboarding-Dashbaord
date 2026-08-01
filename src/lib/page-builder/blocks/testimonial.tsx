@@ -800,7 +800,7 @@ registerBlock({
                       </div>
                     )}
 
-                    <VideoPlayButtonOverlay label="Watch Video" />
+                    <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
                     {changeControls}
                   </div>
 
@@ -871,7 +871,7 @@ registerBlock({
                     <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Testimonial</span>
                   </div>
                 )}
-                <VideoPlayButtonOverlay label="Watch Video" />
+                <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
                 {changeControls}
               </div>
               

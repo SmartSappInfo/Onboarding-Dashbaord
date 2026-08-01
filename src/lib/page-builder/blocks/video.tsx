@@ -322,7 +322,7 @@ registerBlock({
                   <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Tutorial</span>
                 </div>
               )}
-              <VideoPlayButtonOverlay label="Watch Video" />
+              <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
             </div>
             
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
