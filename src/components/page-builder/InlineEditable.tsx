@@ -64,11 +64,28 @@ function saveCaretOffset(root: HTMLElement): number | null {
 
 /**
  * Helper to restore a saved character caret offset within a contentEditable element.
+ * CAUTION: If offset is null during active focus, default caret placement to end of text to prevent offset 0 collapse (reversed typing).
  */
 function restoreCaretOffset(root: HTMLElement, offset: number | null): void {
-  if (offset === null || typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
   const selection = window.getSelection();
   if (!selection) return;
+
+  if (offset === null) {
+    // CAUTION: If offset is null but element has focus, place caret at the END of text to prevent reversed (RTL) typing
+    if (document.activeElement && (document.activeElement === root || root.contains(document.activeElement))) {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(root);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } catch {
+        // Fallback silently
+      }
+    }
+    return;
+  }
 
   let currentOffset = 0;
   let targetNode: Node | null = null;
@@ -175,12 +192,17 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       isInitialMountRef.current = false;
     }
 
+    const cleanCurrent = convertToCleanHtml(elementRef.current, html);
+    // CAUTION: If current DOM content matches what user typed (lastValueRef), do not overwrite with stale parent props
+    if (!isFirstRun && cleanCurrent === lastValueRef.current && cleanCurrent !== targetVal) {
+      return;
+    }
+
     // Skip DOM updates if target match already established and not initial hydration run
     if (!isFirstRun && lastValueRef.current === targetVal) {
       return;
     }
 
-    const cleanCurrent = convertToCleanHtml(elementRef.current, html);
     if (isFirstRun || cleanCurrent !== targetVal) {
       const savedCaret = saveCaretOffset(elementRef.current);
       elementRef.current.innerHTML = convertToVisualHtml(targetVal);
@@ -404,6 +426,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
     <div className={cn("relative inline-block", tagName !== 'span' && "w-full")}>
       <Tag
         ref={elementRef}
+        dir="ltr"
         contentEditable={true}
         suppressContentEditableWarning
         onBlur={handleBlur}
@@ -427,6 +450,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
           }
         }}
         className={cn(className, "outline-none")}
+        style={{ unicodeBidi: 'plaintext', ...(props.style as React.CSSProperties || {}) }}
         placeholder={placeholder}
         dangerouslySetInnerHTML={{ __html: convertToVisualHtml(value || '') }}
         {...props}

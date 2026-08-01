@@ -66,8 +66,9 @@ describe('InlineEditable Component', () => {
     // Simulate focusing and typing
     act(() => {
       editable.focus();
+      editable.textContent = 'User Typing...';
+      fireEvent.input(editable);
     });
-    editable.textContent = 'User Typing...';
 
     // Trigger a parent re-render (which passes the old 'Initial' state as value, because onChange wasn't called yet)
     const trigger = getByTestId('trigger');
@@ -83,5 +84,53 @@ describe('InlineEditable Component', () => {
 
     // Now it should be updated
     expect(editable.textContent).toBe('User Typing...');
+  });
+
+  it('enforces dir="ltr" attribute on contenteditable element', () => {
+    const { getByTestId } = render(
+      <InlineEditable data-testid="ltr-editable" value="Left to right" isEdit={true} />
+    );
+    const element = getByTestId('ltr-editable');
+    expect(element.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('types sequential characters in Left-to-Right order ("Who") without caret reversal ("ohW")', () => {
+    const TypingWrapper = () => {
+      const [val, setVal] = useState('');
+      return (
+        <InlineEditable
+          data-testid="typing-target"
+          value={val}
+          onChange={setVal}
+          isEdit={true}
+        />
+      );
+    };
+
+    const { getByTestId } = render(<TypingWrapper />);
+    const target = getByTestId('typing-target');
+
+    // Simulate user typing 'W'
+    act(() => {
+      target.focus();
+      target.textContent = 'W';
+      fireEvent.input(target);
+    });
+
+    // Simulate user appending 'h' -> 'Wh'
+    act(() => {
+      target.textContent = 'Wh';
+      fireEvent.input(target);
+    });
+
+    // Simulate user appending 'o' -> 'Who'
+    act(() => {
+      target.textContent = 'Who';
+      fireEvent.input(target);
+    });
+
+    // Verify text sequence assembled Left-to-Right
+    expect(target.textContent).toBe('Who');
+    expect(target.textContent).not.toBe('ohW');
   });
 });
