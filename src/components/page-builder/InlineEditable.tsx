@@ -118,6 +118,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
 }) => {
   const elementRef = useRef<HTMLElement>(null);
   const lastValueRef = useRef<string>(value);
+  const isInitialMountRef = useRef<boolean>(true);
   const [hasMounted, setHasMounted] = useState(false);
 
   // Slash commands inline popover states
@@ -146,10 +147,12 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       .catch((err) => console.warn('[InlineEditable] Failed to fetch variables:', err));
   }, [workspaceId, organizationId, isEdit]);
 
-  // Sync value from parent prop
-  // CAUTION & TESTABILITY: Must check if document.activeElement is inside elementRef.current to avoid
-  // overwriting innerHTML during active user typing. Overwriting innerHTML resets the caret to index 0,
-  // causing reversed typing direction (e.g. typing "Richard" yields "drahciR").
+  /**
+   * PURPOSE: Synchronize parent value prop into the contentEditable DOM element.
+   * CAUTION: Must check if document.activeElement is inside elementRef.current to avoid
+   * overwriting innerHTML during active user typing. Overwriting innerHTML resets the caret to index 0.
+   * TESTABILITY: Edit text in Page Builder canvas; verify caret positioning and prop persistence on save.
+   */
   useEffect(() => {
     if (!hasMounted || !elementRef.current) return;
     
@@ -167,13 +170,18 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
       return;
     }
 
-    // Skip DOM updates if target match already established
-    if (lastValueRef.current === targetVal) {
+    const isFirstRun = isInitialMountRef.current;
+    if (isFirstRun) {
+      isInitialMountRef.current = false;
+    }
+
+    // Skip DOM updates if target match already established and not initial hydration run
+    if (!isFirstRun && lastValueRef.current === targetVal) {
       return;
     }
 
     const cleanCurrent = convertToCleanHtml(elementRef.current, html);
-    if (cleanCurrent !== targetVal) {
+    if (isFirstRun || cleanCurrent !== targetVal) {
       const savedCaret = saveCaretOffset(elementRef.current);
       elementRef.current.innerHTML = convertToVisualHtml(targetVal);
       restoreCaretOffset(elementRef.current, savedCaret);
@@ -420,11 +428,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
         }}
         className={cn(className, "outline-none")}
         placeholder={placeholder}
-        dangerouslySetInnerHTML={
-          !hasMounted
-            ? { __html: convertToVisualHtml(value || '') }
-            : undefined
-        }
+        dangerouslySetInnerHTML={{ __html: convertToVisualHtml(value || '') }}
         {...props}
       />
       {showMenu && filteredVars.length > 0 && (
