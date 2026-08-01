@@ -166,44 +166,38 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
 
   /**
    * PURPOSE: Synchronize parent value prop into the contentEditable DOM element.
-   * CAUTION: Must check if document.activeElement is inside elementRef.current to avoid
-   * overwriting innerHTML during active user typing. Overwriting innerHTML resets the caret to index 0.
-   * TESTABILITY: Edit text in Page Builder canvas; verify caret positioning and prop persistence on save.
+   * CAUTION: Must NOT mutate DOM innerHTML during active user typing or focus.
+   * Mutating innerHTML in JS resets the browser's native Selection range to offset 0.
+   * TESTABILITY: Click anywhere in text block and type; verify insertion point stays at clicked position.
    */
   useEffect(() => {
     if (!hasMounted || !elementRef.current) return;
-    
+
+    const isFirstRun = isInitialMountRef.current;
+    const targetVal = value || '';
+
+    if (isFirstRun) {
+      isInitialMountRef.current = false;
+      elementRef.current.innerHTML = convertToVisualHtml(targetVal);
+      lastValueRef.current = targetVal;
+      return;
+    }
+
     // Check if element or any of its child nodes hold active document focus
     const isFocused = document.activeElement && (
       document.activeElement === elementRef.current || 
       elementRef.current.contains(document.activeElement)
     );
 
-    const targetVal = value || '';
-
-    // If currently focused, update lastValueRef without destroying active user DOM nodes or caret
-    if (isFocused) {
+    // If currently focused or targetVal matches lastValueRef (standard typing path), preserve native DOM caret & innerHTML
+    if (isFocused || targetVal === lastValueRef.current) {
       lastValueRef.current = targetVal;
       return;
     }
 
-    const isFirstRun = isInitialMountRef.current;
-    if (isFirstRun) {
-      isInitialMountRef.current = false;
-    }
-
+    // External change path (e.g. Undo, preset selection, or sidebar property panel edit)
     const cleanCurrent = convertToCleanHtml(elementRef.current, html);
-    // CAUTION: If current DOM content matches what user typed (lastValueRef), do not overwrite with stale parent props
-    if (!isFirstRun && cleanCurrent === lastValueRef.current && cleanCurrent !== targetVal) {
-      return;
-    }
-
-    // Skip DOM updates if target match already established and not initial hydration run
-    if (!isFirstRun && lastValueRef.current === targetVal) {
-      return;
-    }
-
-    if (isFirstRun || cleanCurrent !== targetVal) {
+    if (cleanCurrent !== targetVal) {
       const savedCaret = saveCaretOffset(elementRef.current);
       elementRef.current.innerHTML = convertToVisualHtml(targetVal);
       restoreCaretOffset(elementRef.current, savedCaret);
@@ -452,7 +446,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
         className={cn(className, "outline-none")}
         style={{ unicodeBidi: 'plaintext', ...(props.style as React.CSSProperties || {}) }}
         placeholder={placeholder}
-        dangerouslySetInnerHTML={{ __html: convertToVisualHtml(value || '') }}
+        dangerouslySetInnerHTML={!hasMounted ? { __html: convertToVisualHtml(value || '') } : undefined}
         {...props}
       />
       {showMenu && filteredVars.length > 0 && (

@@ -133,4 +133,64 @@ describe('InlineEditable Component', () => {
     expect(target.textContent).toBe('Who');
     expect(target.textContent).not.toBe('ohW');
   });
+
+  it('preserves DOM innerHTML without VDOM reset when value prop matches lastValueRef', () => {
+    const TestWrapper = () => {
+      const [val, setVal] = useState('This is');
+      return (
+        <InlineEditable
+          data-testid="vdom-target"
+          value={val}
+          onChange={setVal}
+          isEdit={true}
+        />
+      );
+    };
+
+    const { getByTestId } = render(<TestWrapper />);
+    const target = getByTestId('vdom-target');
+
+    expect(target.textContent).toBe('This is');
+
+    // Simulate typing ' a'
+    act(() => {
+      target.focus();
+      target.textContent = 'This is a';
+      fireEvent.input(target);
+    });
+
+    // Verify text is preserved
+    expect(target.textContent).toBe('This is a');
+  });
+
+  it('updates DOM innerHTML when value prop changes externally (e.g. sidebar edit or Undo)', () => {
+    const ExternalWrapper = () => {
+      const [val, setVal] = useState('Original Title');
+      return (
+        <div>
+          <button data-testid="external-btn" onClick={() => setVal('External Title')}>Change External</button>
+          <InlineEditable
+            data-testid="external-target"
+            value={val}
+            onChange={setVal}
+            isEdit={true}
+          />
+        </div>
+      );
+    };
+
+    const { getByTestId } = render(<ExternalWrapper />);
+    const target = getByTestId('external-target');
+    const btn = getByTestId('external-btn');
+
+    expect(target.textContent).toBe('Original Title');
+
+    // Simulate external change
+    act(() => {
+      fireEvent.click(btn);
+    });
+
+    // Verify DOM innerHTML reflects external update
+    expect(target.textContent).toBe('External Title');
+  });
 });
