@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Form, FormSubmission, AppField } from './types';
+import type { Form, FormSubmission, AppField, FormFieldInstance } from './types';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 import { COLLECTIONS } from './collection-constants';
@@ -631,6 +631,75 @@ export async function getFormByIdAction(formId: string): Promise<Form | null> {
   const snap = await adminDb.collection(COLLECTIONS.FORMS).doc(formId).get();
   if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as Form;
+}
+
+/**
+ * PURPOSE: Fetches a public form definition and its resolved workspace app_fields for unauthenticated public visitors.
+ * CAUTION: Uses Firebase Admin SDK (adminDb) to bypass client auth security rules on public campaign pages (/p/[slug]).
+ * TESTABILITY: Render embedded form on /p/[slug] in incognito browser window without user login.
+ */
+export async function getPublicFormDefinitionAction(
+  formId: string,
+  workspaceId?: string
+): Promise<{
+  form: {
+    title: string;
+    description?: string;
+    fields: FormFieldInstance[];
+    settings?: {
+      successMessage?: string;
+      submitButtonLabel?: string;
+      redirectUrl?: string;
+    };
+  } | null;
+  appFields: Record<string, AppField>;
+}> {
+  if (!formId) return { form: null, appFields: {} };
+
+  try {
+    const formSnap = await adminDb.collection(COLLECTIONS.FORMS).doc(formId).get();
+    if (!formSnap.exists) {
+      return { form: null, appFields: {} };
+    }
+
+    const rawForm = formSnap.data() as Form & {
+      fields?: FormFieldInstance[];
+      settings?: {
+        successMessage?: string;
+        submitButtonLabel?: string;
+        redirectUrl?: string;
+      };
+    };
+
+    const targetWorkspaceId = workspaceId || rawForm.workspaceId;
+    const appFieldsMap: Record<string, AppField> = {};
+
+    if (targetWorkspaceId) {
+      const fieldsSnap = await adminDb
+        .collection(COLLECTIONS.APP_FIELDS)
+        .where('workspaceId', '==', targetWorkspaceId)
+        .where('status', '==', 'active')
+        .get();
+
+      fieldsSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data() as AppField;
+        appFieldsMap[docSnap.id] = { ...data, id: docSnap.id };
+      });
+    }
+
+    return {
+      form: {
+        title: rawForm.title || rawForm.internalName || 'Form',
+        description: rawForm.description,
+        fields: rawForm.fields || [],
+        settings: rawForm.settings
+      },
+      appFields: appFieldsMap
+    };
+  } catch (error) {
+    console.error('[getPublicFormDefinitionAction] Error fetching public form:', error);
+    return { form: null, appFields: {} };
+  }
 }
 
 /**

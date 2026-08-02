@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { submitStandaloneFormAction } from '@/lib/form-actions';
+import { getPublicFormDefinitionAction } from '@/lib/forms-actions';
 import { FormView, type FormFieldDef } from './FormView';
 import type { AppField, FormFieldInstance } from '@/lib/types';
 import { extractTrackingParams, appendTrackingParams } from '@/lib/tracking-utils';
@@ -47,33 +48,50 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
   const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
 
+  /**
+   * PURPOSE: Fetch public form definition and app_fields metadata for client-facing campaign pages (/p/[slug]).
+   * CAUTION: Uses Server Action (getPublicFormDefinitionAction) to bypass client authentication rules for public visitors.
+   * TESTABILITY: Render embedded form on public campaign pages in incognito browser without user login.
+   */
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!db || !formId || !workspaceId) return;
+      if (!formId) return;
 
       try {
-        const snap = await getDoc(doc(db, 'forms', formId));
+        // Primary path: Server Action using Firebase Admin SDK (bypasses auth for unauthenticated public visitors)
+        const res = await getPublicFormDefinitionAction(formId, workspaceId);
         if (!active) return;
 
-        if (snap.exists()) {
-          const formData = snap.data() as StandaloneForm;
-          setForm(formData);
+        if (res.form) {
+          setForm(res.form);
+          setAppFields(res.appFields || {});
+          return;
+        }
 
-          // Fetch app_fields to resolve standard labels and placeholders
-          const q = query(
-            collection(db, 'app_fields'),
-            where('workspaceId', '==', workspaceId),
-            where('status', '==', 'active')
-          );
-          const fieldsSnap = await getDocs(q);
-          if (active) {
-            const fieldsMap: Record<string, AppField> = {};
-            fieldsSnap.docs.forEach((docSnap) => {
-              const data = docSnap.data() as AppField;
-              fieldsMap[docSnap.id] = { ...data, id: docSnap.id };
-            });
-            setAppFields(fieldsMap);
+        // Secondary fallback: Client-side Firestore SDK (for authenticated studio builder preview)
+        if (db && workspaceId) {
+          const snap = await getDoc(doc(db, 'forms', formId));
+          if (!active) return;
+
+          if (snap.exists()) {
+            const formData = snap.data() as StandaloneForm;
+            setForm(formData);
+
+            const q = query(
+              collection(db, 'app_fields'),
+              where('workspaceId', '==', workspaceId),
+              where('status', '==', 'active')
+            );
+            const fieldsSnap = await getDocs(q);
+            if (active) {
+              const fieldsMap: Record<string, AppField> = {};
+              fieldsSnap.docs.forEach((docSnap) => {
+                const data = docSnap.data() as AppField;
+                fieldsMap[docSnap.id] = { ...data, id: docSnap.id };
+              });
+              setAppFields(fieldsMap);
+            }
           }
         }
       } catch (err) {

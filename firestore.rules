@@ -686,10 +686,11 @@ service cloud.firestore {
     
     // Forms collection - dual-write migration support
     match /forms/{formId} {
-      allow get: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId) ||
-        resource.data.status == 'published'
+      allow get: if resource.data.status == 'published' || (
+        isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(resource.data.workspaceId)
+        )
       );
       allow list: if isAuthorized() && (
         isSystemAdmin() ||
@@ -951,7 +952,7 @@ service cloud.firestore {
 
     // --- App Fields / Variable Registry ---
     match /app_fields/{fieldId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if true; // Public field schema registry required for client-facing form rendering
       allow create: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && hasWorkspaceAccess(request.resource.data.workspaceId))
