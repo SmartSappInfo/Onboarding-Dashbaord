@@ -9,6 +9,7 @@ import { useTenant } from '@/context/TenantContext';
 import type { Form, AppField } from '@/lib/types';
 import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { createFormAction, deleteFormAction, cloneFormAction, toggleFormStatusAction } from '@/lib/forms-actions';
+import { FormSubmissionCount } from './components/FormSubmissionCount';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -441,8 +442,11 @@ export default function FormsClient() {
                   filteredForms.map(form => (
                     <TableRow key={form.id} className="group hover:bg-accent/5 transition-colors border-border/30">
                       <TableCell className="font-bold pl-6">
-                        <div className="flex flex-col gap-0.5">
-                          <Link href={`/admin/forms/${form.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <Link
+                            href={form.status === 'draft' ? `/admin/forms/${form.id}/edit` : `/admin/forms/${form.id}`}
+                            className="hover:underline hover:text-primary transition-colors text-sm font-bold truncate block"
+                          >
                             {form.internalName || form.title}
                           </Link>
                           <code className="text-[10px] text-muted-foreground font-mono opacity-50">/{form.slug}</code>
@@ -459,7 +463,13 @@ export default function FormsClient() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center font-semibold text-sm tabular-nums">{form.fields?.length || 0}</TableCell>
-                      <TableCell className="text-center font-semibold text-sm tabular-nums">{form.submissionCount || 0}</TableCell>
+                      <TableCell className="text-center font-semibold text-sm tabular-nums">
+                        <Button variant="link" asChild className="font-semibold text-sm h-auto p-0 hover:text-primary">
+                          <Link href={`/admin/forms/${form.id}/submissions`}>
+                            <FormSubmissionCount formId={form.id} fallbackCount={form.submissionCount} />
+                          </Link>
+                        </Button>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground">
                         {form.createdAt ? format(new Date(form.createdAt), 'MMM d, yyyy') : '—'}
                       </TableCell>

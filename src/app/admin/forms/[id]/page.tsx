@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import FormSummaryClient from './components/FormSummaryClient';
 
 type Props = {
   params: Promise<{
@@ -9,6 +9,5 @@ type Props = {
 export default async function FormDetailPage({ params }: Props) {
   const { id } = await params;
   
-  // Redirect to the edit page
-  redirect(`/admin/forms/${id}/edit`);
+  return <FormSummaryClient id={id} />;
 }
