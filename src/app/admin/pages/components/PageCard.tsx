@@ -37,6 +37,7 @@ export interface PageCardProps {
   /** Owned by PagesClient — guards all duplicate buttons in the grid simultaneously */
   duplicatingId: string | null;
   onDuplicate:     (e: React.MouseEvent, pageId: string) => void;
+  onPreview?:      (page: CampaignPage) => void;
   onViewAnalytics: (page: CampaignPage) => void;
   onPublish:       (pageId: string) => Promise<void>;
   onUnpublish:     (pageId: string) => Promise<void>;
@@ -70,23 +71,32 @@ interface OverlayBtnProps {
   onClick?: (e: React.MouseEvent) => void;
   href?: string;
   disabled?: boolean;
+  isPrimary?: boolean;
   children: React.ReactNode;
 }
 
 // Static base styles hoisted outside component — rendering-hoist-jsx
 const OVERLAY_BTN_BASE =
-  'group/btn relative flex h-9 w-9 items-center justify-center rounded-xl ' +
-  'border border-white/25 bg-white/12 backdrop-blur-sm text-white ' +
-  'transition-all duration-150 hover:bg-primary hover:border-white/50 hover:scale-110 ' +
+  'group/btn relative flex h-10 w-10 items-center justify-center rounded-xl ' +
+  'border border-slate-700/80 bg-slate-900/90 text-white shadow-lg ' +
+  'transition-all duration-150 hover:bg-primary hover:border-primary hover:scale-110 ' +
   'active:scale-95 disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none ' +
-  'focus-visible:ring-2 focus-visible:ring-white/50';
+  'focus-visible:ring-2 focus-visible:ring-primary/50';
 
-function OverlayBtn({ label, onClick, href, disabled, children }: OverlayBtnProps) {
+const OVERLAY_BTN_PRIMARY =
+  'group/btn relative flex h-10 w-10 items-center justify-center rounded-xl ' +
+  'border border-primary/50 bg-primary text-white shadow-lg shadow-primary/30 ' +
+  'transition-all duration-150 hover:bg-primary/90 hover:scale-110 ' +
+  'active:scale-95 disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none ' +
+  'focus-visible:ring-2 focus-visible:ring-primary/50';
+
+function OverlayBtn({ label, onClick, href, disabled, isPrimary, children }: OverlayBtnProps) {
+  const btnClass = isPrimary ? OVERLAY_BTN_PRIMARY : OVERLAY_BTN_BASE;
   const tooltip = (
     <span
       className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap
-                 rounded-md bg-slate-900/90 px-2 py-0.5 text-[10px] font-bold text-white
-                 opacity-0 transition-opacity group-hover/btn:opacity-100"
+                 rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-white shadow-md
+                 border border-slate-800 opacity-0 transition-opacity group-hover/btn:opacity-100 z-30"
     >
       {label}
     </span>
@@ -99,7 +109,7 @@ function OverlayBtn({ label, onClick, href, disabled, children }: OverlayBtnProp
         target="_blank"
         rel="noopener noreferrer"
         aria-label={label}
-        className={OVERLAY_BTN_BASE}
+        className={btnClass}
       >
         {tooltip}
         {children}
@@ -113,7 +123,7 @@ function OverlayBtn({ label, onClick, href, disabled, children }: OverlayBtnProp
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={OVERLAY_BTN_BASE}
+      className={btnClass}
     >
       {tooltip}
       {children}
@@ -127,6 +137,7 @@ export const PageCard = React.memo(function PageCard({
   page,
   duplicatingId,
   onDuplicate,
+  onPreview,
   onViewAnalytics,
   onPublish,
   onUnpublish,
@@ -283,24 +294,27 @@ export const PageCard = React.memo(function PageCard({
         <div
           className={cn(
             'absolute inset-0 z-10',
-            'flex items-center justify-center gap-2.5',
-            'bg-slate-900/62 backdrop-blur-[3px]',
-            'opacity-0 transition-opacity duration-200 group-hover:opacity-100',
+            'flex items-center justify-center gap-2',
+            'bg-slate-950/85 backdrop-blur-md',
+            'opacity-0 transition-opacity duration-200 group-hover:opacity-100 p-2',
           )}
         >
-          {/* Open Builder */}
-          <OverlayBtn label="Open Builder" href={builderPath}>
+          {/* Open Builder (Primary Call To Action) */}
+          <OverlayBtn label="Open Builder" href={builderPath} isPrimary>
             <Pencil className="h-4 w-4" />
           </OverlayBtn>
 
-          {/* Preview — opens builder in preview mode */}
-          <OverlayBtn label="Preview" href={`${builderPath}?preview=true`}>
+          {/* Preview — opens read-only in-app preview modal */}
+          <OverlayBtn
+            label="Read-Only Preview"
+            onClick={e => { e.stopPropagation(); onPreview?.(page); }}
+          >
             <Eye className="h-4 w-4" />
           </OverlayBtn>
 
-          {/* Live Page */}
+          {/* Live Page — launches public URL in new browser tab */}
           <OverlayBtn
-            label={isPublished ? 'Live Page' : 'Draft Preview'}
+            label={isPublished ? 'Live Page (New Tab)' : 'Draft Preview'}
             href={publicPath}
           >
             <ExternalLink className="h-4 w-4" />

@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useUser } from '@/firebase';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { PageCard } from './components/PageCard';
+import { PagePreviewModal } from './components/PagePreviewModal';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import {
   duplicatePageAction,
@@ -77,6 +78,7 @@ export default function PagesClient() {
   const [confirmCheckbox, setConfirmCheckbox] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [sharePage, setSharePage] = React.useState<CampaignPage | null>(null);
+  const [previewPage, setPreviewPage] = React.useState<CampaignPage | null>(null);
 
   // ── Firestore collection query ────────────────────────────────────────────
   const pagesQuery = useMemoFirebase(
@@ -269,6 +271,7 @@ export default function PagesClient() {
                       page={page}
                       duplicatingId={duplicatingId}
                       onDuplicate={handleDuplicate}
+                      onPreview={setPreviewPage}
                       onViewAnalytics={handleViewAnalytics}
                       onPublish={handlePublish}
                       onUnpublish={handleUnpublish}
@@ -389,6 +392,13 @@ export default function PagesClient() {
           resourceName="Page"
           publicUrl={`${window.location.origin}/p/${sharePage.slug}`}
           embedUrl={`${window.location.origin}/p/${sharePage.slug}?embed=true`}
+        />
+      )}
+
+      {previewPage && (
+        <PagePreviewModal
+          page={previewPage}
+          onClose={() => setPreviewPage(null)}
         />
       )}
     </PageContainerFluid>
