@@ -1839,12 +1839,12 @@ export default function SurveyForm({
                                 </div>
                             )}
                             
-                            {/* 
+                             {/* 
                                Card Container Styling:
-                               When embedded (isEmbedded === true), render with transparent background, no side borders, and zero extra padding
-                               so the survey blends seamlessly into host page builder containers or modal dialogs without solid dark box overlays.
+                               When embedded (isEmbedded === true), render with transparent background, zero borders, zero top accent bar, and zero extra padding
+                               so the survey blends 100% seamlessly into host page builder containers or modal dialogs without box borders or shadows.
                              */}
-                             <Card className={cn("border-t-4 border-t-primary rounded-2xl overflow-hidden transition-all duration-300", isEmbedded ? "bg-transparent border-x-0 border-b-0 shadow-none p-0" : "bg-card shadow-2xl text-foreground")}>
+                             <Card className={cn(isEmbedded ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-2xl text-foreground transition-all duration-300")}>
                                 <CardContent className={cn("space-y-6 sm:space-y-8 text-left", isEmbedded ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {

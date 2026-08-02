@@ -431,9 +431,8 @@ export default function SurveyDisplay({
                     </div>
                 </div>
             )}
-            {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />}
-            <main className="flex-grow flex items-center justify-center relative z-10 py-8 sm:py-16">
-                <div className="max-w-4xl w-full mx-auto px-4">
+            <main className={cn("flex-grow flex items-center justify-center relative z-10", isEmbedded ? "py-0" : "py-8 sm:py-16")}>
+                <div className={cn("w-full mx-auto", isEmbedded ? "max-w-full px-0" : "max-w-4xl px-4")}>
                     {/* Branding logo and Title are now handled natively inside SurveyForm to support both client-side and studio-preview consistency */}
 
                     {/* Title rendering is handled natively inside SurveyForm to support Preview builders */}

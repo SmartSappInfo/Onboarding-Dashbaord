@@ -86,11 +86,11 @@ export function EmbeddedSurvey({
     const embedUrl = `/surveys/${surveyId}?embed=true${themeStr}${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
     return (
       <div 
-        className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
+        className="w-full flex flex-col bg-transparent relative transition-all duration-200"
         style={{
-          height: isInModal ? `${size.height}px` : '600px',
-          maxHeight: isInModal ? '85vh' : '100%',
-          overflowY: isInModal ? 'auto' : 'hidden',
+          height: size.height ? `${size.height}px` : 'auto',
+          minHeight: '350px',
+          maxHeight: isInModal ? '85vh' : undefined,
           backgroundColor: 'transparent'
         }}
       >
@@ -99,6 +99,7 @@ export function EmbeddedSurvey({
           className="w-full flex-grow border-0 bg-transparent"
           style={{ height: '100%', background: 'transparent' }}
           title="Embedded Survey"
+          scrolling="no"
           allow="geolocation; microphone; camera"
         />
       </div>

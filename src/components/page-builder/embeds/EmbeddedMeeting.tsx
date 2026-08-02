@@ -97,18 +97,20 @@ export function EmbeddedMeeting({
   if (displayMode === 'inline' || isInModal) {
     return (
       <div 
-        className="w-full flex flex-col bg-transparent relative rounded-2xl overflow-hidden shadow-inner transition-all duration-200"
+        className="w-full flex flex-col bg-transparent relative transition-all duration-200"
         style={{
-          height: isInModal ? `${size.height}px` : '600px',
-          maxHeight: isInModal ? '85vh' : '100%',
-          overflowY: isInModal ? 'auto' : 'hidden'
+          height: size.height ? `${size.height}px` : 'auto',
+          minHeight: '350px',
+          maxHeight: isInModal ? '85vh' : undefined,
+          backgroundColor: 'transparent'
         }}
       >
         <iframe
           src={embedUrl}
           className="w-full flex-grow border-0 bg-transparent"
-          style={{ height: '100%' }}
+          style={{ height: '100%', background: 'transparent' }}
           title="Book Session"
+          scrolling="no"
           allow="geolocation; microphone; camera"
         />
       </div>
