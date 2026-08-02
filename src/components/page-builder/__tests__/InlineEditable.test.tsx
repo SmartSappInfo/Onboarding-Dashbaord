@@ -193,4 +193,58 @@ describe('InlineEditable Component', () => {
     // Verify DOM innerHTML reflects external update
     expect(target.textContent).toBe('External Title');
   });
+
+  it('supports focus switching between multiple text blocks without selection lock', () => {
+    const MultiBlockWrapper = () => {
+      const [title, setTitle] = useState('Headline Text');
+      const [subheading, setSubheading] = useState('Subheading Text');
+
+      return (
+        <div>
+          <InlineEditable
+            data-testid="block-headline"
+            value={title}
+            onChange={setTitle}
+            isEdit={true}
+          />
+          <InlineEditable
+            data-testid="block-subheading"
+            value={subheading}
+            onChange={setSubheading}
+            isEdit={true}
+          />
+        </div>
+      );
+    };
+
+    const { getByTestId } = render(<MultiBlockWrapper />);
+    const headline = getByTestId('block-headline');
+    const subheading = getByTestId('block-subheading');
+
+    // Focus headline & type
+    act(() => {
+      headline.focus();
+      headline.textContent = 'Headline Text Updated';
+      fireEvent.input(headline);
+    });
+    expect(headline.textContent).toBe('Headline Text Updated');
+
+    // Blur headline, focus subheading & type
+    act(() => {
+      fireEvent.blur(headline);
+      subheading.focus();
+      subheading.textContent = 'Subheading Text Updated';
+      fireEvent.input(subheading);
+    });
+    expect(subheading.textContent).toBe('Subheading Text Updated');
+
+    // Blur subheading & click back to headline
+    act(() => {
+      fireEvent.blur(subheading);
+      headline.focus();
+      headline.textContent = 'Headline Text Updated Again';
+      fireEvent.input(headline);
+    });
+    expect(headline.textContent).toBe('Headline Text Updated Again');
+  });
 });

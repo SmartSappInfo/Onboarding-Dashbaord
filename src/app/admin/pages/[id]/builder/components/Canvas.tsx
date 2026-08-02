@@ -1041,17 +1041,14 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
         return range;
     }, []);
 
-    React.useLayoutEffect(() => {
-        if (savedSelectionRangeRef.current) {
-            const sel = window.getSelection();
-            if (sel) {
-                try {
-                    sel.removeAllRanges();
-                    sel.addRange(savedSelectionRangeRef.current);
-                } catch (_e) {}
-            }
-        }
-    });
+    /**
+     * PURPOSE: Clear stale text selection range reference whenever active block selection changes.
+     * CAUTION: Must NOT forcibly re-apply selection range on general render passes (which causes caret collapse to index 0).
+     * TESTABILITY: Click between text blocks in Page Builder canvas; verify each text block focuses natively on click.
+     */
+    useEffect(() => {
+        savedSelectionRangeRef.current = null;
+    }, [selectedBlockId]);
 
     const [isMounted, setIsMounted] = useState(false);
 
