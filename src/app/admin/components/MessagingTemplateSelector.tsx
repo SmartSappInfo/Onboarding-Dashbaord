@@ -55,6 +55,31 @@ const CATEGORIES_LIST = [
     { key: 'users',       label: 'Users'       },
 ];
 
+// ─── Filter Types & Helpers ───────────────────────────────────────────────────
+export type AudienceFilterMode = 'all' | 'internal' | 'external';
+export type ScopeFilterMode = 'all' | 'global' | 'workspace';
+
+const INTERNAL_ROLES = ['internal_alert', 'assignee', 'team_member', 'admin'];
+
+/**
+ * ARCHITECTURAL POINTER:
+ * Helper function to determine if a template targets internal team members.
+ * Strictly typed, returns boolean. Used for middle-column filtering.
+ */
+export function isInternalTemplate(tmpl: MessageTemplate): boolean {
+    if (tmpl.target === 'internal_team') return true;
+    if (tmpl.recipientType && INTERNAL_ROLES.includes(tmpl.recipientType)) return true;
+    return false;
+}
+
+/**
+ * ARCHITECTURAL POINTER:
+ * Helper function to determine if a template is a custom/workspace-scoped template.
+ */
+export function isWorkspaceTemplate(tmpl: MessageTemplate): boolean {
+    return tmpl.scope === 'organization' || Boolean(tmpl.organizationId);
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 const CardSkeleton = React.memo(function CardSkeleton() {
     return (
