@@ -3,7 +3,8 @@
 import React, { useCallback, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { 
-  Plus, Trash2, Mail, Phone, Globe, MapPin, Link as LinkIcon, Target 
+  Plus, Trash2, Mail, Phone, Globe, MapPin, Link as LinkIcon, Target,
+  AlignLeft, AlignCenter, AlignRight 
 } from 'lucide-react';
 import type { 
   CampaignPage, PageHeaderSettings, PageFooterSettings, HeaderNavItem, CampaignPageStructure, BuilderResources, HeaderCtaButton
@@ -361,13 +362,13 @@ export function HeaderSettingsControl({
                         {btn.linkType === 'action' && btn.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(btn.action) && (
                           <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
                             <div className="flex items-center justify-between">
-                              <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                              <Label className="text-[9px] font-extrabold text-emerald-300 uppercase tracking-wider">
                                 {btn.action === 'open_modal_form' ? 'Select Published Form' : btn.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
                               </Label>
                               <button
                                 type="button"
                                 onClick={() => setActiveTargetSelector({ type: 'button', id: btn.id })}
-                                className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                                className="text-[9px] font-bold text-emerald-300 hover:text-emerald-200 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors shadow-xs"
                               >
                                 Browse Thumbnails
                               </button>
@@ -379,7 +380,7 @@ export function HeaderSettingsControl({
                                 const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, actionTargetId: e.target.value } : b);
                                 onUpdateHeader({ buttons: updated });
                               }}
-                              className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-emerald-500/40 rounded-md text-slate-100 font-semibold outline-none focus:border-emerald-400"
+                              className="w-full h-9 px-2.5 text-[11px] bg-slate-900 border border-emerald-500/60 rounded-lg text-slate-100 font-bold outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
                             >
                               <option value="">
                                 {btn.action === 'open_modal_form' ? 'Select Published Form...' : btn.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
@@ -450,34 +451,43 @@ export function HeaderSettingsControl({
           {(header.preset === 'full-nav' || header.preset === 'search-nav' || header.preset === 'card-nav') && (
             <div className="pt-3 border-t border-slate-800/40 space-y-3">
               {/* Nav Alignment & Nav Style Presets */}
-              <div className="grid grid-cols-2 gap-2.5 p-3 bg-slate-900/60 border border-slate-800 rounded-lg">
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-bold text-slate-200 uppercase">Nav Link Alignment</Label>
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-md border border-slate-800">
-                    {(['left', 'center', 'right'] as const).map((align) => (
-                      <button
-                        key={align}
-                        type="button"
-                        onClick={() => onUpdateHeader({ navAlignment: align })}
-                        className={cn(
-                          "flex-1 h-7 text-[9px] font-bold uppercase rounded-md transition-all capitalize flex items-center justify-center gap-1",
-                          (header.navAlignment || 'center') === align
-                            ? "bg-primary text-white shadow-sm"
-                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                        )}
-                      >
-                        {align}
-                      </button>
-                    ))}
+              <div className="grid grid-cols-2 gap-2.5 p-3.5 bg-slate-900 border border-slate-700/80 rounded-xl shadow-sm">
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-extrabold text-slate-100 uppercase tracking-wider">Nav Link Alignment</Label>
+                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-700/80">
+                    {[
+                      { id: 'left', label: 'Left', icon: AlignLeft },
+                      { id: 'center', label: 'Center', icon: AlignCenter },
+                      { id: 'right', label: 'Right', icon: AlignRight },
+                    ].map(({ id, label, icon: Icon }) => {
+                      const isSelected = (header.navAlignment || 'center') === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          title={`Align ${label}`}
+                          onClick={() => onUpdateHeader({ navAlignment: id as 'left' | 'center' | 'right' })}
+                          className={cn(
+                            "flex-1 h-8 text-[10px] font-bold rounded-md transition-all flex items-center justify-center gap-1.5 px-2 cursor-pointer",
+                            isSelected
+                              ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-400 font-extrabold"
+                              : "text-slate-200 hover:text-white hover:bg-slate-800"
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="capitalize">{label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-bold text-slate-200 uppercase">Nav Style Preset</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] font-extrabold text-slate-100 uppercase tracking-wider">Nav Style Preset</Label>
                   <select
                     value={header.navStyle || 'underline_slide'}
                     onChange={(e) => onUpdateHeader({ navStyle: e.target.value as PageHeaderSettings['navStyle'] })}
-                    className="w-full h-9 px-2 text-[10px] bg-slate-950 border border-slate-800 rounded-md text-slate-200 outline-none focus:border-emerald-500/50"
+                    className="w-full h-9 px-2.5 text-[11px] font-semibold bg-slate-950 border border-slate-700 rounded-lg text-slate-100 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                   >
                     <option value="minimal">Minimal Text</option>
                     <option value="underline_slide">Underline Slide</option>
@@ -504,28 +514,28 @@ export function HeaderSettingsControl({
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                   {header.navItems.map((item) => (
-                    <div key={item.id} className="p-3 bg-slate-900/60 border border-slate-800 rounded-lg space-y-2.5 relative">
+                    <div key={item.id} className="p-3.5 bg-slate-900 border border-slate-700/80 rounded-xl space-y-3 relative shadow-xs">
                       <button
                         type="button"
                         onClick={() => handleRemoveNavItem(item.id)}
-                        className="absolute top-2.5 right-2.5 text-slate-500 hover:text-red-400 transition-colors"
+                        className="absolute top-3 right-3 text-slate-400 hover:text-red-400 transition-colors"
                         aria-label="Remove Nav Item"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                       
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Link Label</Label>
+                          <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Link Label</Label>
                           <input
                             type="text"
                             value={item.label}
                             onChange={(e) => handleUpdateNavItem(item.id, { label: e.target.value })}
-                            className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                            className="w-full h-8 px-2.5 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[8px] font-bold text-slate-300 uppercase">Item Mode</Label>
+                          <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Item Mode</Label>
                           <select
                             value={item.isDropdown ? 'dropdown' : 'single'}
                             onChange={(e) => {
@@ -542,7 +552,7 @@ export function HeaderSettingsControl({
                                 }] : item.children
                               });
                             }}
-                            className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                            className="w-full h-8 px-2 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                           >
                             <option value="single">Single Link</option>
                             <option value="dropdown">Dropdown Menu</option>
@@ -552,10 +562,10 @@ export function HeaderSettingsControl({
 
                       {/* Single Link Settings */}
                       {!item.isDropdown && (
-                        <div className="space-y-2 pt-1 border-t border-slate-800/60">
-                          <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-2.5 pt-2 border-t border-slate-800">
+                          <div className="grid grid-cols-2 gap-2.5">
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Type</Label>
+                              <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Target Type</Label>
                               <select
                                 value={item.linkType}
                                 onChange={(e) => handleUpdateNavItem(item.id, { 
@@ -564,7 +574,7 @@ export function HeaderSettingsControl({
                                   targetSectionId: '',
                                   action: undefined
                                 })}
-                                className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                className="w-full h-8 px-2 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                               >
                                 <option value="url">URL Redirect</option>
                                 <option value="scroll">Scroll to Section</option>
@@ -573,13 +583,13 @@ export function HeaderSettingsControl({
                             </div>
 
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Badge (Optional)</Label>
+                              <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Badge (Optional)</Label>
                               <input
                                 type="text"
                                 value={item.badge || ''}
                                 onChange={(e) => handleUpdateNavItem(item.id, { badge: e.target.value })}
                                 placeholder="NEW"
-                                className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200 uppercase"
+                                className="w-full h-8 px-2.5 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 uppercase outline-none focus:border-blue-400"
                               />
                             </div>
                           </div>
@@ -587,7 +597,7 @@ export function HeaderSettingsControl({
                           {item.linkType === 'url' && (
                             <div className="space-y-1">
                               <div className="flex items-center justify-between">
-                                <Label className="text-[8px] font-bold text-slate-300 uppercase">URL Link</Label>
+                                <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">URL Link</Label>
                                 <Popover
                                   open={openLinkPickerId === `nav-${item.id}`}
                                   onOpenChange={(open) => setOpenLinkPickerId(open ? `nav-${item.id}` : null)}
@@ -595,7 +605,7 @@ export function HeaderSettingsControl({
                                   <PopoverTrigger asChild>
                                     <button
                                       type="button"
-                                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-300 hover:text-emerald-200 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors"
                                     >
                                       <LinkIcon className="h-3 w-3" /> Select Target
                                     </button>
@@ -615,18 +625,18 @@ export function HeaderSettingsControl({
                                 value={item.url || ''}
                                 onChange={(e) => handleUpdateNavItem(item.id, { url: e.target.value })}
                                 placeholder="https://example.com or /p/survey-123"
-                                className="w-full h-8 px-2 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                className="w-full h-8 px-2.5 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                               />
                             </div>
                           )}
 
                           {item.linkType === 'scroll' && (
                             <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Section</Label>
+                              <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Target Section</Label>
                               <select
                                 value={item.targetSectionId || ''}
                                 onChange={(e) => handleUpdateNavItem(item.id, { targetSectionId: e.target.value })}
-                                className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                className="w-full h-8 px-2 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                               >
                                 <option value="">Select a Section...</option>
                                 {(structure.sections || []).map((sec, sIdx) => {
@@ -638,16 +648,16 @@ export function HeaderSettingsControl({
                           )}
 
                           {item.linkType === 'action' && (
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                               <div className="space-y-1">
-                                <Label className="text-[8px] font-bold text-slate-300 uppercase">Overlay Action</Label>
+                                <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Overlay Action</Label>
                                 <select
                                   value={item.action || ''}
                                   onChange={(e) => handleUpdateNavItem(item.id, { 
                                     action: e.target.value as HeaderNavItem['action'],
                                     actionTargetId: undefined 
                                   })}
-                                  className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                  className="w-full h-8 px-2 text-xs font-semibold bg-slate-950 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                 >
                                   <option value="">Select Action...</option>
                                   <option value="receipt_request">Open Receipt Request Modal</option>
@@ -660,13 +670,13 @@ export function HeaderSettingsControl({
                               {item.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(item.action) && (
                                 <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
                                   <div className="flex items-center justify-between">
-                                    <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                                    <Label className="text-[9px] font-extrabold text-emerald-300 uppercase tracking-wider">
                                       {item.action === 'open_modal_form' ? 'Select Published Form' : item.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
                                     </Label>
                                     <button
                                       type="button"
                                       onClick={() => setActiveTargetSelector({ type: 'navItem', id: item.id })}
-                                      className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                                      className="text-[9px] font-bold text-emerald-300 hover:text-emerald-200 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors shadow-xs"
                                     >
                                       Browse Thumbnails
                                     </button>
@@ -675,7 +685,7 @@ export function HeaderSettingsControl({
                                   <select
                                     value={item.actionTargetId || ''}
                                     onChange={(e) => handleUpdateNavItem(item.id, { actionTargetId: e.target.value })}
-                                    className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-emerald-500/40 rounded-md text-slate-100 font-semibold outline-none focus:border-emerald-400"
+                                    className="w-full h-9 px-2.5 text-[11px] bg-slate-950 border border-emerald-500/60 rounded-lg text-slate-100 font-bold outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
                                   >
                                     <option value="">
                                       {item.action === 'open_modal_form' ? 'Select Published Form...' : item.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
@@ -738,7 +748,7 @@ export function HeaderSettingsControl({
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Title</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Title</Label>
                                     <input
                                       type="text"
                                       value={child.label}
@@ -746,11 +756,11 @@ export function HeaderSettingsControl({
                                         const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, label: e.target.value } : c);
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
-                                      className="w-full h-7 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-2 text-xs font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     />
                                   </div>
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Subtitle</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Subtitle</Label>
                                     <input
                                       type="text"
                                       value={child.subtitle || ''}
@@ -759,21 +769,21 @@ export function HeaderSettingsControl({
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
                                       placeholder="Description"
-                                      className="w-full h-7 px-2 text-[10px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-2 text-xs font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     />
                                   </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-1.5">
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Icon</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Icon</Label>
                                     <select
                                       value={child.icon || 'Briefcase'}
                                       onChange={(e) => {
                                         const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, icon: e.target.value } : c);
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
-                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-1 text-[10px] font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     >
                                       <option value="Briefcase">Briefcase</option>
                                       <option value="Search">Search</option>
@@ -789,7 +799,7 @@ export function HeaderSettingsControl({
                                   </div>
 
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Badge</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Badge</Label>
                                     <input
                                       type="text"
                                       value={child.badge || ''}
@@ -798,12 +808,12 @@ export function HeaderSettingsControl({
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
                                       placeholder="PRO"
-                                      className="w-full h-7 px-1.5 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200 uppercase"
+                                      className="w-full h-8 px-1.5 text-[10px] font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 uppercase outline-none focus:border-blue-400"
                                     />
                                   </div>
 
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Type</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Target Type</Label>
                                     <select
                                       value={child.linkType || 'url'}
                                       onChange={(e) => {
@@ -817,7 +827,7 @@ export function HeaderSettingsControl({
                                         } : c);
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
-                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-1 text-[10px] font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     >
                                       <option value="url">URL Redirect</option>
                                       <option value="scroll">Scroll Section</option>
@@ -830,7 +840,7 @@ export function HeaderSettingsControl({
                                 {(child.linkType === 'url' || !child.linkType) && (
                                   <div className="space-y-1 pt-1">
                                     <div className="flex items-center justify-between">
-                                      <Label className="text-[8px] font-bold text-slate-400 uppercase">URL Link</Label>
+                                      <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">URL Link</Label>
                                       <Popover
                                         open={openLinkPickerId === `sub-${child.id}`}
                                         onOpenChange={(open) => setOpenLinkPickerId(open ? `sub-${child.id}` : null)}
@@ -838,7 +848,7 @@ export function HeaderSettingsControl({
                                         <PopoverTrigger asChild>
                                           <button
                                             type="button"
-                                            className="flex items-center gap-1 text-[8px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                            className="flex items-center gap-1 text-[9px] font-bold text-emerald-300 hover:text-emerald-200 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors"
                                           >
                                             <LinkIcon className="h-2.5 w-2.5" /> Select Target
                                           </button>
@@ -862,21 +872,21 @@ export function HeaderSettingsControl({
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
                                       placeholder="https://example.com or /p/slug"
-                                      className="w-full h-7 px-2 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-2 text-xs font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     />
                                   </div>
                                 )}
 
                                 {child.linkType === 'scroll' && (
                                   <div className="space-y-1 pt-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Section</Label>
+                                    <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Target Section</Label>
                                     <select
                                       value={child.targetSectionId || ''}
                                       onChange={(e) => {
                                         const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, targetSectionId: e.target.value } : c);
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
-                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      className="w-full h-8 px-1 text-[10px] font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                     >
                                       <option value="">Select a Section...</option>
                                       {(structure.sections || []).map((sec, sIdx) => {
@@ -890,7 +900,7 @@ export function HeaderSettingsControl({
                                 {child.linkType === 'action' && (
                                   <div className="space-y-1.5 pt-1">
                                     <div className="space-y-1">
-                                      <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
+                                      <Label className="text-[9px] font-bold text-slate-200 uppercase tracking-wider">Overlay Action</Label>
                                       <select
                                         value={child.action || ''}
                                         onChange={(e) => {
@@ -901,7 +911,7 @@ export function HeaderSettingsControl({
                                           } : c);
                                           handleUpdateNavItem(item.id, { children: updatedChildren });
                                         }}
-                                        className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                        className="w-full h-8 px-1 text-[10px] font-semibold bg-slate-900 border border-slate-700 rounded-md text-slate-100 outline-none focus:border-blue-400"
                                       >
                                         <option value="">Select Action...</option>
                                         <option value="receipt_request">Open Receipt Request Modal</option>
@@ -914,13 +924,13 @@ export function HeaderSettingsControl({
                                     {child.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(child.action) && (
                                       <div className="space-y-1 pt-1 animate-in fade-in duration-200">
                                         <div className="flex items-center justify-between">
-                                          <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                                          <Label className="text-[9px] font-extrabold text-emerald-300 uppercase tracking-wider">
                                             {child.action === 'open_modal_form' ? 'Select Published Form' : child.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
                                           </Label>
                                           <button
                                             type="button"
                                             onClick={() => setActiveTargetSelector({ type: 'subItem', id: child.id, parentId: item.id })}
-                                            className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                                            className="text-[9px] font-bold text-emerald-300 hover:text-emerald-200 bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors shadow-xs"
                                           >
                                             Browse
                                           </button>
@@ -932,7 +942,7 @@ export function HeaderSettingsControl({
                                             const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, actionTargetId: e.target.value } : c);
                                             handleUpdateNavItem(item.id, { children: updatedChildren });
                                           }}
-                                          className="w-full h-7 px-2 text-[9px] bg-slate-900 border border-emerald-500/40 rounded text-slate-100 font-semibold outline-none focus:border-emerald-400"
+                                          className="w-full h-9 px-2.5 text-[11px] bg-slate-950 border border-emerald-500/60 rounded-lg text-slate-100 font-bold outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
                                         >
                                           <option value="">
                                             {child.action === 'open_modal_form' ? 'Select Published Form...' : child.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
