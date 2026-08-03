@@ -586,7 +586,8 @@ export function PageRenderer({
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-between w-full gap-4">
+              <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
+                {/* 1. Logo (Left) */}
                 <div className="flex items-center gap-3 shrink-0">
                   {orgBranding?.logoUrl ? (
                     <img src={orgBranding.logoUrl} alt={orgBranding.name} className="h-8 w-auto object-contain" />
@@ -595,8 +596,9 @@ export function PageRenderer({
                   )}
                 </div>
 
+                {/* 2. Desktop Navigation Center/Left/Right (Hidden on Mobile) */}
                 {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
-                  <div className="flex-1 min-w-0">
+                  <div className="hidden md:block flex-1 min-w-0 px-2">
                     <HeaderNavRenderer
                       headerSettings={headerSettings}
                       onNavItemClick={handleNavItemClick}
@@ -605,7 +607,8 @@ export function PageRenderer({
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 shrink-0">
+                {/* 3. CTA Buttons (Middle) + Extreme Right Hamburger Trigger (Mobile) */}
+                <div className="flex items-center gap-2 shrink-0 justify-end">
                   {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
                     <div className="relative max-w-xs hidden sm:block">
                       <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
@@ -616,21 +619,23 @@ export function PageRenderer({
                       />
                     </div>
                   )}
+
                   {headerSettings.showPhone && headerSettings.phoneNumber && (
                     <a 
                       href={`tel:${headerSettings.phoneNumber}`}
                       onClick={() => trackLinkClick('header-phone')}
-                      className="text-xs font-bold text-slate-600 dark:text-slate-350 flex items-center gap-1 hover:text-[#3B5FFF] transition-colors mr-2"
+                      className="text-xs font-bold text-slate-600 dark:text-slate-350 hidden lg:flex items-center gap-1 hover:text-[#3B5FFF] transition-colors mr-1"
                     >
                       <Phone className="h-3 w-3" /> {headerSettings.phoneNumber}
                     </a>
                   )}
+
                   {headerSettings.showCta && headerButtons.map((btn) => (
                     <Button 
                       key={btn.id}
                       onClick={() => handleButtonClick(btn)}
                       className={cn(
-                        "h-9 px-5 rounded-full font-bold text-xs",
+                        "h-9 px-3.5 sm:px-5 rounded-full font-bold text-xs shrink-0",
                         btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
                         btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-850" :
                         "bg-[#3B5FFF] text-white"
@@ -640,6 +645,17 @@ export function PageRenderer({
                       {btn.label || 'Get Started'}
                     </Button>
                   ))}
+
+                  {/* EXTREME RIGHT HAMBURGER / CLOSE TRIGGER FOR MOBILE VIEWPORTS */}
+                  {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
+                    <div className="md:hidden shrink-0">
+                      <HeaderNavRenderer
+                        headerSettings={headerSettings}
+                        onNavItemClick={handleNavItemClick}
+                        primaryColor={theme?.colors?.primary || '#3B5FFF'}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

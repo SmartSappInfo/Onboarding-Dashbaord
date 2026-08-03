@@ -1926,12 +1926,15 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                          ))}
                                                      </div>
                                                  ) : (
-                                                     <div className="flex items-center justify-between w-full gap-4">
+                                                    <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
+                                                          {/* 1. Logo (Left) */}
                                                           <div className="flex items-center gap-3 shrink-0">
                                                               <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
                                                           </div>
+
+                                                          {/* 2. Desktop Navigation Center/Left/Right (Hidden on Mobile) */}
                                                           {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
-                                                              <div className="flex-1 min-w-0 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                              <div className="hidden md:block flex-1 min-w-0 px-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                                                   <HeaderNavRenderer
                                                                       headerSettings={headerSettings}
                                                                       onNavItemClick={() => {}}
@@ -1940,59 +1943,71 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                                   />
                                                               </div>
                                                           )}
-                                                          <div className="flex items-center gap-4 shrink-0">
-                                                             {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
-                                                                 <div className="relative max-w-xs hidden sm:block">
-                                                                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-450" />
-                                                                     <input type="text" placeholder="Search..." disabled className="h-8 w-32 pl-8 pr-2 text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg" />
-                                                                 </div>
-                                                             )}
-                                                             {headerSettings.showPhone && headerSettings.phoneNumber && (
-                                                                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                                                     <Phone className="h-3 w-3" />
-                                                                     <InlineEditable
-                                                                         tagName="span"
-                                                                         isEdit={isEditMode}
-                                                                         onChange={(val) => onUpdateHeader?.({ phoneNumber: val })}
-                                                                         className="outline-none border-0 bg-transparent text-slate-500 dark:text-slate-400 font-bold text-xs cursor-text min-w-[20px] inline-block pointer-events-auto"
-                                                                         onClick={(e) => e.stopPropagation()}
-                                                                         value={headerSettings.phoneNumber}
-                                                                         html={false}
-                                                                     />
-                                                                 </span>
-                                                             )}
-                                                             {headerSettings.showCta && (
-                                                                 <div className="flex items-center gap-2">
-                                                                     {buttons.map((btn, idx) => (
-                                                                         <Button 
-                                                                             key={btn.id}
-                                                                             className={cn(
-                                                                                 "h-9 px-5 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform pointer-events-auto",
-                                                                                 btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
-                                                                                 btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
-                                                                                 "bg-[#3B5FFF] text-white"
-                                                                             )}
-                                                                             style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
-                                                                             disabled={!isEditMode}
-                                                                         >
-                                                                             <InlineEditable
-                                                                                 tagName="span"
-                                                                                 isEdit={isEditMode}
-                                                                                 onChange={(val) => handleUpdateButtonLabel(idx, val)}
-                                                                                 className={cn(
-                                                                                     "outline-none border-0 bg-transparent font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto",
-                                                                                     btn.style === 'outline' || btn.style === 'ghost' ? "text-slate-800 dark:text-white" : "text-white"
-                                                                                 )}
-                                                                                 onClick={(e) => e.stopPropagation()}
-                                                                                 value={btn.label || 'Get Started'}
-                                                                                 html={false}
-                                                                             />
-                                                                         </Button>
-                                                                     ))}
-                                                                 </div>
-                                                             )}
-                                                        </div>
-                                                    </div>
+                                                          <div className="flex items-center gap-2 shrink-0 justify-end">
+                                                              {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
+                                                                  <div className="relative max-w-xs hidden sm:block">
+                                                                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-450" />
+                                                                      <input type="text" placeholder="Search..." disabled className="h-8 w-32 pl-8 pr-2 text-xs bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg" />
+                                                                  </div>
+                                                              )}
+                                                              {headerSettings.showPhone && headerSettings.phoneNumber && (
+                                                                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 hidden lg:flex items-center gap-1 pointer-events-auto mr-1" onClick={(e) => e.stopPropagation()}>
+                                                                      <Phone className="h-3 w-3" />
+                                                                      <InlineEditable
+                                                                          tagName="span"
+                                                                          isEdit={isEditMode}
+                                                                          onChange={(val) => onUpdateHeader?.({ phoneNumber: val })}
+                                                                          className="outline-none border-0 bg-transparent text-slate-500 dark:text-slate-400 font-bold text-xs cursor-text min-w-[20px] inline-block pointer-events-auto"
+                                                                          onClick={(e) => e.stopPropagation()}
+                                                                          value={headerSettings.phoneNumber}
+                                                                          html={false}
+                                                                      />
+                                                                  </span>
+                                                              )}
+                                                              {headerSettings.showCta && (
+                                                                  <div className="flex items-center gap-2">
+                                                                      {buttons.map((btn, idx) => (
+                                                                          <Button 
+                                                                              key={btn.id}
+                                                                              className={cn(
+                                                                                  "h-9 px-3.5 sm:px-5 rounded-full font-bold text-xs flex items-center justify-center gap-1 active:scale-[0.98] transition-transform pointer-events-auto shrink-0",
+                                                                                  btn.style === 'outline' ? "bg-transparent border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-white" :
+                                                                                  btn.style === 'ghost' ? "bg-transparent text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800" :
+                                                                                  "bg-[#3B5FFF] text-white"
+                                                                              )}
+                                                                              style={btn.style === 'primary' || !btn.style ? { backgroundColor: primaryColor } : undefined}
+                                                                              disabled={!isEditMode}
+                                                                          >
+                                                                              <InlineEditable
+                                                                                  tagName="span"
+                                                                                  isEdit={isEditMode}
+                                                                                  onChange={(val) => handleUpdateButtonLabel(idx, val)}
+                                                                                  className={cn(
+                                                                                      "outline-none border-0 bg-transparent font-bold text-xs text-center cursor-text min-w-[20px] inline-block pointer-events-auto",
+                                                                                      btn.style === 'outline' || btn.style === 'ghost' ? "text-slate-800 dark:text-white" : "text-white"
+                                                                                  )}
+                                                                                  onClick={(e) => e.stopPropagation()}
+                                                                                  value={btn.label || 'Get Started'}
+                                                                                  html={false}
+                                                                              />
+                                                                          </Button>
+                                                                      ))}
+                                                                  </div>
+                                                              )}
+
+                                                              {/* EXTREME RIGHT HAMBURGER / CLOSE TRIGGER FOR MOBILE VIEWPORTS */}
+                                                              {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
+                                                                  <div className="md:hidden shrink-0 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                      <HeaderNavRenderer
+                                                                          headerSettings={headerSettings}
+                                                                          onNavItemClick={() => {}}
+                                                                          primaryColor={primaryColor}
+                                                                          isEditMode={isEditMode}
+                                                                      />
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                      </div>
                                                 )}
                                             </div>
                                         </div>

@@ -1,15 +1,18 @@
 /**
  * PURPOSE:
- * HeaderNavRenderer renders header navigation links with 5 swappable visual styles
- * (Minimal, Underline Slide, Pill Tabs, Glass Cards, Mega Menu), independent link alignment
- * (Left, Center, Right), rich nested dropdown popovers supporting subtitles, Lucide icons, and badges,
- * and a mobile-optimized hamburger drawer with expandable accordion sub-menus.
+ * HeaderNavRenderer renders desktop header navigation links with 5 swappable visual styles
+ * (Minimal, Underline Slide, Pill Tabs, Glass Cards, Mega Menu) and independent link alignment
+ * (Left, Center, Right), alongside an Attio-style mobile navigation system featuring:
+ * 1. Extreme-right hamburger trigger (=) placed after CTA action buttons.
+ * 2. Extreme-right close button (X) in the exact same top-right position when expanded.
+ * 3. Full-screen viewport height overlay (h-[100dvh] bg-slate-950/98 backdrop-blur-2xl).
+ * 4. Automatic drawer dismiss upon tapping any link or sub-item to give way for triggered actions.
  *
  * CAUTION:
- * Debounce hover leave to prevent drop-down flicker when mouse moves diagonally across items.
+ * Always call setMobileOpen(false) before invoking onNavItemClick to ensure smooth modal/scroll transitions.
  *
  * TESTABILITY:
- * Test style swapping, alignment updates, hover/click interactions, and mobile drawer toggles.
+ * Test desktop nav styles, mobile trigger positioning, full-screen drawer height, close button toggle, and auto-dismiss on tap.
  */
 
 'use client';
@@ -107,10 +110,34 @@ export function HeaderNavRenderer({
     };
   }, []);
 
+  // Lock body scroll when mobile drawer is full screen
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
+
+  /**
+   * PURPOSE: Tapping any link or sub-item automatically closes the mobile navigation panel
+   * so the user does not have to manually click the close button (X) to see the triggered action.
+   */
+  const handleMobileLinkClick = useCallback((item: HeaderNavItem) => {
+    setMobileOpen(false);
+    // Lightweight deferral allows smooth drawer close animation before executing action
+    requestAnimationFrame(() => {
+      onNavItemClick(item);
+    });
+  }, [onNavItemClick]);
+
   if (navItems.length === 0) return null;
 
   return (
-    <div className="w-full flex items-center">
+    <div className="w-full flex items-center justify-between">
       {/* ─── DESKTOP NAVIGATION ────────────────────────────────────────── */}
       <nav
         ref={dropdownRef}
@@ -299,60 +326,65 @@ export function HeaderNavRenderer({
         })}
       </nav>
 
-      {/* ─── MOBILE HAMBURGER TRIGGER ───────────────────────────────────── */}
-      <div className="md:hidden flex items-center justify-end w-full">
+      {/* ─── EXTREME RIGHT HAMBURGER / CLOSE TRIGGER (MOBILE VIEWPORTS) ──── */}
+      <div className="md:hidden flex items-center shrink-0 ml-2">
         <button
           type="button"
-          onClick={() => setMobileOpen(true)}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-zinc-850 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-zinc-800 transition-all cursor-pointer"
-          aria-label="Open navigation menu"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl bg-slate-900/60 dark:bg-zinc-850/80 border border-slate-700/50 dark:border-zinc-700/50 text-slate-100 hover:text-white hover:bg-slate-800 dark:hover:bg-zinc-800 transition-all cursor-pointer shadow-sm"
+          aria-label={mobileOpen ? "Close menu" : "Open navigation menu"}
         >
-          <Menu className="h-5 w-5" />
+          {mobileOpen ? (
+            <X className="h-5 w-5 text-white transition-transform duration-200 rotate-90" />
+          ) : (
+            <Menu className="h-5 w-5 text-white" />
+          )}
         </button>
       </div>
 
-      {/* ─── MOBILE DRAWER OVERLAY ──────────────────────────────────────── */}
+      {/* ─── ATTIO-STYLE FULL-SCREEN HEIGHT MOBILE DRAWER OVERLAY ─────────── */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-200 md:hidden">
-          {/* Mobile Drawer Header */}
-          <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-            <span className="text-sm font-bold text-white uppercase tracking-wider">Navigation Menu</span>
+        <div className="fixed inset-0 z-50 flex flex-col h-[100dvh] w-full bg-slate-950/98 backdrop-blur-2xl animate-in fade-in slide-in-from-top-4 duration-200 md:hidden">
+          {/* Mobile Overlay Header Bar: Extreme Right Close Icon (X) */}
+          <div className="flex items-center justify-between p-4 border-b border-zinc-800/80 bg-slate-950/80">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Navigation Menu
+            </span>
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800 transition-all cursor-pointer"
-              aria-label="Close menu"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-white hover:bg-zinc-800 transition-all cursor-pointer shrink-0"
+              aria-label="Close navigation menu"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Mobile Accordion Nav List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Mobile Accordion Nav List (Fills 100dvh height with smooth scroll) */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             {navItems.map((item) => {
               const hasChildren = (item.isDropdown || (item.children && item.children.length > 0));
               const isAccordionOpen = !!openAccordions[item.id];
               const children = item.children || [];
 
               return (
-                <div key={item.id} className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 overflow-hidden">
+                <div key={item.id} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/60 overflow-hidden shadow-lg">
                   <button
                     type="button"
                     onClick={() => {
                       if (hasChildren) {
                         setOpenAccordions(prev => ({ ...prev, [item.id]: !prev[item.id] }));
                       } else {
-                        setMobileOpen(false);
-                        onNavItemClick(item);
+                        handleMobileLinkClick(item);
                       }
                     }}
-                    className="w-full flex items-center justify-between p-3.5 min-h-[48px] text-left text-sm font-bold text-slate-100 hover:text-primary transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-4 min-h-[48px] text-left text-sm font-bold text-slate-100 hover:text-primary transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-3">
                       {renderNavItemIcon(item.icon, "h-4 w-4 text-primary shrink-0")}
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20 uppercase">
                           {item.badge}
                         </span>
                       )}
@@ -361,7 +393,7 @@ export function HeaderNavRenderer({
                     {hasChildren && (
                       <ChevronDown
                         className={cn(
-                          "h-4 w-4 text-slate-400 transition-transform duration-200",
+                          "h-4 w-4 text-slate-400 transition-transform duration-200 ease-out",
                           isAccordionOpen && "rotate-180 text-primary"
                         )}
                       />
@@ -370,30 +402,34 @@ export function HeaderNavRenderer({
 
                   {/* Accordion Sub-Items */}
                   {hasChildren && isAccordionOpen && (
-                    <div className="p-2 pt-0 space-y-1 border-t border-zinc-800/60 bg-zinc-950/60">
+                    <div className="p-2 pt-0 space-y-1.5 border-t border-zinc-800/60 bg-zinc-950/80">
                       {children.map((child) => (
                         <button
                           key={child.id}
                           type="button"
-                          onClick={() => {
-                            setMobileOpen(false);
-                            onNavItemClick(child);
-                          }}
-                          className="w-full flex items-center gap-3 p-3 min-h-[44px] rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-zinc-850 transition-colors text-left cursor-pointer"
+                          onClick={() => handleMobileLinkClick(child)}
+                          className="w-full flex items-center gap-3.5 p-3.5 min-h-[48px] rounded-xl text-xs font-semibold text-slate-200 hover:text-white hover:bg-zinc-850 transition-colors text-left cursor-pointer"
                         >
-                          {renderNavItemIcon(child.icon, "h-4 w-4 text-primary shrink-0")}
+                          <div
+                            className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 bg-zinc-900 border border-zinc-800 text-primary"
+                            style={{ color: primaryColor }}
+                          >
+                            {renderNavItemIcon(child.icon, "h-4 w-4")}
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <span className="block truncate font-bold">{child.label}</span>
+                            <span className="block truncate font-bold text-slate-100">{child.label}</span>
                             {child.subtitle && (
-                              <span className="block text-[10px] text-slate-400 truncate font-normal">
+                              <span className="block text-[10px] text-slate-400 truncate font-normal mt-0.5">
                                 {child.subtitle}
                               </span>
                             )}
                           </div>
-                          {child.badge && (
-                            <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 uppercase">
+                          {child.badge ? (
+                            <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 uppercase shrink-0">
                               {child.badge}
                             </span>
+                          ) : (
+                            <ArrowRight className="h-3.5 w-3.5 text-slate-500 shrink-0" />
                           )}
                         </button>
                       ))}
