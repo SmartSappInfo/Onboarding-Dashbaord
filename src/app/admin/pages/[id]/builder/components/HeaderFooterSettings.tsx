@@ -357,28 +357,39 @@ export function HeaderSettingsControl({
                           </div>
                         )}
 
-                        {/* Action Target Selector Trigger Button */}
+                        {/* Action Target Selector Trigger Button & Inline Resource Dropdown */}
                         {btn.linkType === 'action' && btn.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(btn.action) && (
-                          <div className="space-y-1 pt-1 animate-in fade-in duration-200">
-                            <Label className="text-[8px] font-bold text-slate-300 uppercase">Target Resource</Label>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTargetSelector({ type: 'button', id: btn.id })}
-                              className="w-full h-8 px-2 text-[10px] flex items-center justify-between bg-slate-900 border border-slate-800 rounded-md text-slate-300 hover:border-emerald-500/50 hover:bg-slate-950 transition-colors"
+                          <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                                {btn.action === 'open_modal_form' ? 'Select Published Form' : btn.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTargetSelector({ type: 'button', id: btn.id })}
+                                className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                              >
+                                Browse Thumbnails
+                              </button>
+                            </div>
+
+                            <select
+                              value={btn.actionTargetId || ''}
+                              onChange={(e) => {
+                                const updated = normalizedButtons.map(b => b.id === btn.id ? { ...b, actionTargetId: e.target.value } : b);
+                                onUpdateHeader({ buttons: updated });
+                              }}
+                              className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-emerald-500/40 rounded-md text-slate-100 font-semibold outline-none focus:border-emerald-400"
                             >
-                              <span className="truncate">
-                                {btn.actionTargetId 
-                                  ? `${btn.action === 'open_modal_form' ? 'Form' : btn.action === 'open_modal_survey' ? 'Survey' : 'Agreement'}: ${
-                                      btn.action === 'open_modal_form' 
-                                        ? (resources.forms.find(f => f.id === btn.actionTargetId)?.title || btn.actionTargetId)
-                                        : btn.action === 'open_modal_survey'
-                                        ? (resources.surveys.find(s => s.id === btn.actionTargetId)?.title || btn.actionTargetId)
-                                        : (resources.agreements.find(a => a.id === btn.actionTargetId)?.title || btn.actionTargetId)
-                                    }`
-                                  : 'Click to select resource...'}
-                              </span>
-                              <Plus className="h-3 w-3 shrink-0 ml-1 text-slate-500" />
-                            </button>
+                              <option value="">
+                                {btn.action === 'open_modal_form' ? 'Select Published Form...' : btn.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
+                              </option>
+                              {(btn.action === 'open_modal_form' ? resources.forms : btn.action === 'open_modal_survey' ? resources.surveys : resources.agreements).map((res) => (
+                                <option key={res.id} value={res.id}>
+                                  {res.title} {'status' in res && res.status ? `(${res.status})` : ''}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         )}
 
@@ -627,19 +638,56 @@ export function HeaderSettingsControl({
                           )}
 
                           {item.linkType === 'action' && (
-                            <div className="space-y-1">
-                              <Label className="text-[8px] font-bold text-slate-300 uppercase">Overlay Action</Label>
-                              <select
-                                value={item.action || ''}
-                                onChange={(e) => handleUpdateNavItem(item.id, { action: e.target.value as HeaderNavItem['action'] })}
-                                className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
-                              >
-                                <option value="">Select Action...</option>
-                                <option value="receipt_request">Open Receipt Request Modal</option>
-                                <option value="open_modal_form">Open Form Modal</option>
-                                <option value="open_modal_survey">Open Survey Modal</option>
-                                <option value="open_modal_agreement">Open Agreement Modal</option>
-                              </select>
+                            <div className="space-y-2">
+                              <div className="space-y-1">
+                                <Label className="text-[8px] font-bold text-slate-300 uppercase">Overlay Action</Label>
+                                <select
+                                  value={item.action || ''}
+                                  onChange={(e) => handleUpdateNavItem(item.id, { 
+                                    action: e.target.value as HeaderNavItem['action'],
+                                    actionTargetId: undefined 
+                                  })}
+                                  className="w-full h-8 px-1 text-[10px] bg-slate-950 border border-slate-700 rounded-md text-slate-200"
+                                >
+                                  <option value="">Select Action...</option>
+                                  <option value="receipt_request">Open Receipt Request Modal</option>
+                                  <option value="open_modal_form">Open Form Modal</option>
+                                  <option value="open_modal_survey">Open Survey Modal</option>
+                                  <option value="open_modal_agreement">Open Agreement Modal</option>
+                                </select>
+                              </div>
+
+                              {item.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(item.action) && (
+                                <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                                      {item.action === 'open_modal_form' ? 'Select Published Form' : item.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
+                                    </Label>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveTargetSelector({ type: 'navItem', id: item.id })}
+                                      className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                                    >
+                                      Browse Thumbnails
+                                    </button>
+                                  </div>
+
+                                  <select
+                                    value={item.actionTargetId || ''}
+                                    onChange={(e) => handleUpdateNavItem(item.id, { actionTargetId: e.target.value })}
+                                    className="w-full h-8 px-2 text-[10px] bg-slate-900 border border-emerald-500/40 rounded-md text-slate-100 font-semibold outline-none focus:border-emerald-400"
+                                  >
+                                    <option value="">
+                                      {item.action === 'open_modal_form' ? 'Select Published Form...' : item.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
+                                    </option>
+                                    {(item.action === 'open_modal_form' ? resources.forms : item.action === 'open_modal_survey' ? resources.surveys : resources.agreements).map((res) => (
+                                      <option key={res.id} value={res.id}>
+                                        {res.title} {'status' in res && res.status ? `(${res.status})` : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -840,47 +888,61 @@ export function HeaderSettingsControl({
                                 )}
 
                                 {child.linkType === 'action' && (
-                                  <div className="space-y-1 pt-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
-                                    <select
-                                      value={child.action || ''}
-                                      onChange={(e) => {
-                                        const updatedChildren = (item.children || []).map(c => c.id === child.id ? { 
-                                          ...c, 
-                                          action: e.target.value as HeaderNavItem['action'],
-                                          actionTargetId: undefined
-                                        } : c);
-                                        handleUpdateNavItem(item.id, { children: updatedChildren });
-                                      }}
-                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
-                                    >
-                                      <option value="">Select Action...</option>
-                                      <option value="receipt_request">Open Receipt Request Modal</option>
-                                      <option value="open_modal_form">Open Form Modal</option>
-                                      <option value="open_modal_survey">Open Survey Modal</option>
-                                      <option value="open_modal_agreement">Open Agreement Modal</option>
-                                    </select>
+                                  <div className="space-y-1.5 pt-1">
+                                    <div className="space-y-1">
+                                      <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
+                                      <select
+                                        value={child.action || ''}
+                                        onChange={(e) => {
+                                          const updatedChildren = (item.children || []).map(c => c.id === child.id ? { 
+                                            ...c, 
+                                            action: e.target.value as HeaderNavItem['action'],
+                                            actionTargetId: undefined
+                                          } : c);
+                                          handleUpdateNavItem(item.id, { children: updatedChildren });
+                                        }}
+                                        className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      >
+                                        <option value="">Select Action...</option>
+                                        <option value="receipt_request">Open Receipt Request Modal</option>
+                                        <option value="open_modal_form">Open Form Modal</option>
+                                        <option value="open_modal_survey">Open Survey Modal</option>
+                                        <option value="open_modal_agreement">Open Agreement Modal</option>
+                                      </select>
+                                    </div>
 
                                     {child.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(child.action) && (
-                                      <div className="pt-1">
-                                        <button
-                                          type="button"
-                                          onClick={() => setActiveTargetSelector({ type: 'subItem', id: child.id, parentId: item.id })}
-                                          className="w-full h-7 px-2 text-[9px] flex items-center justify-between bg-slate-900 border border-slate-800 rounded text-slate-300 hover:border-emerald-500/50 transition-colors"
+                                      <div className="space-y-1 pt-1 animate-in fade-in duration-200">
+                                        <div className="flex items-center justify-between">
+                                          <Label className="text-[8px] font-bold text-emerald-400 uppercase">
+                                            {child.action === 'open_modal_form' ? 'Select Published Form' : child.action === 'open_modal_survey' ? 'Select Published Survey' : 'Select Published Agreement'}
+                                          </Label>
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveTargetSelector({ type: 'subItem', id: child.id, parentId: item.id })}
+                                            className="text-[8px] font-bold text-slate-400 hover:text-emerald-300 transition-colors"
+                                          >
+                                            Browse
+                                          </button>
+                                        </div>
+
+                                        <select
+                                          value={child.actionTargetId || ''}
+                                          onChange={(e) => {
+                                            const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, actionTargetId: e.target.value } : c);
+                                            handleUpdateNavItem(item.id, { children: updatedChildren });
+                                          }}
+                                          className="w-full h-7 px-2 text-[9px] bg-slate-900 border border-emerald-500/40 rounded text-slate-100 font-semibold outline-none focus:border-emerald-400"
                                         >
-                                          <span className="truncate">
-                                            {child.actionTargetId 
-                                              ? `${child.action === 'open_modal_form' ? 'Form' : child.action === 'open_modal_survey' ? 'Survey' : 'Agreement'}: ${
-                                                  child.action === 'open_modal_form' 
-                                                    ? (resources.forms.find(f => f.id === child.actionTargetId)?.title || child.actionTargetId)
-                                                    : child.action === 'open_modal_survey'
-                                                    ? (resources.surveys.find(s => s.id === child.actionTargetId)?.title || child.actionTargetId)
-                                                    : (resources.agreements.find(a => a.id === child.actionTargetId)?.title || child.actionTargetId)
-                                                }`
-                                              : 'Select resource target...'}
-                                          </span>
-                                          <Plus className="h-2.5 w-2.5 text-slate-500" />
-                                        </button>
+                                          <option value="">
+                                            {child.action === 'open_modal_form' ? 'Select Published Form...' : child.action === 'open_modal_survey' ? 'Select Published Survey...' : 'Select Published Agreement...'}
+                                          </option>
+                                          {(child.action === 'open_modal_form' ? resources.forms : child.action === 'open_modal_survey' ? resources.surveys : resources.agreements).map((res) => (
+                                            <option key={res.id} value={res.id}>
+                                              {res.title} {'status' in res && res.status ? `(${res.status})` : ''}
+                                            </option>
+                                          ))}
+                                        </select>
                                       </div>
                                     )}
                                   </div>

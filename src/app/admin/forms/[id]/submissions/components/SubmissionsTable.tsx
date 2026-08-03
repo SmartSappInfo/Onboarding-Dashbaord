@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Form, FormSubmission } from '@/lib/types';
-import { getSubmissionPreview } from '@/lib/forms-utils';
+import { getSubmissionPreview, parseDateSafe } from '@/lib/forms-utils';
 
 interface Props {
   submissions: FormSubmission[];
@@ -85,16 +85,24 @@ export default function SubmissionsTable({ submissions, form, onSelect }: Props)
                 {idx + 1}
               </TableCell>
               <TableCell className="py-3">
-                <span className="text-sm font-medium">
-                  {new Date(s.submittedAt).toLocaleDateString('en-GB', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                  })}
-                </span>
-                <span className="text-xs text-muted-foreground block">
-                  {new Date(s.submittedAt).toLocaleTimeString('en-GB', {
-                    hour: '2-digit', minute: '2-digit',
-                  })}
-                </span>
+                {(() => {
+                  const d = parseDateSafe(s.submittedAt);
+                  if (!d) return <span className="text-muted-foreground/50 text-xs">—</span>;
+                  return (
+                    <>
+                      <span className="text-sm font-medium">
+                        {d.toLocaleDateString('en-GB', {
+                          day: '2-digit', month: 'short', year: 'numeric',
+                        })}
+                      </span>
+                      <span className="text-xs text-muted-foreground block">
+                        {d.toLocaleTimeString('en-GB', {
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </span>
+                    </>
+                  );
+                })()}
               </TableCell>
               <TableCell className="py-3 max-w-xs">
                 <p className="text-sm text-muted-foreground truncate">

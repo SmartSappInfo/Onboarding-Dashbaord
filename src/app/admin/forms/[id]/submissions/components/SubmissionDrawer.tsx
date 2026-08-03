@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import type { Form, FormSubmission } from '@/lib/types';
-import { formatFieldValue } from '@/lib/forms-utils';
+import { formatFieldValue, parseDateSafe } from '@/lib/forms-utils';
 
 interface Props {
   submission: FormSubmission | null;
@@ -46,10 +46,14 @@ export default function SubmissionDrawer({ submission, form, onClose }: Props) {
                   <SheetTitle className="text-base font-semibold">Submission Detail</SheetTitle>
                   <p className="text-xs text-muted-foreground font-mono mt-0.5">{submission.id}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(submission.submittedAt).toLocaleString('en-GB', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
+                    {(() => {
+                      const d = parseDateSafe(submission.submittedAt);
+                      if (!d) return '—';
+                      return d.toLocaleString('en-GB', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      });
+                    })()}
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0" onClick={onClose}>

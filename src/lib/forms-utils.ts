@@ -10,6 +10,31 @@ import type { FormSubmission, AppField } from './types';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Safely parses any date string, timestamp, or Firestore Timestamp object.
+ */
+export function parseDateSafe(val: unknown): Date | null {
+  if (!val) return null;
+  try {
+    if (typeof val === 'string' || typeof val === 'number') {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (val && typeof val === 'object') {
+      if ('seconds' in val && typeof (val as { seconds: number }).seconds === 'number') {
+        return new Date((val as { seconds: number }).seconds * 1000);
+      }
+      if ('_seconds' in val && typeof (val as { _seconds: number })._seconds === 'number') {
+        return new Date((val as { _seconds: number })._seconds * 1000);
+      }
+    }
+    const d = new Date(val as string | number);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Formats a raw submission field value into a human-readable string.
  */
 export function formatFieldValue(value: unknown, fieldType?: string): string {
@@ -17,15 +42,11 @@ export function formatFieldValue(value: unknown, fieldType?: string): string {
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (fieldType === 'date' || fieldType === 'datetime') {
-    try {
-      const d = new Date(value as string);
-      if (isNaN(d.getTime())) return String(value);
-      return d.toLocaleDateString('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric',
-      });
-    } catch {
-      return String(value);
-    }
+    const d = parseDateSafe(value);
+    if (!d) return String(value);
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
   }
   return String(value);
 }
@@ -150,9 +171,11 @@ export function computeSubmissionStats(submissions: FormSubmission[]): Submissio
   let entityResolvedCount = 0;
 
   for (const s of submissions) {
-    const d = new Date(s.submittedAt);
-    if (d >= weekAgo) thisWeek++;
-    if (d >= monthAgo) thisMonth++;
+    const d = parseDateSafe(s.submittedAt);
+    if (d) {
+      if (d >= weekAgo) thisWeek++;
+      if (d >= monthAgo) thisMonth++;
+    }
     if (s.entityId) entityResolvedCount++;
   }
 
