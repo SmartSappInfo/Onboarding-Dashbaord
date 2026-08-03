@@ -134,7 +134,7 @@ export function EmbeddedForm({ formId, pageId, organizationId, workspaceId, isIn
   });
 
   return (
-    <div className={isInModal ? "p-8 sm:p-10" : ""}>
+    <div className="w-full">
       <FormView
         title={form.title}
         description={form.description}

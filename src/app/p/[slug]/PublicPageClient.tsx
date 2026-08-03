@@ -771,7 +771,7 @@ export default function PublicPageClient({
 
             {/* ─── Global Modal Container (Trigger Engine) ─── */}
             <Dialog open={!!modalState} onOpenChange={(open) => !open && setModalState(null)}>
-                <DialogContent className="sm:max-w-lg md:max-w-3xl lg:max-w-4xl rounded-3xl p-0 overflow-y-auto max-h-[90vh] md:max-h-[85vh] border border-slate-200/50 dark:border-zinc-800 shadow-2xl font-body scrollbar-thin bg-card text-card-foreground">
+                <DialogContent className="sm:max-w-lg md:max-w-3xl lg:max-w-4xl rounded-3xl p-6 sm:p-8 md:p-10 overflow-y-auto max-h-[90vh] md:max-h-[85vh] border border-slate-200/60 dark:border-zinc-800 shadow-2xl font-body scrollbar-thin bg-card text-card-foreground">
                     <DialogTitle className="sr-only">
                         {modalState?.type === 'form' ? 'Form' : modalState?.type === 'survey' ? 'Survey' : 'Document'}
                     </DialogTitle>

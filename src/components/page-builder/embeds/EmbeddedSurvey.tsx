@@ -87,13 +87,10 @@ export function EmbeddedSurvey({
     const embedUrl = `/surveys/${surveyId}?embed=true${modalStr}${themeStr}${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
     return (
       <div 
-        className={cn(
-          "w-full flex flex-col bg-transparent relative transition-all duration-200",
-          isInModal && "p-4 sm:p-6 md:p-8"
-        )}
+        className="w-full flex flex-col bg-transparent relative transition-all duration-200"
         style={{
           height: size.height ? `${size.height}px` : 'auto',
-          minHeight: '380px',
+          minHeight: '350px',
           maxHeight: isInModal ? '85vh' : undefined,
           backgroundColor: 'transparent'
         }}

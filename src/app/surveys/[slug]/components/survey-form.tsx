@@ -1843,12 +1843,11 @@ export default function SurveyForm({
                             
                              {/* 
                                 Card Container Styling:
-                                When embedded inline (isEmbedded === true && !isInModal), render with transparent background, zero borders, and zero extra padding
-                                so the survey blends seamlessly into host page builder sections.
-                                When rendered in a Modal (isInModal === true), render a structured card with rounded corners, subtle border, and full inset padding.
+                                When embedded (isEmbedded === true), render with transparent background, zero borders, zero top accent bar, and zero extra padding
+                                so the survey content flows directly into the host modal dialog container or page section without nested cards or double borders.
                               */}
-                             <Card className={cn((isEmbedded && !isInModal) ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-lg text-foreground transition-all duration-300")}>
-                                <CardContent className={cn("space-y-6 sm:space-y-8 text-left", (isEmbedded && !isInModal) ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
+                             <Card className={cn(isEmbedded ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-2xl text-foreground transition-all duration-300")}>
+                                <CardContent className={cn("space-y-6 sm:space-y-8 text-left", isEmbedded ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {
                                             if (el.id === pageSection?.id) return null;
