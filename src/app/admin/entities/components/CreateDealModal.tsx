@@ -19,11 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Check, X, UserCircle2, Users, Calendar } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { createDeal, type AssignmentStrategy } from '@/app/actions/deal-actions';
-import { getEntityDealDefaultsAction, type EntityAssignee } from '@/app/actions/entity-contact-actions';
+import { getEntityDealDefaultsAction, searchEntitiesForDealAction, type EntityAssignee, type SearchedEntityResult } from '@/app/actions/entity-contact-actions';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useEntitySearch } from '@/hooks/use-entity-search';
 import { cn } from '@/lib/utils';
 import type { EntityContact, DealFocalContact, Pipeline } from '@/lib/types';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -50,11 +49,11 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const [pipelineId, setPipelineId] = React.useState('');
     const [stageId, setStageId] = React.useState('');
     const [selectedEntityId, setSelectedEntityId] = React.useState('');
+    const [selectedEntityName, setSelectedEntityName] = React.useState('');
     const [entitySearchOpen, setEntitySearchOpen] = React.useState(false);
 
     // Owner: 'auto' = inherit the entity's assignee via the server 'direct'
     // strategy, 'unassigned' = explicitly none, otherwise a specific user id.
-    // ('auto' rather than '' because Radix SelectItem forbids empty values.)
     const [ownerUserId, setOwnerUserId] = React.useState<string>('auto');
     const [entityAssignee, setEntityAssignee] = React.useState<EntityAssignee>(null);
     const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
@@ -84,14 +83,43 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     [firestore, activeWorkspaceId]);
     const { data: stages } = useCollection<any>(stagesQuery);
 
-    // Server-side, paginated entity search (Phase 5.2) — only when picking an
-    // entity for a global deal (no contact context). Never loads the whole set.
+    /**
+     * ARCHITECTURAL POINTER (Multi-Field Entity & Contact Search in CreateDealModal):
+     * Runs debounced search via `searchEntitiesForDealAction` matching across entity name,
+     * primary email, primary phone, contact names, contact emails, and contact phone numbers.
+     *
+     * When a result is selected:
+     * 1. Sets selectedEntityId and selectedEntityName.
+     * 2. Automatically pre-populates entityContacts array.
+     * 3. If a specific contact matched the query (matchedContact), pre-checks that contact ID
+     *    in selectedFocalContactIds so the user immediately sees the matched contact selected for the deal.
+     */
     const [entitySearch, setEntitySearch] = React.useState('');
-    const { results: entities, hasMore, loadMore } = useEntitySearch({
-        search: entitySearch,
-        enabled: open && !entityId,
-        pageSize: 25,
-    });
+    const [searchResults, setSearchResults] = React.useState<SearchedEntityResult[]>([]);
+    const [isSearchingEntities, setIsSearchingEntities] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!open || entityId || !activeWorkspaceId) return;
+
+        let cancelled = false;
+        setIsSearchingEntities(true);
+
+        const timer = setTimeout(() => {
+            searchEntitiesForDealAction({ workspaceId: activeWorkspaceId, search: entitySearch })
+                .then((res) => {
+                    if (cancelled) return;
+                    setSearchResults(res);
+                })
+                .finally(() => {
+                    if (!cancelled) setIsSearchingEntities(false);
+                });
+        }, 250);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [open, entityId, activeWorkspaceId, entitySearch]);
 
     React.useEffect(() => {
         if (open) {
@@ -102,6 +130,8 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             setEntityAssignee(null);
             setSelectedFocalContactIds([]);
             setEntityContacts([]);
+            setEntitySearch('');
+            setSelectedEntityName('');
 
             if (entityId) {
                 setSelectedEntityId(entityId);
@@ -125,10 +155,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         }
     }, [open, entityId, initialStageId, initialPipelineId, pipelines, stages]);
 
-
-
     // Load the entity's focal contacts AND its workspace owner (one round-trip)
-    // so we can pre-fill the deal's default assignee from the entity.
     const focalEntityId = entityId || selectedEntityId;
     React.useEffect(() => {
         if (!open || !focalEntityId || !activeWorkspaceId) {
@@ -138,8 +165,6 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
         }
         let cancelled = false;
         setIsLoadingContacts(true);
-        setSelectedFocalContactIds([]);
-        setOwnerUserId('auto'); // reset to Auto (inherit) when the entity changes
         getEntityDealDefaultsAction(focalEntityId, activeWorkspaceId)
             .then(({ contacts, assignedTo }) => {
                 if (cancelled) return;
@@ -254,47 +279,73 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                             className="w-full justify-between h-10 rounded-xl font-bold border border-border bg-background shadow-sm text-xs text-muted-foreground hover:bg-muted/50"
                                         >
                                             {selectedEntityId
-                                                ? ((entities?.find((e: any) => e.entityId === selectedEntityId) as any)?.name || entities?.find((e: any) => e.entityId === selectedEntityId)?.displayName || `Select ${singular}...`)
-                                                : `Select ${singular}...`}
+                                                ? (selectedEntityName || searchResults.find(r => r.entityId === selectedEntityId)?.name || `Select ${singular}...`)
+                                                : `Select ${singular} or contact...`}
                                             <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent data-scroll-lock-scrollable className="w-[var(--radix-popover-trigger-width)] p-0 border border-border shadow-2xl rounded-xl overflow-hidden bg-background z-[200]" align="start">
                                         <Command shouldFilter={false}>
                                             <CommandInput
-                                                placeholder={`Search ${plural.toLowerCase()}...`}
+                                                placeholder={`Search by ${singular.toLowerCase()} name, contact name, email or phone...`}
                                                 value={entitySearch}
                                                 onValueChange={setEntitySearch}
                                             />
-                                            <CommandList data-scroll-lock-scrollable className="max-h-[220px] overflow-y-auto overflow-x-hidden scrollbar-thin">
-                                                <CommandEmpty>No {singular.toLowerCase()} found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {entities.map((e: any) => (
-                                                        <CommandItem
-                                                            key={e.id}
-                                                            value={e.name || e.displayName}
-                                                            onSelect={() => {
-                                                                setSelectedEntityId(e.entityId);
-                                                                setEntitySearchOpen(false);
-                                                            }}
-                                                            className="font-bold text-xs p-3 cursor-pointer"
-                                                        >
-                                                            <div className="flex flex-col">
-                                                                <span>{e.name || e.displayName}</span>
-                                                                <span className="text-[9px] text-muted-foreground font-normal">{e.email || e.primaryEmail || 'No Email'} • {e.entityType || singular.toLowerCase()}</span>
-                                                            </div>
-                                                        </CommandItem>
-                                                    ))}
-                                                    {hasMore && (
-                                                        <CommandItem
-                                                            value="__load_more__"
-                                                            onSelect={() => loadMore()}
-                                                            className="justify-center text-[10px] font-bold text-primary cursor-pointer"
-                                                        >
-                                                            Load more…
-                                                        </CommandItem>
-                                                    )}
-                                                </CommandGroup>
+                                            <CommandList data-scroll-lock-scrollable className="max-h-[240px] overflow-y-auto overflow-x-hidden scrollbar-thin">
+                                                {isSearchingEntities ? (
+                                                    <div className="flex items-center justify-center p-4 gap-2 text-xs font-bold text-muted-foreground">
+                                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                        <span>Searching entities & contacts...</span>
+                                                    </div>
+                                                ) : searchResults.length === 0 ? (
+                                                    <CommandEmpty className="p-4 text-xs font-semibold text-muted-foreground text-center">
+                                                        No {singular.toLowerCase()} or contact found matching "{entitySearch}".
+                                                    </CommandEmpty>
+                                                ) : (
+                                                    <CommandGroup>
+                                                        {searchResults.map((item) => (
+                                                            <CommandItem
+                                                                key={item.workspaceEntityId || item.entityId}
+                                                                value={`${item.name} ${item.email || ''} ${item.phone || ''} ${item.matchedContact?.name || ''} ${item.matchedContact?.email || ''}`}
+                                                                onSelect={() => {
+                                                                    setSelectedEntityId(item.entityId);
+                                                                    setSelectedEntityName(item.name || item.displayName);
+                                                                    setEntityContacts(item.allContacts);
+                                                                    if (item.matchedContact) {
+                                                                        setSelectedFocalContactIds([item.matchedContact.id]);
+                                                                    } else {
+                                                                        setSelectedFocalContactIds([]);
+                                                                    }
+                                                                    setEntitySearchOpen(false);
+                                                                }}
+                                                                className="font-bold text-xs p-3 cursor-pointer hover:bg-muted/50 rounded-lg my-0.5 border-b border-border/30 last:border-none"
+                                                            >
+                                                                <div className="flex flex-col gap-1 w-full text-left">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <span className="font-extrabold text-xs text-foreground truncate">{item.name || item.displayName}</span>
+                                                                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-primary/10 text-primary shrink-0">
+                                                                            {item.entityType}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-[10px] text-muted-foreground font-medium truncate">
+                                                                        {[item.email, item.phone].filter(Boolean).join(' • ') || 'No primary email/phone'}
+                                                                    </div>
+
+                                                                    {/* Matched Contact Highlight Badge */}
+                                                                    {item.matchedContact && (
+                                                                        <div className="mt-1 flex items-center gap-1.5 p-1.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-600 dark:text-indigo-300">
+                                                                            <UserCircle2 className="h-3 w-3 shrink-0" />
+                                                                            <span className="truncate">
+                                                                                Contact match: <span className="underline">{item.matchedContact.name}</span>
+                                                                                {item.matchedContact.email || item.matchedContact.phone ? ` (${[item.matchedContact.email, item.matchedContact.phone].filter(Boolean).join(' • ')})` : ''}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                )}
                                             </CommandList>
                                         </Command>
                                     </PopoverContent>
