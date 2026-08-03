@@ -707,11 +707,66 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
       const baseUrl = getBaseUrl();
 
-      const notificationVars = {
-        ...responseData.answers.reduce((acc: any, ans: any) => ({
-          ...acc,
-          [ans.questionId]: Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value)
-        }), {}),
+      // Build question map for variable key alias resolution
+      const questionMap = new Map<string, any>();
+      if (Array.isArray(surveyData.elements)) {
+        surveyData.elements.forEach((el: any) => {
+          if (el && typeof el === 'object' && el.id) {
+            questionMap.set(el.id, el);
+            if (el.variableName) questionMap.set(el.variableName, el);
+            if (el.fieldKey) questionMap.set(el.fieldKey, el);
+            if (el.key) questionMap.set(el.key, el);
+          }
+        });
+      }
+
+      const answerVars: Record<string, string> = {};
+      let respPhone = (responseData as any).contactPhone || (responseData as any).respondentPhone || '';
+      let respEmail = (responseData as any).contactEmail || (responseData as any).respondentEmail || '';
+
+      if (Array.isArray(responseData.answers)) {
+        responseData.answers.forEach((ans: any) => {
+          if (ans && ans.questionId) {
+            const valStr = Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value ?? '');
+            answerVars[ans.questionId] = valStr;
+
+            const q = questionMap.get(ans.questionId);
+            if (q) {
+              if (q.variableName) {
+                answerVars[q.variableName] = valStr;
+                answerVars[`q_${q.variableName}`] = valStr;
+                const bare = q.variableName.replace(/^q_/, '');
+                answerVars[bare] = valStr;
+                answerVars[`q_${bare}`] = valStr;
+              }
+              if (q.fieldKey) {
+                answerVars[q.fieldKey] = valStr;
+                answerVars[`q_${q.fieldKey}`] = valStr;
+              }
+              if (q.key) {
+                answerVars[q.key] = valStr;
+              }
+
+              const qType = (q.type || '').toLowerCase();
+              const qTitle = (q.title || '').toLowerCase();
+              const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
+
+              if (!respPhone && (qType === 'phone' || qType === 'contact_phone' || qTitle.includes('phone') || qTitle.includes('contact number') || qVar.includes('phone'))) {
+                respPhone = valStr;
+              }
+              if (!respEmail && (qType === 'email' || qType === 'contact_email' || qTitle.includes('email') || qVar.includes('email'))) {
+                respEmail = valStr;
+              }
+            } else if (ans.questionId.startsWith('q_')) {
+              answerVars[ans.questionId.substring(2)] = valStr;
+            }
+          }
+        });
+      }
+
+      const notificationVars: Record<string, any> = {
+        ...answerVars,
+        ...((responseData as any).variables || {}),
         survey_title: surveyData.title,
         surveyTitle: surveyData.title,
         survey_id: surveyId,
@@ -719,6 +774,8 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         submission_id: docRef.id,
         submissionId: docRef.id,
         responseId: docRef.id,
+        _surveyId: surveyId,
+        _responseId: docRef.id,
         workspaceId,
         entityId: finalEntityId || '',
         score: responseData.score !== undefined ? responseData.score : 0,
@@ -731,6 +788,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         contactName: resolvedRespondentName,
         entity_name: finalEntityName || resolvedRespondentName,
         entityName: finalEntityName || resolvedRespondentName,
+        q_entity_name_input: answerVars.q_entity_name_input || finalEntityName || resolvedRespondentName,
         result_message: resultMsg,
         resultMessage: resultMsg,
         result_title: resultTitle,
@@ -747,6 +805,17 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         submission_link: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
         submissionLink: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
       };
+
+      if (respPhone) {
+        notificationVars.contact_phone = respPhone;
+        notificationVars.respondent_phone = respPhone;
+        notificationVars.phone = respPhone;
+      }
+      if (respEmail) {
+        notificationVars.contact_email = respEmail;
+        notificationVars.respondent_email = respEmail;
+        notificationVars.email = respEmail;
+      }
 
       // Internal Team Alerts
       if (surveyData.adminAlertsEnabled) {

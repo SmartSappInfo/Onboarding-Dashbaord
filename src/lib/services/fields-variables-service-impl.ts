@@ -893,22 +893,152 @@ export class FieldsVariablesService {
           valuesMap.set('dashboard_url', `${baseUrl}/admin/surveys/${context.surveyId}/results`);
           valuesMap.set('submission_link', `${baseUrl}/admin/surveys/${context.surveyId}/results?submissionId=${responseId}`);
 
+          // Build question lookup table from survey.elements
+          const questionMap = new Map<string, {
+            id: string;
+            variableName?: string;
+            fieldKey?: string;
+            key?: string;
+            type?: string;
+            title?: string;
+          }>();
+
+          if (Array.isArray(survey.elements)) {
+            survey.elements.forEach((el: unknown) => {
+              if (el && typeof el === 'object' && 'id' in el) {
+                const q = el as {
+                  id: string;
+                  variableName?: string;
+                  fieldKey?: string;
+                  key?: string;
+                  type?: string;
+                  title?: string;
+                };
+                if (q.id) questionMap.set(q.id, q);
+                if (q.variableName) questionMap.set(q.variableName, q);
+                if (q.fieldKey) questionMap.set(q.fieldKey, q);
+                if (q.key) questionMap.set(q.key, q);
+              }
+            });
+          }
+
+          let extractedPhone = '';
+          let extractedEmail = '';
+          let extractedName = '';
+
+          const registerAnswer = async (questionId: string, valStr: string) => {
+            valuesMap.set(`survey_fields.${questionId}`, valStr);
+            valuesMap.set(questionId, valStr);
+
+            const q = questionMap.get(questionId);
+            if (q) {
+              if (q.variableName) {
+                valuesMap.set(q.variableName, valStr);
+                valuesMap.set(`q_${q.variableName}`, valStr);
+                const bare = q.variableName.replace(/^q_/, '');
+                valuesMap.set(bare, valStr);
+                valuesMap.set(`q_${bare}`, valStr);
+              }
+              if (q.fieldKey) {
+                valuesMap.set(q.fieldKey, valStr);
+                valuesMap.set(`q_${q.fieldKey}`, valStr);
+              }
+              if (q.key) {
+                valuesMap.set(q.key, valStr);
+              }
+
+              const qType = (q.type || '').toLowerCase();
+              const qTitle = (q.title || '').toLowerCase();
+              const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
+
+              // Resolve Entity / School selector ID to human-readable Entity Name
+              if (
+                qType.includes('entity') || qType.includes('school') ||
+                qTitle.includes('school') || qTitle.includes('institution') || qTitle.includes('entity') ||
+                qVar.includes('entity') || qVar.includes('school')
+              ) {
+                valuesMap.set('entity_name', valStr);
+                valuesMap.set('school_name', valStr);
+                valuesMap.set('q_entity_name_input', valStr);
+
+                // If valStr is an ID string, attempt to resolve actual entity document name
+                if (valStr.length >= 8 && (valStr.includes('_') || !valStr.includes(' '))) {
+                  try {
+                    const entSnap = await getEntityDocCached(valStr).catch(() => null);
+                    if (entSnap?.exists) {
+                      const resolvedEntityName = String(entSnap.data()?.name || valStr);
+                      valuesMap.set('entity_name', resolvedEntityName);
+                      valuesMap.set('school_name', resolvedEntityName);
+                      valuesMap.set('q_entity_name_input', resolvedEntityName);
+                      if (q.variableName) {
+                        valuesMap.set(q.variableName, resolvedEntityName);
+                        valuesMap.set(`q_${q.variableName}`, resolvedEntityName);
+                      }
+                    }
+                  } catch (_e) {
+                    // Ignore resolution failure, retain original string
+                  }
+                }
+              }
+
+              // Extract phone number from answers
+              if (
+                !extractedPhone && (
+                  qType === 'phone' || qType === 'contact_phone' ||
+                  qTitle.includes('phone') || qTitle.includes('contact number') ||
+                  qVar.includes('phone')
+                )
+              ) {
+                extractedPhone = valStr;
+              }
+
+              // Extract email address from answers
+              if (
+                !extractedEmail && (
+                  qType === 'email' || qType === 'contact_email' ||
+                  qTitle.includes('email') || qVar.includes('email')
+                )
+              ) {
+                extractedEmail = valStr;
+              }
+
+              // Extract respondent name from answers
+              if (
+                !extractedName && (
+                  qType === 'contact_name' ||
+                  qTitle.includes('your name') || qTitle.includes('respondent name') || qTitle.includes('full name') ||
+                  qVar.includes('name')
+                )
+              ) {
+                extractedName = valStr;
+              }
+            } else {
+              // Fallback heuristic if questionId is variableName directly (e.g. q_entity_name_input)
+              if (questionId.startsWith('q_')) {
+                const bareKey = questionId.substring(2);
+                valuesMap.set(bareKey, valStr);
+              }
+              const cleanId = questionId.toLowerCase();
+              if (!extractedPhone && (cleanId.includes('phone') || cleanId.includes('contact'))) extractedPhone = valStr;
+              if (!extractedEmail && cleanId.includes('email')) extractedEmail = valStr;
+              if (!extractedName && cleanId.includes('name')) extractedName = valStr;
+            }
+          };
+
           if (responseData.answers && typeof responseData.answers === 'object') {
             if (Array.isArray(responseData.answers)) {
-              responseData.answers.forEach((ans: unknown) => {
+              for (const ans of responseData.answers) {
                 if (ans && typeof ans === 'object' && 'questionId' in ans && 'value' in ans) {
                   const qAns = ans as { questionId: string; value: unknown };
                   const valStr = typeof qAns.value === 'object' ? JSON.stringify(qAns.value) : String(qAns.value);
-                  valuesMap.set(`survey_fields.${qAns.questionId}`, valStr);
-                  valuesMap.set(qAns.questionId, valStr);
+                  await registerAnswer(qAns.questionId, valStr);
                 }
-              });
+              }
             } else {
-              Object.entries(responseData.answers).forEach(([questionId, val]) => {
+              for (const [questionId, val] of Object.entries(responseData.answers)) {
                 const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
-                valuesMap.set(`survey_fields.${questionId}`, valStr);
-                valuesMap.set(questionId, valStr);
-              });
+                await registerAnswer(questionId, valStr);
+              }
             }
           }
 
@@ -917,7 +1047,31 @@ export class FieldsVariablesService {
               const valStr = val !== null && val !== undefined ? String(val) : '';
               valuesMap.set(fKey, valStr);
               valuesMap.set(`lead_${fKey}`, valStr);
+              if (fKey === 'phone' || fKey === 'contact_phone') extractedPhone = valStr;
+              if (fKey === 'email' || fKey === 'contact_email') extractedEmail = valStr;
+              if (fKey === 'name' || fKey === 'contact_name') extractedName = valStr;
             });
+          }
+
+          // Directly populate contact_phone, contact_email, respondent_phone, respondent_email into valuesMap
+          // so fallback defaults (__fallback__contact_phone) are NEVER triggered when real submitted answers exist.
+          if (extractedPhone) {
+            valuesMap.set('contact_phone', extractedPhone);
+            valuesMap.set('respondent_phone', extractedPhone);
+            valuesMap.set('respondentPhone', extractedPhone);
+            valuesMap.set('phone', extractedPhone);
+          }
+          if (extractedEmail) {
+            valuesMap.set('contact_email', extractedEmail);
+            valuesMap.set('respondent_email', extractedEmail);
+            valuesMap.set('respondentEmail', extractedEmail);
+            valuesMap.set('email', extractedEmail);
+          }
+          if (extractedName) {
+            valuesMap.set('contact_name', extractedName);
+            valuesMap.set('respondent_name', extractedName);
+            valuesMap.set('respondentName', extractedName);
+            valuesMap.set('name', extractedName);
           }
         } else {
           // Fallback to public survey link if no response completed yet

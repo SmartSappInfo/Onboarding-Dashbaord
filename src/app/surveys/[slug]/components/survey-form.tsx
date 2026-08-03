@@ -1402,29 +1402,66 @@ export default function SurveyForm({
                 }
                 
                 variables[q.id] = resolvedVal;
+                if (q.variableName) {
+                    variables[q.variableName] = resolvedVal;
+                    variables[`q_${q.variableName}`] = resolvedVal;
+                    const bareName = q.variableName.replace(/^q_/, '');
+                    variables[bareName] = resolvedVal;
+                    variables[`q_${bareName}`] = resolvedVal;
+                }
+                if (q.fieldKey) {
+                    variables[q.fieldKey] = resolvedVal;
+                    variables[`q_${q.fieldKey}`] = resolvedVal;
+                }
+                if (q.key) {
+                    variables[q.key] = resolvedVal;
+                }
+
                 const cleanTitle = q.title.toLowerCase();
-                if (cleanTitle.includes('name') && !variables.contact_name) variables.contact_name = resolvedVal;
-                if ((cleanTitle.includes('phone') || cleanTitle.includes('contact')) && !variables.contact_phone) variables.contact_phone = resolvedVal;
-                if (cleanTitle.includes('email') && !variables.contact_email) variables.contact_email = resolvedVal;
+                const qType = (q.type || '').toLowerCase();
+                const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
+
+                if ((qType === 'contact_name' || cleanTitle.includes('name') || qVar.includes('name')) && !variables.contact_name) {
+                    variables.contact_name = resolvedVal;
+                    variables.respondent_name = resolvedVal;
+                    variables.respondentName = resolvedVal;
+                }
+                if ((qType === 'phone' || qType === 'contact_phone' || cleanTitle.includes('phone') || cleanTitle.includes('contact number') || qVar.includes('phone')) && !variables.contact_phone) {
+                    variables.contact_phone = resolvedVal;
+                    variables.respondent_phone = resolvedVal;
+                    variables.phone = resolvedVal;
+                }
+                if ((qType === 'email' || qType === 'contact_email' || cleanTitle.includes('email') || qVar.includes('email')) && !variables.contact_email) {
+                    variables.contact_email = resolvedVal;
+                    variables.respondent_email = resolvedVal;
+                    variables.email = resolvedVal;
+                }
+                if (qType.includes('entity') || qType.includes('school') || cleanTitle.includes('school') || cleanTitle.includes('institution') || cleanTitle.includes('entity') || qVar.includes('entity') || qVar.includes('school')) {
+                    variables.entity_name = resolvedVal;
+                    variables.school_name = resolvedVal;
+                    variables.q_entity_name_input = resolvedVal;
+                }
             }
         });
 
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
-        // Build response document with unified entity reference
+        // Build response document with unified entity reference and mapped variables
         const responseData = { 
             surveyId: survey.id, 
             submittedAt: new Date().toISOString(), 
             answers, 
             score,
-            respondentName: variables.contact_name || null,
+            respondentName: variables.contact_name || variables.respondent_name || null,
+            contactPhone: variables.contact_phone || variables.phone || null,
+            contactEmail: variables.contact_email || variables.email || resolvedRecipientContact || null,
+            variables,
             sourcePageId: sourcePageId || null,
             entityId: survey.entityId || null,
             entityName: survey.entityName || null,
             entityType: survey.entityId ? 'institution' as const : undefined,
             workspaceId: survey.workspaceIds?.[0] || null,
             assignedUserId: assignedUserId || null,
-            contactEmail: resolvedRecipientContact || null,
             respondentEntityId: respondentEntityId || null,
             channel: channel || 'direct',
         };
