@@ -41,7 +41,7 @@ export function HeaderSettingsControl({
     navItems: []
   };
 
-  const [activeTargetSelector, setActiveTargetSelector] = useState<{ type: 'button' | 'navItem'; id: string } | null>(null);
+  const [activeTargetSelector, setActiveTargetSelector] = useState<{ type: 'button' | 'navItem' | 'subItem'; id: string; parentId?: string } | null>(null);
   const [openLinkPickerId, setOpenLinkPickerId] = useState<string | null>(null);
 
   const normalizedButtons = getNormalizedHeaderButtons(header);
@@ -53,6 +53,18 @@ export function HeaderSettingsControl({
         btn.id === activeTargetSelector.id ? { ...btn, actionTargetId: targetId } : btn
       );
       onUpdateHeader({ buttons: updated });
+    } else if (activeTargetSelector.type === 'subItem' && activeTargetSelector.parentId) {
+      onUpdateHeader({
+        navItems: (header.navItems || []).map(item => {
+          if (item.id === activeTargetSelector.parentId) {
+            const updatedChildren = (item.children || []).map(c => 
+              c.id === activeTargetSelector.id ? { ...c, actionTargetId: targetId } : c
+            );
+            return { ...item, children: updatedChildren };
+          }
+          return item;
+        })
+      });
     } else {
       onUpdateHeader({
         navItems: (header.navItems || []).map(item =>
@@ -743,7 +755,57 @@ export function HeaderSettingsControl({
                                   </div>
 
                                   <div className="space-y-1">
-                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">URL Link</Label>
+                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Type</Label>
+                                    <select
+                                      value={child.linkType || 'url'}
+                                      onChange={(e) => {
+                                        const updatedChildren = (item.children || []).map(c => c.id === child.id ? { 
+                                          ...c, 
+                                          linkType: e.target.value as HeaderNavItem['linkType'],
+                                          url: '#',
+                                          targetSectionId: '',
+                                          action: undefined,
+                                          actionTargetId: undefined
+                                        } : c);
+                                        handleUpdateNavItem(item.id, { children: updatedChildren });
+                                      }}
+                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                    >
+                                      <option value="url">URL Redirect</option>
+                                      <option value="scroll">Scroll Section</option>
+                                      <option value="action">Page Action</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                {/* Target Configuration for Sub-Item */}
+                                {(child.linkType === 'url' || !child.linkType) && (
+                                  <div className="space-y-1 pt-1">
+                                    <div className="flex items-center justify-between">
+                                      <Label className="text-[8px] font-bold text-slate-400 uppercase">URL Link</Label>
+                                      <Popover
+                                        open={openLinkPickerId === `sub-${child.id}`}
+                                        onOpenChange={(open) => setOpenLinkPickerId(open ? `sub-${child.id}` : null)}
+                                      >
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className="flex items-center gap-1 text-[8px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                          >
+                                            <LinkIcon className="h-2.5 w-2.5" /> Select Target
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-80 p-0 bg-slate-950 border border-slate-800 shadow-2xl" align="end">
+                                          <LinkPicker
+                                            onSelect={(selectedUrl) => {
+                                              const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, url: selectedUrl } : c);
+                                              handleUpdateNavItem(item.id, { children: updatedChildren });
+                                              setOpenLinkPickerId(null);
+                                            }}
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
                                     <input
                                       type="text"
                                       value={child.url || ''}
@@ -751,11 +813,78 @@ export function HeaderSettingsControl({
                                         const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, url: e.target.value } : c);
                                         handleUpdateNavItem(item.id, { children: updatedChildren });
                                       }}
-                                      placeholder="#"
-                                      className="w-full h-7 px-1.5 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                      placeholder="https://example.com or /p/slug"
+                                      className="w-full h-7 px-2 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
                                     />
                                   </div>
-                                </div>
+                                )}
+
+                                {child.linkType === 'scroll' && (
+                                  <div className="space-y-1 pt-1">
+                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Target Section</Label>
+                                    <select
+                                      value={child.targetSectionId || ''}
+                                      onChange={(e) => {
+                                        const updatedChildren = (item.children || []).map(c => c.id === child.id ? { ...c, targetSectionId: e.target.value } : c);
+                                        handleUpdateNavItem(item.id, { children: updatedChildren });
+                                      }}
+                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                    >
+                                      <option value="">Select a Section...</option>
+                                      {(structure.sections || []).map((sec, sIdx) => {
+                                        const heading = (sec.props as { heading?: string })?.heading || `Section ${sIdx + 1}`;
+                                        return <option key={sec.id} value={sec.id}>{heading}</option>;
+                                      })}
+                                    </select>
+                                  </div>
+                                )}
+
+                                {child.linkType === 'action' && (
+                                  <div className="space-y-1 pt-1">
+                                    <Label className="text-[8px] font-bold text-slate-400 uppercase">Overlay Action</Label>
+                                    <select
+                                      value={child.action || ''}
+                                      onChange={(e) => {
+                                        const updatedChildren = (item.children || []).map(c => c.id === child.id ? { 
+                                          ...c, 
+                                          action: e.target.value as HeaderNavItem['action'],
+                                          actionTargetId: undefined
+                                        } : c);
+                                        handleUpdateNavItem(item.id, { children: updatedChildren });
+                                      }}
+                                      className="w-full h-7 px-1 text-[9px] bg-slate-900 border border-slate-800 rounded text-slate-200"
+                                    >
+                                      <option value="">Select Action...</option>
+                                      <option value="receipt_request">Open Receipt Request Modal</option>
+                                      <option value="open_modal_form">Open Form Modal</option>
+                                      <option value="open_modal_survey">Open Survey Modal</option>
+                                      <option value="open_modal_agreement">Open Agreement Modal</option>
+                                    </select>
+
+                                    {child.action && ['open_modal_form', 'open_modal_survey', 'open_modal_agreement'].includes(child.action) && (
+                                      <div className="pt-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveTargetSelector({ type: 'subItem', id: child.id, parentId: item.id })}
+                                          className="w-full h-7 px-2 text-[9px] flex items-center justify-between bg-slate-900 border border-slate-800 rounded text-slate-300 hover:border-emerald-500/50 transition-colors"
+                                        >
+                                          <span className="truncate">
+                                            {child.actionTargetId 
+                                              ? `${child.action === 'open_modal_form' ? 'Form' : child.action === 'open_modal_survey' ? 'Survey' : 'Agreement'}: ${
+                                                  child.action === 'open_modal_form' 
+                                                    ? (resources.forms.find(f => f.id === child.actionTargetId)?.title || child.actionTargetId)
+                                                    : child.action === 'open_modal_survey'
+                                                    ? (resources.surveys.find(s => s.id === child.actionTargetId)?.title || child.actionTargetId)
+                                                    : (resources.agreements.find(a => a.id === child.actionTargetId)?.title || child.actionTargetId)
+                                                }`
+                                              : 'Select resource target...'}
+                                          </span>
+                                          <Plus className="h-2.5 w-2.5 text-slate-500" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
