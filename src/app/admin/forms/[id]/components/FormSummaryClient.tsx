@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { doc, collection, query, orderBy, limit, getCountFromServer } from 'firebase/firestore';
+import { doc, collection, query, orderBy, limit, getCountFromServer, where } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -72,7 +72,12 @@ export default function FormSummaryClient({ id }: { id: string }) {
 
   const submissionsColRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
-    return query(collection(firestore, `forms/${id}/submissions`), orderBy('submittedAt', 'desc'), limit(5));
+    return query(
+      collection(firestore, 'form_submissions'),
+      where('formId', '==', id),
+      orderBy('submittedAt', 'desc'),
+      limit(5)
+    );
   }, [firestore, id]);
 
   const { data: recentSubmissions, isLoading: isSubmissionsLoading } = useCollection<FormSubmission>(submissionsColRef);
@@ -83,8 +88,9 @@ export default function FormSummaryClient({ id }: { id: string }) {
       if (!firestore || !id) return;
       try {
         setIsCounting(true);
-        const colRef = collection(firestore, `forms/${id}/submissions`);
-        const snapshot = await getCountFromServer(colRef);
+        const colRef = collection(firestore, 'form_submissions');
+        const q = query(colRef, where('formId', '==', id));
+        const snapshot = await getCountFromServer(q);
         if (isMounted) {
           setTotalSubmissions(snapshot.data().count);
         }

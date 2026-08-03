@@ -83,13 +83,17 @@ export function EmbeddedSurvey({
   if (displayMode === 'inline' || isInModal) {
     const trackingStr = getTrackingQueryStr();
     const themeStr = themeMode ? `&theme=${encodeURIComponent(themeMode)}` : '';
-    const embedUrl = `/surveys/${surveyId}?embed=true${themeStr}${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
+    const modalStr = isInModal ? '&inModal=true' : '';
+    const embedUrl = `/surveys/${surveyId}?embed=true${modalStr}${themeStr}${pageId ? `&sourcePageId=${pageId}` : ''}${resultMode ? `&resultMode=${resultMode}` : ''}${trackingStr}`;
     return (
       <div 
-        className="w-full flex flex-col bg-transparent relative transition-all duration-200"
+        className={cn(
+          "w-full flex flex-col bg-transparent relative transition-all duration-200",
+          isInModal && "p-4 sm:p-6 md:p-8"
+        )}
         style={{
           height: size.height ? `${size.height}px` : 'auto',
-          minHeight: '350px',
+          minHeight: '380px',
           maxHeight: isInModal ? '85vh' : undefined,
           backgroundColor: 'transparent'
         }}

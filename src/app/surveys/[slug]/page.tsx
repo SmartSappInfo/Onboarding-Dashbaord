@@ -99,7 +99,8 @@ export default async function PublicSurveyPage({
 }) {
     const { slug } = await params;
     const resolvedSearchParams = await searchParams;
-    const { sourcePageId, ref, preview, workspaceId, ws, embed, ch } = resolvedSearchParams;
+    const { sourcePageId, ref, preview, workspaceId, ws, embed, ch, inModal, modal } = resolvedSearchParams;
+    const isInModal = inModal === 'true' || modal === 'true';
     const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
@@ -383,6 +384,7 @@ export default async function PublicSurveyPage({
                 resolvedRecipientContact={resolvedRecipientContact}
                 respondentEntityId={resolvedEntityId}
                 channel={channel}
+                isInModal={isInModal}
             />
         </>
     );

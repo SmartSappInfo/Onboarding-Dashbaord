@@ -41,6 +41,7 @@ interface SurveyDisplayProps {
     resolvedRecipientContact?: string | null;
     respondentEntityId?: string | null;
     channel?: 'email' | 'sms' | 'whatsapp' | 'direct';
+    isInModal?: boolean;
 }
 
 export default function SurveyDisplay({ 
@@ -55,7 +56,8 @@ export default function SurveyDisplay({
     resolvedEntityId = null,
     resolvedRecipientContact = null,
     respondentEntityId = null,
-    channel = 'direct'
+    channel = 'direct',
+    isInModal = false
 }: SurveyDisplayProps) {
     useIframeHeightReporter(survey.slug);
 
@@ -431,8 +433,8 @@ export default function SurveyDisplay({
                     </div>
                 </div>
             )}
-            <main className={cn("flex-grow flex items-center justify-center relative z-10", isEmbedded ? "py-0" : "py-8 sm:py-16")}>
-                <div className={cn("w-full mx-auto", isEmbedded ? "max-w-full px-0" : "max-w-4xl px-4")}>
+            <main className={cn("flex-grow flex items-center justify-center relative z-10", isEmbedded ? (isInModal ? "py-4 sm:py-6 px-3 sm:px-6" : "py-0") : "py-8 sm:py-16")}>
+                <div className={cn("w-full mx-auto transition-all", isEmbedded ? (isInModal ? "max-w-3xl p-4 sm:p-8 bg-card dark:bg-zinc-900 rounded-3xl border border-slate-200/60 dark:border-zinc-800 shadow-xl" : "max-w-full px-0") : "max-w-4xl px-4")}>
                     {/* Branding logo and Title are now handled natively inside SurveyForm to support both client-side and studio-preview consistency */}
 
                     {/* Title rendering is handled natively inside SurveyForm to support Preview builders */}
@@ -474,6 +476,7 @@ export default function SurveyDisplay({
                                     resolvedRecipientContact={resolvedRecipientContact}
                                     respondentEntityId={respondentEntityId}
                                     channel={channel}
+                                    isInModal={isInModal}
                                 />
                             </motion.div>
                         )}

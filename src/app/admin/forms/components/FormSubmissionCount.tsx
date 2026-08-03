@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
@@ -30,8 +30,9 @@ export function FormSubmissionCount({ formId, fallbackCount = 0 }: FormSubmissio
 
       try {
         setLoading(true);
-        const colRef = collection(firestore, `forms/${formId}/submissions`);
-        const snapshot = await getCountFromServer(colRef);
+        const colRef = collection(firestore, 'form_submissions');
+        const q = query(colRef, where('formId', '==', formId));
+        const snapshot = await getCountFromServer(q);
         if (isMounted) {
           setCount(snapshot.data().count);
         }

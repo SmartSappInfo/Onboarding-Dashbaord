@@ -56,6 +56,7 @@ interface SurveyFormProps {
     resolvedRecipientContact?: string | null;
     respondentEntityId?: string | null;
     channel?: 'email' | 'sms' | 'whatsapp' | 'direct';
+    isInModal?: boolean;
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -953,12 +954,13 @@ export default function SurveyForm({
     simulatedValues = {},
     resolvedRecipientContact = null,
     respondentEntityId = null,
-    channel = 'direct'
+    channel = 'direct',
+    isInModal = false
 }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const isEmbedded = searchParams?.get('embed') === 'true';
+    const isEmbedded = searchParams?.get('embed') === 'true' || searchParams?.get('inModal') === 'true' || isInModal;
     const { toast } = useToast();
 
     const interpolateText = React.useCallback((text: string | undefined | null): string => {
@@ -1840,12 +1842,13 @@ export default function SurveyForm({
                             )}
                             
                              {/* 
-                               Card Container Styling:
-                               When embedded (isEmbedded === true), render with transparent background, zero borders, zero top accent bar, and zero extra padding
-                               so the survey blends 100% seamlessly into host page builder containers or modal dialogs without box borders or shadows.
-                             */}
-                             <Card className={cn(isEmbedded ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-2xl text-foreground transition-all duration-300")}>
-                                <CardContent className={cn("space-y-6 sm:space-y-8 text-left", isEmbedded ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
+                                Card Container Styling:
+                                When embedded inline (isEmbedded === true && !isInModal), render with transparent background, zero borders, and zero extra padding
+                                so the survey blends seamlessly into host page builder sections.
+                                When rendered in a Modal (isInModal === true), render a structured card with rounded corners, subtle border, and full inset padding.
+                              */}
+                             <Card className={cn((isEmbedded && !isInModal) ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-lg text-foreground transition-all duration-300")}>
+                                <CardContent className={cn("space-y-6 sm:space-y-8 text-left", (isEmbedded && !isInModal) ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {
                                             if (el.id === pageSection?.id) return null;
