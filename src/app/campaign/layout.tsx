@@ -6,8 +6,8 @@ export default function CampaignLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
       {children}
-      <div className="fixed bottom-6 right-6 z-50 bg-background/80 hover:bg-background backdrop-blur-sm border rounded-full shadow-lg p-1 transition-all duration-300">
-        <ThemeToggle />
+      <div className="fixed bottom-4 right-4 z-50 bg-background/80 hover:bg-background backdrop-blur-md border rounded-full shadow-md p-0.5 transition-all duration-300">
+        <ThemeToggle size="sm" />
       </div>
     </ThemeProvider>
   );

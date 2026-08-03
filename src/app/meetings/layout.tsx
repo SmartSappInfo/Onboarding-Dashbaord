@@ -7,8 +7,8 @@ export default function MeetingsLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={true}>
       {children}
-      <div className="fixed top-6 right-6 z-50 bg-background/80 hover:bg-background backdrop-blur-sm border border-white/10 rounded-full shadow-lg p-1 transition-all duration-300">
-        <ThemeToggle />
+      <div className="fixed bottom-4 right-4 z-50 bg-background/80 hover:bg-background backdrop-blur-md border border-white/10 rounded-full shadow-md p-0.5 transition-all duration-300">
+        <ThemeToggle size="sm" />
       </div>
       <Suspense fallback={null}>
         <IframeResizer />
