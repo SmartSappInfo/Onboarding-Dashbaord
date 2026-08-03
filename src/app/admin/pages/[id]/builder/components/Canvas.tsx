@@ -89,6 +89,7 @@ import { Input } from '@/components/ui/input';
 import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings, HeaderCtaButton } from '@/lib/types';
 import { getNormalizedHeaderButtons, isColorLight } from '@/lib/page-builder/resolve-theme';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
+import { HeaderNavRenderer } from '@/components/page-builder/HeaderNavRenderer';
 import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { UnifiedVariable } from '@/lib/types/variables';
@@ -1925,37 +1926,21 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                                          ))}
                                                      </div>
                                                  ) : (
-                                                     <div className="flex items-center justify-between w-full">
-                                                         <div className="flex items-center gap-6">
-                                                             <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
-                                                             {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
-                                                                 <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-655 dark:text-slate-300">
-                                                                     {headerSettings.navItems.map((item) => (
-                                                                         <span 
-                                                                             key={item.id} 
-                                                                             className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer pointer-events-auto"
-                                                                             onClick={(e) => e.stopPropagation()}
-                                                                         >
-                                                                             <InlineEditable
-                                                                                 tagName="span"
-                                                                                 isEdit={isEditMode}
-                                                                                 onChange={(val) => {
-                                                                                     const updatedNavItems = headerSettings.navItems.map(navItem => 
-                                                                                         navItem.id === item.id ? { ...navItem, label: val } : navItem
-                                                                                     );
-                                                                                     onUpdateHeader?.({ navItems: updatedNavItems });
-                                                                                 }}
-                                                                                 className="outline-none border-0 bg-transparent text-slate-655 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold text-xs text-center cursor-text min-w-[10px] inline-block pointer-events-auto"
-                                                                                 onClick={(e) => e.stopPropagation()}
-                                                                                 value={item.label}
-                                                                                 html={false}
-                                                                             />
-                                                                         </span>
-                                                                     ))}
-                                                                 </nav>
-                                                             )}
-                                                         </div>
-                                                         <div className="flex items-center gap-4">
+                                                     <div className="flex items-center justify-between w-full gap-4">
+                                                          <div className="flex items-center gap-3 shrink-0">
+                                                              <SmartSappLogo className="h-8 w-auto text-[#0F172A] dark:text-white" />
+                                                          </div>
+                                                          {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
+                                                              <div className="flex-1 min-w-0 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                                                  <HeaderNavRenderer
+                                                                      headerSettings={headerSettings}
+                                                                      onNavItemClick={() => {}}
+                                                                      primaryColor={primaryColor}
+                                                                      isEditMode={isEditMode}
+                                                                  />
+                                                              </div>
+                                                          )}
+                                                          <div className="flex items-center gap-4 shrink-0">
                                                              {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
                                                                  <div className="relative max-w-xs hidden sm:block">
                                                                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-450" />

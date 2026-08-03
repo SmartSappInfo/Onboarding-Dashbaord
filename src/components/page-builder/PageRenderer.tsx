@@ -13,6 +13,7 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BlockRenderer } from './BlockRenderer';
+import { HeaderNavRenderer } from './HeaderNavRenderer';
 import { themeToCssVars, isColorLight, getNormalizedHeaderButtons } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import type { 
@@ -585,28 +586,26 @@ export function PageRenderer({
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-6">
+              <div className="flex items-center justify-between w-full gap-4">
+                <div className="flex items-center gap-3 shrink-0">
                   {orgBranding?.logoUrl ? (
                     <img src={orgBranding.logoUrl} alt={orgBranding.name} className="h-8 w-auto object-contain" />
                   ) : (
                     <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
                   )}
-                  {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
-                    <nav className="hidden md:flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      {headerSettings.navItems.map((item) => (
-                        <button 
-                          key={item.id} 
-                          onClick={() => handleNavItemClick(item)}
-                          className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </nav>
-                  )}
                 </div>
-                <div className="flex items-center gap-3">
+
+                {(headerSettings.preset === 'full-nav' || headerSettings.preset === 'search-nav') && (
+                  <div className="flex-1 min-w-0">
+                    <HeaderNavRenderer
+                      headerSettings={headerSettings}
+                      onNavItemClick={handleNavItemClick}
+                      primaryColor={theme?.colors?.primary || '#3B5FFF'}
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 shrink-0">
                   {headerSettings.preset === 'search-nav' && headerSettings.showSearch && (
                     <div className="relative max-w-xs hidden sm:block">
                       <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />

@@ -3749,6 +3749,13 @@ export interface HeaderNavItem {
   actionTargetId?: string;
   enableTracking?: boolean; // Forward captured tracking codes/UTMs & track interactions (default: true)
   trackingId?: string; // Optional custom tracking ID or tag for campaign analytics
+
+  // Rich Dropdown Extensions
+  isDropdown?: boolean;
+  subtitle?: string;
+  icon?: string;
+  badge?: string;
+  children?: HeaderNavItem[];
 }
 
 export interface HeaderCtaButton {
@@ -3782,6 +3789,10 @@ export interface PageHeaderSettings {
   phoneNumber?: string;
   navItems: HeaderNavItem[];
   buttons?: HeaderCtaButton[];
+
+  // Nav Links Alignment & Swappable Style Extensions
+  navAlignment?: 'left' | 'center' | 'right';
+  navStyle?: 'minimal' | 'underline_slide' | 'pill_tabs' | 'glass_cards' | 'mega_menu';
 }
 
 export interface PageFooterSettings {
