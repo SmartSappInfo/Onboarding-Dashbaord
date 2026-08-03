@@ -160,17 +160,17 @@ export async function searchEntitiesForDealAction({
     const results: SearchedEntityResult[] = [];
 
     for (const item of workspaceDocs) {
-      const we = item.data;
-      const globalEntity = globalEntitiesMap.get(item.entityId);
+      const we = (item.data as unknown) as Record<string, unknown>;
+      const globalEntity = (globalEntitiesMap.get(item.entityId) || {}) as Record<string, unknown>;
 
-      const entityName = (we.displayName || we.name || globalEntity?.displayName || globalEntity?.name || '').trim();
+      const entityName = String(we.displayName || we.name || we.entityName || globalEntity.displayName || globalEntity.name || '').trim();
       const entityNameLower = entityName.toLowerCase();
-      const entityEmail = (we.email || we.primaryEmail || globalEntity?.email || globalEntity?.primaryEmail || '').trim().toLowerCase();
-      const entityPhone = (we.phone || we.primaryPhone || globalEntity?.phone || globalEntity?.primaryPhone || '').trim();
+      const entityEmail = String(we.primaryEmail || we.email || globalEntity.primaryEmail || globalEntity.email || '').trim().toLowerCase();
+      const entityPhone = String(we.primaryPhone || we.phone || globalEntity.primaryPhone || globalEntity.phone || '').trim();
       const entityPhoneDigits = entityPhone.replace(/\D/g, '');
-      const entityType = we.entityType || globalEntity?.entityType || 'entity';
+      const entityType = String(we.entityType || globalEntity.entityType || 'entity');
 
-      const contacts: EntityContact[] = globalEntity?.entityContacts || [];
+      const contacts: EntityContact[] = (Array.isArray(globalEntity.entityContacts) ? globalEntity.entityContacts : Array.isArray(we.entityContacts) ? we.entityContacts : []) as EntityContact[];
 
       let matchedContactInfo: MatchedContactInfo | null = null;
       let isMatch = false;
