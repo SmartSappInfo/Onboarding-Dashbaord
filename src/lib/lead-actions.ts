@@ -14,24 +14,49 @@ import { normalizeContactType, enforceContactConstraints } from './entity-contac
  * Handles synchronization between Campaign Page submissions and the core CRM logic.
  */
 
-interface LeadSummary {
+/**
+ * Strictly typed representation of a CRM lead captured from a landing page.
+ * 
+ * Maintainer Note: Data payload is typed as Record<string, unknown> to satisfy strict typing protocols
+ * without resorting to `any`.
+ */
+export interface LeadSummary {
     id: string;
     submittedAt: string;
     name: string;
     email: string;
     phone: string;
-    data: Record<string, any>;
+    data: Record<string, unknown>;
     entityId?: string;
     type: 'form' | 'survey';
     sourceId: string; // formId or surveyId
 }
 
+interface SurveyAnswerItem {
+    questionId: string;
+    value: string | number | boolean | string[] | null | undefined;
+}
+
+interface RawSurveyResponseDoc {
+    submittedAt: string;
+    answers?: SurveyAnswerItem[];
+    entityId?: string;
+    surveyId: string;
+}
+
 /**
  * Fetches all submissions/leads for a specific campaign page.
  * Merges form submissions and survey responses.
+ * 
+ * Developer Caution: `form_submissions` requires a composite index on (sourcePageId ASC, submittedAt DESC).
+ * `responses` subcollection uses collectionGroup queries.
  */
 export async function getLeadsForPageAction(pageId: string): Promise<{ success: boolean; data?: LeadSummary[]; error?: string }> {
     try {
+        if (!pageId || typeof pageId !== 'string') {
+            return { success: false, error: 'Invalid page ID provided' };
+        }
+
         // 1. Fetch Form Submissions
         const formsSnap = await adminDb.collection('form_submissions')
             .where('sourcePageId', '==', pageId)
@@ -40,23 +65,24 @@ export async function getLeadsForPageAction(pageId: string): Promise<{ success: 
 
         const formLeads: LeadSummary[] = formsSnap.docs.map(doc => {
             const data = doc.data() as FormSubmission;
+            const submissionData = (data.data || {}) as Record<string, unknown>;
             return {
                 id: doc.id,
-                submittedAt: data.submittedAt,
-                name: extractIdentity(data.data, 'name'),
-                email: extractIdentity(data.data, 'email'),
-                phone: extractIdentity(data.data, 'phone'),
+                submittedAt: data.submittedAt || new Date().toISOString(),
+                name: extractIdentity(submissionData, 'name'),
+                email: extractIdentity(submissionData, 'email'),
+                phone: extractIdentity(submissionData, 'phone'),
                 data: {
-                    ...data.data,
-                    utmSource: data.utmSource,
-                    utmMedium: data.utmMedium,
-                    utmCampaign: data.utmCampaign,
-                    utmTerm: data.utmTerm,
-                    utmContent: data.utmContent,
+                    ...submissionData,
+                    utmSource: data.utmSource ?? null,
+                    utmMedium: data.utmMedium ?? null,
+                    utmCampaign: data.utmCampaign ?? null,
+                    utmTerm: data.utmTerm ?? null,
+                    utmContent: data.utmContent ?? null,
                 },
                 entityId: data.entityId,
                 type: 'form',
-                sourceId: data.formId
+                sourceId: data.formId || ''
             };
         });
 
@@ -67,25 +93,25 @@ export async function getLeadsForPageAction(pageId: string): Promise<{ success: 
             .get();
 
         const surveyLeads: LeadSummary[] = surveysSnap.docs.map(doc => {
-            const data = doc.data() as any; // SurveyResponse has answers array
+            const data = doc.data() as RawSurveyResponseDoc;
             const answers = data.answers || [];
             
             // Convert answers array to flat object for extraction
-            const flatData: Record<string, any> = {};
-            answers.forEach((a: any) => {
+            const flatData: Record<string, unknown> = {};
+            answers.forEach((a) => {
                 flatData[a.questionId] = a.value;
             });
 
             return {
                 id: doc.id,
-                submittedAt: data.submittedAt,
+                submittedAt: data.submittedAt || new Date().toISOString(),
                 name: extractIdentity(flatData, 'name'),
                 email: extractIdentity(flatData, 'email'),
                 phone: extractIdentity(flatData, 'phone'),
                 data: flatData,
                 entityId: data.entityId,
                 type: 'survey',
-                sourceId: data.surveyId
+                sourceId: data.surveyId || ''
             };
         });
 
@@ -95,16 +121,17 @@ export async function getLeadsForPageAction(pageId: string): Promise<{ success: 
         );
 
         return { success: true, data: allLeads };
-    } catch (error: any) {
-        console.error(">>> [LEADS:GET] Failed:", error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        const errMessage = error instanceof Error ? error.message : 'Unknown error occurred while fetching leads';
+        console.error(">>> [LEADS:GET] Failed:", errMessage);
+        return { success: false, error: errMessage };
     }
 }
 
 /**
  * Generic identity extractor from flat data objects.
  */
-function extractIdentity(data: Record<string, any>, field: 'name' | 'email' | 'phone'): string {
+function extractIdentity(data: Record<string, unknown>, field: 'name' | 'email' | 'phone'): string {
     if (!data) return '';
     
     if (field === 'email') {
@@ -118,9 +145,16 @@ function extractIdentity(data: Record<string, any>, field: 'name' | 'email' | 'p
     }
     
     if (field === 'name') {
-        const name = data.name || data.Name || data.fullName || data.FullName || 
-                     `${data.firstName || data.FirstName || ''} ${data.lastName || data.LastName || ''}`.trim();
-        return name || 'Anonymous';
+        const nameStr = typeof data.name === 'string' ? data.name :
+                        typeof data.Name === 'string' ? data.Name :
+                        typeof data.fullName === 'string' ? data.fullName :
+                        typeof data.FullName === 'string' ? data.FullName : '';
+        if (nameStr) return nameStr.trim();
+
+        const firstName = typeof data.firstName === 'string' ? data.firstName : typeof data.FirstName === 'string' ? data.FirstName : '';
+        const lastName = typeof data.lastName === 'string' ? data.lastName : typeof data.LastName === 'string' ? data.LastName : '';
+        const combined = `${firstName} ${lastName}`.trim();
+        return combined || 'Anonymous';
     }
     
     return '';
@@ -133,7 +167,7 @@ function extractIdentity(data: Record<string, any>, field: 'name' | 'email' | 'p
 export async function processLeadCaptureAction(params: {
     submissionId: string;
     collection: 'form_submissions' | 'survey_responses';
-    data: Record<string, any>;
+    data: Record<string, unknown>;
     organizationId: string;
     workspaceId: string;
     sourcePageId: string;
@@ -148,7 +182,7 @@ export async function processLeadCaptureAction(params: {
         let normalizedData = data;
         if (data.answers && Array.isArray(data.answers)) {
             normalizedData = {};
-            data.answers.forEach((a: any) => {
+            data.answers.forEach((a: SurveyAnswerItem) => {
                 normalizedData[a.questionId] = a.value;
             });
         }
@@ -199,6 +233,9 @@ export async function processLeadCaptureAction(params: {
             };
             const entityContacts = enforceContactConstraints([entityContact]);
 
+            const firstNameVal = typeof data.firstName === 'string' ? data.firstName : typeof data.FirstName === 'string' ? data.FirstName : name.split(' ')[0] || '';
+            const lastNameVal = typeof data.lastName === 'string' ? data.lastName : typeof data.LastName === 'string' ? data.LastName : name.split(' ').slice(1).join(' ') || '';
+
             const entity: Entity = {
                 id: entityId,
                 organizationId,
@@ -217,8 +254,8 @@ export async function processLeadCaptureAction(params: {
                 createdAt: timestamp,
                 updatedAt: timestamp,
                 personData: {
-                    firstName: data.firstName || data.FirstName || name.split(' ')[0] || '',
-                    lastName: data.lastName || data.LastName || name.split(' ').slice(1).join(' ') || '',
+                    firstName: firstNameVal,
+                    lastName: lastNameVal,
                     leadSource: `Campaign Page: ${pageName}`
                 }
             };
@@ -294,7 +331,8 @@ export async function processLeadCaptureAction(params: {
             });
         }
 
-    } catch (error: any) {
-        console.error(">>> [LEADS:PROCESS] Failed:", error.message);
+    } catch (error: unknown) {
+        const errMsg = error instanceof Error ? error.message : 'Unknown processing error';
+        console.error(">>> [LEADS:PROCESS] Failed:", errMsg);
     }
 }

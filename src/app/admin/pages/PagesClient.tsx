@@ -212,10 +212,15 @@ export default function PagesClient() {
     [router],
   );
 
+  /**
+   * Navigates to the dedicated analytics dashboard for the target campaign page.
+   * 
+   * Developer Note: Guards against empty page.id to prevent open/invalid routing errors.
+   */
   const handleViewAnalytics = React.useCallback(
     (page: CampaignPage) => {
-      // Future: open analytics slide-over. For now route to campaigns analytics.
-      router.push(`/admin/messaging/campaigns?pageId=${page.id}`);
+      if (!page?.id) return;
+      router.push(`/admin/pages/${page.id}/analytics`);
     },
     [router],
   );
