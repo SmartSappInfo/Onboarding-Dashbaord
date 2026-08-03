@@ -173,7 +173,6 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
                 ...state,
                 version: { ...state.version, structureJson: restored },
                 history: newHistory,
-                activeTab: 'edit' as BuilderTab,
             };
         }
 
@@ -383,7 +382,6 @@ export function useBuilderState() {
         });
 
         dispatch({ type: 'SELECT_BLOCK', payload: block.id });
-        dispatch({ type: 'SET_TAB', payload: 'edit' });
         dispatch({ type: 'CLOSE_VARIANT_PICKER' });
     }, [updateStructure, state.selectedBlockId, state.selectedSectionId, state.selectedColumnIndex]);
 

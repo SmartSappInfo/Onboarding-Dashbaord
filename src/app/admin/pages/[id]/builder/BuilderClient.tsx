@@ -982,10 +982,13 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             "flex-1 text-left min-w-[288px] flex flex-col",
                             builder.activeTab === 'variables' ? "overflow-hidden h-full" : "overflow-y-auto p-4 pt-2 custom-scrollbar"
                         )}>
-                        {/* ─── Performance/Stats Tab ─── */}
+                        {/* ─── Add Components Tab ─── */}
                         {builder.activeTab === 'add' && (
                             <BlockPalette
-                                onAddBlock={builder.addBlock}
+                                onAddBlock={(type) => {
+                                    builder.addBlock(type);
+                                    setIsRightSidebarExpanded(true);
+                                }}
                                 onRequestBlock={(type) => builder.dispatch({ type: 'OPEN_VARIANT_PICKER', payload: type })}
                                 onAddSection={() => builder.addSection()}
                             />
@@ -996,8 +999,14 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                                 version={version}
                                 selectedBlockId={builder.selectedBlockId}
                                 selectedSectionId={builder.selectedSectionId}
-                                onSelectBlock={(id) => builder.dispatch({ type: 'SELECT_BLOCK', payload: id })}
-                                onSelectSection={(id) => builder.dispatch({ type: 'SELECT_SECTION', payload: id })}
+                                onSelectBlock={(id) => {
+                                    builder.dispatch({ type: 'SELECT_BLOCK', payload: id });
+                                    if (id) setIsRightSidebarExpanded(true);
+                                }}
+                                onSelectSection={(id) => {
+                                    builder.dispatch({ type: 'SELECT_SECTION', payload: id });
+                                    if (id) setIsRightSidebarExpanded(true);
+                                }}
                                 onRemoveBlock={builder.removeBlock}
                                 onRemoveSection={builder.removeSection}
                                 onDuplicateBlock={builder.duplicateBlock}
@@ -1258,7 +1267,10 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
             <BlockVariantPicker
                 open={builder.variantPickerType !== null}
                 type={builder.variantPickerType}
-                onSelect={(type, overrideDefaults) => builder.addBlock(type, undefined, overrideDefaults)}
+                onSelect={(type, overrideDefaults) => {
+                    builder.addBlock(type, undefined, overrideDefaults);
+                    setIsRightSidebarExpanded(true);
+                }}
                 onClose={() => builder.dispatch({ type: 'CLOSE_VARIANT_PICKER' })}
             />
             {isShareOpen && (
