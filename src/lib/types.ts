@@ -3689,10 +3689,26 @@ export interface WidgetDefinition {
   pipelineId?: string;
 }
 
-// ─────────────────────────────────────────────────
-// Campaign Page Builder Types
-// ─────────────────────────────────────────────────
-
+// ─── DEVELOPER GUIDELINES: NEW BLOCK ANALYTICS EVALUATION PROTOCOL ─────────────
+/**
+ * Whenever adding a new block type to `PageBlockType` (e.g. 'quiz', 'calculator', 'audio'):
+ * 
+ * 1. INTERACTION IDENTIFICATION:
+ *    Determine if the block contains user interaction triggers (clicks, playback, step progress, modal opens).
+ * 
+ * 2. METRIC SCHEMA EXTENSION:
+ *    - Add new atomic metric counters to `CustomPageStats` below.
+ *    - Add new event type string constants to `PageEventType` below.
+ * 
+ * 3. EVENT TRACKING LISTENER:
+ *    - Hook interaction listeners in the block component to `usePageAnalytics()`.
+ *    - Example for video 50% milestone:
+ *      if (currentTime >= duration * 0.5 && !hasFired50) { trackPageEvent('video_50', blockId); }
+ * 
+ * 4. DASHBOARD VISUALIZATION:
+ *    - Add corresponding KPI cards or metric rows in `AnalyticsClient.tsx`.
+ *    - Ensure full Light/Dark theme compatibility (`bg-card`, `text-card-foreground`, `border-border`).
+ */
 export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr' | 'video_hero' | 'testimonial_grid' | 'choice_cards' | 'app_download' | 'step_section' | 'countdown' | 'title';
 
 export interface PageBlock {
@@ -5390,9 +5406,15 @@ export type AutomationRuleParams = CallActionParams;
 export type PageEventType =
   | 'page_view'
   | 'video_start'
+  | 'video_50'
   | 'video_complete'
   | 'video_replay'
-  | 'cta_click';
+  | 'cta_click'
+  | 'form_submit'
+  | 'form_abandon'
+  | 'survey_start'
+  | 'survey_complete'
+  | 'meeting_confirm';
 
 /**
  * Source channel that brought the visitor to the page.
@@ -5426,10 +5448,19 @@ export interface CustomPageEvent {
 export interface CustomPageStats {
   views: number;
   uniqueViews: number;
+  uniques?: number;
   videoStarts: number;
+  videoMilestone50?: number;
   videoCompletions: number;
   videoReplays: number;
   ctaClicks: number;
+  clicks?: number;
+  conversions?: number;
+  formSubmissions?: number;
+  formAbandonments?: number;
+  surveyStarts?: number;
+  surveyCompletions?: number;
+  meetingConfirmations?: number;
 }
 
 /**

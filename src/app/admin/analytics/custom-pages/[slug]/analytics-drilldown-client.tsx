@@ -103,9 +103,15 @@ function ChannelBadge({ channel }: { channel: PageEventChannel }) {
 const EVENT_CONFIG: Record<PageEventType, { icon: React.ElementType; label: string; className: string }> = {
   page_view: { icon: Eye, label: 'Viewed', className: 'text-slate-400' },
   video_start: { icon: Play, label: 'Played', className: 'text-blue-500' },
+  video_50: { icon: Play, label: 'Watched 50%', className: 'text-indigo-500' },
   video_complete: { icon: CheckCircle2, label: 'Completed', className: 'text-emerald-500' },
   video_replay: { icon: RotateCcw, label: 'Replayed', className: 'text-amber-500' },
   cta_click: { icon: MousePointerClick, label: 'CTA Click', className: 'text-rose-500' },
+  form_submit: { icon: CheckCircle2, label: 'Form Submitted', className: 'text-emerald-500' },
+  form_abandon: { icon: MousePointerClick, label: 'Form Abandoned', className: 'text-amber-500' },
+  survey_start: { icon: Play, label: 'Survey Started', className: 'text-blue-500' },
+  survey_complete: { icon: CheckCircle2, label: 'Survey Completed', className: 'text-emerald-500' },
+  meeting_confirm: { icon: CheckCircle2, label: 'Meeting Booked', className: 'text-emerald-500' },
 };
 
 function EventBadge({ type }: { type: PageEventType }) {

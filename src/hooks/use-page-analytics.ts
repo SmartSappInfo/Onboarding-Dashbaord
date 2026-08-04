@@ -40,6 +40,10 @@ export interface UsePageAnalyticsReturn {
   setEntityId: (id: string) => void;
   /** Ref that callers can set to true after firing video_start once. */
   hasFiredVideoStart: React.MutableRefObject<boolean>;
+  /** Ref that callers can set to true after firing video_50 (50% watch depth) once per session. */
+  hasFiredVideo50: React.MutableRefObject<boolean>;
+  /** Ref that callers can set to true after firing video_complete once per session. */
+  hasFiredVideoComplete: React.MutableRefObject<boolean>;
 }
 
 /**
@@ -50,24 +54,15 @@ export interface UsePageAnalyticsReturn {
  * - All event submissions are wrapped in startTransition so they never block the UI
  * - Errors are swallowed — analytics must never break user-facing functionality
  * - The hook is stable across re-renders (useCallback with empty deps)
- *
- * Usage:
- * ```tsx
- * const { track, setEntityId, hasFiredVideoStart } = usePageAnalytics('my-page-slug');
- *
- * // In PageAnalyticsReader (inside Suspense):
- * const ref = searchParams.get('ref');
- * if (ref) setEntityId(ref);
- *
- * // On mount:
- * useEffect(() => { track('page_view'); }, [track]);
- * ```
+ * - Session refs (hasFiredVideoStart, hasFiredVideo50, hasFiredVideoComplete) throttle high-frequency events
  */
 export function usePageAnalytics(slug: string): UsePageAnalyticsReturn {
   // Refs — mutations don't trigger re-renders
   const sessionId = useRef<string>(getOrCreateSessionId());
   const entityId = useRef<string | undefined>(undefined);
   const hasFiredVideoStart = useRef<boolean>(false);
+  const hasFiredVideo50 = useRef<boolean>(false);
+  const hasFiredVideoComplete = useRef<boolean>(false);
 
   const setEntityId = useCallback((id: string) => {
     entityId.current = id;
@@ -90,5 +85,11 @@ export function usePageAnalytics(slug: string): UsePageAnalyticsReturn {
     [slug]
   );
 
-  return { track, setEntityId, hasFiredVideoStart };
+  return { 
+    track, 
+    setEntityId, 
+    hasFiredVideoStart, 
+    hasFiredVideo50, 
+    hasFiredVideoComplete 
+  };
 }

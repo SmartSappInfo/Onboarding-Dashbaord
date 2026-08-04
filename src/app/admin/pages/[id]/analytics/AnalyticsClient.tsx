@@ -24,9 +24,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Video,
+  Play,
+  FileText,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CampaignPage } from '@/lib/types';
+import type { CampaignPage, CustomPageStats } from '@/lib/types';
 import Link from 'next/link';
 import { getLeadsForPageAction, type LeadSummary } from '@/lib/lead-actions';
 import { formatCVR, formatStatCount } from '../../utils/page-stats';
@@ -152,9 +156,27 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
     );
   }
 
-  const stats = page.stats || { views: 0, uniques: 0, clicks: 0, conversions: 0 };
-  const rawCVR = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) : '0.0';
-  const formattedCVRString = formatCVR(stats.views, stats.conversions);
+  const stats: CustomPageStats = (page.stats as unknown as CustomPageStats) || { 
+    views: 0, 
+    uniqueViews: 0, 
+    uniques: 0,
+    videoStarts: 0, 
+    videoMilestone50: 0, 
+    videoCompletions: 0, 
+    videoReplays: 0, 
+    ctaClicks: 0, 
+    clicks: 0,
+    conversions: 0,
+    formSubmissions: 0, 
+    formAbandonments: 0, 
+    meetingConfirmations: 0 
+  };
+  const conversionsCount = stats.conversions ?? 0;
+  const uniquesCount = stats.uniques ?? stats.uniqueViews ?? 0;
+  const clicksCount = stats.clicks ?? stats.ctaClicks ?? 0;
+
+  const rawCVR = stats.views > 0 ? ((conversionsCount / stats.views) * 100).toFixed(1) : '0.0';
+  const formattedCVRString = formatCVR(stats.views, conversionsCount);
 
   // Secure CSV Export with Injection Prevention
   const exportToCSV = () => {
@@ -299,8 +321,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.uniques)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">First-time visitors ({stats.uniques.toLocaleString()})</p>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(uniquesCount)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">First-time visitors ({uniquesCount.toLocaleString()})</p>
             </CardContent>
           </Card>
 
@@ -314,8 +336,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.clicks)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Button interactions ({stats.clicks.toLocaleString()})</p>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(clicksCount)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Button interactions ({clicksCount.toLocaleString()})</p>
             </CardContent>
           </Card>
 
@@ -329,7 +351,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.conversions)}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(conversionsCount)}</div>
               <p className="text-[10px] text-muted-foreground font-semibold mt-1">
                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formattedCVRString}</span> CVR performance
               </p>
@@ -348,7 +370,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                 <div>
                   <CardTitle className="text-sm font-extrabold text-foreground">Conversion Rate Performance</CardTitle>
                   <CardDescription className="text-xs text-muted-foreground">
-                    {stats.conversions} of {stats.views} total visitors converted into leads ({rawCVR}%)
+                    {conversionsCount} of {stats.views} total visitors converted into leads ({rawCVR}%)
                   </CardDescription>
                 </div>
               </div>
@@ -368,6 +390,128 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
             </CardContent>
           </Card>
         )}
+
+        {/* Media & Insertable Block Interactions Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Video Engagement Card (50% Milestone & 100% Completion) */}
+          <Card className="border-border bg-card text-card-foreground shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
+                    <Video className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-extrabold text-foreground">Video Watch Engagement</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Playback retention & 50% watch depth</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground">
+                  Media Block
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Video Starts</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.videoStarts || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">50% Watched</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-blue-600 dark:text-blue-400">{formatStatCount(stats.videoMilestone50 || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Completed</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.videoCompletions || 0)}</p>
+                </div>
+              </div>
+
+              {/* Retention Progress Bar */}
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
+                  <span>50% Watch Depth Rate</span>
+                  <span className="font-extrabold text-foreground">
+                    {stats.videoStarts > 0 ? `${(((stats.videoMilestone50 || 0) / stats.videoStarts) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                  <div
+                    className="bg-blue-500 h-full transition-all duration-500 rounded-full"
+                    style={{
+                      width: `${stats.videoStarts > 0 ? Math.min((((stats.videoMilestone50 || 0) / stats.videoStarts) * 100), 100) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Form & Interactive Funnel Card */}
+          <Card className="border-border bg-card text-card-foreground shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
+                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-extrabold text-foreground">Interactive Blocks & Funnels</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Form submissions & meeting bookings</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground">
+                  Interactive Blocks
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Form Submits</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.formSubmissions || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Abandonments</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400">{formatStatCount(stats.formAbandonments || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Meetings</p>
+                  <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.meetingConfirmations || 0)}</p>
+                </div>
+              </div>
+
+              {/* Form Completion Rate Indicator */}
+              <div>
+                <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
+                  <span>Form Completion Efficiency</span>
+                  <span className="font-extrabold text-foreground">
+                    {(stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
+                      ? `${(((stats.formSubmissions || 0) / ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) * 100).toFixed(1)}%`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
+                    style={{
+                      width: `${
+                        (stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
+                          ? Math.min(
+                              (((stats.formSubmissions || 0) /
+                                ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) *
+                                100),
+                              100
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Captured Leads Table & Search Section */}
         <Card className="border-border bg-card text-card-foreground shadow-sm overflow-hidden">

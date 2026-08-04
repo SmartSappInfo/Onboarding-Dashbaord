@@ -37,9 +37,15 @@ function statFieldForEvent(type: PageEventType): keyof CustomPageStats | null {
   const map: Record<PageEventType, keyof CustomPageStats | null> = {
     page_view: 'views',
     video_start: 'videoStarts',
+    video_50: 'videoMilestone50',
     video_complete: 'videoCompletions',
     video_replay: 'videoReplays',
     cta_click: 'ctaClicks',
+    form_submit: 'formSubmissions',
+    form_abandon: 'formAbandonments',
+    survey_start: 'surveyStarts',
+    survey_complete: 'surveyCompletions',
+    meeting_confirm: 'meetingConfirmations',
   };
   return map[type] ?? null;
 }
@@ -372,8 +378,9 @@ export async function assignCustomPageWorkspaceAction(
 
     revalidatePath('/admin/analytics/custom-pages');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Failed to assign custom page workspace';
+    return { success: false, error: errMsg };
   }
 }
 
