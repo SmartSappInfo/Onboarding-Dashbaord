@@ -32,6 +32,7 @@ import {
     analyzeQuestions,
     computeAttribution,
 } from '@/lib/survey-analytics-utils';
+import { parseDateSafe } from '@/lib/forms-utils';
 
 // ─── Animation Variants ────────────────────────────────────────────────────────
 
@@ -51,15 +52,18 @@ type TimeGranularity = 'hour' | 'day' | 'month';
 function computeResponseTrend(responses: SurveyResponse[], granularity: TimeGranularity): { label: string; count: number }[] {
     if (!responses || responses.length === 0) return [];
 
-    // Sort responses chronologically (oldest first, newest last) so that the trend line goes from past to present (left to right)
-    const sortedResponses = [...responses].sort(
-        (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+    // Filter responses with valid dates and sort responses chronologically (oldest first, newest last)
+    const validResponses = responses
+        .map(res => ({ res, date: parseDateSafe(res.submittedAt) }))
+        .filter((item): item is { res: SurveyResponse; date: Date } => item.date !== null);
+
+    const sortedResponses = validResponses.sort(
+        (a, b) => a.date.getTime() - b.date.getTime()
     );
 
     const bucketMap = new Map<string, number>();
 
-    sortedResponses.forEach(res => {
-        const date = new Date(res.submittedAt);
+    sortedResponses.forEach(({ date }) => {
         let key: string;
         switch (granularity) {
             case 'hour':

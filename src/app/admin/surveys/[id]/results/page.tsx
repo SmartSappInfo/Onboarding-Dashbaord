@@ -24,6 +24,7 @@ import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
 import { stripHtml } from "@/lib/utils";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import AiModelSelector from "@/components/ai/AiModelSelector";
+import { parseDateSafe } from "@/lib/forms-utils";
 
 // Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
 const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
@@ -162,7 +163,7 @@ function SurveyResultsPageContent() {
         Object.entries(columnFilters).forEach(([questionId, selectedValues]) => {
             if (!selectedValues || selectedValues.length === 0) return;
             result = result.filter(response => {
-                const answer = response.answers.find(a => a.questionId === questionId)?.value;
+                const answer = (response.answers || []).find(a => a.questionId === questionId)?.value;
                 if (answer === undefined || answer === null) return false;
 
                 // For checklist options
@@ -251,8 +252,9 @@ function SurveyResultsPageContent() {
         const headerRow = ["Submitted At", ...questionIds.map(id => `"${stripHtml(questionIdToTitleMap.get(id) || '').replace(/"/g, '""') ?? id}"`)].join(',');
 
         const rows = filteredResponses.map(response => {
-            const answerMap = new Map(response.answers.map(a => [a.questionId, a.value]));
-            const submittedAtCell = `"${format(new Date(response.submittedAt), "yyyy-MM-dd HH:mm:ss")}"`;
+            const answerMap = new Map((response.answers || []).map(a => [a.questionId, a.value]));
+            const d = parseDateSafe(response.submittedAt);
+            const submittedAtCell = d ? `"${format(d, "yyyy-MM-dd HH:mm:ss")}"` : `""`;
             const answerCells = questionIds.map(id => {
                 const value = answerMap.get(id);
                 let cellValue = '';

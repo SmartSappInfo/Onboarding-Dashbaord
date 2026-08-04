@@ -38,6 +38,7 @@ import { Switch } from '@/components/ui/switch';
 import { Settings } from 'lucide-react';
 import { deleteSurveyResponses } from '@/lib/survey-actions';
 import { resolveContact } from '@/lib/contact-adapter';
+import { parseDateSafe } from '@/lib/forms-utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, stripHtml } from '@/lib/utils';
 import { BentoPagination } from '@/app/admin/entities/components/BentoPagination';
@@ -289,7 +290,7 @@ function ResponsesListView({
     const getUniqueAnswers = React.useCallback((questionId: string) => {
         const unique = new Set<string>();
         responses.forEach(res => {
-            const ans = res.answers.find(a => a.questionId === questionId)?.value;
+            const ans = (res.answers || []).find(a => a.questionId === questionId)?.value;
             if (ans !== undefined && ans !== null) {
                 if (Array.isArray(ans)) {
                     ans.forEach(val => {
@@ -299,7 +300,7 @@ function ResponsesListView({
                 } else if (typeof ans === 'object') {
                     if (Array.isArray(ans.options)) {
                         ans.options.forEach((val: string) => {
-                            if (val) unique.add(val);
+                             if (val) unique.add(val);
                         });
                         if (ans.other && ans.other.trim()) {
                             unique.add(ans.other.trim());
@@ -347,7 +348,7 @@ function ResponsesListView({
 
         const activeQuestionIds = new Set<string>();
         filteredResponses.forEach(res => {
-            res.answers.forEach(ans => {
+            (res.answers || []).forEach(ans => {
                 const formatted = formatAnswer(ans.value);
                 if (formatted !== undefined && formatted !== null && formatted !== '' && formatted !== '-') {
                     activeQuestionIds.add(ans.questionId);
@@ -382,7 +383,7 @@ function ResponsesListView({
     };
 
     const getAnswerForQuestion = (response: SurveyResponse, questionId: string) => {
-        return response.answers.find(a => a.questionId === questionId)?.value;
+        return (response.answers || []).find(a => a.questionId === questionId)?.value;
     }
 
     const handleDeleteClick = (ids?: string[]) => {
@@ -909,7 +910,12 @@ function ResponsesListView({
                                 )}
                                 style={{ left: `${submittedAtLeft}px`, width: '180px', minWidth: '180px', maxWidth: '180px' }}
                             >
-                                <span className="text-xs">{format(new Date(response.submittedAt), "MMM d, yyyy · p")}</span>
+                                <span className="text-xs">
+                                    {(() => {
+                                        const d = parseDateSafe(response.submittedAt);
+                                        return d ? format(d, "MMM d, yyyy · p") : '—';
+                                    })()}
+                                </span>
                             </TableCell>
                         )}
                         {isContactVisible && (
