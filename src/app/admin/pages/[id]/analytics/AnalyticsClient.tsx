@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft,
@@ -28,18 +29,22 @@ import { cn } from '@/lib/utils';
 import type { CampaignPage } from '@/lib/types';
 import Link from 'next/link';
 import { getLeadsForPageAction, type LeadSummary } from '@/lib/lead-actions';
+import { formatCVR, formatStatCount } from '../../utils/page-stats';
 
 /**
  * ─── DEDICATED PAGE ANALYTICS DASHBOARD ───────────────────────────────────────
  * 
  * Provides real-time conversion metrics, KPI insights, and CRM lead capture logs
- * for an individual campaign landing page.
+ * for an individual campaign landing page, respecting global Light/Dark themes.
  * 
  * Maintainer Guidance & Caution Areas:
  * 1. Strict Typing Protocol: Avoid any use of `any` or `any[]`.
- * 2. High Load Defense: Client-side search + 20-row pagination prevents DOM over-saturation when thousands of leads exist.
- * 3. Security (CSV Injection Protection): All CSV export fields are sanitized against formula execution (`=`, `+`, `-`, `@`).
- * 4. Mobile & Touch Ergonomics: All interactive elements maintain `min-h-[44px]` touch targets.
+ * 2. Theme Token Alignment: Route background, card, border, and text styling strictly
+ *    through semantic CSS design tokens (`bg-background`, `bg-card`, `text-foreground`, `border-border`).
+ * 3. High Load Defense: Client-side search + 20-row pagination prevents DOM over-saturation when thousands of leads exist.
+ * 4. Security (CSV Injection Protection): All CSV export fields are sanitized against formula execution (`=`, `+`, `-`, `@`).
+ * 5. Mobile & Touch Ergonomics: All interactive elements maintain `min-h-[44px]` touch targets.
+ * 6. Micro-Animations: Button presses include `active:scale-[0.97]` per `emilkowal-animations`.
  */
 
 const ITEMS_PER_PAGE = 20;
@@ -50,7 +55,7 @@ const ITEMS_PER_PAGE = 20;
 function sanitizeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const str = String(value);
-  // Neutralize formula triggers
+  // Neutralize formula triggers (=, +, -, @, \t, \r)
   if (/^[=+\-@\t\r]/.test(str)) {
     return `'${str}`;
   }
@@ -125,10 +130,10 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Loading Page Analytics...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Loading Page Analytics...</p>
         </div>
       </div>
     );
@@ -136,10 +141,10 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
   if (!page) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="text-center space-y-4">
-          <p className="text-slate-400 text-sm font-semibold">Page not found or removed.</p>
-          <Button asChild variant="outline" className="min-h-[44px] font-bold">
+          <p className="text-muted-foreground text-sm font-semibold">Page not found or removed.</p>
+          <Button asChild variant="outline" className="min-h-[44px] font-bold active:scale-[0.97] transition-all">
             <Link href="/admin/pages">Return to Campaign Hub</Link>
           </Button>
         </div>
@@ -148,7 +153,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
   }
 
   const stats = page.stats || { views: 0, uniques: 0, clicks: 0, conversions: 0 };
-  const conversionRate = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) : '0.0';
+  const rawCVR = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) : '0.0';
+  const formattedCVRString = formatCVR(stats.views, stats.conversions);
 
   // Secure CSV Export with Injection Prevention
   const exportToCSV = () => {
@@ -194,16 +200,16 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen bg-background text-foreground p-4 sm:p-6 md:p-8 transition-colors duration-200">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+        {/* Top Navigation Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-6">
           <div className="flex items-center gap-3">
             <Button
               asChild
               variant="outline"
-              className="min-h-[44px] w-11 p-0 rounded-xl border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800 shrink-0"
+              className="min-h-[44px] w-11 p-0 rounded-xl border-border bg-card text-foreground hover:bg-muted shrink-0 active:scale-[0.97] transition-all"
               title="Return to Campaign Hub"
             >
               <Link href="/admin/pages">
@@ -212,12 +218,20 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">{page.name}</h1>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded border border-slate-800 bg-slate-900 text-emerald-400">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{page.name}</h1>
+                <Badge 
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-lg border",
+                    page.status === 'published' 
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" 
+                      : "bg-muted text-muted-foreground border-border"
+                  )}
+                >
                   {page.status}
-                </span>
+                </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">/{page.slug} • Dedicated Analytics</p>
+              <p className="text-xs text-muted-foreground mt-0.5">/{page.slug} • Dedicated Analytics</p>
             </div>
           </div>
 
@@ -225,10 +239,10 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
             <Button
               asChild
               variant="outline"
-              className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800"
+              className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs border-border bg-card text-foreground hover:bg-muted active:scale-[0.97] transition-all"
             >
               <Link href={`/admin/pages/${id}/builder`}>
-                <Pencil className="w-4 h-4 mr-2 text-blue-400" />
+                <Pencil className="w-4 h-4 mr-2 text-blue-500 dark:text-blue-400" />
                 Edit in Builder
               </Link>
             </Button>
@@ -237,10 +251,10 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
               <Button
                 asChild
                 variant="outline"
-                className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs border-slate-800 bg-slate-900 text-slate-200 hover:text-white hover:bg-slate-800"
+                className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs border-border bg-card text-foreground hover:bg-muted active:scale-[0.97] transition-all"
               >
                 <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2 text-emerald-400" />
+                  <ExternalLink className="w-4 h-4 mr-2 text-emerald-500 dark:text-emerald-400" />
                   View Live
                 </a>
               </Button>
@@ -249,7 +263,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
             <Button
               onClick={exportToCSV}
               variant="outline"
-              className="min-h-[44px] px-4 rounded-xl font-bold text-xs border-slate-800 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 border-emerald-500/30"
+              className="min-h-[44px] px-4 rounded-xl font-bold text-xs border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-[0.97] transition-all"
               disabled={leads.length === 0}
             >
               <Download className="w-4 h-4 mr-2" />
@@ -260,64 +274,64 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
         {/* KPI Cards Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-slate-800/80 bg-slate-900/60 shadow-lg">
+          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Views</CardTitle>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Views</CardTitle>
                 <div className="h-9 w-9 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                  <Eye className="h-4 w-4 text-blue-400" />
+                  <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white">{stats.views.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-500 font-semibold mt-1">Total page impressions</p>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.views)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Total page impressions ({stats.views.toLocaleString()})</p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800/80 bg-slate-900/60 shadow-lg">
+          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Unique Visitors</CardTitle>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unique Visitors</CardTitle>
                 <div className="h-9 w-9 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-                  <Users className="h-4 w-4 text-purple-400" />
+                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white">{stats.uniques.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-500 font-semibold mt-1">First-time visitors</p>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.uniques)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">First-time visitors ({stats.uniques.toLocaleString()})</p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800/80 bg-slate-900/60 shadow-lg">
+          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">CTA Clicks</CardTitle>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">CTA Clicks</CardTitle>
                 <div className="h-9 w-9 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
-                  <MousePointerClick className="h-4 w-4 text-amber-400" />
+                  <MousePointerClick className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white">{stats.clicks.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-500 font-semibold mt-1">Button interactions</p>
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.clicks)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Button interactions ({stats.clicks.toLocaleString()})</p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800/80 bg-slate-900/60 shadow-lg">
+          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Conversions</CardTitle>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conversions</CardTitle>
                 <div className="h-9 w-9 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-white">{stats.conversions.toLocaleString()}</div>
-              <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                <span className="font-extrabold text-emerald-400">{conversionRate}%</span> CVR performance
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.conversions)}</div>
+              <p className="text-[10px] text-muted-foreground font-semibold mt-1">
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formattedCVRString}</span> CVR performance
               </p>
             </CardContent>
           </Card>
@@ -325,28 +339,28 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
         {/* Conversion Performance Gauge */}
         {stats.views > 0 && (
-          <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-lg">
+          <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
-                  <TrendingUp className="h-5 w-5 text-emerald-400" />
+                  <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm font-extrabold text-slate-100">Conversion Rate Performance</CardTitle>
-                  <CardDescription className="text-xs text-slate-400">
-                    {stats.conversions} of {stats.views} total visitors converted into leads ({conversionRate}%)
+                  <CardTitle className="text-sm font-extrabold text-foreground">Conversion Rate Performance</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    {stats.conversions} of {stats.views} total visitors converted into leads ({rawCVR}%)
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-800">
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden border border-border/40">
                 <div
-                  className="bg-emerald-500 h-full transition-all duration-500 rounded-full shadow-md shadow-emerald-500/30"
-                  style={{ width: `${Math.min(parseFloat(conversionRate), 100)}%` }}
+                  className="bg-emerald-500 h-full transition-all duration-500 rounded-full shadow-sm"
+                  style={{ width: `${Math.min(parseFloat(rawCVR), 100)}%` }}
                 />
               </div>
-              <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 <span>0% Baseline</span>
                 <span>50% CVR</span>
                 <span>100% Max</span>
@@ -356,12 +370,12 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
         )}
 
         {/* Captured Leads Table & Search Section */}
-        <Card className="border-slate-800/80 bg-slate-900/60 shadow-xl overflow-hidden">
-          <CardHeader className="border-b border-slate-800/80 pb-4">
+        <Card className="border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-border pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-base font-extrabold text-slate-100">Captured Leads</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
+                <CardTitle className="text-base font-extrabold text-foreground">Captured Leads</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
                   {leads.length === 0
                     ? 'No responses submitted yet.'
                     : `${leads.length} lead${leads.length !== 1 ? 's' : ''} recorded for this campaign page.`}
@@ -370,13 +384,13 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
               {leads.length > 0 && (
                 <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="text"
                     placeholder="Search name, email, phone..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="min-h-[44px] pl-9 bg-slate-950 border-slate-800 text-xs font-semibold rounded-xl text-slate-200 placeholder:text-slate-500"
+                    className="min-h-[44px] pl-9 bg-background border-input text-xs font-semibold rounded-xl text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
               )}
@@ -386,17 +400,17 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
           <CardContent className="p-0">
             {loadingLeads ? (
               <div className="flex justify-center py-16">
-                <Loader2 className="w-7 h-7 animate-spin text-slate-500" />
+                <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
               </div>
             ) : filteredLeads.length === 0 ? (
               <div className="text-center py-16 px-4">
-                <div className="h-14 w-14 bg-slate-800/60 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-700">
-                  <CheckCircle2 className="h-7 w-7 text-slate-400" />
+                <div className="h-14 w-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3 border border-border">
+                  <CheckCircle2 className="h-7 w-7 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-semibold text-slate-300">
+                <p className="text-sm font-semibold text-foreground">
                   {searchTerm ? 'No matching leads found for search.' : 'No leads captured yet.'}
                 </p>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                   {searchTerm ? 'Try adjusting your search criteria.' : 'Publish and share your page link to start gathering form and survey responses.'}
                 </p>
               </div>
@@ -404,7 +418,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-950/50 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    <tr className="border-b border-border bg-muted/50 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
                       <th className="text-left py-3.5 px-4">Submission Date</th>
                       <th className="text-left py-3.5 px-4">Lead Name</th>
                       <th className="text-left py-3.5 px-4">Email</th>
@@ -414,7 +428,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                       <th className="text-left py-3.5 px-4">CRM Profile</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-border/40">
                     {paginatedLeads.map((lead) => {
                       const dataObj = lead.data || {};
                       const utmSource = typeof dataObj.utmSource === 'string' ? dataObj.utmSource : '';
@@ -423,8 +437,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                       const hasUtm = Boolean(utmSource || utmMedium || utmCampaign);
 
                       return (
-                        <tr key={lead.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="py-3.5 px-4 text-slate-400 font-medium">
+                        <tr key={lead.id} className="hover:bg-muted/40 transition-colors">
+                          <td className="py-3.5 px-4 text-muted-foreground font-medium">
                             {new Date(lead.submittedAt).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -433,18 +447,18 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                               minute: '2-digit',
                             })}
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-slate-100">{lead.name}</td>
-                          <td className="py-3.5 px-4 text-slate-300 font-mono text-[11px]">{lead.email || '—'}</td>
-                          <td className="py-3.5 px-4 text-slate-300 font-mono text-[11px]">{lead.phone || '—'}</td>
+                          <td className="py-3.5 px-4 font-bold text-foreground">{lead.name}</td>
+                          <td className="py-3.5 px-4 text-muted-foreground font-mono text-[11px]">{lead.email || '—'}</td>
+                          <td className="py-3.5 px-4 text-muted-foreground font-mono text-[11px]">{lead.phone || '—'}</td>
                           <td className="py-3.5 px-4">
                             {hasUtm ? (
                               <div className="flex flex-col gap-0.5 text-[10px]">
-                                {utmSource && <span className="text-slate-300"><strong className="text-slate-400">Src:</strong> {utmSource}</span>}
-                                {utmMedium && <span className="text-slate-300"><strong className="text-slate-400">Med:</strong> {utmMedium}</span>}
-                                {utmCampaign && <span className="text-slate-300"><strong className="text-slate-400">Cmp:</strong> {utmCampaign}</span>}
+                                {utmSource && <span className="text-foreground"><strong className="text-muted-foreground">Src:</strong> {utmSource}</span>}
+                                {utmMedium && <span className="text-foreground"><strong className="text-muted-foreground">Med:</strong> {utmMedium}</span>}
+                                {utmCampaign && <span className="text-foreground"><strong className="text-muted-foreground">Cmp:</strong> {utmCampaign}</span>}
                               </div>
                             ) : (
-                              <span className="text-slate-500 text-[10px] font-bold uppercase">Direct / Organic</span>
+                              <span className="text-muted-foreground text-[10px] font-bold uppercase">Direct / Organic</span>
                             )}
                           </td>
                           <td className="py-3.5 px-4">
@@ -452,8 +466,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                               className={cn(
                                 'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider',
                                 lead.type === 'form'
-                                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                  : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                                  ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                  : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
                               )}
                             >
                               {lead.type}
@@ -463,12 +477,12 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                             {lead.entityId ? (
                               <Link
                                 href={`/admin/contacts/${lead.entityId}`}
-                                className="text-emerald-400 hover:text-emerald-300 font-bold text-xs hover:underline flex items-center gap-1"
+                                className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold text-xs flex items-center gap-1"
                               >
                                 View Profile →
                               </Link>
                             ) : (
-                              <span className="text-slate-500 text-[11px]">Unlinked</span>
+                              <span className="text-muted-foreground text-[11px]">Unlinked</span>
                             )}
                           </td>
                         </tr>
@@ -481,8 +495,8 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
 
             {/* Pagination Controls */}
             {filteredLeads.length > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-between p-4 border-t border-slate-800/80 bg-slate-950/40">
-                <span className="text-xs text-slate-400 font-semibold">
+              <div className="flex items-center justify-between p-4 border-t border-border bg-muted/20">
+                <span className="text-xs text-muted-foreground font-semibold">
                   Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredLeads.length)} of {filteredLeads.length} leads
                 </span>
                 <div className="flex items-center gap-2">
@@ -490,18 +504,18 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                     variant="outline"
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="min-h-[44px] h-9 px-3 rounded-lg border-slate-800 text-slate-300 font-bold text-xs"
+                    className="min-h-[44px] h-9 px-3 rounded-lg border-border text-foreground font-bold text-xs active:scale-[0.97] transition-all"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" /> Previous
                   </Button>
-                  <span className="text-xs font-bold text-slate-300 px-2">
+                  <span className="text-xs font-bold text-foreground px-2">
                     {currentPage} / {totalPages}
                   </span>
                   <Button
                     variant="outline"
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage >= totalPages}
-                    className="min-h-[44px] h-9 px-3 rounded-lg border-slate-800 text-slate-300 font-bold text-xs"
+                    className="min-h-[44px] h-9 px-3 rounded-lg border-border text-foreground font-bold text-xs active:scale-[0.97] transition-all"
                   >
                     Next <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
