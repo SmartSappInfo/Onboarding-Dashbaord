@@ -21,7 +21,7 @@ interface Props {
 }
 
 export default function SubmissionsClient({ form, initialSubmissions, initialNextCursor }: Props) {
-  const [submissions, setSubmissions] = React.useState(initialSubmissions);
+  const [submissions, setSubmissions] = React.useState<FormSubmission[]>(initialSubmissions || []);
   const [nextCursor, setNextCursor] = React.useState(initialNextCursor);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [activeSubmission, setActiveSubmission] = React.useState<FormSubmission | null>(null);
@@ -29,11 +29,13 @@ export default function SubmissionsClient({ form, initialSubmissions, initialNex
 
   // Client-side search filtering (no re-fetch for fast UX)
   const filtered = React.useMemo(() => {
-    if (!searchTerm.trim()) return submissions;
+    const list = submissions || [];
+    if (!searchTerm.trim()) return list;
     const q = searchTerm.toLowerCase();
-    return submissions.filter(s => {
-      const dataStr = JSON.stringify(s.data).toLowerCase();
-      return dataStr.includes(q) || s.id.includes(q) || (s.entityId ?? '').includes(q);
+    return list.filter(s => {
+      if (!s) return false;
+      const dataStr = s.data ? JSON.stringify(s.data).toLowerCase() : '';
+      return dataStr.includes(q) || (s.id || '').toLowerCase().includes(q) || (s.entityId ?? '').toLowerCase().includes(q);
     });
   }, [submissions, searchTerm]);
 
@@ -44,7 +46,7 @@ export default function SubmissionsClient({ form, initialSubmissions, initialNex
     setIsLoadingMore(true);
     try {
       const result = await getFormSubmissionsAction(form.id, { limit: 50, cursor: nextCursor });
-      setSubmissions(prev => [...prev, ...result.submissions]);
+      setSubmissions(prev => [...prev, ...(result.submissions || [])]);
       setNextCursor(result.nextCursor);
     } finally {
       setIsLoadingMore(false);

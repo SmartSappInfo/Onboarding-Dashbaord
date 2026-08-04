@@ -78,6 +78,7 @@ describe('Survey Variable Resolution Engine', () => {
 
         // Get variable map
         const valuesMap = await FieldsVariablesService.getVariableValuesMap({
+            workspaceId: 'mock-workspace-id',
             surveyId: 'survey_parents_1',
             responseId: 'resp_alberta_1',
             preloadedEntity: { id: 'ent_1', name: 'SmartSapp School A' } as any,

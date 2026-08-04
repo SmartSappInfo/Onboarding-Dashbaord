@@ -2015,6 +2015,9 @@ export interface SurveyQuestion extends SurveyElement {
   noScore?: number;
   autoAdvance?: boolean;
   isFilterField?: boolean;
+  variableName?: string;
+  fieldKey?: string;
+  key?: string;
 }
 
 export interface SurveyLayoutBlock extends SurveyElement {

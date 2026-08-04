@@ -765,8 +765,9 @@ export async function exportSubmissionsAsCsvAction(
     const filename = `${form.internalName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_submissions_${date}.csv`;
 
     return { success: true, csv, filename };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Export Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('>>> [FORMS] Export Failed:', msg);
+    return { success: false, error: msg };
   }
 }

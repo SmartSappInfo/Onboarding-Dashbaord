@@ -85,10 +85,10 @@ export default function SubmissionDrawer({ submission, form, onClose }: Props) {
               <section>
                 <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Form Responses</h3>
                 <div className="rounded-xl border border-border/40 bg-background/50 px-4 divide-y divide-border/20">
-                  {Object.entries(submission.data).map(([key, value]) => (
+                  {Object.entries(submission.data || {}).map(([key, value]) => (
                     <FieldRow key={key} label={key} value={value} />
                   ))}
-                  {Object.keys(submission.data).length === 0 && (
+                  {Object.keys(submission.data || {}).length === 0 && (
                     <p className="text-sm text-muted-foreground py-4 text-center">No data captured.</p>
                   )}
                 </div>

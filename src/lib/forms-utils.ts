@@ -55,19 +55,21 @@ export function formatFieldValue(value: unknown, fieldType?: string): string {
  * Extracts a preview string of the first 2-3 notable field values from a submission.
  */
 export function getSubmissionPreview(
-  data: Record<string, unknown>,
-  fields: AppField[],
+  data?: Record<string, unknown> | null,
+  fields?: AppField[] | null,
   maxFields = 3
 ): string {
+  if (!data) return 'No data';
+  const fieldsArr = fields || [];
   const priorityVars = ['contact_name', 'contact_email', 'school_name'];
   const ordered = [
-    ...priorityVars.filter(v => v in data),
+    ...priorityVars.filter(v => data && v in data),
     ...Object.keys(data).filter(k => !priorityVars.includes(k)),
   ].slice(0, maxFields);
 
   return ordered
     .map(key => {
-      const field = fields.find(f => f.variableName === key);
+      const field = fieldsArr.find(f => f.variableName === key);
       const label = field?.label ?? key;
       return `${label}: ${formatFieldValue(data[key])}`;
     })
@@ -95,15 +97,17 @@ function csvEscape(value: unknown): string {
  * Pure function — no side effects, easily unit-tested.
  */
 export function submissionsToCSV(
-  submissions: FormSubmission[],
-  fields: AppField[]
+  submissions?: FormSubmission[] | null,
+  fields?: AppField[] | null
 ): string {
-  if (submissions.length === 0) return '';
+  const subsList = submissions || [];
+  const fieldsList = fields || [];
+  if (subsList.length === 0) return '';
 
   // Build ordered column list: known fields first, then any extras from data
-  const fieldVarNames = fields.map(f => f.variableName);
+  const fieldVarNames = fieldsList.map(f => f.variableName);
   const allKeys = Array.from(
-    new Set([...fieldVarNames, ...submissions.flatMap(s => Object.keys(s.data))])
+    new Set([...fieldVarNames, ...subsList.flatMap(s => s?.data ? Object.keys(s.data) : [])])
   );
 
   const headers = [
@@ -112,17 +116,17 @@ export function submissionsToCSV(
     'Entity ID',
     'Source Page ID',
     ...allKeys.map(key => {
-      const field = fields.find(f => f.variableName === key);
+      const field = fieldsList.find(f => f.variableName === key);
       return field?.label ?? key;
     }),
   ];
 
-  const rows = submissions.map(s => [
-    csvEscape(s.submittedAt),
-    csvEscape(s.id),
-    csvEscape(s.entityId ?? ''),
-    csvEscape(s.sourcePageId ?? ''),
-    ...allKeys.map(key => csvEscape(s.data[key])),
+  const rows = subsList.map(s => [
+    csvEscape(s?.submittedAt),
+    csvEscape(s?.id),
+    csvEscape(s?.entityId ?? ''),
+    csvEscape(s?.sourcePageId ?? ''),
+    ...allKeys.map(key => csvEscape(s?.data?.[key])),
   ]);
 
   return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
