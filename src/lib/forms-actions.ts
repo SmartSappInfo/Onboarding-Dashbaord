@@ -760,7 +760,16 @@ export async function exportSubmissionsAsCsvAction(
     // Only include fields that belong to this form's workspace
     const workspaceFields = allFields.filter(f => f.workspaceId === form.workspaceId);
 
-    const csv = submissionsToCSV(submissions, workspaceFields);
+    const csvFields = (form.fields || []).map(ff => {
+      const appField = workspaceFields.find(af => af.id === ff.appFieldId);
+      return {
+        id: ff.id,
+        label: ff.labelOverride || appField?.label || ff.appFieldId || ff.id,
+        type: appField?.type
+      };
+    });
+
+    const csv = submissionsToCSV(submissions, csvFields);
     const date = new Date().toISOString().split('T')[0];
     const filename = `${form.internalName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_submissions_${date}.csv`;
 

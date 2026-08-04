@@ -83,8 +83,8 @@ export function getSubmissionPreview(
 /**
  * Escapes a value for safe inclusion in a CSV cell.
  */
-function csvEscape(value: unknown): string {
-  const str = formatFieldValue(value);
+function csvEscape(value: unknown, fieldType?: string): string {
+  const str = formatFieldValue(value, fieldType);
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -93,21 +93,21 @@ function csvEscape(value: unknown): string {
 
 /**
  * Converts an array of form submissions to a CSV string.
- * Headers are derived from the form's AppFields (using label, falling back to variableName).
+ * Headers are derived from the form's AppFields (using label, falling back to variableName/id).
  * Pure function — no side effects, easily unit-tested.
  */
 export function submissionsToCSV(
   submissions?: FormSubmission[] | null,
-  fields?: AppField[] | null
+  fields?: Array<{ id: string; label: string; variableName?: string; type?: string }> | null
 ): string {
   const subsList = submissions || [];
   const fieldsList = fields || [];
   if (subsList.length === 0) return '';
 
   // Build ordered column list: known fields first, then any extras from data
-  const fieldVarNames = fieldsList.map(f => f.variableName);
+  const fieldKeys = fieldsList.map(f => f.variableName || f.id);
   const allKeys = Array.from(
-    new Set([...fieldVarNames, ...subsList.flatMap(s => s?.data ? Object.keys(s.data) : [])])
+    new Set([...fieldKeys, ...subsList.flatMap(s => s?.data ? Object.keys(s.data) : [])])
   );
 
   const headers = [
@@ -116,8 +116,9 @@ export function submissionsToCSV(
     'Entity ID',
     'Source Page ID',
     ...allKeys.map(key => {
-      const field = fieldsList.find(f => f.variableName === key);
-      return field?.label ?? key;
+      const field = fieldsList.find(f => f.id === key || f.variableName === key);
+      const rawHeader = field?.label ?? key;
+      return csvEscape(rawHeader);
     }),
   ];
 
@@ -126,7 +127,10 @@ export function submissionsToCSV(
     csvEscape(s?.id),
     csvEscape(s?.entityId ?? ''),
     csvEscape(s?.sourcePageId ?? ''),
-    ...allKeys.map(key => csvEscape(s?.data?.[key])),
+    ...allKeys.map(key => {
+      const field = fieldsList.find(f => f.id === key || f.variableName === key);
+      return csvEscape(s?.data?.[key], field?.type);
+    }),
   ]);
 
   return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

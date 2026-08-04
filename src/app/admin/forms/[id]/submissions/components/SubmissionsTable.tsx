@@ -106,7 +106,7 @@ export default function SubmissionsTable({ submissions, form, onSelect }: Props)
               </TableCell>
               <TableCell className="py-3 max-w-xs">
                 <p className="text-sm text-muted-foreground truncate">
-                  {getSubmissionPreview(s.data, form.fields?.map(f => ({ variableName: f.appFieldId, label: f.labelOverride || f.appFieldId } as any)) ?? [])}
+                  {getSubmissionPreview(s.data, form.fields?.map(f => ({ variableName: f.id, label: f.labelOverride || f.appFieldId } as any)) ?? [])}
                 </p>
               </TableCell>
               <TableCell className="py-3">
