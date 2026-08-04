@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Form, FormSubmission } from '@/lib/types';
-import { getSubmissionPreview, parseDateSafe } from '@/lib/forms-utils';
+import { getSubmissionPreview, parseDateSafe, formatFieldValue } from '@/lib/forms-utils';
 
 interface Props {
   submissions: FormSubmission[];
@@ -45,6 +45,14 @@ function ResolutionBar({ entityId }: { entityId?: string }) {
   );
 }
 
+function formatFieldLabel(label: string): string {
+  if (!label) return '';
+  return label
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 export default function SubmissionsTable({ submissions, form, onSelect }: Props) {
   if (submissions.length === 0) {
     return (
@@ -57,16 +65,25 @@ export default function SubmissionsTable({ submissions, form, onSelect }: Props)
     );
   }
 
+  const fields = form.fields || [];
+
   return (
-    <div className="rounded-2xl border border-border/40 overflow-hidden bg-card">
+    <div className="rounded-2xl border border-border/40 overflow-x-auto bg-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/40">
             <TableHead className="w-8 pl-4" />
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">#</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Submitted At</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Response</TableHead>
-            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">CRM Record</TableHead>
+            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">#</TableHead>
+            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Submitted At</TableHead>
+            {fields.map(f => {
+              const label = f.labelOverride || formatFieldLabel(f.appFieldId);
+              return (
+                <TableHead key={f.id} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap min-w-[150px]">
+                  {label}
+                </TableHead>
+              );
+            })}
+            <TableHead className="font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">CRM Record</TableHead>
             <TableHead className="w-16" />
           </TableRow>
         </TableHeader>
@@ -84,7 +101,7 @@ export default function SubmissionsTable({ submissions, form, onSelect }: Props)
               <TableCell className="font-mono text-xs text-muted-foreground py-3">
                 {idx + 1}
               </TableCell>
-              <TableCell className="py-3">
+              <TableCell className="py-3 whitespace-nowrap">
                 {(() => {
                   const d = parseDateSafe(s.submittedAt);
                   if (!d) return <span className="text-muted-foreground/50 text-xs">—</span>;
@@ -104,11 +121,14 @@ export default function SubmissionsTable({ submissions, form, onSelect }: Props)
                   );
                 })()}
               </TableCell>
-              <TableCell className="py-3 max-w-xs">
-                <p className="text-sm text-muted-foreground truncate">
-                  {getSubmissionPreview(s.data, form.fields?.map(f => ({ variableName: f.id, label: f.labelOverride || f.appFieldId } as any)) ?? [])}
-                </p>
-              </TableCell>
+              {fields.map(f => {
+                const value = s.data?.[f.id];
+                return (
+                  <TableCell key={f.id} className="py-3 text-sm max-w-xs truncate whitespace-nowrap" title={value !== undefined && value !== null ? String(value) : ''}>
+                    {formatFieldValue(value)}
+                  </TableCell>
+                );
+              })}
               <TableCell className="py-3">
                 <EntityChip entityId={s.entityId} contactScope={form.contactScope} />
               </TableCell>
