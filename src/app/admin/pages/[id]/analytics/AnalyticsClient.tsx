@@ -294,237 +294,205 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
           </div>
         </div>
 
-        {/* KPI Cards Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Views</CardTitle>
-                <div className="h-9 w-9 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                  <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
+        {/* KPI Cards Row (QR Studio Standard: Icon on Left, No Subtitles, No Partition Borders) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Eye className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(stats.views)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Total page impressions ({stats.views.toLocaleString()})</p>
-            </CardContent>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">TOTAL VIEWS</p>
+                <p className="text-2xl font-bold text-foreground tracking-tight">{formatStatCount(stats.views)}</p>
+              </div>
+            </div>
           </Card>
 
-          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unique Visitors</CardTitle>
-                <div className="h-9 w-9 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </div>
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                <Users className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(uniquesCount)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">First-time visitors ({uniquesCount.toLocaleString()})</p>
-            </CardContent>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">UNIQUE VISITORS</p>
+                <p className="text-2xl font-bold text-foreground tracking-tight">{formatStatCount(uniquesCount)}</p>
+              </div>
+            </div>
           </Card>
 
-          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">CTA Clicks</CardTitle>
-                <div className="h-9 w-9 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
-                  <MousePointerClick className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <MousePointerClick className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(clicksCount)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">Button interactions ({clicksCount.toLocaleString()})</p>
-            </CardContent>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">CTA CLICKS</p>
+                <p className="text-2xl font-bold text-foreground tracking-tight">{formatStatCount(clicksCount)}</p>
+              </div>
+            </div>
           </Card>
 
-          <Card className="border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conversions</CardTitle>
-                <div className="h-9 w-9 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-extrabold text-foreground">{formatStatCount(conversionsCount)}</div>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formattedCVRString}</span> CVR performance
-              </p>
-            </CardContent>
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">CONVERSIONS</p>
+                <p className="text-2xl font-bold text-foreground tracking-tight">{formatStatCount(conversionsCount)}</p>
+              </div>
+            </div>
           </Card>
         </div>
 
-        {/* Conversion Performance Gauge */}
+        {/* Conversion Performance Gauge (No Subtitles, No Partition) */}
         {stats.views > 0 && (
-          <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
-                  <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-extrabold text-foreground">Conversion Rate Performance</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">
-                    {conversionsCount} of {stats.views} total visitors converted into leads ({rawCVR}%)
-                  </CardDescription>
-                </div>
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="h-5 w-5" />
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full bg-muted rounded-full h-3 overflow-hidden border border-border/40">
-                <div
-                  className="bg-emerald-500 h-full transition-all duration-500 rounded-full shadow-sm"
-                  style={{ width: `${Math.min(parseFloat(rawCVR), 100)}%` }}
-                />
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">CONVERSION RATE PERFORMANCE</p>
+                <p className="text-lg font-bold text-foreground tracking-tight">{formattedCVRString} CVR</p>
               </div>
-              <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                <span>0% Baseline</span>
-                <span>50% CVR</span>
-                <span>100% Max</span>
-              </div>
-            </CardContent>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3 overflow-hidden border border-border/40">
+              <div
+                className="bg-emerald-500 h-full transition-all duration-500 rounded-full shadow-sm"
+                style={{ width: `${Math.min(parseFloat(rawCVR), 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              <span>0% BASELINE</span>
+              <span>50% CVR</span>
+              <span>100% MAX</span>
+            </div>
           </Card>
         )}
 
-        {/* Media & Insertable Block Interactions Section */}
+        {/* Media & Insertable Block Interactions Section (No Subtitles, No Partition) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Video Engagement Card (50% Milestone & 100% Completion) */}
-          <Card className="border-border bg-card text-card-foreground shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-                    <Video className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-extrabold text-foreground">Video Watch Engagement</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Playback retention & 50% watch depth</CardDescription>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground">
-                  Media Block
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Video Starts</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.videoStarts || 0)}</p>
+          {/* Video Engagement Card */}
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  <Video className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">50% Watched</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-blue-600 dark:text-blue-400">{formatStatCount(stats.videoMilestone50 || 0)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Completed</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.videoCompletions || 0)}</p>
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">VIDEO WATCH ENGAGEMENT</p>
+                  <p className="text-base font-bold text-foreground tracking-tight">Playback Retention</p>
                 </div>
               </div>
+              <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground rounded-lg">
+                Media Block
+              </Badge>
+            </div>
 
-              {/* Retention Progress Bar */}
+            <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
               <div>
-                <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
-                  <span>50% Watch Depth Rate</span>
-                  <span className="font-extrabold text-foreground">
-                    {stats.videoStarts > 0 ? `${(((stats.videoMilestone50 || 0) / stats.videoStarts) * 100).toFixed(1)}%` : '—'}
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
-                  <div
-                    className="bg-blue-500 h-full transition-all duration-500 rounded-full"
-                    style={{
-                      width: `${stats.videoStarts > 0 ? Math.min((((stats.videoMilestone50 || 0) / stats.videoStarts) * 100), 100) : 0}%`,
-                    }}
-                  />
-                </div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Video Starts</p>
+                <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.videoStarts || 0)}</p>
               </div>
-            </CardContent>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">50% Watched</p>
+                <p className="text-lg sm:text-xl font-extrabold text-blue-600 dark:text-blue-400">{formatStatCount(stats.videoMilestone50 || 0)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Completed</p>
+                <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.videoCompletions || 0)}</p>
+              </div>
+            </div>
+
+            {/* Retention Progress Bar */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
+                <span>50% Watch Depth Rate</span>
+                <span className="font-extrabold text-foreground">
+                  {stats.videoStarts > 0 ? `${(((stats.videoMilestone50 || 0) / stats.videoStarts) * 100).toFixed(1)}%` : '—'}
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                <div
+                  className="bg-blue-500 h-full transition-all duration-500 rounded-full"
+                  style={{
+                    width: `${stats.videoStarts > 0 ? Math.min((((stats.videoMilestone50 || 0) / stats.videoStarts) * 100), 100) : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
           </Card>
 
           {/* Form & Interactive Funnel Card */}
-          <Card className="border-border bg-card text-card-foreground shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-extrabold text-foreground">Interactive Blocks & Funnels</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Form submissions & meeting bookings</CardDescription>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground">
-                  Interactive Blocks
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Form Submits</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.formSubmissions || 0)}</p>
+          <Card className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Abandonments</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400">{formatStatCount(stats.formAbandonments || 0)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Meetings</p>
-                  <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.meetingConfirmations || 0)}</p>
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">INTERACTIVE BLOCKS & FUNNELS</p>
+                  <p className="text-base font-bold text-foreground tracking-tight">Form & Booking Metrics</p>
                 </div>
               </div>
+              <Badge variant="outline" className="text-[10px] font-bold bg-muted text-muted-foreground rounded-lg">
+                Interactive Blocks
+              </Badge>
+            </div>
 
-              {/* Form Completion Rate Indicator */}
+            <div className="grid grid-cols-3 gap-2 text-center border border-border/50 rounded-xl p-3 bg-muted/20">
               <div>
-                <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
-                  <span>Form Completion Efficiency</span>
-                  <span className="font-extrabold text-foreground">
-                    {(stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
-                      ? `${(((stats.formSubmissions || 0) / ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) * 100).toFixed(1)}%`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
-                  <div
-                    className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
-                    style={{
-                      width: `${
-                        (stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
-                          ? Math.min(
-                              (((stats.formSubmissions || 0) /
-                                ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) *
-                                100),
-                              100
-                            )
-                          : 0
-                      }%`,
-                    }}
-                  />
-                </div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Form Submits</p>
+                <p className="text-lg sm:text-xl font-extrabold text-foreground">{formatStatCount(stats.formSubmissions || 0)}</p>
               </div>
-            </CardContent>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Abandonments</p>
+                <p className="text-lg sm:text-xl font-extrabold text-amber-600 dark:text-amber-400">{formatStatCount(stats.formAbandonments || 0)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Meetings</p>
+                <p className="text-lg sm:text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{formatStatCount(stats.meetingConfirmations || 0)}</p>
+              </div>
+            </div>
+
+            {/* Form Completion Rate Indicator */}
+            <div>
+              <div className="flex justify-between text-xs font-semibold text-muted-foreground mb-1.5">
+                <span>Form Completion Efficiency</span>
+                <span className="font-extrabold text-foreground">
+                  {(stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
+                    ? `${(((stats.formSubmissions || 0) / ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) * 100).toFixed(1)}%`
+                    : '—'}
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                <div
+                  className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
+                  style={{
+                    width: `${
+                      (stats.formSubmissions || 0) + (stats.formAbandonments || 0) > 0
+                        ? Math.min(
+                            (((stats.formSubmissions || 0) /
+                              ((stats.formSubmissions || 0) + (stats.formAbandonments || 0))) *
+                              100),
+                            100
+                          )
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
           </Card>
         </div>
 
         {/* Captured Leads Table & Search Section */}
-        <Card className="border-border bg-card text-card-foreground shadow-sm overflow-hidden">
-          <CardHeader className="border-b border-border pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-base font-extrabold text-foreground">Captured Leads</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  {leads.length === 0
-                    ? 'No responses submitted yet.'
-                    : `${leads.length} lead${leads.length !== 1 ? 's' : ''} recorded for this campaign page.`}
-                </CardDescription>
-              </div>
+        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
+          <div className="p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-extrabold text-foreground">Captured Leads</h2>
+            </div>
 
               {leads.length > 0 && (
                 <div className="relative w-full sm:w-64">
@@ -538,8 +506,7 @@ export function AnalyticsClient({ params }: { params: Promise<{ id: string }> })
                   />
                 </div>
               )}
-            </div>
-          </CardHeader>
+          </div>
 
           <CardContent className="p-0">
             {loadingLeads ? (
