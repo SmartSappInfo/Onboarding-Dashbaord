@@ -282,6 +282,17 @@ export async function handleSendMessage(
   }
 }
 
+/**
+ * Dispatches un-templated direct messages (DIRECT_EMAIL, DIRECT_SMS, DIRECT_WHATSAPP).
+ * 
+ * MAINTAINER CAUTION:
+ * 1. DIRECT_WHATSAPP sends raw text dispatches that require an open 24-hour customer service window
+ *    (inbound message from recipient within last 24h). If the 24h session is closed, sendWhatsApp()
+ *    throws an error explaining approved Meta templates are required outside the 24h window.
+ * 2. Recipients for SMS and WhatsApp are resolved via entity contact phone numbers and normalized
+ *    to E.164 without leading plus (+) via normalizeWaPhone().
+ * 3. Dispatches execute asynchronously per-recipient, resolving variables via buildVariableMap().
+ */
 export async function handleDirectMessage(
   actionType: 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'DIRECT_WHATSAPP' | string,
   config: Record<string, unknown>,

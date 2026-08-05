@@ -1254,15 +1254,14 @@ export async function sendRawMessage(input: {
               const waResult = await sendWhatsApp({
                 organizationId: finalOrgId,
                 recipient,
-                body: resolvedBody,
+                resolvedBody,
+                variables,
                 workspaceId: baseWorkspaceId,
                 automationId,
                 runId,
                 nodeId,
               });
-              if (!waResult.success) {
-                throw new Error(waResult.error || 'WhatsApp message dispatch failed');
-              }
+              providerId = waResult.metaMessageId;
           } else if (channel === 'push') {
             await sendPushNotification([recipient], resolvedSubject, resolvedBody);
         } else if (channel === 'in_app') {

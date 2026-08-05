@@ -152,9 +152,15 @@ export function decideSendMode(input: { hasTemplate: boolean; sessionOpen: boole
 export interface SendWhatsAppInput {
   organizationId: string;
   recipient: string;
-  template: MessageTemplate;
+  /** Optional template object for templated WABA dispatches; omitted for direct 24h window messages. */
+  template?: MessageTemplate;
   resolvedBody: string;
-  variables: Record<string, unknown>;
+  variables?: Record<string, unknown>;
+  /** Optional correlation fields for automation run analytics */
+  workspaceId?: string;
+  automationId?: string;
+  runId?: string;
+  nodeId?: string;
 }
 
 export interface SendWhatsAppResult {
@@ -192,13 +198,16 @@ export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsA
     sessionSnap.exists ? (sessionSnap.data()?.lastInboundAt as string | undefined) : undefined,
   );
 
-  const hasTemplate = !!template.whatsappTemplateName;
+  const hasTemplate = !!template?.whatsappTemplateName;
   const mode = decideSendMode({ hasTemplate, sessionOpen });
 
   const client = new MetaCloudApiClient(creds);
   let payload: TemplatePayload | TextPayload;
 
   if (mode === 'template') {
+    if (!template || !template.whatsappTemplateName) {
+      throw new Error('WhatsApp template configuration is required for templated dispatches.');
+    }
     // F5: refuse to send a template Meta hasn't (still) approved.
     const waId = `${organizationId}_${template.whatsappTemplateName}_${template.whatsappLanguage}`;
     const wa = await WhatsAppTemplateRepository.get(waId);
