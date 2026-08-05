@@ -1138,8 +1138,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         if (item.trigger) {
             data.trigger = item.trigger;
         }
-        if (item.actionType === 'SEND_MESSAGE' || item.actionType === 'DIRECT_EMAIL' || item.actionType === 'DIRECT_SMS') {
-            data.config.channel = item.channel || (item.actionType === 'DIRECT_SMS' ? 'sms' : 'email');
+        if (item.actionType === 'SEND_MESSAGE' || item.actionType === 'SEND_WHATSAPP' || item.actionType === 'DIRECT_EMAIL' || item.actionType === 'DIRECT_SMS' || item.actionType === 'DIRECT_WHATSAPP') {
+            data.config.channel = item.channel || (item.actionType === 'DIRECT_SMS' ? 'sms' : (item.actionType === 'SEND_WHATSAPP' || item.actionType === 'DIRECT_WHATSAPP') ? 'whatsapp' : 'email');
             data.config.recipientTargets = ['triggering'];
         }
         if (item.config) {

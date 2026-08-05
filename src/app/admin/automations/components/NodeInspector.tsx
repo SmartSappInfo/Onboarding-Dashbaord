@@ -148,13 +148,16 @@ import {
     Settings2 as Settings2IconPlaceholder,
     Bell as BellIconPlaceholder,
     Smartphone as SmartphoneIconPlaceholder,
+    MessageSquare as MessageSquareIconPlaceholder,
     UserCog
 } from 'lucide-react';
 
 const ACTION_TYPES = [
-    { value: 'SEND_MESSAGE', label: 'Dispatch Message', icon: MailIconPlaceholder, desc: 'Send an automated Email or SMS.' },
+    { value: 'SEND_MESSAGE', label: 'Dispatch Message', icon: MailIconPlaceholder, desc: 'Send an automated Email, SMS, or WhatsApp.' },
+    { value: 'SEND_WHATSAPP', label: 'Send WhatsApp', icon: MessageSquareIconPlaceholder, desc: 'Send an approved Meta WhatsApp template.' },
     { value: 'DIRECT_EMAIL', label: 'Direct Email', icon: MailIconPlaceholder, desc: 'Send an email directly without templates, interpolating variables.' },
     { value: 'DIRECT_SMS', label: 'Direct SMS', icon: SmartphoneIconPlaceholder, desc: 'Send an SMS directly without templates, interpolating variables.' },
+    { value: 'DIRECT_WHATSAPP', label: 'Direct WhatsApp', icon: MessageSquareIconPlaceholder, desc: 'Send a WhatsApp message directly within 24h customer service window.' },
     { value: 'CREATE_TASK', label: 'Initialize Task', icon: ClockIconPlaceholder, desc: 'Add a new task to the CRM.' },
     { value: 'UPDATE_ENTITY', label: 'Update Entity', icon: Building, desc: 'Update pipeline stage, assignee, or status.' },
     { value: 'ASSIGN_ENTITY', label: 'Assign Entity', icon: Building, desc: 'Set the workspace assignee.' },

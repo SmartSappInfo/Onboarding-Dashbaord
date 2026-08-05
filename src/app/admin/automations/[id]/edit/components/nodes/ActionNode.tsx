@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone, Plus, Sparkles, StickyNote } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone, Plus, Sparkles, StickyNote, MessageSquare } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -18,8 +18,10 @@ import { MessageNodeStatsStrip } from '../../../../components/message-stats/Mess
  */
 const ACTION_NAMES: Record<string, string> = {
     SEND_MESSAGE: 'Send Message',
+    SEND_WHATSAPP: 'Send WhatsApp',
     DIRECT_EMAIL: 'Direct Email',
     DIRECT_SMS: 'Direct SMS',
+    DIRECT_WHATSAPP: 'Direct WhatsApp',
     CREATE_TASK: 'Create Task',
     UPDATE_ENTITY: 'Update Entity',
     ASSIGN_ENTITY: 'Assign Entity',
@@ -48,9 +50,11 @@ export function ActionNode({ id, data, selected }: any) {
 
     const getIcon = () => {
         switch(actionType) {
-            case 'SEND_MESSAGE': return Mail;
+            case 'SEND_MESSAGE': return config.channel === 'whatsapp' ? MessageSquare : config.channel === 'sms' ? Smartphone : Mail;
+            case 'SEND_WHATSAPP': return MessageSquare;
             case 'DIRECT_EMAIL': return Mail;
             case 'DIRECT_SMS': return Smartphone;
+            case 'DIRECT_WHATSAPP': return MessageSquare;
             case 'CREATE_TASK': return Clock;
             case 'UPDATE_ENTITY': return Building;
             case 'ASSIGN_ENTITY': return Building;
@@ -77,6 +81,9 @@ export function ActionNode({ id, data, selected }: any) {
         }
         if (actionType === 'DIRECT_SMS') {
             return config.directBody ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) : 'Direct SMS';
+        }
+        if (actionType === 'DIRECT_WHATSAPP') {
+            return config.directBody ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) : 'Direct WhatsApp';
         }
         if (actionType === 'RUN_AUTOMATION') {
             return config.automationName || (config.automationId ? 'Sub-Flow' : 'Select Automation');
@@ -138,6 +145,21 @@ export function ActionNode({ id, data, selected }: any) {
                     ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) 
                     : 'Direct SMS';
                 return `SMS "${snippet}" to ${recipients || 'recipients'}`;
+            }
+            case 'DIRECT_WHATSAPP': {
+                const recipients = (config.recipientTargets || []).map((r: string) => {
+                    if (r === 'triggering') return 'Triggering Contact';
+                    if (r === 'primary') return 'Primary Contact';
+                    if (r === 'signatories') return 'Signatories';
+                    if (r === 'roles') return `Roles (${config.recipientRoles?.join(', ') || ''})`;
+                    if (r === 'all') return 'All Contacts';
+                    if (r === 'fixed') return 'Manual Entry';
+                    return r;
+                }).join(', ');
+                const snippet = config.directBody 
+                    ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) 
+                    : 'Direct WhatsApp';
+                return `WhatsApp "${snippet}" to ${recipients || 'recipients'}`;
             }
             case 'SEND_NOTIFICATION_EMAIL':
             case 'SEND_NOTIFICATION_SMS':

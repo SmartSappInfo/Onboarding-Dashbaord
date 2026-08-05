@@ -1038,7 +1038,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
  * Sends a raw message without a predefined template.
  */
 export async function sendRawMessage(input: {
-    channel: 'email' | 'sms' | 'in_app' | 'push',
+    channel: 'email' | 'sms' | 'whatsapp' | 'in_app' | 'push',
     recipient: string,
     body: string,
     subject?: string,
@@ -1249,6 +1249,20 @@ export async function sendRawMessage(input: {
         try {
           if (channel === 'sms') {
               await sendSms({ recipient, message: resolvedBody, sender: sender.identifier, apiKey: mnotifyKey });
+          } else if (channel === 'whatsapp') {
+              const { sendWhatsApp } = await import('./whatsapp/whatsapp-send');
+              const waResult = await sendWhatsApp({
+                organizationId: finalOrgId,
+                recipient,
+                body: resolvedBody,
+                workspaceId: baseWorkspaceId,
+                automationId,
+                runId,
+                nodeId,
+              });
+              if (!waResult.success) {
+                throw new Error(waResult.error || 'WhatsApp message dispatch failed');
+              }
           } else if (channel === 'push') {
             await sendPushNotification([recipient], resolvedSubject, resolvedBody);
         } else if (channel === 'in_app') {

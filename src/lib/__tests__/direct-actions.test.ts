@@ -85,6 +85,47 @@ describe('Direct SMS and Email Automation Actions', () => {
     });
   });
 
+  it('should successfully execute DIRECT_WHATSAPP to fixed recipient', async () => {
+    const config = {
+      recipientTargets: ['fixed'],
+      recipient: '+233241112222',
+      directBody: 'WhatsApp alert for {{name}}',
+      senderProfileId: 'default',
+    };
+    
+    const context: ExecutionContext = {
+      automationId: 'auto-wa-1',
+      runId: 'run-wa-1',
+      workspaceId: 'ws-1',
+      organizationId: 'org-1',
+      entityId: 'ent-1',
+      entityType: 'institution',
+      payload: { name: 'Alice' },
+    };
+
+    mockBuildVariableMap.mockResolvedValueOnce({
+      name: 'Alice',
+    });
+
+    await handleDirectMessage('DIRECT_WHATSAPP', config, context);
+
+    expect(mockSendRawMessage).toHaveBeenCalledWith({
+      channel: 'whatsapp',
+      recipient: '+233241112222',
+      body: 'WhatsApp alert for Alice',
+      senderProfileId: 'default',
+      organizationId: 'org-1',
+      variables: { name: 'Alice', unsubscribe_link: '' },
+      workspaceIds: ['ws-1'],
+      messageType: 'transactional',
+      entityId: 'ent-1',
+      entityType: 'institution',
+      isAutomation: true,
+      automationId: 'auto-wa-1',
+      runId: 'run-wa-1',
+    });
+  });
+
   it('should successfully execute DIRECT_EMAIL to fixed recipient and wrap in brand layout', async () => {
     const config = {
       recipientTargets: ['fixed'],

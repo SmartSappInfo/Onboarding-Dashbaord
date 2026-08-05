@@ -2433,7 +2433,7 @@ export interface AutomationEventPayload {
 }
 
 export interface AutomationAction {
-  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS';
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'UPDATE_FIELD' | 'WEBHOOK' | 'CREATE_DEAL' | 'SEND_NOTIFICATION_EMAIL' | 'SEND_NOTIFICATION_SMS' | 'SEND_NOTIFICATION_IN_APP' | 'SEND_NOTIFICATION_PUSH' | 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'SEND_WHATSAPP' | 'DIRECT_WHATSAPP';
   // Legacy template ID (for backward compatibility)
   templateId?: string;
   // New template resolution by category/type (Task 15.2)

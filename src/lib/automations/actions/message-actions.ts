@@ -283,13 +283,13 @@ export async function handleSendMessage(
 }
 
 export async function handleDirectMessage(
-  actionType: 'DIRECT_EMAIL' | 'DIRECT_SMS' | string,
+  actionType: 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'DIRECT_WHATSAPP' | string,
   config: Record<string, unknown>,
   context: ExecutionContext,
   nodeId?: string
 ): Promise<void> {
-  const channel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
-  const usePhone = channel === 'sms';
+  const channel = actionType === 'DIRECT_EMAIL' ? 'email' : actionType === 'DIRECT_WHATSAPP' ? 'whatsapp' : 'sms';
+  const usePhone = channel === 'sms' || channel === 'whatsapp';
   const targets = (config.recipientTargets || []) as string[];
   const roles = (config.recipientRoles || []) as string[];
 

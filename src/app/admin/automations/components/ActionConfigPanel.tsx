@@ -770,7 +770,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
   React.useEffect(() => {
     if (
-      (actionType === 'SEND_MESSAGE' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS') &&
+      (actionType === 'SEND_MESSAGE' || actionType === 'SEND_WHATSAPP' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' || actionType === 'DIRECT_WHATSAPP') &&
       config.recipientTargets === undefined
     ) {
       onUpdateConfig({ recipientTargets: ['triggering'] });
@@ -926,7 +926,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
-      {actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' ? (
+      {actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' || actionType === 'DIRECT_WHATSAPP' ? (
         <div className="space-y-6 text-left">
           {/* Sender Profile Selector */}
           <div className="space-y-2">
@@ -976,6 +976,8 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               placeholder={
                 actionType === 'DIRECT_EMAIL' 
                   ? "Write your email message here..." 
+                  : actionType === 'DIRECT_WHATSAPP'
+                  ? "Write your WhatsApp message here (valid within 24h customer service window)..."
                   : "Write your SMS text message here..."
               }
               value={(config.directBody as string) || ''}

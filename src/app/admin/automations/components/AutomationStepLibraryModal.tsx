@@ -31,6 +31,7 @@ import {
   Info,
   Bell,
   SplitSquareVertical,
+  MessageSquare,
   Sparkles,
   UserCog,
   Milestone
@@ -146,6 +147,24 @@ const LIBRARY_ITEMS = [
     icon: Smartphone,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Direct SMS', actionType: 'DIRECT_SMS' }
+  },
+  {
+    id: 'send_whatsapp',
+    title: 'Send WhatsApp',
+    description: 'Send an approved Meta WhatsApp template customized with dynamic profile properties.',
+    category: 'sending_options',
+    icon: MessageSquare,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Send WhatsApp', actionType: 'SEND_MESSAGE', channel: 'whatsapp' }
+  },
+  {
+    id: 'direct_whatsapp',
+    title: 'Direct WhatsApp',
+    description: 'Deliver a WhatsApp message directly within the 24-hour customer service window without a template.',
+    category: 'sending_options',
+    icon: MessageSquare,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Direct WhatsApp', actionType: 'DIRECT_WHATSAPP' }
   },
   {
     id: 'send_notification_email',

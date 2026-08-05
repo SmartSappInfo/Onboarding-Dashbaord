@@ -40,7 +40,8 @@ export async function processActionNode(
     }
     case 'DIRECT_EMAIL':
     case 'DIRECT_SMS':
-      return await handleDirectMessage(actionType as 'DIRECT_EMAIL' | 'DIRECT_SMS', resolvedConfig, context, node.id);
+    case 'DIRECT_WHATSAPP':
+      return await handleDirectMessage(actionType as 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'DIRECT_WHATSAPP', resolvedConfig, context, node.id);
     case 'SEND_NOTIFICATION_EMAIL':
     case 'SEND_NOTIFICATION_SMS':
     case 'SEND_NOTIFICATION_IN_APP':
