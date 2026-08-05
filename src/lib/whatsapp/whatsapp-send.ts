@@ -227,7 +227,7 @@ export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsA
       to,
       name: wa.name,
       language: wa.language,
-      params: buildTemplateParams(template.whatsappParamMap ?? [], variables),
+      params: buildTemplateParams(template.whatsappParamMap ?? [], variables ?? {}),
     });
   } else if (mode === 'text') {
     payload = buildTextPayload(to, resolvedBody);
