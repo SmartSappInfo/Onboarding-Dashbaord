@@ -127,10 +127,15 @@ export async function reschedulePendingJobs(
             payload: (data.payload as Record<string, unknown>) || {},
           };
 
+          const isCalendarSchedule = ['scheduled_day', 'specific_date', 'scheduled_month', 'date_field'].includes(
+            String(newConfig.waitType || '')
+          );
+          const baseTime = isCalendarSchedule ? new Date() : startedAt;
+
           const newExecuteAt = await calculateExecuteAt(
             newConfig,
             context,
-            startedAt
+            baseTime
           );
 
           batch.update(doc.ref, {

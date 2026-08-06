@@ -183,6 +183,37 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
 
       expect(mockBatch.commit).toHaveBeenCalled();
     });
+
+    it('uses current Date (not startedAt) when rescheduling scheduled_day calendar wait types', async () => {
+      const mockJobs = [
+        {
+          id: 'job-1',
+          ref: { id: 'job-1' },
+          data: () => ({
+            runId: 'run-1',
+            executeAt: '2026-06-05T12:00:00.000Z',
+            createdAt: '2026-05-01T12:00:00.000Z',
+            workspaceId: 'onboarding',
+            payload: {},
+          }),
+        },
+      ];
+
+      vi.mocked(mockCollection.get)
+        .mockResolvedValueOnce({ empty: false, docs: mockJobs } as any)
+        .mockResolvedValueOnce({ empty: true } as any);
+
+      await reschedulePendingJobs(
+        'auto-1',
+        'node-delay-1',
+        { waitType: 'scheduled_day', scheduledDayPreset: 'wednesday', scheduledTime: '18:15' },
+        { value: 5, unit: 'Minutes' }
+      );
+
+      expect(mockBatch.update).toHaveBeenCalled();
+      const updatedExecuteAt = mockBatch.update.mock.calls[0][1].executeAt;
+      expect(new Date(updatedExecuteAt).getTime()).toBeGreaterThan(new Date('2026-05-01').getTime());
+    });
   });
 
   describe('purgePendingJobsForNode', () => {
