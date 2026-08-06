@@ -136,7 +136,7 @@ export function AddToAutomationDialog({
       setIsSubmitting(false);
       setBulkScope(isSingleEntity ? 'custom' : 'primary');
       setSelectedRoles([]);
-      setStep(automationId ? 'pick-contacts' : 'pick-automation');
+      setStep(automationId && isSingleEntity ? 'pick-contacts' : 'pick-automation');
 
       if (isSingleEntity) {
         if (!entityContacts || entityContacts.length === 0) {
@@ -384,54 +384,56 @@ export function AddToAutomationDialog({
               )}
             </div>
 
-            {/* Automation Selection Selector */}
-            <div className="space-y-1.5 text-left shrink-0">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
-                Select Automation
-              </label>
+            {/* Automation Selection Selector (Only when not pre-bound) */}
+            {!automationId ? (
+              <div className="space-y-1.5 text-left shrink-0">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
+                  Select Automation
+                </label>
 
-              {isLoadingAutomations ? (
-                <div className="flex items-center justify-center p-6 border border-dashed border-border rounded-xl bg-muted/20">
-                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                </div>
-              ) : activeAutomations.length === 0 ? (
-                <div className="flex items-center gap-2.5 p-4 border border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-amber-600 dark:text-amber-400">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <p className="text-xs font-bold leading-normal">
-                    No active automations found. Create or activate one first.
-                  </p>
-                </div>
-              ) : (
-                <Select
-                  value={selectedAutomationId ?? ''}
-                  onValueChange={setSelectedAutomationId}
-                >
-                  <SelectTrigger className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-semibold transition-all">
-                    <SelectValue placeholder="Choose an active automation program..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-56 bg-popover border border-border text-popover-foreground rounded-xl p-1 shadow-xl">
-                    <ScrollArea className="h-full max-h-48 overflow-y-auto">
-                      {activeAutomations.map((automation) => (
-                        <SelectItem
-                          key={automation.id}
-                          value={automation.id}
-                          className="rounded-lg p-2.5 font-semibold text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground transition-colors"
-                        >
-                          {automation.name}
-                        </SelectItem>
-                      ))}
-                    </ScrollArea>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+                {isLoadingAutomations ? (
+                  <div className="flex items-center justify-center p-6 border border-dashed border-border rounded-xl bg-muted/20">
+                    <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                  </div>
+                ) : activeAutomations.length === 0 ? (
+                  <div className="flex items-center gap-2.5 p-4 border border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-amber-600 dark:text-amber-400">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <p className="text-xs font-bold leading-normal">
+                      No active automations found. Create or activate one first.
+                    </p>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedAutomationId ?? ''}
+                    onValueChange={setSelectedAutomationId}
+                  >
+                    <SelectTrigger className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-semibold transition-all">
+                      <SelectValue placeholder="Choose an active automation program..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-56 bg-popover border border-border text-popover-foreground rounded-xl p-1 shadow-xl">
+                      <ScrollArea className="h-full max-h-48 overflow-y-auto">
+                        {activeAutomations.map((automation) => (
+                          <SelectItem
+                            key={automation.id}
+                            value={automation.id}
+                            className="rounded-lg p-2.5 font-semibold text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground transition-colors"
+                          >
+                            {automation.name}
+                          </SelectItem>
+                        ))}
+                      </ScrollArea>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ) : null}
 
             <div className="pt-3 mt-auto shrink-0 flex items-center justify-end gap-2 border-t border-border">
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
-                className="rounded-xl font-bold h-10 text-xs text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-transparent"
+                className="rounded-xl font-bold h-11 min-h-[44px] text-xs text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-transparent px-4 active:scale-[0.97] transition-all"
               >
                 Cancel
               </Button>
@@ -439,7 +441,7 @@ export function AddToAutomationDialog({
                 <Button
                   onClick={() => setStep('pick-contacts')}
                   disabled={!selectedAutomationId}
-                  className="rounded-xl font-bold h-10 text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5"
+                  className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
                 >
                   Next: Choose Contacts →
                 </Button>
@@ -447,7 +449,7 @@ export function AddToAutomationDialog({
                 <Button
                   onClick={handleConfirm}
                   disabled={!selectedAutomationId || isSubmitting}
-                  className="rounded-xl font-bold h-10 text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5"
+                  className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
                 >
                   {isSubmitting ? (
                     <>

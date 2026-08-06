@@ -58,13 +58,13 @@ const AddToAutomationDialog = dynamic(
   { ssr: false }
 );
 
-function getFunctionalSnapshot(data: any) {
+function getFunctionalSnapshot(data: Partial<Automation> | null) {
   if (!data) return null;
   return {
     name: data.name,
     description: data.description || '',
     triggers: data.triggers ?? [],
-    edges: data.edges?.map((e: any) => ({
+    edges: data.edges?.map((e) => ({
       id: e.id,
       source: e.source,
       target: e.target,
@@ -72,7 +72,7 @@ function getFunctionalSnapshot(data: any) {
       targetHandle: e.targetHandle,
       type: e.type,
     })) ?? [],
-    nodes: data.nodes?.map((n: any) => ({
+    nodes: data.nodes?.map((n) => ({
       id: n.id,
       type: n.type,
       data: n.data,
@@ -308,7 +308,7 @@ export default function EditAutomationPage() {
         description: active ? 'This automation will now run on triggers.' : 'No new runs will be started.',
       });
     } else {
-      toast({ variant: 'destructive', title: 'Toggle failed', description: (res as any).error });
+      toast({ variant: 'destructive', title: 'Toggle failed', description: 'error' in res ? String(res.error) : 'Failed to update status' });
     }
   };
 
