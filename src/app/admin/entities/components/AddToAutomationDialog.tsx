@@ -36,8 +36,10 @@ import { useTerminology } from '@/hooks/use-terminology';
 interface AddToAutomationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  entityIds: string[];
+  entityIds?: string[];
   workspaceId: string;
+  automationId?: string;
+  automationName?: string;
   entityContacts?: EntityContact[];
   entityName?: string;
   onComplete?: () => void;
@@ -47,12 +49,15 @@ type Step = 'pick-contacts' | 'pick-automation';
 type BulkScope = 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
 
 const EMPTY_CONTACTS: EntityContact[] = [];
+const EMPTY_ENTITY_IDS: string[] = [];
 
 export function AddToAutomationDialog({
   open,
   onOpenChange,
-  entityIds,
+  entityIds = EMPTY_ENTITY_IDS,
   workspaceId,
+  automationId,
+  automationName,
   entityContacts = EMPTY_CONTACTS,
   entityName,
   onComplete,
@@ -127,11 +132,11 @@ export function AddToAutomationDialog({
   // Load contacts for single entity if not passed or empty
   React.useEffect(() => {
     if (open) {
-      setSelectedAutomationId(null);
+      setSelectedAutomationId(automationId || null);
       setIsSubmitting(false);
       setBulkScope(isSingleEntity ? 'custom' : 'primary');
       setSelectedRoles([]);
-      setStep('pick-automation');
+      setStep(automationId ? 'pick-contacts' : 'pick-automation');
 
       if (isSingleEntity) {
         if (!entityContacts || entityContacts.length === 0) {
@@ -234,9 +239,15 @@ export function AddToAutomationDialog({
       );
 
       if (result.success) {
+        const targetAutomationName = automationName || selectedAutomation?.name || 'Automation';
         toast({
           title: 'Direct Enrollment Scheduled',
-          description: `Successfully enqueued ${result.enrolledCount ?? entityIds.length} contact run(s) into "${automationName}".`,
+          description: `Successfully enqueued ${result.enrolledCount ?? (entityIds.length || 1)} contact run(s) into "${targetAutomationName}".`,
+          actionConfig: {
+            path: `/admin/automations/${selectedAutomationId}/edit?tab=activity`,
+            label: 'View Activity Logs',
+          },
+          duration: 10000,
         });
         onComplete?.();
         onOpenChange(false);
@@ -275,18 +286,30 @@ export function AddToAutomationDialog({
                 <Sparkles className="h-4 w-4" />
               </div>
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-                {!isAutomationPickStep ? 'Select Contacts' : 'Direct Automation Enrollment'}
+                {automationId ? 'Enroll Contacts in Automation' : (!isAutomationPickStep ? 'Select Contacts' : 'Direct Automation Enrollment')}
               </DialogTitle>
             </div>
-            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-lg shrink-0 border border-border">
-              {stepLabel}
-            </span>
+            {!automationId && (
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-lg shrink-0 border border-border">
+                {stepLabel}
+              </span>
+            )}
           </div>
           <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">
-            {!isAutomationPickStep
-              ? `Choose which specific contacts from ${entityName || 'this ' + singular} to enroll in the workflow.`
-              : `Enroll targeted contacts from the selected ${entityLabel} directly. This bypasses the trigger condition.`}
+            {automationId
+              ? `Manually enroll targeted contacts from your workspace directly into this automation flow.`
+              : (!isAutomationPickStep
+                ? `Choose which specific contacts from ${entityName || 'this ' + singular} to enroll in the workflow.`
+                : `Enroll targeted contacts from the selected ${entityLabel} directly. This bypasses the trigger condition.`)}
           </DialogDescription>
+          {automationId ? (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs text-emerald-950 dark:text-emerald-200 font-bold mt-2">
+              <span className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Target Flow:</span>
+              <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 font-bold px-2.5 py-0.5">
+                {automationName || 'Active Automation'}
+              </Badge>
+            </div>
+          ) : null}
         </DialogHeader>
 
         {/* --- STEP 1: Select Automation (Shown first for all) --- */}

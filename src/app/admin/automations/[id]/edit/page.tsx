@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, orderBy, query, where } from 'firebase/firestore';
 import type { Automation, AutomationTriggerDef } from '@/lib/types';
-import { ArrowLeft, CheckCircle2, Loader2, Pencil, Play, Save, AlertCircle, Search, X, Zap, Users, PenTool } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Pencil, Play, Save, AlertCircle, Search, X, Zap, Users, PenTool, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +53,11 @@ const AutomationActivityLog = dynamic(
   }
 );
 
+const AddToAutomationDialog = dynamic(
+  () => import('@/app/admin/entities/components/AddToAutomationDialog').then((m) => ({ default: m.AddToAutomationDialog })),
+  { ssr: false }
+);
+
 function getFunctionalSnapshot(data: any) {
   if (!data) return null;
   return {
@@ -92,6 +97,7 @@ export default function EditAutomationPage() {
   const [isTogglingStatus, setIsTogglingStatus] = React.useState(false);
   const [isTesting, setIsTesting] = React.useState(false);
   const [testDialogOpen, setTestDialogOpen] = React.useState(false);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = React.useState(false);
   const [testEntityId, setTestEntityId] = React.useState('');
   const [testEntityName, setTestEntityName] = React.useState('');
   const [entitySearch, setEntitySearch] = React.useState('');
@@ -510,6 +516,15 @@ export default function EditAutomationPage() {
           {!isNew && !automation.isArchived ? (
             <Button
               variant="outline"
+              className="rounded-xl font-bold h-10 gap-2 border-emerald-500/20 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 active:scale-[0.97] transition-all"
+              onClick={() => setIsEnrollModalOpen(true)}
+            >
+              <UserPlus className="h-4 w-4" /> Enroll Contacts
+            </Button>
+          ) : null}
+          {!isNew && !automation.isArchived ? (
+            <Button
+              variant="outline"
               className="rounded-xl font-bold h-10 gap-2 border-primary/20 text-primary"
               onClick={() => setTestDialogOpen(true)}
             >
@@ -776,6 +791,17 @@ export default function EditAutomationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {!isNew && automation && (
+        <AddToAutomationDialog
+          open={isEnrollModalOpen}
+          onOpenChange={setIsEnrollModalOpen}
+          workspaceId={automation.workspaceIds?.[0] || activeWorkspaceId}
+          automationId={automation.id}
+          automationName={automation.name}
+          onComplete={() => setActiveTab('activity')}
+        />
+      )}
 
     </div>
   );
