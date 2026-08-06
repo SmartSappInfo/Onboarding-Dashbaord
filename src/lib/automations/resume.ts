@@ -171,9 +171,16 @@ export async function processScheduledJobsAction(): Promise<{
     let processedCount = 0;
     const CONCURRENCY_LIMIT = 50;
     const MAX_DRAIN_ITERATIONS = 50;
+    const MAX_EXECUTION_MS = 45_000;
+    const startTime = Date.now();
     let iteration = 0;
 
     while (iteration < MAX_DRAIN_ITERATIONS) {
+      if (Date.now() - startTime > MAX_EXECUTION_MS) {
+        console.warn(`[HEARTBEAT] Time budget limit of ${MAX_EXECUTION_MS}ms reached. Exiting sweep loop.`);
+        break;
+      }
+
       const dueJobs = await findDuePendingJobs(HEARTBEAT_BATCH_SIZE);
       if (!dueJobs.length) break;
 
@@ -183,58 +190,67 @@ export async function processScheduledJobsAction(): Promise<{
         const chunk = dueJobs.slice(i, i + CONCURRENCY_LIMIT);
         await Promise.all(
           chunk.map(async (job) => {
-            const claimed = await claimAutomationJob(job.id);
-            if (!claimed) return;
+            try {
+              const claimed = await claimAutomationJob(job.id);
+              if (!claimed) return;
 
-            let success = false;
-            if (claimed.targetNodeId === '__campaign_ab_evaluate__') {
-              try {
-                await evaluateCampaignABTest(claimed.payload.campaignId as string);
-                success = true;
-              } catch (e) {
-                const message = e instanceof Error ? e.message : String(e);
-                console.error(`Evaluation failed: ${message}`);
-                logAutomationEvent('error', 'heartbeat_ab_evaluate_failed', {
-                  jobId: claimed.id,
-                  campaignId: claimed.payload?.campaignId as string | undefined,
-                  error: message,
-                });
-              }
-            } else if (claimed.targetNodeId === '__campaign_trigger__' || !claimed.runId) {
-              try {
-                await runAutomationById(claimed.automationId, claimed.payload);
-                if (claimed.payload?.event) {
-                  await dispatchCampaignBlueprintTriggers({
-                    hookEvent: claimed.payload.event as string,
-                    payload: claimed.payload,
-                    excludeAutomationIds: [claimed.automationId],
+              let success = false;
+              if (claimed.targetNodeId === '__campaign_ab_evaluate__') {
+                try {
+                  await evaluateCampaignABTest(claimed.payload.campaignId as string);
+                  success = true;
+                } catch (e) {
+                  const message = e instanceof Error ? e.message : String(e);
+                  console.error(`Evaluation failed: ${message}`);
+                  logAutomationEvent('error', 'heartbeat_ab_evaluate_failed', {
+                    jobId: claimed.id,
+                    campaignId: claimed.payload?.campaignId as string | undefined,
+                    error: message,
                   });
                 }
-                success = true;
-              } catch (e) {
-                logAutomationEvent('error', 'heartbeat_campaign_job_failed', {
-                  jobId: claimed.id,
-                  automationId: claimed.automationId,
-                  workspaceId: claimed.payload?.workspaceId as string | undefined,
-                  error: e,
-                });
+              } else if (claimed.targetNodeId === '__campaign_trigger__' || !claimed.runId) {
+                try {
+                  await runAutomationById(claimed.automationId, claimed.payload);
+                  if (claimed.payload?.event) {
+                    await dispatchCampaignBlueprintTriggers({
+                      hookEvent: claimed.payload.event as string,
+                      payload: claimed.payload,
+                      excludeAutomationIds: [claimed.automationId],
+                    });
+                  }
+                  success = true;
+                } catch (e) {
+                  logAutomationEvent('error', 'heartbeat_campaign_job_failed', {
+                    jobId: claimed.id,
+                    automationId: claimed.automationId,
+                    workspaceId: claimed.payload?.workspaceId as string | undefined,
+                    error: e,
+                  });
+                }
+              } else if (claimed.targetNodeId === '__resend_check__') {
+                try {
+                  success = await processResendCheck(claimed);
+                } catch (e) {
+                  logAutomationEvent('error', 'resend_check_failed', {
+                    jobId: claimed.id,
+                    runId: claimed.runId,
+                    error: e instanceof Error ? e.message : String(e),
+                  });
+                }
+              } else {
+                success = await resumeAutomationRun(claimed);
               }
-            } else if (claimed.targetNodeId === '__resend_check__') {
-              try {
-                success = await processResendCheck(claimed);
-              } catch (e) {
-                logAutomationEvent('error', 'resend_check_failed', {
-                  jobId: claimed.id,
-                  runId: claimed.runId,
-                  error: e instanceof Error ? e.message : String(e),
-                });
-              }
-            } else {
-              success = await resumeAutomationRun(claimed);
-            }
 
-            await finalizeAutomationJob(claimed.id, success ? 'completed' : 'failed');
-            batchProcessed++;
+              await finalizeAutomationJob(claimed.id, success ? 'completed' : 'failed');
+              batchProcessed++;
+            } catch (claimErr) {
+              const msg = claimErr instanceof Error ? claimErr.message : String(claimErr);
+              console.error(`[HEARTBEAT] Error processing job ${job.id}: ${msg}`);
+              logAutomationEvent('error', 'heartbeat_job_processing_failed', {
+                jobId: job.id,
+                error: msg,
+              });
+            }
           })
         );
       }

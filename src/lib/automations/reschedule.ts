@@ -62,6 +62,11 @@ export async function reschedulePendingJobs(
     cachedWorkspaceId = autoSnap.data()?.workspaceIds?.[0] as string;
   }
 
+  const isCalendarSchedule = ['scheduled_day', 'specific_date', 'scheduled_month', 'date_field'].includes(
+    String(newConfig.waitType || '')
+  );
+  const calendarNow = isCalendarSchedule ? new Date() : null;
+
   const BATCH_LIMIT = 500;
   const CONCURRENCY_LIMIT = 50;
   let lastDoc: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData> | null = null;
@@ -121,16 +126,13 @@ export async function reschedulePendingJobs(
             runId: data.runId as string,
             automationId,
             workspaceId,
-            organizationId: data.payload?.organizationId as string | undefined,
+            organizationId: (data.payload?.organizationId as string | undefined) || (data.organizationId as string | undefined),
             entityId: data.payload?.entityId as string | undefined,
             entityType: (data.payload?.entityType as import('../types').EntityType) || 'contacts',
             payload: (data.payload as Record<string, unknown>) || {},
           };
 
-          const isCalendarSchedule = ['scheduled_day', 'specific_date', 'scheduled_month', 'date_field'].includes(
-            String(newConfig.waitType || '')
-          );
-          const baseTime = isCalendarSchedule ? new Date() : startedAt;
+          const baseTime = calendarNow || startedAt;
 
           const newExecuteAt = await calculateExecuteAt(
             newConfig,

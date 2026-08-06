@@ -146,10 +146,10 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
         .mockResolvedValueOnce({
           empty: false,
           docs: mockJobs,
-        } as any)
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot)
         .mockResolvedValueOnce({
           empty: true,
-        } as any);
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       await reschedulePendingJobs(
         'auto-1',
@@ -200,8 +200,8 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
       ];
 
       vi.mocked(mockCollection.get)
-        .mockResolvedValueOnce({ empty: false, docs: mockJobs } as any)
-        .mockResolvedValueOnce({ empty: true } as any);
+        .mockResolvedValueOnce({ empty: false, docs: mockJobs } as unknown as import('firebase-admin/firestore').QuerySnapshot)
+        .mockResolvedValueOnce({ empty: true } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       await reschedulePendingJobs(
         'auto-1',
@@ -226,10 +226,10 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
         .mockResolvedValueOnce({
           empty: false,
           docs: mockJobs,
-        } as any)
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot)
         .mockResolvedValueOnce({
           empty: true,
-        } as any);
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       await purgePendingJobsForNode('auto-1', 'node-delay-1');
 
@@ -250,10 +250,10 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
         .mockResolvedValueOnce({
           empty: false,
           docs: mockJobs,
-        } as any)
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot)
         .mockResolvedValueOnce({
           empty: true,
-        } as any);
+        } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       await purgeAllPendingJobsForAutomation('auto-1');
 
@@ -286,18 +286,18 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
       vi.mocked(loadAutomationForAuth).mockResolvedValueOnce({
         id: 'auto-1',
         workspaceIds: ['onboarding'],
-      } as any);
+      } as unknown as import('../types').Automation);
 
       // 2. Mock query for pending jobs at wait step (Call 1)
       mockCollection.get.mockResolvedValueOnce({
         empty: false,
         docs: mockJobs,
-      } as any);
+      } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       // 3. Mock query for subsequent pending jobs (Call 2)
       mockCollection.get.mockResolvedValueOnce({
         empty: true,
-      } as any);
+      } as unknown as import('firebase-admin/firestore').QuerySnapshot);
 
       // 4. Mock Transaction get to return the job data
       mockTx.get.mockResolvedValueOnce({
@@ -309,7 +309,7 @@ describe('Automation Delay Rescheduling & Manual Resumption Utilities', () => {
           status: 'pending',
           payload: {},
         }),
-      } as any);
+      } as unknown as import('firebase-admin/firestore').DocumentSnapshot);
 
       // 5. Mock resumeAutomationRun to return true
       vi.mocked(resumeAutomationRun).mockResolvedValueOnce(true);
