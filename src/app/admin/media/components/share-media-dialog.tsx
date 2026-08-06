@@ -45,6 +45,7 @@ interface ShareMediaDialogProps {
 interface ShareConfig {
     id: string;
     assetId: string;
+    assetName?: string;
     workspaceId: string;
     title: string;
     description: string;
@@ -372,6 +373,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             const shareConfig: ShareConfig = {
                 id: shareId,
                 assetId: asset.id,
+                assetName: asset.name,
                 workspaceId: activeWorkspaceId,
                 title: title.trim() || asset.name,
                 description: description.trim(),

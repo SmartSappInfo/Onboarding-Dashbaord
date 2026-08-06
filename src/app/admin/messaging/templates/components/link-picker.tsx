@@ -151,18 +151,35 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             };
           });
         } else if (targetType === 'media') {
-          const snap = await getDocs(
-            query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))
-          );
-          fetched = snap.docs.map((d) => {
+          // Fetch media_shares AND workspace media assets in parallel to guarantee accurate internal file reference name resolution
+          const [sharesSnap, mediaSnap] = await Promise.all([
+            getDocs(query(collection(firestore, 'media_shares'), where('workspaceId', '==', activeWorkspaceId))),
+            getDocs(query(collection(firestore, 'media'), where('workspaceIds', 'array-contains', activeWorkspaceId))),
+          ]);
+
+          const mediaNameMap = new Map<string, string>();
+          mediaSnap.docs.forEach((doc) => {
+            const data = doc.data();
+            const assetName = (data.name as string) || (data.title as string) || (data.filename as string);
+            if (assetName) {
+              mediaNameMap.set(doc.id, assetName);
+            }
+          });
+
+          fetched = sharesSnap.docs.map((d) => {
             const data = d.data();
             const effectiveSlug = (data.slug as string)?.trim() || d.id;
-            const internalName = (data.internalName as string) || (data.name as string) || (data.assetName as string) || (data.title as string) || 'Untitled Media Share';
-            const publicTitle = data.title && data.title !== internalName ? (data.title as string) : undefined;
+            const assetId = data.assetId as string | undefined;
+            const resolvedAssetName = (data.assetName as string) || (assetId ? mediaNameMap.get(assetId) : undefined) || (data.internalName as string) || (data.name as string);
+            const publicTitle = (data.title as string)?.trim();
+
+            const internalName = resolvedAssetName || publicTitle || 'Untitled Shared Media';
+            const subtitle = publicTitle && publicTitle !== internalName ? publicTitle : undefined;
+
             return {
               id: d.id,
               name: internalName,
-              subtitle: publicTitle,
+              subtitle,
               path: `/m/${effectiveSlug}`,
             };
           });
