@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
-import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown } from 'lucide-react';
+import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -54,6 +54,7 @@ export default function MediaLibraryBrowser({
   const [searchTerm, setSearchTerm] = useState('');
   const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState(filterType || 'image');
   
   const effectiveWorkspaceId = forcedWorkspaceId || activeWorkspaceId;
@@ -109,10 +110,21 @@ export default function MediaLibraryBrowser({
     return set;
   }, [sharesData]);
 
+  const availableCategories = useMemo(() => {
+    if (!assets) return [];
+    const set = new Set<string>();
+    assets.forEach((a) => {
+      if (a.category?.trim()) {
+        set.add(a.category.trim().toLowerCase());
+      }
+    });
+    return Array.from(set).sort();
+  }, [assets]);
+
   /**
    * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
    * Multi-dimensional client-side filtering combines search term, Source Filter (Hosted MP4 vs Linked Video),
-   * and Setup Status Filter (Active Page vs Standby Asset) without triggering extra Firestore read queries.
+   * Setup Status Filter (Active Page vs Standby Asset), and Category Filter without triggering extra Firestore read queries.
    */
   const filteredAssets = useMemo(() => {
     if (!assets) return [];
@@ -147,9 +159,14 @@ export default function MediaLibraryBrowser({
         return false;
       }
 
+      // 4. Category Filter
+      if (categoryFilter !== 'ALL' && (asset.category || '').toLowerCase() !== categoryFilter.toLowerCase()) {
+        return false;
+      }
+
       return true;
     });
-  }, [assets, searchTerm, sourceFilter, setupFilter, configuredAssetIds]);
+  }, [assets, searchTerm, sourceFilter, setupFilter, categoryFilter, configuredAssetIds]);
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-background">
@@ -191,21 +208,23 @@ export default function MediaLibraryBrowser({
             />
           </div>
 
-          {/* Source & Setup Filter Controls */}
+          {/* Source, Setup & Category Filter Controls */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 className={`h-10 px-3 rounded-xl border font-bold text-xs gap-1.5 shrink-0 transition-all min-h-[44px] ${
-                  sourceFilter !== 'ALL' || setupFilter !== 'ALL'
+                  sourceFilter !== 'ALL' || setupFilter !== 'ALL' || categoryFilter !== 'ALL'
                     ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary shadow-sm'
                     : 'border-border bg-background hover:bg-muted/50 text-foreground'
                 }`}
               >
                 <Filter className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">
-                  {sourceFilter !== 'ALL'
+                  {categoryFilter !== 'ALL'
+                    ? `Category: ${categoryFilter.toUpperCase()}`
+                    : sourceFilter !== 'ALL'
                     ? sourceFilter === 'HOSTED' ? 'Hosted MP4' : 'Linked Videos'
                     : setupFilter !== 'ALL'
                     ? setupFilter === 'CONFIGURED' ? 'Active Pages' : 'Standby Assets'
@@ -214,7 +233,29 @@ export default function MediaLibraryBrowser({
                 <ChevronDown className="h-3.5 w-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-border shadow-2xl">
+            <DropdownMenuContent align="end" className="w-60 rounded-2xl p-2 border-border shadow-2xl">
+              <DropdownMenuLabel className="text-[10px] font-black text-muted-foreground uppercase px-3 py-1">
+                Category Switcher
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => setCategoryFilter('ALL')}
+                className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer ${categoryFilter === 'ALL' ? 'bg-primary/10 text-primary font-black' : ''}`}
+              >
+                All Categories
+              </DropdownMenuItem>
+              {availableCategories.map((cat) => (
+                <DropdownMenuItem
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer capitalize ${categoryFilter.toLowerCase() === cat ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 font-black' : ''}`}
+                >
+                  <Tag className="h-3.5 w-3.5 text-purple-500" />
+                  {cat}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator className="my-1.5" />
+
               <DropdownMenuLabel className="text-[10px] font-black text-muted-foreground uppercase px-3 py-1">
                 Source Type
               </DropdownMenuLabel>

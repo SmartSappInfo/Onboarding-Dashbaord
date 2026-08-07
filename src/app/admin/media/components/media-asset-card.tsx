@@ -35,12 +35,13 @@ import {
     MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, 
     Link as LinkIcon, Eye, TextCursorInput, Share2, Layout, 
     Check, CheckCircle2, ShieldCheck, Loader2, Building2,
-    Youtube, HardDrive, Link2
+    Youtube, HardDrive, Link2, Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import RenameMediaDialog from './rename-media-dialog';
 import ShareMediaDialog from './share-media-dialog';
+import ChangeCategoryDialog from './change-category-dialog';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
@@ -96,6 +97,7 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isVisibilityOpen, setIsVisibilityOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const [localWorkspaceIds, setLocalWorkspaceIds] = useState<string[]>(asset.workspaceIds || []);
@@ -375,6 +377,11 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
  <span className="font-bold text-sm">Rename Reference</span>
                 </DropdownMenuItem>
 
+                <DropdownMenuItem onClick={() => setIsCategoryOpen(true)} className="rounded-xl p-2.5 gap-3">
+                  <div className="p-1.5 bg-purple-50 dark:bg-purple-950/40 rounded-lg text-purple-600 dark:text-purple-400"><Tag className="h-4 w-4" /></div>
+                  <span className="font-bold text-sm">Change Category</span>
+                </DropdownMenuItem>
+
  <DropdownMenuItem onClick={handleCopyUrl} className="rounded-xl p-2.5 gap-3">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Copy className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Copy Gateway URL</span>
@@ -464,6 +471,7 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
       <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
       <RenameMediaDialog asset={asset} open={isRenameOpen} onOpenChange={setIsRenameOpen} />
       <ShareMediaDialog asset={asset} open={isShareOpen} onOpenChange={setIsShareOpen} />
+      <ChangeCategoryDialog asset={asset} open={isCategoryOpen} onOpenChange={setIsCategoryOpen} />
     </>
   );
 }
