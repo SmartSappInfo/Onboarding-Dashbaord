@@ -129,6 +129,7 @@ export default function ChangeCategoryDialog({ asset, open, onOpenChange }: Chan
                                         <button
                                             key={preset.value}
                                             type="button"
+                                            aria-pressed={isSelected}
                                             onClick={() => setCategory(preset.value)}
                                             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 min-h-[44px] cursor-pointer touch-manipulation flex items-center gap-1.5 border ${
                                                 isSelected

@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * 
+ * 1. Asset Card Lifecycle & Actions:
+ *    Renders individual media asset thumbnails (hosted MP4 vs linked YouTube/Vimeo/Loom)
+ *    and provides context menu actions for full preview, sharing, visibility management,
+ *    category assignment, and asset deletion.
+ * 2. Performance & Memory Optimizations:
+ *    Employs third-party thumbnail generators (YouTube, Vimeo, Loom) and lazy video previews
+ *    without mounting heavy player APIs in card grid views.
+ * 3. Mobile & Touch Target Compliance:
+ *    All buttons and dropdown menu actions enforce `min-h-[44px]` touch target bounds.
+ */
+
 import { useState } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
@@ -67,7 +81,7 @@ const getVimeoThumbnail = (url: string) => {
     if (match && match[1]) {
       return `https://vumbnail.com/${match[1]}.jpg`;
     }
-  } catch (e) {}
+  } catch (e: unknown) {}
   return null;
 };
 
@@ -77,7 +91,7 @@ const getLoomThumbnail = (url: string) => {
     if (match && match[1]) {
       return `https://cdn.loom.com/sessions/thumbnails/${match[1]}-with-play.gif`;
     }
-  } catch (e) {}
+  } catch (e: unknown) {}
   return null;
 };
 
@@ -162,7 +176,7 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
         for (const docMatch of sharesSnap.docs) {
             await deleteDoc(doc(firestore, 'media_shares', docMatch.id));
         }
-    } catch (err) {
+    } catch (err: unknown) {
         console.warn('Error purging associated media_shares configs:', err);
     }
 
