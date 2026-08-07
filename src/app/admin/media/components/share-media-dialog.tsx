@@ -717,7 +717,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => setIsImportModalOpen(true)}
-                                                        className="h-9 px-3 rounded-xl text-xs font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
+                                                        className="h-9 px-3 rounded-xl text-xs font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 gap-1.5 shrink-0 min-h-[44px] active:scale-[0.97]"
                                                     >
                                                         <Download className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                                                         Import Rules
@@ -726,7 +726,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         type="button"
                                                         size="sm"
                                                         onClick={() => setIsTransferModalOpen(true)}
-                                                        className="h-9 px-3 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
+                                                        className="h-9 px-3 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shrink-0 min-h-[44px] active:scale-[0.97]"
                                                     >
                                                         <Copy className="h-3.5 w-3.5" />
                                                         Transfer Rules

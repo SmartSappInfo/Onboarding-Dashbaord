@@ -258,11 +258,11 @@ export default function ImportMediaAutomationsModal({
         <div className="p-4 bg-muted/30 border-b border-border/60 text-left space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Import Mode</label>
           <Tabs value={importMode} onValueChange={(val) => setImportMode(val as ImportMode)} className="w-full">
-            <TabsList className="grid grid-cols-2 h-11 p-1 bg-muted/60 rounded-xl">
-              <TabsTrigger value="merge" className="rounded-lg text-xs font-bold transition-all min-h-[36px] data-[state=active]:bg-background data-[state=active]:text-foreground active:scale-[0.97]">
+            <TabsList className="grid grid-cols-2 h-12 p-1 bg-muted/60 rounded-xl">
+              <TabsTrigger value="merge" className="rounded-lg text-xs font-bold transition-all min-h-[44px] data-[state=active]:bg-background data-[state=active]:text-foreground active:scale-[0.97]">
                 Merge & Append Rules
               </TabsTrigger>
-              <TabsTrigger value="replace" className="rounded-lg text-xs font-bold transition-all min-h-[36px] data-[state=active]:bg-background data-[state=active]:text-foreground active:scale-[0.97]">
+              <TabsTrigger value="replace" className="rounded-lg text-xs font-bold transition-all min-h-[44px] data-[state=active]:bg-background data-[state=active]:text-foreground active:scale-[0.97]">
                 Overwrite Current Rules
               </TabsTrigger>
             </TabsList>
