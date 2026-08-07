@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import { 
     Loader2, Share2, Copy, Check, Globe, Code, 
-    Sparkles, RefreshCw, Layers, Save, Film 
+    Sparkles, RefreshCw, Layers, Save, Film, Download 
 } from 'lucide-react';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
@@ -35,6 +35,7 @@ import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/
 import type { CallOutcomeAutomation } from '@/lib/types';
 import ConfiguredAutomationsSummary from './ConfiguredAutomationsSummary';
 import TransferMediaAutomationsModal from './TransferMediaAutomationsModal';
+import ImportMediaAutomationsModal, { ImportMode } from './ImportMediaAutomationsModal';
 
 interface ShareMediaDialogProps {
     asset: MediaAsset;
@@ -111,6 +112,34 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [automationRules, setAutomationRules] = React.useState<Record<string, CallOutcomeAutomation[]>>({});
     const [activeTrigger, setActiveTrigger] = React.useState<string>('on_view');
     const [isTransferModalOpen, setIsTransferModalOpen] = React.useState<boolean>(false);
+    const [isImportModalOpen, setIsImportModalOpen] = React.useState<boolean>(false);
+
+    const handleImportRules = React.useCallback((
+        importedRules: Record<string, CallOutcomeAutomation[]>,
+        mode: ImportMode,
+        sourceTitle: string
+    ) => {
+        let importedCount = 0;
+        if (mode === 'replace') {
+            setAutomationRules(importedRules);
+            importedCount = Object.values(importedRules).reduce((sum, rules) => sum + (rules?.length || 0), 0);
+        } else {
+            setAutomationRules(prev => {
+                const merged = { ...prev };
+                for (const [triggerKey, actions] of Object.entries(importedRules)) {
+                    const existing = merged[triggerKey] || [];
+                    merged[triggerKey] = [...existing, ...actions];
+                    importedCount += actions.length;
+                }
+                return merged;
+            });
+        }
+
+        toast({
+            title: 'Automations Imported',
+            description: `${mode === 'replace' ? 'Replaced' : 'Appended'} ${importedCount} automation rule${importedCount === 1 ? '' : 's'} from "${sourceTitle}".`,
+        });
+    }, [toast]);
 
     const handleClearTriggerRules = React.useCallback((triggerKey: string) => {
         setAutomationRules(prev => {
@@ -674,23 +703,35 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                     <TabsContent value="automations" className="space-y-4 outline-none mt-0">
                                         <div className="space-y-4">
-                                            {/* Transfer Automations Header Bar */}
-                                            <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-card border border-border">
+                                            {/* Transfer & Import Automations Header Bar */}
+                                            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-card border border-border flex-wrap sm:flex-nowrap">
                                                 <div className="text-left">
                                                     <p className="text-xs font-extrabold text-foreground">Rule Transfer & Replication</p>
                                                     <p className="text-[10px] text-muted-foreground font-medium">
-                                                        Copy configured rules to other hosted {asset.type || 'video'} landing pages.
+                                                        Copy configured rules to other landing pages, or import rules from another page.
                                                     </p>
                                                 </div>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={() => setIsTransferModalOpen(true)}
-                                                    className="h-9 px-3 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
-                                                >
-                                                    <Copy className="h-3.5 w-3.5" />
-                                                    Transfer Rules
-                                                </Button>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => setIsImportModalOpen(true)}
+                                                        className="h-9 px-3 rounded-xl text-xs font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                                                        Import Rules
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={() => setIsTransferModalOpen(true)}
+                                                        className="h-9 px-3 rounded-xl text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5 shrink-0 min-h-[36px] active:scale-[0.97]"
+                                                    >
+                                                        <Copy className="h-3.5 w-3.5" />
+                                                        Transfer Rules
+                                                    </Button>
+                                                </div>
                                             </div>
 
                                             {/* At-a-Glance Configured Rules Summary */}
@@ -863,12 +904,20 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 )}
             </DialogContent>
 
-            {/* Transfer Media Automations Modal */}
+            {/* Transfer & Import Media Automations Modals */}
             <TransferMediaAutomationsModal
                 sourceAsset={asset}
                 automationRules={automationRules}
                 open={isTransferModalOpen}
                 onOpenChange={setIsTransferModalOpen}
+            />
+
+            <ImportMediaAutomationsModal
+                currentAsset={asset}
+                currentShareId={isSaved ? shareId : undefined}
+                open={isImportModalOpen}
+                onOpenChange={setIsImportModalOpen}
+                onImportRules={handleImportRules}
             />
         </Dialog>
     );
