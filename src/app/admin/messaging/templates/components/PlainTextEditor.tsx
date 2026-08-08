@@ -49,7 +49,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
 }: PlainTextEditorProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [showLinkPicker, setShowLinkPicker] = React.useState(false);
-    const [trackVisitor, setTrackVisitor] = React.useState(false);
+    const [trackVisitor, setTrackVisitor] = React.useState(true);
 
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 

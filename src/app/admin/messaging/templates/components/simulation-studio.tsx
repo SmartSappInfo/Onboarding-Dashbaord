@@ -333,7 +333,7 @@ export function SimulationStudio({
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                                     </div>
                                     <div className="flex flex-col items-center gap-0.5">
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-slate-650 dark:text-zinc-350 shadow-inner">
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-slate-700 dark:text-zinc-300 shadow-inner">
                                             SS
                                         </div>
                                         <span className="text-[10px] font-bold tracking-tight">SmartSapp</span>
@@ -347,7 +347,7 @@ export function SimulationStudio({
                                     
                                     {/* Simulated incoming text bubble */}
                                     <div className="flex items-end gap-1.5 max-w-[85%] self-start select-text relative">
-                                        <div className="bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-zinc-150 px-4 py-2.5 rounded-2xl rounded-bl-xs text-xs font-semibold leading-relaxed shadow-sm text-left">
+                                        <div className="bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 px-4 py-2.5 rounded-2xl rounded-bl-xs text-xs font-semibold leading-relaxed shadow-sm text-left">
                                             <p className="whitespace-pre-wrap">{resolvedText || '(No Content)'}</p>
                                         </div>
                                     </div>

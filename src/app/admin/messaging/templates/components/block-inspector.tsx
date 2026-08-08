@@ -447,9 +447,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                 {showLinkPicker && (
                                     <LinkPicker 
                                         onSelect={(url) => {
-                                            const hasTracking = block.link?.includes('ref={{encrypted_recipient_token}}');
                                             let finalUrl = url;
-                                            if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                            if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                 const joiner = finalUrl.includes('?') ? '&' : '?';
                                                 finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                             }
@@ -563,9 +562,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     {showLinkPicker && (
                                         <LinkPicker 
                                             onSelect={(url) => {
-                                                const hasTracking = block.link?.includes('ref={{encrypted_recipient_token}}');
                                                 let finalUrl = url;
-                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
@@ -651,10 +649,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     {showSecondaryLinkPicker && (
                                         <LinkPicker 
                                             onSelect={(url) => {
-                                                const ss = block.secondaryStyle ?? {};
-                                                const hasTracking = block.secondaryLink?.includes('ref={{encrypted_recipient_token}}');
                                                 let finalUrl = url;
-                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
@@ -1050,9 +1046,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     {showVideoLinkPicker && (
                                         <LinkPicker 
                                             onSelect={(url) => {
-                                                const hasTracking = block.videoRedirectUrl?.includes('ref={{encrypted_recipient_token}}');
                                                 let finalUrl = url;
-                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
@@ -1145,9 +1140,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     {showAudioLinkPicker && (
                                         <LinkPicker 
                                             onSelect={(url) => {
-                                                const hasTracking = block.audioRedirectUrl?.includes('ref={{encrypted_recipient_token}}');
                                                 let finalUrl = url;
-                                                if (hasTracking && !finalUrl.includes('ref={{encrypted_recipient_token}}')) {
+                                                if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
