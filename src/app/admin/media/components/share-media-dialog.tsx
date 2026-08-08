@@ -214,10 +214,8 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setShareId(freshId);
                 setTitle(asset.name);
                 
-                let defaultDesc = '';
-                if (asset.type === 'video') {
-                    defaultDesc = "Click to watch this video. It's Super Important";
-                } else if (asset.type === 'audio') {
+                let defaultDesc = "Watch This Video, It's Super Important!";
+                if (asset.type === 'audio') {
                     defaultDesc = "Click to listen to this audio, It's Super Important";
                 } else if (asset.type === 'document') {
                     defaultDesc = "Kindly find document below for your perusal";
@@ -405,7 +403,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 assetName: asset.name,
                 workspaceId: activeWorkspaceId,
                 title: title.trim() || asset.name,
-                description: description.trim(),
+                description: description.trim() || "Watch This Video, It's Super Important!",
                 ctaText: ctaText.trim(),
                 ctaType,
                 ctaTargetId,
@@ -469,7 +467,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                             <div className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white mb-0.5">
                                 Asset: {asset.name}
                             </div>
-                            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Share Media Asset</DialogTitle>
+                            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Publish Media Asset</DialogTitle>
                             <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
                                 Configure public links, personalized context mapping, and iframe embed targets.
                             </DialogDescription>
