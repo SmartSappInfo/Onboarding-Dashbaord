@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { getLinkData, recordLinkClickAsync } from '@/lib/link-tracking';
 import { adminDb } from '@/lib/firebase-admin';
+import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import type { PageEventChannel } from '@/lib/types';
 
 /**
@@ -15,9 +16,10 @@ export async function GET(
   { params }: { params: Promise<{ linkId: string }> }
 ) {
   const { linkId } = await params;
+  const baseUrl = await getRequestBaseUrl();
 
   if (!linkId) {
-    return NextResponse.redirect(new URL('/', req.url));
+    return NextResponse.redirect(new URL('/', baseUrl));
   }
 
   // CASE 1: Stateless 11-Character Cryptographic Token
@@ -35,7 +37,7 @@ export async function GET(
 
       if (contactSnap.empty) {
         console.warn(`[REDIRECT] Contact serial not found: ${contactSerial}`);
-        return NextResponse.redirect(new URL('/', req.url));
+        return NextResponse.redirect(new URL('/', baseUrl));
       }
 
       const contactDoc = contactSnap.docs[0];
@@ -105,7 +107,7 @@ export async function GET(
 
       if (!originalUrl) {
         console.warn(`[REDIRECT] Page serial not found: ${pageSerial}`);
-        return NextResponse.redirect(new URL('/', req.url));
+        return NextResponse.redirect(new URL('/', baseUrl));
       }
 
       /**
@@ -118,7 +120,7 @@ export async function GET(
        * `contactId` and `entityId` to the query string of targetUrl.
        */
       const { encryptToken } = await import('@/lib/crypto');
-      const targetUrl = new URL(originalUrl, req.url);
+      const targetUrl = new URL(originalUrl, baseUrl);
       if (contactId) targetUrl.searchParams.set('contactId', contactId);
       if (entityId) targetUrl.searchParams.set('entityId', entityId);
 
@@ -141,7 +143,7 @@ export async function GET(
       return response;
     } catch (err) {
       console.error(`[REDIRECT-STATELESS-ERROR] Failed for ${linkId}:`, err);
-      return NextResponse.redirect(new URL('/', req.url));
+      return NextResponse.redirect(new URL('/', baseUrl));
     }
   }
 
@@ -150,21 +152,21 @@ export async function GET(
     const linkData = await getLinkData(linkId);
 
     if (!linkData) {
-      return NextResponse.redirect(new URL('/', req.url));
+      return NextResponse.redirect(new URL('/', baseUrl));
     }
 
     // Build the destination URL, forwarding entity identity, contactId, and channel
-    const destinationUrl = buildDestinationUrl(linkData.originalUrl, linkData.entityId, linkData.channel);
+    const destinationUrl = buildDestinationUrl(linkData.originalUrl, baseUrl, linkData.entityId, linkData.channel);
 
     // Fire analytics in the background — 302 is never blocked
     after(async () => {
       await recordLinkClickAsync(linkId);
     });
 
-    return NextResponse.redirect(new URL(destinationUrl), 302);
+    return NextResponse.redirect(new URL(destinationUrl, baseUrl), 302);
   } catch (error) {
     console.error(`[REDIRECT-ERROR] Failed for ${linkId}:`, error);
-    return NextResponse.redirect(new URL('/', req.url));
+    return NextResponse.redirect(new URL('/', baseUrl));
   }
 }
 
@@ -174,11 +176,11 @@ export async function GET(
  * Appends ?ref=<entityId>&ch=<channel> to a destination URL.
  * Preserves any existing query parameters on the original URL.
  */
-function buildDestinationUrl(originalUrl: string, entityId?: string, channel?: PageEventChannel): string {
+function buildDestinationUrl(originalUrl: string, baseUrl: string, entityId?: string, channel?: PageEventChannel): string {
   try {
     const url = originalUrl.startsWith('http')
       ? new URL(originalUrl)
-      : new URL(originalUrl, 'https://localhost');
+      : new URL(originalUrl, baseUrl);
 
     // XSS / Open Redirect Safeguard: Enforce safe web protocols
     if (!['http:', 'https:'].includes(url.protocol)) {

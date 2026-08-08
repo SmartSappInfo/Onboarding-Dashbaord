@@ -43,7 +43,7 @@ export async function getRequestBaseUrl(): Promise<string> {
     const host = headersList.get('x-forwarded-host') || headersList.get('host');
     const proto = headersList.get('x-forwarded-proto') || 'https';
     
-    if (host) {
+    if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1')) {
       return `${proto}://${host}`;
     }
   } catch (error) {

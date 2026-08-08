@@ -242,15 +242,20 @@ async function resolvePageSerialAndType(urlStr: string): Promise<{ pageSerial: n
       const parts = pathname.split('/');
       const shareId = parts[parts.indexOf('m') + 1];
       if (shareId) {
-        const snap = await adminDb.collection('media_shares').doc(shareId).get();
-        if (snap.exists) {
-          let serial = snap.data()?.page_serial;
+        const snap = await adminDb.collection('media_shares').where('slug', '==', shareId).limit(1).get();
+        let doc: FirebaseFirestore.DocumentSnapshot | null = snap.empty ? null : snap.docs[0];
+        if (!doc) {
+          const directSnap = await adminDb.collection('media_shares').doc(shareId).get();
+          if (directSnap.exists) doc = directSnap;
+        }
+        if (doc) {
+          let serial = doc.data()?.page_serial;
           if (serial === undefined || serial === null) {
             const { getNextSerial } = await import('./services/serial-allocator');
             serial = await getNextSerial('pages');
-            await snap.ref.update({ page_serial: serial });
+            await doc.ref.update({ page_serial: serial });
           }
-          return { pageSerial: serial, type: 'media', id: snap.id };
+          return { pageSerial: serial, type: 'media', id: doc.id };
         }
       }
     }
