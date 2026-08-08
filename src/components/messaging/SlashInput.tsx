@@ -336,7 +336,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     }, [autocompleteIndex, showAutocomplete]);
 
     const handleBlur = React.useCallback(() => {
-      setTimeout(() => setShowAutocomplete(false), 200);
+      setTimeout(() => setShowAutocomplete(false), 350);
     }, [setShowAutocomplete]);
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -459,12 +459,27 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
                   data-active={isSelected ? 'true' : 'false'}
                   onMouseDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (localRef.current) {
                       selectAndInsert(v.name, localRef.current);
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:bg-muted"
@@ -606,7 +621,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     }, [autocompleteIndex, showAutocomplete]);
 
     const handleBlur = React.useCallback(() => {
-      setTimeout(() => setShowAutocomplete(false), 200);
+      setTimeout(() => setShowAutocomplete(false), 350);
     }, [setShowAutocomplete]);
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -727,12 +742,27 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
                   data-active={isSelected ? 'true' : 'false'}
                   onMouseDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (localRef.current) {
                       selectAndInsert(v.name, localRef.current);
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:bg-muted"

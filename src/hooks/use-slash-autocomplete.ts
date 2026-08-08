@@ -97,6 +97,9 @@ export function useSlashAutocomplete({
     }
   }, []);
 
+  const savedRangeRef = React.useRef<{ container: Node; lastSlashIdx: number; offset: number } | null>(null);
+  const savedInputPosRef = React.useRef<{ lastSlashIdx: number; selectionEnd: number } | null>(null);
+
   const checkTrigger = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement) => {
     if (element instanceof HTMLDivElement) {
       const selection = window.getSelection();
@@ -126,6 +129,13 @@ export function useSlashAutocomplete({
         setShowAutocomplete(false);
         return;
       }
+
+      savedRangeRef.current = {
+        container,
+        lastSlashIdx,
+        offset,
+      };
+
       if (!showAutocomplete || textBetween !== autocompleteQuery) {
         setAutocompleteQuery(textBetween);
         setAutocompleteIndex(0);
@@ -162,6 +172,11 @@ export function useSlashAutocomplete({
       return;
     }
     
+    savedInputPosRef.current = {
+      lastSlashIdx,
+      selectionEnd,
+    };
+
     if (!showAutocomplete || textBetween !== autocompleteQuery) {
       setAutocompleteQuery(textBetween);
       setAutocompleteIndex(0);
@@ -181,23 +196,50 @@ export function useSlashAutocomplete({
     );
   }, [variables, autocompleteQuery]);
 
-  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement) => {
+  const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement | null) => {
+    if (!element) return;
+
     if (element instanceof HTMLDivElement) {
+      element.focus();
+
+      let container: Node | null = null;
+      let lastSlashIdx = -1;
+      let offset = -1;
+
       const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-      const range = selection.getRangeAt(0);
-      const container = range.startContainer;
-      if (container.nodeType !== Node.TEXT_NODE) return;
-      
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (range.startContainer.nodeType === Node.TEXT_NODE) {
+          const text = range.startContainer.textContent || '';
+          const currentOffset = range.startOffset;
+          const idx = text.lastIndexOf('/', currentOffset - 1);
+          if (idx !== -1) {
+            container = range.startContainer;
+            lastSlashIdx = idx;
+            offset = currentOffset;
+          }
+        }
+      }
+
+      // Fallback to saved range if selection was lost on mouse click/touch tap
+      if (!container && savedRangeRef.current) {
+        container = savedRangeRef.current.container;
+        lastSlashIdx = savedRangeRef.current.lastSlashIdx;
+        offset = savedRangeRef.current.offset;
+      }
+
+      if (!container || lastSlashIdx === -1 || offset === -1) return;
+
       const text = container.textContent || '';
-      const offset = range.startOffset;
-      const lastSlashIdx = text.lastIndexOf('/', offset - 1);
-      if (lastSlashIdx === -1) return;
-      
-      range.setStart(container, lastSlashIdx);
-      range.setEnd(container, offset);
-      range.deleteContents();
-      
+      const range = document.createRange();
+      try {
+        range.setStart(container, lastSlashIdx);
+        range.setEnd(container, Math.min(offset, text.length));
+        range.deleteContents();
+      } catch (_e) {
+        // Range creation fallback
+      }
+
       const pill = document.createElement('span');
       pill.contentEditable = 'false';
       pill.className = 'inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none';
@@ -214,32 +256,54 @@ export function useSlashAutocomplete({
       btn.title = 'Configure fallback';
       btn.textContent = '⚙️';
       pill.appendChild(btn);
-      
-      range.insertNode(pill);
-      
-      const newRange = document.createRange();
-      newRange.setStartAfter(pill);
-      newRange.setEndAfter(pill);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      
+
+      try {
+        range.insertNode(pill);
+        const newRange = document.createRange();
+        newRange.setStartAfter(pill);
+        newRange.setEndAfter(pill);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      } catch (_e) {
+        element.appendChild(pill);
+      }
+
       setShowAutocomplete(false);
+      savedRangeRef.current = null;
       onChange(convertToCleanHtml(element));
       return;
     }
 
+    // Standard input/textarea fallback
+    element.focus();
+    let lastSlashIdx = -1;
+    let selectionEnd = element.selectionEnd ?? -1;
+
+    if (selectionEnd !== -1) {
+      const text = element.value;
+      const idx = text.lastIndexOf('/', selectionEnd - 1);
+      if (idx !== -1) {
+        lastSlashIdx = idx;
+      }
+    }
+
+    if (lastSlashIdx === -1 && savedInputPosRef.current) {
+      lastSlashIdx = savedInputPosRef.current.lastSlashIdx;
+      selectionEnd = savedInputPosRef.current.selectionEnd;
+    }
+
+    if (lastSlashIdx === -1) return;
+
     const text = element.value;
-    const selectionEnd = element.selectionEnd;
-    if (selectionEnd === null) return;
-    
-    const lastSlashIdx = text.lastIndexOf('/', selectionEnd - 1);
-    
     const before = text.substring(0, lastSlashIdx);
     const after = text.substring(selectionEnd);
     const token = `{{${varName}}}`;
     const newValue = before + token + after;
     
     setShowAutocomplete(false);
+    savedInputPosRef.current = null;
     onChange(newValue);
     
     requestAnimationFrame(() => {
