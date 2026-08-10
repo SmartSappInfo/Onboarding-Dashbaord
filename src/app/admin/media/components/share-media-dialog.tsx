@@ -66,6 +66,44 @@ interface ShareConfig {
     automationRules?: Record<string, CallOutcomeAutomation[]>;
 }
 
+interface MediaSharePreset {
+    description?: string;
+    ctaText?: string;
+    ctaType?: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaTargetId?: string;
+    ctaTargetUrl?: string;
+    ctaMode?: 'modal' | 'redirect' | 'replace';
+    ctaPretext?: string;
+    ctaPopoverEnabled?: boolean;
+    ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+    autoPlay?: boolean;
+    automationRules?: Record<string, CallOutcomeAutomation[]>;
+}
+
+const getPresetStorageKey = (workspaceId: string) => `smartsapp_media_share_preset_${workspaceId}`;
+
+const savePresetToLocalStorage = (workspaceId: string, preset: MediaSharePreset) => {
+    if (typeof window === 'undefined' || !workspaceId) return;
+    try {
+        localStorage.setItem(getPresetStorageKey(workspaceId), JSON.stringify(preset));
+    } catch (err: unknown) {
+        console.warn('[ShareMediaDialog] Failed to save preset to localStorage:', err);
+    }
+};
+
+const loadPresetFromLocalStorage = (workspaceId: string): MediaSharePreset | null => {
+    if (typeof window === 'undefined' || !workspaceId) return null;
+    try {
+        const raw = localStorage.getItem(getPresetStorageKey(workspaceId));
+        if (raw) {
+            return JSON.parse(raw) as MediaSharePreset;
+        }
+    } catch (err: unknown) {
+        console.warn('[ShareMediaDialog] Failed to load preset from localStorage:', err);
+    }
+    return null;
+};
+
 interface SurveyDoc {
     id: string;
     internalName?: string;
@@ -108,6 +146,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [isSaving, setIsSaving] = React.useState<boolean>(false);
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [isSaved, setIsSaved] = React.useState<boolean>(false);
+    const [isPresetApplied, setIsPresetApplied] = React.useState<boolean>(false);
     
     const scopedData = useWorkspaceScopedQueries();
     
@@ -212,6 +251,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setSlug(data.slug || '');
                 setAutomationRules(data.automationRules || {});
                 setIsSaved(true);
+                setIsPresetApplied(false);
             } else {
                 // Generate a fresh random doc ID
                 const freshId = doc(collection(firestore, 'media_shares')).id;
@@ -225,17 +265,36 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                     defaultDesc = "Kindly find document below for your perusal";
                 }
                 
-                setDescription(defaultDesc);
-                setCtaText('');
-                setCtaType('none');
-                setCtaTargetId('');
-                setCtaTargetUrl('');
-                setCtaMode('redirect');
-                setCtaPretext('');
-                setCtaPopoverEnabled(false);
-                setCtaActivationGate('immediate');
+                // Auto-load browser-based preset from localStorage if available
+                const loadedPreset = loadPresetFromLocalStorage(activeWorkspaceId);
+                if (loadedPreset) {
+                    setDescription(loadedPreset.description ?? defaultDesc);
+                    setCtaText(loadedPreset.ctaText ?? '');
+                    setCtaType(loadedPreset.ctaType ?? 'none');
+                    setCtaTargetId(loadedPreset.ctaTargetId ?? '');
+                    setCtaTargetUrl(loadedPreset.ctaTargetUrl ?? '');
+                    setCtaMode(loadedPreset.ctaMode ?? 'redirect');
+                    setCtaPretext(loadedPreset.ctaPretext ?? '');
+                    setCtaPopoverEnabled(loadedPreset.ctaPopoverEnabled ?? false);
+                    setCtaActivationGate(loadedPreset.ctaActivationGate ?? 'immediate');
+                    setAutoPlay(loadedPreset.autoPlay ?? false);
+                    setAutomationRules(loadedPreset.automationRules ? JSON.parse(JSON.stringify(loadedPreset.automationRules)) : {});
+                    setIsPresetApplied(true);
+                } else {
+                    setDescription(defaultDesc);
+                    setCtaText('');
+                    setCtaType('none');
+                    setCtaTargetId('');
+                    setCtaTargetUrl('');
+                    setCtaMode('redirect');
+                    setCtaPretext('');
+                    setCtaPopoverEnabled(false);
+                    setCtaActivationGate('immediate');
+                    setAutoPlay(false);
+                    setAutomationRules({});
+                    setIsPresetApplied(false);
+                }
                 setSlug('');
-                setAutomationRules({});
                 setIsSaved(false);
             }
         } catch (err: unknown) {
@@ -244,6 +303,31 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             setIsLoading(false);
         }
     }, [firestore, activeWorkspaceId, asset.id, asset.name, asset.type]);
+
+    const handleResetToDefaults = React.useCallback(() => {
+        let defaultDesc = "Watch This Video, It's Super Important!";
+        if (asset.type === 'audio') {
+            defaultDesc = "Click to listen to this audio, It's Super Important";
+        } else if (asset.type === 'document') {
+            defaultDesc = "Kindly find document below for your perusal";
+        }
+        setDescription(defaultDesc);
+        setCtaText('');
+        setCtaType('none');
+        setCtaTargetId('');
+        setCtaTargetUrl('');
+        setCtaMode('redirect');
+        setCtaPretext('');
+        setCtaPopoverEnabled(false);
+        setCtaActivationGate('immediate');
+        setAutoPlay(false);
+        setAutomationRules({});
+        setIsPresetApplied(false);
+        toast({
+            title: 'Reset to Defaults',
+            description: 'Form fields have been reset to blank standard defaults.',
+        });
+    }, [asset.type, toast]);
 
     React.useEffect(() => {
         if (!slug.trim()) {
@@ -428,8 +512,25 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             }
 
             await setDoc(doc(firestore, 'media_shares', shareId), shareConfig);
+            
+            // Save non-asset-specific configuration to browser local storage preset
+            savePresetToLocalStorage(activeWorkspaceId, {
+                description: description.trim(),
+                ctaText: ctaText.trim(),
+                ctaType,
+                ctaTargetId,
+                ctaTargetUrl,
+                ctaMode,
+                ctaPretext: ctaPretext.trim(),
+                ctaPopoverEnabled,
+                ctaActivationGate,
+                autoPlay,
+                automationRules,
+            });
+
             setIsSaved(true);
-            toast({ title: 'Sharing Options Saved', description: 'Your links and embed codes have been updated.' });
+            setIsPresetApplied(false);
+            toast({ title: 'Sharing Options Saved', description: 'Your links, embed codes, and browser publishing presets have been updated.' });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Unknown database error';
             toast({ variant: 'destructive', title: 'Saving Failed', description: msg });
@@ -503,6 +604,26 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 </span>
                                                 <span className="font-extrabold text-foreground truncate max-w-[280px]">{asset.name}</span>
                                             </div>
+
+                                            {!isSaved && isPresetApplied && (
+                                                <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-foreground flex items-center justify-between gap-3 text-left">
+                                                    <div className="flex items-center gap-2">
+                                                        <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                                        <span className="text-[11px] font-extrabold text-purple-600 dark:text-purple-400">
+                                                            Auto-filled from previous browser settings
+                                                        </span>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={handleResetToDefaults}
+                                                        className="h-8 px-2.5 rounded-xl text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-purple-500/10 min-h-[36px] active:scale-[0.97] cursor-pointer"
+                                                    >
+                                                        Reset Defaults
+                                                    </Button>
+                                                </div>
+                                            )}
 
                                             <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2 pt-2">
                                                 <Sparkles className="h-3.5 w-3.5 text-primary" /> Personalized Content
