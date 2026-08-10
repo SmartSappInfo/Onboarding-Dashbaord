@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { VariableDefinition, TemplateVariable } from '@/lib/types';
+import type { VariableDefinition, TemplateVariable, VariableContext } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react';
@@ -175,17 +175,21 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
      * RELATED SURFACES: FieldsVariablesService, SlashTextarea, useSlashAutocomplete.
      */
     const templateVars = React.useMemo<TemplateVariable[]>(() => {
-        return variables.map(v => ({
-            id: v.id || v.key,
-            name: v.key,
-            label: v.label,
-            description: `${v.label} (Source: ${v.source || 'system'})`,
-            dataType: (v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string') as any,
-            context: (v.source || v.category || 'common') as any,
-            exampleValue: v.constantValue || `{{${v.key}}}`,
-            isDynamic: v.source !== 'system',
-            isComputed: false
-        }));
+        return variables.map(v => {
+            const dataType: TemplateVariable['dataType'] = v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string';
+            const context: VariableContext = (v.source || v.category || 'common') as VariableContext;
+            return {
+                id: v.id || v.key,
+                name: v.key,
+                label: v.label,
+                description: `${v.label} (Source: ${v.source || 'system'})`,
+                dataType,
+                context,
+                exampleValue: v.constantValue || `{{${v.key}}}`,
+                isDynamic: v.source !== 'system',
+                isComputed: false
+            };
+        });
     }, [variables]);
 
     /**

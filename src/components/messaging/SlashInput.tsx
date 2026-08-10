@@ -43,17 +43,36 @@ const contextLabels: Record<string, string> = {
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Escapes HTML entities to prevent Stored XSS attacks when raw text strings
+ * are converted to contentEditable HTML pills inside SlashTextarea.
+ */
+export function escapeHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Single Source of Truth (SSOT) utility to convert double-brace template strings (`{{key | fallback}}`)
  * into interactive visual pill HTML elements (`<span contenteditable="false" ...>`).
  *
- * CAUTION: Supports both pipe (|) and double-pipe (||) delimiters with whitespace tolerance.
+ * CAUTION: Sanitizes raw HTML entities using escapeHtml prior to token replacement to prevent XSS.
+ * Supports both pipe (|) and double-pipe (||) delimiters with whitespace tolerance.
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
  */
 export function convertToVisualHtml(text: string): string {
   if (!text) return '';
-  // Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
-  const parsed = text.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
+  // 1. Escape raw HTML entities to prevent Stored XSS execution in contentEditable
+  const safeText = escapeHtml(text);
+
+  // 2. Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
+  const parsed = safeText.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
     const parts = rawKey.split(/\|\||\|/);
     const varName = parts[0].trim();
     const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
@@ -61,7 +80,7 @@ export function convertToVisualHtml(text: string): string {
 
     return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all">
       <span>${varName}${fallbackText}</span>
-      <button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent" title="Configure fallback">⚙️</button>
+      <button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback">⚙️</button>
     </span>`;
   });
   return parsed;
@@ -73,7 +92,7 @@ export function convertToVisualHtml(text: string): string {
  * back into clean double-brace template text format (`{{variable_key | fallback}}`).
  *
  * CAUTION: When enableFormatting is false (e.g. SMS/Plain Text mode), line break elements (<br>, <div>)
- * MUST be converted to standard '\n' characters before extracting textContent.
+ * MUST be converted to standard '\n' characters without prepending leading newlines at root level.
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
  */
@@ -95,7 +114,9 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
     brs.forEach(br => br.parentNode?.replaceChild(clone.ownerDocument.createTextNode('\n'), br));
     const blockEls = clone.querySelectorAll('div, p');
     blockEls.forEach(block => {
-      block.parentNode?.insertBefore(clone.ownerDocument.createTextNode('\n'), block);
+      if (block.previousSibling) {
+        block.parentNode?.insertBefore(clone.ownerDocument.createTextNode('\n'), block);
+      }
     });
     return (clone.textContent || '');
   }
@@ -667,11 +688,9 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     React.useEffect(() => {
       const el = localRef.current;
       if (!el) return;
-      const cleanVal = convertToCleanHtml(el);
-      if (cleanVal !== value) {
-        lastValueRef.current = value;
-        el.innerHTML = convertToVisualHtml(value);
-      }
+      if (value === lastValueRef.current) return;
+      lastValueRef.current = value;
+      el.innerHTML = convertToVisualHtml(value);
     }, [value]);
 
     React.useEffect(() => {
