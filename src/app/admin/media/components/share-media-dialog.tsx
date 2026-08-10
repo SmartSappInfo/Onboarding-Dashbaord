@@ -576,15 +576,20 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             <DialogContent className="w-screen h-[100dvh] max-w-none p-0 m-0 border-none rounded-none flex flex-col shadow-2xl overflow-hidden bg-background">
                 <DialogHeader className="p-6 md:p-8 bg-muted/30 border-b shrink-0 text-left">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm">
+                        <div className="p-3 bg-primary/10 text-primary rounded-2xl shadow-sm shrink-0">
                             <Share2 className="h-6 w-6" aria-hidden="true" />
                         </div>
-                        <div>
-                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-900 dark:text-white mb-0.5">
-                                Asset: {asset.name}
+                        <div className="space-y-1 text-left min-w-0">
+                            <DialogTitle className="text-xl md:text-2xl font-black tracking-tight text-foreground">
+                                Publish Media Asset
+                            </DialogTitle>
+                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                                <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">Asset:</span>
+                                <span className="text-xs md:text-sm font-black text-primary bg-primary/10 px-3 py-1 rounded-xl border border-primary/20 inline-block truncate max-w-[500px] shadow-sm">
+                                    {asset.name}
+                                </span>
                             </div>
-                            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">Publish Media Asset</DialogTitle>
-                            <DialogDescription className="text-xs font-bold text-muted-foreground opacity-90">
+                            <DialogDescription className="sr-only">
                                 Configure public links, personalized context mapping, and iframe embed targets.
                             </DialogDescription>
                         </div>
