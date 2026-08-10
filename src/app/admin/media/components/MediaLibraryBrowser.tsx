@@ -88,23 +88,31 @@ export default function MediaLibraryBrowser({
   const { data: assets, isLoading, error } = useCollection<MediaAsset>(mediaQuery);
 
   /**
-   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
-   * To prevent listener proliferation (creating N Firestore listeners for N asset cards),
-   * we subscribe to media_shares ONCE per workspace and compute a Set of configured asset IDs.
-   * We pass isConfigured={configuredAssetIds.has(asset.id)} into <MediaAssetCard />.
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+   * 1. Listener Efficiency: To prevent listener proliferation (creating N Firestore listeners for N asset cards),
+   *    we subscribe to media_shares ONCE per workspace and compute a Set of configured asset IDs.
+   * 2. Workspace & Super Admin Scoping: If in Super Admin or Global view (effectiveWorkspaceId === 'global' || isSuperAdmin),
+   *    subscribe to all media_shares documents without restricting to workspaceId == 'global' (which returned 0 docs).
+   * 3. Multi-Field Asset Matching: Check s.assetId, s.mediaId, and s.id to catch standard, custom, and legacy share docs.
+   * 4. UI Alignment: We pass isConfigured={configuredAssetIds.has(asset.id)} into <MediaAssetCard />.
    */
   const sharesQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveWorkspaceId) return null;
+    if (effectiveWorkspaceId === 'global' || isSuperAdmin) {
+      return query(collection(firestore, 'media_shares'));
+    }
     return query(collection(firestore, 'media_shares'), where('workspaceId', '==', effectiveWorkspaceId));
-  }, [firestore, effectiveWorkspaceId]);
+  }, [firestore, effectiveWorkspaceId, isSuperAdmin]);
 
-  const { data: sharesData } = useCollection<{ id: string; assetId: string }>(sharesQuery);
+  const { data: sharesData } = useCollection<{ id: string; assetId?: string; mediaId?: string }>(sharesQuery);
 
   const configuredAssetIds = useMemo(() => {
     const set = new Set<string>();
     if (sharesData) {
       sharesData.forEach((s) => {
         if (s.assetId) set.add(s.assetId);
+        if (s.mediaId) set.add(s.mediaId);
+        if (s.id) set.add(s.id);
       });
     }
     return set;
