@@ -2819,6 +2819,7 @@ export interface MessageTemplate {
   whatsappTemplateName?: string;
   whatsappLanguage?: string;
   whatsappParamMap?: string[];
+  paramMap?: string[];
   /**
    * Example value for each variable, in the same order as they appear in the
    * body. Meta requires a sample per placeholder when a template is submitted,

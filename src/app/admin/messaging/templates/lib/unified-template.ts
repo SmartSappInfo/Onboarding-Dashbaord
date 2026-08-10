@@ -44,6 +44,7 @@ export interface WhatsAppDisplayTemplate {
   waCategory: WhatsAppTemplate['category'];
   language: string;
   paramCount: number;
+  paramMap?: string[];
   hasRuntimeNeeds: boolean;
   isAdopted: boolean;
   rejectedReason?: string;

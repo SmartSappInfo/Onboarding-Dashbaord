@@ -1045,13 +1045,21 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                     {showVideoLinkPicker && (
                                         <LinkPicker 
-                                            onSelect={(url) => {
+                                            onSelect={(url, item) => {
                                                 let finalUrl = url;
                                                 if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
-                                                onUpdate({ videoRedirectUrl: finalUrl });
+                                                const updates: Record<string, unknown> = { videoRedirectUrl: finalUrl };
+                                                const customTitle = item?.subtitle || item?.name;
+                                                if (customTitle) {
+                                                    updates.videoTitle = customTitle;
+                                                }
+                                                if (item?.duration) {
+                                                    updates.videoDuration = item.duration;
+                                                }
+                                                onUpdate(updates);
                                                 setShowVideoLinkPicker(false);
                                             }}
                                         />
@@ -1139,13 +1147,21 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                     {showAudioLinkPicker && (
                                         <LinkPicker 
-                                            onSelect={(url) => {
+                                            onSelect={(url, item) => {
                                                 let finalUrl = url;
                                                 if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
-                                                onUpdate({ audioRedirectUrl: finalUrl });
+                                                const updates: Record<string, unknown> = { audioRedirectUrl: finalUrl };
+                                                const customTitle = item?.subtitle || item?.name;
+                                                if (customTitle) {
+                                                    updates.audioTitle = customTitle;
+                                                }
+                                                if (item?.duration) {
+                                                    updates.audioDuration = item.duration;
+                                                }
+                                                onUpdate(updates);
                                                 setShowAudioLinkPicker(false);
                                             }}
                                         />

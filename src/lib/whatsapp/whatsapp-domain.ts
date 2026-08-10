@@ -477,6 +477,64 @@ export function toPositionalBody(body: string): { text: string; paramMap: string
   return { text, paramMap };
 }
 
+/**
+ * Default positional fallback variable map for WhatsApp templates missing explicit paramMap metadata.
+ */
+const DEFAULT_POSITIONAL_VARS: Record<number, string> = {
+  1: 'contact_name',
+  2: 'entity_name',
+  3: 'meeting_time',
+  4: 'survey_link',
+  5: 'dashboard_link',
+  6: 'form_link',
+  7: 'contract_link',
+};
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Single Source of Truth (SSOT) helper to reverse-engineer Meta WhatsApp positional body templates
+ * (`Hi {{1}}, order {{2}} is ready`) back into named double-brace SMS template text (`Hi {{contact_name}}, order {{order_id}} is ready`).
+ *
+ * CAUTION:
+ * 1. Supports paramMap supplied as a string array or index-keyed Record<number, string>.
+ * 2. If paramMap is empty or missing an index, falls back to DEFAULT_POSITIONAL_VARS (or 'variable_n').
+ * 3. Preserves any fallback pipe text inside paramMap entries (e.g. 'entity_name | Your School').
+ *
+ * TESTABILITY: Tested in whatsapp-domain.test.ts.
+ * RELATED SURFACES: toPositionalBody, template-gallery.tsx, TemplatesClient.tsx, page.tsx.
+ */
+export function fromPositionalBody(
+  text: string,
+  paramMap?: string[] | Record<number, string> | null
+): { body: string; restoredVars: string[] } {
+  const source = text ?? '';
+  const restoredVars: string[] = [];
+  if (!source) return { body: '', restoredVars: [] };
+
+  const body = source.replace(/\{\{\s*(\d+)\s*\}\}/g, (match, numStr) => {
+    const idx = parseInt(numStr, 10);
+    let varName = '';
+
+    if (Array.isArray(paramMap)) {
+      varName = paramMap[idx - 1] || '';
+    } else if (paramMap && typeof paramMap === 'object') {
+      varName = paramMap[idx] || paramMap[idx - 1] || '';
+    }
+
+    if (!varName) {
+      varName = DEFAULT_POSITIONAL_VARS[idx] || `variable_${idx}`;
+    }
+
+    const trimmed = varName.trim();
+    if (!restoredVars.includes(trimmed)) {
+      restoredVars.push(trimmed);
+    }
+    return `{{${trimmed}}}`;
+  });
+
+  return { body, restoredVars };
+}
+
 /** Deterministic `message_templates` doc id for an adopted/auto-enabled WhatsApp template. */
 export function adoptedTemplateDocId(whatsAppTemplateId: string): string {
   return `wa_${whatsAppTemplateId}`;

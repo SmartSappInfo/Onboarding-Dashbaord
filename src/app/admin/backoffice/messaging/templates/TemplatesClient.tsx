@@ -11,6 +11,7 @@ import { TemplateWorkshop } from '../../../messaging/templates/components/templa
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
+import { toPositionalBody, fromPositionalBody } from '@/lib/whatsapp/whatsapp-domain';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,6 +158,98 @@ export default function TemplatesClient() {
             setEditingTemplate(null);
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        }
+    };
+
+    const handleClone = async (tmpl: MessageTemplate) => {
+        if (!firestore || !user) return;
+        try {
+            const clonedData: Omit<MessageTemplate, 'id'> = {
+                ...tmpl,
+                name: `Copy of ${tmpl.name}`,
+                scope: 'global',
+                workspaceIds: [],
+                status: 'draft',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            delete (clonedData as Record<string, unknown>).id;
+
+            const sanitizedData = JSON.parse(JSON.stringify(clonedData));
+            await addDoc(collection(firestore, 'message_templates'), sanitizedData);
+            invalidateAllTemplatesCache();
+            toast({ title: 'Global Template Cloned', description: `Created "${clonedData.name}"` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Clone Failed', description: e instanceof Error ? e.message : 'Unknown error' });
+        }
+    };
+
+    const handleCloneAsWhatsApp = async (tmpl: MessageTemplate) => {
+        if (!firestore || !user) return;
+        try {
+            const { text: bodyText, paramMap } = toPositionalBody(tmpl.body || '');
+            const clonedData: Omit<MessageTemplate, 'id'> = {
+                ...tmpl,
+                name: `Copy of ${tmpl.name} (WA Skeleton)`,
+                channel: 'whatsapp',
+                contentMode: 'plain_text',
+                body: bodyText,
+                paramMap,
+                scope: 'global',
+                workspaceIds: [],
+                status: 'draft',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            delete (clonedData as Record<string, unknown>).id;
+
+            const sanitizedData = JSON.parse(JSON.stringify(clonedData));
+            await addDoc(collection(firestore, 'message_templates'), sanitizedData);
+            invalidateAllTemplatesCache();
+            toast({ title: 'Converted & Cloned as WhatsApp Skeleton', description: `Created "${clonedData.name}"` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Conversion Failed', description: e instanceof Error ? e.message : 'Unknown error' });
+        }
+    };
+
+    const handleCloneAsSMS = async (tmpl: MessageTemplate | import('../../../messaging/templates/lib/unified-template').WhatsAppDisplayTemplate) => {
+        if (!firestore || !user) return;
+        try {
+            const rawBody = tmpl.body || '';
+            const rawParamMap = isWhatsAppDisplay(tmpl) ? tmpl.paramMap : (tmpl.paramMap || []);
+            const { body: smsBody, restoredVars } = fromPositionalBody(rawBody, rawParamMap);
+
+            const tmplObj = tmpl as unknown as Record<string, unknown>;
+            const tmplCategory = (tmplObj.category || tmplObj.appCategory || 'general') as import('@/lib/types').TemplateCategory;
+            const tmplTarget = (tmplObj.target || 'client') as import('@/lib/types').TemplateTarget;
+            const tmplType = (tmplObj.templateType || 'general') as string;
+            const tmplContext = (tmplObj.variableContext || 'common') as import('@/lib/types').VariableContext;
+
+            const clonedData: Omit<MessageTemplate, 'id'> = {
+                name: `Copy of ${tmpl.name} (SMS)`,
+                category: tmplCategory,
+                channel: 'sms',
+                target: tmplTarget,
+                contentMode: 'plain_text',
+                body: smsBody,
+                status: 'draft',
+                version: 1,
+                templateType: tmplType,
+                variableContext: tmplContext,
+                declaredVariables: restoredVars,
+                scope: 'global',
+                workspaceIds: [],
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            const sanitizedData = JSON.parse(JSON.stringify(clonedData));
+            await addDoc(collection(firestore, 'message_templates'), sanitizedData);
+            invalidateAllTemplatesCache();
+            toast({ title: 'Converted & Cloned as SMS Template', description: `Created "${clonedData.name}"` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Conversion Failed', description: e instanceof Error ? e.message : 'Unknown error' });
         }
     };
 
@@ -311,7 +404,9 @@ export default function TemplatesClient() {
                             isLoading={isLoadingTemplates}
                             cloningId={null}
                             onEdit={handleEdit}
-                            onClone={() => {}}
+                            onClone={handleClone}
+                            onCloneAsWhatsApp={handleCloneAsWhatsApp}
+                            onCloneAsSMS={handleCloneAsSMS}
                             onDelete={setTemplateToDelete as any}
                             onPreview={(t) => { if (!isWhatsAppDisplay(t)) setPreviewTemplate(t); }}
                             onUpdateStatus={handleUpdateStatus}

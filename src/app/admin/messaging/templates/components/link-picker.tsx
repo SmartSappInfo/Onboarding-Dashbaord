@@ -10,7 +10,7 @@ import { Link, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface LinkPickerProps {
-  onSelect: (url: string) => void;
+  onSelect: (url: string, item?: ResourceItem) => void;
 }
 
 export interface ResourceItem {
@@ -18,6 +18,7 @@ export interface ResourceItem {
   name: string;        // Internal Name (Prominent Heading)
   subtitle?: string;   // Page Title / Description (Secondary Subtitle)
   path: string;        // Target URL path (hidden from list view)
+  duration?: string;   // Audio/Video duration if available (e.g. "6:43")
 }
 
 const PREDEFINED_PAGES: ResourceItem[] = [
@@ -46,6 +47,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
   const [search, setSearch] = React.useState<string>('');
   const [targetType, setTargetType] = React.useState<string>('dynamic');
   const [loading, setLoading] = React.useState<boolean>(false);
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Cached resource stores to avoid re-fetching on tab switches
   const [resources, setResources] = React.useState<Record<string, ResourceItem[]>>({
@@ -158,11 +160,16 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
           ]);
 
           const mediaNameMap = new Map<string, string>();
+          const mediaDurationMap = new Map<string, string>();
           mediaSnap.docs.forEach((doc) => {
             const data = doc.data();
             const assetName = (data.name as string) || (data.title as string) || (data.filename as string);
             if (assetName) {
               mediaNameMap.set(doc.id, assetName);
+            }
+            const assetDuration = (data.duration as string) || (data.mediaDuration as string) || (data.formattedDuration as string);
+            if (assetDuration) {
+              mediaDurationMap.set(doc.id, assetDuration);
             }
           });
 
@@ -172,15 +179,17 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             const assetId = data.assetId as string | undefined;
             const resolvedAssetName = (data.assetName as string) || (assetId ? mediaNameMap.get(assetId) : undefined) || (data.internalName as string) || (data.name as string);
             const publicTitle = (data.title as string)?.trim();
+            const duration = (data.duration as string) || (data.mediaDuration as string) || (assetId ? mediaDurationMap.get(assetId) : undefined);
 
             const internalName = resolvedAssetName || publicTitle || 'Untitled Shared Media';
-            const subtitle = publicTitle && publicTitle !== internalName ? publicTitle : undefined;
+            const subtitle = publicTitle || internalName;
 
             return {
               id: d.id,
               name: internalName,
               subtitle,
               path: `/m/${effectiveSlug}`,
+              duration,
             };
           });
         }
@@ -233,9 +242,18 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
    * CAUTION: Always use getBaseUrl() to resolve domain dynamically in browser context.
    * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
    */
-  const handleSelect = (path: string) => {
-    const fullUrl = path.startsWith('/') ? `${getBaseUrl()}${path}` : path;
-    onSelect(fullUrl);
+  /**
+   * PURPOSE: Selects a link target and formats internal relative paths as fully-qualified absolute URLs.
+   * Internal relative paths starting with '/' (e.g. '/m/9Kmtlz6ncX9Uf9dtWUo2') are automatically
+   * prepended with getBaseUrl() (e.g. 'https://go.smartsapp.com/m/9Kmtlz6ncX9Uf9dtWUo2').
+   * Dynamic variables starting with '{{' (e.g. '{{survey_link}}') remain variable tokens.
+   *
+   * CAUTION: Passes selected ResourceItem metadata to onSelect to allow auto-populating titles and durations.
+   * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
+   */
+  const handleSelect = (item: ResourceItem) => {
+    const fullUrl = item.path.startsWith('/') ? `${getBaseUrl()}${item.path}` : item.path;
+    onSelect(fullUrl, item);
     setSearch('');
   };
 
@@ -249,6 +267,9 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             onChange={(e) => {
               setTargetType(e.target.value);
               setSearch('');
+              requestAnimationFrame(() => {
+                searchInputRef.current?.focus();
+              });
             }}
             className="w-full h-11 px-3.5 pr-10 rounded-xl bg-background border border-border/60 font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground dark:bg-zinc-900"
           >
@@ -272,6 +293,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
         <div className="relative">
           <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground/40" />
           <Input
+            ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search matching published items..."
@@ -293,7 +315,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
                 <button
                   key={item.id || item.path}
                   type="button"
-                  onClick={() => handleSelect(item.path)}
+                  onClick={() => handleSelect(item)}
                   className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200 group border border-transparent hover:border-primary/10 min-h-[44px] touch-manipulation"
                 >
                   <div className="space-y-0.5 min-w-0 pr-2">

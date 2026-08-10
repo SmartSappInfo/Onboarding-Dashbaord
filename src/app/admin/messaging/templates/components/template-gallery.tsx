@@ -28,6 +28,7 @@ import {
     Clock,
     XCircle,
     Megaphone,
+    Smartphone,
     Check,
     X,
     Loader2
@@ -220,13 +221,15 @@ interface TemplateCardProps {
     onPreview: () => void;
     onEdit: () => void;
     onClone: () => void;
+    onCloneAsWhatsApp?: () => void;
+    onCloneAsSMS?: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
     onUpdateName?: (newName: string) => Promise<void> | void;
     onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateCardProps) {
+function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onCloneAsWhatsApp, onCloneAsSMS, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateCardProps) {
     const router = useRouter();
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
@@ -357,7 +360,43 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                     )}
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onPreview}><Eye className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", cloningId === template.id ? "animate-spin" : "")} onClick={onClone} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-8 w-8 rounded-lg hover:bg-muted", cloningId === template.id ? "animate-spin" : "")}
+                                disabled={!!cloningId}
+                                title="Clone Options"
+                            >
+                                <CopyPlus className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl w-56 p-1.5 space-y-0.5 z-50">
+                            <DropdownMenuItem onClick={onClone} className="text-xs font-semibold gap-2 cursor-pointer rounded-lg min-h-[44px]">
+                                <CopyPlus className="h-3.5 w-3.5 text-blue-500" />
+                                <span>Clone as {template.channel.toUpperCase()}</span>
+                            </DropdownMenuItem>
+                            {(template.channel === 'sms' || template.contentMode === 'plain_text') && onCloneAsWhatsApp && (
+                                <DropdownMenuItem
+                                    onClick={onCloneAsWhatsApp}
+                                    className="text-xs font-semibold gap-2 cursor-pointer rounded-lg text-emerald-600 dark:text-emerald-400 min-h-[44px]"
+                                >
+                                    <MessageCircle className="h-3.5 w-3.5" />
+                                    <span>Convert to WhatsApp Skeleton</span>
+                                </DropdownMenuItem>
+                            )}
+                            {(template.channel === 'whatsapp') && onCloneAsSMS && (
+                                <DropdownMenuItem
+                                    onClick={onCloneAsSMS}
+                                    className="text-xs font-semibold gap-2 cursor-pointer rounded-lg text-amber-600 dark:text-amber-400 min-h-[44px]"
+                                >
+                                    <Smartphone className="h-3.5 w-3.5" />
+                                    <span>Convert to SMS Template</span>
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
                 </div>
             </div>
@@ -448,13 +487,15 @@ interface TemplateRowProps {
     onPreview: () => void;
     onEdit: () => void;
     onClone: () => void;
+    onCloneAsWhatsApp?: () => void;
+    onCloneAsSMS?: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
     onUpdateName?: (newName: string) => Promise<void> | void;
     onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateRowProps) {
+function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onCloneAsWhatsApp, onCloneAsSMS, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateRowProps) {
     const router = useRouter();
     const previewTitle = React.useMemo(() => {
         if (template.channel === 'email') {
@@ -591,9 +632,43 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" onClick={onEdit} title="Edit">
                     <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                 </Button>
-                <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg hover:bg-muted", cloningId === template.id ? "animate-spin" : "")} onClick={onClone} disabled={!!cloningId} title="Clone">
-                    <CopyPlus className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn("h-8 w-8 rounded-lg hover:bg-muted", cloningId === template.id ? "animate-spin" : "")}
+                            disabled={!!cloningId}
+                            title="Clone Options"
+                        >
+                            <CopyPlus className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl w-56 p-1.5 space-y-0.5 z-50">
+                        <DropdownMenuItem onClick={onClone} className="text-xs font-semibold gap-2 cursor-pointer rounded-lg min-h-[44px]">
+                            <CopyPlus className="h-3.5 w-3.5 text-blue-500" />
+                            <span>Clone as {template.channel.toUpperCase()}</span>
+                        </DropdownMenuItem>
+                        {(template.channel === 'sms' || template.contentMode === 'plain_text') && onCloneAsWhatsApp && (
+                            <DropdownMenuItem
+                                onClick={onCloneAsWhatsApp}
+                                className="text-xs font-semibold gap-2 cursor-pointer rounded-lg text-emerald-600 dark:text-emerald-400 min-h-[44px]"
+                            >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                <span>Convert to WhatsApp Skeleton</span>
+                            </DropdownMenuItem>
+                        )}
+                        {(template.channel === 'whatsapp') && onCloneAsSMS && (
+                            <DropdownMenuItem
+                                onClick={onCloneAsSMS}
+                                className="text-xs font-semibold gap-2 cursor-pointer rounded-lg text-amber-600 dark:text-amber-400 min-h-[44px]"
+                            >
+                                <Smartphone className="h-3.5 w-3.5" />
+                                <span>Convert to SMS Template</span>
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onDelete} title="Delete">
                     <Trash2 className="h-4 w-4" />
                 </Button>
@@ -607,6 +682,7 @@ interface WhatsAppCardProps {
     onPreview: () => void;
     onSendTest: () => void;
     onAdopt: () => void;
+    onCloneAsSMS?: () => void;
 }
 
 /** Read-only WhatsApp card (Meta templates are immutable) with channel-specific actions. */
@@ -754,6 +830,8 @@ interface TemplateGalleryProps {
     cloningId: string | null;
     onEdit: (tmpl: MessageTemplate) => void;
     onClone: (tmpl: MessageTemplate) => void;
+    onCloneAsWhatsApp?: (tmpl: MessageTemplate) => void;
+    onCloneAsSMS?: (tmpl: MessageTemplate | WhatsAppDisplayTemplate) => void;
     onDelete: (tmpl: MessageTemplate) => void;
     onPreview: (tmpl: GalleryTemplate) => void;
     onUpdateStatus: (tmpl: MessageTemplate, status: TemplateStatus) => void;
@@ -770,6 +848,8 @@ export function TemplateGallery({
     cloningId,
     onEdit,
     onClone,
+    onCloneAsWhatsApp,
+    onCloneAsSMS,
     onDelete,
     onPreview,
     onUpdateStatus,
@@ -995,6 +1075,7 @@ export function TemplateGallery({
                                                 onPreview={() => onPreview(template)}
                                                 onSendTest={() => onWhatsAppSendTest?.(template)}
                                                 onAdopt={() => onWhatsAppAdopt?.(template)}
+                                                onCloneAsSMS={onCloneAsSMS ? () => onCloneAsSMS(template) : undefined}
                                             />
                                         ) : (
                                             <TemplateCard
@@ -1005,6 +1086,8 @@ export function TemplateGallery({
                                                 onPreview={() => onPreview(template)}
                                                 onEdit={() => onEdit(template)}
                                                 onClone={() => onClone(template)}
+                                                onCloneAsWhatsApp={onCloneAsWhatsApp ? () => onCloneAsWhatsApp(template) : undefined}
+                                                onCloneAsSMS={onCloneAsSMS ? () => onCloneAsSMS(template) : undefined}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
                                                 onUpdateName={onUpdateName ? (newName) => onUpdateName(template, newName) : undefined}
@@ -1023,6 +1106,7 @@ export function TemplateGallery({
                                                 onPreview={() => onPreview(template)}
                                                 onSendTest={() => onWhatsAppSendTest?.(template)}
                                                 onAdopt={() => onWhatsAppAdopt?.(template)}
+                                                onCloneAsSMS={onCloneAsSMS ? () => onCloneAsSMS(template) : undefined}
                                             />
                                         ) : (
                                             <TemplateRow
@@ -1032,6 +1116,8 @@ export function TemplateGallery({
                                                 onPreview={() => onPreview(template)}
                                                 onEdit={() => onEdit(template)}
                                                 onClone={() => onClone(template)}
+                                                onCloneAsWhatsApp={onCloneAsWhatsApp ? () => onCloneAsWhatsApp(template) : undefined}
+                                                onCloneAsSMS={onCloneAsSMS ? () => onCloneAsSMS(template) : undefined}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
                                                 onUpdateName={onUpdateName ? (newName) => onUpdateName(template, newName) : undefined}

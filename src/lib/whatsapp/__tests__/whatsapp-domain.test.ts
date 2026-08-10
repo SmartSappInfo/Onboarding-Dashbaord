@@ -13,6 +13,7 @@ import {
   adoptedTemplateDocId,
   shouldAutoEnableWhatsApp,
   toPositionalBody,
+  fromPositionalBody,
   stripComponentExamples,
   validateApprovedSend,
   validateHeaderMedia,
@@ -302,6 +303,35 @@ describe('toPositionalBody', () => {
     const a = toPositionalBody(body);
     const b = toPositionalBody(body);
     expect(a).toEqual(b);
+  });
+});
+
+describe('fromPositionalBody', () => {
+  it('restores named variables from paramMap array', () => {
+    const r = fromPositionalBody('Hi {{1}}, order {{2}} is ready.', ['firstName', 'orderId']);
+    expect(r.body).toBe('Hi {{firstName}}, order {{orderId}} is ready.');
+    expect(r.restoredVars).toEqual(['firstName', 'orderId']);
+  });
+
+  it('restores variables with fallback text intact', () => {
+    const r = fromPositionalBody('Welcome to {{1}}!', ['entity_name | Your School']);
+    expect(r.body).toBe('Welcome to {{entity_name | Your School}}!');
+    expect(r.restoredVars).toEqual(['entity_name | Your School']);
+  });
+
+  it('falls back to smart positional defaults when paramMap is missing', () => {
+    const r = fromPositionalBody('Hi {{1}}, visit {{2}} on {{3}}.');
+    expect(r.body).toBe('Hi {{contact_name}}, visit {{entity_name}} on {{meeting_time}}.');
+    expect(r.restoredVars).toEqual(['contact_name', 'entity_name', 'meeting_time']);
+  });
+
+  it('performs full round-trip conversion (SMS -> WA -> SMS)', () => {
+    const originalSms = 'Hi {{contact_name}}, check {{entity_name | Your School}} on {{meeting_time}}.';
+    const wa = toPositionalBody(originalSms);
+    expect(wa.text).toBe('Hi {{1}}, check {{2}} on {{3}}.');
+    
+    const restored = fromPositionalBody(wa.text, wa.paramMap);
+    expect(restored.body).toBe(originalSms);
   });
 });
 
