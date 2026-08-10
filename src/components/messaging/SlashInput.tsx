@@ -347,6 +347,35 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
     };
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const rawText = e.clipboardData.getData('text/plain');
+      if (!rawText) return;
+
+      // Replace multiline breaks with clean space for single line SlashInput
+      const plainText = rawText.replace(/[\r\n]+/g, ' ');
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+
+      const textNode = document.createTextNode(plainText);
+      range.insertNode(textNode);
+
+      // Move caret directly after inserted plain text node
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const el = e.currentTarget;
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
+      lastValueRef.current = cleanVal;
+      onChange(cleanVal);
+      handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+    };
+
     return (
       <div ref={containerRef} className="relative w-full">
         {enableFormatting && formatting.isFocused && formatting.hasSelection && (
@@ -365,6 +394,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           contentEditable
           ref={localRef}
           onInput={handleInput}
+          onPaste={handlePaste}
           onClick={(e) => {
             const target = e.target as HTMLElement;
             const settingsBtn = target.closest('[data-variable-settings]');
@@ -626,7 +656,33 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
-      const cleanVal = convertToCleanHtml(el);
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
+      lastValueRef.current = cleanVal;
+      onChange(cleanVal);
+      handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const plainText = e.clipboardData.getData('text/plain');
+      if (!plainText) return;
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+
+      const textNode = document.createTextNode(plainText);
+      range.insertNode(textNode);
+
+      // Move caret directly after inserted plain text node
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const el = e.currentTarget;
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
@@ -650,6 +706,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           contentEditable
           ref={localRef}
           onInput={handleInput}
+          onPaste={handlePaste}
           onClick={(e) => {
             const target = e.target as HTMLElement;
             const settingsBtn = target.closest('[data-variable-settings]');
