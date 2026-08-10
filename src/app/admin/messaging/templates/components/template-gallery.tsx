@@ -27,7 +27,10 @@ import {
     CheckCircle2,
     Clock,
     XCircle,
-    Megaphone
+    Megaphone,
+    Check,
+    X,
+    Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardTitle, CardHeader } from '@/components/ui/card';
@@ -50,6 +53,166 @@ const WA_STATUS_META: Record<WhatsAppTemplateStatus, { label: string; cls: strin
     DISABLED: { label: 'Disabled', cls: 'bg-muted text-muted-foreground border-border', Icon: XCircle },
 };
 
+interface InlineEditableNameProps {
+    name: string;
+    onSave?: (newName: string) => Promise<void> | void;
+    className?: string;
+    textClassName?: string;
+    inputClassName?: string;
+    disabled?: boolean;
+}
+
+function InlineEditableName({
+    name,
+    onSave,
+    className,
+    textClassName,
+    inputClassName,
+    disabled = false
+}: InlineEditableNameProps) {
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [value, setValue] = React.useState(name);
+    const [isSaving, setIsSaving] = React.useState(false);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    React.useEffect(() => {
+        setValue(name);
+    }, [name]);
+
+    React.useEffect(() => {
+        if (isEditing) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [isEditing]);
+
+    const handleCommit = async () => {
+        const trimmed = value.trim();
+        if (!trimmed || trimmed === name || !onSave) {
+            setValue(name);
+            setIsEditing(false);
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await onSave(trimmed);
+            setIsEditing(false);
+        } catch {
+            setValue(name);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        setValue(name);
+        setIsEditing(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleCommit();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleCancel();
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <div className={cn("flex items-center gap-1.5 min-w-0 w-full", className)} onClick={(e) => e.stopPropagation()}>
+                <Input
+                    ref={inputRef}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isSaving}
+                    className={cn(
+                        "h-8 text-xs font-semibold px-2 rounded-lg border-blue-500/50 focus-visible:ring-1 focus-visible:ring-blue-500 bg-background w-full",
+                        inputClassName
+                    )}
+                />
+                <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    disabled={isSaving}
+                    onClick={handleCommit}
+                    className="h-8 w-8 shrink-0 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 min-h-[36px] min-w-[36px]"
+                    title="Save name"
+                >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                </Button>
+                <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    disabled={isSaving}
+                    onClick={handleCancel}
+                    className="h-8 w-8 shrink-0 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 min-h-[36px] min-w-[36px]"
+                    title="Cancel"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className={cn(
+                "group/inline-name flex items-center gap-1.5 min-w-0 max-w-full cursor-pointer select-none",
+                disabled && "cursor-default",
+                className
+            )}
+            onClick={(e) => {
+                if (disabled || !onSave) return;
+                e.stopPropagation();
+                setIsEditing(true);
+            }}
+            title={disabled || !onSave ? name : "Click or tap to rename template"}
+        >
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className={cn(
+                            "text-sm font-semibold truncate text-foreground group-hover/inline-name:text-blue-600 transition-colors leading-tight tracking-tight max-w-[190px] sm:max-w-[240px]",
+                            textClassName
+                        )}>
+                            {name}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
+                        {name}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+
+            {!disabled && !!onSave && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsEditing(true);
+                    }}
+                    className={cn(
+                        "p-1 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-500/10 transition-all shrink-0 min-h-[36px] min-w-[36px] sm:min-h-[28px] sm:min-w-[28px] flex items-center justify-center",
+                        "opacity-100 sm:opacity-0 sm:group-hover/inline-name:opacity-100 sm:group-hover:opacity-100"
+                    )}
+                    aria-label="Edit template name"
+                    title="Edit name"
+                >
+                    <Pencil className="h-3.5 w-3.5" />
+                </button>
+            )}
+        </div>
+    );
+}
+
 interface TemplateCardProps {
     template: MessageTemplate;
     styles: MessageStyle[];
@@ -59,10 +222,11 @@ interface TemplateCardProps {
     onClone: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
+    onUpdateName?: (newName: string) => Promise<void> | void;
     onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onWhatsAppPushSkeleton }: TemplateCardProps) {
+function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateCardProps) {
     const router = useRouter();
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
@@ -225,16 +389,12 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
             <CardHeader className="p-5 shrink-0 bg-background border-t">
                 <div className="min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div className="text-sm font-semibold truncate text-foreground group-hover:text-blue-600 transition-colors leading-tight tracking-tight cursor-default max-w-[190px]">{template.name}</div>
-                                </TooltipTrigger>
-                                <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
-                                    {template.name}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <InlineEditableName
+                            name={template.name}
+                            onSave={(newName) => onUpdateName?.(newName)}
+                            disabled={!onUpdateName}
+                            textClassName="max-w-[170px]"
+                        />
                         {template.workspaceIds && template.workspaceIds.length > 1 ? (
                             <TooltipProvider>
                                 <Tooltip>
@@ -290,10 +450,11 @@ interface TemplateRowProps {
     onClone: () => void;
     onDelete: () => void;
     onUpdateStatus: (status: TemplateStatus) => void;
+    onUpdateName?: (newName: string) => Promise<void> | void;
     onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
 }
 
-function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onWhatsAppPushSkeleton }: TemplateRowProps) {
+function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateRowProps) {
     const router = useRouter();
     const previewTitle = React.useMemo(() => {
         if (template.channel === 'email') {
@@ -310,16 +471,12 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onDelete
             {/* Title and Subtitle Info */}
             <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span className="font-semibold text-sm text-foreground truncate cursor-default max-w-[250px]">{template.name}</span>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-[10px] font-bold p-2 bg-popover text-popover-foreground border border-border shadow-md max-w-xs break-words">
-                                {template.name}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <InlineEditableName
+                        name={template.name}
+                        onSave={(newName) => onUpdateName?.(newName)}
+                        disabled={!onUpdateName}
+                        textClassName="max-w-[230px]"
+                    />
                     {template.workspaceIds && template.workspaceIds.length > 1 && (
                         <TooltipProvider>
                             <Tooltip>
@@ -600,6 +757,7 @@ interface TemplateGalleryProps {
     onDelete: (tmpl: MessageTemplate) => void;
     onPreview: (tmpl: GalleryTemplate) => void;
     onUpdateStatus: (tmpl: MessageTemplate, status: TemplateStatus) => void;
+    onUpdateName?: (tmpl: MessageTemplate, newName: string) => Promise<void> | void;
     onWhatsAppSendTest?: (tmpl: WhatsAppDisplayTemplate) => void;
     onWhatsAppAdopt?: (tmpl: WhatsAppDisplayTemplate) => void;
     onWhatsAppPushSkeleton?: (template: MessageTemplate) => void;
@@ -615,6 +773,7 @@ export function TemplateGallery({
     onDelete,
     onPreview,
     onUpdateStatus,
+    onUpdateName,
     onWhatsAppSendTest,
     onWhatsAppAdopt,
     onWhatsAppPushSkeleton
@@ -848,6 +1007,7 @@ export function TemplateGallery({
                                                 onClone={() => onClone(template)}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                                onUpdateName={onUpdateName ? (newName) => onUpdateName(template, newName) : undefined}
                                                 onWhatsAppPushSkeleton={onWhatsAppPushSkeleton}
                                             />
                                         )
@@ -874,6 +1034,7 @@ export function TemplateGallery({
                                                 onClone={() => onClone(template)}
                                                 onDelete={() => onDelete(template)}
                                                 onUpdateStatus={(status) => onUpdateStatus(template, status)}
+                                                onUpdateName={onUpdateName ? (newName) => onUpdateName(template, newName) : undefined}
                                                 onWhatsAppPushSkeleton={onWhatsAppPushSkeleton}
                                             />
                                         )

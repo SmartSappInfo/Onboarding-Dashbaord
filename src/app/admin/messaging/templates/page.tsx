@@ -544,6 +544,22 @@ export default function MessageTemplatesPage() {
         }
     };
 
+    const handleUpdateName = async (tmpl: MessageTemplate, newName: string) => {
+        if (!firestore) return;
+        const trimmed = newName.trim();
+        if (!trimmed || trimmed === tmpl.name) return;
+        try {
+            await updateDoc(doc(firestore, 'message_templates', tmpl.id), {
+                name: trimmed,
+                updatedAt: new Date().toISOString()
+            });
+            invalidateAllTemplatesCache();
+            toast({ title: 'Template Renamed', description: `Updated name to "${trimmed}"` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e instanceof Error ? e.message : 'Unknown error' });
+        }
+    };
+
     const handleWaSendTest = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'sendTest', template: t.raw });
     const handleWaAdopt = (t: WhatsAppDisplayTemplate) => setActiveWaDialog({ kind: 'adopt', template: t.raw });
 
@@ -722,6 +738,7 @@ export default function MessageTemplatesPage() {
                                 onDelete={setTemplateToDelete}
                                 onPreview={setPreviewTemplate}
                                 onUpdateStatus={handleUpdateStatus}
+                                onUpdateName={handleUpdateName}
                                 onWhatsAppSendTest={handleWaSendTest}
                                 onWhatsAppAdopt={handleWaAdopt}
                                 onWhatsAppPushSkeleton={handlePushSkeleton}

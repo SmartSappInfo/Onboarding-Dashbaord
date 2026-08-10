@@ -10,6 +10,7 @@ import { isWhatsAppDisplay } from '../../../messaging/templates/lib/unified-temp
 import { TemplateWorkshop } from '../../../messaging/templates/components/template-workshop';
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -187,6 +188,22 @@ export default function TemplatesClient() {
         }
     };
 
+    const handleUpdateName = async (tmpl: MessageTemplate, newName: string) => {
+        if (!firestore) return;
+        const trimmed = newName.trim();
+        if (!trimmed || trimmed === tmpl.name) return;
+        try {
+            await updateDoc(doc(firestore, 'message_templates', tmpl.id), {
+                name: trimmed,
+                updatedAt: new Date().toISOString()
+            });
+            invalidateAllTemplatesCache();
+            toast({ title: 'Global Blueprint Renamed', description: `Updated name to "${trimmed}"` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        }
+    };
+
     const handleSyncBlueprint = async () => {
         setIsSeeding(true);
         try {
@@ -298,6 +315,7 @@ export default function TemplatesClient() {
                             onDelete={setTemplateToDelete as any}
                             onPreview={(t) => { if (!isWhatsAppDisplay(t)) setPreviewTemplate(t); }}
                             onUpdateStatus={handleUpdateStatus}
+                            onUpdateName={handleUpdateName}
                         />
                             </div>
                         </PageContainerFluid>
