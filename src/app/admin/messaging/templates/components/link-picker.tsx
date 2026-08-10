@@ -239,15 +239,6 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
    * prepended with getBaseUrl() (e.g. 'https://go.smartsapp.com/m/9Kmtlz6ncX9Uf9dtWUo2').
    * Dynamic variables starting with '{{' (e.g. '{{survey_link}}') remain variable tokens.
    *
-   * CAUTION: Always use getBaseUrl() to resolve domain dynamically in browser context.
-   * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
-   */
-  /**
-   * PURPOSE: Selects a link target and formats internal relative paths as fully-qualified absolute URLs.
-   * Internal relative paths starting with '/' (e.g. '/m/9Kmtlz6ncX9Uf9dtWUo2') are automatically
-   * prepended with getBaseUrl() (e.g. 'https://go.smartsapp.com/m/9Kmtlz6ncX9Uf9dtWUo2').
-   * Dynamic variables starting with '{{' (e.g. '{{survey_link}}') remain variable tokens.
-   *
    * CAUTION: Passes selected ResourceItem metadata to onSelect to allow auto-populating titles and durations.
    * RELATED SURFACES: PlainTextEditor.tsx, block-inspector.tsx, ComposerWizard.tsx.
    */

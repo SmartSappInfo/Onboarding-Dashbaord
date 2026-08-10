@@ -32,7 +32,7 @@ import {
     Zap,
     X
 } from 'lucide-react';
-import type { MessageBlock, VariableDefinition, MessageTemplate, TemplateVariable } from '@/lib/types';
+import type { MessageBlock, VariableDefinition, MessageTemplate, TemplateVariable, VariableContext } from '@/lib/types';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { cn } from '@/lib/utils';
 import { blockIcons } from './block-icons';
@@ -49,17 +49,21 @@ interface BlockInspectorProps {
 
 export function BlockInspector({ block, variables, onUpdate, templateCategory }: BlockInspectorProps) {
     const autocompleteVariables = React.useMemo<TemplateVariable[]>(() => {
-        return variables.map(v => ({
-            id: v.id,
-            name: v.key,
-            label: v.label || v.key,
-            context: (v.category || 'general') as any,
-            description: '',
-            dataType: (v.type === 'date' || v.type === 'number' || v.type === 'url' || v.type === 'html' ? v.type : 'string') as any,
-            exampleValue: `{{${v.key}}}`,
-            isDynamic: false,
-            isComputed: false,
-        }));
+        return variables.map(v => {
+            const context: VariableContext = (v.source || v.category || 'common') as VariableContext;
+            const dataType: TemplateVariable['dataType'] = v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string';
+            return {
+                id: v.id,
+                name: v.key,
+                label: v.label || v.key,
+                context,
+                description: '',
+                dataType,
+                exampleValue: `{{${v.key}}}`,
+                isDynamic: false,
+                isComputed: false,
+            };
+        });
     }, [variables]);
 
     const [showLinkPicker, setShowLinkPicker] = React.useState<boolean>(false);
@@ -446,13 +450,18 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                 {showLinkPicker && (
                                     <LinkPicker 
-                                        onSelect={(url) => {
+                                        onSelect={(url, item) => {
                                             let finalUrl = url;
                                             if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                 const joiner = finalUrl.includes('?') ? '&' : '?';
                                                 finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                             }
-                                            onUpdate({ link: finalUrl });
+                                            const updates: Record<string, unknown> = { link: finalUrl };
+                                            const label = item?.subtitle || item?.name;
+                                            if (label && (!block.title || block.title === 'Click Here' || block.title === 'Learn More')) {
+                                                updates.title = label;
+                                            }
+                                            onUpdate(updates);
                                             setShowLinkPicker(false);
                                         }}
                                     />
@@ -561,13 +570,18 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                     {showLinkPicker && (
                                         <LinkPicker 
-                                            onSelect={(url) => {
+                                            onSelect={(url, item) => {
                                                 let finalUrl = url;
                                                 if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
-                                                onUpdate({ link: finalUrl });
+                                                const updates: Record<string, unknown> = { link: finalUrl };
+                                                const label = item?.subtitle || item?.name;
+                                                if (label && (!block.title || block.title === 'Click Here' || block.title === 'Learn More')) {
+                                                    updates.title = label;
+                                                }
+                                                onUpdate(updates);
                                                 setShowLinkPicker(false);
                                             }}
                                         />
@@ -648,13 +662,18 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
 
                                     {showSecondaryLinkPicker && (
                                         <LinkPicker 
-                                            onSelect={(url) => {
+                                            onSelect={(url, item) => {
                                                 let finalUrl = url;
                                                 if (!finalUrl.includes('ref={{encrypted_recipient_token}}')) {
                                                     const joiner = finalUrl.includes('?') ? '&' : '?';
                                                     finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
                                                 }
-                                                onUpdate({ secondaryLink: finalUrl });
+                                                const updates: Record<string, unknown> = { secondaryLink: finalUrl };
+                                                const label = item?.subtitle || item?.name;
+                                                if (label && (!block.secondaryTitle || block.secondaryTitle === 'Secondary Action')) {
+                                                    updates.secondaryTitle = label;
+                                                }
+                                                onUpdate(updates);
                                                 setShowSecondaryLinkPicker(false);
                                             }}
                                         />
