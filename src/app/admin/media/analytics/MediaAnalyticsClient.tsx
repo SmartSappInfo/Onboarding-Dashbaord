@@ -78,8 +78,17 @@ export default function MediaAnalyticsClient() {
   }, []);
 
   // Multi-dimensional Filter & Sort Pipeline
+  // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+  // 1. Array mutability: Shallow copy [...shares] is made before sorting to maintain pure state boundaries.
+  // 2. Active KPI Card Override: When an active metric card is selected, it takes precedence over the dropdown sort selector
+  //    to enforce descending ordering (Highest to Lowest) for that specific metric.
+  // 3. Date Parsing Performance: updatedAt numeric timestamps are pre-computed once per item before array sorting to prevent
+  //    re-parsing string dates repeatedly in O(N log N) comparator loops.
   const filteredShares = React.useMemo(() => {
-    let result = [...shares];
+    let result = shares.map(s => ({
+      ...s,
+      updatedAtTime: new Date(s.updatedAt || 0).getTime()
+    }));
 
     // 1. Text Search Filter
     if (searchTerm.trim()) {
@@ -149,8 +158,8 @@ export default function MediaAnalyticsClient() {
         const rateB = b.stats.mediaPlays > 0 ? (b.stats.mediaCompletions / b.stats.mediaPlays) : 0;
         return rateB - rateA;
       }
-      // Default: updated_desc
-      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+      // Default: updated_desc (using pre-computed numeric timestamp)
+      return b.updatedAtTime - a.updatedAtTime;
     });
 
     return result;
@@ -426,7 +435,7 @@ export default function MediaAnalyticsClient() {
                 </span>
                 <button
                   onClick={() => setActiveMetric(null)}
-                  className="p-0.5 rounded-full hover:bg-primary/20 transition-colors ml-1 text-primary cursor-pointer min-h-[24px] min-w-[24px] flex items-center justify-center"
+                  className="p-2.5 rounded-full hover:bg-primary/20 transition-colors ml-1 text-primary cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.95]"
                   title="Clear metric filter"
                 >
                   <X className="h-3.5 w-3.5" />

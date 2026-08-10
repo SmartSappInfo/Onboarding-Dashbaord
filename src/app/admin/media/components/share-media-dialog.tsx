@@ -80,6 +80,9 @@ interface MediaSharePreset {
     automationRules?: Record<string, CallOutcomeAutomation[]>;
 }
 
+// ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+// Presets are stored in browser localStorage (scoped by activeWorkspaceId) to maintain seamless user browser continuity
+// across publishing sessions without cluttering or bloating global workspace Firestore schemas.
 const getPresetStorageKey = (workspaceId: string) => `smartsapp_media_share_preset_${workspaceId}`;
 
 const savePresetToLocalStorage = (workspaceId: string, preset: MediaSharePreset) => {
@@ -93,13 +96,20 @@ const savePresetToLocalStorage = (workspaceId: string, preset: MediaSharePreset)
 
 const loadPresetFromLocalStorage = (workspaceId: string): MediaSharePreset | null => {
     if (typeof window === 'undefined' || !workspaceId) return null;
+    const key = getPresetStorageKey(workspaceId);
     try {
-        const raw = localStorage.getItem(getPresetStorageKey(workspaceId));
+        const raw = localStorage.getItem(key);
         if (raw) {
             return JSON.parse(raw) as MediaSharePreset;
         }
     } catch (err: unknown) {
-        console.warn('[ShareMediaDialog] Failed to load preset from localStorage:', err);
+        console.warn('[ShareMediaDialog] Failed to load preset from localStorage, clearing corrupted key:', err);
+        try {
+            // Self-healing cleanup of corrupted localStorage data
+            localStorage.removeItem(key);
+        } catch {
+            // Ignore removeItem secondary errors
+        }
     }
     return null;
 };
@@ -618,7 +628,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={handleResetToDefaults}
-                                                        className="h-8 px-2.5 rounded-xl text-[10px] font-bold text-muted-foreground hover:text-foreground hover:bg-purple-500/10 min-h-[36px] active:scale-[0.97] cursor-pointer"
+                                                        className="h-11 px-3 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-purple-500/10 min-h-[44px] active:scale-[0.97] cursor-pointer shrink-0"
                                                     >
                                                         Reset Defaults
                                                     </Button>
