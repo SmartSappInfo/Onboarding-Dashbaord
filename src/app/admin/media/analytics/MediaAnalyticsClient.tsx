@@ -522,7 +522,7 @@ export default function MediaAnalyticsClient() {
                       </div>
 
                       {/* Middle Metrics - Right Aligned */}
-                      <div className="grid grid-cols-4 gap-6 text-right sm:ml-auto shrink-0 items-center">
+                      <div className="grid grid-cols-5 gap-3 md:gap-5 text-right sm:ml-auto shrink-0 items-center">
                         <div className="space-y-0.5 flex flex-col items-end text-right">
                           <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Views</span>
                           <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
@@ -548,6 +548,13 @@ export default function MediaAnalyticsClient() {
                           <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">CTA Clicks</span>
                           <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
                             {item.stats.ctaClicks} <span className="text-[10px] font-normal text-muted-foreground">({singleCtaRate}%)</span>
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5 flex flex-col items-end text-right">
+                          <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Downloads</span>
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
+                            {item.stats.downloads || 0}
                           </span>
                         </div>
                       </div>
