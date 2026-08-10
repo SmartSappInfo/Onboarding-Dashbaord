@@ -518,7 +518,8 @@ export function fromPositionalBody(
     if (Array.isArray(paramMap)) {
       varName = paramMap[idx - 1] || '';
     } else if (paramMap && typeof paramMap === 'object') {
-      varName = paramMap[idx] || paramMap[idx - 1] || '';
+      const isZeroIndexed = 0 in paramMap;
+      varName = isZeroIndexed ? paramMap[idx - 1] || '' : paramMap[idx] || paramMap[idx - 1] || '';
     }
 
     if (!varName) {

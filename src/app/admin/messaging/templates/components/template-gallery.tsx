@@ -365,7 +365,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className={cn("h-8 w-8 rounded-lg hover:bg-muted", cloningId === template.id ? "animate-spin" : "")}
+                                className={cn("h-8 w-8 rounded-lg hover:bg-muted min-h-[36px] min-w-[36px] touch-manipulation", cloningId === template.id ? "animate-spin" : "")}
                                 disabled={!!cloningId}
                                 title="Clone Options"
                             >
@@ -637,7 +637,7 @@ function TemplateRow({ template, cloningId, onPreview, onEdit, onClone, onCloneA
                         <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-8 w-8 rounded-lg hover:bg-muted", cloningId === template.id ? "animate-spin" : "")}
+                            className={cn("h-8 w-8 rounded-lg hover:bg-muted min-h-[36px] min-w-[36px] touch-manipulation", cloningId === template.id ? "animate-spin" : "")}
                             disabled={!!cloningId}
                             title="Clone Options"
                         >

@@ -325,6 +325,12 @@ describe('fromPositionalBody', () => {
     expect(r.restoredVars).toEqual(['contact_name', 'entity_name', 'meeting_time']);
   });
 
+  it('handles 0-indexed record object paramMap correctly', () => {
+    const r = fromPositionalBody('Hi {{1}}, order {{2}} is ready.', { 0: 'firstName', 1: 'orderId' });
+    expect(r.body).toBe('Hi {{firstName}}, order {{orderId}} is ready.');
+    expect(r.restoredVars).toEqual(['firstName', 'orderId']);
+  });
+
   it('performs full round-trip conversion (SMS -> WA -> SMS)', () => {
     const originalSms = 'Hi {{contact_name}}, check {{entity_name | Your School}} on {{meeting_time}}.';
     const wa = toPositionalBody(originalSms);

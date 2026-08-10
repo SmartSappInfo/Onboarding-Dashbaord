@@ -568,7 +568,7 @@ export default function MessageTemplatesPage() {
         setCloningId(tmpl.id);
         try {
             const rawBody = tmpl.body || '';
-            const rawParamMap = isWhatsAppDisplay(tmpl) ? tmpl.paramMap : (tmpl.paramMap || []);
+            const rawParamMap = isWhatsAppDisplay(tmpl) ? tmpl.paramMap : (tmpl.paramMap || tmpl.whatsappParamMap || []);
             const { body: smsBody, restoredVars } = fromPositionalBody(rawBody, rawParamMap);
 
             const tmplObj = tmpl as unknown as Record<string, unknown>;

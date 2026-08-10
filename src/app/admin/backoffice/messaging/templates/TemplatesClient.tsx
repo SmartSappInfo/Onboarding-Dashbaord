@@ -216,7 +216,7 @@ export default function TemplatesClient() {
         if (!firestore || !user) return;
         try {
             const rawBody = tmpl.body || '';
-            const rawParamMap = isWhatsAppDisplay(tmpl) ? tmpl.paramMap : (tmpl.paramMap || []);
+            const rawParamMap = isWhatsAppDisplay(tmpl) ? tmpl.paramMap : (tmpl.paramMap || tmpl.whatsappParamMap || []);
             const { body: smsBody, restoredVars } = fromPositionalBody(rawBody, rawParamMap);
 
             const tmplObj = tmpl as unknown as Record<string, unknown>;
@@ -407,7 +407,7 @@ export default function TemplatesClient() {
                             onClone={handleClone}
                             onCloneAsWhatsApp={handleCloneAsWhatsApp}
                             onCloneAsSMS={handleCloneAsSMS}
-                            onDelete={setTemplateToDelete as any}
+                            onDelete={(tmpl) => setTemplateToDelete(tmpl as MessageTemplate)}
                             onPreview={(t) => { if (!isWhatsAppDisplay(t)) setPreviewTemplate(t); }}
                             onUpdateStatus={handleUpdateStatus}
                             onUpdateName={handleUpdateName}
