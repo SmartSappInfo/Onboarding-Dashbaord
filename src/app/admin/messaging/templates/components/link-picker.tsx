@@ -250,16 +250,16 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
               setTargetType(e.target.value);
               setSearch('');
             }}
-            className="w-full h-11 px-3.5 pr-10 rounded-xl bg-muted/20 border-none font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-800"
+            className="w-full h-11 px-3.5 pr-10 rounded-xl bg-background border border-border/60 font-semibold text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground dark:bg-zinc-900"
           >
-            <option value="dynamic">Dynamic Variables (rsvp, survey...)</option>
-            <option value="surveys">Published Workspace Surveys</option>
-            <option value="forms">Published Forms & PDFs</option>
-            <option value="media">Shared Media Pages</option>
-            <option value="pages">Published Campaign Pages</option>
-            <option value="bookings">Published Booking Pages</option>
-            <option value="qrs">QR Studio Codes</option>
-            <option value="static">Predefined Static Pages</option>
+            <option value="dynamic" className="bg-background dark:bg-zinc-900 text-foreground">Dynamic Variables (rsvp, survey...)</option>
+            <option value="surveys" className="bg-background dark:bg-zinc-900 text-foreground">Published Workspace Surveys</option>
+            <option value="forms" className="bg-background dark:bg-zinc-900 text-foreground">Published Forms & PDFs</option>
+            <option value="media" className="bg-background dark:bg-zinc-900 text-foreground">Shared Media Pages</option>
+            <option value="pages" className="bg-background dark:bg-zinc-900 text-foreground">Published Campaign Pages</option>
+            <option value="bookings" className="bg-background dark:bg-zinc-900 text-foreground">Published Booking Pages</option>
+            <option value="qrs" className="bg-background dark:bg-zinc-900 text-foreground">QR Studio Codes</option>
+            <option value="static" className="bg-background dark:bg-zinc-900 text-foreground">Predefined Static Pages</option>
           </select>
           <div className="absolute right-3.5 top-3.5 pointer-events-none text-muted-foreground/50">
             <ChevronDown className="h-4 w-4" />

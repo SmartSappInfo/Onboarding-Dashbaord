@@ -4715,7 +4715,7 @@ export function TemplateWorkshop({
                                     !isResizing && "transition-all duration-500",
                                     isResizing && "pointer-events-none select-none"
                                 )}
-                                style={{ backgroundColor: wrapperStyles?.outerBg || 'transparent' }}
+                                style={{ backgroundColor: channel !== 'sms' && wrapperStyles?.outerBg ? wrapperStyles.outerBg : 'transparent' }}
                             >
                                 <div className="h-14 shrink-0 bg-background border-b px-4 sm:px-6 flex items-center justify-between z-10 shadow-sm text-left">
                                     <div className="flex items-center gap-2 sm:gap-3.5 flex-wrap">
