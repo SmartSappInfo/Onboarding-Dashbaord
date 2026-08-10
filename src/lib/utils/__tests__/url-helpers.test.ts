@@ -30,7 +30,7 @@ describe('URL Helpers & Container Host Leak Safeguard', () => {
     vi.stubGlobal('window', undefined);
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.VERCEL_URL;
-    process.env.NODE_ENV = 'production';
+    vi.stubEnv('NODE_ENV', 'production');
     const baseUrl = getBaseUrl();
     expect(baseUrl).toBe('https://go.smartsapp.com');
   });

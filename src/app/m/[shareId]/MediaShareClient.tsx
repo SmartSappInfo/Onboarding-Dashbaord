@@ -70,6 +70,7 @@ interface MediaShareClientProps {
     ctaPretext: string;
     ctaPopoverEnabled: boolean;
     ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+    autoPlay?: boolean;
     orgBranding: OrgBranding | null;
     isEmbed: boolean;
     searchParams: Record<string, string>;
@@ -89,13 +90,14 @@ export default function MediaShareClient({
     ctaPretext,
     ctaPopoverEnabled,
     ctaActivationGate = 'immediate',
+    autoPlay = false,
     orgBranding,
     isEmbed,
     searchParams,
     contactId,
     entityId,
 }: MediaShareClientProps) {
-    const [isPlaying, setIsPlaying] = React.useState(false);
+    const [isPlaying, setIsPlaying] = React.useState(autoPlay && asset.type === 'audio');
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
     const videoRef = React.useRef<HTMLVideoElement | null>(null);
     const embedVideoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -104,7 +106,7 @@ export default function MediaShareClient({
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(0.8);
     const [isCtaModalOpen, setIsCtaModalOpen] = React.useState(false);
-    const [isVideoPlaying, setIsVideoPlaying] = React.useState(false);
+    const [isVideoPlaying, setIsVideoPlaying] = React.useState(autoPlay && asset.type === 'video');
     const [isPlaybackFinished, setIsPlaybackFinished] = React.useState(false);
 
     const sessionId = React.useMemo(() => nanoid(), []);
@@ -448,6 +450,15 @@ export default function MediaShareClient({
                 ytPlayerRef.current = new window.YT.Player(iframeId, {
                     events: {
                         onStateChange: handleYtStateChange,
+                        onReady: (event) => {
+                            if (autoPlay && event.target?.playVideo) {
+                                try {
+                                    event.target.playVideo();
+                                } catch {
+                                    // Ignore browser autoplay blocks
+                                }
+                            }
+                        },
                     },
                 });
             } catch (err) {
@@ -486,7 +497,7 @@ export default function MediaShareClient({
                 }
             }
         };
-    }, [youtubeVideoId, asset.type, iframeId, handleYtStateChange, stopYtProgressInterval]);
+    }, [youtubeVideoId, asset.type, iframeId, autoPlay, handleYtStateChange, stopYtProgressInterval]);
 
     const handleVideoTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         const video = e.currentTarget;
@@ -996,7 +1007,7 @@ export default function MediaShareClient({
                                     )}
                                     <iframe
                                         id={iframeId}
-                                        src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=1&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+                                        src={youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&autoplay=${autoPlay ? 1 : 0}&origin=${typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''}` : `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}${autoPlay ? 'autoplay=1' : 'autoplay=0'}`}
                                         className="w-full h-full border-none"
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
@@ -1008,6 +1019,7 @@ export default function MediaShareClient({
                                         ref={videoRef}
                                         src={asset.url}
                                         controls
+                                        autoPlay={autoPlay}
                                         preload="metadata"
                                         onTimeUpdate={handleVideoTimeUpdate}
                                         onEnded={handleVideoEnded}
@@ -1055,6 +1067,7 @@ export default function MediaShareClient({
                             <audio
                                 ref={audioRef}
                                 src={asset.url}
+                                autoPlay={autoPlay}
                                 onTimeUpdate={handleAudioTimeUpdate}
                                 onLoadedMetadata={handleAudioLoadedMetadata}
                                 onEnded={handleAudioEnded}

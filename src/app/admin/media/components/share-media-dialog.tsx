@@ -20,8 +20,9 @@ import {
 } from 'firebase/firestore';
 import { 
     Loader2, Share2, Copy, Check, Globe, Code, 
-    Sparkles, RefreshCw, Layers, Save, Film, Download 
+    Sparkles, RefreshCw, Layers, Save, Film, Download, ExternalLink 
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { MediaAsset } from '@/lib/types';
@@ -58,6 +59,7 @@ interface ShareConfig {
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
     ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+    autoPlay?: boolean;
     slug?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -98,6 +100,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [ctaPretext, setCtaPretext] = React.useState<string>('');
     const [ctaPopoverEnabled, setCtaPopoverEnabled] = React.useState<boolean>(false);
     const [ctaActivationGate, setCtaActivationGate] = React.useState<'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete'>('immediate');
+    const [autoPlay, setAutoPlay] = React.useState<boolean>(false);
     const [slug, setSlug] = React.useState<string>('');
     const [isSlugChecking, setIsSlugChecking] = React.useState<boolean>(false);
     const [slugStatus, setSlugStatus] = React.useState<'idle' | 'available' | 'conflict' | 'too-short'>('idle');
@@ -205,6 +208,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setCtaPretext(data.ctaPretext || '');
                 setCtaPopoverEnabled(data.ctaPopoverEnabled || false);
                 setCtaActivationGate(data.ctaActivationGate || 'immediate');
+                setAutoPlay(data.autoPlay ?? false);
                 setSlug(data.slug || '');
                 setAutomationRules(data.automationRules || {});
                 setIsSaved(true);
@@ -412,6 +416,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 ctaPretext: ctaPretext.trim(),
                 ctaPopoverEnabled,
                 ctaActivationGate,
+                autoPlay,
                 slug: sanitizedSlug,
                 automationRules,
                 updatedAt: new Date().toISOString(),
@@ -565,6 +570,30 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 </div>
                                                 <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">Customize the back half of the viewing URL. Only lowercase alphanumeric, hyphens, and underscores are allowed.</p>
                                             </div>
+
+                                            {(asset.type === 'video' || asset.type === 'audio') && (
+                                                <div className="space-y-3 pt-3 border-t border-dashed border-border/60">
+                                                    <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
+                                                        <Film className="h-3.5 w-3.5 text-primary" /> Playback Options
+                                                    </h3>
+                                                    <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 flex items-center justify-between gap-3 text-left">
+                                                        <div className="space-y-0.5 min-w-0 flex-1">
+                                                            <Label className="text-xs font-extrabold text-foreground cursor-pointer" htmlFor="autoPlay-toggle">
+                                                                Auto-Play Media
+                                                            </Label>
+                                                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
+                                                                By default, visitors must click to play. Enable this to start playing automatically when opened.
+                                                            </p>
+                                                        </div>
+                                                        <Switch
+                                                            id="autoPlay-toggle"
+                                                            checked={autoPlay}
+                                                            onCheckedChange={setAutoPlay}
+                                                            className="data-[state=checked]:bg-primary min-h-[24px] cursor-pointer shrink-0"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="space-y-4 pt-4 border-t border-dashed border-border/60">
@@ -825,9 +854,19 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         type="button"
                                                         size="icon" 
                                                         onClick={() => copyText(asset.url, 'direct')} 
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100"
+                                                        title="Copy Direct File URL"
+                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
                                                     >
                                                         {copiedDirect ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                                                    </Button>
+                                                    <Button 
+                                                        type="button"
+                                                        size="icon" 
+                                                        onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')} 
+                                                        title="Open Direct File URL in new tab"
+                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted text-primary active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -847,9 +886,19 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         type="button"
                                                         size="icon" 
                                                         onClick={() => copyText(publicUrl, 'public')} 
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100"
+                                                        title="Copy Public Viewing Page URL"
+                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
                                                     >
                                                         {copiedPublic ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                                                    </Button>
+                                                    <Button 
+                                                        type="button"
+                                                        size="icon" 
+                                                        onClick={() => window.open(publicUrl, '_blank', 'noopener,noreferrer')} 
+                                                        title="Launch Public Viewing Page in new tab"
+                                                        className="h-10 w-10 shrink-0 rounded-xl bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </div>

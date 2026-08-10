@@ -24,6 +24,7 @@ interface ShareConfig {
     ctaPretext?: string;
     ctaPopoverEnabled?: boolean;
     ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+    autoPlay?: boolean;
     slug?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -374,6 +375,7 @@ export default async function PublicMediaShareRoute({
             ctaPretext={resolvedCtaPretext}
             ctaPopoverEnabled={config.ctaPopoverEnabled || false}
             ctaActivationGate={(config.ctaActivationGate === 'half' || config.ctaActivationGate === 'complete') ? config.ctaActivationGate : 'immediate'}
+            autoPlay={config.autoPlay ?? false}
             orgBranding={orgBranding}
             isEmbed={isEmbed}
             searchParams={resolvedSearchParams}
