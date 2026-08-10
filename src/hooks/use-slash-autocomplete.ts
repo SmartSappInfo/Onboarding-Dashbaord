@@ -196,8 +196,15 @@ export function useSlashAutocomplete({
     );
   }, [variables, autocompleteQuery]);
 
+  // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+  // Universal Slash Menu Variable Selection & Caret Recovery:
+  // 1. Re-entrance Guard: Immediately checks showAutocomplete and sets it to false so that multi-event sequences
+  //    (onPointerDown -> onTouchEnd -> onClick) execute insertion once on the first tick and ignore subsequent ticks.
+  // 2. Selection Recovery: On touch screens or mouse pointerdowns, element blur may reset active selection offsets.
+  //    Intelligently fall back to savedRangeRef / savedInputPosRef or scan DOM text nodes for the last '/' index.
   const selectAndInsert = React.useCallback((varName: string, element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement | null) => {
-    if (!element) return;
+    if (!element || !showAutocomplete) return;
+    setShowAutocomplete(false);
 
     if (element instanceof HTMLDivElement) {
       element.focus();
@@ -221,14 +228,39 @@ export function useSlashAutocomplete({
         }
       }
 
-      // Fallback to saved range if selection was lost on mouse click/touch tap
-      if (!container && savedRangeRef.current) {
+      // Fallback 1: Use saved range if active selection lost on touch tap/mouse click
+      if (!container && savedRangeRef.current && savedRangeRef.current.container.isConnected) {
         container = savedRangeRef.current.container;
         lastSlashIdx = savedRangeRef.current.lastSlashIdx;
         offset = savedRangeRef.current.offset;
       }
 
-      if (!container || lastSlashIdx === -1 || offset === -1) return;
+      // Fallback 2: Deep scan all text nodes inside container for the last '/' character
+      if (!container || lastSlashIdx === -1) {
+        const textNodes: Node[] = [];
+        const walk = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+        let node: Node | null = walk.nextNode();
+        while (node) {
+          textNodes.push(node);
+          node = walk.nextNode();
+        }
+        for (let i = textNodes.length - 1; i >= 0; i--) {
+          const tn = textNodes[i];
+          const txt = tn.textContent || '';
+          const idx = txt.lastIndexOf('/');
+          if (idx !== -1) {
+            container = tn;
+            lastSlashIdx = idx;
+            offset = txt.length;
+            break;
+          }
+        }
+      }
+
+      if (!container || lastSlashIdx === -1 || offset === -1) {
+        savedRangeRef.current = null;
+        return;
+      }
 
       const text = container.textContent || '';
       const range = document.createRange();
@@ -270,7 +302,6 @@ export function useSlashAutocomplete({
         element.appendChild(pill);
       }
 
-      setShowAutocomplete(false);
       savedRangeRef.current = null;
       onChange(convertToCleanHtml(element));
       return;
@@ -281,7 +312,7 @@ export function useSlashAutocomplete({
     let lastSlashIdx = -1;
     let selectionEnd = element.selectionEnd ?? -1;
 
-    if (selectionEnd !== -1) {
+    if (selectionEnd !== -1 && selectionEnd > 0) {
       const text = element.value;
       const idx = text.lastIndexOf('/', selectionEnd - 1);
       if (idx !== -1) {
@@ -294,7 +325,19 @@ export function useSlashAutocomplete({
       selectionEnd = savedInputPosRef.current.selectionEnd;
     }
 
-    if (lastSlashIdx === -1) return;
+    if (lastSlashIdx === -1) {
+      const text = element.value;
+      const idx = text.lastIndexOf('/');
+      if (idx !== -1) {
+        lastSlashIdx = idx;
+        selectionEnd = text.length;
+      }
+    }
+
+    if (lastSlashIdx === -1) {
+      savedInputPosRef.current = null;
+      return;
+    }
 
     const text = element.value;
     const before = text.substring(0, lastSlashIdx);
@@ -302,7 +345,6 @@ export function useSlashAutocomplete({
     const token = `{{${varName}}}`;
     const newValue = before + token + after;
     
-    setShowAutocomplete(false);
     savedInputPosRef.current = null;
     onChange(newValue);
     
@@ -311,7 +353,7 @@ export function useSlashAutocomplete({
       const newPos = lastSlashIdx + token.length;
       element.setSelectionRange(newPos, newPos);
     });
-  }, [onChange]);
+  }, [onChange, showAutocomplete]);
 
   // General keyboard listener for intercepting inputs when autocomplete is active
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement | HTMLDivElement>) => {

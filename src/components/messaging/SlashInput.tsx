@@ -487,6 +487,13 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
                   key={v.id}
                   type="button"
                   data-active={isSelected ? 'true' : 'false'}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -501,7 +508,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
                       selectAndInsert(v.name, localRef.current);
                     }
                   }}
-                  onTouchStart={(e) => {
+                  onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (localRef.current) {
@@ -509,7 +516,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none",
+                    "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none min-h-[44px] justify-center touch-manipulation",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:bg-muted"
@@ -797,6 +804,13 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
                   key={v.id}
                   type="button"
                   data-active={isSelected ? 'true' : 'false'}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (localRef.current) {
+                      selectAndInsert(v.name, localRef.current);
+                    }
+                  }}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -811,7 +825,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
                       selectAndInsert(v.name, localRef.current);
                     }
                   }}
-                  onTouchStart={(e) => {
+                  onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (localRef.current) {
@@ -819,7 +833,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none",
+                    "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none cursor-pointer select-none min-h-[44px] justify-center touch-manipulation",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "text-foreground hover:bg-muted"

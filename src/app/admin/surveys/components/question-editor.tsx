@@ -746,14 +746,36 @@ function OptionInput({
                 key={v.id}
                 type="button"
                 data-active={isSelected ? 'true' : 'false'}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (inputRef.current) {
+                    selectAndInsert(v.name, inputRef.current);
+                  }
+                }}
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
+                  if (inputRef.current) {
+                    selectAndInsert(v.name, inputRef.current);
+                  }
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (inputRef.current) {
+                    selectAndInsert(v.name, inputRef.current);
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (inputRef.current) {
                     selectAndInsert(v.name, inputRef.current);
                   }
                 }}
                 className={cn(
-                  "w-full text-left px-2.5 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] sm:min-h-0 justify-center cursor-pointer",
+                  "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] justify-center touch-manipulation cursor-pointer select-none",
                   isSelected
                     ? "bg-primary text-primary-foreground"
                     : "text-foreground hover:bg-muted"

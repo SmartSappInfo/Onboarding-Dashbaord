@@ -222,20 +222,36 @@ const HtmlCodeEditor = React.memo(function HtmlCodeEditor({
                                             key={v.id}
                                             type="button"
                                             data-active={isSelected ? 'true' : 'false'}
-                                            onMouseDown={(e) => {
+                                            onPointerDown={(e) => {
                                                 e.preventDefault();
+                                                e.stopPropagation();
                                                 if (textareaRef.current) {
                                                     selectAndInsert(v.name, textareaRef.current);
                                                 }
                                             }}
-                                            onTouchStart={(e) => {
+                                            onMouseDown={(e) => {
                                                 e.preventDefault();
+                                                e.stopPropagation();
+                                                if (textareaRef.current) {
+                                                    selectAndInsert(v.name, textareaRef.current);
+                                                }
+                                            }}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (textareaRef.current) {
+                                                    selectAndInsert(v.name, textareaRef.current);
+                                                }
+                                            }}
+                                            onTouchEnd={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
                                                 if (textareaRef.current) {
                                                     selectAndInsert(v.name, textareaRef.current);
                                                 }
                                             }}
                                             className={cn(
-                                                "w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none",
+                                                "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] justify-center touch-manipulation cursor-pointer select-none",
                                                 isSelected
                                                     ? "bg-primary text-primary-foreground"
                                                     : "text-foreground hover:bg-muted"

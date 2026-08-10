@@ -21,6 +21,15 @@ interface FallbackEditorModalProps {
   readonly onSave: (fallback: string) => void;
 }
 
+// ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+// Variable Fallback Local Storage Persistence & Prepopulation:
+// 1. Storage Key Format: 'smartsapp_var_fallback_' + variableKey
+// 2. Pre-population: When opening FallbackEditorModal, if explicit currentFallback is empty,
+//    automatically read from browser localStorage to pre-fill the backup value input field.
+// 3. Persistence: Upon handleSave, persist non-empty values into localStorage and purge on empty strings.
+//    Wrapped in self-healing try/catch to safely handle storage quota errors or restricted iframe contexts.
+const STORAGE_PREFIX = 'smartsapp_var_fallback_';
+
 export function FallbackEditorModal({
   isOpen,
   onClose,
@@ -31,11 +40,48 @@ export function FallbackEditorModal({
   const [value, setValue] = React.useState(currentFallback);
 
   React.useEffect(() => {
-    setValue(currentFallback);
-  }, [currentFallback, isOpen]);
+    if (!isOpen) return;
+
+    // 1. Prioritize explicit currentFallback if provided on the token
+    if (currentFallback) {
+      setValue(currentFallback);
+      return;
+    }
+
+    // 2. Otherwise auto-prepopulate from browser localStorage if previously configured for this variable
+    if (typeof window !== 'undefined' && variableKey) {
+      try {
+        const stored = localStorage.getItem(`${STORAGE_PREFIX}${variableKey}`);
+        if (stored !== null && stored !== undefined) {
+          setValue(stored);
+          return;
+        }
+      } catch {
+        // Self-healing fallback if localStorage access is blocked
+      }
+    }
+
+    setValue('');
+  }, [currentFallback, isOpen, variableKey]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanValue = value.trim();
+
+    // Persist configured backup value in browser localStorage
+    if (typeof window !== 'undefined' && variableKey) {
+      try {
+        const key = `${STORAGE_PREFIX}${variableKey}`;
+        if (cleanValue) {
+          localStorage.setItem(key, cleanValue);
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        // Self-healing fallback if localStorage quota exceeded
+      }
+    }
+
     onSave(value);
     onClose();
   };
