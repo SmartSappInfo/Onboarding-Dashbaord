@@ -844,6 +844,7 @@ export default function MessageTemplatesPage() {
                 isOpen={!!previewTemplate && !isWhatsAppDisplay(previewTemplate)}
                 onClose={() => setPreviewTemplate(null)}
                 onEdit={handleEdit}
+                onUpdateName={handleUpdateName}
                 styles={styles || []}
             />
 

@@ -353,6 +353,7 @@ export default function TemplatesClient() {
                 isOpen={!!previewTemplate}
                 onClose={() => setPreviewTemplate(null)}
                 onEdit={handleEdit}
+                onUpdateName={handleUpdateName}
                 styles={styles || []}
             />
         </div>

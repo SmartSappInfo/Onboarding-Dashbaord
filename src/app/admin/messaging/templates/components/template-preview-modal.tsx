@@ -23,6 +23,7 @@ import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import type { MessageTemplate, MessageStyle } from '@/lib/types';
 import type { WhatsAppDisplayTemplate } from '../lib/unified-template';
 import { renderPreview } from './whatsapp/shared';
+import { InlineEditableName } from './template-gallery';
 
 // Premium high-fidelity mock variables for rendering exact state without unresolved curly braces
 const MOCK_VARIABLES: Record<string, string> = {
@@ -53,6 +54,7 @@ interface TemplatePreviewModalProps {
     isOpen: boolean;
     onClose: () => void;
     onEdit?: (tmpl: MessageTemplate) => void;
+    onUpdateName?: (tmpl: MessageTemplate, newName: string) => Promise<void> | void;
     styles?: MessageStyle[];
 }
 
@@ -61,6 +63,7 @@ export function TemplatePreviewModal({
     isOpen,
     onClose,
     onEdit,
+    onUpdateName,
     styles = []
 }: TemplatePreviewModalProps) {
     const [viewMode, setViewMode] = React.useState<'desktop' | 'mobile'>('desktop');
@@ -202,7 +205,12 @@ export function TemplatePreviewModal({
                             {template.channel === 'sms' ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-foreground tracking-tight line-clamp-1">{template.name}</h3>
+                            <InlineEditableName
+                                name={template.name}
+                                onSave={(newName) => onUpdateName?.(template, newName)}
+                                disabled={!onUpdateName}
+                                textClassName="text-sm font-semibold text-foreground tracking-tight max-w-[280px] sm:max-w-[400px]"
+                            />
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{template.channel} Preview</p>
                         </div>
                     </div>

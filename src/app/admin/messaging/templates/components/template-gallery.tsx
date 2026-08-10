@@ -53,7 +53,7 @@ const WA_STATUS_META: Record<WhatsAppTemplateStatus, { label: string; cls: strin
     DISABLED: { label: 'Disabled', cls: 'bg-muted text-muted-foreground border-border', Icon: XCircle },
 };
 
-interface InlineEditableNameProps {
+export interface InlineEditableNameProps {
     name: string;
     onSave?: (newName: string) => Promise<void> | void;
     className?: string;
@@ -62,7 +62,7 @@ interface InlineEditableNameProps {
     disabled?: boolean;
 }
 
-function InlineEditableName({
+export function InlineEditableName({
     name,
     onSave,
     className,
