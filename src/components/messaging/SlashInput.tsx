@@ -41,6 +41,15 @@ const contextLabels: Record<string, string> = {
   interests: 'Interests',
 };
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Single Source of Truth (SSOT) utility to convert double-brace template strings (`{{key | fallback}}`)
+ * into interactive visual pill HTML elements (`<span contenteditable="false" ...>`).
+ *
+ * CAUTION: Supports both pipe (|) and double-pipe (||) delimiters with whitespace tolerance.
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
+ */
 export function convertToVisualHtml(text: string): string {
   if (!text) return '';
   // Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
@@ -58,6 +67,16 @@ export function convertToVisualHtml(text: string): string {
   return parsed;
 }
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Single Source of Truth (SSOT) utility to convert contentEditable HTML DOM nodes
+ * back into clean double-brace template text format (`{{variable_key | fallback}}`).
+ *
+ * CAUTION: When enableFormatting is false (e.g. SMS/Plain Text mode), line break elements (<br>, <div>)
+ * MUST be converted to standard '\n' characters before extracting textContent.
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
+ */
 export function convertToCleanHtml(element: HTMLElement, enableFormatting = true): string {
   const clone = element.cloneNode(true) as HTMLElement;
   
@@ -72,7 +91,13 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
   });
 
   if (!enableFormatting) {
-    return clone.textContent || '';
+    const brs = clone.querySelectorAll('br');
+    brs.forEach(br => br.parentNode?.replaceChild(clone.ownerDocument.createTextNode('\n'), br));
+    const blockEls = clone.querySelectorAll('div, p');
+    blockEls.forEach(block => {
+      block.parentNode?.insertBefore(clone.ownerDocument.createTextNode('\n'), block);
+    });
+    return (clone.textContent || '');
   }
 
   return clone.innerHTML;

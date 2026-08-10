@@ -1,16 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { createPortal } from 'react-dom';
 import type { VariableDefinition, TemplateVariable } from '@/lib/types';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react';
-import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkPicker } from './link-picker';
 import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
+import { SlashTextarea, convertToCleanHtml } from '@/components/messaging/SlashInput';
 
 /** Single SMS segment character limit (GSM-7 standard) */
 const SMS_SINGLE_SEGMENT_LIMIT = 160;
@@ -29,13 +27,17 @@ interface PlainTextEditorProps {
 }
 
 /**
- * Lightweight plain-text editor with variable insertion, SMS segment counting,
- * and live token syntax validation.
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * PlainTextEditor Component: Renders SMS & Plain Text message templates with interactive
+ * variable pills, slash-command (/autocomplete), fallback configuration, and SMS segment analysis.
  *
- * Performance notes (Vercel React Best Practices):
- * - Token validation uses a memoized Set for O(1) lookups
- * - Invalid tokens are derived via useMemo — no effect loops
- * - Debouncing is unnecessary because Set.has() is sub-microsecond
+ * CAUTION:
+ * 1. Uses SlashTextarea to convert double-brace variables (e.g. {{entity_name | Your School}}) into visual pills.
+ * 2. Token validation MUST extract the clean primary key (split on | or ||) before checking allowedKeySet.
+ * 3. Text insertion callbacks (insertVariable, insertLink) support both standard Textarea and SlashTextarea contentEditable refs.
+ *
+ * TESTABILITY: Tested via vitest in plain-text-editor.test.tsx & visual-block.formatting.test.tsx.
+ * RELATED SURFACES: SlashTextarea, template-workshop.tsx, FieldsVariablesService.
  */
 export const PlainTextEditor = React.memo(function PlainTextEditor({
     value,
@@ -51,32 +53,53 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
     const [showLinkPicker, setShowLinkPicker] = React.useState(false);
     const [trackVisitor, setTrackVisitor] = React.useState(true);
 
-    const dropdownRef = React.useRef<HTMLDivElement>(null);
-
     const insertVariable = React.useCallback((key: string) => {
         const textarea = textareaRef.current;
-        if (!textarea) return;
-
         const tag = `{{${key}}}`;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const before = value.slice(0, start);
-        const after = value.slice(end);
-        const newValue = before + tag + after;
 
-        onChange(newValue);
+        if (!textarea) {
+            onChange(value ? `${value} ${tag}` : tag);
+            return;
+        }
 
-        // Restore cursor position after the inserted tag
-        requestAnimationFrame(() => {
-            const newPos = start + tag.length;
-            textarea.setSelectionRange(newPos, newPos);
-            textarea.focus();
-        });
+        const isStandardInput = 'selectionStart' in textarea && typeof textarea.selectionStart === 'number';
+        if (isStandardInput) {
+            const start = (textarea as unknown as HTMLTextAreaElement).selectionStart;
+            const end = (textarea as unknown as HTMLTextAreaElement).selectionEnd;
+            const before = value.slice(0, start);
+            const after = value.slice(end);
+            const newValue = before + tag + after;
+            onChange(newValue);
+
+            requestAnimationFrame(() => {
+                const newPos = start + tag.length;
+                (textarea as unknown as HTMLTextAreaElement).setSelectionRange(newPos, newPos);
+                (textarea as unknown as HTMLTextAreaElement).focus();
+            });
+        } else {
+            // ContentEditable SlashTextarea DOM element
+            const el = textarea as unknown as HTMLElement;
+            el.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0 && el.contains(selection.anchorNode)) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const node = document.createTextNode(tag);
+                range.insertNode(node);
+                range.setStartAfter(node);
+                range.setEndAfter(node);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                const cleanVal = convertToCleanHtml(el, false);
+                onChange(cleanVal);
+            } else {
+                onChange(value ? `${value} ${tag}` : tag);
+            }
+        }
     }, [value, onChange]);
 
     const insertLink = React.useCallback((url: string, track: boolean) => {
         const textarea = textareaRef.current;
-        if (!textarea) return;
 
         let finalUrl = url.startsWith('/') ? ensureAbsoluteUrl(url) : url;
         if (track) {
@@ -84,20 +107,46 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
             finalUrl = `${finalUrl}${joiner}ref={{encrypted_recipient_token}}`;
         }
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const before = value.slice(0, start);
-        const after = value.slice(end);
-        const newValue = before + finalUrl + after;
+        if (!textarea) {
+            onChange(value ? `${value}${finalUrl}` : finalUrl);
+            return;
+        }
 
-        onChange(newValue);
+        const isStandardInput = 'selectionStart' in textarea && typeof textarea.selectionStart === 'number';
+        if (isStandardInput) {
+            const start = (textarea as unknown as HTMLTextAreaElement).selectionStart;
+            const end = (textarea as unknown as HTMLTextAreaElement).selectionEnd;
+            const before = value.slice(0, start);
+            const after = value.slice(end);
+            const newValue = before + finalUrl + after;
 
-        // Restore cursor position after the inserted URL
-        requestAnimationFrame(() => {
-            const newPos = start + finalUrl.length;
-            textarea.setSelectionRange(newPos, newPos);
-            textarea.focus();
-        });
+            onChange(newValue);
+
+            requestAnimationFrame(() => {
+                const newPos = start + finalUrl.length;
+                (textarea as unknown as HTMLTextAreaElement).setSelectionRange(newPos, newPos);
+                (textarea as unknown as HTMLTextAreaElement).focus();
+            });
+        } else {
+            // ContentEditable SlashTextarea DOM element
+            const el = textarea as unknown as HTMLElement;
+            el.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0 && el.contains(selection.anchorNode)) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const node = document.createTextNode(finalUrl);
+                range.insertNode(node);
+                range.setStartAfter(node);
+                range.setEndAfter(node);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                const cleanVal = convertToCleanHtml(el, false);
+                onChange(cleanVal);
+            } else {
+                onChange(value ? `${value}${finalUrl}` : finalUrl);
+            }
+        }
     }, [value, onChange]);
 
     React.useEffect(() => {
@@ -119,11 +168,11 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
 
     /**
      * PURPOSE: Maps VariableDefinition items provided by FieldsVariablesService to
-     * TemplateVariable schema required by useSlashAutocomplete.
+     * TemplateVariable schema required by useSlashAutocomplete and SlashTextarea.
      *
      * CAUTION: Must preserve FieldsVariablesService SSOT categories and keys without custom string splitting.
      * TESTABILITY: Autocomplete options reflect exact variable definitions from FieldsVariablesService.
-     * RELATED SURFACES: FieldsVariablesService, useSlashAutocomplete.
+     * RELATED SURFACES: FieldsVariablesService, SlashTextarea, useSlashAutocomplete.
      */
     const templateVars = React.useMemo<TemplateVariable[]>(() => {
         return variables.map(v => ({
@@ -139,69 +188,22 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
         }));
     }, [variables]);
 
-    const {
-        showAutocomplete,
-        autocompleteCoords,
-        autocompleteIndex,
-        filteredVars,
-        handleKeyDown,
-        handleInputChange,
-        handleSelectChange,
-        selectAndInsert,
-    } = useSlashAutocomplete({
-        variables: templateVars,
-        value,
-        onChange,
-    });
-
-    const containerRef = React.useRef<HTMLDivElement>(null);
-    const [coords, setCoords] = React.useState({ top: 0, left: 0 });
-
-    const updateCoords = React.useCallback(() => {
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            setCoords({
-                top: rect.top + autocompleteCoords.top + window.scrollY,
-                left: rect.left + autocompleteCoords.left + window.scrollX,
-            });
-        }
-    }, [autocompleteCoords]);
-
-    React.useEffect(() => {
-        if (showAutocomplete) {
-            updateCoords();
-            window.addEventListener('scroll', updateCoords, true);
-            window.addEventListener('resize', updateCoords);
-        }
-        return () => {
-            window.removeEventListener('scroll', updateCoords, true);
-            window.removeEventListener('resize', updateCoords);
-        };
-    }, [showAutocomplete, updateCoords]);
-
-    // Auto-scroll selected autocomplete item into view
-    React.useEffect(() => {
-        if (!dropdownRef.current) return;
-        const activeEl = dropdownRef.current.querySelector('[data-active="true"]');
-        if (activeEl) {
-            activeEl.scrollIntoView({ block: 'nearest' });
-        }
-    }, [autocompleteIndex, showAutocomplete]);
-
-    const handleTextAreaChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        onChange(e.target.value);
-        handleInputChange(e);
-    }, [onChange, handleInputChange]);
-
-    // Live Token Syntax Validation:
-    // Single-pass regex extracts all {{token}} instances, then validates against
-    // the allowedKeySet. Invalid tokens are surfaced in a warning banner.
+    /**
+     * Live Token Syntax Validation:
+     * Single-pass regex extracts all {{token}} instances.
+     *
+     * CAUTION: Splits tokens on | or || to extract the primary variable key (e.g. 'entity_name' from 'entity_name | Your School')
+     * before checking allowedKeySet. This prevents false-positive warnings when fallback text is configured.
+     */
     const invalidTokens = React.useMemo(() => {
         if (!value) return [];
         const matches = value.match(/\{\{([^{}]+?)\}\}/g);
         if (!matches) return [];
-        const tokens = [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))];
-        return tokens.filter(token => !allowedKeySet.has(token));
+        const rawTokens = [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))];
+        return rawTokens.filter(rawToken => {
+            const keyOnly = rawToken.split(/\|\||\|/)[0].trim();
+            return !allowedKeySet.has(keyOnly);
+        });
     }, [value, allowedKeySet]);
 
     // SMS segment calculation using named constants
@@ -224,84 +226,16 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
 
     return (
         <div className="space-y-3">
-            <div ref={containerRef} className="relative">
-                <Textarea
+            <div className="relative">
+                <SlashTextarea
                     ref={textareaRef}
                     value={value}
-                    onChange={handleTextAreaChange}
-                    onKeyDown={handleKeyDown}
-                    onSelect={handleSelectChange}
+                    onChange={onChange}
+                    variables={templateVars}
+                    enableFormatting={false}
                     placeholder={placeholder}
-                    className="min-h-[160px] font-mono text-sm resize-y rounded-2xl border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed"
+                    className="min-h-[160px] font-mono text-sm rounded-2xl border-border/80 focus:border-primary focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed bg-background text-foreground shadow-sm"
                 />
-
-                {/* Autocomplete Dropdown */}
-                {showAutocomplete && filteredVars.length > 0 && createPortal(
-                    <div
-                        ref={dropdownRef}
-                        style={{
-                            top: `${coords.top}px`,
-                            left: `${coords.left}px`,
-                        }}
-                        className="fixed z-50 w-72 max-h-56 overflow-y-auto bg-popover/95 backdrop-blur-md border border-border shadow-xl rounded-xl p-1.5 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-100"
-                    >
-                        {filteredVars.map((v, index) => {
-                            const isSelected = index === autocompleteIndex;
-                            const ctx = v.context || 'common';
-                            const labelText = contextLabels && contextLabels[ctx]
-                                ? contextLabels[ctx]
-                                : ctx.replace(/_/g, ' ');
-                            
-                            return (
-                                <button
-                                    key={v.id}
-                                    type="button"
-                                    data-active={isSelected ? 'true' : 'false'}
-                                    onPointerDown={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (textareaRef.current) {
-                                            selectAndInsert(v.name, textareaRef.current);
-                                        }
-                                    }}
-                                    onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (textareaRef.current) {
-                                            selectAndInsert(v.name, textareaRef.current);
-                                        }
-                                    }}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (textareaRef.current) {
-                                            selectAndInsert(v.name, textareaRef.current);
-                                        }
-                                    }}
-                                    onTouchEnd={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (textareaRef.current) {
-                                            selectAndInsert(v.name, textareaRef.current);
-                                        }
-                                    }}
-                                    className={cn(
-                                        "w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex flex-col gap-0.5 outline-none min-h-[44px] justify-center touch-manipulation cursor-pointer select-none",
-                                        isSelected
-                                            ? "bg-primary text-primary-foreground"
-                                            : "text-foreground hover:bg-muted"
-                                    )}
-                                >
-                                    <span className="truncate w-full">{v.label}</span>
-                                    <span className={cn("text-[9px] font-mono truncate w-full", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                                        {`{{${v.name}}}`} • {labelText}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>,
-                    document.body
-                )}
             </div>
 
             {/* Live Token Syntax Warning Banner */}
@@ -410,8 +344,6 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
                     </div>
                 )}
             </div>
-
-            {/* Variable insertion via VariablePicker removed as we now use Slash commands autocomplete */}
         </div>
     );
 });
