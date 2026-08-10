@@ -481,6 +481,9 @@ export default function MediaAnalyticsClient() {
                 const singleCompletionRate = hasPlayback 
                   ? Math.round((item.stats.mediaCompletions / item.stats.mediaPlays) * 100)
                   : 0;
+                const singleCtaRate = item.stats.uniqueViews > 0 
+                  ? Math.round((item.stats.ctaClicks / item.stats.uniqueViews) * 100)
+                  : (item.stats.views > 0 ? Math.round((item.stats.ctaClicks / item.stats.views) * 100) : 0);
 
                 return (
                   <Card 
@@ -537,14 +540,14 @@ export default function MediaAnalyticsClient() {
                         <div className="space-y-0.5 flex flex-col items-end text-right">
                           <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">Complete</span>
                           <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
-                            {singleCompletionRate}%
+                            {item.stats.mediaCompletions} <span className="text-[10px] font-normal text-muted-foreground">({singleCompletionRate}%)</span>
                           </span>
                         </div>
 
                         <div className="space-y-0.5 flex flex-col items-end text-right">
                           <span className="text-[8px] font-black uppercase text-muted-foreground tracking-wider block text-right">CTA Clicks</span>
                           <span className="text-xs font-black text-slate-700 dark:text-slate-300 text-right block">
-                            {item.stats.ctaClicks}
+                            {item.stats.ctaClicks} <span className="text-[10px] font-normal text-muted-foreground">({singleCtaRate}%)</span>
                           </span>
                         </div>
                       </div>
