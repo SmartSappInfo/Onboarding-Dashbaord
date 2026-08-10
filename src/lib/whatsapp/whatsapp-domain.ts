@@ -459,6 +459,27 @@ const REGEX_ESCAPE_RE = /[-/\\^$*+?.()|[\]{}]/g;
  * matches inside `{{ab}}`. Pure; shared by the single and bulk push paths so the
  * two can never drift.
  */
+/**
+ * ARCHITECTURAL GUIDANCE FOR FUTURE TEMPLATE CREATION & CONVERSION (Rule 10 Maintainer Guidance):
+ *
+ * 1. SMS / EMAIL PLAIN-TEXT -> WHATSAPP SKELETON CONVERSION:
+ *    - All double-brace variables (e.g. {{contact_name}}, {{entity_name | Your School}}) MUST be parsed using
+ *      `toPositionalBody(body)`.
+ *    - `toPositionalBody` replaces double-brace variables in order of appearance with positional placeholders {{1}}, {{2}}, etc.,
+ *      and populates `paramMap` (e.g. ["contact_name", "entity_name | Your School"]).
+ *    - When creating new SMS or Email template types, ALWAYS keep variable tokens in standard double-brace format `{{var_key}}`
+ *      or `{{var_key | Fallback Text}}` so `toPositionalBody` can convert them to WhatsApp skeletons seamlessly.
+ *
+ * 2. WHATSAPP SKELETON -> SMS / EMAIL PLAIN-TEXT CONVERSION:
+ *    - Positional Meta placeholders ({{1}}, {{2}}) MUST be reverse-engineered using `fromPositionalBody(text, paramMap)`.
+ *    - `fromPositionalBody` reads `paramMap` (or fallback `whatsappParamMap`) and replaces {{1}} with the exact variable key
+ *      or pipe fallback text stored in `paramMap[0]`.
+ *    - If `paramMap` is missing or unmapped, `fromPositionalBody` uses `DEFAULT_POSITIONAL_VARS` (1 -> contact_name, 2 -> entity_name, etc.)
+ *      to ensure converted SMS templates are immediately usable with real workspace fields.
+ *
+ * TESTABILITY: Fully covered in `whatsapp-domain.test.ts` (100+ assertions including round-trip tests).
+ * RELATED SURFACES: template-gallery.tsx, page.tsx, TemplatesClient.tsx, PlainTextEditor.tsx.
+ */
 export function toPositionalBody(body: string): { text: string; paramMap: string[] } {
   const source = body ?? '';
   const matches = source.match(TEMPLATE_VAR_RE);

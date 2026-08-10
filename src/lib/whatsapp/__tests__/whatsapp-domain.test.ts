@@ -331,13 +331,32 @@ describe('fromPositionalBody', () => {
     expect(r.restoredVars).toEqual(['firstName', 'orderId']);
   });
 
-  it('performs full round-trip conversion (SMS -> WA -> SMS)', () => {
-    const originalSms = 'Hi {{contact_name}}, check {{entity_name | Your School}} on {{meeting_time}}.';
+  it('handles repeated positional placeholders in template body', () => {
+    const r = fromPositionalBody('Hi {{1}}, thank you {{1}} for visiting {{2}}!', ['contact_name', 'entity_name']);
+    expect(r.body).toBe('Hi {{contact_name}}, thank you {{contact_name}} for visiting {{entity_name}}!');
+    expect(r.restoredVars).toEqual(['contact_name', 'entity_name']);
+  });
+
+  it('handles extra whitespace inside positional braces', () => {
+    const r = fromPositionalBody('Hi {{  1  }}, order {{  2  }} is ready.', ['contact_name', 'order_id']);
+    expect(r.body).toBe('Hi {{contact_name}}, order {{order_id}} is ready.');
+    expect(r.restoredVars).toEqual(['contact_name', 'order_id']);
+  });
+
+  it('handles null, undefined, or empty string inputs safely', () => {
+    expect(fromPositionalBody('', [])).toEqual({ body: '', restoredVars: [] });
+    expect(fromPositionalBody(null as any, null)).toEqual({ body: '', restoredVars: [] });
+  });
+
+  it('performs full round-trip conversion (SMS -> WA -> SMS) with pipe fallbacks and URLs', () => {
+    const originalSms = 'Hi {{contact_name}}, check {{entity_name | Your School}} at https://go.smartsapp.com/m/fees?ref={{encrypted_recipient_token}}';
     const wa = toPositionalBody(originalSms);
-    expect(wa.text).toBe('Hi {{1}}, check {{2}} on {{3}}.');
-    
+    expect(wa.text).toBe('Hi {{1}}, check {{2}} at https://go.smartsapp.com/m/fees?ref={{3}}');
+    expect(wa.paramMap).toEqual(['contact_name', 'entity_name | Your School', 'encrypted_recipient_token']);
+
     const restored = fromPositionalBody(wa.text, wa.paramMap);
     expect(restored.body).toBe(originalSms);
+    expect(restored.restoredVars).toEqual(['contact_name', 'entity_name | Your School', 'encrypted_recipient_token']);
   });
 });
 
