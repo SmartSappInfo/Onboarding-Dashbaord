@@ -44,6 +44,34 @@ interface ShareMediaDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Description Sanitization & Default Fallback Resolution:
+ * 1. Strips raw HTML tags (<br>, <br/>, <span>, etc.) and unescaped markup.
+ * 2. If the custom description is empty, whitespace, or contains raw <br> tags,
+ *    returns the clean type-specific default description.
+ */
+export function getDefaultDescription(assetType?: string): string {
+    switch (assetType) {
+        case 'audio':
+            return "Click to listen to this audio, It's Super Important";
+        case 'document':
+            return "Kindly find document below for your perusal";
+        case 'image':
+        case 'link':
+            return "Click to view asset";
+        case 'video':
+        default:
+            return "Click to watch this video, It's Super Important!";
+    }
+}
+
+export function getEffectiveDescription(rawDesc?: string, assetType?: string): string {
+    const cleaned = (rawDesc || '').replace(/<br\s*\/?>/gi, '').replace(/<[^>]*>/g, '').trim();
+    if (cleaned) return cleaned;
+    return getDefaultDescription(assetType);
+}
+
 interface ShareConfig {
     id: string;
     assetId: string;
@@ -248,7 +276,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 const data = configDoc.data() as ShareConfig;
                 setShareId(configDoc.id);
                 setTitle(data.title || asset.name);
-                setDescription(data.description || '');
+                setDescription(getEffectiveDescription(data.description, asset.type));
                 setCtaText(data.ctaText || '');
                 setCtaType(data.ctaType || 'none');
                 setCtaTargetId(data.ctaTargetId || '');
@@ -268,17 +296,12 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setShareId(freshId);
                 setTitle(asset.name);
                 
-                let defaultDesc = "Watch This Video, It's Super Important!";
-                if (asset.type === 'audio') {
-                    defaultDesc = "Click to listen to this audio, It's Super Important";
-                } else if (asset.type === 'document') {
-                    defaultDesc = "Kindly find document below for your perusal";
-                }
+                const defaultDesc = getDefaultDescription(asset.type);
                 
                 // Auto-load browser-based preset from localStorage if available
                 const loadedPreset = loadPresetFromLocalStorage(activeWorkspaceId);
                 if (loadedPreset) {
-                    setDescription(loadedPreset.description ?? defaultDesc);
+                    setDescription(getEffectiveDescription(loadedPreset.description, asset.type));
                     setCtaText(loadedPreset.ctaText ?? '');
                     setCtaType(loadedPreset.ctaType ?? 'none');
                     setCtaTargetId(loadedPreset.ctaTargetId ?? '');
@@ -495,13 +518,15 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 }
             }
 
-            const shareConfig: ShareConfig = {
+            const effectiveDesc = getEffectiveDescription(description, asset.type);
+
+            const shareConfig: Record<string, unknown> = {
                 id: shareId,
                 assetId: asset.id,
                 assetName: asset.name,
                 workspaceId: activeWorkspaceId,
                 title: title.trim() || asset.name,
-                description: description.trim() || "Watch This Video, It's Super Important!",
+                description: effectiveDesc,
                 ctaText: ctaText.trim(),
                 ctaType,
                 ctaTargetId,
@@ -525,7 +550,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             
             // Save non-asset-specific configuration to browser local storage preset
             savePresetToLocalStorage(activeWorkspaceId, {
-                description: description.trim(),
+                description: effectiveDesc,
                 ctaText: ctaText.trim(),
                 ctaType,
                 ctaTargetId,

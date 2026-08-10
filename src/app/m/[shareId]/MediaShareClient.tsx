@@ -7,6 +7,7 @@ import {
     Play, Pause, Volume2, ArrowRight, ChevronRight, X, Lock 
 } from 'lucide-react';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
+import { getEffectiveDescription } from '@/app/admin/media/components/share-media-dialog';
 
 interface YTPlayerEvent {
   data: number;
@@ -97,6 +98,10 @@ export default function MediaShareClient({
     contactId,
     entityId,
 }: MediaShareClientProps) {
+    const effectiveDescription = React.useMemo(() => {
+        return getEffectiveDescription(description, asset.type);
+    }, [description, asset.type]);
+
     const [isPlaying, setIsPlaying] = React.useState(autoPlay && asset.type === 'audio');
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
     const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -851,7 +856,7 @@ export default function MediaShareClient({
                                         ctaActivationGate === 'threequarters' ? '🔒 Unlocks 75% through playback' :
                                         '🔒 Unlocks on playback complete'
                                       ) 
-                                    : description}
+                                    : effectiveDescription}
                             </p>
                         </div>
                         <Button 
@@ -947,9 +952,9 @@ export default function MediaShareClient({
                     <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
                         {title}
                     </h1>
-                    {description && (
+                    {effectiveDescription && (
                         <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
-                            {description}
+                            {effectiveDescription}
                         </p>
                     )}
                 </div>
