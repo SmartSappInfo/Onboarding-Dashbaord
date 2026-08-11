@@ -1793,6 +1793,7 @@ export interface MediaAsset {
   size?: number;
   width?: number;
   height?: number;
+  duration?: string;
   uploadedBy: string;
   createdAt: string;
   linkTitle?: string;

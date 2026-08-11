@@ -49,7 +49,7 @@ import {
     MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, 
     Link as LinkIcon, Eye, TextCursorInput, Share2, Layout, 
     Check, CheckCircle2, ShieldCheck, Loader2, Building2,
-    Youtube, HardDrive, Link2, Tag
+    Youtube, HardDrive, Link2, Tag, Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
@@ -231,6 +231,8 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
     asset.url.toLowerCase().split('?')[0].split('#')[0].endsWith('.pdf');
 
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+  const rawAssetRecord = asset as unknown as Record<string, string>;
+  const assetDuration = asset.duration || rawAssetRecord.mediaDuration || rawAssetRecord.formattedDuration;
 
   return (
     <>
@@ -284,7 +286,7 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
                 <AssetIcon />
             )}
             
-            {/* Top-Left Badges: Source Type (Hosted vs Linked) & Shared Status */}
+            {/* Top-Left Badges: Source Type (Hosted vs Linked), Duration & Shared Status */}
             <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 flex-wrap">
               {asset.type === 'video' && (
                 isLinkedVideo ? (
@@ -298,6 +300,12 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
                     Hosted
                   </Badge>
                 )
+              )}
+              {Boolean(assetDuration) && (
+                <Badge className="bg-black/80 backdrop-blur-md text-[8px] font-black tabular-nums px-2 h-5 border border-white/10 shadow-md text-emerald-300 gap-1 tracking-wider">
+                  <Clock className="h-2.5 w-2.5 text-emerald-400" />
+                  {assetDuration}
+                </Badge>
               )}
               {asset.workspaceIds && asset.workspaceIds.length > 1 && (
                 <Badge className="bg-primary/80 backdrop-blur-md text-[8px] font-semibold uppercase px-2 h-5 border-none shadow-lg">

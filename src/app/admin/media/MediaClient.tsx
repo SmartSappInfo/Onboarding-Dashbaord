@@ -10,12 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Film, LayoutList, Layers, Cpu, Settings, Plus, X, Loader2, BarChart3, Clock } from 'lucide-react';
+import { Search, Film, LayoutList, Cpu, Settings, Plus, X, Loader2, BarChart3 } from 'lucide-react';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { backfillWorkspaceMediaDurations } from '@/lib/media/media-backfill-service';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import PdfCompressorView from './components/PdfCompressorView';
 import { cn } from '@/lib/utils';
@@ -66,7 +65,6 @@ export default function MediaClient() {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isSavingCategory, setIsSavingCategory] = useState(false);
-  const [isBackfilling, setIsBackfilling] = useState(false);
 
   // Subscribe to category updates and seed default ones if none exist
   useEffect(() => {
@@ -148,23 +146,6 @@ export default function MediaClient() {
     }
   };
 
-  const handleRunBackfill = async () => {
-    if (!firestore || !activeWorkspaceId || isBackfilling) return;
-    setIsBackfilling(true);
-    toast({ title: 'Enriching Media Durations', description: 'Scanning and resolving missing video/audio durations...' });
-    try {
-      const result = await backfillWorkspaceMediaDurations(firestore, activeWorkspaceId, (rep) => {
-        toast({ title: 'Enrichment Progress', description: rep.message });
-      });
-      toast({ title: 'Enrichment Complete', description: `Successfully updated ${result.updated} media records with duration metadata.` });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Backfill error';
-      toast({ variant: 'destructive', title: 'Enrichment Error', description: msg });
-    } finally {
-      setIsBackfilling(false);
-    }
-  };
-
   const currentType = useMemo(() => 
     TABS.find(t => t.id === activeTab)?.type || 'image', 
   [activeTab]);
@@ -232,19 +213,9 @@ export default function MediaClient() {
               </p>
             </div>
             
-            <div className="flex justify-end items-center gap-3 shrink-0 flex-wrap">
+            <div className="flex justify-end items-center gap-3 shrink-0">
               {currentView === 'gallery' && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBackfilling}
-                    onClick={handleRunBackfill}
-                    className="rounded-xl font-bold text-xs gap-1.5 h-11 px-4 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/50 transition-all active:scale-[0.97] min-h-[44px]"
-                  >
-                    <Clock className="h-4 w-4" />
-                    {isBackfilling ? 'Enriching Durations...' : 'Enrich Durations'}
-                  </Button>
                   <AddLinkButton />
                   <UploadButton />
                 </>

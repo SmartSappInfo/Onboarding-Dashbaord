@@ -318,8 +318,15 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
                   className="flex items-center justify-between text-left p-3 rounded-xl hover:bg-primary/[0.04] active:scale-[0.98] transition-all duration-200 group border border-transparent hover:border-primary/10 min-h-[44px] touch-manipulation"
                 >
                   <div className="space-y-0.5 min-w-0 pr-2">
-                    <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-                      {item.name}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        {item.name}
+                      </span>
+                      {item.duration && (
+                        <span className="text-[9px] font-black tabular-nums bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-md border border-indigo-500/20 shrink-0">
+                          {item.duration}
+                        </span>
+                      )}
                     </div>
                     {item.subtitle && (
                       <div className="text-xs text-muted-foreground/80 font-medium line-clamp-1">
