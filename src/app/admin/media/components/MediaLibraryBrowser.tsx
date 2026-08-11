@@ -104,19 +104,37 @@ export default function MediaLibraryBrowser({
     return query(collection(firestore, 'media_shares'), where('workspaceId', '==', effectiveWorkspaceId));
   }, [firestore, effectiveWorkspaceId, isSuperAdmin]);
 
-  const { data: sharesData } = useCollection<{ id: string; assetId?: string; mediaId?: string }>(sharesQuery);
+  const { data: sharesData } = useCollection<{ id: string; assetId?: string; mediaId?: string; slug?: string; assetName?: string }>(sharesQuery);
 
   const configuredAssetIds = useMemo(() => {
     const set = new Set<string>();
-    if (sharesData) {
+    if (sharesData && assets) {
       sharesData.forEach((s) => {
         if (s.assetId) set.add(s.assetId);
         if (s.mediaId) set.add(s.mediaId);
         if (s.id) set.add(s.id);
+
+        const sSlug = s.slug?.trim().toLowerCase();
+        const sName = s.assetName?.trim().toLowerCase();
+
+        assets.forEach((a) => {
+          const aName = a.name.trim().toLowerCase();
+          const aSlug = a.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          
+          if (sSlug && (aSlug === sSlug || aSlug.includes(sSlug) || sSlug.includes(aSlug) || a.id === sSlug)) {
+            set.add(a.id);
+          }
+          if (sName && (aName === sName || aName.includes(sName) || sName.includes(aName))) {
+            set.add(a.id);
+          }
+          if (s.id && (a.id === s.id || aSlug === s.id.toLowerCase())) {
+            set.add(a.id);
+          }
+        });
       });
     }
     return set;
-  }, [sharesData]);
+  }, [sharesData, assets]);
 
   const availableCategories = useMemo(() => {
     if (!assets) return [];

@@ -14,12 +14,13 @@
  *    All buttons and dropdown menu actions enforce `min-h-[44px]` touch target bounds.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { getStorage, ref, deleteObject } from 'firebase/storage';
 import { doc, deleteDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { extractMediaUrlDuration } from '@/lib/media/duration-extractor';
 
 import type { MediaAsset } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -234,6 +235,30 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
   const rawAssetRecord = asset as unknown as Record<string, string>;
   const assetDuration = asset.duration || rawAssetRecord.mediaDuration || rawAssetRecord.formattedDuration;
 
+  const [resolvedDuration, setResolvedDuration] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (assetDuration) return;
+    if (asset.type !== 'video' && asset.type !== 'audio' && !isLinkedVideo) return;
+    if (!asset.url) return;
+
+    let isMounted = true;
+    extractMediaUrlDuration(asset.url).then((dur) => {
+      if (isMounted && dur) {
+        setResolvedDuration(dur);
+        if (firestore && asset.id) {
+          updateDoc(doc(firestore, 'media', asset.id), { duration: dur }).catch(() => {});
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [asset.url, asset.type, asset.id, assetDuration, isLinkedVideo, firestore]);
+
+  const displayDuration = assetDuration || resolvedDuration;
+
   return (
     <>
       <Card className="group relative overflow-hidden rounded-3xl border-border/50 hover:shadow-2xl transition-all duration-700 bg-card">
@@ -301,10 +326,10 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
                   </Badge>
                 )
               )}
-              {Boolean(assetDuration) && (
+              {Boolean(displayDuration) && (
                 <Badge className="bg-black/80 backdrop-blur-md text-[8px] font-black tabular-nums px-2 h-5 border border-white/10 shadow-md text-emerald-300 gap-1 tracking-wider">
                   <Clock className="h-2.5 w-2.5 text-emerald-400" />
-                  {assetDuration}
+                  {displayDuration}
                 </Badge>
               )}
               {asset.workspaceIds && asset.workspaceIds.length > 1 && (

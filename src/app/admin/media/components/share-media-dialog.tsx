@@ -638,13 +638,6 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                     <TabsContent value="general" className="space-y-6 outline-none mt-0">
                                         <div className="space-y-4">
-                                            <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                                                <span className="text-[10px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                                                    <Film className="h-3.5 w-3.5" /> Media Asset Reference
-                                                </span>
-                                                <span className="font-extrabold text-foreground truncate max-w-[280px]">{asset.name}</span>
-                                            </div>
-
                                             {!isSaved && isPresetApplied && (
                                                 <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-foreground flex items-center justify-between gap-3 text-left">
                                                     <div className="flex items-center gap-2">
