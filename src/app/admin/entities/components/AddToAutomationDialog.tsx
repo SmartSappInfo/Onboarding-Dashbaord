@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Sparkles, AlertCircle, Search, Users, CheckCircle2, X } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle, Search, Users, CheckCircle2, X, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
 
@@ -92,6 +92,7 @@ export function AddToAutomationDialog({
   const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = React.useState<{ label: string; value: string }[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
+  const [showSelectedOnly, setShowSelectedOnly] = React.useState(false);
 
   const [selectedAutomationId, setSelectedAutomationId] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -112,11 +113,16 @@ export function AddToAutomationDialog({
     return rawAutomations.filter((a) => a.isActive && !a.isArchived);
   }, [rawAutomations]);
 
-  // 2. Query workspace entities to extract contacts when entityIds is empty or canvas mode is active
+  // 2. Query workspace entities via useEntitySearch (server-side Firestore search + cursor pagination across 19,000+ contacts)
   const isCanvasMode = !isSingleEntity;
-  const { results: searchedEntities, isLoading: isLoadingWorkspaceEntities } = useEntitySearch({
-    search: '',
-    pageSize: 100,
+  const {
+    results: searchedEntities,
+    isLoading: isLoadingWorkspaceEntities,
+    hasMore,
+    loadMore,
+  } = useEntitySearch({
+    search: searchQuery,
+    pageSize: 50,
     filters: [{ field: 'status', value: 'active' }],
     enabled: open && isCanvasMode,
     workspaceId,
@@ -168,7 +174,7 @@ export function AddToAutomationDialog({
     return list;
   }, [searchedEntities]);
 
-  // Filter contacts by Scope and Search query with empty role guard
+  // Filter contacts by Scope and Selected-Only toggle
   const filteredWorkspaceContacts = React.useMemo(() => {
     let source: WorkspaceContactItem[] = isSingleEntity
       ? contacts.map((c, idx) => ({
@@ -203,20 +209,12 @@ export function AddToAutomationDialog({
       }
     }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      source = source.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.phone.toLowerCase().includes(q) ||
-          c.entityName.toLowerCase().includes(q) ||
-          (c.typeLabel && c.typeLabel.toLowerCase().includes(q))
-      );
+    if (showSelectedOnly) {
+      source = source.filter((c) => selectedContactIds.has(c.id));
     }
 
     return source;
-  }, [isSingleEntity, contacts, workspaceContacts, entityIds, entityName, singular, bulkScope, selectedRoles, searchQuery]);
+  }, [isSingleEntity, contacts, workspaceContacts, entityIds, entityName, singular, bulkScope, selectedRoles, showSelectedOnly, selectedContactIds]);
 
   // Load available roles dynamically based on active workspace
   React.useEffect(() => {
@@ -253,6 +251,7 @@ export function AddToAutomationDialog({
       setBulkScope(isSingleEntity ? 'custom' : 'all');
       setSelectedRoles([]);
       setSearchQuery('');
+      setShowSelectedOnly(false);
 
       if (isSingleEntity) {
         if (!entityContacts || entityContacts.length === 0) {
@@ -316,7 +315,12 @@ export function AddToAutomationDialog({
       ? entityIds
       : Array.from(new Set(selectedList.map((c) => c.entityId)));
 
-    if (targetEntityIds.length === 0) {
+    // Fallback: If scope mode was picked and no specific checkboxes were checked, target all matched entities
+    if (targetEntityIds.length === 0 && !isSingleEntity && !hasSpecificChecked) {
+      targetEntityIds = Array.from(new Set(filteredWorkspaceContacts.map((c) => c.entityId)));
+    }
+
+    if (targetEntityIds.length === 0 && !hasSpecificChecked && isCustomScope) {
       toast({
         variant: 'destructive',
         title: 'No Contacts Selected',
@@ -384,6 +388,26 @@ export function AddToAutomationDialog({
 
   const entityLabel = entityIds.length === 1 ? singular : plural;
 
+  // Determine confirm button text dynamically for high-volume segmentation
+  const getCtaLabel = () => {
+    if (selectedContactIds.size > 0) {
+      return `Enroll ${selectedContactIds.size} Selected Contact(s)`;
+    }
+    if (bulkScope === 'all') {
+      return `Enroll All Workspace Contacts (${filteredWorkspaceContacts.length}${hasMore ? '+' : ''})`;
+    }
+    if (bulkScope === 'primary') {
+      return `Enroll All Primary Contacts (${filteredWorkspaceContacts.length}${hasMore ? '+' : ''})`;
+    }
+    if (bulkScope === 'signatories') {
+      return `Enroll All Signatories (${filteredWorkspaceContacts.length}${hasMore ? '+' : ''})`;
+    }
+    if (bulkScope === 'roles') {
+      return `Enroll All Selected Role Contacts (${filteredWorkspaceContacts.length})`;
+    }
+    return `Enroll ${filteredWorkspaceContacts.length} Contacts`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl w-[95vw] rounded-2xl border border-border bg-card text-card-foreground p-6 shadow-2xl overflow-hidden focus:outline-none flex flex-col h-[85vh] md:h-[75vh]">
@@ -400,7 +424,7 @@ export function AddToAutomationDialog({
           </div>
           <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">
             {automationId
-              ? `Search and select contacts from your workspace to enroll directly into this automation flow.`
+              ? `Search, segment, and select contacts across your entire workspace to enroll directly.`
               : `Enroll targeted contacts from the selected ${entityLabel} directly.`}
           </DialogDescription>
           {automationId ? (
@@ -449,13 +473,13 @@ export function AddToAutomationDialog({
             </div>
           ) : null}
 
-          {/* Search Input Bar */}
+          {/* Server-side Search Input Bar */}
           <div className="relative shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search contacts by name, email, role, or institution..."
+              placeholder="Search all 19,000+ contacts by name, email, role, or institution..."
               className="pl-9 pr-8 h-10 rounded-xl border-border bg-background/50 text-xs font-semibold focus:ring-2 focus:ring-primary"
             />
             {searchQuery && (
@@ -476,7 +500,7 @@ export function AddToAutomationDialog({
                 Filter Scope
               </label>
               <span className="text-[10px] font-bold text-muted-foreground">
-                Showing {filteredWorkspaceContacts.length} contact(s)
+                Showing {filteredWorkspaceContacts.length} contact(s) {hasMore ? '(More available)' : ''}
               </span>
             </div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -529,6 +553,21 @@ export function AddToAutomationDialog({
               <Badge variant="secondary" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
                 {selectedContactIds.size} Checked
               </Badge>
+              {selectedContactIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowSelectedOnly((prev) => !prev)}
+                  className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1',
+                    showSelectedOnly
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                  )}
+                >
+                  <Filter className="h-3 w-3" />
+                  {showSelectedOnly ? 'Showing Selected Only' : 'Filter Selected'}
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -536,7 +575,7 @@ export function AddToAutomationDialog({
                 onClick={selectAllFiltered}
                 className="text-[10px] font-bold text-primary hover:underline px-2 py-1 rounded-lg"
               >
-                Select All ({filteredWorkspaceContacts.length})
+                Select Loaded ({filteredWorkspaceContacts.length})
               </button>
               {selectedContactIds.size > 0 && (
                 <button
@@ -552,7 +591,7 @@ export function AddToAutomationDialog({
 
           {/* Scrollable Contact Selection List */}
           <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-muted/10">
-            {isLoadingContacts || isLoadingWorkspaceEntities ? (
+            {isLoadingContacts || (isLoadingWorkspaceEntities && searchedEntities.length === 0) ? (
               <div className="h-full flex items-center justify-center p-8 text-center space-y-2">
                 <Loader2 className="h-6 w-6 text-primary animate-spin mx-auto" />
                 <p className="text-xs font-semibold text-muted-foreground">Loading workspace contacts...</p>
@@ -621,6 +660,28 @@ export function AddToAutomationDialog({
                       </div>
                     );
                   })}
+
+                  {/* Load More Contacts Button */}
+                  {hasMore && !showSelectedOnly && (
+                    <div className="pt-2 text-center pb-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => loadMore()}
+                        disabled={isLoadingWorkspaceEntities}
+                        className="rounded-xl font-bold h-10 min-h-[44px] text-xs text-primary hover:bg-primary/10 border-primary/30 w-full active:scale-[0.97] transition-all"
+                      >
+                        {isLoadingWorkspaceEntities ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Loading More Contacts...
+                          </>
+                        ) : (
+                          'Load More Contacts'
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             )}
@@ -650,7 +711,7 @@ export function AddToAutomationDialog({
             ) : (
               <>
                 <CheckCircle2 className="h-4 w-4" />
-                Enroll {selectedContactIds.size > 0 ? `${selectedContactIds.size} Selected` : `All (${filteredWorkspaceContacts.length})`} Contacts
+                {getCtaLabel()}
               </>
             )}
           </Button>
