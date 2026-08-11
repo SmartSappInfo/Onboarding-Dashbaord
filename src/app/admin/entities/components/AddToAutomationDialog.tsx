@@ -8,12 +8,12 @@ import { enrollContactsInAutomationAction } from '@/lib/automation-actions';
 import type { Automation, EntityContact } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
+import { useEntitySearch } from '@/hooks/use-entity-search';
 import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Sparkles, AlertCircle, PlayCircle, ArrowLeft, Users, ShieldCheck, UserCheck, CheckCircle2 } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle, Search, Users, CheckCircle2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
 
@@ -46,7 +46,20 @@ interface AddToAutomationDialogProps {
 }
 
 type Step = 'pick-contacts' | 'pick-automation';
-type BulkScope = 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
+type BulkScope = 'all' | 'primary' | 'signatories' | 'roles' | 'custom';
+
+export interface WorkspaceContactItem {
+  id: string;
+  entityId: string;
+  entityName: string;
+  name: string;
+  email: string;
+  phone: string;
+  isPrimary: boolean;
+  isSignatory: boolean;
+  typeKey?: string;
+  typeLabel?: string;
+}
 
 const EMPTY_CONTACTS: EntityContact[] = [];
 const EMPTY_ENTITY_IDS: string[] = [];
@@ -77,8 +90,9 @@ export function AddToAutomationDialog({
   const [isLoadingContacts, setIsLoadingContacts] = React.useState(false);
   const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set());
 
-  // Bulk scopes and filters
-  const [bulkScope, setBulkScope] = React.useState<BulkScope>('primary');
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [bulkScope, setBulkScope] = React.useState<BulkScope>('all');
   const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = React.useState<{ label: string; value: string }[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
@@ -102,14 +116,111 @@ export function AddToAutomationDialog({
     return rawAutomations.filter((a) => a.isActive && !a.isArchived);
   }, [rawAutomations]);
 
+  // 2. Query workspace entities to extract contacts when entityIds is empty or canvas mode is active
+  const isCanvasMode = !isSingleEntity;
+  const { results: searchedEntities, isLoading: isLoadingWorkspaceEntities } = useEntitySearch({
+    search: '',
+    pageSize: 100,
+    filters: [{ field: 'status', value: 'active' }],
+    enabled: open && isCanvasMode,
+  });
+
+  // Flatten workspace entities into WorkspaceContactItem list
+  const workspaceContacts = React.useMemo(() => {
+    if (!searchedEntities || searchedEntities.length === 0) return [];
+    const list: WorkspaceContactItem[] = [];
+
+    searchedEntities.forEach((entity) => {
+      const eName = entity.displayName || entity.primaryContactName || entity.entityName || 'Primary Contact';
+      const primaryEmail = entity.primaryEmail || '';
+      const primaryPhone = entity.primaryPhone || '';
+      const entityContacts = entity.entityContacts || [];
+
+      if (entityContacts.length === 0) {
+        list.push({
+          id: entity.id || entity.entityId,
+          entityId: entity.entityId || entity.id,
+          entityName: eName,
+          name: eName,
+          email: primaryEmail,
+          phone: primaryPhone,
+          isPrimary: true,
+          isSignatory: false,
+          typeKey: 'primary',
+          typeLabel: 'Primary',
+        });
+      } else {
+        entityContacts.forEach((c) => {
+          list.push({
+            id: c.id || entity.id,
+            entityId: entity.entityId || entity.id,
+            entityName: eName,
+            name: c.name || eName,
+            email: c.email || primaryEmail,
+            phone: c.phone || primaryPhone,
+            isPrimary: Boolean(c.isPrimary),
+            isSignatory: Boolean(c.isSignatory),
+            typeKey: c.typeKey,
+            typeLabel: c.typeLabel || c.typeKey,
+          });
+        });
+      }
+    });
+
+    return list;
+  }, [searchedEntities]);
+
+  // Filter contacts by Scope and Search query
+  const filteredWorkspaceContacts = React.useMemo(() => {
+    let source: WorkspaceContactItem[] = isSingleEntity
+      ? contacts.map((c) => ({
+          id: c.id,
+          entityId: entityIds[0],
+          entityName: entityName || `1 ${singular}`,
+          name: c.name || 'Contact',
+          email: c.email || '',
+          phone: c.phone || '',
+          isPrimary: Boolean(c.isPrimary),
+          isSignatory: Boolean(c.isSignatory),
+          typeKey: c.typeKey,
+          typeLabel: c.typeLabel || c.typeKey,
+        }))
+      : workspaceContacts;
+
+    if (bulkScope === 'primary') {
+      source = source.filter((c) => c.isPrimary);
+    } else if (bulkScope === 'signatories') {
+      source = source.filter((c) => c.isSignatory);
+    } else if (bulkScope === 'roles' && selectedRoles.length > 0) {
+      const normalizedRoles = selectedRoles.map((r) => r.toLowerCase().trim());
+      source = source.filter(
+        (c) =>
+          (c.typeLabel && normalizedRoles.includes(c.typeLabel.toLowerCase().trim())) ||
+          (c.typeKey && normalizedRoles.includes(c.typeKey.toLowerCase().trim()))
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      source = source.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.phone.toLowerCase().includes(q) ||
+          c.entityName.toLowerCase().includes(q) ||
+          (c.typeLabel && c.typeLabel.toLowerCase().includes(q))
+      );
+    }
+
+    return source;
+  }, [isSingleEntity, contacts, workspaceContacts, entityIds, entityName, singular, bulkScope, selectedRoles, searchQuery]);
+
   // Load available roles dynamically based on active workspace
   React.useEffect(() => {
     if (open && workspaceId) {
       setIsLoadingRoles(true);
       let cancelled = false;
-      
-      // We assume contactScope defaults to 'institution' or 'contact' here. 
-      // For general role selection, resolving 'institution' fetches org/workspace globals.
+
       getEffectiveContactTypes('institution', undefined, workspaceId)
         .then((types) => {
           if (cancelled) return;
@@ -124,8 +235,10 @@ export function AddToAutomationDialog({
           console.error('Failed to load effective contact types:', err);
           if (!cancelled) setIsLoadingRoles(false);
         });
-        
-      return () => { cancelled = true; };
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [open, workspaceId]);
 
@@ -134,8 +247,9 @@ export function AddToAutomationDialog({
     if (open) {
       setSelectedAutomationId(automationId || null);
       setIsSubmitting(false);
-      setBulkScope(isSingleEntity ? 'custom' : 'primary');
+      setBulkScope(isSingleEntity ? 'custom' : 'all');
       setSelectedRoles([]);
+      setSearchQuery('');
       setStep(automationId && isSingleEntity ? 'pick-contacts' : 'pick-automation');
 
       if (isSingleEntity) {
@@ -161,23 +275,9 @@ export function AddToAutomationDialog({
         setSelectedContactIds(new Set());
       }
     }
-  }, [open, isSingleEntity, entityIds, entityContacts]);
+  }, [open, isSingleEntity, entityIds, entityContacts, automationId]);
 
-  // Single-entity quick selects
-  const selectPrimary = () => {
-    const ids = contacts.filter((c) => c.isPrimary).map((c) => c.id);
-    setSelectedContactIds(new Set(ids));
-  };
-
-  const selectSignatories = () => {
-    const ids = contacts.filter((c) => c.isSignatory).map((c) => c.id);
-    setSelectedContactIds(new Set(ids));
-  };
-
-  const selectAll = () => {
-    setSelectedContactIds(new Set(contacts.map((c) => c.id)));
-  };
-
+  // Selection toggle handlers
   const toggleContact = (id: string) => {
     setSelectedContactIds((prev) => {
       const next = new Set(prev);
@@ -187,51 +287,54 @@ export function AddToAutomationDialog({
     });
   };
 
+  const selectAllFiltered = () => {
+    const next = new Set(selectedContactIds);
+    filteredWorkspaceContacts.forEach((c) => next.add(c.id));
+    setSelectedContactIds(next);
+  };
+
+  const deselectAllFiltered = () => {
+    const next = new Set(selectedContactIds);
+    filteredWorkspaceContacts.forEach((c) => next.delete(c.id));
+    setSelectedContactIds(next);
+  };
+
   const handleConfirm = async () => {
     if (!selectedAutomationId || !user) return;
 
-    let options: {
-      contactScope: 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
-      selectedContactIds?: string[];
-      roles?: string[];
-    };
+    const selectedList = filteredWorkspaceContacts.filter((c) => selectedContactIds.has(c.id));
+    let targetEntityIds = isSingleEntity
+      ? entityIds
+      : Array.from(new Set(selectedList.map((c) => c.entityId)));
 
-    if (isSingleEntity && bulkScope === 'custom') {
-      if (selectedContactIds.size === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'No Contacts Selected',
-          description: 'Please select at least one contact to enroll.',
-        });
-        return;
-      }
-      options = {
-        contactScope: 'custom',
-        selectedContactIds: Array.from(selectedContactIds),
-      };
-    } else {
-      if (bulkScope === 'roles' && selectedRoles.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Role Specification Required',
-          description: 'Please select at least one contact role to filter by.',
-        });
-        return;
-      }
-      options = {
-        contactScope: bulkScope,
-        roles: bulkScope === 'roles' ? selectedRoles : undefined,
-      };
+    // Fallback: If scope mode was picked and no specific checkboxes were checked, target all matched entities
+    if (targetEntityIds.length === 0 && !isSingleEntity) {
+      targetEntityIds = Array.from(new Set(filteredWorkspaceContacts.map((c) => c.entityId)));
     }
+
+    if (targetEntityIds.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No Contacts Selected',
+        description: 'Please select or filter at least one contact to enroll.',
+      });
+      return;
+    }
+
+    const options = {
+      contactScope: selectedContactIds.size > 0 ? ('custom' as const) : bulkScope,
+      selectedContactIds: selectedContactIds.size > 0 ? Array.from(selectedContactIds) : undefined,
+      roles: bulkScope === 'roles' ? selectedRoles : undefined,
+    };
 
     setIsSubmitting(true);
 
     try {
       const selectedAutomation = activeAutomations.find((a) => a.id === selectedAutomationId);
-      const automationName = selectedAutomation?.name || 'Automation';
+      const targetAutomationName = automationName || selectedAutomation?.name || 'Automation';
 
       const result = await enrollContactsInAutomationAction(
-        entityIds,
+        targetEntityIds,
         selectedAutomationId,
         workspaceId,
         user.uid,
@@ -239,10 +342,9 @@ export function AddToAutomationDialog({
       );
 
       if (result.success) {
-        const targetAutomationName = automationName || selectedAutomation?.name || 'Automation';
         toast({
           title: 'Direct Enrollment Scheduled',
-          description: `Successfully enqueued ${result.enrolledCount ?? (entityIds.length || 1)} contact run(s) into "${targetAutomationName}".`,
+          description: `Successfully enqueued ${result.enrolledCount ?? targetEntityIds.length} contact run(s) into "${targetAutomationName}".`,
           actionConfig: {
             path: `/admin/automations/${selectedAutomationId}/edit?tab=activity`,
             label: 'View Activity Logs',
@@ -272,13 +374,10 @@ export function AddToAutomationDialog({
 
   const entityLabel = entityIds.length === 1 ? singular : plural;
   const isAutomationPickStep = step === 'pick-automation';
-  const stepLabel = isSingleEntity
-    ? (isAutomationPickStep ? 'Step 1 of 2' : 'Step 2 of 2')
-    : 'Step 1 of 1';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[95vw] rounded-2xl border border-border bg-card text-card-foreground p-6 shadow-2xl overflow-hidden focus:outline-none flex flex-col h-[75vh] md:h-[65vh]">
+      <DialogContent className="max-w-xl w-[95vw] rounded-2xl border border-border bg-card text-card-foreground p-6 shadow-2xl overflow-hidden focus:outline-none flex flex-col h-[85vh] md:h-[75vh]">
         <DialogHeader className="space-y-2 text-left shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -289,18 +388,13 @@ export function AddToAutomationDialog({
                 {automationId ? 'Enroll Contacts in Automation' : (!isAutomationPickStep ? 'Select Contacts' : 'Direct Automation Enrollment')}
               </DialogTitle>
             </div>
-            {!automationId && (
-              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest bg-secondary px-2 py-1 rounded-lg shrink-0 border border-border">
-                {stepLabel}
-              </span>
-            )}
           </div>
           <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">
             {automationId
-              ? `Manually enroll targeted contacts from your workspace directly into this automation flow.`
+              ? `Search and select contacts from your workspace to enroll directly into this automation flow.`
               : (!isAutomationPickStep
                 ? `Choose which specific contacts from ${entityName || 'this ' + singular} to enroll in the workflow.`
-                : `Enroll targeted contacts from the selected ${entityLabel} directly. This bypasses the trigger condition.`)}
+                : `Enroll targeted contacts from the selected ${entityLabel} directly.`)}
           </DialogDescription>
           {automationId ? (
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs text-emerald-950 dark:text-emerald-200 font-bold mt-2">
@@ -312,307 +406,244 @@ export function AddToAutomationDialog({
           ) : null}
         </DialogHeader>
 
-        {/* --- STEP 1: Select Automation (Shown first for all) --- */}
-        {isAutomationPickStep && (
-          <div className="flex-1 min-h-0 flex flex-col my-4 space-y-4">
-            {/* Target Summary Card (Single mode) */}
-            {isSingleEntity && (
-              <div className="p-4 rounded-xl bg-muted/40 border border-border/80 flex items-center justify-between shrink-0">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Target</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                    {entityName || `1 ${singular}`}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Target Scope selection */}
-            <div className="shrink-0 space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1 block text-left">
-                Target Scope {isSingleEntity ? '' : `(All ${entityIds.length} ${plural})`}
+        {/* --- MAIN ENROLLMENT CONTENT --- */}
+        <div className="flex-1 min-h-0 flex flex-col my-3 space-y-3">
+          {/* Target Automation Selector (Only when not pre-bound) */}
+          {!automationId ? (
+            <div className="space-y-1 text-left shrink-0">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
+                Select Automation
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  { key: 'primary' as BulkScope, label: 'Primary Only' },
-                  { key: 'signatories' as BulkScope, label: 'Signatories' },
-                  { key: 'all' as BulkScope, label: 'All Contacts' },
-                  { key: 'roles' as BulkScope, label: 'By Role(s)' },
-                  ...(isSingleEntity ? [{ key: 'custom' as BulkScope, label: 'Select Contacts' }] : []),
-                ]).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setBulkScope(opt.key)}
-                    className={cn(
-                      'px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all text-center',
-                      bulkScope === opt.key
-                        ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
-                        : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              {bulkScope === 'roles' && (
-                <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
-                  <label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground px-1">
-                    Select Role(s)
-                  </label>
-                  {isLoadingRoles ? (
-                    <div className="h-10 flex items-center px-3 border border-border rounded-xl bg-muted/20">
-                      <Loader2 className="h-4 w-4 text-muted-foreground animate-spin mr-2" />
-                      <span className="text-xs text-muted-foreground font-semibold">Loading roles...</span>
-                    </div>
-                  ) : availableRoles.length === 0 ? (
-                    <div className="h-10 flex items-center px-3 border border-amber-500/30 bg-amber-500/5 rounded-xl text-xs text-amber-600 font-semibold">
-                      No roles defined in workspace.
-                    </div>
-                  ) : (
-                    <MultiSelect
-                      options={availableRoles}
-                      value={selectedRoles}
-                      onChange={setSelectedRoles}
-                      placeholder="Select roles..."
-                      className="min-h-[40px]"
-                      maxCount={3}
-                    />
-                  )}
+              {isLoadingAutomations ? (
+                <div className="flex items-center justify-center p-3 border border-dashed border-border rounded-xl bg-muted/20">
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
                 </div>
+              ) : activeAutomations.length === 0 ? (
+                <div className="flex items-center gap-2 p-3 border border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <p className="text-xs font-bold">No active automations found.</p>
+                </div>
+              ) : (
+                <Select value={selectedAutomationId ?? ''} onValueChange={setSelectedAutomationId}>
+                  <SelectTrigger className="w-full h-10 px-3.5 rounded-xl border border-border bg-background text-foreground text-xs font-semibold">
+                    <SelectValue placeholder="Choose an active automation program..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56 bg-popover border border-border text-popover-foreground rounded-xl p-1 shadow-xl">
+                    <ScrollArea className="h-full max-h-48 overflow-y-auto">
+                      {activeAutomations.map((automation) => (
+                        <SelectItem key={automation.id} value={automation.id} className="rounded-lg p-2 font-semibold text-xs cursor-pointer">
+                          {automation.name}
+                        </SelectItem>
+                      ))}
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
               )}
             </div>
+          ) : null}
 
-            {/* Automation Selection Selector (Only when not pre-bound) */}
-            {!automationId ? (
-              <div className="space-y-1.5 text-left shrink-0">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
-                  Select Automation
-                </label>
+          {/* Search Input Bar */}
+          <div className="relative shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search contacts by name, email, role, or institution..."
+              className="pl-9 pr-8 h-10 rounded-xl border-border bg-background/50 text-xs font-semibold focus:ring-2 focus:ring-primary"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-lg"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
-                {isLoadingAutomations ? (
-                  <div className="flex items-center justify-center p-6 border border-dashed border-border rounded-xl bg-muted/20">
-                    <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                  </div>
-                ) : activeAutomations.length === 0 ? (
-                  <div className="flex items-center gap-2.5 p-4 border border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-amber-600 dark:text-amber-400">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    <p className="text-xs font-bold leading-normal">
-                      No active automations found. Create or activate one first.
-                    </p>
+          {/* Target Scope Filters */}
+          <div className="shrink-0 space-y-1.5">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                Filter Scope
+              </label>
+              <span className="text-[10px] font-bold text-muted-foreground">
+                Showing {filteredWorkspaceContacts.length} contact(s)
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { key: 'all' as BulkScope, label: 'All Contacts' },
+                { key: 'primary' as BulkScope, label: 'Primary Only' },
+                { key: 'signatories' as BulkScope, label: 'Signatories' },
+                { key: 'roles' as BulkScope, label: 'By Role(s)' },
+              ]).map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setBulkScope(opt.key)}
+                  className={cn(
+                    'px-2.5 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all text-center truncate',
+                    bulkScope === opt.key
+                      ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20'
+                      : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {bulkScope === 'roles' && (
+              <div className="mt-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                {isLoadingRoles ? (
+                  <div className="h-9 flex items-center px-3 border border-border rounded-xl bg-muted/20">
+                    <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin mr-2" />
+                    <span className="text-xs text-muted-foreground font-semibold">Loading roles...</span>
                   </div>
                 ) : (
-                  <Select
-                    value={selectedAutomationId ?? ''}
-                    onValueChange={setSelectedAutomationId}
-                  >
-                    <SelectTrigger className="w-full h-11 px-3.5 rounded-xl border border-border bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent text-sm font-semibold transition-all">
-                      <SelectValue placeholder="Choose an active automation program..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-56 bg-popover border border-border text-popover-foreground rounded-xl p-1 shadow-xl">
-                      <ScrollArea className="h-full max-h-48 overflow-y-auto">
-                        {activeAutomations.map((automation) => (
-                          <SelectItem
-                            key={automation.id}
-                            value={automation.id}
-                            className="rounded-lg p-2.5 font-semibold text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground transition-colors"
-                          >
-                            {automation.name}
-                          </SelectItem>
-                        ))}
-                      </ScrollArea>
-                    </SelectContent>
-                  </Select>
+                  <MultiSelect
+                    options={availableRoles}
+                    value={selectedRoles}
+                    onChange={setSelectedRoles}
+                    placeholder="Select roles..."
+                    className="min-h-[36px]"
+                    maxCount={3}
+                  />
                 )}
               </div>
-            ) : null}
+            )}
+          </div>
 
-            <div className="pt-3 mt-auto shrink-0 flex items-center justify-end gap-2 border-t border-border">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-                className="rounded-xl font-bold h-11 min-h-[44px] text-xs text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-transparent px-4 active:scale-[0.97] transition-all"
+          {/* Quick Selection Toolbar */}
+          <div className="shrink-0 flex items-center justify-between px-1 py-1 bg-muted/30 border border-border/80 rounded-xl">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                {selectedContactIds.size} Checked
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAllFiltered}
+                className="text-[10px] font-bold text-primary hover:underline px-2 py-1 rounded-lg"
               >
-                Cancel
-              </Button>
-              {isSingleEntity && bulkScope === 'custom' ? (
-                <Button
-                  onClick={() => setStep('pick-contacts')}
-                  disabled={!selectedAutomationId}
-                  className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
+                Select All ({filteredWorkspaceContacts.length})
+              </button>
+              {selectedContactIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={deselectAllFiltered}
+                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg"
                 >
-                  Next: Choose Contacts →
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleConfirm}
-                  disabled={!selectedAutomationId || isSubmitting}
-                  className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Enrolling...
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      Enroll Target(s)
-                    </>
-                  )}
-                </Button>
+                  Clear Selection
+                </button>
               )}
             </div>
           </div>
-        )}
 
-        {/* --- STEP 2: Contacts checklist (Single entity only, shown after automation is selected) --- */}
-        {!isAutomationPickStep && isSingleEntity && (
-          <div className="flex-1 min-h-0 flex flex-col my-4 space-y-3">
-            {/* Quick selectors */}
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Quick:</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectPrimary}
-                className="h-7 px-2.5 rounded-lg text-[10px] font-bold gap-1 bg-secondary hover:bg-secondary/80 border-border text-foreground"
-              >
-                <UserCheck className="h-3 w-3 text-blue-500" /> Primary
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectSignatories}
-                className="h-7 px-2.5 rounded-lg text-[10px] font-bold gap-1 bg-secondary hover:bg-secondary/80 border-border text-foreground"
-              >
-                <ShieldCheck className="h-3 w-3 text-amber-500" /> Signatories
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={selectAll}
-                className="h-7 px-2.5 rounded-lg text-[10px] font-bold gap-1 bg-secondary hover:bg-secondary/80 border-border text-foreground"
-              >
-                <Users className="h-3 w-3 text-violet-500" /> All
-              </Button>
-              {selectedContactIds.size > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedContactIds(new Set())}
-                  className="h-7 px-2 rounded-lg text-[10px] font-bold text-muted-foreground hover:text-rose-500 hover:bg-transparent ml-auto"
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-muted/20">
-              {isLoadingContacts ? (
-                <div className="flex items-center justify-center p-12 h-full">
-                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                </div>
-              ) : contacts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-12 text-center opacity-50 h-full">
-                  <Users className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-xs font-semibold text-muted-foreground">No contacts registered for this {singular}.</p>
-                </div>
-              ) : (
-                <ScrollArea className="h-full">
-                  <div className="divide-y divide-border/50">
-                    {contacts.map((contact) => {
-                      const isChecked = selectedContactIds.has(contact.id);
-                      const hasDetails = contact.phone || contact.email;
-                      return (
-                        <div
-                          key={contact.id}
-                          onClick={() => toggleContact(contact.id)}
-                          className={cn(
-                            'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors',
-                            isChecked ? 'bg-primary/5 dark:bg-primary/10 hover:bg-primary/10' : 'hover:bg-muted/50',
-                            !hasDetails && 'opacity-50'
-                          )}
-                        >
+          {/* Scrollable Contact Selection List */}
+          <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden bg-muted/10">
+            {isLoadingContacts || isLoadingWorkspaceEntities ? (
+              <div className="h-full flex items-center justify-center p-8 text-center space-y-2">
+                <Loader2 className="h-6 w-6 text-primary animate-spin mx-auto" />
+                <p className="text-xs font-semibold text-muted-foreground">Loading workspace contacts...</p>
+              </div>
+            ) : filteredWorkspaceContacts.length === 0 ? (
+              <div className="h-full flex items-center justify-center p-8 text-center space-y-2">
+                <Users className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+                <p className="text-xs font-bold text-foreground">No contacts found</p>
+                <p className="text-[10px] text-muted-foreground">Try adjusting your search query or filter scope.</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-full p-2">
+                <div className="space-y-1.5">
+                  {filteredWorkspaceContacts.map((contact) => {
+                    const isChecked = selectedContactIds.has(contact.id);
+                    return (
+                      <div
+                        key={`${contact.entityId}-${contact.id}`}
+                        onClick={() => toggleContact(contact.id)}
+                        className={cn(
+                          'flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none',
+                          isChecked
+                            ? 'border-primary bg-primary/10 shadow-sm'
+                            : 'border-border/60 bg-card hover:bg-muted/50'
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <Checkbox
                             checked={isChecked}
                             onCheckedChange={() => toggleContact(contact.id)}
-                            className="border-input data-[state=checked]:bg-primary"
+                            onClick={(e) => e.stopPropagation()}
+                            className="rounded-md h-4 w-4 border-border data-[state=checked]:bg-primary shrink-0"
                           />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary font-bold text-[10px] flex items-center justify-center uppercase shrink-0">
+                            {contact.name ? contact.name.substring(0, 2) : 'C'}
+                          </div>
+                          <div className="space-y-0.5 min-w-0 flex-1 text-left">
+                            <div className="flex items-center gap-2">
                               <p className="text-xs font-bold text-foreground truncate">{contact.name}</p>
                               {contact.isPrimary && (
-                                <Badge variant="secondary" className="text-[7px] font-bold uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 px-1.5 py-0">
+                                <Badge variant="outline" className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-primary/10 text-primary border-primary/20 uppercase">
                                   Primary
                                 </Badge>
                               )}
                               {contact.isSignatory && (
-                                <Badge className="text-[7px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 px-1.5 py-0">
+                                <Badge variant="outline" className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 uppercase">
                                   Signatory
                                 </Badge>
                               )}
-                              <Badge variant="outline" className="text-[7px] font-semibold uppercase tracking-tighter px-1.5 py-0 border-border text-muted-foreground">
-                                {contact.typeLabel || contact.typeKey}
-                              </Badge>
                             </div>
-                            <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground font-medium">
-                              {contact.phone ? (
-                                <span className="font-mono text-foreground/85">{contact.phone}</span>
-                              ) : (
-                                <span className="text-rose-500/75 dark:text-rose-400/75 italic text-[9px]">No phone</span>
-                              )}
-                              {contact.email ? (
-                                <span className="truncate max-w-[140px] text-foreground/85">{contact.email}</span>
-                              ) : (
-                                <span className="text-rose-500/75 dark:text-rose-400/75 italic text-[9px]">No email</span>
-                              )}
-                            </div>
+                            <p className="text-[10px] font-semibold text-muted-foreground truncate">{contact.entityName}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground/80 truncate">
+                              {contact.email || contact.phone || 'No direct contact info'}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-
-            <div className="pt-3 shrink-0 flex items-center justify-between gap-2 border-t border-border">
-              <span className="text-[10px] font-bold text-muted-foreground">
-                {selectedContactIds.size} selected
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => setStep('pick-automation')}
-                  disabled={isSubmitting}
-                  className="rounded-xl font-bold h-10 text-xs text-muted-foreground hover:text-foreground hover:bg-muted gap-1"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back
-                </Button>
-                <Button
-                  onClick={handleConfirm}
-                  disabled={selectedContactIds.size === 0 || isSubmitting}
-                  className="rounded-xl font-bold h-10 text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Enrolling...
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-3.5 w-3.5" />
-                      Enroll Target(s)
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
+                        {contact.typeLabel && (
+                          <Badge variant="secondary" className="text-[9px] font-semibold px-2 py-0.5 rounded-lg shrink-0 ml-2">
+                            {contact.typeLabel}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* --- FOOTER CTAS --- */}
+        <div className="pt-3 shrink-0 flex items-center justify-end gap-2 border-t border-border mt-auto">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+            className="rounded-xl font-bold h-11 min-h-[44px] text-xs text-muted-foreground hover:text-foreground hover:bg-muted border-border bg-transparent px-4 active:scale-[0.97] transition-all"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={isSubmitting || !selectedAutomationId || (selectedContactIds.size === 0 && filteredWorkspaceContacts.length === 0)}
+            className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                Enrolling...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Enroll {selectedContactIds.size > 0 ? `${selectedContactIds.size} Selected` : `All (${filteredWorkspaceContacts.length})`} Contacts
+              </>
+            )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
