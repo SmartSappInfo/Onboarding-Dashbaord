@@ -284,7 +284,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     />
                                 </div>
                                 <SlashInput 
-                                    ref={headingUrlRef as any}
+                                    ref={headingUrlRef}
                                     value={block.url || ''} 
                                     onChange={val => onUpdate({ url: val })} 
                                     variables={autocompleteVariables}
@@ -361,7 +361,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">List Style</Label>
                                 <Select 
                                     value={block.listStyle || 'unordered'} 
-                                    onValueChange={(val) => onUpdate({ listStyle: val as any })}
+                                    onValueChange={(val) => onUpdate({ listStyle: val as 'unordered' | 'ordered' | 'roman' | 'checkmark' | 'arrow' })}
                                 >
                                     <SelectTrigger className="h-10 rounded-xl font-semibold">
                                         <SelectValue />
