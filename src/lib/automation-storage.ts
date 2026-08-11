@@ -1,12 +1,28 @@
 import type { AutomationTriggerDef } from './types';
 
+export interface MinimizedNode {
+  id: string;
+  type?: string;
+  position?: { x: number; y: number };
+  data?: Record<string, unknown>;
+}
+
+export interface MinimizedEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  type?: string;
+}
+
 export interface AutomationBackup {
   version: number;
   name: string;
   description: string;
   triggers: AutomationTriggerDef[];
-  nodes: any[];
-  edges: any[];
+  nodes: MinimizedNode[];
+  edges: MinimizedEdge[];
   timestamp: string;
   dbUpdatedAt: string;
 }
@@ -17,28 +33,28 @@ const STORAGE_VERSION = 1;
  * Minimizes a React Flow node to only preserve essential configuration
  * and coordinates to prevent localStorage bloat.
  */
-function minimizeNode(node: any): any {
-  if (!node) return null;
+function minimizeNode(node: Record<string, unknown>): MinimizedNode | null {
+  if (!node || typeof node !== 'object') return null;
   return {
-    id: node.id,
-    type: node.type,
-    position: node.position,
-    data: node.data || {},
+    id: String(node.id || ''),
+    type: node.type ? String(node.type) : undefined,
+    position: node.position as { x: number; y: number } | undefined,
+    data: (node.data as Record<string, unknown>) || {},
   };
 }
 
 /**
  * Minimizes a React Flow edge to preserve only structural routing.
  */
-function minimizeEdge(edge: any): any {
-  if (!edge) return null;
+function minimizeEdge(edge: Record<string, unknown>): MinimizedEdge | null {
+  if (!edge || typeof edge !== 'object') return null;
   return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle,
-    targetHandle: edge.targetHandle,
-    type: edge.type,
+    id: String(edge.id || ''),
+    source: String(edge.source || ''),
+    target: String(edge.target || ''),
+    sourceHandle: edge.sourceHandle ? String(edge.sourceHandle) : null,
+    targetHandle: edge.targetHandle ? String(edge.targetHandle) : null,
+    type: edge.type ? String(edge.type) : undefined,
   };
 }
 
@@ -51,8 +67,8 @@ export function saveAutomationBackup(
     name: string;
     description: string;
     triggers: AutomationTriggerDef[];
-    nodes: any[];
-    edges: any[];
+    nodes: Record<string, unknown>[];
+    edges: Record<string, unknown>[];
     dbUpdatedAt: string;
   }
 ): void {
@@ -60,8 +76,12 @@ export function saveAutomationBackup(
 
   try {
     const key = `automation-autosave-${id}`;
-    const minimizedNodes = (payload.nodes || []).map(minimizeNode).filter(Boolean);
-    const minimizedEdges = (payload.edges || []).map(minimizeEdge).filter(Boolean);
+    const minimizedNodes = (payload.nodes || [])
+      .map((n) => minimizeNode(n as Record<string, unknown>))
+      .filter((n): n is MinimizedNode => n !== null);
+    const minimizedEdges = (payload.edges || [])
+      .map((e) => minimizeEdge(e as Record<string, unknown>))
+      .filter((e): e is MinimizedEdge => e !== null);
 
     const backup: AutomationBackup = {
       version: STORAGE_VERSION,
@@ -93,7 +113,7 @@ export function getAutomationBackup(id: string): AutomationBackup | null {
     if (!stored) return null;
 
     const backup = JSON.parse(stored) as AutomationBackup;
-    
+
     // Check version compatibility
     if (backup.version !== STORAGE_VERSION) {
       console.warn(`[AUTOMATION_STORAGE] Version mismatch: found version ${backup.version}, expected ${STORAGE_VERSION}. Discarding backup.`);

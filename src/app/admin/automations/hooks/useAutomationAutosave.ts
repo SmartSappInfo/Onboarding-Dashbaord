@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useToast } from '@/hooks/use-toast';
-import type { Automation } from '@/lib/types';
+import type { Automation, AutomationTriggerDef } from '@/lib/types';
 import {
   getAutomationBackup,
   saveAutomationBackup,
@@ -8,13 +8,24 @@ import {
   AutomationBackup,
 } from '@/lib/automation-storage';
 
-function getFunctionalSnapshot(data: any) {
+interface FunctionalSnapshotInput {
+  name?: string;
+  description?: string;
+  triggers?: AutomationTriggerDef[];
+  nodes?: Array<{ id: string; type?: string; data?: Record<string, unknown> }>;
+  edges?: Array<{ id: string; source?: string; target?: string; sourceHandle?: string | null; targetHandle?: string | null; type?: string }>;
+}
+
+/**
+ * Normalizes automation blueprint state to compare functional equivalence.
+ */
+function getFunctionalSnapshot(data: FunctionalSnapshotInput | null | undefined) {
   if (!data) return null;
   return {
-    name: data.name,
+    name: data.name || '',
     description: data.description || '',
     triggers: data.triggers ?? [],
-    edges: data.edges?.map((e: any) => ({
+    edges: data.edges?.map((e) => ({
       id: e.id,
       source: e.source,
       target: e.target,
@@ -22,7 +33,7 @@ function getFunctionalSnapshot(data: any) {
       targetHandle: e.targetHandle,
       type: e.type,
     })) ?? [],
-    nodes: data.nodes?.map((n: any) => ({
+    nodes: data.nodes?.map((n) => ({
       id: n.id,
       type: n.type,
       data: n.data,
@@ -45,6 +56,20 @@ export function useAutomationAutosave(
   const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const isRestoringRef = React.useRef(false);
 
+  /**
+   * Immediately cancels any pending autosave timer and purges local storage backups.
+   * MUST be invoked upon manual save completion.
+   */
+  const clearAutosave = React.useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    clearAutomationBackup(automationId);
+    setBackupData(null);
+    setShowRestoreDialog(false);
+  }, [automationId]);
+
   // 1. Scan for backup on initial mount (after doc loads)
   React.useEffect(() => {
     if (!automation || hasPromptedRestore) return;
@@ -53,6 +78,14 @@ export function useAutomationAutosave(
     if (backup) {
       const backupTime = new Date(backup.timestamp).getTime();
       const dbTime = automation.updatedAt ? new Date(automation.updatedAt).getTime() : 0;
+
+      // Strict Timestamp Invariant:
+      // Under no circumstance should an autosave record be equal to or older than the saved record.
+      if (backupTime <= dbTime) {
+        clearAutomationBackup(automationId);
+        setHasPromptedRestore(true);
+        return;
+      }
 
       // Check if backup has functional differences from DB version
       const backupSnap = JSON.stringify(getFunctionalSnapshot(backup));
@@ -76,6 +109,10 @@ export function useAutomationAutosave(
 
     // Only autosave if there are unsaved (dirty) changes
     if (!isDirty) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       return;
     }
 
@@ -88,8 +125,8 @@ export function useAutomationAutosave(
         name: currentData.name ?? automation.name,
         description: currentData.description ?? automation.description ?? '',
         triggers: currentData.triggers ?? automation.triggers ?? [],
-        nodes: currentData.nodes ?? automation.nodes ?? [],
-        edges: currentData.edges ?? automation.edges ?? [],
+        nodes: (currentData.nodes as Record<string, unknown>[]) ?? (automation.nodes as Record<string, unknown>[]) ?? [],
+        edges: (currentData.edges as Record<string, unknown>[]) ?? (automation.edges as Record<string, unknown>[]) ?? [],
         dbUpdatedAt: automation.updatedAt,
       });
     }, 1000); // 1-second debounce
@@ -112,8 +149,8 @@ export function useAutomationAutosave(
         name: backupData.name,
         description: backupData.description,
         triggers: backupData.triggers,
-        nodes: backupData.nodes,
-        edges: backupData.edges,
+        nodes: backupData.nodes as unknown as Automation['nodes'],
+        edges: backupData.edges as unknown as Automation['edges'],
       });
 
       // Increment visual canvas key to trigger a clean React Flow remount
@@ -150,5 +187,6 @@ export function useAutomationAutosave(
     builderKey,
     handleRestore,
     handleDiscard,
+    clearAutosave,
   };
 }

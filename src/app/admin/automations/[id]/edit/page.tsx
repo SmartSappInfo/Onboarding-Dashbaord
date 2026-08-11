@@ -193,7 +193,8 @@ export default function EditAutomationPage() {
     backupData,
     builderKey,
     handleRestore,
-    handleDiscard
+    handleDiscard,
+    clearAutosave,
   } = useAutomationAutosave(automationId, currentData, automation || undefined, isDirty);
 
   const handleRestoreBackup = React.useCallback(() => {
@@ -273,7 +274,8 @@ export default function EditAutomationPage() {
         title: isNew ? 'Automation Created' : 'Automation Saved', 
         description: isNew ? 'Blueprint created successfully.' : 'Blueprint updated successfully.' 
       });
-      clearAutomationBackup(automationId);
+      // Immediately cancel any pending autosave timers and purge localStorage draft
+      clearAutosave();
       // Update saved snapshot so isDirty resets to false
       setSavedSnapshot(JSON.stringify(getFunctionalSnapshot({
         name: currentData.name,
@@ -291,7 +293,7 @@ export default function EditAutomationPage() {
       toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
       return false;
     }
-  }, [user, currentData, automationId, isNew, activeWorkspaceId, toast, router, unregisterUnsavedChanges]);
+  }, [user, currentData, automationId, isNew, activeWorkspaceId, toast, router, unregisterUnsavedChanges, clearAutosave]);
 
   const handleSave = async () => {
     await handleSaveAndReturn();
