@@ -348,7 +348,12 @@ export function AddToAutomationDialog({
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={isSubmitting || !activeTargetAutomationId || (audienceMode === 'manual' && selectedContacts.length === 0)}
+              disabled={
+                isSubmitting ||
+                !activeTargetAutomationId ||
+                (audienceMode === 'manual' && selectedContacts.length === 0) ||
+                (audienceMode !== 'manual' && (reachCount === 0 || reachContactCount === 0))
+              }
               className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
             >
               {isSubmitting ? (

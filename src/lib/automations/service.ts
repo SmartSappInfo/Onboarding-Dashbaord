@@ -563,7 +563,7 @@ export async function enrollContactsInAutomation(
       }
     }
 
-    // 3. Query contacts from entities and workspace_entities
+    // 3. Query contacts from entities and workspace_entities with parallelized batching and tenant checks
     const targets: Array<{
       entityId: string;
       entityType: string;
@@ -579,22 +579,39 @@ export async function enrollContactsInAutomation(
       };
     }> = [];
     const readChunkSize = 30; // Firestore 'in' limit is 30
+    const readConcurrency = 10;
+    const entityChunks: string[][] = [];
+
     for (let i = 0; i < targetEntityIds.length; i += readChunkSize) {
-      const chunkIds = targetEntityIds.slice(i, i + readChunkSize);
-      if (chunkIds.length === 0) continue;
-      
-      const entityRefs = chunkIds.map(id => adminDb.collection('entities').doc(id));
-      const entitySnaps = await adminDb.getAll(...entityRefs);
+      entityChunks.push(targetEntityIds.slice(i, i + readChunkSize));
+    }
 
-      entitySnaps.forEach(entitySnap => {
-        const entityRaw = (entitySnap.data() || {}) as Record<string, unknown>;
-        const entityId = entitySnap.id;
-        const entityType = (entityRaw.entityType as string) || 'institution';
-        const entityName = String(entityRaw.displayName || entityRaw.name || 'Primary Contact');
-        const primaryEmail = String(entityRaw.primaryContactEmail || entityRaw.email || '');
-        const primaryPhone = String(entityRaw.primaryContactPhone || entityRaw.phone || '');
+    for (let i = 0; i < entityChunks.length; i += readConcurrency) {
+      const concurrentChunks = entityChunks.slice(i, i + readConcurrency);
+      const batchResults = await Promise.all(
+        concurrentChunks.map((chunkIds) => {
+          const entityRefs = chunkIds.map((id) => adminDb.collection('entities').doc(id));
+          return adminDb.getAll(...entityRefs);
+        })
+      );
 
-        let contacts = (entityRaw.entityContacts || []) as EntityContact[];
+      for (const entitySnaps of batchResults) {
+        entitySnaps.forEach((entitySnap) => {
+          const entityRaw = (entitySnap.data() || {}) as Record<string, unknown>;
+
+          // Strict Tenant Boundary Check
+          if (entityRaw.workspaceId && entityRaw.workspaceId !== effectiveWorkspaceId) {
+            console.warn(`[Security] Cross-tenant entity access blocked for entity ${entitySnap.id}`);
+            return;
+          }
+
+          const entityId = entitySnap.id;
+          const entityType = (entityRaw.entityType as string) || 'institution';
+          const entityName = String(entityRaw.displayName || entityRaw.name || 'Primary Contact');
+          const primaryEmail = String(entityRaw.primaryContactEmail || entityRaw.email || '');
+          const primaryPhone = String(entityRaw.primaryContactPhone || entityRaw.phone || '');
+
+          let contacts = (entityRaw.entityContacts || []) as EntityContact[];
 
         // Fallback: If no entityContacts exist on entity, synthesize a primary contact from entity fields
         if (contacts.length === 0) {
@@ -659,6 +676,7 @@ export async function enrollContactsInAutomation(
         });
       });
     }
+  }
 
     if (targets.length === 0) {
       return { success: false, error: 'No valid contacts found matching the active workspace tenant and selection filters.' };
