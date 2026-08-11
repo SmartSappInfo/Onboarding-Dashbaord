@@ -30,7 +30,7 @@ import type { MessageBlock, TemplateVariable } from '@/lib/types';
 import { resolveVariables } from '@/lib/messaging-utils';
 import { useDroppable } from '@dnd-kit/core';
 import { blockIcons } from './block-icons';
-import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
+import { SlashInput, SlashTextarea, cleanContainerHtml } from '@/components/messaging/SlashInput';
 
 interface VisualBlockProps {
     block: MessageBlock;
@@ -57,9 +57,11 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         setMounted(true);
     }, []);
 
+    const cleaned = cleanContainerHtml(html);
+
     if (!mounted) {
         // Strip HTML tags for clean server-rendered preview
-        const stripped = html.replace(/<[^>]*>/g, '');
+        const stripped = cleaned.replace(/<[^>]*>/g, '');
         
         // Render variable text with normal styling during SSR (no HTML tags)
         const parts = stripped.split(/(\{\{[\w_]+\}\})/g);
@@ -82,7 +84,7 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         );
     }
 
-    return <React.Fragment>{renderHtmlWithVariablePills(html)}</React.Fragment>;
+    return <React.Fragment>{renderHtmlWithVariablePills(cleaned)}</React.Fragment>;
 }
 
 export function renderHtmlWithVariablePills(html: string): React.ReactNode {

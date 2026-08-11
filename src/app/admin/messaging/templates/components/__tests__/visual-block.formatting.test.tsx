@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import * as React from 'react';
 import { renderHtmlWithVariablePills } from '../visual-block';
 import { render } from '@testing-library/react';
+import { convertToVisualHtml, convertToCleanHtml, cleanContainerHtml } from '@/components/messaging/SlashInput';
+import { sanitizeBlocksContainerHtml } from '../template-workshop';
 
 // Setup helper to render ReactNode in a container to verify HTML output
 function renderNode(node: React.ReactNode): HTMLElement {
   const { container } = render(React.createElement('div', null, node));
   return container;
 }
-
-import { convertToVisualHtml, convertToCleanHtml } from '@/components/messaging/SlashInput';
 
 describe('renderHtmlWithVariablePills', () => {
   it('renders raw text correctly', () => {
@@ -62,7 +62,7 @@ describe('renderHtmlWithVariablePills', () => {
   });
 });
 
-describe('SlashInput HTML Converters', () => {
+describe('SlashInput HTML Converters & Tag Leakage Safeguard', () => {
   it('converts plain variables to visual spans', () => {
     const text = 'Hello {{first_name}}!';
     const html = convertToVisualHtml(text);
@@ -72,8 +72,53 @@ describe('SlashInput HTML Converters', () => {
 
   it('serializes visual spans back to variable tokens', () => {
     const div = document.createElement('div');
-    div.innerHTML = 'Hi <strong><span data-variable="last_name">last_name</span></strong>!';
+    div.innerHTML = 'Hi <span data-variable="last_name">last_name</span>!';
     const cleaned = convertToCleanHtml(div);
-    expect(cleaned).toBe('Hi <strong>{{last_name}}</strong>!');
+    expect(cleaned).toBe('Hi {{last_name}}!');
+  });
+
+  it('strips legacy <font color="..."> container tags from text content without leaking raw tags', () => {
+    const raw = '<font color="#64748b">Read Or Listen to This Email</font>';
+    const cleaned = cleanContainerHtml(raw);
+    expect(cleaned).toBe('Read Or Listen to This Email');
+    expect(cleaned).not.toContain('<font');
+    expect(cleaned).not.toContain('</font>');
+  });
+
+  it('prevents raw HTML tags from leaking as raw string text inside convertToVisualHtml', () => {
+    const raw = '<font color="#64748b">Read Or Listen to This Email</font>';
+    const visualHtml = convertToVisualHtml(raw);
+    expect(visualHtml).toBe('Read Or Listen to This Email');
+    expect(visualHtml).not.toContain('&lt;font');
+    expect(visualHtml).not.toContain('&lt;/font&gt;');
+  });
+
+  it('preserves double-brace variable tokens and line breaks while stripping container HTML', () => {
+    const raw = '<p>Dear {{contact_name}},</p><br><font color="#64748b">Manual fee collection carries hidden costs: {{entity_name | Your School}}</font>';
+    const cleaned = cleanContainerHtml(raw);
+    expect(cleaned).toContain('Dear {{contact_name}},');
+    expect(cleaned).toContain('Manual fee collection carries hidden costs: {{entity_name | Your School}}');
+    expect(cleaned).not.toContain('<p>');
+    expect(cleaned).not.toContain('<font');
+  });
+
+  it('recursively sanitizes legacy container HTML from template blocks in sanitizeBlocksContainerHtml', () => {
+    const rawBlocks = [
+      {
+        id: 'b1',
+        type: 'text' as const,
+        content: '<font color="#64748b">Read Or Listen to This Email</font>',
+      },
+      {
+        id: 'b2',
+        type: 'html' as const,
+        content: '<font color="blue">Custom Code Block</font>',
+      },
+    ];
+
+    const sanitized = sanitizeBlocksContainerHtml(rawBlocks as any);
+    expect(sanitized[0].content).toBe('Read Or Listen to This Email');
+    // Raw HTML code blocks must remain untouched
+    expect(sanitized[1].content).toBe('<font color="blue">Custom Code Block</font>');
   });
 });

@@ -115,7 +115,38 @@ import { BlockInspector } from './block-inspector';
 import { PlainTextEditor } from './PlainTextEditor';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
-import { SlashInput } from '@/components/messaging/SlashInput';
+import { SlashInput, cleanContainerHtml } from '@/components/messaging/SlashInput';
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Recursively sanitizes visual template blocks by stripping legacy container HTML tags (<font color="...">)
+ * from text fields (content, title, pillText, items, etc.).
+ * Prevents legacy HTML tags from leaking into SlashTextarea or onto the canvas when templates are loaded.
+ */
+export function sanitizeBlocksContainerHtml(blocks: MessageBlock[]): MessageBlock[] {
+    if (!Array.isArray(blocks)) return [];
+    return blocks.map((block) => {
+        if ((block.type as string) === 'html') return block;
+
+        const cleanedBlock: MessageBlock = {
+            ...block,
+            content: block.content ? cleanContainerHtml(block.content) : block.content,
+            title: block.title ? cleanContainerHtml(block.title) : block.title,
+            pillText: block.pillText ? cleanContainerHtml(block.pillText) : block.pillText,
+            audioTitle: block.audioTitle ? cleanContainerHtml(block.audioTitle) : block.audioTitle,
+            items: Array.isArray(block.items) ? block.items.map((item) => (typeof item === 'string' ? cleanContainerHtml(item) : item)) : block.items,
+        };
+
+        if (Array.isArray(block.columns)) {
+            cleanedBlock.columns = block.columns.map((col) => ({
+                ...col,
+                blocks: sanitizeBlocksContainerHtml(col.blocks || []),
+            }));
+        }
+
+        return cleanedBlock;
+    });
+}
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -2470,7 +2501,7 @@ export function TemplateWorkshop({
     }, []);
 
     const [body, setBody] = React.useState(initialTemplate?.body || '');
-    const [blocks, setBlocks] = React.useState<MessageBlock[]>(initialTemplate?.blocks || []);
+    const [blocks, setBlocks] = React.useState<MessageBlock[]>(() => sanitizeBlocksContainerHtml(initialTemplate?.blocks || []));
 
     const sanitizedEmailContext = React.useMemo(() => stripHtml(body), [body]);
 

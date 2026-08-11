@@ -58,6 +58,59 @@ export function escapeHtml(str: string): string {
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Strips legacy container HTML tags (<font>, <span>, <div>, <p>, etc.) and converts line break elements (<br>)
+ * into clean newline characters, while preserving double-brace variable tokens ({{var_name}}) and plain text.
+ * Prevents raw HTML tag leakage (<font color="...">) inside SlashTextarea and visual canvas components.
+ *
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ * RELATED SURFACES: SlashTextarea, PlainTextEditor, VisualBlock, BlockInspector, template-workshop.tsx.
+ */
+export function cleanContainerHtml(text: string): string {
+  if (!text) return '';
+  if (!/<[a-z\/\!\?][^>]*>/i.test(text)) return text;
+
+  let clean = text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n');
+
+  clean = clean
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<font[^>]*>/gi, '')
+    .replace(/<\/font>/gi, '')
+    .replace(/<span[^>]*>/gi, '')
+    .replace(/<\/span>/gi, '')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<\/div>/gi, '')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<\/p>/gi, '')
+    .replace(/<body[^>]*>/gi, '')
+    .replace(/<\/body>/gi, '')
+    .replace(/<html[^>]*>/gi, '')
+    .replace(/<\/html>/gi, '');
+
+  clean = clean.replace(/<[^>]+>/g, '');
+
+  clean = clean
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&rsquo;/gi, "'")
+    .replace(/&lsquo;/gi, "'");
+
+  clean = clean.replace(/\n{3,}/g, '\n\n');
+
+  return clean;
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Single Source of Truth (SSOT) utility to convert double-brace template strings (`{{key | fallback}}`)
  * into interactive visual pill HTML elements (`<span contenteditable="false" ...>`).
  *
@@ -68,10 +121,13 @@ export function escapeHtml(str: string): string {
  */
 export function convertToVisualHtml(text: string): string {
   if (!text) return '';
-  // 1. Escape raw HTML entities to prevent Stored XSS execution in contentEditable
-  const safeText = escapeHtml(text);
+  // 1. Sanitize legacy container HTML tags (<font color="...">, <span>, etc.) to prevent tag leakage
+  const cleanedText = cleanContainerHtml(text);
 
-  // 2. Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
+  // 2. Escape raw HTML entities to prevent Stored XSS execution in contentEditable
+  const safeText = escapeHtml(cleanedText);
+
+  // 3. Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
   const parsed = safeText.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
     const parts = rawKey.split(/\|\||\|/);
     const varName = parts[0].trim();
@@ -118,10 +174,10 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
         block.parentNode?.insertBefore(clone.ownerDocument.createTextNode('\n'), block);
       }
     });
-    return (clone.textContent || '');
+    return cleanContainerHtml(clone.textContent || '');
   }
 
-  return clone.innerHTML;
+  return cleanContainerHtml(clone.innerHTML);
 }
 
 interface FormattingToolbarProps {
