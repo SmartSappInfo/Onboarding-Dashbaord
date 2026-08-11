@@ -14,8 +14,9 @@ export interface FileState {
   status: 'pending' | 'editing' | 'processing' | 'completed' | 'error';
   progress: number;
   dimensions?: { width: number; height: number };
+  duration?: string;
   dataUrl?: string;
-  editingState?: any; // To avoid circular imports, type can be tightened if needed
+  editingState?: Record<string, any>;
 }
 
 interface StagedFileItemProps {

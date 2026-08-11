@@ -39,6 +39,7 @@ import {
 import { UploadDropzone } from './upload-dropzone';
 import { WorkspaceDestinationSelector } from './workspace-destination-selector';
 import { StagedFileItem, type FileState } from './staged-file-item';
+import { extractFileDuration } from '@/lib/media/duration-extractor';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
@@ -215,7 +216,8 @@ export default function MediaUploader({
             toast({ variant: 'destructive', title: 'Could not read image file', description: file.name });
         }
       } else {
-         processedFiles.push({ id: fileId, file, status: 'pending', progress: 0 });
+         const duration = await extractFileDuration(file);
+         processedFiles.push({ id: fileId, file, status: 'pending', progress: 0, duration: duration || undefined });
       }
     }));
 
@@ -336,6 +338,7 @@ export default function MediaUploader({
                   createdAt: string;
                   width?: number;
                   height?: number;
+                  duration?: string;
                   format?: string;
                 }
 
@@ -353,6 +356,7 @@ export default function MediaUploader({
                   createdAt: new Date().toISOString()
                 };
 
+                if (fileState.duration) newAssetData.duration = fileState.duration;
                 if (finalWidth !== undefined) newAssetData.width = finalWidth;
                 if (finalHeight !== undefined) newAssetData.height = finalHeight;
                 if (mediaType === 'image' && fileState.editingState?.format) {

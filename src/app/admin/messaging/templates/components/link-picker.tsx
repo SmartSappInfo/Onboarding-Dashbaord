@@ -18,7 +18,8 @@ export interface ResourceItem {
   name: string;        // Internal Name (Prominent Heading)
   subtitle?: string;   // Page Title / Description (Secondary Subtitle)
   path: string;        // Target URL path (hidden from list view)
-  duration?: string;   // Audio/Video duration if available (e.g. "6:43")
+  duration?: string;   // Audio/Video duration if available (e.g. "2:15")
+  mediaUrl?: string;   // Direct media source URL if available
 }
 
 const PREDEFINED_PAGES: ResourceItem[] = [
@@ -161,6 +162,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
 
           const mediaNameMap = new Map<string, string>();
           const mediaDurationMap = new Map<string, string>();
+          const mediaUrlMap = new Map<string, string>();
           mediaSnap.docs.forEach((doc) => {
             const data = doc.data();
             const assetName = (data.name as string) || (data.title as string) || (data.filename as string);
@@ -171,6 +173,10 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             if (assetDuration) {
               mediaDurationMap.set(doc.id, assetDuration);
             }
+            const directUrl = (data.url as string) || (data.linkUrl as string);
+            if (directUrl) {
+              mediaUrlMap.set(doc.id, directUrl);
+            }
           });
 
           fetched = sharesSnap.docs.map((d) => {
@@ -180,6 +186,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             const resolvedAssetName = (data.assetName as string) || (assetId ? mediaNameMap.get(assetId) : undefined) || (data.internalName as string) || (data.name as string);
             const publicTitle = (data.title as string)?.trim();
             const duration = (data.duration as string) || (data.mediaDuration as string) || (assetId ? mediaDurationMap.get(assetId) : undefined);
+            const mediaUrl = (data.url as string) || (assetId ? mediaUrlMap.get(assetId) : undefined);
 
             const internalName = resolvedAssetName || publicTitle || 'Untitled Shared Media';
             const subtitle = publicTitle || internalName;
@@ -190,6 +197,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
               subtitle,
               path: `/m/${effectiveSlug}`,
               duration,
+              mediaUrl,
             };
           });
         }

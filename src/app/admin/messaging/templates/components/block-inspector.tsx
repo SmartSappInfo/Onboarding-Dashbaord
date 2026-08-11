@@ -1078,6 +1078,9 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 if (item?.duration) {
                                                     updates.videoDuration = item.duration;
                                                 }
+                                                if (item?.mediaUrl) {
+                                                    updates.url = item.mediaUrl;
+                                                }
                                                 onUpdate(updates);
                                                 setShowVideoLinkPicker(false);
                                             }}
@@ -1179,6 +1182,9 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                                 }
                                                 if (item?.duration) {
                                                     updates.audioDuration = item.duration;
+                                                }
+                                                if (item?.mediaUrl) {
+                                                    updates.url = item.mediaUrl;
                                                 }
                                                 onUpdate(updates);
                                                 setShowAudioLinkPicker(false);

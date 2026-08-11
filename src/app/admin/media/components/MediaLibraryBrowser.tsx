@@ -23,6 +23,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
+import { backfillWorkspaceMediaDurations } from '@/lib/media/media-backfill-service';
+import { useToast } from '@/hooks/use-toast';
+import { Clock } from 'lucide-react';
 
 export type SourceFilterType = 'ALL' | 'HOSTED' | 'LINKED';
 export type SetupFilterType = 'ALL' | 'CONFIGURED' | 'STANDBY';
@@ -50,14 +53,16 @@ export default function MediaLibraryBrowser({
   isCompact = false
 }: MediaLibraryBrowserProps) {
   const firestore = useFirestore();
-  const { activeWorkspaceId, isSuperAdmin } = useWorkspace();
+  const { toast } = useToast();
+  const { isSuperAdmin, activeWorkspaceId } = useWorkspace();
+  const effectiveWorkspaceId = forcedWorkspaceId || activeWorkspaceId || 'global';
+
+  const [activeTab, setActiveTab] = useState<MediaAsset['type']>(filterType || 'video');
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [activeTab, setActiveTab] = useState(filterType || 'image');
-  
-  const effectiveWorkspaceId = forcedWorkspaceId || activeWorkspaceId;
+  const [isBackfilling, setIsBackfilling] = useState(false);
 
   const mediaCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -312,6 +317,32 @@ export default function MediaLibraryBrowser({
               >
                 <span className="h-2 w-2 rounded-full bg-slate-400 ml-0.5 mr-0.5" />
                 Standby Assets (Unconfigured)
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1.5" />
+
+              <DropdownMenuItem
+                disabled={isBackfilling}
+                onClick={async () => {
+                  if (!firestore || isBackfilling) return;
+                  setIsBackfilling(true);
+                  toast({ title: 'Enriching Media Durations', description: 'Scanning and resolving missing video/audio durations...' });
+                  try {
+                    const result = await backfillWorkspaceMediaDurations(firestore, effectiveWorkspaceId, (rep) => {
+                      toast({ title: 'Enrichment Progress', description: rep.message });
+                    });
+                    toast({ title: 'Enrichment Complete', description: `Successfully updated ${result.updated} media records with duration metadata.` });
+                  } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : 'Backfill error';
+                    toast({ variant: 'destructive', title: 'Enrichment Error', description: msg });
+                  } finally {
+                    setIsBackfilling(false);
+                  }
+                }}
+                className="rounded-xl px-3 py-2 text-xs font-bold gap-2 cursor-pointer text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 focus:bg-indigo-500/10"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                {isBackfilling ? 'Enriching Durations...' : 'Enrich Missing Durations'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

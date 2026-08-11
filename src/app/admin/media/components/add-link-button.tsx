@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { MediaCategory } from '@/lib/types';
+import { extractMediaUrlDuration } from '@/lib/media/duration-extractor';
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'A name is required for the link.' }),
@@ -147,6 +148,8 @@ export default function AddLinkButton() {
           }
         }
 
+        const extractedDuration = await extractMediaUrlDuration(data.url);
+
         const linkData = {
           name: metadata?.title || data.name,
           url: data.url,
@@ -158,6 +161,7 @@ export default function AddLinkButton() {
           linkTitle: metadata?.title ?? null,
           linkDescription: metadata?.description ?? null,
           previewImageUrl: thumbnail,
+          duration: extractedDuration || undefined,
         };
 
         const mediaCollection = collection(firestore, 'media');
