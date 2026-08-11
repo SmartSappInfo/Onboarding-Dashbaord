@@ -40,6 +40,8 @@ export interface UseEntitySearchOptions {
   filters?: Array<{ field: string; value: unknown }>;
   /** Set false to defer querying (e.g. until a popover opens). */
   enabled?: boolean;
+  /** Explicit target workspace ID override (falls back to TenantContext activeWorkspaceId). */
+  workspaceId?: string;
 }
 
 export function useEntitySearch({
@@ -47,9 +49,12 @@ export function useEntitySearch({
   pageSize = 25,
   filters = [],
   enabled = true,
+  workspaceId,
 }: UseEntitySearchOptions = {}) {
   const firestore = useFirestore();
-  const { activeWorkspaceId } = useTenant();
+  const { activeWorkspaceId: tenantWorkspaceId } = useTenant();
+
+  const targetWorkspaceId = workspaceId || tenantWorkspaceId;
 
   const [results, setResults] = useState<SearchedEntity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,12 +66,12 @@ export function useEntitySearch({
 
   const runQuery = useCallback(
     async (reset: boolean) => {
-      if (!firestore || !activeWorkspaceId || !enabled) return;
+      if (!firestore || !targetWorkspaceId || !enabled) return;
       setIsLoading(true);
       try {
         if (reset) cursorRef.current = null;
 
-        const constraints: QueryConstraint[] = [where('workspaceId', '==', activeWorkspaceId)];
+        const constraints: QueryConstraint[] = [where('workspaceId', '==', targetWorkspaceId)];
         const parsedFilters = (JSON.parse(filterKey) as UseEntitySearchOptions['filters']) ?? [];
         for (const f of parsedFilters) {
           constraints.push(where(f.field, '==', f.value));
@@ -79,16 +84,44 @@ export function useEntitySearch({
         constraints.push(limit(pageSize));
         if (!reset && cursorRef.current) constraints.push(startAfter(cursorRef.current));
 
-        const snap = await getDocs(query(collection(firestore, 'workspace_entities'), ...constraints));
+        let snap;
+        try {
+          snap = await getDocs(query(collection(firestore, 'workspace_entities'), ...constraints));
+        } catch (indexOrFilterErr) {
+          console.warn('[USE_ENTITY_SEARCH] Primary ordered query failed, running fallback un-ordered query:', indexOrFilterErr);
+          // Fallback query: omit status/orderBy constraints if composite index missing
+          const fallbackConstraints: QueryConstraint[] = [
+            where('workspaceId', '==', targetWorkspaceId),
+            limit(pageSize),
+          ];
+          if (!reset && cursorRef.current) fallbackConstraints.push(startAfter(cursorRef.current));
+          snap = await getDocs(query(collection(firestore, 'workspace_entities'), ...fallbackConstraints));
+        }
+
+        // If primary query with status filter returned 0 results and search is empty, attempt un-filtered fallback
+        if (snap.docs.length === 0 && parsedFilters.length > 0 && !searchKey) {
+          const fallbackConstraints: QueryConstraint[] = [
+            where('workspaceId', '==', targetWorkspaceId),
+            limit(pageSize),
+          ];
+          if (!reset && cursorRef.current) fallbackConstraints.push(startAfter(cursorRef.current));
+          const fallbackSnap = await getDocs(query(collection(firestore, 'workspace_entities'), ...fallbackConstraints));
+          if (fallbackSnap.docs.length > 0) {
+            snap = fallbackSnap;
+          }
+        }
+
         const page = snap.docs.map((d) => ({ ...(d.data() as WorkspaceEntity), id: d.id }) as SearchedEntity);
         cursorRef.current = snap.docs[snap.docs.length - 1] ?? cursorRef.current;
         setHasMore(snap.docs.length === pageSize);
         setResults((prev) => (reset ? page : [...prev, ...page]));
+      } catch (err) {
+        console.error('[USE_ENTITY_SEARCH] Failed to fetch workspace entities:', err);
       } finally {
         setIsLoading(false);
       }
     },
-    [firestore, activeWorkspaceId, enabled, searchKey, filterKey, pageSize],
+    [firestore, targetWorkspaceId, enabled, searchKey, filterKey, pageSize],
   );
 
   // Debounced re-query on search/filter/workspace change.
@@ -96,7 +129,7 @@ export function useEntitySearch({
     if (!enabled) return;
     const t = setTimeout(() => runQuery(true), 250);
     return () => clearTimeout(t);
-  }, [enabled, searchKey, filterKey, activeWorkspaceId, runQuery]);
+  }, [enabled, searchKey, filterKey, targetWorkspaceId, runQuery]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !isLoading) runQuery(false);

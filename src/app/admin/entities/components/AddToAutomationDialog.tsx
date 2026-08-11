@@ -119,6 +119,7 @@ export function AddToAutomationDialog({
     pageSize: 100,
     filters: [{ field: 'status', value: 'active' }],
     enabled: open && isCanvasMode,
+    workspaceId,
   });
 
   // Flatten workspace entities into WorkspaceContactItem list with unique ID sanitization
