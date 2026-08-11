@@ -60,6 +60,25 @@ describe('renderHtmlWithVariablePills', () => {
     expect(scriptEl).toBeNull();
     expect(container.textContent).not.toContain('alert');
   });
+
+  it('parses pipe fallback variable tokens {{contact_name | School Owner}} into variable pills', () => {
+    const node = renderHtmlWithVariablePills('Dear {{contact_name | School Owner}}, welcome!');
+    const container = renderNode(node);
+    const pill = container.querySelector('.font-mono');
+    expect(pill).not.toBeNull();
+    expect(pill?.textContent).toBe('contact_name | School Owner');
+    expect(container.textContent).toBe('Dear contact_name | School Owner, welcome!');
+  });
+
+  it('preserves multiline whitespace \\n in renderHtmlWithVariablePills', () => {
+    const multilineText = 'To your growth,\nFrank D. Natie,\n{{org_name}}';
+    const node = renderHtmlWithVariablePills(multilineText);
+    const container = renderNode(node);
+    expect(container.textContent).toBe('To your growth,\nFrank D. Natie,\norg_name');
+    const pill = container.querySelector('.font-mono');
+    expect(pill).not.toBeNull();
+    expect(pill?.textContent).toBe('org_name');
+  });
 });
 
 describe('SlashInput HTML Converters & Tag Leakage Safeguard', () => {

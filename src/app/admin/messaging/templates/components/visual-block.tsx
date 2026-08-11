@@ -51,6 +51,28 @@ interface SafeHtmlProps {
     html: string;
 }
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Single Source of Truth helper to parse double-brace variable tokens (e.g., {{contact_name}}, {{contact_name | School Owner}}, {{1}}).
+ * Extracts variable key and fallback value, returning fullTokenLabel to render inside canvas pill badges.
+ */
+export function parseVariableToken(part: string): { varName: string; fallback: string; fullTokenLabel: string } {
+    const raw = part.slice(2, -2).trim();
+    const pipeIdx = raw.indexOf('|');
+    if (pipeIdx !== -1) {
+        const varName = raw.substring(0, pipeIdx).trim();
+        let rest = raw.substring(pipeIdx + 1);
+        if (rest.startsWith('|')) rest = rest.substring(1);
+        const fallback = rest.trim();
+        return {
+            varName,
+            fallback,
+            fullTokenLabel: fallback ? `${varName} | ${fallback}` : varName,
+        };
+    }
+    return { varName: raw, fallback: '', fullTokenLabel: raw };
+}
+
 export function SafeHtml({ html }: SafeHtmlProps) {
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => {
@@ -64,17 +86,18 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         const stripped = cleaned.replace(/<[^>]*>/g, '');
         
         // Render variable text with normal styling during SSR (no HTML tags)
-        const parts = stripped.split(/(\{\{[\w_]+\}\})/g);
+        const parts = stripped.split(/(\{\{.*?\}\})/g);
         return (
-            <span className="whitespace-pre-wrap">
+            <span className="whitespace-pre-wrap break-words">
                 {parts.map((part, i) => {
                     if (part.startsWith('{{') && part.endsWith('}}')) {
+                        const { fullTokenLabel } = parseVariableToken(part);
                         return (
                             <span 
                                 key={i} 
                                 className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
                             >
-                                {part.slice(2, -2)}
+                                {fullTokenLabel}
                             </span>
                         );
                     }
@@ -84,13 +107,13 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         );
     }
 
-    return <React.Fragment>{renderHtmlWithVariablePills(cleaned)}</React.Fragment>;
+    return <span className="whitespace-pre-wrap break-words">{renderHtmlWithVariablePills(cleaned)}</span>;
 }
 
 export function renderHtmlWithVariablePills(html: string): React.ReactNode {
     if (!html) return null;
     if (typeof window === 'undefined') {
-        return <span className="whitespace-pre-wrap">{html}</span>;
+        return <span className="whitespace-pre-wrap break-words">{html}</span>;
     }
     
     try {
@@ -101,18 +124,18 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
         const renderNode = (node: Node, key: string): React.ReactNode => {
             if (node.nodeType === Node.TEXT_NODE) {
                 const textContent = node.textContent || '';
-                const parts = textContent.split(/(\{\{[\w_]+\}\})/g);
+                const parts = textContent.split(/(\{\{.*?\}\})/g);
                 return (
                     <React.Fragment key={key}>
                         {parts.map((part, i) => {
                             if (part.startsWith('{{') && part.endsWith('}}')) {
-                                const varName = part.slice(2, -2);
+                                const { fullTokenLabel } = parseVariableToken(part);
                                 return (
                                     <span 
                                         key={i} 
                                         className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
                                     >
-                                        {varName}
+                                        {fullTokenLabel}
                                     </span>
                                 );
                             }
@@ -205,19 +228,19 @@ function renderTextWithVariablePills(text: string, isButtonContext = false): Rea
     if (pillCache.has(cacheKey)) {
         return pillCache.get(cacheKey)!;
     }
-    const parts = text.split(/(\{\{[^{}]+\}\})/g);
+    const parts = text.split(/(\{\{.*?\}\})/g);
     const node = (
-        <span className={cn("whitespace-pre-wrap", isButtonContext ? "inline-flex items-center justify-center gap-1 leading-normal" : "")}>
+        <span className={cn("whitespace-pre-wrap break-words", isButtonContext ? "inline-flex items-center justify-center gap-1 leading-normal" : "")}>
             {parts.map((part, i) => {
                 if (part.startsWith('{{') && part.endsWith('}}')) {
-                    const varName = part.slice(2, -2).trim();
+                    const { fullTokenLabel } = parseVariableToken(part);
                     if (isButtonContext) {
                         return (
                             <span 
                                 key={i} 
                                 className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-white/20 text-current font-mono text-[85%] font-bold border border-white/30 align-middle select-none shadow-xs"
                             >
-                                {varName}
+                                {fullTokenLabel}
                             </span>
                         );
                     }
@@ -226,7 +249,7 @@ function renderTextWithVariablePills(text: string, isButtonContext = false): Rea
                             key={i} 
                             className="inline-flex items-center mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none"
                         >
-                            {varName}
+                            {fullTokenLabel}
                         </span>
                     );
                 }
@@ -536,7 +559,7 @@ export function VisualBlock({
                                     onKeyDown={(e) => e.stopPropagation()}
                                 />
                             ) : (
-                                <div className={cn("w-full break-words select-text", isNestedCard ? "text-slate-600 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}>
+                                <div className={cn("w-full break-words select-text whitespace-pre-wrap", isNestedCard ? "text-slate-600 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}>
                                     <SafeHtml html={contentVal} />
                                 </div>
                             )}
