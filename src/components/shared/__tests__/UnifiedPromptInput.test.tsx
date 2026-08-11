@@ -42,4 +42,41 @@ describe('UnifiedPromptInput', () => {
     expect(screen.getByPlaceholderText('Type a message')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
+
+  it('renders active Stop button when isLoading is true and onStop is provided', () => {
+    const mockSubmit = vi.fn();
+    const mockStop = vi.fn();
+    render(
+      <UnifiedPromptInput
+        value="Generate email layout"
+        onChange={() => {}}
+        onSubmit={mockSubmit}
+        onStop={mockStop}
+        isLoading={true}
+      />
+    );
+
+    const stopButton = screen.getByRole('button', { name: /stop generation/i });
+    expect(stopButton).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /send/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onStop when Stop button is clicked', () => {
+    const mockSubmit = vi.fn();
+    const mockStop = vi.fn();
+    render(
+      <UnifiedPromptInput
+        value="Generate email layout"
+        onChange={() => {}}
+        onSubmit={mockSubmit}
+        onStop={mockStop}
+        isLoading={true}
+      />
+    );
+
+    const stopButton = screen.getByRole('button', { name: /stop generation/i });
+    stopButton.click();
+    expect(mockStop).toHaveBeenCalledTimes(1);
+    expect(mockSubmit).not.toHaveBeenCalled();
+  });
 });

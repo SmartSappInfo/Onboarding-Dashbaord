@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Sparkles, Paperclip, Mic, Send, X, Loader2 } from 'lucide-react';
+import { Sparkles, Paperclip, Mic, Send, X, Loader2, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import AiModelSelector from '@/components/ai/AiModelSelector';
@@ -16,10 +16,17 @@ export interface StagedAttachment {
   content?: string;
 }
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * UnifiedPromptInput is the single source of truth prompt bar used across Email Architect, Survey Copilot, and Page Builders.
+ * CAUTION: When adding new props (e.g. onStop, maxHeight), ensure existing callers without onStop default safely.
+ * TESTABILITY: Verify that when isLoading=true and onStop is passed, clicking the action button triggers onStop() without submitting.
+ */
 interface UnifiedPromptInputProps {
   value: string;
   onChange: (val: string) => void;
   onSubmit: (attachments: StagedAttachment[]) => void | Promise<void>;
+  onStop?: () => void;
   isLoading?: boolean;
   placeholder?: string;
   stagedFiles?: StagedAttachment[];
@@ -27,6 +34,7 @@ interface UnifiedPromptInputProps {
   hideAttachments?: boolean;
   hideModelSelector?: boolean;
   hideAudio?: boolean;
+  maxHeight?: number;
   className?: string;
   onFileSelect?: (files: File[]) => void | Promise<void>;
   onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
@@ -64,6 +72,7 @@ export default function UnifiedPromptInput({
   value,
   onChange,
   onSubmit,
+  onStop,
   isLoading = false,
   placeholder = 'Ask me anything...',
   stagedFiles = [],
@@ -71,6 +80,7 @@ export default function UnifiedPromptInput({
   hideAttachments = false,
   hideModelSelector = false,
   hideAudio = false,
+  maxHeight = 320,
   className,
   onFileSelect,
   onPaste
@@ -89,11 +99,19 @@ export default function UnifiedPromptInput({
     };
   }, []);
 
+  // Auto-expand textarea height dynamically up to maxHeight px as the user types
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`;
+    }
+  }, [value, maxHeight]);
+
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`;
     }
   };
 
@@ -227,7 +245,7 @@ export default function UnifiedPromptInput({
         onKeyDown={handleKeyDown}
         onPaste={onPaste}
         placeholder={placeholder}
-        className="w-full text-sm bg-transparent resize-none focus:outline-none min-h-[40px] max-h-44 leading-relaxed p-1"
+        className="w-full text-sm bg-transparent resize-none focus:outline-none min-h-[44px] leading-relaxed p-1.5 transition-all overflow-y-auto"
         rows={1}
         disabled={isLoading}
       />
@@ -248,7 +266,7 @@ export default function UnifiedPromptInput({
                 variant="ghost"
                 size="icon"
                 onClick={triggerFileSelect}
-                className="h-9 w-9 rounded-full hover:bg-accent"
+                className="h-9 w-9 rounded-full hover:bg-accent active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px]"
                 aria-label="Attach files"
               >
                 <Paperclip size={16} className="text-muted-foreground" />
@@ -261,7 +279,7 @@ export default function UnifiedPromptInput({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 bg-muted/60 border hover:bg-muted text-foreground text-xs px-3 py-1.5 rounded-full cursor-pointer transition-colors font-medium"
+                  className="flex items-center gap-1.5 bg-muted/60 border hover:bg-muted text-foreground text-xs px-3 py-1.5 rounded-full cursor-pointer transition-all active:scale-[0.97] font-medium min-h-[36px]"
                 >
                   <Sparkles size={11} className="text-violet-500 animate-pulse" />
                   <span>{modelId}</span>
@@ -281,23 +299,36 @@ export default function UnifiedPromptInput({
               variant="ghost"
               size="icon"
               onClick={toggleSpeech}
-              className={cn('h-9 w-9 rounded-full transition-colors', isRecording && 'bg-red-500/10 text-red-500 hover:bg-red-500/20')}
+              className={cn('h-9 w-9 rounded-full transition-all active:scale-[0.97] min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px]', isRecording && 'bg-red-500/10 text-red-500 hover:bg-red-500/20')}
               aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
             >
               <Mic size={16} />
             </Button>
           )}
 
-          <Button
-            type="button"
-            disabled={isLoading || (!value.trim() && stagedFiles.length === 0)}
-            onClick={() => onSubmit(stagedFiles)}
-            size="icon"
-            className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center shrink-0"
-            aria-label="Send"
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send size={14} />}
-          </Button>
+          {isLoading && onStop ? (
+            <Button
+              type="button"
+              onClick={onStop}
+              size="icon"
+              className="h-9 w-9 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center justify-center shrink-0 active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px]"
+              aria-label="Stop generation"
+              title="Stop generation"
+            >
+              <Square size={13} className="fill-current" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              disabled={isLoading || (!value.trim() && stagedFiles.length === 0)}
+              onClick={() => onSubmit(stagedFiles)}
+              size="icon"
+              className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center shrink-0 active:scale-[0.97] transition-all min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px]"
+              aria-label="Send"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send size={14} />}
+            </Button>
+          )}
         </div>
       </div>
     </div>

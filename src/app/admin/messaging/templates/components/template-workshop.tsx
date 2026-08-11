@@ -2566,6 +2566,23 @@ export function TemplateWorkshop({
     const [lastSubjectBackup, setLastSubjectBackup] = React.useState<string | null>(null);
     const [lastPreviewBackup, setLastPreviewBackup] = React.useState<string | null>(null);
     const [isUploadingImage, setIsUploadingImage] = React.useState(false);
+    const [isArchitectUndocked, setIsArchitectUndocked] = React.useState(false);
+    const architectAbortControllerRef = React.useRef<AbortController | null>(null);
+
+    /**
+     * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+     * Cancels active Email Architect AI request mid-flight. Aborts signal, stops loading state,
+     * and prevents any dangling async responses from mutating blocks or template titles.
+     */
+    const handleStopArchitect = React.useCallback(() => {
+        if (architectAbortControllerRef.current) {
+            architectAbortControllerRef.current.abort();
+            architectAbortControllerRef.current = null;
+        }
+        setIsArchitecting(false);
+        setIsUploadingImage(false);
+        toast({ title: 'Operation Cancelled', description: 'Email Architect generation stopped.' });
+    }, [toast]);
 
     // Undo / Redo History State tracking
     const [historyStack, setHistoryStack] = React.useState<{ body: string; blocks: MessageBlock[] }[]>([]);
@@ -3418,7 +3435,11 @@ export function TemplateWorkshop({
             toast({ title: 'Input required', description: 'Please enter a description prompt or attach an image.', variant: 'destructive' });
             return;
         }
+
+        const controller = new AbortController();
+        architectAbortControllerRef.current = controller;
         setIsArchitecting(true);
+
         try {
             const { generateEmailBlocksAction } = (await import('@/lib/campaign-ai')) as {
                 generateEmailBlocksAction: (params: {
@@ -3439,6 +3460,9 @@ export function TemplateWorkshop({
                     error?: string;
                 }>;
             };
+
+            if (controller.signal.aborted) return;
+
             const resolvedOrgId = activeOrganizationId || initialTemplate?.organizationId || allowedWorkspaces?.find(w => w.id === activeWorkspaceId)?.organizationId || undefined;
             const res = await generateEmailBlocksAction({
                 prompt: architectPrompt,
@@ -3448,6 +3472,8 @@ export function TemplateWorkshop({
                 provider: liveProvider,
                 modelId: liveModelId,
             });
+
+            if (controller.signal.aborted) return;
 
             if (res.success && res.blocks) {
                 // Map generated blocks to add unique IDs
@@ -3498,9 +3524,13 @@ export function TemplateWorkshop({
                 toast({ title: 'Architect Failed', description: res.error || 'Unable to build blocks.', variant: 'destructive' });
             }
         } catch (err: unknown) {
+            if (controller.signal.aborted) return;
             const msg = err instanceof Error ? err.message : 'Action trigger error';
             toast({ title: 'Error', description: msg, variant: 'destructive' });
         } finally {
+            if (architectAbortControllerRef.current === controller) {
+                architectAbortControllerRef.current = null;
+            }
             setIsArchitecting(false);
         }
     };
@@ -4501,26 +4531,48 @@ export function TemplateWorkshop({
                                         {contentMode === 'rich_builder' && sidebarTab === 'architect' && (
                                             <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
                                                 {/* Email Architect Card */}
-                                                <div className="bg-card border rounded-xl p-3.5 space-y-3">
+                                                <div className="bg-card border rounded-2xl p-4 space-y-4 shadow-sm transition-all">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-[10px] font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
-                                                            <Sparkles className="h-3.5 w-3.5 text-blue-500 animate-pulse" /> Email Architect (AI)
-                                                        </span>
-                                                        {lastBlocksBackup && (
-                                                            <button
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                                                                <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" /> Email Architect (AI)
+                                                            </span>
+                                                            <Badge variant="outline" className="text-[10px] font-semibold text-blue-600 bg-blue-500/10 border-blue-200">
+                                                                {architectMode === 'layout_analysis' ? 'Layout Mode' : 'Direct Image'}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {lastBlocksBackup && (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={handleUndoArchitect}
+                                                                    className="h-7 text-[10px] font-bold text-red-500 hover:text-red-600 bg-red-500/10 hover:bg-red-500/20 px-2.5 rounded-lg active:scale-[0.97] transition-all"
+                                                                >
+                                                                    <Undo className="h-3 w-3 mr-1" /> Undo
+                                                                </Button>
+                                                            )}
+                                                            <Button
                                                                 type="button"
-                                                                onClick={handleUndoArchitect}
-                                                                className="text-[9px] font-black text-red-500 hover:text-red-600 bg-red-55/10 hover:bg-red-55/20 px-2 py-0.5 rounded transition-colors"
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => setIsArchitectUndocked(true)}
+                                                                className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.97] shrink-0 transition-all min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-[32px]"
+                                                                title="Undock into modal view"
                                                             >
-                                                                Undo
-                                                            </button>
-                                                        )}
+                                                                <Maximize2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
+
                                                     <UnifiedPromptInput
                                                         value={architectPrompt}
                                                         onChange={setArchitectPrompt}
                                                         onSubmit={handleArchitectSubmit}
+                                                        onStop={handleStopArchitect}
                                                         isLoading={isArchitecting || isUploadingImage}
+                                                        maxHeight={320}
                                                         stagedFiles={architectImageUrl ? [{ name: 'Visual Inspiration', url: architectImageUrl, type: 'image' }] : []}
                                                         onStagedFilesChange={(files) => {
                                                             const img = files.find(f => f.type === 'image');
@@ -4542,26 +4594,37 @@ export function TemplateWorkshop({
                                                             }
                                                         }}
                                                         placeholder="Describe layout details or upload inspiration..."
+                                                        className="w-full transition-all"
                                                     />
-                                                    <div className="flex items-center gap-4 text-[9px] font-semibold text-muted-foreground pt-1">
-                                                        <label className="flex items-center gap-1.5 cursor-pointer">
-                                                            <input
-                                                                type="radio"
-                                                                name="architectMode"
-                                                                checked={architectMode === 'layout_analysis'}
-                                                                onChange={() => setArchitectMode('layout_analysis')}
-                                                            />
-                                                            Analyze Mockup
-                                                        </label>
-                                                        <label className="flex items-center gap-1.5 cursor-pointer">
-                                                            <input
-                                                                type="radio"
-                                                                name="architectMode"
-                                                                checked={architectMode === 'direct_placement'}
-                                                                onChange={() => setArchitectMode('direct_placement')}
-                                                            />
-                                                            Insert Image
-                                                        </label>
+
+                                                    <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground border-t border-border/40">
+                                                        <div className="flex items-center gap-4 font-semibold">
+                                                            <label className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="architectMode_sidebar"
+                                                                    checked={architectMode === 'layout_analysis'}
+                                                                    onChange={() => setArchitectMode('layout_analysis')}
+                                                                    className="accent-primary"
+                                                                />
+                                                                Analyze Mockup
+                                                            </label>
+                                                            <label className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="architectMode_sidebar"
+                                                                    checked={architectMode === 'direct_placement'}
+                                                                    onChange={() => setArchitectMode('direct_placement')}
+                                                                    className="accent-primary"
+                                                                />
+                                                                Insert Image
+                                                            </label>
+                                                        </div>
+                                                        {isArchitecting && (
+                                                            <span className="text-[11px] text-blue-600 font-bold flex items-center gap-1 animate-pulse">
+                                                                <Loader2 className="h-3 w-3 animate-spin" /> Building layout...
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -5725,6 +5788,94 @@ export function TemplateWorkshop({
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Email Architect Undocked Modal Dialog */}
+            <Dialog open={isArchitectUndocked} onOpenChange={setIsArchitectUndocked}>
+                <DialogContent className="w-[95vw] sm:max-w-3xl rounded-3xl p-6 bg-card border shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
+                        <div>
+                            <DialogTitle className="text-base font-extrabold flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-blue-500 animate-pulse" /> Email Architect (AI Studio)
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                Describe layout details or upload inspiration to generate multi-column email blocks with AI.
+                            </DialogDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setIsArchitectUndocked(false)}
+                            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.97] shrink-0"
+                            title="Dock back to sidebar"
+                        >
+                            <Minimize2 className="h-4 w-4" />
+                        </Button>
+                    </DialogHeader>
+                    <div className="py-2 space-y-4">
+                        <UnifiedPromptInput
+                            value={architectPrompt}
+                            onChange={setArchitectPrompt}
+                            onSubmit={handleArchitectSubmit}
+                            onStop={handleStopArchitect}
+                            isLoading={isArchitecting || isUploadingImage}
+                            maxHeight={450}
+                            stagedFiles={architectImageUrl ? [{ name: 'Visual Inspiration', url: architectImageUrl, type: 'image' }] : []}
+                            onStagedFilesChange={(files) => {
+                                const img = files.find(f => f.type === 'image');
+                                setArchitectImageUrl(img?.url || '');
+                            }}
+                            onFileSelect={async (files) => {
+                                const file = files[0];
+                                if (file && activeWorkspaceId) {
+                                    setIsUploadingImage(true);
+                                    try {
+                                        const url = await uploadArchitectImage(file, activeWorkspaceId);
+                                        setArchitectImageUrl(url);
+                                    } catch (err: unknown) {
+                                        const msg = err instanceof Error ? err.message : 'Upload error';
+                                        toast({ title: 'Upload Failed', description: msg, variant: 'destructive' });
+                                    } finally {
+                                        setIsUploadingImage(false);
+                                    }
+                                }
+                            }}
+                            placeholder="Describe layout details or upload inspiration..."
+                            className="w-full min-h-[160px] transition-all"
+                        />
+
+                        <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground border-t">
+                            <div className="flex items-center gap-6 font-semibold">
+                                <label className="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors">
+                                    <input
+                                        type="radio"
+                                        name="architectMode_modal"
+                                        checked={architectMode === 'layout_analysis'}
+                                        onChange={() => setArchitectMode('layout_analysis')}
+                                        className="accent-primary h-4 w-4"
+                                    />
+                                    Analyze Mockup
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors">
+                                    <input
+                                        type="radio"
+                                        name="architectMode_modal"
+                                        checked={architectMode === 'direct_placement'}
+                                        onChange={() => setArchitectMode('direct_placement')}
+                                        className="accent-primary h-4 w-4"
+                                    />
+                                    Insert Image
+                                </label>
+                            </div>
+                            {isArchitecting && (
+                                <span className="text-xs text-blue-600 font-bold flex items-center gap-1.5 animate-pulse">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Building layout...
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
