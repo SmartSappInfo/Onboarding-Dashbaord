@@ -498,10 +498,18 @@ export async function deleteAllArchivedAutomations(
   }
 }
 
+import type { AudienceFilter } from '../types';
+import type { ConditionGroup } from '../automation-condition';
+
 export interface EnrollContactsOptions {
   contactScope?: 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
   selectedContactIds?: string[];
+  selectedContacts?: Array<{ entityId: string; contactId: string; name?: string; email?: string; phone?: string; entityName?: string }>;
   roles?: string[];
+  audienceMode?: 'all' | 'advanced' | 'saved' | 'manual';
+  filters?: AudienceFilter[];
+  filterLogic?: 'AND' | 'OR';
+  groups?: ConditionGroup[];
 }
 
 export async function enrollContactsInAutomation(
@@ -531,6 +539,30 @@ export async function enrollContactsInAutomation(
       return { success: false, error: 'Cannot enroll in an inactive automation' };
     }
 
+    // 2. Resolve target entity IDs if empty or derived from audience segment filters
+    let targetEntityIds = [...entityIds];
+
+    if (targetEntityIds.length === 0) {
+      if (options?.selectedContacts && options.selectedContacts.length > 0) {
+        targetEntityIds = Array.from(new Set(options.selectedContacts.map((sc) => sc.entityId)));
+      } else {
+        // Query workspace entities matching audience segment filters using previewCampaignAudience engine
+        const { previewCampaignAudience } = await import('../messaging-actions');
+        const previewResult = await previewCampaignAudience({
+          workspaceId: effectiveWorkspaceId,
+          filters: options?.filters,
+          filterLogic: options?.filterLogic,
+          groups: options?.groups,
+          contactScope: options?.contactScope,
+          audienceMode: options?.audienceMode || 'all',
+          limit: 50000,
+        });
+        if (previewResult.success && previewResult.preview) {
+          targetEntityIds = previewResult.preview.map((item) => item.id);
+        }
+      }
+    }
+
     // 3. Query contacts from entities and workspace_entities
     const targets: Array<{
       entityId: string;
@@ -547,8 +579,8 @@ export async function enrollContactsInAutomation(
       };
     }> = [];
     const readChunkSize = 30; // Firestore 'in' limit is 30
-    for (let i = 0; i < entityIds.length; i += readChunkSize) {
-      const chunkIds = entityIds.slice(i, i + readChunkSize);
+    for (let i = 0; i < targetEntityIds.length; i += readChunkSize) {
+      const chunkIds = targetEntityIds.slice(i, i + readChunkSize);
       if (chunkIds.length === 0) continue;
       
       const entityRefs = chunkIds.map(id => adminDb.collection('entities').doc(id));
