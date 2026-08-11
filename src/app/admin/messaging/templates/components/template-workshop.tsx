@@ -2584,6 +2584,16 @@ export function TemplateWorkshop({
         toast({ title: 'Operation Cancelled', description: 'Email Architect generation stopped.' });
     }, [toast]);
 
+    // Cleanup active AbortController on component unmount to prevent memory leaks or post-unmount state updates
+    React.useEffect(() => {
+        return () => {
+            if (architectAbortControllerRef.current) {
+                architectAbortControllerRef.current.abort();
+                architectAbortControllerRef.current = null;
+            }
+        };
+    }, []);
+
     // Undo / Redo History State tracking
     const [historyStack, setHistoryStack] = React.useState<{ body: string; blocks: MessageBlock[] }[]>([]);
     const [historyPointer, setHistoryPointer] = React.useState(-1);
@@ -4528,7 +4538,7 @@ export function TemplateWorkshop({
                                     </div>
 
                                     <div className="flex-1 min-h-0 relative overflow-hidden bg-muted/5">
-                                        {contentMode === 'rich_builder' && sidebarTab === 'architect' && (
+                                        {contentMode === 'rich_builder' && sidebarTab === 'architect' && !isArchitectUndocked && (
                                             <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
                                                 {/* Email Architect Card */}
                                                 <div className="bg-card border rounded-2xl p-4 space-y-4 shadow-sm transition-all">

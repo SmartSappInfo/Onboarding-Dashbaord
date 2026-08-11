@@ -90,12 +90,17 @@ export default function UnifiedPromptInput({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const recognitionRef = React.useRef<SpeechRecognitionInstance | null>(null);
+  const createdBlobUrlsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
+    const createdBlobUrls = createdBlobUrlsRef.current;
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
+      // Revoke all created blob URLs on unmount to prevent memory leaks
+      createdBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+      createdBlobUrls.clear();
     };
   }, []);
 
@@ -109,10 +114,6 @@ export default function UnifiedPromptInput({
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`;
-    }
   };
 
   const triggerFileSelect = () => {
@@ -132,6 +133,7 @@ export default function UnifiedPromptInput({
 
     const newFiles: StagedAttachment[] = files.map(file => {
       const url = URL.createObjectURL(file);
+      createdBlobUrlsRef.current.add(url);
       const type = file.type.startsWith('image/') ? 'image' : 'document';
       return { name: file.name, url, type };
     });
