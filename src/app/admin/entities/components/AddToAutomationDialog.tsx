@@ -45,7 +45,6 @@ interface AddToAutomationDialogProps {
   onComplete?: () => void;
 }
 
-type Step = 'pick-contacts' | 'pick-automation';
 type BulkScope = 'all' | 'primary' | 'signatories' | 'roles' | 'custom';
 
 export interface WorkspaceContactItem {
@@ -81,9 +80,6 @@ export function AddToAutomationDialog({
   const { singular, plural } = useTerminology();
 
   const isSingleEntity = entityIds.length === 1;
-
-  // Navigation steps
-  const [step, setStep] = React.useState<Step>('pick-automation');
 
   // Contact list state (single entity mode)
   const [contacts, setContacts] = React.useState<EntityContact[]>(entityContacts);
@@ -125,7 +121,7 @@ export function AddToAutomationDialog({
     enabled: open && isCanvasMode,
   });
 
-  // Flatten workspace entities into WorkspaceContactItem list
+  // Flatten workspace entities into WorkspaceContactItem list with unique ID sanitization
   const workspaceContacts = React.useMemo(() => {
     if (!searchedEntities || searchedEntities.length === 0) return [];
     const list: WorkspaceContactItem[] = [];
@@ -134,9 +130,9 @@ export function AddToAutomationDialog({
       const eName = entity.displayName || entity.primaryContactName || entity.entityName || 'Primary Contact';
       const primaryEmail = entity.primaryEmail || '';
       const primaryPhone = entity.primaryPhone || '';
-      const entityContacts = entity.entityContacts || [];
+      const entityContactsList = entity.entityContacts || [];
 
-      if (entityContacts.length === 0) {
+      if (entityContactsList.length === 0) {
         list.push({
           id: entity.id || entity.entityId,
           entityId: entity.entityId || entity.id,
@@ -150,9 +146,10 @@ export function AddToAutomationDialog({
           typeLabel: 'Primary',
         });
       } else {
-        entityContacts.forEach((c) => {
+        entityContactsList.forEach((c, idx) => {
+          const fallbackContactId = c.id || `${entity.entityId || entity.id}_c_${idx}`;
           list.push({
-            id: c.id || entity.id,
+            id: fallbackContactId,
             entityId: entity.entityId || entity.id,
             entityName: eName,
             name: c.name || eName,
@@ -170,11 +167,11 @@ export function AddToAutomationDialog({
     return list;
   }, [searchedEntities]);
 
-  // Filter contacts by Scope and Search query
+  // Filter contacts by Scope and Search query with empty role guard
   const filteredWorkspaceContacts = React.useMemo(() => {
     let source: WorkspaceContactItem[] = isSingleEntity
-      ? contacts.map((c) => ({
-          id: c.id,
+      ? contacts.map((c, idx) => ({
+          id: c.id || `${entityIds[0]}_c_${idx}`,
           entityId: entityIds[0],
           entityName: entityName || `1 ${singular}`,
           name: c.name || 'Contact',
@@ -191,13 +188,18 @@ export function AddToAutomationDialog({
       source = source.filter((c) => c.isPrimary);
     } else if (bulkScope === 'signatories') {
       source = source.filter((c) => c.isSignatory);
-    } else if (bulkScope === 'roles' && selectedRoles.length > 0) {
-      const normalizedRoles = selectedRoles.map((r) => r.toLowerCase().trim());
-      source = source.filter(
-        (c) =>
-          (c.typeLabel && normalizedRoles.includes(c.typeLabel.toLowerCase().trim())) ||
-          (c.typeKey && normalizedRoles.includes(c.typeKey.toLowerCase().trim()))
-      );
+    } else if (bulkScope === 'roles') {
+      if (selectedRoles.length === 0) {
+        // Empty role selection guard: show 0 contacts until at least 1 role is picked
+        source = [];
+      } else {
+        const normalizedRoles = selectedRoles.map((r) => r.toLowerCase().trim());
+        source = source.filter(
+          (c) =>
+            (c.typeLabel && normalizedRoles.includes(c.typeLabel.toLowerCase().trim())) ||
+            (c.typeKey && normalizedRoles.includes(c.typeKey.toLowerCase().trim()))
+        );
+      }
     }
 
     if (searchQuery.trim()) {
@@ -250,7 +252,6 @@ export function AddToAutomationDialog({
       setBulkScope(isSingleEntity ? 'custom' : 'all');
       setSelectedRoles([]);
       setSearchQuery('');
-      setStep(automationId && isSingleEntity ? 'pick-contacts' : 'pick-automation');
 
       if (isSingleEntity) {
         if (!entityContacts || entityContacts.length === 0) {
@@ -302,15 +303,17 @@ export function AddToAutomationDialog({
   const handleConfirm = async () => {
     if (!selectedAutomationId || !user) return;
 
-    const selectedList = filteredWorkspaceContacts.filter((c) => selectedContactIds.has(c.id));
+    const hasSpecificChecked = selectedContactIds.size > 0;
+    const isSearchFiltered = searchQuery.trim().length > 0 || (bulkScope === 'roles' && selectedRoles.length > 0);
+    const isCustomScope = hasSpecificChecked || isSearchFiltered;
+
+    const selectedList = hasSpecificChecked
+      ? filteredWorkspaceContacts.filter((c) => selectedContactIds.has(c.id))
+      : filteredWorkspaceContacts;
+
     let targetEntityIds = isSingleEntity
       ? entityIds
       : Array.from(new Set(selectedList.map((c) => c.entityId)));
-
-    // Fallback: If scope mode was picked and no specific checkboxes were checked, target all matched entities
-    if (targetEntityIds.length === 0 && !isSingleEntity) {
-      targetEntityIds = Array.from(new Set(filteredWorkspaceContacts.map((c) => c.entityId)));
-    }
 
     if (targetEntityIds.length === 0) {
       toast({
@@ -321,9 +324,15 @@ export function AddToAutomationDialog({
       return;
     }
 
+    const effectiveSelectedContactIds = hasSpecificChecked
+      ? Array.from(selectedContactIds)
+      : isSearchFiltered
+      ? filteredWorkspaceContacts.map((c) => c.id)
+      : undefined;
+
     const options = {
-      contactScope: selectedContactIds.size > 0 ? ('custom' as const) : bulkScope,
-      selectedContactIds: selectedContactIds.size > 0 ? Array.from(selectedContactIds) : undefined,
+      contactScope: isCustomScope ? ('custom' as const) : bulkScope,
+      selectedContactIds: effectiveSelectedContactIds,
       roles: bulkScope === 'roles' ? selectedRoles : undefined,
     };
 
@@ -373,7 +382,6 @@ export function AddToAutomationDialog({
   };
 
   const entityLabel = entityIds.length === 1 ? singular : plural;
-  const isAutomationPickStep = step === 'pick-automation';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -385,16 +393,14 @@ export function AddToAutomationDialog({
                 <Sparkles className="h-4 w-4" />
               </div>
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-                {automationId ? 'Enroll Contacts in Automation' : (!isAutomationPickStep ? 'Select Contacts' : 'Direct Automation Enrollment')}
+                Enroll Contacts in Automation
               </DialogTitle>
             </div>
           </div>
           <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">
             {automationId
               ? `Search and select contacts from your workspace to enroll directly into this automation flow.`
-              : (!isAutomationPickStep
-                ? `Choose which specific contacts from ${entityName || 'this ' + singular} to enroll in the workflow.`
-                : `Enroll targeted contacts from the selected ${entityLabel} directly.`)}
+              : `Enroll targeted contacts from the selected ${entityLabel} directly.`}
           </DialogDescription>
           {automationId ? (
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between text-xs text-emerald-950 dark:text-emerald-200 font-bold mt-2">
@@ -498,7 +504,7 @@ export function AddToAutomationDialog({
             {bulkScope === 'roles' && (
               <div className="mt-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
                 {isLoadingRoles ? (
-                  <div className="h-9 flex items-center px-3 border border-border rounded-xl bg-muted/20">
+                  <div className="h-11 flex items-center px-3 border border-border rounded-xl bg-muted/20 min-h-[44px]">
                     <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin mr-2" />
                     <span className="text-xs text-muted-foreground font-semibold">Loading roles...</span>
                   </div>
@@ -508,7 +514,7 @@ export function AddToAutomationDialog({
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     placeholder="Select roles..."
-                    className="min-h-[36px]"
+                    className="min-h-[44px]"
                     maxCount={3}
                   />
                 )}
@@ -554,7 +560,11 @@ export function AddToAutomationDialog({
               <div className="h-full flex items-center justify-center p-8 text-center space-y-2">
                 <Users className="h-8 w-8 text-muted-foreground/50 mx-auto" />
                 <p className="text-xs font-bold text-foreground">No contacts found</p>
-                <p className="text-[10px] text-muted-foreground">Try adjusting your search query or filter scope.</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {bulkScope === 'roles' && selectedRoles.length === 0
+                    ? 'Please select at least one role above to view contacts.'
+                    : 'Try adjusting your search query or filter scope.'}
+                </p>
               </div>
             ) : (
               <ScrollArea className="h-full p-2">
