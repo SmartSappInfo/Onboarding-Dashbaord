@@ -2,6 +2,7 @@ import type { MessageBlock, MessageBlockRule, MessageStyle } from './types';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
 import { resolveTextWithMap } from './utils/variable-replacer';
+import { escapeHtml } from './template-utils';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -721,14 +722,17 @@ export function renderBlocksToHtml(
          * 2. Configured Block Fallback (block.scoreValue) resolved with variables
          * 3. Default hard fallback '0'
          * CAUTION: Must check non-empty (val !== undefined && val !== null && val !== '') so numeric 0 isn't overwritten.
+         * SECURITY: Escapes HTML entities to prevent XSS string injection in email templates.
          */
         const hasVariableScore = variables.score !== undefined && variables.score !== null && variables.score !== '';
-        const score = hasVariableScore 
+        const rawScore = hasVariableScore 
           ? variables.score 
-          : (block.scoreValue !== undefined && block.scoreValue !== '' ? resolveVariables(block.scoreValue, variables) : 0);
+          : (block.scoreValue !== undefined && block.scoreValue !== '' ? resolveVariables(block.scoreValue, variables) : '0');
+        
+        const score = escapeHtml(String(rawScore));
         const maxScore = variables.max_score || 100;
-        const pillTextVal = resolveVariables(block.pillText || 'Assessment Result', variables);
-        const subtitleVal = resolveVariables(block.content || `OUT OF ${maxScore} POINTS`, variables);
+        const pillTextVal = escapeHtml(resolveVariables(block.pillText || 'Assessment Result', variables));
+        const subtitleVal = escapeHtml(resolveVariables(block.content || `OUT OF ${maxScore} POINTS`, variables));
         
         const scoreBg = s.backgroundColor || options?.style?.primaryColor || '#3B5FFF';
         const scoreColor = s.color || '#ffffff';

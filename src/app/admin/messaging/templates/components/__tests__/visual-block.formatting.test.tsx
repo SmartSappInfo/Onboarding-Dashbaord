@@ -4,6 +4,8 @@ import { renderHtmlWithVariablePills } from '../visual-block';
 import { render } from '@testing-library/react';
 import { convertToVisualHtml, convertToCleanHtml, cleanContainerHtml } from '@/components/messaging/SlashInput';
 import { sanitizeBlocksContainerHtml } from '../template-workshop';
+import { renderBlocksToHtml } from '@/lib/messaging-utils';
+import type { MessageBlock } from '@/lib/types';
 
 // Setup helper to render ReactNode in a container to verify HTML output
 function renderNode(node: React.ReactNode): HTMLElement {
@@ -80,16 +82,39 @@ describe('renderHtmlWithVariablePills', () => {
     expect(pill?.textContent).toBe('org_name');
   });
 
-  it('resolves score-card fallback value correctly when simulation score is unpopulated or 0', () => {
-    const fallbackScore: string = '85';
-    // 1. Unpopulated simulation score uses scoreValue fallback
-    const scoreValUnpopulated = undefined !== undefined ? String(undefined) : (fallbackScore !== '' ? fallbackScore : '0');
-    expect(scoreValUnpopulated).toBe('85');
+  it('resolves score-card scoreValue fallback correctly in renderBlocksToHtml', () => {
+    const block: MessageBlock = {
+      id: 'score-1',
+      type: 'score-card',
+      scoreValue: '85',
+      pillText: 'Result',
+      content: 'Points'
+    };
 
-    // 2. Numeric 0 simulation score preserves 0
-    const simScore0: unknown = 0;
-    const scoreValZero = simScore0 !== undefined && simScore0 !== null && simScore0 !== '' ? String(simScore0) : (fallbackScore !== '' ? fallbackScore : '0');
-    expect(scoreValZero).toBe('0');
+    // 1. Unpopulated variables.score uses scoreValue fallback ('85')
+    const htmlFallback = renderBlocksToHtml([block], {});
+    expect(htmlFallback).toContain('>85<');
+
+    // 2. Numeric 0 variables.score preserves '0'
+    const htmlZero = renderBlocksToHtml([block], { score: 0 });
+    expect(htmlZero).toContain('>0<');
+
+    // 3. Populated variables.score (e.g. 95) overrides scoreValue fallback
+    const htmlScore = renderBlocksToHtml([block], { score: 95 });
+    expect(htmlScore).toContain('>95<');
+
+    // 4. Verifies HTML entity escaping on unescaped input strings
+    const unsafeBlock: MessageBlock = {
+      id: 'score-2',
+      type: 'score-card',
+      scoreValue: '<script>alert(1)</script>',
+      pillText: 'Unsafe <b>Badge</b>',
+      content: 'Unsafe <img src=x>'
+    };
+    const unsafeHtml = renderBlocksToHtml([unsafeBlock], {});
+    expect(unsafeHtml).not.toContain('<script>');
+    expect(unsafeHtml).toContain('&lt;script&gt;');
+    expect(unsafeHtml).toContain('Unsafe &lt;b&gt;Badge&lt;&#x2F;b&gt;');
   });
 });
 
