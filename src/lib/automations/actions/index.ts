@@ -21,9 +21,15 @@ import { handleUpdateLeadScore } from './score-automation-actions';
  */
 export function isNodeDisabled(node: { data?: { isDisabled?: boolean; config?: Record<string, unknown> } }): boolean {
   if (!node || !node.data) return false;
-  if (node.data.isDisabled === true) return true;
-  if (node.data.config && node.data.config.isDisabled === true) return true;
-  if (node.data.config && (node.data.config as Record<string, unknown>).disabled === true) return true;
+  if (node.data.config && typeof node.data.config.isDisabled === 'boolean') {
+    return node.data.config.isDisabled;
+  }
+  if (node.data.config && typeof (node.data.config as Record<string, unknown>).disabled === 'boolean') {
+    return Boolean((node.data.config as Record<string, unknown>).disabled);
+  }
+  if (typeof node.data.isDisabled === 'boolean') {
+    return node.data.isDisabled;
+  }
   return false;
 }
 
