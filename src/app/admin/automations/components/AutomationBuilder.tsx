@@ -17,6 +17,7 @@ import ReactFlow, {
     ConnectionLineType,
     getSmoothStepPath
 } from 'reactflow';
+import { useToast } from '@/hooks/use-toast';
 import { WorkflowEdge } from '../[id]/edit/components/edges/WorkflowEdge';
 import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap, type SplicingOptions } from '@/lib/automations/graph-rewriter';
 import { ReconcileDropDialog } from './ReconcileDropDialog';
@@ -128,6 +129,7 @@ interface AutomationBuilderProps {
  * custom deletable edges, and undo/redo history.
  */
 export default function AutomationBuilder({ initialNodes, initialEdges, triggers, onStateChange, onTriggersChange, automationId }: AutomationBuilderProps) {
+    const { toast } = useToast();
     const confirm = useConfirm();
     const healedEdges = React.useMemo(() => {
         if (!initialEdges) return [];
@@ -1874,6 +1876,33 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                     node={selectedNode} 
                                     nodes={nodes}
                                     onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)}
+                                    onUpdateAllSimilarNodes={(actionType, isDisabled) => {
+                                        const targetType = actionType.toUpperCase();
+                                        setNodes((prevNodes) =>
+                                            prevNodes.map((n) => {
+                                                const nType = (n.data?.actionType || n.data?.config?.actionType || '').toUpperCase();
+                                                if (nType === targetType) {
+                                                    return {
+                                                        ...n,
+                                                        data: {
+                                                            ...n.data,
+                                                            isDisabled,
+                                                            config: {
+                                                                ...(n.data?.config || {}),
+                                                                isDisabled,
+                                                            },
+                                                        },
+                                                    };
+                                                }
+                                                return n;
+                                            })
+                                        );
+                                        setIsInspectorDirty(true);
+                                        toast({
+                                            title: isDisabled ? 'Similar Steps Disabled' : 'Similar Steps Enabled',
+                                            description: `Updated all "${actionType.replace(/_/g, ' ')}" steps in this automation.`,
+                                        });
+                                    }}
                                     triggers={triggers}
                                     onTriggersChange={onTriggersChange}
                                     onDirtyChange={setIsInspectorDirty}

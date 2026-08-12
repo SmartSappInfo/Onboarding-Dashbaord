@@ -180,14 +180,18 @@ export async function traverseNodes(
           }
         }
 
+        const isSkipped = Boolean(output && typeof output === 'object' && ('skipped' in output || 'isDisabled' in output));
         logStepExecution(context.runId, {
           nodeId: currentNode.id,
           nodeType: 'actionNode',
           nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Action'),
-          status: 'success',
+          status: isSkipped ? 'skipped' : 'success',
           executedAt: new Date().toISOString(),
           durationMs: Date.now() - stepStart,
-          metadata: { actionType: currentNode.data?.actionType },
+          metadata: {
+            actionType: currentNode.data?.actionType,
+            ...(isSkipped ? { isDisabled: true, reason: 'Messaging step disabled by designer' } : {}),
+          },
         });
       } else if (currentNode.type === 'tagActionNode') {
         await processTagActionNode(currentNode, context);

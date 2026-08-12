@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
+import { cn } from '@/lib/utils';
 import { createFieldAction } from '@/lib/fields-actions';
 import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
@@ -702,6 +703,7 @@ interface ActionConfigPanelProps {
   actionType: string;
   config: AutomationConfig;
   onUpdateConfig: (updates: Partial<AutomationConfig>) => void;
+  onUpdateAllSimilarNodes?: (actionType: string, isDisabled: boolean) => void;
   users: UserProfile[];
   stages: OnboardingStage[];
   pipelines: Pipeline[];
@@ -717,6 +719,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   actionType,
   config,
   onUpdateConfig,
+  onUpdateAllSimilarNodes,
   users,
   stages,
   pipelines,
@@ -731,6 +734,44 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   const { activeWorkspace, accessibleWorkspaces } = useWorkspace() as { activeWorkspace?: Workspace; accessibleWorkspaces?: Workspace[] };
   const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
   const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
+
+  const [scopeDialogOpen, setScopeDialogOpen] = React.useState(false);
+  const [pendingStatus, setPendingStatus] = React.useState(false);
+
+  const isMessagingStep = [
+    'SEND_MESSAGE',
+    'SEND_EMAIL',
+    'SEND_SMS',
+    'SEND_WHATSAPP',
+    'DIRECT_EMAIL',
+    'DIRECT_SMS',
+    'DIRECT_WHATSAPP',
+    'SEND_NOTIFICATION_EMAIL',
+    'SEND_NOTIFICATION_SMS',
+    'SEND_NOTIFICATION_IN_APP',
+    'SEND_NOTIFICATION_PUSH',
+    'ALERT',
+    'ADD_TO_CALL_CAMPAIGN',
+  ].includes((actionType || '').toUpperCase());
+
+  const isDisabledStep = Boolean(config.isDisabled);
+
+  const handleToggleClick = (nextDisabled: boolean) => {
+    if (onUpdateAllSimilarNodes) {
+      setPendingStatus(nextDisabled);
+      setScopeDialogOpen(true);
+    } else {
+      onUpdateConfig({ isDisabled: nextDisabled });
+    }
+  };
+
+  const handleApplyScope = (scope: 'single' | 'similar') => {
+    onUpdateConfig({ isDisabled: pendingStatus });
+    if (scope === 'similar' && onUpdateAllSimilarNodes) {
+      onUpdateAllSimilarNodes(actionType, pendingStatus);
+    }
+    setScopeDialogOpen(false);
+  };
 
   const firestore = useFirestore();
   const profilesQuery = useMemoFirebase(() => {
@@ -783,7 +824,66 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-5">
+      {/* Messaging Step Status Control Banner */}
+      {isMessagingStep && (
+        <div className={cn(
+          "p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 text-left",
+          isDisabledStep ? "bg-amber-500/10 border-amber-500/30" : "bg-primary/5 border-primary/20"
+        )}>
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <Badge variant={isDisabledStep ? "destructive" : "secondary"} className={cn("text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md", !isDisabledStep && "bg-primary/10 text-primary border-primary/20")}>
+                {isDisabledStep ? "Disabled / Bypassed" : "Active"}
+              </Badge>
+              <span className="text-xs font-bold text-foreground">Step Execution Status</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-medium leading-tight">
+              {isDisabledStep
+                ? "Contacts will traverse through this step without sending the message."
+                : "Contacts will receive the scheduled message when arriving at this step."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleToggleClick(!isDisabledStep)}
+            className="rounded-xl font-bold text-xs h-9 min-h-[44px] px-3 active:scale-[0.97] transition-all shrink-0"
+          >
+            {isDisabledStep ? "Enable Step" : "Disable Step"}
+          </Button>
+        </div>
+      )}
+
+      {/* Scope Choice Selection Dialog */}
+      <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl border border-border p-6 shadow-2xl">
+          <DialogHeader className="text-left space-y-2">
+            <DialogTitle className="text-lg font-bold text-foreground">
+              {pendingStatus ? "Disable Messaging Step" : "Enable Messaging Step"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed">
+              Would you like to {pendingStatus ? "disable" : "enable"} messaging for this step only, or apply to all similar step blocks in this flow?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => handleApplyScope('single')}
+              className="rounded-xl font-bold h-11 min-h-[44px] text-xs text-foreground border-border active:scale-[0.97] transition-all w-full sm:w-auto"
+            >
+              This Step Only
+            </Button>
+            <Button
+              onClick={() => handleApplyScope('similar')}
+              className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.97] transition-all w-full sm:w-auto"
+            >
+              All Similar ({actionType.replace(/_/g, ' ')}) Steps
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {actionType === 'SEND_MESSAGE' ? (
         <div className="space-y-6">
           <div className="space-y-2">

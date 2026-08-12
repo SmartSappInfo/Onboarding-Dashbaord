@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, Smartphone, Plus, Sparkles, StickyNote, MessageSquare } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -267,23 +267,37 @@ export function ActionNode({ id, data, selected }: any) {
             <Card className={cn(
                 "w-64 rounded-xl border transition-all duration-300 bg-card overflow-hidden shadow-sm flex flex-col",
                 actionType === 'SEND_MESSAGE' ? "h-[84px]" : "h-14",
-                selected ? "border-blue-500 shadow-md ring-2 ring-blue-500/20" : "border-blue-200",
+                Boolean(data.isDisabled || config.isDisabled)
+                    ? "border-amber-400/80 border-dashed bg-amber-500/5 dark:bg-amber-950/10 opacity-90"
+                    : selected
+                    ? "border-blue-500 shadow-md ring-2 ring-blue-500/20"
+                    : "border-blue-200",
                 overlay.borderClass,
                 overlay.glowClass
             )}>
                 {/* Top Section */}
                 <div className="h-14 w-full flex flex-row items-center">
                     {/* Left Colored Accent Block */}
-                    <div className="w-12 h-full bg-blue-500 flex items-center justify-center flex-shrink-0 animate-fade-in">
-                        <Icon className="h-4 w-4 text-white" />
+                    <div className={cn(
+                        "w-12 h-full flex items-center justify-center flex-shrink-0 animate-fade-in",
+                        Boolean(data.isDisabled || config.isDisabled) ? "bg-amber-500/80 text-white" : "bg-blue-500 text-white"
+                    )}>
+                        <Icon className="h-4 w-4" />
                     </div>
                     
                     {/* Right Content Area */}
                     <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
                         <div className="flex flex-col justify-center min-w-0 pr-1">
-                            <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none mb-1 truncate">
-                                {data.stepNumber ? `Action Step #${data.stepNumber}` : 'Action Step'}
-                            </span>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none truncate">
+                                    {data.stepNumber ? `Action Step #${data.stepNumber}` : 'Action Step'}
+                                </span>
+                                {Boolean(data.isDisabled || config.isDisabled) && (
+                                    <Badge variant="outline" className="text-[7px] font-extrabold px-1 py-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 uppercase tracking-wider flex items-center gap-0.5">
+                                        <BellOff className="h-2 w-2" /> Bypassed
+                                    </Badge>
+                                )}
+                            </div>
                             <p className="text-xs font-semibold text-foreground leading-tight truncate">
                                 {getActionDescription()}
                             </p>

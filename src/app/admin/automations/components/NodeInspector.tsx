@@ -41,6 +41,7 @@ import { TagSelector } from '@/components/tags/TagSelector';
 interface NodeInspectorProps {
     node: import('reactflow').Node;
     onUpdate: (data: Record<string, unknown>) => void;
+    onUpdateAllSimilarNodes?: (actionType: string, isDisabled: boolean) => void;
     triggers?: import('@/lib/types').AutomationTriggerDef[];
     onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
     onDirtyChange?: (isDirty: boolean) => void;
@@ -464,6 +465,7 @@ const TriggerPickerItem = React.memo(function TriggerPickerItem({
 export function NodeInspector({ 
     node, 
     onUpdate, 
+    onUpdateAllSimilarNodes,
     triggers = [], 
     onTriggersChange,
     onDirtyChange,
@@ -947,6 +949,7 @@ export function NodeInspector({
                                             actionType={data.actionType}
                                             config={config}
                                             onUpdateConfig={updateConfig}
+                                            onUpdateAllSimilarNodes={onUpdateAllSimilarNodes}
                                             users={users}
                                             stages={stages}
                                             pipelines={pipelines}

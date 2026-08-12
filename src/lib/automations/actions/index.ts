@@ -15,13 +15,37 @@ import { handleSendNotification } from './notification-actions';
 import { logAutomationEvent } from '../../automation-log';
 import { handleUpdateLeadScore } from './score-automation-actions';
 
+/**
+ * Helper to check if an action node is marked as disabled/bypassed.
+ * Supports isDisabled on node.data, node.data.config.isDisabled, or node.data.config.disabled.
+ */
+export function isNodeDisabled(node: { data?: { isDisabled?: boolean; config?: Record<string, unknown> } }): boolean {
+  if (!node || !node.data) return false;
+  if (node.data.isDisabled === true) return true;
+  if (node.data.config && node.data.config.isDisabled === true) return true;
+  if (node.data.config && (node.data.config as Record<string, unknown>).disabled === true) return true;
+  return false;
+}
+
 export async function processActionNode(
-  node: { id?: string; data?: { actionType?: string; config?: Record<string, unknown> } },
+  node: { id?: string; data?: { label?: string; actionType?: string; config?: Record<string, unknown>; isDisabled?: boolean } },
   context: ExecutionContext
 ): Promise<Record<string, unknown> | void> {
   const rawActionType = node.data?.actionType;
   const config = node.data?.config || {};
   if (!rawActionType) return;
+
+  // Traversal Bypass Guard: If messaging/action step is disabled by designer, return safe default skipped payload
+  if (isNodeDisabled(node)) {
+    console.info(`[AUTOMATION] Bypassing disabled node "${node.data?.label || node.id}" (${rawActionType}) for run ${context.runId}`);
+    return {
+      skipped: true,
+      isDisabled: true,
+      reason: 'Messaging step disabled by designer',
+      messageId: null,
+      status: 'bypassed',
+    };
+  }
 
   const actionType = rawActionType.toUpperCase();
   const resolvedConfig = resolveConfigVariables(config, context.payload);
