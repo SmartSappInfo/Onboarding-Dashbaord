@@ -1080,6 +1080,20 @@ export function VisualBlock({
         case 'score-card': {
             const pillTextVal = block.pillText || 'Assessment Result';
             const subtitleVal = block.content || 'Total Points Recorded';
+
+            /**
+             * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+             * Strict 3-tier score priority resolution:
+             * 1. Dynamic Simulation Score (simulationVars.score) if populated
+             * 2. Configured Block Fallback (block.scoreValue) if defined
+             * 3. Default hard fallback '0'
+             * CAUTION: Must check non-empty (val !== undefined && val !== null && val !== '') so numeric 0 isn't overwritten.
+             */
+            const hasSimulationScore = simulationVars.score !== undefined && simulationVars.score !== null && simulationVars.score !== '';
+            const scoreDisplayVal = hasSimulationScore 
+                ? String(simulationVars.score) 
+                : (block.scoreValue !== undefined && block.scoreValue !== '' ? block.scoreValue : '0');
+
             return (
                 <div className="w-full py-6">
                     <Card 
@@ -1112,7 +1126,9 @@ export function VisualBlock({
                                 {renderTextWithVariablePills(pillTextVal)}
                             </Badge>
                         )}
-                        <span className="text-6xl font-semibold tabular-nums tracking-tighter" style={{ fontFamily: s.fontFamily, color: s.color }}>{(simulationVars.score as string | number) || 0}</span>
+                        <span className="text-6xl font-semibold tabular-nums tracking-tighter" style={{ fontFamily: s.fontFamily, color: s.color }}>
+                            {renderTextWithVariablePills(scoreDisplayVal)}
+                        </span>
                         {isEditing ? (
                             <div className="mt-1 w-full">
                                 <SlashInput

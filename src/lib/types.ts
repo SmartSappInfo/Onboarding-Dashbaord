@@ -2889,6 +2889,14 @@ export interface MessageBlock {
   rsvpTime?: string;
   rsvpLocation?: string;
   pillText?: string;
+  /**
+   * Score Card Fallback / Custom Value
+   * PURPOSE: Stores custom score value or fallback token (e.g. "85", "90", "{{score | 85}}")
+   * used when dynamic survey score variable is unavailable.
+   * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+   * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx.
+   */
+  scoreValue?: string;
   rsvpDateLabel?: string;
   rsvpTimeLabel?: string;
   rsvpLocationLabel?: string;

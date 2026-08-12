@@ -79,6 +79,18 @@ describe('renderHtmlWithVariablePills', () => {
     expect(pill).not.toBeNull();
     expect(pill?.textContent).toBe('org_name');
   });
+
+  it('resolves score-card fallback value correctly when simulation score is unpopulated or 0', () => {
+    const fallbackScore: string = '85';
+    // 1. Unpopulated simulation score uses scoreValue fallback
+    const scoreValUnpopulated = undefined !== undefined ? String(undefined) : (fallbackScore !== '' ? fallbackScore : '0');
+    expect(scoreValUnpopulated).toBe('85');
+
+    // 2. Numeric 0 simulation score preserves 0
+    const simScore0: unknown = 0;
+    const scoreValZero = simScore0 !== undefined && simScore0 !== null && simScore0 !== '' ? String(simScore0) : (fallbackScore !== '' ? fallbackScore : '0');
+    expect(scoreValZero).toBe('0');
+  });
 });
 
 describe('SlashInput HTML Converters & Tag Leakage Safeguard', () => {

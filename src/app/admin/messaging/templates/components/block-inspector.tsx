@@ -99,6 +99,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const headingRsvpTimeRef = React.useRef<HTMLInputElement>(null);
     const scoreCardPillRef = React.useRef<HTMLInputElement>(null);
     const scoreCardSubRef = React.useRef<HTMLInputElement>(null);
+    const scoreCardValRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -1373,6 +1374,26 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     variables={autocompleteVariables}
                                     className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20" 
                                     placeholder="e.g. Total Points Recorded"
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Score Value / Fallback</Label>
+                                    <InlineVariablePicker 
+                                        targetRef={scoreCardValRef} 
+                                        currentValue={block.scoreValue || ''} 
+                                        onFieldChange={val => onUpdate({ scoreValue: val })} 
+                                    />
+                                </div>
+                                <SlashInput 
+                                    ref={scoreCardValRef}
+                                    value={block.scoreValue || ''} 
+                                    onChange={val => onUpdate({ scoreValue: val })} 
+                                    variables={autocompleteVariables}
+                                    className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 font-semibold" 
+                                    placeholder="e.g. 85 or {{score | 0}}"
                                     onKeyDown={(e) => e.stopPropagation()}
                                 />
                             </div>
