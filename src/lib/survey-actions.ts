@@ -20,6 +20,58 @@ import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 
+export interface EntityContactPayload {
+  id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  isPrimary: boolean;
+  isSignatory?: boolean;
+  typeKey: string;
+  typeLabel?: string;
+  order?: number;
+  updatedAt?: string;
+}
+
+export interface EntityMutationPayload {
+  name?: string;
+  contacts?: EntityContactPayload[];
+  entityContacts?: EntityContactPayload[];
+  globalTags: string[];
+  workspaceTags: string[];
+  customData?: Record<string, string | number | boolean>;
+  personData?: Record<string, string | number | boolean | string[]>;
+  industryData?: Record<string, unknown>;
+}
+
+/**
+ * Sanitizes entity payload prior to database update operations.
+ * Ensures pre-existing entity names (e.g. "Kofi Annan Institute") are never overwritten
+ * by unmapped question answers (such as option "Yes") or dynamic lead capture fallbacks.
+ *
+ * @param payload Target entity mutation payload
+ * @param options Guard evaluation context (isExistingEntity, isExplicitlyMapped, isManualInput)
+ * @returns Sanitized payload safe for updateEntityAction
+ */
+export function sanitizeEntityPayloadForUpdate(
+  payload: EntityMutationPayload,
+  options: {
+    isExistingEntity: boolean;
+    isExplicitlyMapped: boolean;
+    isManualInput: boolean;
+  }
+): EntityMutationPayload {
+  const sanitized: EntityMutationPayload = { ...payload };
+
+  // CAUTION: Only strip name when updating pre-existing entities without explicit mapping or manual fill.
+  // Newly created entities ALWAYS retain their specified name.
+  if (options.isExistingEntity && !options.isExplicitlyMapped && !options.isManualInput) {
+    delete sanitized.name;
+  }
+
+  return sanitized;
+}
+
 /**
  * Get surveys for a specific contact (by entityId)
  * 
@@ -445,21 +497,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
           finalContactName = overriddenContactName || cName || finalEntityName;
 
-          const entityPayload: {
-            name: string;
-            contacts: Array<{
-              name: string;
-              email: string;
-              phone: string;
-              isPrimary: boolean;
-              typeKey: string;
-            }>;
-            globalTags: string[];
-            workspaceTags: string[];
-            customData?: Record<string, string | number | boolean>;
-            personData?: Record<string, string | number | boolean>;
-            industryData?: Record<string, unknown>;
-          } = {
+          const entityPayload: EntityMutationPayload = {
             name: finalEntityName,
             contacts: [
               {
@@ -488,19 +526,19 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           }
 
           if (!weSnap.empty) {
-            // Match found → Update existing entity safely
+            // Match found → Update existing entity safely via sanitizeEntityPayloadForUpdate
             const existingWE = weSnap.docs[0].data();
             finalEntityId = existingWE.entityId;
 
-            // ENTITY IDENTITY GUARD: When updating an existing entity, ONLY overwrite display name
-            // if entity.name was explicitly mapped in additionalMappings (overriddenEntityName).
-            if (!overriddenEntityName) {
-              delete (entityPayload as Record<string, unknown>).name;
-            }
+            const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+              isExistingEntity: true,
+              isExplicitlyMapped: Boolean(overriddenEntityName),
+              isManualInput: false,
+            });
 
             await updateEntityAction(
               finalEntityId,
-              entityPayload,
+              safePayload,
               'system-survey', // FIX 2: hyphen prefix for system exemption
               workspaceId,
               organizationId
@@ -1234,13 +1272,16 @@ export async function submitPublicSurveyLead(
 
     const mappedInstitutionData: Record<string, string | number | string[]> = {};
     const mappedPersonData: Record<string, string | number | string[]> = {};
-    let isExplicitEntityNameMapped = false;
 
     const mapping = surveyData.entityMapping || {};
+    let isExplicitEntityNameMapped = Boolean(
+      mapping.entityNameFieldId && getAnswerValue(mapping.entityNameFieldId)?.toString().trim()
+    );
+
     if (mapping.additionalMappings?.length) {
       mapping.additionalMappings.forEach((m) => {
         const val = getAnswerValue(m.questionId);
-        if (m.targetField === 'entity.name' && val) {
+        if (m.targetField === 'entity.name' && val && String(val).trim().length > 0) {
           isExplicitEntityNameMapped = true;
         }
         if (val !== null && val !== undefined && val !== '') {
@@ -1270,7 +1311,7 @@ export async function submitPublicSurveyLead(
     const fieldSources = (leadData.fieldFillSource as Record<string, 'manual' | 'dynamic'> | undefined) || {};
     const isManualNameInput = fieldSources.name === 'manual' || fieldSources.company === 'manual';
 
-    const entityPayload: any = {
+    const entityPayload: EntityMutationPayload = {
       name: finalEntityName,
       contacts: [
         {
@@ -1299,15 +1340,16 @@ export async function submitPublicSurveyLead(
 
       // ENTITY IDENTITY GUARD: When updating a pre-existing entity (e.g. "Kofi Annan Institute"),
       // ONLY update the entity name if it was explicitly typed by the user in the lead form (manual)
-      // OR explicitly mapped to `entity.name` in additionalMappings.
-      // This prevents option answers like "Yes" from replacing pre-tracked entity names.
-      if (!isExplicitEntityNameMapped && !isManualNameInput) {
-        delete entityPayload.name;
-      }
+      // OR explicitly mapped to `entity.name` in additionalMappings/entityNameFieldId.
+      const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+        isExistingEntity: true,
+        isExplicitlyMapped: isExplicitEntityNameMapped,
+        isManualInput: isManualNameInput,
+      });
 
       await updateEntityAction(
         finalEntityId!,
-        entityPayload,
+        safePayload,
         'system-survey',
         workspaceId,
         organizationId
@@ -1367,14 +1409,16 @@ export async function submitPublicSurveyLead(
         entityPayload.entityContacts = mergedContacts;
         delete entityPayload.contacts;
 
-        // ENTITY IDENTITY GUARD for duplicate matches
-        if (!isExplicitEntityNameMapped && !isManualNameInput) {
-          delete entityPayload.name;
-        }
+        // ENTITY IDENTITY GUARD for duplicate matches via sanitizeEntityPayloadForUpdate
+        const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+          isExistingEntity: true,
+          isExplicitlyMapped: isExplicitEntityNameMapped,
+          isManualInput: isManualNameInput,
+        });
         
         await updateEntityAction(
           targetEntityId,
-          entityPayload,
+          safePayload,
           'system-survey',
           workspaceId,
           organizationId
