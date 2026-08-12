@@ -88,8 +88,9 @@ export async function POST(request: NextRequest) {
         
       snap.forEach(doc => {
         const data = doc.data();
-        if (data.entityId) {
-          validEntityIds.add(data.entityId);
+        const foundId = data.entityId || data.id || doc.id;
+        if (foundId) {
+          validEntityIds.add(foundId);
         }
       });
 
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
         entitySnaps.forEach(entitySnap => {
           if (entitySnap.exists) {
             validEntityIds.add(entitySnap.id);
+            const data = entitySnap.data();
+            if (data?.entityId) validEntityIds.add(data.entityId);
           }
         });
       }

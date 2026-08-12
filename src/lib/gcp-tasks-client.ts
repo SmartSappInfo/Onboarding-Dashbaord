@@ -29,6 +29,10 @@ async function resolveRequestBaseUrl(): Promise<string> {
   } catch {
     // Fallback when called outside Next.js request context (e.g. background scripts)
   }
+  const port = process.env.PORT || '9002';
+  if (process.env.NODE_ENV !== 'production' && !BASE_URL.includes('9002') && BASE_URL.includes('3000')) {
+    return `http://127.0.0.1:${port}`;
+  }
   return BASE_URL;
 }
 

@@ -682,29 +682,58 @@ export async function enrollContactsInAutomation(
       return { success: false, error: 'No valid contacts found matching the active workspace tenant and selection filters.' };
     }
 
-    // 5. Split targets into chunks of 100 and schedule bulk tasks with concurrency limits
-    const scheduleChunkSize = 100;
-    const CONCURRENCY_LIMIT = 10;
-    const taskChunks: typeof targets[] = [];
-    
-    for (let i = 0; i < targets.length; i += scheduleChunkSize) {
-      taskChunks.push(targets.slice(i, i + scheduleChunkSize));
-    }
+    // Direct Execution Guard: Small/medium manual enrollments (<= 50 targets) execute directly in-memory
+    // to guarantee immediate document creation in automation_runs and automation_step_logs.
+    const DIRECT_ENROLLMENT_THRESHOLD = 50;
 
-    // Schedule tasks respecting the concurrency limit to prevent GCP rate limit drops (429s)
-    for (let i = 0; i < taskChunks.length; i += CONCURRENCY_LIMIT) {
-      const concurrentBatch = taskChunks.slice(i, i + CONCURRENCY_LIMIT);
-      await Promise.all(
-        concurrentBatch.map(chunk => 
-          scheduleBulkTriggerTask({
-            automationId,
-            workspaceId: effectiveWorkspaceId,
-            organizationId,
-            trigger: 'MANUAL_ENROLLMENT',
-            targets: chunk,
+    if (targets.length <= DIRECT_ENROLLMENT_THRESHOLD) {
+      const { executeAutomation } = await import('./executor');
+      const directConcurrency = 10;
+      for (let i = 0; i < targets.length; i += directConcurrency) {
+        const chunk = targets.slice(i, i + directConcurrency);
+        await Promise.all(
+          chunk.map(async (target) => {
+            const enrichedPayload = {
+              ...target.payload,
+              entityId: target.entityId,
+              entityType: target.entityType,
+              workspaceId: effectiveWorkspaceId,
+              organizationId,
+              _firingTrigger: 'MANUAL_ENROLLMENT',
+            };
+            try {
+              await executeAutomation(automation, enrichedPayload);
+            } catch (err: unknown) {
+              const errMsg = err instanceof Error ? err.message : String(err);
+              console.error(`[AUTOMATION-DIRECT-ENROLL] Error executing automation ${automationId} for entity ${target.entityId}:`, errMsg);
+            }
           })
-        )
-      );
+        );
+      }
+    } else {
+      // Large batches (> 50 targets): Split targets into chunks of 100 and schedule bulk tasks with concurrency limits
+      const scheduleChunkSize = 100;
+      const CONCURRENCY_LIMIT = 10;
+      const taskChunks: typeof targets[] = [];
+      
+      for (let i = 0; i < targets.length; i += scheduleChunkSize) {
+        taskChunks.push(targets.slice(i, i + scheduleChunkSize));
+      }
+
+      for (let i = 0; i < taskChunks.length; i += CONCURRENCY_LIMIT) {
+        const concurrentBatch = taskChunks.slice(i, i + CONCURRENCY_LIMIT);
+        await Promise.all(
+          concurrentBatch.map(chunk => 
+            scheduleBulkTriggerTask({
+              automationId,
+              workspaceId: effectiveWorkspaceId,
+              organizationId,
+              trigger: 'MANUAL_ENROLLMENT',
+              targets: chunk,
+            })
+          )
+        );
+      }
     }
 
     logAutomationEvent('info', 'manual_enrollment_scheduled', {
