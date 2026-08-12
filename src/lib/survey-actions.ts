@@ -488,9 +488,16 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           }
 
           if (!weSnap.empty) {
-            // Match found → Update existing
+            // Match found → Update existing entity safely
             const existingWE = weSnap.docs[0].data();
             finalEntityId = existingWE.entityId;
+
+            // ENTITY IDENTITY GUARD: When updating an existing entity, ONLY overwrite display name
+            // if entity.name was explicitly mapped in additionalMappings (overriddenEntityName).
+            if (!overriddenEntityName) {
+              delete (entityPayload as Record<string, unknown>).name;
+            }
+
             await updateEntityAction(
               finalEntityId,
               entityPayload,
@@ -1135,7 +1142,8 @@ export async function submitPublicSurveyLead(
     email?: string;
     phone?: string;
     company?: string;
-    [key: string]: string | undefined;
+    fieldFillSource?: Record<string, 'manual' | 'dynamic'>;
+    [key: string]: unknown;
   },
   outcomeId?: string | null
 ): Promise<{ success: boolean; error?: string }> {
@@ -1172,13 +1180,24 @@ export async function submitPublicSurveyLead(
       return { success: false, error: 'Identity validation failed per workspace policy.' };
     }
 
-    // Deduplication Search
+    // Deduplication Search & Pre-tracked Entity Resolution
+    let preTrackedEntityId: string | null = responseData.entityId || null;
+    if (!preTrackedEntityId && responseData.assignedUserId && !responseData.assignedUserId.includes(':')) {
+      preTrackedEntityId = responseData.assignedUserId;
+    }
+
     const dedupeQuery = adminDb.collection('workspace_entities')
       .where('workspaceId', '==', workspaceId)
       .where('displayName', '==', finalEntityName);
     
     let weSnap;
-    if (cEmail) {
+    if (preTrackedEntityId) {
+      weSnap = await adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', '==', preTrackedEntityId)
+        .limit(1)
+        .get();
+    } else if (cEmail) {
       weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
     } else if (cPhone) {
       weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
@@ -1215,11 +1234,15 @@ export async function submitPublicSurveyLead(
 
     const mappedInstitutionData: Record<string, string | number | string[]> = {};
     const mappedPersonData: Record<string, string | number | string[]> = {};
+    let isExplicitEntityNameMapped = false;
 
     const mapping = surveyData.entityMapping || {};
     if (mapping.additionalMappings?.length) {
       mapping.additionalMappings.forEach((m) => {
         const val = getAnswerValue(m.questionId);
+        if (m.targetField === 'entity.name' && val) {
+          isExplicitEntityNameMapped = true;
+        }
         if (val !== null && val !== undefined && val !== '') {
           if (m.targetField.startsWith('institutionData.')) {
             const field = m.targetField.replace('institutionData.', '');
@@ -1243,6 +1266,9 @@ export async function submitPublicSurveyLead(
         ...surveyMapped,
       };
     }
+
+    const fieldSources = (leadData.fieldFillSource as Record<string, 'manual' | 'dynamic'> | undefined) || {};
+    const isManualNameInput = fieldSources.name === 'manual' || fieldSources.company === 'manual';
 
     const entityPayload: any = {
       name: finalEntityName,
@@ -1270,6 +1296,15 @@ export async function submitPublicSurveyLead(
     if (!weSnap.empty) {
       const existingWE = weSnap.docs[0].data();
       finalEntityId = existingWE.entityId;
+
+      // ENTITY IDENTITY GUARD: When updating a pre-existing entity (e.g. "Kofi Annan Institute"),
+      // ONLY update the entity name if it was explicitly typed by the user in the lead form (manual)
+      // OR explicitly mapped to `entity.name` in additionalMappings.
+      // This prevents option answers like "Yes" from replacing pre-tracked entity names.
+      if (!isExplicitEntityNameMapped && !isManualNameInput) {
+        delete entityPayload.name;
+      }
+
       await updateEntityAction(
         finalEntityId!,
         entityPayload,
@@ -1305,7 +1340,7 @@ export async function submitPublicSurveyLead(
           if (emailMatch || phoneMatch) {
             mergedContacts[i] = {
               ...ec,
-              name: leadData.name || ec.name || finalEntityName,
+              name: isManualNameInput ? (leadData.name || ec.name || finalEntityName) : (ec.name || leadData.name || finalEntityName),
               email: cEmail || ec.email || '',
               phone: cPhone || ec.phone || '',
             };
@@ -1331,6 +1366,11 @@ export async function submitPublicSurveyLead(
         
         entityPayload.entityContacts = mergedContacts;
         delete entityPayload.contacts;
+
+        // ENTITY IDENTITY GUARD for duplicate matches
+        if (!isExplicitEntityNameMapped && !isManualNameInput) {
+          delete entityPayload.name;
+        }
         
         await updateEntityAction(
           targetEntityId,

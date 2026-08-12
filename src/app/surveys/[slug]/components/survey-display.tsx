@@ -569,6 +569,7 @@ function LeadCaptureFormView({
     const [phone, setPhone] = React.useState<string>('');
     const [company, setCompany] = React.useState<string>('');
     const [customValues, setCustomValues] = React.useState<Record<string, string>>({});
+    const [fieldFillSource, setFieldFillSource] = React.useState<Record<string, 'manual' | 'dynamic'>>({});
     const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
 
@@ -596,10 +597,26 @@ function LeadCaptureFormView({
 
         console.log('[LeadCaptureFormView] Values check: name:', resolvedName, 'email:', resolvedEmail, 'phone:', resolvedPhone, 'company:', resolvedCompany);
 
-        if (resolvedName && resolvedName !== name) setName(resolvedName);
-        if (resolvedEmail && resolvedEmail !== email) setEmail(resolvedEmail);
-        if (resolvedPhone && resolvedPhone !== phone) setPhone(resolvedPhone);
-        if (resolvedCompany && resolvedCompany !== company) setCompany(resolvedCompany);
+        // Mark initial values resolved dynamically
+        const nextSources: Record<string, 'manual' | 'dynamic'> = { ...fieldFillSource };
+        let hasSourceUpdate = false;
+
+        if (resolvedName && resolvedName !== name) {
+            setName(resolvedName);
+            if (!nextSources.name) { nextSources.name = 'dynamic'; hasSourceUpdate = true; }
+        }
+        if (resolvedEmail && resolvedEmail !== email) {
+            setEmail(resolvedEmail);
+            if (!nextSources.email) { nextSources.email = 'dynamic'; hasSourceUpdate = true; }
+        }
+        if (resolvedPhone && resolvedPhone !== phone) {
+            setPhone(resolvedPhone);
+            if (!nextSources.phone) { nextSources.phone = 'dynamic'; hasSourceUpdate = true; }
+        }
+        if (resolvedCompany && resolvedCompany !== company) {
+            setCompany(resolvedCompany);
+            if (!nextSources.company) { nextSources.company = 'dynamic'; hasSourceUpdate = true; }
+        }
 
         const nextCustom = { ...customValues };
         let hasCustomUpdate = false;
@@ -609,12 +626,16 @@ function LeadCaptureFormView({
                 if (val && !nextCustom[fKey]) {
                     nextCustom[fKey] = val;
                     hasCustomUpdate = true;
+                    if (!nextSources[fKey]) { nextSources[fKey] = 'dynamic'; hasSourceUpdate = true; }
                 }
             }
         });
         if (hasCustomUpdate) {
             console.log('[LeadCaptureFormView] Custom fields pre-populated:', nextCustom);
             setCustomValues(nextCustom);
+        }
+        if (hasSourceUpdate) {
+            setFieldFillSource(nextSources);
         }
 
         // Automatic silent skip verification
@@ -663,6 +684,7 @@ function LeadCaptureFormView({
                         email: fieldsConfig.email?.show ? resolvedEmail : undefined,
                         phone: fieldsConfig.phone?.show ? resolvedPhone : undefined,
                         company: fieldsConfig.company?.show ? resolvedCompany : undefined,
+                        fieldFillSource: nextSources,
                         ...nextCustom
                     }, outcomeId);
 
@@ -714,6 +736,7 @@ function LeadCaptureFormView({
                 email: fieldsConfig.email?.show ? email : undefined,
                 phone: fieldsConfig.phone?.show ? phone : undefined,
                 company: fieldsConfig.company?.show ? company : undefined,
+                fieldFillSource,
                 ...customValues
             }, outcomeId);
 
@@ -784,7 +807,11 @@ function LeadCaptureFormView({
                         <input
                             type="text"
                             value={name}
-                            onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: '' })); }}
+                            onChange={(e) => { 
+                                setName(e.target.value); 
+                                setFieldFillSource(prev => ({ ...prev, name: 'manual' }));
+                                if (errors.name) setErrors(prev => ({ ...prev, name: '' })); 
+                            }}
                             className={cn(
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.name && "border-destructive focus:ring-destructive/20 focus:border-destructive"
@@ -800,7 +827,11 @@ function LeadCaptureFormView({
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+                            onChange={(e) => { 
+                                setEmail(e.target.value); 
+                                setFieldFillSource(prev => ({ ...prev, email: 'manual' }));
+                                if (errors.email) setErrors(prev => ({ ...prev, email: '' })); 
+                            }}
                             className={cn(
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.email && "border-destructive focus:ring-destructive/20 focus:border-destructive"
@@ -816,7 +847,11 @@ function LeadCaptureFormView({
                         <input
                             type="tel"
                             value={phone}
-                            onChange={(e) => { setPhone(e.target.value); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); }}
+                            onChange={(e) => { 
+                                setPhone(e.target.value); 
+                                setFieldFillSource(prev => ({ ...prev, phone: 'manual' }));
+                                if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); 
+                            }}
                             className={cn(
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.phone && "border-destructive focus:ring-destructive/20 focus:border-destructive"
@@ -832,7 +867,11 @@ function LeadCaptureFormView({
                         <input
                             type="text"
                             value={company}
-                            onChange={(e) => { setCompany(e.target.value); if (errors.company) setErrors(prev => ({ ...prev, company: '' })); }}
+                            onChange={(e) => { 
+                                setCompany(e.target.value); 
+                                setFieldFillSource(prev => ({ ...prev, company: 'manual' }));
+                                if (errors.company) setErrors(prev => ({ ...prev, company: '' })); 
+                            }}
                             className={cn(
                                 "w-full h-12 rounded-xl bg-muted/20 border border-border/80 px-4 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                                 errors.company && "border-destructive focus:ring-destructive/20 focus:border-destructive"
@@ -857,7 +896,9 @@ function LeadCaptureFormView({
                                 type={fCfg.type === 'number' ? 'number' : fCfg.type === 'phone' ? 'tel' : fCfg.type === 'email' ? 'email' : 'text'}
                                 value={customValues[fKey] || ''}
                                 onChange={(e) => {
-                                    setCustomValues(prev => ({ ...prev, [fKey]: e.target.value }));
+                                    const val = e.target.value;
+                                    setCustomValues(prev => ({ ...prev, [fKey]: val }));
+                                    setFieldFillSource(prev => ({ ...prev, [fKey]: 'manual' }));
                                     if (errors[fKey]) setErrors(prev => ({ ...prev, [fKey]: '' }));
                                 }}
                                 className={cn(
