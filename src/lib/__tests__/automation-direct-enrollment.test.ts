@@ -4,7 +4,7 @@ import { adminDb } from '../firebase-admin';
 
 vi.mock('../firebase-admin', () => {
   const mockAdd = vi.fn().mockResolvedValue({ id: 'mock_run_123' });
-  const mockGet = vi.fn().mockImplementation(function (this: any) {
+  const mockGet = vi.fn().mockImplementation(function (this: unknown) {
     return Promise.resolve({
       exists: true,
       id: 'auto_123',
@@ -59,7 +59,7 @@ vi.mock('../firebase-admin', () => {
           where: () => ({ get: vi.fn().mockResolvedValue({ empty: true, docs: [] }) }),
         };
       }),
-      getAll: vi.fn().mockImplementation((...refs: any[]) =>
+      getAll: vi.fn().mockImplementation((...refs: unknown[]) =>
         Promise.all(
           refs.map((r) =>
             Promise.resolve({
