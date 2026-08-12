@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverExternalPackages: ['@google-cloud/tasks'],
+  serverExternalPackages: ['@google-cloud/tasks', 'canvas', 'jsdom'],
   experimental: {
     optimizePackageImports: ['lucide-react'],
     serverActions: {
@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
       moduleIds: 'deterministic',
     };
     
-    // Ignore Genkit AI server dependencies in client bundles
+    // Ignore Genkit AI server dependencies and native canvas binaries in client bundles
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -36,13 +36,17 @@ const nextConfig: NextConfig = {
         zlib: false,
         path: false,
         os: false,
+        canvas: false,
+        jsdom: false,
       };
       
-      // Ignore express and other server-only modules
+      // Ignore express, canvas, and other server-only/native modules
       config.externals = config.externals || [];
       config.externals.push({
         express: 'commonjs express',
         'express/lib/view': 'commonjs express/lib/view',
+        canvas: 'commonjs canvas',
+        jsdom: 'commonjs jsdom',
       });
     }
     
