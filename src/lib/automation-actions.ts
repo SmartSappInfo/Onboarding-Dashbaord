@@ -15,8 +15,6 @@ import {
   enrollContactsInAutomation,
   type EnrollContactsOptions,
 } from './automations/service';
-
-export type { EnrollContactsOptions };
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
 
