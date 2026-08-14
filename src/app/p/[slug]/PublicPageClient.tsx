@@ -617,9 +617,11 @@ export default function PublicPageClient({
                                                  <CheckCircle2 className="w-5 h-5" />}
                                             </div>
                                             <h3 className="text-xl font-bold tracking-tight text-[#0F172A] dark:text-slate-100 font-headline">
-                                                {section.props?.heading || (section.id === 'payment-methods-section' ? 'Bank Details' : 
-                                                 section.id === 'procedure-section' ? 'Payment Procedure' : 
-                                                 'Confirm Payment')}
+                                                {typeof section.props?.heading === 'string' ? section.props.heading : (
+                                                    section.id === 'payment-methods-section' ? 'Bank Details' : 
+                                                    section.id === 'procedure-section' ? 'Payment Procedure' : 
+                                                    'Confirm Payment'
+                                                )}
                                             </h3>
                                         </div>
 
