@@ -53,14 +53,14 @@ export interface EntityMutationPayload {
  * @param options Guard evaluation context (isExistingEntity, isExplicitlyMapped, isManualInput)
  * @returns Sanitized payload safe for updateEntityAction
  */
-export function sanitizeEntityPayloadForUpdate(
+export async function sanitizeEntityPayloadForUpdate(
   payload: EntityMutationPayload,
   options: {
     isExistingEntity: boolean;
     isExplicitlyMapped: boolean;
     isManualInput: boolean;
   }
-): EntityMutationPayload {
+): Promise<EntityMutationPayload> {
   const sanitized: EntityMutationPayload = { ...payload };
 
   // CAUTION: Only strip name when updating pre-existing entities without explicit mapping or manual fill.
