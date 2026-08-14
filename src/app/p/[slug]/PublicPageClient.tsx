@@ -24,6 +24,7 @@ import type { CampaignPageTheme } from '@/lib/types';
 import { PaymentMethodCard } from '@/components/portal/PaymentMethodCard';
 import Footer from '@/components/footer';
 import SUBSCRIPTION_PAYMENT_DATA from './payment-guide-data.json';
+import SUBSCRIPTION_RENEWAL_DATA from './subscription-renewal-data.json';
 import { sendReceiptAcknowledgementAction } from '@/lib/notification-actions';
 import Link from 'next/link';
 import VideoEmbed from '@/components/video-embed';
@@ -359,6 +360,19 @@ export default function PublicPageClient({
                 setLoading(false);
                 return;
             }
+            if (slug === 'subscription-renewal') {
+                const data = SUBSCRIPTION_RENEWAL_DATA as any;
+                setPage({
+                    id: 'subscription-renewal',
+                    organizationId: 'static',
+                    workspaceIds: ['static'],
+                    ...data.page,
+                    settings: { ...data.page.settings, showHeader: true, showFooter: true }
+                });
+                setVersion(data.version as any);
+                setLoading(false);
+                return;
+            }
 
             try {
                 const q = query(collection(db, 'campaign_pages'), where('slug', '==', slug));
@@ -489,7 +503,7 @@ export default function PublicPageClient({
                 <header className="fixed top-0 z-50 w-full py-4">
                     <div className="container max-w-4xl mx-auto px-6">
                         <div className="flex items-center justify-between rounded-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md border border-border/50 dark:border-zinc-800 py-1.5 px-6 shadow-lg shadow-black/5 dark:shadow-black/20 transition-all">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2.5">
                                 {orgBranding?.logoUrl ? (
                                     <Image
                                         src={orgBranding.logoUrl}
@@ -502,6 +516,7 @@ export default function PublicPageClient({
                                 ) : (
                                     <SmartSappLogo className="h-8 w-auto" />
                                 )}
+                                <span className="text-sm font-bold text-slate-800 dark:text-white font-headline">SmartSapp</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <span className="hidden md:block text-xs font-bold text-slate-500 dark:text-slate-400">Done Paying?</span>
@@ -510,7 +525,7 @@ export default function PublicPageClient({
                                     className="h-10 px-6 rounded-full font-bold text-xs shadow-md shadow-blue-500/20 transition-all active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
                                     onClick={() => setModalState({ type: 'receipt_request' })}
                                 >
-                                    Request Receipt
+                                    Confirm Payment
                                 </Button>
                             </div>
                         </div>
@@ -542,7 +557,7 @@ export default function PublicPageClient({
                                 }
                                 // Legacy shim: the static payment page's receipt CTA opens a
                                 // bespoke modal hosted here rather than a generic action.
-                                if (event === 'block_click' && blockId === 'cta-1') {
+                                if (event === 'block_click' && (blockId === 'cta-1' || blockId?.startsWith('cta-1') || blockId?.includes('cta-1') || blockId === 'confirm-payment-btn')) {
                                     setModalState({ type: 'receipt_request' });
                                     return;
                                 }
@@ -595,16 +610,16 @@ export default function PublicPageClient({
                                     {idx > 0 && <Separator className="bg-border/50 dark:bg-zinc-800/50" />}
                                     <div className="p-8 md:p-10 space-y-8">
                                         {/* Section Heading */}
-                                        <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex items-center justify-center gap-3 mb-2 text-center">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/5">
                                                 {section.id === 'payment-methods-section' ? <Banknote className="w-5 h-5" /> : 
                                                  section.id === 'procedure-section' ? <Smartphone className="w-5 h-5" /> : 
                                                  <CheckCircle2 className="w-5 h-5" />}
                                             </div>
-                                            <h3 className="text-lg font-bold tracking-tight text-[#0F172A] dark:text-slate-100 font-headline">
-                                                {section.id === 'payment-methods-section' ? 'Bank Details' : 
+                                            <h3 className="text-xl font-bold tracking-tight text-[#0F172A] dark:text-slate-100 font-headline">
+                                                {section.props?.heading || (section.id === 'payment-methods-section' ? 'Bank Details' : 
                                                  section.id === 'procedure-section' ? 'Payment Procedure' : 
-                                                 'Complete Payment'}
+                                                 'Confirm Payment')}
                                             </h3>
                                         </div>
 
@@ -664,11 +679,11 @@ export default function PublicPageClient({
                                                                 variant="default"
                                                                 className="h-14 px-16 rounded-xl font-bold text-sm shadow-xl shadow-blue-500/20 transition-all gap-3 active:scale-95 bg-blue-600 hover:bg-blue-700 text-white"
                                                                 onClick={() => {
-                                                                    if (block.id === 'cta-1') setModalState({ type: 'receipt_request' });
+                                                                    if (block.id === 'cta-1' || block.id?.startsWith('cta-1') || block.id?.includes('cta-1')) setModalState({ type: 'receipt_request' });
                                                                     else if (block.props.url) window.open(block.props.url, '_blank');
                                                                 }}
                                                             >
-                                                                {block.props.label || 'Continue'}
+                                                                {block.props.label || 'Confirm Payment'}
                                                                 <ArrowRight className="w-4 h-4" />
                                                             </Button>
                                                         </div>

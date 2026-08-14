@@ -100,6 +100,13 @@ const HARDCODED_PAGES: HardcodedPage[] = [
     defaultWorkspaceIds: ['onboarding'],
   },
   {
+    slug: 'subscription-renewal',
+    title: 'Subscription Renewal',
+    path: '/subscription-renewal',
+    themeColor: '#3A86FF',
+    defaultWorkspaceIds: ['onboarding'],
+  },
+  {
     slug: 'register-new-signup',
     title: 'New School Signup',
     path: '/register-new-signup',

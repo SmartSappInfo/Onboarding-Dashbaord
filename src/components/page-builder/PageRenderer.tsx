@@ -25,6 +25,7 @@ import { recordInteractionAction } from '@/lib/analytics-actions';
 import { extractTrackingParams, appendTrackingParams } from '@/lib/tracking-utils';
 import '@/lib/page-builder/blocks'; // side-effect: register all blocks
 import { Button } from '@/components/ui/button';
+import { SmartSappLogo } from '@/components/icons';
 import { 
   Phone, Search, Facebook, Twitter, Linkedin, 
   Instagram, Youtube, MapPin, Mail, Globe, ArrowRight, X 
@@ -238,7 +239,7 @@ function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, butto
     <div ref={containerRef} className="w-full relative pointer-events-auto">
       {/* Header bar */}
       <div className="flex items-center justify-between py-2.5 w-full">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {orgBranding?.logoUrl ? (
             <img 
               src={orgBranding.logoUrl} 
@@ -246,8 +247,9 @@ function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, butto
               className="h-8 w-auto object-contain max-w-[120px]" 
             />
           ) : (
-            <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
+            <SmartSappLogo className="h-7 w-auto" />
           )}
+          <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -302,7 +304,7 @@ function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, butto
       )}>
         {/* Header inside overlay */}
         <div className="card-nav-header flex items-center justify-between w-full border-b border-zinc-800/80 pb-4 mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {orgBranding?.logoUrl ? (
               <img 
                 src={orgBranding.logoUrl} 
@@ -310,8 +312,9 @@ function CardNavMenu({ headerSettings, orgBranding, theme, onNavItemClick, butto
                 className="h-8 w-auto object-contain max-w-[120px]" 
               />
             ) : (
-              <span className="text-sm font-bold text-white">{orgBranding?.name || 'SmartSapp'}</span>
+              <SmartSappLogo className="h-7 w-auto" />
             )}
+            <span className="text-sm font-bold text-white">{orgBranding?.name || 'SmartSapp'}</span>
           </div>
           <button
             type="button"
@@ -588,12 +591,13 @@ export function PageRenderer({
             ) : (
               <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
                 {/* 1. Logo (Left) */}
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   {orgBranding?.logoUrl ? (
                     <img src={orgBranding.logoUrl} alt={orgBranding.name} className="h-8 w-auto object-contain" />
                   ) : (
-                    <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
+                    <SmartSappLogo className="h-7 w-auto" />
                   )}
+                  <span className="text-sm font-bold text-slate-800 dark:text-white">{orgBranding?.name || 'SmartSapp'}</span>
                 </div>
 
                 {/* 2. Desktop Navigation Center/Left/Right (Hidden on Mobile) */}
@@ -844,7 +848,7 @@ export function PageRenderer({
               <div className="max-w-4xl mx-auto relative z-20">
                 {heading ? (
                   <h2
-                    className="text-2xl font-bold tracking-tight mb-8"
+                    className="text-2xl sm:text-3xl font-bold tracking-tight mb-8 text-center"
                     style={{ color: theme.colors.text, fontFamily: theme.typography.headingFont }}
                   >
                     {interpolate(heading)}

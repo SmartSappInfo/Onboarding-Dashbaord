@@ -1,0 +1,128 @@
+{
+    "page": {
+        "name": "SmartSapp Subscription Renewal Payment Guide",
+        "slug": "subscription-renewal",
+        "status": "published",
+        "pageGoal": "payment",
+        "seo": {
+            "title": "Simple Guide - SmartSapp Subscription Renewal",
+            "description": "Your prompt payments help us to provide better services for your school. All the options on this page are available for you to pay conveniently.",
+            "ogImageUrl": "https://d11n7da8rpqbjy.cloudfront.net/minex360/43166741753Admin_happy_office.png",
+            "noIndex": false
+        },
+        "settings": {
+            "showHeader": true,
+            "showFooter": true,
+            "themeOverrides": {
+                "primary": "#3A86FF",
+                "typography": {
+                    "primaryFont": "Montserrat"
+                }
+            }
+        }
+    },
+    "version": {
+        "structureJson": {
+            "header": {
+                "preset": "native",
+                "sticky": true,
+                "floating": true,
+                "showCta": true,
+                "ctaText": "Confirm Payment",
+                "ctaAction": "receipt_request",
+                "ctaLinkType": "action",
+                "buttons": [
+                    {
+                        "id": "confirm-payment-btn",
+                        "label": "Confirm Payment",
+                        "style": "primary",
+                        "linkType": "action",
+                        "action": "receipt_request"
+                    }
+                ]
+            },
+            "sections": [
+                {
+                    "id": "hero-section",
+                    "type": "section",
+                    "props": { "background": "default" },
+                    "blocks": [
+                        {
+                            "id": "hero-1",
+                            "type": "hero",
+                            "props": {
+                                "title": "Simple Guide - SmartSapp Subscription Payment",
+                                "subtitle": "Your prompt payments help us to provide better services for your school. All the options on this page are available for you to pay conveniently."
+                            }
+                        },
+                        {
+                            "id": "text-1",
+                            "type": "text",
+                            "props": {
+                                "content": "<div class='text-center'><p style='font-size: 1.4rem;'>Please <strong style='color: #FF3B3B;'>Pay Now</strong>, through any of the following channels</p></div>"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "payment-methods-section",
+                    "type": "section",
+                    "props": { "background": "slate-50", "heading": "Bank Details" },
+                    "blocks": [
+                        {
+                            "id": "bank-details",
+                            "type": "payment_methods",
+                            "props": {
+                                "methods": [
+                                    {
+                                        "title": "Bank Transfer to:",
+                                        "backgroundColor": "bg-white",
+                                        "accentColor": "text-[#3A86FF]",
+                                        "details": [
+                                            { "label": "Account Name", "value": "SmartSapp Innovations Ltd." },
+                                            { "label": "Account No.", "value": "6110137316" },
+                                            { "label": "Bank", "value": "Zenith Bank" },
+                                            { "label": "Branch", "value": "Head Office" }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "cta-section",
+                    "type": "section",
+                    "props": { "background": "slate-50", "heading": "Confirm Payment" },
+                    "blocks": [
+                        {
+                            "id": "cta-text",
+                            "type": "text",
+                            "props": {
+                                "content": "<div class='text-center mb-6'><p class='text-lg font-medium text-slate-600'>Kindly click the button below when you're done paying.</p></div>"
+                            }
+                        },
+                        {
+                            "id": "cta-1",
+                            "type": "cta",
+                            "props": {
+                                "label": "Confirm Payment",
+                                "variant": "primary",
+                                "buttons": [
+                                    {
+                                        "id": "btn_1",
+                                        "label": "Confirm Payment",
+                                        "variant": "primary",
+                                        "actionType": "url",
+                                        "url": "",
+                                        "trackEntity": true
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
