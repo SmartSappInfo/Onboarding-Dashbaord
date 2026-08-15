@@ -5,7 +5,7 @@ import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { CampaignPage, CampaignPageVersion, PageTrigger, PageTriggerAction, OrgBranding } from '@/lib/types';
-import { Loader2, PlusSquare, X, CheckCircle2, ArrowRight, Banknote, Smartphone } from 'lucide-react';
+import { Loader2, PlusSquare, X, CheckCircle2, ArrowRight, Banknote, Smartphone, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -213,6 +213,9 @@ export default function PublicPageClient({
     const [version, setVersion] = useState<CampaignPageVersion | null>(initialVersion);
     const [loading, setLoading] = useState(!initialPage);
     const [receiptFormSuccess, setReceiptFormSuccess] = useState(false);
+    const [isSubmittingReceipt, setIsSubmittingReceipt] = useState(false);
+    const [selectedReceiptFile, setSelectedReceiptFile] = useState<File | null>(null);
+    const [receiptUploadProgress, setReceiptUploadProgress] = useState<number>(0);
     const { modalState, setModalState, fireTrigger } = useTriggerEngine(page, orgBranding);
     const [variablesMap, setVariablesMap] = useState<Record<string, string>>(preloadedVariables);
     const { setTheme, resolvedTheme: activeTheme } = useTheme();
@@ -850,22 +853,34 @@ export default function PublicPageClient({
                                         className="space-y-4"
                                         onSubmit={async (e) => {
                                             e.preventDefault();
+                                            setIsSubmittingReceipt(true);
                                             const formData = new FormData(e.currentTarget);
                                             const payload = Object.fromEntries(formData.entries());
                                             
+                                            let documentUrl = '';
                                             try {
+                                                if (selectedReceiptFile) {
+                                                    const { uploadReceiptDocument } = await import('@/lib/page-builder/upload');
+                                                    documentUrl = await uploadReceiptDocument(selectedReceiptFile, (progress) => {
+                                                        setReceiptUploadProgress(progress);
+                                                    });
+                                                }
                                                 await sendReceiptAcknowledgementAction({
                                                     name: payload.name as string,
                                                     school: payload.school as string,
                                                     phone: payload.phone as string,
                                                     email: payload.email as string,
                                                     amount: payload.amount as string,
+                                                    documentUrl: documentUrl || undefined,
                                                 });
+                                                setReceiptFormSuccess(true);
                                             } catch (err) {
                                                 console.error("Notification flow failed:", err);
+                                            } finally {
+                                                setIsSubmittingReceipt(false);
+                                                setReceiptUploadProgress(0);
+                                                setSelectedReceiptFile(null);
                                             }
-                                            
-                                            setReceiptFormSuccess(true);
                                         }}
                                     >
                                         <div className="space-y-2">
@@ -890,8 +905,36 @@ export default function PublicPageClient({
                                             <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Payment Amount (GHS)</Label>
                                             <Input name="amount" type="number" required placeholder="0.00" className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100" />
                                         </div>
-                                        <Button type="submit" className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-blue-500/20 mt-4 bg-blue-600 hover:bg-blue-700 text-white">
-                                            Send Request
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Attach Proof of Payment / Document (Optional)</Label>
+                                            <Input 
+                                                type="file" 
+                                                accept="image/*,.pdf,.doc,.docx" 
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0] || null;
+                                                    setSelectedReceiptFile(file);
+                                                }} 
+                                                className="h-12 rounded-xl bg-slate-50 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 dark:text-slate-100 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-zinc-800 dark:file:text-slate-200" 
+                                            />
+                                            {selectedReceiptFile && (
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium ml-1 flex items-center gap-1">
+                                                    <FileText className="w-3.5 h-3.5" /> Selected: {selectedReceiptFile.name} ({(selectedReceiptFile.size / 1024).toFixed(0)} KB)
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button 
+                                            type="submit" 
+                                            disabled={isSubmittingReceipt}
+                                            className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-blue-500/20 mt-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                                        >
+                                            {isSubmittingReceipt ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    {receiptUploadProgress > 0 && receiptUploadProgress < 100 ? `Uploading (${receiptUploadProgress}%)...` : 'Processing Request...'}
+                                                </>
+                                            ) : (
+                                                'Confirm Payment'
+                                            )}
                                         </Button>
                                     </form>
                                 </>
