@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { WorkflowEdge } from '../[id]/edit/components/edges/WorkflowEdge';
 import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap, type SplicingOptions } from '@/lib/automations/graph-rewriter';
 import { ReconcileDropDialog } from './ReconcileDropDialog';
+import { NodeDeletionReconcileDialog } from './NodeDeletionReconcileDialog';
+import { getParkedJobsCount, reconcileParkedJobsOnNodeDeletion, type ParkedContactStrategy } from '@/lib/automations/node-deletion-reconciliation';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
@@ -82,7 +84,8 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NodeInspector } from './NodeInspector';
 import type { AutomationTriggerDef, AutomationRun } from '@/lib/types';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
+import { useTenant } from '@/context/TenantContext';
 import { useSearchParams } from 'next/navigation';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -131,6 +134,8 @@ interface AutomationBuilderProps {
 export default function AutomationBuilder({ initialNodes, initialEdges, triggers, onStateChange, onTriggersChange, automationId }: AutomationBuilderProps) {
     const { toast } = useToast();
     const confirm = useConfirm();
+    const { user } = useUser();
+    const { activeWorkspaceId } = useTenant();
     const healedEdges = React.useMemo(() => {
         if (!initialEdges) return [];
         return initialEdges.map((edge: any) => {
@@ -749,12 +754,75 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         return Array.from(visited);
     }, [edges]);
 
-    // --- Delete functions ---
-    const deleteNodeById = React.useCallback((nodeId: string) => {
-        setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+    // State for Parked Contact Reconciliation modal on node deletion
+    const [reconcileDialogState, setReconcileDialogState] = React.useState<{
+        open: boolean;
+        nodeId: string;
+        nodeLabel: string;
+        parkedCount: number;
+        nextStepIds: string[];
+    } | null>(null);
+
+    const performNodeDeletion = React.useCallback((nodeId: string) => {
+        setEdges(eds => {
+            const { edges: healedEdges } = healGraphGap(nodes, eds, nodeId);
+            return healedEdges;
+        });
         setNodes(nds => nds.filter(n => n.id !== nodeId));
         if (selectedNodeId === nodeId) setSelectedNodeId(null);
-    }, [selectedNodeId, setEdges, setNodes]);
+    }, [selectedNodeId, nodes, setEdges, setNodes]);
+
+    const deleteNodeById = React.useCallback(async (nodeId: string) => {
+        const targetNode = nodes.find(n => n.id === nodeId);
+        const nodeLabel = targetNode?.data?.label || targetNode?.data?.actionType || 'Step';
+        const exitChildEdges = edges.filter(e => e.source === nodeId);
+        const nextStepIds = exitChildEdges.map(e => e.target);
+
+        // Check if there are active parked contacts at this node
+        if (automationId) {
+            const parkedCount = await getParkedJobsCount(automationId, nodeId);
+            if (parkedCount > 0) {
+                setReconcileDialogState({
+                    open: true,
+                    nodeId,
+                    nodeLabel: String(nodeLabel),
+                    parkedCount,
+                    nextStepIds,
+                });
+                return;
+            }
+        }
+
+        performNodeDeletion(nodeId);
+    }, [nodes, edges, automationId, performNodeDeletion]);
+
+    const handleConfirmParkedReconciliation = async (strategy: ParkedContactStrategy) => {
+        if (!reconcileDialogState || !automationId || !user?.uid) return;
+
+        const result = await reconcileParkedJobsOnNodeDeletion({
+            automationId,
+            deletedNodeId: reconcileDialogState.nodeId,
+            workspaceId: activeWorkspaceId || 'onboarding',
+            userId: user.uid,
+            strategy,
+            nextStepIds: reconcileDialogState.nextStepIds,
+        });
+
+        if (result.success) {
+            toast({
+                title: 'Parked Contacts Reconciled',
+                description: `Successfully applied strategy to ${result.processedCount} contact(s).`,
+            });
+            performNodeDeletion(reconcileDialogState.nodeId);
+            setReconcileDialogState(null);
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Reconciliation Failed',
+                description: result.error || 'Failed to reconcile parked contacts.',
+            });
+        }
+    };
 
     const deleteNodeWithDownstream = React.useCallback((nodeId: string) => {
         const downstreamIds = getDownstreamNodeIds(nodeId);
@@ -2152,6 +2220,17 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                     </Dialog>
                 );
             })()}
+
+            {/* Parked Contacts Node Deletion Reconciliation Modal */}
+            <NodeDeletionReconcileDialog
+                open={!!reconcileDialogState?.open}
+                onOpenChange={(open) => {
+                    if (!open) setReconcileDialogState(null);
+                }}
+                nodeLabel={reconcileDialogState?.nodeLabel || 'Step'}
+                parkedCount={reconcileDialogState?.parkedCount || 0}
+                onConfirm={handleConfirmParkedReconciliation}
+            />
 
             {/* Exit Confirmation Dialog */}
             {(() => {
