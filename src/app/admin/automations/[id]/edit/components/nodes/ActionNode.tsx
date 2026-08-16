@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare } from 'lucide-react';
+import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare, CheckSquare, Building2, DollarSign, UserPlus, PhoneCall, StopCircle, Globe } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -23,22 +23,37 @@ const ACTION_NAMES: Record<string, string> = {
     DIRECT_SMS: 'Direct SMS',
     DIRECT_WHATSAPP: 'Direct WhatsApp',
     CREATE_TASK: 'Create Task',
+    UPDATE_TASK: 'Update Task',
+    CREATE_SCHOOL: 'Create School',
+    CREATE_ENTITY: 'Create Entity',
     UPDATE_ENTITY: 'Update Entity',
     ASSIGN_ENTITY: 'Assign Entity',
+    ADD_CONTACT_TO_ENTITY: 'Add Contact to Entity',
+    UPDATE_CONTACT: 'Update Contact',
+    ADD_TO_CALL_CAMPAIGN: 'Add to Call Campaign',
+    END_AUTOMATION: 'End Automation',
     TRIGGER_OUTBOUND_WEBHOOK: 'Outbound Webhook',
-    SEND_NOTIFICATION_EMAIL: 'Notification (Email)',
-    SEND_NOTIFICATION_SMS: 'Notification (SMS)',
-    SEND_NOTIFICATION_IN_APP: 'Notification (In-App)',
-    SEND_NOTIFICATION_PUSH: 'Notification (Push)',
+    SEND_NOTIFICATION_EMAIL: 'Send Notification (Email)',
+    SEND_NOTIFICATION_SMS: 'Send Notification (SMS)',
+    SEND_NOTIFICATION_IN_APP: 'Send Notification (In-App)',
+    SEND_NOTIFICATION_PUSH: 'Send Notification (Push)',
     RUN_AUTOMATION: 'Run Automation',
     ADD_NOTE: 'Add Note',
     CREATE_DEAL: 'Create Deal',
     UPDATE_DEAL_STAGE: 'Update Deal Stage',
     UPDATE_DEAL_VALUE: 'Update Deal Value',
     UPDATE_DEAL_STATUS: 'Update Deal Status',
-    UPDATE_TASK: 'Update Task',
     UPDATE_LEAD_SCORE: 'Adjust Lead Score',
 };
+
+function formatActionName(actionType?: string): string {
+    if (!actionType) return 'Unconfigured';
+    if (ACTION_NAMES[actionType]) return ACTION_NAMES[actionType];
+    return actionType
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 export interface ActionNodeData {
     actionType?: string;
@@ -71,26 +86,56 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
 
     const getIcon = () => {
         switch(actionType) {
-            case 'SEND_MESSAGE': return config.channel === 'whatsapp' ? MessageSquare : config.channel === 'sms' ? Smartphone : Mail;
-            case 'SEND_WHATSAPP': return MessageSquare;
-            case 'DIRECT_EMAIL': return Mail;
-            case 'DIRECT_SMS': return Smartphone;
-            case 'DIRECT_WHATSAPP': return MessageSquare;
-            case 'CREATE_TASK': return Clock;
-            case 'UPDATE_ENTITY': return Building;
-            case 'ASSIGN_ENTITY': return Building;
-            case 'TRIGGER_OUTBOUND_WEBHOOK': return Zap;
-            case 'SEND_NOTIFICATION_EMAIL': return Mail;
-            case 'SEND_NOTIFICATION_SMS': return Smartphone;
-            case 'SEND_NOTIFICATION_IN_APP': return Bell;
-            case 'SEND_NOTIFICATION_PUSH': return Smartphone;
-            case 'UPDATE_LEAD_SCORE': return Sparkles;
-            default: return Play;
+            case 'SEND_MESSAGE': {
+                if (config.channel === 'whatsapp') return MessageSquare;
+                if (config.channel === 'sms') return Smartphone;
+                return Mail;
+            }
+            case 'SEND_WHATSAPP':
+            case 'DIRECT_WHATSAPP':
+                return MessageSquare;
+            case 'DIRECT_EMAIL':
+            case 'SEND_NOTIFICATION_EMAIL':
+                return Mail;
+            case 'DIRECT_SMS':
+            case 'SEND_NOTIFICATION_SMS':
+            case 'SEND_NOTIFICATION_PUSH':
+                return Smartphone;
+            case 'SEND_NOTIFICATION_IN_APP':
+                return Bell;
+            case 'CREATE_TASK':
+            case 'UPDATE_TASK':
+                return CheckSquare;
+            case 'CREATE_SCHOOL':
+            case 'CREATE_ENTITY':
+            case 'UPDATE_ENTITY':
+            case 'ASSIGN_ENTITY':
+                return Building2;
+            case 'CREATE_DEAL':
+            case 'UPDATE_DEAL_STAGE':
+            case 'UPDATE_DEAL_VALUE':
+            case 'UPDATE_DEAL_STATUS':
+                return DollarSign;
+            case 'ADD_CONTACT_TO_ENTITY':
+            case 'UPDATE_CONTACT':
+                return UserPlus;
+            case 'ADD_TO_CALL_CAMPAIGN':
+                return PhoneCall;
+            case 'END_AUTOMATION':
+                return StopCircle;
+            case 'TRIGGER_OUTBOUND_WEBHOOK':
+                return Globe;
+            case 'UPDATE_LEAD_SCORE':
+                return Sparkles;
+            case 'ADD_NOTE':
+                return StickyNote;
+            default:
+                return Zap;
         }
     };
 
     const Icon = getIcon();
-    const stepName = ACTION_NAMES[actionType] || (actionType ? actionType.replace(/_/g, ' ') : 'Action Step');
+    const stepName = formatActionName(actionType);
 
     const getResourceDetail = () => {
         if (!actionType) return 'Action';
@@ -313,8 +358,8 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                             <div className="flex-1 min-w-0 h-full pl-3 pr-2 flex items-center justify-between text-left">
                                 <div className="flex flex-col justify-center min-w-0 pr-1">
                                     <div className="flex items-center gap-1.5 mb-0.5">
-                                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none truncate">
-                                            {data.stepNumber ? `Action Step #${data.stepNumber}` : 'Action Step'}
+                                        <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider leading-none truncate max-w-[180px]">
+                                            {actionType ? `Action: ${stepName}` : 'Action: Unconfigured'}
                                         </span>
                                         {isDisabledNode && (
                                             <Badge variant="outline" className="text-[7px] font-extrabold px-1 py-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 uppercase tracking-wider flex items-center gap-0.5">
