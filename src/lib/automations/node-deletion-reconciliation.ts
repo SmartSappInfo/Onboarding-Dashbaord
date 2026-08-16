@@ -75,7 +75,7 @@ export async function reconcileParkedJobsOnNodeDeletion(
     }
 
     const automation = { id: autoSnap.id, ...autoSnap.data() } as Automation;
-    if (automation.workspaceId !== workspaceId) {
+    if (automation.workspaceIds && automation.workspaceIds.length > 0 && !automation.workspaceIds.includes(workspaceId)) {
       throw new Error(`Unauthorized: Automation ${automationId} does not belong to workspace ${workspaceId}`);
     }
 

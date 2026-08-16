@@ -46,7 +46,7 @@ vi.mock('../firebase-admin', () => {
               get: vi.fn().mockResolvedValue({
                 exists: true,
                 id: 'auto_100',
-                data: () => ({ name: 'Test Automation', workspaceId: 'ws_test' }),
+                data: () => ({ name: 'Test Automation', workspaceIds: ['ws_test'] }),
               }),
             })),
           };

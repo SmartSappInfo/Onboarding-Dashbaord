@@ -780,8 +780,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
 
         // Check if there are active parked contacts at this node
         if (automationId) {
-            const targetWorkspaceId = activeWorkspaceId || automation?.workspaceId;
-            const parkedCount = await getParkedJobsCount(automationId, nodeId, targetWorkspaceId);
+            const parkedCount = await getParkedJobsCount(automationId, nodeId, activeWorkspaceId);
             if (parkedCount > 0) {
                 setReconcileDialogState({
                     open: true,
@@ -795,13 +794,12 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         }
 
         performNodeDeletion(nodeId);
-    }, [nodes, edges, automationId, performNodeDeletion]);
+    }, [nodes, edges, automationId, activeWorkspaceId, performNodeDeletion]);
 
     const handleConfirmParkedReconciliation = async (strategy: ParkedContactStrategy) => {
         if (!reconcileDialogState || !automationId || !user?.uid) return;
 
-        const targetWorkspaceId = activeWorkspaceId || automation?.workspaceId;
-        if (!targetWorkspaceId) {
+        if (!activeWorkspaceId) {
             toast({
                 title: 'Reconciliation Error',
                 description: 'Active workspace context could not be resolved.',
@@ -813,7 +811,7 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
         const result = await reconcileParkedJobsOnNodeDeletion({
             automationId,
             deletedNodeId: reconcileDialogState.nodeId,
-            workspaceId: targetWorkspaceId,
+            workspaceId: activeWorkspaceId,
             userId: user.uid,
             strategy,
             nextStepIds: reconcileDialogState.nextStepIds,
