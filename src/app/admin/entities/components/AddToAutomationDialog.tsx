@@ -10,6 +10,7 @@ import type { EnrollContactsOptions } from '@/lib/automations/service';
 import type { Automation, EntityContact, AudienceFilter } from '@/lib/types';
 import type { ConditionGroup } from '@/lib/automation-condition';
 import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
+import { ContactScopeSelector } from '@/app/admin/messaging/audiences/components/ContactScopeSelector';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Sparkles, AlertCircle, CheckCircle2, Users } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle, CheckCircle2, Users, Building2 } from 'lucide-react';
 import { useTerminology } from '@/hooks/use-terminology';
 
 interface AddToAutomationDialogProps {
@@ -63,6 +64,8 @@ export function AddToAutomationDialog({
   const organizationId = activeOrganizationId;
   const { singular, plural } = useTerminology();
 
+  // Flag indicating if entities were explicitly checked/selected from a list/table
+  const hasExplicitSelection = entityIds.length > 0;
   const isSingleEntity = entityIds.length === 1;
 
   // Selected Automation state (when opening without pre-bound automationId)
@@ -78,7 +81,7 @@ export function AddToAutomationDialog({
   const [selectedContacts, setSelectedContacts] = React.useState<
     Array<{ entityId: string; contactId: string; name?: string; email?: string; phone?: string; entityName?: string }>
   >([]);
-  const [contactScope, setContactScope] = React.useState<'primary' | 'signatories' | 'all'>('all');
+  const [contactScope, setContactScope] = React.useState<'primary' | 'signatories' | 'all' | (string & {})>('all');
   const [reachCount, setReachCount] = React.useState<number | null>(null);
   const [reachContactCount, setReachContactCount] = React.useState<number | null>(null);
 
@@ -103,7 +106,7 @@ export function AddToAutomationDialog({
     if (open) {
       setSelectedAutomationId(automationId || null);
       setIsSubmitting(false);
-      setAudienceMode(isSingleEntity ? 'manual' : 'all');
+      setAudienceMode(hasExplicitSelection ? 'manual' : 'all');
       setFilters([]);
       setFilterLogic('AND');
       setGroups([]);
@@ -128,7 +131,7 @@ export function AddToAutomationDialog({
         setSelectedContacts([]);
       }
     }
-  }, [open, isSingleEntity, entityIds, entityContacts, entityName, singular, automationId]);
+  }, [open, hasExplicitSelection, isSingleEntity, entityIds, entityContacts, entityName, singular, automationId]);
 
   const handleAudienceChange = React.useCallback(
     (updates: {
@@ -160,7 +163,7 @@ export function AddToAutomationDialog({
     const targetAutomationId = automationId || selectedAutomationId;
     if (!targetAutomationId || !user) return;
 
-    if (audienceMode === 'manual' && selectedContacts.length === 0) {
+    if (!hasExplicitSelection && audienceMode === 'manual' && selectedContacts.length === 0) {
       toast({
         variant: 'destructive',
         title: 'No Contacts Selected',
@@ -170,15 +173,16 @@ export function AddToAutomationDialog({
     }
 
     const options: EnrollContactsOptions = {
-      audienceMode,
-      filters: audienceMode === 'advanced' || audienceMode === 'saved' ? filters : [],
+      audienceMode: hasExplicitSelection ? 'manual' : audienceMode,
+      filters: !hasExplicitSelection && (audienceMode === 'advanced' || audienceMode === 'saved') ? filters : [],
       filterLogic,
-      groups: audienceMode === 'advanced' || audienceMode === 'saved' ? groups : [],
-      contactScope,
-      selectedContacts: audienceMode === 'manual' ? selectedContacts : undefined,
+      groups: !hasExplicitSelection && (audienceMode === 'advanced' || audienceMode === 'saved') ? groups : [],
+      contactScope: contactScope as any,
+      selectedContacts: !hasExplicitSelection && audienceMode === 'manual' ? selectedContacts : undefined,
     };
 
-    const targetEntityIds = isSingleEntity ? entityIds : [];
+    // When entities are explicitly selected on the list view, pass all selected entity IDs directly
+    const targetEntityIds = hasExplicitSelection ? entityIds : [];
 
     setIsSubmitting(true);
 
@@ -197,7 +201,7 @@ export function AddToAutomationDialog({
       if (result.success) {
         toast({
           title: 'Direct Enrollment Scheduled',
-          description: `Successfully enqueued ${result.enrolledCount ?? reachContactCount ?? 'all'} contact run(s) into "${targetAutomationName}".`,
+          description: `Successfully enqueued ${result.enrolledCount ?? reachContactCount ?? targetEntityIds.length ?? 'all'} contact run(s) into "${targetAutomationName}".`,
           actionConfig: {
             path: `/admin/automations/${targetAutomationId}/edit?tab=activity`,
             label: 'View Activity Logs',
@@ -230,6 +234,9 @@ export function AddToAutomationDialog({
 
   // Dynamic button label based on reach calculation and audience selection
   const getCtaLabel = () => {
+    if (hasExplicitSelection) {
+      return `Enroll ${entityIds.length} Selected ${entityIds.length === 1 ? singular : plural}`;
+    }
     if (audienceMode === 'manual') {
       return `Enroll ${selectedContacts.length} Selected Contact(s)`;
     }
@@ -252,12 +259,16 @@ export function AddToAutomationDialog({
                 <Sparkles className="h-4 w-4" />
               </div>
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-                Enroll Contacts in Automation
+                {hasExplicitSelection
+                  ? `Enroll Selected ${entityIds.length === 1 ? singular : plural} in Automation`
+                  : 'Enroll Contacts in Automation'}
               </DialogTitle>
             </div>
           </div>
           <DialogDescription className="text-xs text-muted-foreground font-medium leading-relaxed mt-1">
-            {automationId
+            {hasExplicitSelection
+              ? `Target contacts across the ${entityIds.length} selected ${entityIds.length === 1 ? singular : plural} record(s) for automated enrollment.`
+              : automationId
               ? `Filter, segment, and select contacts across all 19,000+ workspace records to enroll directly into this flow.`
               : `Select target contacts across your workspace or ${entityLabel} for automated enrollment.`}
           </DialogDescription>
@@ -271,13 +282,13 @@ export function AddToAutomationDialog({
           ) : null}
         </DialogHeader>
 
-        {/* --- MAIN AUDIENCE SELECTOR CONTENT --- */}
+        {/* --- MAIN CONTENT --- */}
         <div className="flex-1 min-h-0 flex flex-col my-3 space-y-4 overflow-hidden">
           {/* Target Automation Selector (Only when not pre-bound) */}
           {!automationId ? (
             <div className="space-y-1 text-left shrink-0">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
-                Select Automation
+                Select Automation Program
               </label>
               {isLoadingAutomations ? (
                 <div className="flex items-center justify-center p-3 border border-dashed border-border rounded-xl bg-muted/20">
@@ -307,36 +318,83 @@ export function AddToAutomationDialog({
             </div>
           ) : null}
 
-          {/* Reusable Message Composer Audience Selector Engine */}
-          <div className="flex-1 min-h-0 border border-border rounded-2xl p-4 bg-card/40 overflow-hidden flex flex-col">
-            <ScrollArea className="h-full pr-2">
-              <AudienceSelector
-                workspaceId={workspaceId}
-                organizationId={organizationId}
-                channel="sms"
-                audienceMode={audienceMode}
-                filters={filters}
-                filterLogic={filterLogic}
-                groups={groups}
-                savedAudienceId={savedAudienceId}
-                selectedContacts={selectedContacts}
-                contactScope={contactScope}
-                onChange={handleAudienceChange}
-                onReachCalculated={handleReachCalculated}
-              />
-            </ScrollArea>
-          </div>
+          {/* Conditional Layout: Explicit Selection Mode vs Workspace-Wide Audience Mode */}
+          {hasExplicitSelection ? (
+            <div className="flex-1 min-h-0 border border-primary/20 bg-primary/5 rounded-2xl p-5 overflow-hidden flex flex-col space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="text-sm font-bold text-foreground">
+                      {entityIds.length === 1
+                        ? `Enrolling ${entityName || singular}`
+                        : `Enrolling ${entityIds.length} Selected ${plural}`}
+                    </h4>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                      Target contacts from the selected {entityIds.length === 1 ? singular : plural} record(s).
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="font-bold bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-xl text-xs">
+                  {entityIds.length} Selected
+                </Badge>
+              </div>
+
+              <div className="border-t border-primary/15 pt-4 space-y-2 text-left">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">
+                  Contact Target Scope
+                </label>
+                <ContactScopeSelector
+                  value={contactScope}
+                  onChange={(scope) => setContactScope(scope as any)}
+                />
+                <p className="text-[11px] text-muted-foreground px-1 italic">
+                  {contactScope === 'all' && 'Enrolls all contacts linked to the selected entities.'}
+                  {contactScope === 'primary' && 'Enrolls only the primary contact of each selected entity.'}
+                  {contactScope === 'signatories' && 'Enrolls only contacts marked as signatories.'}
+                  {contactScope.startsWith('role:') && `Enrolls contacts assigned to role "${contactScope.replace('role:', '')}".`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Reusable Message Composer Audience Selector Engine for Workspace-Wide Mode */
+            <div className="flex-1 min-h-0 border border-border rounded-2xl p-4 bg-card/40 overflow-hidden flex flex-col">
+              <ScrollArea className="h-full pr-2">
+                <AudienceSelector
+                  workspaceId={workspaceId}
+                  organizationId={organizationId}
+                  channel="sms"
+                  audienceMode={audienceMode}
+                  filters={filters}
+                  filterLogic={filterLogic}
+                  groups={groups}
+                  savedAudienceId={savedAudienceId}
+                  selectedContacts={selectedContacts}
+                  contactScope={contactScope}
+                  onChange={handleAudienceChange}
+                  onReachCalculated={handleReachCalculated}
+                />
+              </ScrollArea>
+            </div>
+          )}
         </div>
 
         {/* --- FOOTER CTAS --- */}
         <div className="pt-3 shrink-0 flex items-center justify-between border-t border-border mt-auto">
           <div className="flex items-center gap-2">
-            {reachCount !== null && (
+            {hasExplicitSelection ? (
+              <Badge variant="secondary" className="text-xs font-bold bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-xl">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />
+                {entityIds.length} {entityIds.length === 1 ? singular : plural} Targeted
+              </Badge>
+            ) : reachCount !== null ? (
               <Badge variant="secondary" className="text-xs font-bold bg-primary/10 text-primary border-primary/20 px-3 py-1 rounded-xl">
                 <Users className="h-3.5 w-3.5 mr-1.5" />
                 {reachCount.toLocaleString()} Matched {reachContactCount !== null ? `(${reachContactCount.toLocaleString()} Contacts)` : ''}
               </Badge>
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -352,8 +410,8 @@ export function AddToAutomationDialog({
               disabled={
                 isSubmitting ||
                 !activeTargetAutomationId ||
-                (audienceMode === 'manual' && selectedContacts.length === 0) ||
-                (audienceMode !== 'manual' && (reachCount === 0 || reachContactCount === 0))
+                (!hasExplicitSelection && audienceMode === 'manual' && selectedContacts.length === 0) ||
+                (!hasExplicitSelection && audienceMode !== 'manual' && (reachCount === 0 || reachContactCount === 0))
               }
               className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.97] transition-all flex items-center gap-1.5 px-5"
             >
