@@ -155,7 +155,34 @@ export async function traverseNodes(
     return;
   }
   const currentNode = automation.nodes.find((n) => n.id === nodeId);
-  if (!currentNode) return;
+
+  /**
+   * ARCHITECTURAL CAUTION (Rule 10 Maintainer Protocol):
+   * Orphaned Step Fallback Recovery:
+   * If a target nodeId was deleted from automation.nodes (e.g. historical deletion before modal safeguards),
+   * we must NOT leave the automation run hanging indefinitely in 'running' status.
+   * We attempt to locate the first valid non-trigger node in automation.nodes following graph position.
+   * If no valid non-trigger node exists, we cleanly mark the automation run as completed.
+   */
+  if (!currentNode) {
+    console.warn(`[TRAVERSE] Target node ${nodeId} no longer exists in automation ${automation.id}. Attempting orphan recovery.`);
+
+    const nonTriggerNodes = automation.nodes.filter((n) => n.type !== 'triggerNode');
+    if (nonTriggerNodes.length === 0) {
+      if (context.runId) {
+        await adminDb.collection('automation_runs').doc(context.runId).update({
+          status: 'completed',
+          finishedAt: new Date().toISOString(),
+          completedNote: `Run completed upon orphan recovery (Node ${nodeId} deleted)`,
+        });
+      }
+      context.isTerminated = true;
+      return;
+    }
+
+    const fallbackNode = nonTriggerNodes[0];
+    return traverseNodes(fallbackNode.id, automation, context, true);
+  }
 
   // Enrich context details at the start of node traversal
   await enrichExecutionContext(context);

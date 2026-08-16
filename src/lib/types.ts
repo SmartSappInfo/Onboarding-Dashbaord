@@ -2530,6 +2530,7 @@ export interface AutomationRun {
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
   workspaceId?: string;
+  organizationId?: string;
   steps?: Record<string, StepExecution>;
   /** Tracks the node the contact is currently at (set by step-logger) */
   currentNodeId?: string;

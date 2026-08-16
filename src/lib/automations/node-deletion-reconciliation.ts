@@ -139,6 +139,15 @@ export async function reconcileParkedJobsOnNodeDeletion(
               updatedAt: new Date().toISOString(),
             });
             batchHasWrites = true;
+          } else {
+            // Terminal step: mark run completed
+            const runRef = adminDb.collection('automation_runs').doc(job.runId);
+            batch.update(runRef, {
+              status: 'completed',
+              finishedAt: new Date().toISOString(),
+              completedNote: `Run completed upon deletion of terminal node ${deletedNodeId}`,
+            });
+            batchHasWrites = true;
           }
           processedCount++;
         } else if (strategy === 'advance_now') {
@@ -163,6 +172,15 @@ export async function reconcileParkedJobsOnNodeDeletion(
               };
               await traverseNodes(primaryNextStepId, automation, context);
             });
+          } else {
+            // Terminal step: mark run completed
+            const runRef = adminDb.collection('automation_runs').doc(job.runId);
+            batch.update(runRef, {
+              status: 'completed',
+              finishedAt: new Date().toISOString(),
+              completedNote: `Run completed upon deletion of terminal node ${deletedNodeId}`,
+            });
+            batchHasWrites = true;
           }
           processedCount++;
         }

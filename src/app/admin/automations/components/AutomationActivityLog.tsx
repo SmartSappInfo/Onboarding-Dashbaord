@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
+import { OrphanedRunsCleanupModal } from './OrphanedRunsCleanupModal';
+import type { OrphanedRunInfo } from '@/app/actions/orphaned-runs-reconciliation-actions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -251,6 +253,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
   const [selectedRunIds, setSelectedRunIds] = React.useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = React.useState(false);
+  const [showOrphanModal, setShowOrphanModal] = React.useState(false);
 
   const [limitAmount, setLimitAmount] = React.useState(100);
   const [dbStats, setDbStats] = React.useState<{
@@ -563,6 +566,27 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
   const retryableSelectedCount = React.useMemo(() => {
     return selectedRunsList.filter(r => getEffectiveStatus(r) === 'failed').length;
   }, [selectedRunsList]);
+
+  const orphanedRunsList = React.useMemo<OrphanedRunInfo[]>(() => {
+    if (!runs) return [];
+    return runs
+      .filter((r) => {
+        const st = getEffectiveStatus(r);
+        if (st !== 'running' && st !== 'waiting') return false;
+        if (!r.currentNodeId) return false;
+        return !nodes.some((n) => n.id === r.currentNodeId);
+      })
+      .map((r) => ({
+        runId: r.id,
+        automationId: r.automationId,
+        automationName: automationId || r.automationId,
+        entityId: r.entityId || '',
+        entityName: getRunDisplayName(r, entityNames),
+        orphanedNodeId: r.currentNodeId!,
+        orphanedNodeLabel: r.currentNodeLabel,
+        startedAt: r.startedAt,
+      }));
+  }, [runs, nodes, automationId, entityNames]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -1055,6 +1079,26 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         </div>
       </div>
 
+      {/* Orphaned Runs Warning Banner */}
+      {orphanedRunsList.length > 0 && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              <strong>{orphanedRunsList.length} Orphaned Contact(s)</strong> waiting at steps that were removed from the automation flow.
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOrphanModal(true)}
+            className="h-7 text-[10px] font-bold text-amber-700 dark:text-amber-300 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 active:scale-[0.97]"
+          >
+            Fix Orphaned Runs
+          </Button>
+        </div>
+      )}
+
       {/* Filters & Bulk Actions */}
       <div className="border-b border-border/50 px-6 py-3 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -1184,8 +1228,17 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                       <span className="text-[10px] font-medium text-foreground/70">
                         {(() => {
                           if (!run.currentNodeId) return run.currentNodeLabel || '—';
-                          const node = nodes.find(n => n.id === run.currentNodeId);
-                          if (!node) return run.currentNodeLabel || '—';
+                          const node = nodes.find((n) => n.id === run.currentNodeId);
+                          if (!node) {
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <span>{run.currentNodeLabel || 'Deleted Step'}</span>
+                                <span className="text-[9px] font-semibold uppercase tracking-wider bg-amber-500/20 px-1 py-0.2 rounded text-amber-700 dark:text-amber-300">
+                                  Deleted Step
+                                </span>
+                              </span>
+                            );
+                          }
                           const stepNum = getVisualStepNumberForTable(run.currentNodeId);
                           const label = (node.data?.label as string) || node.type || 'Step';
                           return stepNum ? `${label} (Step #${stepNum})` : label;
@@ -1467,6 +1520,15 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         isOpen={!!rescheduleJobId}
         onClose={() => setRescheduleJobId(null)}
         userId={user?.uid || ''}
+      />
+
+      <OrphanedRunsCleanupModal
+        open={showOrphanModal}
+        onOpenChange={setShowOrphanModal}
+        workspaceId={activeWorkspaceId || ''}
+        userId={user?.uid || ''}
+        automationId={automationId}
+        orphanedRuns={orphanedRunsList}
       />
     </div>
   );

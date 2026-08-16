@@ -392,6 +392,45 @@ export async function forceAdvanceRun(
       .get();
 
     if (pendingJobSnap.empty) {
+      /**
+       * ARCHITECTURAL CAUTION (Rule 10 Maintainer Protocol):
+       * Orphaned Run Fallback Recovery:
+       * If no pending job exists in automation_jobs, but the run is active and its currentNodeId was deleted,
+       * synthesize execution context and advance directly to the next valid step or mark completed.
+       */
+      const autoSnap = await adminDb.collection('automations').doc(run.automationId).get();
+      if (autoSnap.exists) {
+        const automation = { id: autoSnap.id, ...autoSnap.data() } as import('../types').Automation;
+        const currentNode = automation.nodes.find((n) => n.id === run.currentNodeId);
+
+        if (!currentNode) {
+          const nonTriggerNodes = automation.nodes.filter((n) => n.type !== 'triggerNode');
+          if (nonTriggerNodes.length === 0) {
+            await adminDb.collection('automation_runs').doc(runId).update({
+              status: 'completed',
+              finishedAt: new Date().toISOString(),
+              completedNote: 'Run completed upon manual skip of orphaned deleted step',
+            });
+            return { success: true };
+          }
+
+          const fallbackNode = nonTriggerNodes[0];
+          const { traverseNodes } = await import('./nodes/traverse');
+          const context: import('./execution-types').ExecutionContext = {
+            runId,
+            automationId: run.automationId,
+            workspaceId: run.workspaceId || 'onboarding',
+            organizationId: run.organizationId,
+            entityId: run.entityId || '',
+            entityType: run.entityType || 'person',
+            payload: run.triggerData || {},
+          };
+
+          await traverseNodes(fallbackNode.id, automation, context, true);
+          return { success: true };
+        }
+      }
+
       throw new Error('No pending wait step found to skip.');
     }
 
