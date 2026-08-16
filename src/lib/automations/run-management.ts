@@ -404,7 +404,10 @@ export async function forceAdvanceRun(
         const currentNode = automation.nodes.find((n) => n.id === run.currentNodeId);
 
         if (!currentNode) {
-          const nonTriggerNodes = automation.nodes.filter((n) => n.type !== 'triggerNode');
+          const nonTriggerNodes = automation.nodes
+            .filter((n) => n.type !== 'triggerNode')
+            .sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0) || (a.position?.x ?? 0) - (b.position?.x ?? 0));
+
           if (nonTriggerNodes.length === 0) {
             await adminDb.collection('automation_runs').doc(runId).update({
               status: 'completed',
@@ -419,7 +422,7 @@ export async function forceAdvanceRun(
           const context: import('./execution-types').ExecutionContext = {
             runId,
             automationId: run.automationId,
-            workspaceId: run.workspaceId || 'onboarding',
+            workspaceId: run.workspaceId || automation.workspaceIds?.[0] || 'onboarding',
             organizationId: run.organizationId,
             entityId: run.entityId || '',
             entityType: run.entityType || 'person',

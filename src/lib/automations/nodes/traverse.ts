@@ -167,7 +167,10 @@ export async function traverseNodes(
   if (!currentNode) {
     console.warn(`[TRAVERSE] Target node ${nodeId} no longer exists in automation ${automation.id}. Attempting orphan recovery.`);
 
-    const nonTriggerNodes = automation.nodes.filter((n) => n.type !== 'triggerNode');
+    const nonTriggerNodes = automation.nodes
+      .filter((n) => n.type !== 'triggerNode')
+      .sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0) || (a.position?.x ?? 0) - (b.position?.x ?? 0));
+
     if (nonTriggerNodes.length === 0) {
       if (context.runId) {
         await adminDb.collection('automation_runs').doc(context.runId).update({

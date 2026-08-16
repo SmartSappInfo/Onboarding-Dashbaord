@@ -225,10 +225,27 @@ export async function reconcileOrphanedRunsAction(
             cancelledReason: 'Bulk orphaned run cleanup by administrator',
           });
           batchHasWrites = true;
+
+          // Purge/cancel any matching pending jobs for this run
+          const jobsSnap = await adminDb
+            .collection('automation_jobs')
+            .where('runId', '==', run.id)
+            .where('status', 'in', ['pending', 'paused'])
+            .get();
+
+          jobsSnap.docs.forEach((jDoc) => {
+            batch.update(jDoc.ref, {
+              status: 'cancelled',
+              cancelledAt: new Date().toISOString(),
+            });
+          });
+
           cancelledCount++;
         } else if (strategy === 'advance_all') {
           const automation = autoCache.get(run.automationId);
-          const nonTriggerNodes = automation?.nodes.filter((n) => n.type !== 'triggerNode') || [];
+          const nonTriggerNodes = (automation?.nodes || [])
+            .filter((n) => n.type !== 'triggerNode')
+            .sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0) || (a.position?.x ?? 0) - (b.position?.x ?? 0));
 
           if (automation && nonTriggerNodes.length > 0) {
             const fallbackNode = nonTriggerNodes[0];
@@ -264,7 +281,12 @@ export async function reconcileOrphanedRunsAction(
       }
 
       if (advanceTasks.length > 0) {
-        await Promise.all(advanceTasks.map((t) => t()));
+        const results = await Promise.allSettled(advanceTasks.map((t) => t()));
+        results.forEach((res, idx) => {
+          if (res.status === 'rejected') {
+            console.error(`[ORPHAN-RECONCILE] Task ${idx} failed during advance:`, res.reason);
+          }
+        });
       }
 
       // Event-loop yield between chunks for GC and system responsiveness
