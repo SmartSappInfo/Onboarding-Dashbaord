@@ -549,13 +549,32 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (template.styleId !== 'none') {
         const styleIdToUse = template.styleId;
         
-        // If styleId is empty, undefined, null, or 'default', query default workspace style
+        // If styleId is empty, undefined, null, or 'default', query 7-Tier priority default style (Org-default -> Workspace-default -> Global-default)
         if (!styleIdToUse || styleIdToUse === 'default') {
-            const defaultSnap = await adminDb.collection('message_styles')
-                .where('workspaceIds', 'array-contains', resolvedWorkspaceId)
-                .where('isDefault', '==', true)
-                .limit(1)
-                .get();
+            let defaultSnap = finalOrgId
+                ? await adminDb.collection('message_styles')
+                    .where('organizationId', '==', finalOrgId)
+                    .where('isDefault', '==', true)
+                    .limit(1)
+                    .get()
+                : { empty: true, docs: [] };
+
+            if (defaultSnap.empty && resolvedWorkspaceId) {
+                defaultSnap = await adminDb.collection('message_styles')
+                    .where('workspaceIds', 'array-contains', resolvedWorkspaceId)
+                    .where('isDefault', '==', true)
+                    .limit(1)
+                    .get();
+            }
+
+            if (defaultSnap.empty) {
+                defaultSnap = await adminDb.collection('message_styles')
+                    .where('scope', '==', 'global')
+                    .where('isDefault', '==', true)
+                    .limit(1)
+                    .get();
+            }
+
             if (!defaultSnap.empty) {
                 activeStyleDoc = { id: defaultSnap.docs[0].id, ...defaultSnap.docs[0].data() } as MessageStyle;
             }

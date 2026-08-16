@@ -24,6 +24,8 @@ import type { MessageTemplate, MessageStyle } from '@/lib/types';
 import type { WhatsAppDisplayTemplate } from '../lib/unified-template';
 import { renderPreview } from './whatsapp/shared';
 import { InlineEditableName } from './template-gallery';
+import { getDefaultStyle } from '@/lib/services/style-resolver';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 // Premium high-fidelity mock variables for rendering exact state without unresolved curly braces
 const MOCK_VARIABLES: Record<string, string> = {
@@ -66,6 +68,7 @@ export function TemplatePreviewModal({
     onUpdateName,
     styles = []
 }: TemplatePreviewModalProps) {
+    const { activeOrganizationId, activeWorkspaceId, activeOrganization } = useWorkspace();
     const [viewMode, setViewMode] = React.useState<'desktop' | 'mobile'>('desktop');
 
     // Auto-reset viewMode to mobile if it's SMS, since SMS only exists on mobile
@@ -85,7 +88,7 @@ export function TemplatePreviewModal({
         if (template.styleId !== 'none') {
             const styleIdToUse = template.styleId;
             if (!styleIdToUse || styleIdToUse === 'default') {
-                activeStyle = styles.find(s => s.isDefault) || null;
+                activeStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) || null;
             } else {
                 activeStyle = styles.find(s => s.id === styleIdToUse) || null;
             }
@@ -99,7 +102,15 @@ export function TemplatePreviewModal({
         const matches = contentForScan.match(/\{\{([^{}]+?)\}\}/g);
         const detectedVars = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
-        const mergedMocks = { ...MOCK_VARIABLES };
+        const mergedMocks: Record<string, string> = {
+            ...MOCK_VARIABLES,
+            org_name: activeOrganization?.name || 'Your Organization',
+            org_logo_url: activeOrganization?.logoUrl || '',
+            org_email: activeOrganization?.email || '',
+            org_phone: activeOrganization?.phone || '',
+            org_address: activeOrganization?.address || '',
+            org_website: activeOrganization?.website || ''
+        };
         detectedVars.forEach(v => {
             if (!(v in mergedMocks)) {
                 mergedMocks[v] = `[${v.replace(/_/g, ' ')}]`;
@@ -115,12 +126,12 @@ export function TemplatePreviewModal({
             }
 
             const brandingData = {
-                name: mergedMocks.org_name ?? 'Acme Academy',
-                logoUrl: mergedMocks.org_logo_url ?? '',
-                email: mergedMocks.org_email ?? 'support@acme.edu',
-                phone: mergedMocks.org_phone ?? '+1 (555) 019-2834',
-                address: mergedMocks.org_address ?? '123 Innovation Way, Suite 400',
-                website: mergedMocks.org_website ?? 'https://smartsapp.com',
+                name: activeOrganization?.name || mergedMocks.org_name || 'Your Organization',
+                logoUrl: activeOrganization?.logoUrl || mergedMocks.org_logo_url || '',
+                email: activeOrganization?.email || mergedMocks.org_email || '',
+                phone: activeOrganization?.phone || mergedMocks.org_phone || '',
+                address: activeOrganization?.address || mergedMocks.org_address || '',
+                website: activeOrganization?.website || mergedMocks.org_website || '',
                 footerHtml: activeStyle.footerHtml,
                 footerEnabled: activeStyle.footerEnabled !== false
             };

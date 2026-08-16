@@ -50,6 +50,6 @@ describe('subscription renewal fixture', () => {
     const ctaSection = fixture.version.structureJson.sections.find((s) => s.id === 'cta-section');
     expect(ctaSection?.props.heading).toBe('Confirm Payment');
     const ctaBlock = ctaSection?.blocks.find((b) => b.id === 'cta-1');
-    expect(ctaBlock?.props.label).toBe('Confirm Payment');
+    expect((ctaBlock?.props as Record<string, unknown>)?.label).toBe('Confirm Payment');
   });
 });

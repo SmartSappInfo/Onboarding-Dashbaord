@@ -20,6 +20,8 @@ import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
 import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
+import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
+import { getDefaultStyle } from '@/lib/services/style-resolver';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -1696,6 +1698,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
 // ─── MessagePreviewer ─────────────────────────────────────────────────────────
 function MessagePreviewer({ template, variables, styles = [] }: { template: MessageTemplate; variables: Record<string, any>; styles?: MessageStyle[] }) {
+    const { activeOrganizationId, activeWorkspaceId, activeOrganization } = useWorkspace();
     const combinedVars = { ...variables };
 
     if (variables.ai_refined_body) {
@@ -1715,7 +1718,7 @@ function MessagePreviewer({ template, variables, styles = [] }: { template: Mess
     if (template.styleId !== 'none') {
         const styleIdToUse = template.styleId;
         if (!styleIdToUse || styleIdToUse === 'default') {
-            activeStyle = styles.find(s => s.isDefault) || null;
+            activeStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) || null;
         } else {
             activeStyle = styles.find(s => s.id === styleIdToUse) || null;
         }
@@ -1727,6 +1730,31 @@ function MessagePreviewer({ template, variables, styles = [] }: { template: Mess
             styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
         } else {
             styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
+        }
+
+        if (styleWrapper) {
+            const brandingData = {
+                name: combinedVars.org_name || activeOrganization?.name || 'Your Organization',
+                logoUrl: combinedVars.org_logo_url || activeOrganization?.logoUrl || '',
+                email: combinedVars.org_email || activeOrganization?.email || '',
+                phone: combinedVars.org_phone || activeOrganization?.phone || '',
+                address: combinedVars.org_address || activeOrganization?.address || '',
+                website: combinedVars.org_website || activeOrganization?.website || '',
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            const styleOverrides = {
+                primaryColor: activeStyle.primaryColor,
+                secondaryColor: activeStyle.secondaryColor,
+                fontFamily: activeStyle.fontFamily,
+                backgroundColor: activeStyle.backgroundColor,
+                textColor: activeStyle.textColor,
+                cardBackgroundColor: activeStyle.cardBackgroundColor,
+                borderRadius: activeStyle.borderRadius,
+                footerHtml: activeStyle.footerHtml,
+                footerEnabled: activeStyle.footerEnabled !== false
+            };
+            styleWrapper = resolveBrandingPreview(styleWrapper, brandingData, styleOverrides);
         }
     }
 

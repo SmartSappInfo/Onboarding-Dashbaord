@@ -109,6 +109,7 @@ const WHATSAPP_LANGUAGES: ReadonlyArray<{ code: string; label: string }> = [
 ];
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
+import { getDefaultStyle } from '@/lib/services/style-resolver';
 import { SortableBlockItem } from './visual-block';
 import { blockIcons } from './block-icons';
 import { BlockInspector } from './block-inspector';
@@ -2233,7 +2234,7 @@ export function TemplateWorkshop({
     mode = 'org_override'
 }: TemplateWorkshopProps) {
     const { toast } = useToast();
-    const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces, activeOrganization } = useWorkspace();
     const activeWorkspace = allowedWorkspaces?.find(w => w.id === activeWorkspaceId);
     const { singular: entityTerminology } = useTerminology();
     const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
@@ -2538,11 +2539,11 @@ export function TemplateWorkshop({
     const [activeBlockSubView, setActiveBlockSubView] = React.useState<string | null>(null);
     const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'layers' | 'validation'>('properties');
     
-    // Default style wrapper selector logic
+    // Default style wrapper selector logic (7-Tier Priority Order via style-resolver)
     const [styleId, setStyleId] = React.useState(() => {
         if (initialTemplate) return initialTemplate.styleId || 'none';
         if (initialContext?.channel === 'sms') return 'none';
-        const defaultStyle = styles.find(s => s.isDefault);
+        const defaultStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId);
         return defaultStyle?.id || 'none';
     });
 
@@ -2551,11 +2552,11 @@ export function TemplateWorkshop({
             if (contentMode === 'html_code') {
                 setStyleId('none');
             } else {
-                const defaultStyle = styles.find(s => s.isDefault);
+                const defaultStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId);
                 setStyleId(defaultStyle?.id || 'none');
             }
         }
-    }, [contentMode, initialTemplate, styles]);
+    }, [contentMode, initialTemplate, styles, activeOrganizationId, activeWorkspaceId]);
 
     // Email Architect State Hooks
     const [architectPrompt, setArchitectPrompt] = React.useState('');
@@ -2709,16 +2710,24 @@ export function TemplateWorkshop({
     const [simContactId, setSimContactId] = React.useState<string>('none');
     const [isSimLoading, setIsSimLoading] = React.useState(false);
 
-    // Simulation variable fallbacks for brand wrapper previews
-    const orgFallbacks = React.useMemo(() => ({
-        org_name: 'SmartSapp Hub',
-        org_logo_url: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/SmartSapp%20Logo%20short.png?alt=media&token=046f95a8-b331-4129-a4ef-43ae7837eadd',
-        org_email: 'support@smartsapp.com',
-        org_phone: '+233 24 273 7120',
-        org_address: 'SmartSapp Intelligence Hub, Accra, Ghana',
-        org_website: 'https://smartsapp.com',
-        current_year: new Date().getFullYear().toString()
-    }), []);
+    // Simulation variable fallbacks for brand wrapper previews (Tenant Sovereignty: derives from active Organization)
+    const orgFallbacks = React.useMemo(() => {
+        const orgName = activeOrganization?.name || activeWorkspace?.name || 'Your Organization';
+        const orgLogo = activeOrganization?.logoUrl || '';
+        const orgEmail = activeOrganization?.email || '';
+        const orgPhone = activeOrganization?.phone || '';
+        const orgAddress = activeOrganization?.address || '';
+        const orgWebsite = activeOrganization?.website || '';
+        return {
+            org_name: orgName,
+            org_logo_url: orgLogo,
+            org_email: orgEmail,
+            org_phone: orgPhone,
+            org_address: orgAddress,
+            org_website: orgWebsite,
+            current_year: new Date().getFullYear().toString()
+        };
+    }, [activeOrganization, activeWorkspace]);
 
     const activeSimVariables = React.useMemo(() => {
         return { ...orgFallbacks, ...simVariables };
@@ -3632,7 +3641,7 @@ export function TemplateWorkshop({
 
     const wrapperStyles = React.useMemo(() => {
         const activeStyle = styleId !== 'none'
-            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
             : null;
         if (!activeStyle) return null;
         
@@ -3663,11 +3672,11 @@ export function TemplateWorkshop({
         }
         
         return { outerBg, cardBg, borderRadius, border };
-    }, [styleId, styles, target]);
+    }, [styleId, styles, target, activeOrganizationId, activeWorkspaceId]);
 
     const resolvedHeader = React.useMemo(() => {
         const activeStyle = styleId !== 'none'
-            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
             : null;
         if (!activeStyle) return '';
         let html = target === 'internal_team'
@@ -3675,12 +3684,12 @@ export function TemplateWorkshop({
             : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
 
         const brandingData = {
-            name: activeSimVariables.org_name ?? 'SmartSapp Hub',
-            logoUrl: activeSimVariables.org_logo_url ?? '',
-            email: activeSimVariables.org_email ?? 'support@smartsapp.com',
-            phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
-            address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
-            website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+            name: activeSimVariables.org_name || activeOrganization?.name || 'Your Organization',
+            logoUrl: activeSimVariables.org_logo_url || activeOrganization?.logoUrl || '',
+            email: activeSimVariables.org_email || activeOrganization?.email || '',
+            phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
+            address: activeSimVariables.org_address || activeOrganization?.address || '',
+            website: activeSimVariables.org_website || activeOrganization?.website || '',
             footerHtml: activeStyle.footerHtml,
             footerEnabled: activeStyle.footerEnabled !== false
         };
@@ -3721,11 +3730,11 @@ export function TemplateWorkshop({
         }
         
         return resolveVariables(headerPart, activeSimVariables);
-    }, [styleId, styles, activeSimVariables, target]);
+    }, [styleId, styles, activeSimVariables, target, activeOrganizationId, activeWorkspaceId, activeOrganization]);
 
     const resolvedFooter = React.useMemo(() => {
         const activeStyle = styleId !== 'none'
-            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
             : null;
         if (!activeStyle) return '';
         let html = target === 'internal_team'
@@ -3733,12 +3742,12 @@ export function TemplateWorkshop({
             : (activeStyle.htmlWrapperExternal ?? activeStyle.htmlWrapper ?? '');
 
         const brandingData = {
-            name: activeSimVariables.org_name ?? 'SmartSapp Hub',
-            logoUrl: activeSimVariables.org_logo_url ?? '',
-            email: activeSimVariables.org_email ?? 'support@smartsapp.com',
-            phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
-            address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
-            website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+            name: activeSimVariables.org_name || activeOrganization?.name || 'Your Organization',
+            logoUrl: activeSimVariables.org_logo_url || activeOrganization?.logoUrl || '',
+            email: activeSimVariables.org_email || activeOrganization?.email || '',
+            phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
+            address: activeSimVariables.org_address || activeOrganization?.address || '',
+            website: activeSimVariables.org_website || activeOrganization?.website || '',
             footerHtml: activeStyle.footerHtml,
             footerEnabled: activeStyle.footerEnabled !== false
         };
@@ -3778,11 +3787,11 @@ export function TemplateWorkshop({
         }
                                
         return resolveVariables(footerPart, activeSimVariables);
-    }, [styleId, styles, activeSimVariables, target]);
+    }, [styleId, styles, activeSimVariables, target, activeOrganizationId, activeWorkspaceId, activeOrganization]);
 
     const resolvedPreviewHtml = React.useMemo(() => {
         const activeStyle = styleId !== 'none'
-            ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+            ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
             : null;
         const effectiveMode = (channel === 'sms' || channel === 'whatsapp') ? 'plain_text' : contentMode;
         
@@ -3794,12 +3803,12 @@ export function TemplateWorkshop({
 
         if (activeStyle && styleWrapper) {
             const brandingData = {
-                name: activeSimVariables.org_name ?? 'SmartSapp Hub',
-                logoUrl: activeSimVariables.org_logo_url ?? '',
-                email: activeSimVariables.org_email ?? 'support@smartsapp.com',
-                phone: activeSimVariables.org_phone ?? '+233 24 273 7120',
-                address: activeSimVariables.org_address ?? 'SmartSapp Intelligence Hub, Accra, Ghana',
-                website: activeSimVariables.org_website ?? 'https://smartsapp.com',
+                name: activeSimVariables.org_name || activeOrganization?.name || 'Your Organization',
+                logoUrl: activeSimVariables.org_logo_url || activeOrganization?.logoUrl || '',
+                email: activeSimVariables.org_email || activeOrganization?.email || '',
+                phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
+                address: activeSimVariables.org_address || activeOrganization?.address || '',
+                website: activeSimVariables.org_website || activeOrganization?.website || '',
                 footerHtml: activeStyle.footerHtml,
                 footerEnabled: activeStyle.footerEnabled !== false
             };
@@ -5286,7 +5295,7 @@ export function TemplateWorkshop({
                             setSelectedContactId={setSimContactId}
                             resolvedPreview={(tmpl, vars, isDark) => {
                                 const activeStyle = styleId !== 'none'
-                                    ? (styleId === 'default' || !styleId ? styles.find(s => s.isDefault) : styles.find(s => s.id === styleId))
+                                    ? (styleId === 'default' || !styleId ? getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) : styles.find(s => s.id === styleId))
                                     : null;
                                 const effectiveMode = (channel === 'sms' || channel === 'whatsapp') ? 'plain_text' : contentMode;
                                 

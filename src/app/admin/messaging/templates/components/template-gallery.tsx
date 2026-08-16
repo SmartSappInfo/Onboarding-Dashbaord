@@ -4,6 +4,9 @@ import * as React from 'react';
 import type { MessageTemplate, TemplateStatus, TemplateTarget, MessageStyle } from '@/lib/types';
 import type { WhatsAppTemplateStatus } from '@/lib/whatsapp/whatsapp-types';
 import { plainTextToHtml, renderBlocksToHtml } from '@/lib/messaging-utils';
+import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
+import { getDefaultStyle } from '@/lib/services/style-resolver';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import {
     isWhatsAppDisplay,
     type GalleryTemplate,
@@ -231,6 +234,7 @@ interface TemplateCardProps {
 
 function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone, onCloneAsWhatsApp, onCloneAsSMS, onDelete, onUpdateStatus, onUpdateName, onWhatsAppPushSkeleton }: TemplateCardProps) {
     const router = useRouter();
+    const { activeOrganizationId, activeWorkspaceId, activeOrganization } = useWorkspace();
     const emailSrcDoc = React.useMemo(() => {
         if (template.channel !== 'email') return '';
 
@@ -238,7 +242,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
         if (template.styleId !== 'none') {
             const styleIdToUse = template.styleId;
             if (!styleIdToUse || styleIdToUse === 'default') {
-                activeStyle = styles.find(s => s.isDefault) || null;
+                activeStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) || null;
             } else {
                 activeStyle = styles.find(s => s.id === styleIdToUse) || null;
             }
@@ -251,6 +255,31 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
             } else {
                 styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
             }
+
+            if (styleWrapper) {
+                const brandingData = {
+                    name: activeOrganization?.name || 'Your Organization',
+                    logoUrl: activeOrganization?.logoUrl || '',
+                    email: activeOrganization?.email || '',
+                    phone: activeOrganization?.phone || '',
+                    address: activeOrganization?.address || '',
+                    website: activeOrganization?.website || '',
+                    footerHtml: activeStyle.footerHtml,
+                    footerEnabled: activeStyle.footerEnabled !== false
+                };
+                const styleOverrides = {
+                    primaryColor: activeStyle.primaryColor,
+                    secondaryColor: activeStyle.secondaryColor,
+                    fontFamily: activeStyle.fontFamily,
+                    backgroundColor: activeStyle.backgroundColor,
+                    textColor: activeStyle.textColor,
+                    cardBackgroundColor: activeStyle.cardBackgroundColor,
+                    borderRadius: activeStyle.borderRadius,
+                    footerHtml: activeStyle.footerHtml,
+                    footerEnabled: activeStyle.footerEnabled !== false
+                };
+                styleWrapper = resolveBrandingPreview(styleWrapper, brandingData, styleOverrides);
+            }
         }
 
         const contentMode = template.contentMode;
@@ -260,15 +289,15 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
         const matches = contentForScan.match(/\{\{([^{}]+?)\}\}/g);
         const detectedVars = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
-        // Hardcode a basic subset of MOCK_VARIABLES just for thumbnail gallery rendering
+        // Dynamic Tenant-Aware MOCK_VARIABLES for thumbnail gallery rendering
         const mergedMocks: Record<string, string> = {
             recipient_name: 'Recipient Name',
             contact_name: 'Recipient Name',
-            org_name: 'Your Organization',
-            org_logo_url: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/SmartSapp%20Logo%20short.png?alt=media&token=046f95a8-b331-4129-a4ef-43ae7837eadd',
-            org_email: 'support@smartsapp.com',
-            org_phone: '+1 (555) 019-2834',
-            org_address: '123 Organization Way',
+            org_name: activeOrganization?.name || 'Your Organization',
+            org_logo_url: activeOrganization?.logoUrl || '',
+            org_email: activeOrganization?.email || '',
+            org_phone: activeOrganization?.phone || '',
+            org_address: activeOrganization?.address || '',
             current_year: new Date().getFullYear().toString(),
             unsubscribe_copy: 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
             unsubscribe_link: '#'

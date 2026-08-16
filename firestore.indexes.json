@@ -1807,6 +1807,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isDefault",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "message_styles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "workspaceIds",
           "arrayConfig": "CONTAINS"
         },

@@ -59,6 +59,10 @@ export async function seedInfrastructureAction(): Promise<SeedInfrastructureResu
       seeded.push(`Organization: ${orgId}`);
     }
 
+    // Auto-provision default organization style
+    const { ensureOrgDefaultStyleAdmin } = await import('@/lib/services/style-resolver');
+    await ensureOrgDefaultStyleAdmin(orgId, { name: 'SmartSapp HQ' });
+
     // 2. Ensure Core Workspaces anchored to Org
     const coreWorkspaces = [
       { id: 'onboarding', name: 'Client Onboarding', orgId, color: '#3B5FFF' },
