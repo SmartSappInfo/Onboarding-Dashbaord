@@ -64,9 +64,11 @@ export function isGenericChoiceValue(val: unknown): boolean {
  * Sanitize entity mutation payload when updating pre-existing entities.
  * Prevents unintended overwrites of entity display names by unmapped question answers
  * (such as option "Yes") or dynamic lead capture fallbacks.
+ * If the existing entity name is generic (e.g. "Yes", "Later") or a placeholder,
+ * the lead form's actual school/company name is allowed to overwrite it.
  *
  * @param payload Target entity mutation payload
- * @param options Guard evaluation context (isExistingEntity, isExplicitlyMapped, isManualInput)
+ * @param options Guard evaluation context (isExistingEntity, isExplicitlyMapped, isManualInput, existingEntityName)
  * @returns Sanitized payload safe for updateEntityAction
  */
 export async function sanitizeEntityPayloadForUpdate(
@@ -75,13 +77,18 @@ export async function sanitizeEntityPayloadForUpdate(
     isExistingEntity: boolean;
     isExplicitlyMapped: boolean;
     isManualInput: boolean;
+    existingEntityName?: string | null;
   }
 ): Promise<EntityMutationPayload> {
   const sanitized: EntityMutationPayload = { ...payload };
 
-  // CAUTION: Only strip name when updating pre-existing entities without explicit mapping or manual fill.
-  // Newly created entities ALWAYS retain their specified name.
-  if (options.isExistingEntity && !options.isExplicitlyMapped && !options.isManualInput) {
+  const isExistingNameGeneric = options.existingEntityName
+    ? (isGenericChoiceValue(options.existingEntityName) || options.existingEntityName.startsWith('[Placeholder]'))
+    : false;
+
+  // CAUTION: Only strip name when updating pre-existing entities that already have a legitimate non-generic name,
+  // without explicit mapping or manual fill. If the existing name is generic (like "Yes") or placeholder, allow update.
+  if (options.isExistingEntity && !options.isExplicitlyMapped && !options.isManualInput && !isExistingNameGeneric) {
     delete sanitized.name;
   }
 
@@ -1366,10 +1373,11 @@ export async function submitPublicSurveyLead(
       // ENTITY IDENTITY GUARD: When updating a pre-existing entity (e.g. "Kofi Annan Institute"),
       // ONLY update the entity name if it was explicitly typed by the user in the lead form (manual)
       // OR explicitly mapped to `entity.name` in additionalMappings/entityNameFieldId.
-      const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+      const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
         isExistingEntity: true,
         isExplicitlyMapped: isExplicitEntityNameMapped,
         isManualInput: isManualNameInput,
+        existingEntityName: existingWE.displayName || existingWE.primaryName || null,
       });
 
       await updateEntityAction(
@@ -1394,7 +1402,8 @@ export async function submitPublicSurveyLead(
         const targetEntityId = duplicate.entityId.replace(`${workspaceId}_`, '');
         
         const entitySnap = await adminDb.collection('entities').doc(targetEntityId).get();
-        const existingContacts: EntityContact[] = entitySnap.data()?.entityContacts || [];
+        const existingData = entitySnap.data();
+        const existingContacts: EntityContact[] = existingData?.entityContacts || [];
         
         let contactExists = false;
         const mergedContacts = [...existingContacts];
@@ -1435,10 +1444,11 @@ export async function submitPublicSurveyLead(
         delete entityPayload.contacts;
 
         // ENTITY IDENTITY GUARD for duplicate matches via sanitizeEntityPayloadForUpdate
-        const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+        const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
           isExistingEntity: true,
           isExplicitlyMapped: isExplicitEntityNameMapped,
           isManualInput: isManualNameInput,
+          existingEntityName: existingData?.name || duplicate.name || null,
         });
         
         await updateEntityAction(
