@@ -27,6 +27,10 @@ import {
   reconcileParkedJobsOnNodeDeletionAction as reconcileParkedJobsOnNodeDeletion,
 } from '@/app/actions/node-deletion-reconciliation-actions';
 import type { ParkedContactStrategy } from '@/lib/automations/node-deletion-reconciliation';
+import {
+  getMessagingCategory,
+  getMessagingCategoryLabel,
+} from '@/lib/automations/messaging-step-category';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
@@ -1957,12 +1961,15 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                     node={selectedNode} 
                                     nodes={nodes}
                                     onUpdate={(data) => handleUpdateNodeData(selectedNode.id, data)}
-                                    onUpdateAllSimilarNodes={(actionType, isDisabled) => {
-                                        const targetType = actionType.toUpperCase();
+                                    onUpdateAllSimilarNodes={({ category, isDisabled }) => {
+                                        let updatedCount = 0;
                                         setNodes((prevNodes) =>
                                             prevNodes.map((n) => {
-                                                const nType = (n.data?.actionType || n.data?.config?.actionType || '').toUpperCase();
-                                                if (nType === targetType) {
+                                                const nodeType = n.data?.actionType || n.data?.config?.actionType;
+                                                const nodeChannel = n.data?.config?.channel || n.data?.channel;
+                                                const nodeCategory = getMessagingCategory(nodeType, nodeChannel);
+                                                if (nodeCategory === category) {
+                                                    updatedCount++;
                                                     return {
                                                         ...n,
                                                         data: {
@@ -1979,9 +1986,10 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                                             })
                                         );
                                         setIsInspectorDirty(true);
+                                        const categoryName = getMessagingCategoryLabel(category);
                                         toast({
                                             title: isDisabled ? 'Similar Steps Disabled' : 'Similar Steps Enabled',
-                                            description: `Updated all "${actionType.replace(/_/g, ' ')}" steps in this automation.`,
+                                            description: `Updated all ${updatedCount} ${categoryName} steps in this automation.`,
                                         });
                                     }}
                                     triggers={triggers}

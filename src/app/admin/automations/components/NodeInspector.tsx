@@ -41,7 +41,12 @@ import { TagSelector } from '@/components/tags/TagSelector';
 interface NodeInspectorProps {
     node: import('reactflow').Node;
     onUpdate: (data: Record<string, unknown>) => void;
-    onUpdateAllSimilarNodes?: (actionType: string, isDisabled: boolean) => void;
+    onUpdateAllSimilarNodes?: (params: {
+        category: import('@/lib/automations/messaging-step-category').MessagingStepCategory;
+        isDisabled: boolean;
+        sourceActionType: string;
+        sourceChannel?: string;
+    }) => void;
     triggers?: import('@/lib/types').AutomationTriggerDef[];
     onTriggersChange?: (triggers: import('@/lib/types').AutomationTriggerDef[]) => void;
     onDirtyChange?: (isDirty: boolean) => void;

@@ -33,6 +33,11 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc } from 'firebase/firestore';
 import { useCallCampaigns } from '@/lib/call-centre-hooks';
+import {
+  getMessagingCategory,
+  getMessagingCategoryLabel,
+  type MessagingStepCategory,
+} from '@/lib/automations/messaging-step-category';
 
 const NATIVE_ENTITY_FIELDS = [
   // Common
@@ -703,7 +708,12 @@ interface ActionConfigPanelProps {
   actionType: string;
   config: AutomationConfig;
   onUpdateConfig: (updates: Partial<AutomationConfig>) => void;
-  onUpdateAllSimilarNodes?: (actionType: string, isDisabled: boolean) => void;
+  onUpdateAllSimilarNodes?: (params: {
+    category: MessagingStepCategory;
+    isDisabled: boolean;
+    sourceActionType: string;
+    sourceChannel?: string;
+  }) => void;
   users: UserProfile[];
   stages: OnboardingStage[];
   pipelines: Pipeline[];
@@ -755,6 +765,8 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   ].includes((actionType || '').toUpperCase());
 
   const isDisabledStep = Boolean(config.isDisabled);
+  const currentCategory = getMessagingCategory(actionType, config.channel);
+  const categoryLabel = getMessagingCategoryLabel(currentCategory);
 
   const handleToggleClick = (nextDisabled: boolean) => {
     if (onUpdateAllSimilarNodes) {
@@ -768,7 +780,12 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   const handleApplyScope = (scope: 'single' | 'similar') => {
     onUpdateConfig({ isDisabled: pendingStatus });
     if (scope === 'similar' && onUpdateAllSimilarNodes) {
-      onUpdateAllSimilarNodes(actionType, pendingStatus);
+      onUpdateAllSimilarNodes({
+        category: currentCategory,
+        isDisabled: pendingStatus,
+        sourceActionType: actionType,
+        sourceChannel: config.channel,
+      });
     }
     setScopeDialogOpen(false);
   };
@@ -879,7 +896,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               onClick={() => handleApplyScope('similar')}
               className="rounded-xl font-bold h-11 min-h-[44px] text-xs bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.97] transition-all w-full sm:w-auto"
             >
-              All Similar ({actionType.replace(/_/g, ' ')}) Steps
+              All Similar ({categoryLabel.toUpperCase()}) Steps
             </Button>
           </DialogFooter>
         </DialogContent>
