@@ -2521,7 +2521,7 @@ export interface AutomationRun {
   id: string;
   automationId: string;
   automationName: string;
-  status: 'running' | 'completed' | 'failed' | 'paused' | 'cancelled';
+  status: 'running' | 'waiting' | 'completed' | 'failed' | 'paused' | 'cancelled';
   startedAt: string;
   finishedAt?: string;
   triggerData: Record<string, unknown>;

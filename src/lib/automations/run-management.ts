@@ -379,8 +379,8 @@ export async function forceAdvanceRun(
     if (!userId) throw new Error('User ID is required.');
     const { data: run } = await assertRunExists(runId);
 
-    if (run.status !== 'running' && run.status !== 'paused') {
-      throw new Error('Run must be running or paused to advance.');
+    if (run.status !== 'running' && run.status !== 'paused' && run.status !== 'waiting' && run.status !== 'failed') {
+      throw new Error('Run must be running, waiting, paused, or failed to advance.');
     }
 
     // Find the pending job for this run
@@ -394,14 +394,26 @@ export async function forceAdvanceRun(
     if (pendingJobSnap.empty) {
       /**
        * ARCHITECTURAL CAUTION (Rule 10 Maintainer Protocol):
-       * Orphaned Run Fallback Recovery:
-       * If no pending job exists in automation_jobs, but the run is active and its currentNodeId was deleted,
-       * synthesize execution context and advance directly to the next valid step or mark completed.
+       * Orphaned / Failed Run Recovery:
+       * If no pending job exists in automation_jobs, or if the run was in a 'failed' or 'waiting' status,
+       * synthesize execution context and advance directly to the next valid downstream step or mark completed.
        */
       const autoSnap = await adminDb.collection('automations').doc(run.automationId).get();
       if (autoSnap.exists) {
         const automation = { id: autoSnap.id, ...autoSnap.data() } as import('../types').Automation;
+        const { traverseNodes } = await import('./nodes/traverse');
+        const context: import('./execution-types').ExecutionContext = {
+          runId,
+          automationId: run.automationId,
+          workspaceId: run.workspaceId || automation.workspaceIds?.[0] || 'onboarding',
+          organizationId: run.organizationId,
+          entityId: run.entityId || '',
+          entityType: run.entityType || 'person',
+          payload: run.triggerData || {},
+        };
+
         const currentNode = automation.nodes.find((n) => n.id === run.currentNodeId);
+        let targetNodeId: string | null = null;
 
         if (!currentNode) {
           const nonTriggerNodes = automation.nodes
@@ -416,22 +428,32 @@ export async function forceAdvanceRun(
             });
             return { success: true };
           }
-
-          const fallbackNode = nonTriggerNodes[0];
-          const { traverseNodes } = await import('./nodes/traverse');
-          const context: import('./execution-types').ExecutionContext = {
-            runId,
-            automationId: run.automationId,
-            workspaceId: run.workspaceId || automation.workspaceIds?.[0] || 'onboarding',
-            organizationId: run.organizationId,
-            entityId: run.entityId || '',
-            entityType: run.entityType || 'person',
-            payload: run.triggerData || {},
-          };
-
-          await traverseNodes(fallbackNode.id, automation, context, true);
-          return { success: true };
+          targetNodeId = nonTriggerNodes[0].id;
+        } else {
+          const outgoingEdge = automation.edges.find((e) => e.source === currentNode.id);
+          if (outgoingEdge?.target) {
+            targetNodeId = outgoingEdge.target;
+          } else {
+            await adminDb.collection('automation_runs').doc(runId).update({
+              status: 'completed',
+              finishedAt: new Date().toISOString(),
+              completedNote: 'Run completed upon advancing terminal node',
+            });
+            return { success: true };
+          }
         }
+
+        if (!targetNodeId) {
+          throw new Error('Target node not found for run recovery.');
+        }
+
+        await adminDb.collection('automation_runs').doc(runId).update({
+          status: 'running',
+          finishedAt: null,
+        });
+
+        await traverseNodes(targetNodeId, automation, context, true);
+        return { success: true };
       }
 
       throw new Error('No pending wait step found to skip.');

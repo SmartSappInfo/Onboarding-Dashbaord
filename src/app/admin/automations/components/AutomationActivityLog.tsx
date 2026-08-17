@@ -37,7 +37,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OrphanedRunsCleanupModal } from './OrphanedRunsCleanupModal';
-import type { OrphanedRunInfo } from '@/app/actions/orphaned-runs-reconciliation-actions';
+import {
+  recoverFailedRunsAction,
+  type OrphanedRunInfo,
+} from '@/app/actions/orphaned-runs-reconciliation-actions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -306,46 +309,44 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
         const runsCol = collection(firestore!, 'automation_runs');
         const jobsCol = collection(firestore!, 'automation_jobs');
 
-         const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
+        const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
         const runningQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'running'));
+        const waitingRunsQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'waiting'));
         const pausedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'paused'));
         const failedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'failed'));
         const completedQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'completed'));
         const cancelledQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'cancelled'));
-        const waitingQuery = query(jobsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'pending'));
 
         const [
           totalSnap,
           runningSnap,
+          waitingRunsSnap,
           pausedSnap,
           failedSnap,
           completedSnap,
           cancelledSnap,
-          waitingSnap,
         ] = await Promise.all([
           getCountFromServer(totalQuery),
           getCountFromServer(runningQuery),
+          getCountFromServer(waitingRunsQuery),
           getCountFromServer(pausedQuery),
           getCountFromServer(failedQuery),
           getCountFromServer(completedQuery),
           getCountFromServer(cancelledQuery),
-          getCountFromServer(waitingQuery),
         ]);
 
         if (isSubscribed) {
           const totalVal = totalSnap.data().count;
           const runningVal = runningSnap.data().count;
+          const waitingVal = waitingRunsSnap.data().count;
           const pausedVal = pausedSnap.data().count;
           const failedVal = failedSnap.data().count;
           const completedVal = completedSnap.data().count;
           const cancelledVal = cancelledSnap.data().count;
-          const waitingVal = waitingSnap.data().count;
-
-          const activeVal = Math.max(0, runningVal - waitingVal);
 
           setDbStats({
             total: totalVal,
-            running: activeVal,
+            running: runningVal,
             waiting: waitingVal,
             paused: pausedVal,
             failed: failedVal,
@@ -616,9 +617,9 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
     const qty = retryAllFailed ? stats.failed : runIds.length;
     const confirmed = await confirm({
-      title: 'Bulk Retry Failed Steps',
-      description: `You are about to retry ${qty} failed automation ${qty === 1 ? 'run' : 'runs'}. This will process in the background. Are you sure?`,
-      confirmText: 'Retry Now',
+      title: 'Bulk Resume Failed Contacts',
+      description: `You are about to resume ${qty} failed automation ${qty === 1 ? 'contact' : 'contacts'} downstream. Non-blocking traversal will resume them from their next step. Are you sure?`,
+      confirmText: 'Resume Now',
       variant: 'default',
     });
 
@@ -626,12 +627,26 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
 
     setIsBulkProcessing(true);
     try {
-      const res = await bulkRetryRunsAction(automationId, { runIds, retryAllFailed }, user.uid, activeWorkspaceId);
-      if (res.success) {
-        toast({ title: 'Bulk retry scheduled successfully' });
-        setSelectedRunIds(new Set());
+      if (retryAllFailed) {
+        const res = await recoverFailedRunsAction({
+          workspaceId: activeWorkspaceId,
+          automationId,
+          userId: user.uid,
+        });
+        if (res.success) {
+          toast({ title: `Successfully resumed ${res.recoveredCount} failed contacts downstream!` });
+          setSelectedRunIds(new Set());
+        } else {
+          toast({ variant: 'destructive', title: 'Failed to recover contacts', description: res.error });
+        }
       } else {
-        toast({ variant: 'destructive', title: 'Failed to schedule', description: res.error });
+        const res = await bulkRetryRunsAction(automationId, { runIds, retryAllFailed }, user.uid, activeWorkspaceId);
+        if (res.success) {
+          toast({ title: 'Bulk retry scheduled successfully' });
+          setSelectedRunIds(new Set());
+        } else {
+          toast({ variant: 'destructive', title: 'Failed to schedule', description: res.error });
+        }
       }
     } catch (err: unknown) {
       toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });

@@ -320,3 +320,82 @@ export async function reconcileOrphanedRunsAction(
     };
   }
 }
+
+export interface RecoverFailedRunsOptions {
+  workspaceId: string;
+  automationId: string;
+  userId: string;
+}
+
+export interface RecoverFailedRunsResult {
+  success: boolean;
+  recoveredCount: number;
+  error?: string;
+}
+
+export async function recoverFailedRunsAction(
+  options: RecoverFailedRunsOptions
+): Promise<RecoverFailedRunsResult> {
+  const { workspaceId, automationId, userId } = options;
+
+  try {
+    await assertAutomationManagePermission(userId, [workspaceId], 'edit');
+
+    const runsSnap = await adminDb
+      .collection('automation_runs')
+      .where('workspaceId', '==', workspaceId)
+      .where('automationId', '==', automationId)
+      .where('status', '==', 'failed')
+      .get();
+
+    if (runsSnap.empty) {
+      return { success: true, recoveredCount: 0 };
+    }
+
+    const { forceAdvanceRun } = await import('@/lib/automations/run-management');
+    let recoveredCount = 0;
+    const CHUNK_SIZE = 50;
+    const failedDocs = runsSnap.docs;
+
+    for (let i = 0; i < failedDocs.length; i += CHUNK_SIZE) {
+      const chunk = failedDocs.slice(i, i + CHUNK_SIZE);
+      const advanceTasks = chunk.map((doc) => async () => {
+        try {
+          await forceAdvanceRun(doc.id, userId);
+          recoveredCount++;
+        } catch (e) {
+          console.error(`[FAILED-RECOVERY] Failed to force advance run ${doc.id}:`, e);
+        }
+      });
+
+      const results = await Promise.allSettled(advanceTasks.map((t) => t()));
+      results.forEach((res, idx) => {
+        if (res.status === 'rejected') {
+          console.error(`[FAILED-RECOVERY] Task ${idx} rejected:`, res.reason);
+        }
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    logAutomationEvent('info', 'failed_runs_recovered', {
+      workspaceId,
+      automationId,
+      userId,
+      recoveredCount,
+    });
+
+    return {
+      success: true,
+      recoveredCount,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[FAILED-RECOVERY] Error recovering failed runs:', errorMsg);
+    return {
+      success: false,
+      recoveredCount: 0,
+      error: errorMsg,
+    };
+  }
+}
