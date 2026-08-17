@@ -34,6 +34,7 @@ interface ResultRendererProps {
     workspaceId?: string;
     resolvedThankYouTitle?: string;
     resolvedThankYouDescription?: string;
+    simulatedValues?: Record<string, string>;
 }
 
 function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: { animate?: boolean }, displayMode?: 'points' | 'percentage' }) {
@@ -390,13 +391,19 @@ export default function ResultRenderer({
     preview = false,
     workspaceId = '',
     resolvedThankYouTitle,
-    resolvedThankYouDescription
+    resolvedThankYouDescription,
+    simulatedValues: propSimulatedValues
 }: ResultRendererProps) {
     const [entities, setEntities] = React.useState<any[]>([]);
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
     const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
     const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>({});
     const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
+
+    const activeValues = React.useMemo(() => ({
+        ...simulatedValues,
+        ...(propSimulatedValues || {})
+    }), [simulatedValues, propSimulatedValues]);
 
     React.useEffect(() => {
         if (preview && workspaceId) {
@@ -614,7 +621,7 @@ export default function ResultRenderer({
                             entityId={preview && selectedEntityId !== 'none' ? selectedEntityId : response.entityId}
                             resultPages={resultPages}
                             survey={survey}
-                            simulatedValues={simulatedValues}
+                            simulatedValues={activeValues}
                         />
                     ))}
                 </div>
