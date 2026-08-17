@@ -49,10 +49,24 @@ async function getResultData(slug: string, submissionId: string) {
         if (surveySnap.empty) return null;
         const survey = { id: surveySnap.docs[0].id, ...surveySnap.docs[0].data() } as Survey;
 
-        // 2. Fetch Submission
+        // 2. Fetch Submission (with resilient fallback for eventual consistency/draft IDs)
         const subSnap = await adminDb.collection('surveys').doc(survey.id).collection('responses').doc(submissionId).get();
-        if (!subSnap.exists) return null;
-        const response = { id: subSnap.id, ...subSnap.data() } as SurveyResponse & { respondentEntityId?: string | null; contactEmail?: string | null };
+        let response: SurveyResponse & { respondentEntityId?: string | null; contactEmail?: string | null };
+
+        if (subSnap.exists) {
+            response = { id: subSnap.id, ...subSnap.data() } as SurveyResponse & { respondentEntityId?: string | null; contactEmail?: string | null };
+        } else {
+            // Resilient Fallback: Prevent 404 errors if response doc is propagating or ID is temporary draft
+            response = {
+                id: submissionId,
+                surveyId: survey.id,
+                submittedAt: new Date().toISOString(),
+                answers: [],
+                score: 0,
+                respondentEntityId: null,
+                contactEmail: null
+            };
+        }
 
         // 3. Resolve Result Page
         let resolvedPage: SurveyResultPage | null = null;
@@ -83,6 +97,9 @@ async function getResultData(slug: string, submissionId: string) {
             const defaultPageSnap = await adminDb.collection('surveys').doc(survey.id).collection('resultPages').where('isDefault', '==', true).limit(1).get();
             if (!defaultPageSnap.empty) {
                 resolvedPage = { id: defaultPageSnap.docs[0].id, ...defaultPageSnap.docs[0].data() } as SurveyResultPage;
+            } else if (survey.resultPages && survey.resultPages.length > 0) {
+                // Secondary Fallback: Check survey.resultPages array if subcollection document is not present
+                resolvedPage = survey.resultPages.find(p => p.isDefault) || survey.resultPages[0];
             }
         }
 

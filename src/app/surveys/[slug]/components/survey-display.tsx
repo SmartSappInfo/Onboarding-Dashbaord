@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { interpolateWithMap } from '@/lib/survey-variable-utils';
 import { SurveyVariableProvider } from '../context/SurveyVariableContext';
 import SurveyLoader from '../../components/survey-loader';
+import ResultRenderer from '../result/components/ResultRenderer';
 import { useTheme } from 'next-themes';
 import Footer from '@/components/footer';
 import { useToast } from '@/hooks/use-toast';
@@ -265,6 +266,20 @@ export default function SurveyDisplay({
     }
 
     if (isSubmitted) {
+        const defaultPage = survey.resultPages && survey.resultPages.length > 0 
+            ? (survey.resultPages.find(p => p.isDefault) || survey.resultPages[0]) 
+            : null;
+
+        const syntheticResponse: SurveyResponse = {
+            id: submissionId || `sub_${Date.now()}`,
+            surveyId: survey.id,
+            submittedAt: new Date().toISOString(),
+            answers: [],
+            score,
+            respondentEntityId,
+            contactEmail: resolvedRecipientContact,
+        };
+
         return (
             <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
                 <div className={cn(isEmbedded ? "min-h-0 h-auto" : "min-h-screen", "flex flex-col justify-center relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
@@ -321,49 +336,65 @@ export default function SurveyDisplay({
                 )}
                  {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />}
                  <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
-                    <div className="max-w-4xl w-full mx-auto text-center animate-in fade-in zoom-in duration-500">
-                        <div className="flex justify-center mb-6">
-                            {displayLogoUrl !== 'none' && (
-                                displayLogoUrl ? (
-                                    <div className="relative h-10 w-40 sm:h-12 sm:w-48">
-                                        <Image src={displayLogoUrl} alt="Logo" fill sizes="(max-width: 640px) 160px, 192px" className="object-contain" />
+                    <div className="max-w-4xl w-full mx-auto animate-in fade-in zoom-in duration-500">
+                        {defaultPage ? (
+                            <ResultRenderer 
+                                survey={survey}
+                                response={syntheticResponse}
+                                page={defaultPage}
+                                logoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : null}
+                                allowResubmission={survey.allowResubmission}
+                                resultPages={survey.resultPages}
+                                preview={isPreviewMode}
+                                workspaceId={resolvedWorkspaceId}
+                                resolvedThankYouTitle={survey.thankYouTitle}
+                                resolvedThankYouDescription={survey.thankYouDescription}
+                            />
+                        ) : (
+                            <div className="text-center">
+                                <div className="flex justify-center mb-6">
+                                    {displayLogoUrl !== 'none' && (
+                                        displayLogoUrl ? (
+                                            <div className="relative h-10 w-40 sm:h-12 sm:w-48">
+                                                <Image src={displayLogoUrl} alt="Logo" fill sizes="(max-width: 640px) 160px, 192px" className="object-contain" />
+                                            </div>
+                                        ) : (
+                                            <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />
+                                        )
+                                    )}
+                                </div>
+                                {survey.bannerImageUrl && (
+                                    <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border border-border/50 bg-card">
+                                        <Image 
+                                            src={survey.bannerImageUrl} 
+                                            alt={survey.title || 'Survey thank you banner'} 
+                                            width={1200}
+                                            height={400}
+                                            className="w-full h-auto block object-contain"
+                                        />
                                     </div>
-                                ) : (
-                                    <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-primary/40" />
-                                )
-                            )}
-                        </div>
-                        {survey.bannerImageUrl && (
-                            <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border border-border/50 bg-card">
-                                <Image 
-                                    src={survey.bannerImageUrl} 
-                                    alt={survey.title || 'Survey thank you banner'} 
-                                    width={1200}
-                                    height={400}
-                                    className="w-full h-auto block object-contain"
+                                )}
+                                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{interpolateWithMap(survey.thankYouTitle || 'Thank You!', simulatedValues, isPreviewMode)}</h1>
+                                <div 
+                                    className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap prose prose-slate max-w-none mx-auto" 
+                                    dangerouslySetInnerHTML={{ __html: interpolateWithMap(survey.thankYouDescription || 'Your response has been recorded.', simulatedValues, isPreviewMode) }} 
                                 />
-                            </div>
-                        )}
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{interpolateWithMap(survey.thankYouTitle || 'Thank You!', simulatedValues, isPreviewMode)}</h1>
-                        <div 
-                            className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap prose prose-slate max-w-none mx-auto" 
-                            dangerouslySetInnerHTML={{ __html: interpolateWithMap(survey.thankYouDescription || 'Your response has been recorded.', simulatedValues, isPreviewMode) }} 
-                        />
-                        
-                        {survey.allowResubmission && (
-                            <div className="mt-8">
-                                <Button 
-                                    variant="outline" 
-                                    size="lg" 
-                                    className="rounded-xl font-semibold gap-2"
-                                    onClick={() => {
-                                        // Reload with original URL to preserve assignment query params
-                                        window.location.href = initialUrl.current || window.location.pathname;
-                                    }}
-                                >
-                                    <RotateCcw className="h-4 w-4" />
-                                    Submit Another Response
-                                </Button>
+                                
+                                {survey.allowResubmission && (
+                                    <div className="mt-8 flex justify-center">
+                                        <Button 
+                                            variant="outline" 
+                                            size="lg" 
+                                            className="rounded-xl font-semibold gap-2"
+                                            onClick={() => {
+                                                window.location.href = initialUrl.current || window.location.pathname;
+                                            }}
+                                        >
+                                            <RotateCcw className="h-4 w-4" />
+                                            Submit Another Response
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -373,7 +404,7 @@ export default function SurveyDisplay({
                   )}
             </div>
             </SurveyVariableProvider>
-        )
+        );
     }
 
     const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;

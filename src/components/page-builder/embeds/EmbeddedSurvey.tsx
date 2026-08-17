@@ -47,12 +47,25 @@ export function EmbeddedSurvey({
   const [size, setSize] = useState({ height: 600, width: 512 });
 
   // Helper: Appends active tracking query parameters from the parent host window
-  // Cautious: Only execute in client context. Safe fallback for server-side pre-renders.
+  // Cautious: Only execute in client context. Forward all tracking parameters (ref, contactId, entityId, utm_*)
   const getTrackingQueryStr = (): string => {
     if (typeof window === 'undefined') return '';
     const params = new URLSearchParams(window.location.search);
-    const entityId = params.get('entityId') || params.get('entity');
-    return entityId ? `&entityId=${encodeURIComponent(entityId)}` : '';
+    const trackingParams = new URLSearchParams();
+
+    const forwardKeys = [
+      'ref', 'trackingToken', 'assignedUserId', 'contactId', 
+      'entityId', 'entity', 'email', 'contactEmail', 'phone', 'contactPhone',
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'
+    ];
+
+    forwardKeys.forEach(key => {
+      const val = params.get(key);
+      if (val) trackingParams.set(key, val);
+    });
+
+    const str = trackingParams.toString();
+    return str ? `&${str}` : '';
   };
 
   useEffect(() => {
