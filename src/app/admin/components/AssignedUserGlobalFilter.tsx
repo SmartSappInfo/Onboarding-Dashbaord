@@ -77,7 +77,7 @@ export default function AssignedUserGlobalFilter() {
             </div>
           </SelectValue>
         </SelectTrigger>
- <SelectContent className="rounded-2xl border-none shadow-2xl">
+ <SelectContent className="rounded-2xl border-none shadow-2xl z-[10005]">
           <SelectGroup>
  <SelectItem value="all" className="rounded-xl">
  <div className="flex items-center gap-2">
