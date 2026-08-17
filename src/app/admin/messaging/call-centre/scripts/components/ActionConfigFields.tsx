@@ -262,10 +262,19 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
     return Array.from(groups.values());
   }, [stages, pipelines]);
 
-  // ── Stages of the pipeline picked for ADD_TO_PIPELINE ─────────────────────
+  // ── Derive selected pipeline for CHANGE_STAGE and ADD_TO_PIPELINE ──────────────
+  const selectedPipelineId = React.useMemo(() => {
+    if (params.pipelineId) return params.pipelineId;
+    if (params.stageId) {
+      const matchedStage = stages.find((s) => s.id === params.stageId);
+      if (matchedStage?.pipelineId) return matchedStage.pipelineId;
+    }
+    return undefined;
+  }, [params.pipelineId, params.stageId, stages]);
+
   const stagesForSelectedPipeline = React.useMemo(
-    () => (params.pipelineId ? stages.filter((s) => s.pipelineId === params.pipelineId) : []),
-    [stages, params.pipelineId]
+    () => (selectedPipelineId ? stages.filter((s) => s.pipelineId === selectedPipelineId) : []),
+    [stages, selectedPipelineId]
   );
 
   const meetingMode = params.meetingMode ?? 'guest_list';
@@ -435,62 +444,22 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
         </div>
       ) : null}
 
-      {/* ── Change Stage (grouped by pipeline) ────────────────────────────── */}
-      {type === 'CHANGE_STAGE' ? (
-        <div className="space-y-1 transition-opacity duration-200">
-          <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-            Target Pipeline Stage
-          </Label>
-          <Select
-            value={toSelectValue(params.stageId)}
-            onValueChange={(val) => {
-              const stageId = fromSelectValue(val);
-              const stage = stages.find((s) => s.id === stageId);
-              onChange({ stageId, pipelineId: stage?.pipelineId });
-            }}
-          >
-            <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-              <SelectValue placeholder="Select stage..." />
-            </SelectTrigger>
-            <SelectContent>
-              {stages.length > 0 ? (
-                stagesByPipeline.map((group, gi) => (
-                  <SelectGroup key={gi}>
-                    <SelectLabel className="text-[8px] uppercase text-muted-foreground/70">
-                      {group.pipelineName}
-                    </SelectLabel>
-                    {group.stages.map((st) => (
-                      <SelectItem key={st.id} value={st.id}>
-                        {st.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))
-              ) : (
-                <SelectItem value={NONE_SENTINEL} disabled>
-                  No stages found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
-
-      {/* ── Add to Pipeline & Stage ───────────────────────────────────────── */}
-      {type === 'ADD_TO_PIPELINE' ? (
+      {/* ── Change Pipeline Stage & Add to Pipeline (Cascading Pipeline -> Stage) ── */}
+      {type === 'CHANGE_STAGE' || type === 'ADD_TO_PIPELINE' ? (
         <div className="space-y-2 transition-opacity duration-200">
           <div className="space-y-1">
             <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-              Pipeline
+              Target Pipeline
             </Label>
             <Select
-              value={toSelectValue(params.pipelineId)}
-              onValueChange={(val) =>
-                onChange({ pipelineId: fromSelectValue(val), stageId: undefined })
-              }
+              value={toSelectValue(selectedPipelineId)}
+              onValueChange={(val) => {
+                const newPipelineId = fromSelectValue(val);
+                onChange({ pipelineId: newPipelineId, stageId: undefined });
+              }}
             >
-              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                <SelectValue placeholder="Select pipeline..." />
+              <SelectTrigger className="h-9 bg-background border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold shadow-sm">
+                <SelectValue placeholder="Select target pipeline..." />
               </SelectTrigger>
               <SelectContent>
                 {pipelines.length > 0 ? (
@@ -501,23 +470,28 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
                   ))
                 ) : (
                   <SelectItem value={NONE_SENTINEL} disabled>
-                    No pipelines found
+                    No pipelines found in this workspace
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-1">
             <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-              Stage
+              Target Pipeline Stage
             </Label>
             <Select
               value={toSelectValue(params.stageId)}
-              onValueChange={(val) => onChange({ stageId: fromSelectValue(val) })}
-              disabled={!params.pipelineId}
+              onValueChange={(val) => {
+                const stageId = fromSelectValue(val);
+                const stage = stages.find((s) => s.id === stageId);
+                onChange({ stageId, pipelineId: stage?.pipelineId || selectedPipelineId });
+              }}
+              disabled={!selectedPipelineId}
             >
-              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                <SelectValue placeholder={params.pipelineId ? 'Select stage...' : 'Pick a pipeline first'} />
+              <SelectTrigger className="h-9 bg-background border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold shadow-sm">
+                <SelectValue placeholder={selectedPipelineId ? 'Select target stage...' : 'Select a pipeline first'} />
               </SelectTrigger>
               <SelectContent>
                 {stagesForSelectedPipeline.length > 0 ? (
@@ -528,7 +502,7 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
                   ))
                 ) : (
                   <SelectItem value={NONE_SENTINEL} disabled>
-                    No stages in this pipeline
+                    No stages found in this pipeline
                   </SelectItem>
                 )}
               </SelectContent>

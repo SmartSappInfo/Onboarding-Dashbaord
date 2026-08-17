@@ -36,6 +36,7 @@ import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/
 import type { CallOutcomeAutomation } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { MediaSharePreview } from './MediaSharePreview';
+import EventAutomationsAccordion from './EventAutomationsAccordion';
 import ConfiguredAutomationsSummary from './ConfiguredAutomationsSummary';
 import TransferMediaAutomationsModal from './TransferMediaAutomationsModal';
 import ImportMediaAutomationsModal, { ImportMode } from './ImportMediaAutomationsModal';
@@ -990,50 +991,15 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 </div>
                                             </div>
 
-                                            {/* At-a-Glance Configured Rules Summary */}
-                                            <ConfiguredAutomationsSummary
+                                            {/* Interactive Accordion Event Automations Manager */}
+                                            <EventAutomationsAccordion
                                                 automationRules={automationRules}
+                                                onChange={setAutomationRules}
                                                 activeTrigger={activeTrigger}
                                                 onSelectTrigger={setActiveTrigger}
-                                                onClearTriggerRules={handleClearTriggerRules}
                                                 assetType={asset.type}
+                                                actionData={actionData}
                                             />
-
-                                            <div className="flex flex-col gap-1.5 text-left pt-2 border-t border-border">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Select Event Trigger to Edit</Label>
-                                                <select
-                                                    value={activeTrigger}
-                                                    onChange={(e) => setActiveTrigger(e.target.value)}
-                                                    className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
-                                                >
-                                                    <option value="on_view">Recipient Lands on Page</option>
-                                                    {(asset.type === 'video' || asset.type === 'audio') && (
-                                                        <>
-                                                            <option value="on_play">Recipient Clicks Play</option>
-                                                            <option value="on_progress_25">Recipient Watches 25%</option>
-                                                            <option value="on_progress_50">Recipient Watches 50% (Halfway)</option>
-                                                            <option value="on_progress_75">Recipient Watches 75%</option>
-                                                            <option value="on_complete">Recipient Completes Playback</option>
-                                                        </>
-                                                    )}
-                                                    <option value="on_cta_click">Recipient Clicks CTA Button</option>
-                                                    <option value="on_download">Recipient Downloads/Saves Asset</option>
-                                                </select>
-                                                <p className="text-[9px] font-medium text-slate-500 ml-1 font-sans">
-                                                    Configure actions to execute automatically when this trigger event is registered.
-                                                </p>
-                                            </div>
-
-                                            <div className="border-t border-dashed border-border/60 pt-4 text-left">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1 mb-2 block">
-                                                    Trigger Actions List ({activeTrigger})
-                                                </Label>
-                                                <OutcomeAutomationsEditor
-                                                    automations={automationRules[activeTrigger] || []}
-                                                    onChange={handleRulesChange}
-                                                    data={actionData}
-                                                />
-                                            </div>
                                         </div>
                                     </TabsContent>
 
