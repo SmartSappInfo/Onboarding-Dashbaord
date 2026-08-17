@@ -20,12 +20,12 @@ import {
 } from 'firebase/firestore';
 import { 
     Loader2, Share2, Copy, Check, Globe, Code, 
-    Sparkles, RefreshCw, Layers, Save, Film, Download, ExternalLink 
+    Sparkles, RefreshCw, Layers, Save, Film, Download, ExternalLink, Eye 
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
-import type { MediaAsset } from '@/lib/types';
+import type { MediaAsset, OrgBranding } from '@/lib/types';
 import type { TemplateVariable } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { checkSlugAvailabilityAction } from '@/lib/media-analytics-actions';
@@ -34,6 +34,8 @@ import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scri
 import { useWorkspaceScopedQueries } from '@/app/admin/automations/hooks/useWorkspaceScopedQueries';
 import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
 import type { CallOutcomeAutomation } from '@/lib/types';
+import { useTenant } from '@/context/TenantContext';
+import { MediaSharePreview } from './MediaSharePreview';
 import ConfiguredAutomationsSummary from './ConfiguredAutomationsSummary';
 import TransferMediaAutomationsModal from './TransferMediaAutomationsModal';
 import ImportMediaAutomationsModal, { ImportMode } from './ImportMediaAutomationsModal';
@@ -172,6 +174,22 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const { toast } = useToast();
     const firestore = useFirestore();
     const { activeWorkspaceId } = useWorkspace();
+    const { activeOrganization } = useTenant();
+
+    const orgBranding = React.useMemo<OrgBranding | null>(() => {
+        if (!activeOrganization) return null;
+        return {
+            name: activeOrganization.name || '',
+            logoUrl: activeOrganization.logoUrl || '',
+            brandPrimaryColor: activeOrganization.brandPrimaryColor || '#3B5FFF',
+            brandSecondaryColor: activeOrganization.brandSecondaryColor || '#8B5CF6',
+            brandFontFamily: activeOrganization.brandFontFamily || 'Inter',
+            address: activeOrganization.address || '',
+            email: activeOrganization.email || '',
+            phone: activeOrganization.phone || '',
+            website: activeOrganization.website || '',
+        };
+    }, [activeOrganization]);
 
     const [shareId, setShareId] = React.useState<string>('');
     const [title, setTitle] = React.useState<string>(asset.name);
@@ -683,9 +701,10 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                             {/* Configuration Side */}
                             <div className="p-6 md:p-8 md:overflow-y-auto md:h-full text-left">
                                 <Tabs defaultValue="general" className="w-full flex flex-col h-full">
-                                    <TabsList className="grid grid-cols-2 bg-muted/40 p-1 rounded-xl mb-6 shrink-0">
-                                        <TabsTrigger value="general" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm active:scale-[0.97]">General Settings</TabsTrigger>
-                                        <TabsTrigger value="automations" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm active:scale-[0.97]">CRM Automations</TabsTrigger>
+                                    <TabsList className="grid grid-cols-3 bg-muted/40 p-1 rounded-xl mb-6 shrink-0">
+                                        <TabsTrigger value="general" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm active:scale-[0.97] min-h-[40px]">Content & CTA</TabsTrigger>
+                                        <TabsTrigger value="automations" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm active:scale-[0.97] min-h-[40px]">Automations</TabsTrigger>
+                                        <TabsTrigger value="distribution" className="rounded-lg text-xs font-bold transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm active:scale-[0.97] min-h-[40px]">Share & Embed</TabsTrigger>
                                     </TabsList>
 
                                     <TabsContent value="general" className="space-y-6 outline-none mt-0">
@@ -721,7 +740,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     onChange={setTitle}
                                                     variables={variables}
                                                     placeholder="Enter shared media title..."
-                                                    className="h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                                    className="h-11 rounded-xl font-semibold text-sm bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors min-h-[44px]"
                                                 />
                                             </div>
 
@@ -732,7 +751,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     onChange={setDescription}
                                                     variables={variables}
                                                     placeholder="Add descriptive content supporting variables..."
-                                                    className="min-h-[100px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                                    className="min-h-[100px] rounded-xl font-semibold text-sm bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                                 />
                                             </div>
 
@@ -761,16 +780,16 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     )}
                                                 </div>
                                                 <div className="flex gap-2 items-center">
-                                                    <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-border">/m/</span>
+                                                    <span className="text-xs font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center rounded-xl border border-slate-300 dark:border-slate-700">/m/</span>
                                                     <Input 
                                                         value={slug}
                                                         onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
                                                         placeholder="custom-link-name"
                                                         className={cn(
-                                                            "h-11 rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 w-full",
-                                                            slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border border-emerald-500/20 bg-emerald-500/5",
-                                                            slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border border-destructive/20 bg-destructive/5",
-                                                            slugStatus === 'too-short' && "focus:ring-amber-500/20 focus:border-amber-500 border border-amber-500/20 bg-amber-500/5"
+                                                            "h-11 rounded-xl font-semibold text-sm bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors min-h-[44px] w-full",
+                                                            slugStatus === 'available' && "focus:ring-emerald-500/20 focus:border-emerald-500 border-emerald-500 bg-emerald-500/5",
+                                                            slugStatus === 'conflict' && "focus:ring-destructive/20 focus:border-destructive border-destructive bg-destructive/5",
+                                                            slugStatus === 'too-short' && "focus:ring-amber-500/20 focus:border-amber-500 border-amber-500 bg-amber-500/5"
                                                         )}
                                                     />
                                                 </div>
@@ -782,7 +801,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     <h3 className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
                                                         <Film className="h-3.5 w-3.5 text-primary" /> Playback Options
                                                     </h3>
-                                                    <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 flex items-center justify-between gap-3 text-left">
+                                                    <div className="p-3.5 rounded-2xl bg-card border border-slate-300 dark:border-slate-700 flex items-center justify-between gap-3 text-left shadow-sm">
                                                         <div className="space-y-0.5 min-w-0 flex-1">
                                                             <Label className="text-xs font-extrabold text-foreground cursor-pointer" htmlFor="autoPlay-toggle">
                                                                 Auto-Play Media
@@ -816,7 +835,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                             setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external');
                                                             setCtaTargetId('');
                                                         }}
-                                                        className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px] cursor-pointer"
+                                                        className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
                                                     >
                                                         <option value="none">None</option>
                                                         <option value="survey">Survey</option>
@@ -834,7 +853,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         onChange={(e) => setCtaText(e.target.value)}
                                                         placeholder="e.g. Get Started"
                                                         disabled={ctaType === 'none'}
-                                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3 min-h-[44px]"
+                                                        className="h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold text-xs px-3 min-h-[44px]"
                                                     />
                                                 </div>
                                             </div>
@@ -850,13 +869,13 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                                 value={ctaTargetId}
                                                                 onChange={(e) => setCtaTargetId(e.target.value)}
                                                                 placeholder="https://example.com"
-                                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3 min-h-[44px]"
+                                                                className="h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold text-xs px-3 min-h-[44px]"
                                                             />
                                                         ) : (
                                                             <select
                                                                 value={ctaTargetId}
                                                                 onChange={(e) => setCtaTargetId(e.target.value)}
-                                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px] cursor-pointer"
+                                                                className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
                                                             >
                                                                 <option value="">Select resource...</option>
                                                                 {ctaType === 'survey' && surveys.map((s) => (
@@ -881,7 +900,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                             <select
                                                                 value={ctaMode}
                                                                 onChange={(e) => setCtaMode(e.target.value as 'modal' | 'redirect' | 'replace')}
-                                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                                className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
                                                             >
                                                                 <option value="modal">Popup Overlay</option>
                                                                 <option value="redirect">Direct Redirect</option>
@@ -895,7 +914,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                                 <select
                                                                     value={ctaActivationGate}
                                                                     onChange={(e) => setCtaActivationGate(e.target.value as 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete')}
-                                                                    className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                                    className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
                                                                 >
                                                                     <option value="immediate">Show Immediately</option>
                                                                     <option value="quarter">Watch 25%</option>
@@ -930,7 +949,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                             onChange={setCtaPretext}
                                                             variables={variables}
                                                             placeholder="Enter pretext layout above button supporting variables..."
-                                                            className="min-h-[70px] rounded-xl font-semibold text-sm bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20"
+                                                            className="min-h-[70px] rounded-xl font-semibold text-sm bg-card border border-slate-300 dark:border-slate-700 text-foreground shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                                         />
                                                     </div>
                                                 </>
@@ -941,7 +960,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                     <TabsContent value="automations" className="space-y-4 outline-none mt-0">
                                         <div className="space-y-4">
                                             {/* Transfer & Import Automations Header Bar */}
-                                            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-card border border-border flex-wrap sm:flex-nowrap">
+                                            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-card border border-slate-300 dark:border-slate-700 flex-wrap sm:flex-nowrap shadow-sm">
                                                 <div className="text-left">
                                                     <p className="text-xs font-extrabold text-foreground">Rule Transfer & Replication</p>
                                                     <p className="text-[10px] text-muted-foreground font-medium">
@@ -985,7 +1004,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                 <select
                                                     value={activeTrigger}
                                                     onChange={(e) => setActiveTrigger(e.target.value)}
-                                                    className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                    className="w-full h-11 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-card text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm min-h-[44px] cursor-pointer"
                                                 >
                                                     <option value="on_view">Recipient Lands on Page</option>
                                                     {(asset.type === 'video' || asset.type === 'audio') && (
@@ -1017,131 +1036,161 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                             </div>
                                         </div>
                                     </TabsContent>
+
+                                    {/* Share Links & Embed Codes Tab */}
+                                    <TabsContent value="distribution" className="space-y-6 outline-none mt-0">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center gap-2 border-b pb-3 border-border/40">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveLinkTab('links')}
+                                                    className={`pb-1 px-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeLinkTab === 'links' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+                                                >
+                                                    Share Links
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveLinkTab('embed')}
+                                                    className={`pb-1 px-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeLinkTab === 'embed' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+                                                >
+                                                    Embed Codes
+                                                </button>
+                                            </div>
+
+                                            {!isSaved ? (
+                                                <div className="py-10 text-center space-y-4 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+                                                    <div className="p-3 bg-amber-500/10 rounded-2xl w-fit mx-auto text-amber-600 dark:text-amber-400">
+                                                        <RefreshCw className="h-6 w-6 animate-spin" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-extrabold text-foreground">Save Configuration to Activate Links</p>
+                                                        <p className="text-[10px] text-muted-foreground font-medium">Click "Save Config" below to persist options and generate active public share links.</p>
+                                                    </div>
+                                                </div>
+                                            ) : activeLinkTab === 'links' ? (
+                                                <div className="space-y-6">
+                                                    {/* Direct Gateway URL */}
+                                                    <div className="space-y-2 text-left">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                            <Globe className="h-3.5 w-3.5 text-blue-500" /> Direct File URL
+                                                        </Label>
+                                                        <div className="flex gap-2">
+                                                            <Input 
+                                                                readOnly 
+                                                                value={asset.url}
+                                                                className="h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground font-bold text-[10px] truncate select-all px-3 w-full shadow-sm"
+                                                            />
+                                                            <Button 
+                                                                type="button"
+                                                                size="icon" 
+                                                                onClick={() => copyText(asset.url, 'direct')} 
+                                                                title="Copy Direct File URL"
+                                                                className="h-11 w-11 shrink-0 rounded-xl bg-card border border-slate-300 dark:border-slate-700 hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
+                                                            >
+                                                                {copiedDirect ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                                                            </Button>
+                                                            <Button 
+                                                                type="button"
+                                                                size="icon" 
+                                                                onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')} 
+                                                                title="Open Direct File URL in new tab"
+                                                                className="h-11 w-11 shrink-0 rounded-xl bg-card border border-slate-300 dark:border-slate-700 hover:bg-muted text-primary active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
+                                                            >
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Dedicated Public Page */}
+                                                    <div className="space-y-2 text-left">
+                                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                            <Globe className="h-3.5 w-3.5 text-emerald-500" /> Public Viewing Page
+                                                        </Label>
+                                                        <div className="flex gap-2">
+                                                            <Input 
+                                                                readOnly 
+                                                                value={publicUrl}
+                                                                className="h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground font-bold text-[10px] truncate select-all px-3 w-full shadow-sm"
+                                                            />
+                                                            <Button 
+                                                                type="button"
+                                                                size="icon" 
+                                                                onClick={() => copyText(publicUrl, 'public')} 
+                                                                title="Copy Public Viewing Page URL"
+                                                                className="h-11 w-11 shrink-0 rounded-xl bg-card border border-slate-300 dark:border-slate-700 hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
+                                                            >
+                                                                {copiedPublic ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                                                            </Button>
+                                                            <Button 
+                                                                type="button"
+                                                                size="icon" 
+                                                                onClick={() => window.open(publicUrl, '_blank', 'noopener,noreferrer')} 
+                                                                title="Launch Public Viewing Page in new tab"
+                                                                className="h-11 w-11 shrink-0 rounded-xl bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
+                                                            >
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1.5 text-left">
+                                                        <p className="text-[10px] font-bold text-primary flex items-center gap-1">
+                                                            <Sparkles className="h-3 w-3" /> Parameter Propagation Tutorial
+                                                        </p>
+                                                        <p className="text-[9px] text-muted-foreground leading-relaxed">
+                                                            Append parameters like <code className="bg-muted px-1 py-0.5 rounded font-mono text-[85%]">?contactId=123</code> to feed recipient data and resolve double-brace variables in your CRM workflows dynamically.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4 text-left">
+                                                    <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                        <Code className="h-3.5 w-3.5 text-purple-500" /> HTML IFrame Embed Code
+                                                    </Label>
+                                                    <textarea
+                                                        readOnly
+                                                        value={iframeCode}
+                                                        className="w-full min-h-[100px] p-3 text-[10px] font-mono font-bold bg-card border border-slate-300 dark:border-slate-700 text-foreground rounded-2xl resize-none select-all focus:outline-none shadow-sm"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => copyText(iframeCode, 'iframe')}
+                                                        className="w-full h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground hover:bg-muted font-bold text-xs gap-2 active:scale-[0.97] transition-transform duration-100 shadow-sm min-h-[44px]"
+                                                    >
+                                                        {copiedIframe ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
+                                                        {copiedIframe ? 'Copied Code' : 'Copy Embed Code'}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
                                 </Tabs>
                             </div>
 
-                            {/* Links & Embed Codes Side */}
-                            <div className="p-6 md:p-8 bg-muted/15 md:overflow-y-auto md:h-full">
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-2 border-b pb-3 border-border/40">
-                                        <button
-                                            type="button"
-                                            onClick={() => setActiveLinkTab('links')}
-                                            className={`pb-1 px-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeLinkTab === 'links' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                                        >
-                                            Share Links
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setActiveLinkTab('embed')}
-                                            className={`pb-1 px-1 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${activeLinkTab === 'embed' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
-                                        >
-                                            Embed Codes
-                                        </button>
+                            {/* Right Column - Live Real-Time Interactive Preview */}
+                            <div className="p-6 md:p-8 bg-muted/10 md:overflow-y-auto md:h-full flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-border/40">
+                                <div className="w-full max-w-lg space-y-3">
+                                    <div className="flex items-center justify-between px-1">
+                                        <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
+                                            <Eye className="h-3.5 w-3.5 text-primary" /> Real-Time Live Preview
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-500">
+                                            Updates live as you edit
+                                        </span>
                                     </div>
-
-                                    {!isSaved ? (
-                                        <div className="py-12 text-center space-y-4">
-                                            <div className="p-4 bg-muted rounded-3xl w-fit mx-auto text-muted-foreground">
-                                                <RefreshCw className="h-6 w-6 animate-pulse" />
-                                            </div>
-                                            <p className="text-xs font-bold text-muted-foreground">Save the configuration on the left to activate sharing channels.</p>
-                                        </div>
-                                    ) : activeLinkTab === 'links' ? (
-                                        <div className="space-y-6">
-                                            {/* Direct Gateway URL */}
-                                            <div className="space-y-2 text-left">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                                                    <Globe className="h-3.5 w-3.5 text-blue-500" /> Direct File URL
-                                                </Label>
-                                                <div className="flex gap-2">
-                                                    <Input 
-                                                        readOnly 
-                                                        value={asset.url}
-                                                        className="h-10 rounded-xl bg-card border-none shadow-none font-bold text-[10px] truncate select-all px-3 w-full"
-                                                    />
-                                                    <Button 
-                                                        type="button"
-                                                        size="icon" 
-                                                        onClick={() => copyText(asset.url, 'direct')} 
-                                                        title="Copy Direct File URL"
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
-                                                    >
-                                                        {copiedDirect ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
-                                                    </Button>
-                                                    <Button 
-                                                        type="button"
-                                                        size="icon" 
-                                                        onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')} 
-                                                        title="Open Direct File URL in new tab"
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted text-primary active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
-                                                    >
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            {/* Dedicated Public Page */}
-                                            <div className="space-y-2 text-left">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                                                    <Globe className="h-3.5 w-3.5 text-emerald-500" /> Public Viewing Page
-                                                </Label>
-                                                <div className="flex gap-2">
-                                                    <Input 
-                                                        readOnly 
-                                                        value={publicUrl}
-                                                        className="h-10 rounded-xl bg-card border-none shadow-none font-bold text-[10px] truncate select-all px-3 w-full"
-                                                    />
-                                                    <Button 
-                                                        type="button"
-                                                        size="icon" 
-                                                        onClick={() => copyText(publicUrl, 'public')} 
-                                                        title="Copy Public Viewing Page URL"
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-card border hover:bg-muted active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer"
-                                                    >
-                                                        {copiedPublic ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
-                                                    </Button>
-                                                    <Button 
-                                                        type="button"
-                                                        size="icon" 
-                                                        onClick={() => window.open(publicUrl, '_blank', 'noopener,noreferrer')} 
-                                                        title="Launch Public Viewing Page in new tab"
-                                                        className="h-10 w-10 shrink-0 rounded-xl bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-transform duration-100 min-h-[44px] cursor-pointer shadow-sm"
-                                                    >
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1.5 text-left">
-                                                <p className="text-[10px] font-bold text-primary flex items-center gap-1">
-                                                    <Sparkles className="h-3 w-3" /> Parameter Propagation Tutorial
-                                                </p>
-                                                <p className="text-[9px] text-muted-foreground leading-relaxed">
-                                                    Append parameters like <code className="bg-muted px-1 py-0.5 rounded font-mono text-[85%]">?contactId=123</code> to feed recipient data and resolve double-brace variables in your CRM workflows dynamically.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4 text-left">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                                                <Code className="h-3.5 w-3.5 text-purple-500" /> HTML IFrame Embed Code
-                                            </Label>
-                                            <textarea
-                                                readOnly
-                                                value={iframeCode}
-                                                className="w-full min-h-[80px] p-3 text-[10px] font-mono font-bold bg-card border border-border/80 rounded-2xl resize-none select-all focus:outline-none"
-                                            />
-                                            <Button
-                                                type="button"
-                                                onClick={() => copyText(iframeCode, 'iframe')}
-                                                className="w-full h-11 rounded-xl bg-card border hover:bg-muted font-bold text-xs gap-2 active:scale-[0.97] transition-transform duration-100"
-                                            >
-                                                {copiedIframe ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
-                                                {copiedIframe ? 'Copied Code' : 'Copy Embed Code'}
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <MediaSharePreview
+                                        asset={asset}
+                                        title={title}
+                                        description={description}
+                                        ctaText={ctaText}
+                                        ctaType={ctaType}
+                                        ctaTargetUrl={ctaTargetUrl}
+                                        ctaPretext={ctaPretext}
+                                        ctaPopoverEnabled={ctaPopoverEnabled}
+                                        ctaActivationGate={ctaActivationGate}
+                                        autoPlay={autoPlay}
+                                        orgBranding={orgBranding}
+                                    />
                                 </div>
                             </div>
                         </div>
