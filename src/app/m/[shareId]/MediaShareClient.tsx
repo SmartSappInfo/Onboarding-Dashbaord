@@ -114,8 +114,28 @@ export default function MediaShareClient({
     const [duration, setDuration] = React.useState(0);
     const [volume, setVolume] = React.useState(0.8);
     const [isCtaModalOpen, setIsCtaModalOpen] = React.useState(false);
+    const [modalContentHeight, setModalContentHeight] = React.useState<number | null>(null);
     const [isVideoPlaying, setIsVideoPlaying] = React.useState(autoPlay && asset.type === 'video');
     const [isPlaybackFinished, setIsPlaybackFinished] = React.useState(false);
+
+    React.useEffect(() => {
+        const handleIframeMessage = (event: MessageEvent) => {
+            if (event.data && typeof event.data === 'object') {
+                const type = event.data.type;
+                const h = event.data.height;
+                if ((type === 'iframe_resize' || type === 'resize') && typeof h === 'number' && h > 0) {
+                    const maxAllowed = typeof window !== 'undefined' ? Math.floor(window.innerHeight * 0.9) : 800;
+                    const clampedH = Math.max(380, Math.min(Math.round(h + 30), maxAllowed));
+                    setModalContentHeight(clampedH);
+                }
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('message', handleIframeMessage);
+            return () => window.removeEventListener('message', handleIframeMessage);
+        }
+    }, []);
 
     const sessionId = React.useMemo(() => nanoid(), []);
     const startTimeRef = React.useRef<number>(Date.now());
@@ -1262,18 +1282,21 @@ export default function MediaShareClient({
 
             {/* Render the iframe modal inside public landing layout */}
             {isCtaModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-                    <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+                    <div 
+                        style={{ height: modalContentHeight ? `${modalContentHeight}px` : '85vh', maxHeight: '90vh' }}
+                        className="relative w-full max-w-4xl min-h-[380px] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800/80 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col transition-[height] duration-300 ease-out"
+                    >
                         {/* Absolute positioned close button at top-right corner */}
                         <button
                             onClick={() => setIsCtaModalOpen(false)}
-                            className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100 dark:bg-slate-950/70 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-lg hover:scale-105 active:scale-95"
+                            className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100/90 dark:bg-slate-900/90 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-md hover:scale-105 active:scale-95"
                             aria-label="Close Modal"
                         >
                             <X className="h-5 w-5" />
                         </button>
-                        <div className="flex-1 w-full bg-white relative">
-                            <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
+                        <div className="flex-1 w-full bg-transparent dark:bg-[#070913] relative flex items-center justify-center overflow-y-auto">
+                            <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" style={{ minHeight: '350px' }} />
                         </div>
                     </div>
                 </div>
