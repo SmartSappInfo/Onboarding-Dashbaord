@@ -85,6 +85,12 @@ export default function TenantStyleEditorPage() {
     const styleId = params.id as string;
     const isNew = styleId === 'new';
 
+    const wrapHref = React.useCallback((href: string) => {
+        if (!activeWorkspaceId) return href;
+        const separator = href.includes('?') ? '&' : '?';
+        return `${href}${separator}track=${activeWorkspaceId}`;
+    }, [activeWorkspaceId]);
+
     // Page/Style State
     const [style, setStyle] = React.useState<MessageStyle | null>(null);
     const [name, setName] = React.useState('');
@@ -218,7 +224,7 @@ export default function TenantStyleEditorPage() {
                     }
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
-                    router.push('/admin/messaging/styles');
+                    router.push(wrapHref('/admin/messaging/styles'));
                 }
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to fetch style.' });
@@ -313,7 +319,7 @@ export default function TenantStyleEditorPage() {
                 await updateDoc(doc(firestore, 'message_styles', styleId), dataToSave);
                 toast({ title: 'Saved Style Wrapper', description: `"${name}" changes saved.` });
             }
-            router.push('/admin/messaging/styles');
+            router.push(wrapHref('/admin/messaging/styles'));
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
         } finally {
@@ -335,7 +341,7 @@ export default function TenantStyleEditorPage() {
         try {
             await deleteDoc(doc(firestore, 'message_styles', styleId));
             toast({ title: 'Style Deleted', description: 'Template wrapper removed successfully.' });
-            router.push('/admin/messaging/styles');
+            router.push(wrapHref('/admin/messaging/styles'));
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
         } finally {
@@ -381,7 +387,7 @@ export default function TenantStyleEditorPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                 <p className="text-lg font-semibold">Style not found</p>
-                <Button onClick={() => router.push('/admin/messaging/styles')} className="rounded-xl">
+                <Button onClick={() => router.push(wrapHref('/admin/messaging/styles'))} className="rounded-xl">
                     Back to Styles Library
                 </Button>
             </div>
@@ -393,7 +399,7 @@ export default function TenantStyleEditorPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-5">
                 <div className="flex items-center gap-4 min-w-0">
-                    <Button variant="ghost" size="icon" onClick={() => router.push('/admin/messaging/styles')} className="rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="icon" onClick={() => router.push(wrapHref('/admin/messaging/styles'))} className="rounded-xl shrink-0 text-muted-foreground hover:text-foreground">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <div className="min-w-0">

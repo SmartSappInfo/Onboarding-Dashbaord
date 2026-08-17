@@ -45,7 +45,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainer } from '@/components/ui/page-container';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
@@ -101,6 +101,7 @@ export default function MessageTemplatesPage() {
     const { activeOrganizationId } = useTenant();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const pathname = usePathname();
     const auth = useAuth();
     const [isBulkPushing, setIsBulkPushing] = React.useState(false);
     
@@ -168,23 +169,26 @@ export default function MessageTemplatesPage() {
             if (tmpl) {
                 setEditingTemplate(tmpl);
                 setIsAdding(true);
-                // Clear the edit param and set mode=edit
-                const params = new URLSearchParams(window.location.search);
+                // Clear the edit param and set mode=edit while retaining search params
+                const params = new URLSearchParams(searchParams.toString());
                 params.delete('edit');
                 params.set('mode', 'edit');
-                router.replace(`${window.location.pathname}?${params.toString()}`);
+                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
             }
         }
-    }, [editId, allTemplates, router]);
+    }, [editId, allTemplates, router, pathname, searchParams]);
 
     const mode = searchParams.get('mode');
     React.useEffect(() => {
-        if (!mode) {
+        // ARCHITECTURAL SAFEGUARD (Rule 10 Maintainer Pointer):
+        // Only clear workshop state if mode was explicitly removed from URL searchParams
+        // AND the user didn't open the workshop locally (or when navigating back to list).
+        if (!mode && !editId) {
             setIsAdding(false);
             setEditingTemplate(null);
             setNewTemplateContext(undefined);
         }
-    }, [mode]);
+    }, [mode, editId]);
 
     // AI Architect State
     const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
@@ -319,18 +323,18 @@ export default function MessageTemplatesPage() {
     const handleEdit = (tmpl: MessageTemplate) => {
         setEditingTemplate(tmpl);
         setIsAdding(true);
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(searchParams.toString());
         params.set('mode', 'edit');
-        router.replace(`${window.location.pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
     const handleCancel = () => {
         setIsAdding(false);
         setEditingTemplate(null);
         setNewTemplateContext(undefined);
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(searchParams.toString());
         params.delete('mode');
-        router.replace(`${window.location.pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
     /** Open the manual workshop seeded for a specific channel. */
@@ -338,9 +342,9 @@ export default function MessageTemplatesPage() {
         setEditingTemplate(null);
         setNewTemplateContext({ channel });
         setIsAdding(true);
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(searchParams.toString());
         params.set('mode', 'new');
-        router.replace(`${window.location.pathname}?${params.toString()}`);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
     const handleAiArchitect = async () => {
@@ -417,9 +421,9 @@ export default function MessageTemplatesPage() {
             setEditingTemplate(draftTemplate);
             setNewTemplateContext(undefined);
             setIsAdding(true);
-            const params = new URLSearchParams(window.location.search);
+            const params = new URLSearchParams(searchParams.toString());
             params.set('mode', 'new');
-            router.replace(`${window.location.pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
             toast({ title: 'Template Draft Created', description: result.explanation });
         } catch (e) {
             toast({ variant: 'destructive', title: 'Generation Failed', description: e instanceof Error ? e.message : 'Unknown error' });
@@ -479,9 +483,9 @@ export default function MessageTemplatesPage() {
             toast({ title: 'Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
-            const params = new URLSearchParams(window.location.search);
+            const params = new URLSearchParams(searchParams.toString());
             params.delete('mode');
-            router.replace(`${window.location.pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         }

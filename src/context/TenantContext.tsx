@@ -354,13 +354,17 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
 
         // 6.2. URL Enforcement: Ensure the 'track' param matches the active workspace globally.
-        // This prevents back-navigation or old links from silently changing the active workspace.
+        // ARCHITECTURAL SAFEGUARD (Rule 10): Preserves existing query params (e.g. mode, edit, tab, category)
+        // and verifies target search mismatch before replacing to prevent infinite router refresh loops.
         if (pathname.startsWith('/admin') && currentId) {
             const urlTrack = searchParams.get('track');
             if (!urlTrack || urlTrack !== currentId) {
                 const params = new URLSearchParams(searchParams.toString());
                 params.set('track', currentId);
-                router.replace(`${pathname}?${params.toString()}`);
+                const targetUrl = `${pathname}?${params.toString()}`;
+                if (urlTrack !== currentId) {
+                    router.replace(targetUrl, { scroll: false });
+                }
             }
         }
     }

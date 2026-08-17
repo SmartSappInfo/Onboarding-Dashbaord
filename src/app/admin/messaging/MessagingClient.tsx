@@ -58,7 +58,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function MessagingClient() {
-    const { activeOrganizationId } = useWorkspace();
+    const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
     const firestore = useFirestore();
     const [balance, setBalance] = React.useState<number | null>(null);
     const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
@@ -244,8 +244,14 @@ export default function MessagingClient() {
         }
     ];
 
+    const wrapHref = React.useCallback((href: string) => {
+        if (!activeWorkspaceId) return href;
+        const separator = href.includes('?') ? '&' : '?';
+        return `${href}${separator}track=${activeWorkspaceId}`;
+    }, [activeWorkspaceId]);
+
     const ModuleCard = ({ mod }: { mod: any }) => (
- <Link href={mod.href} className="group block h-full outline-none">
+        <Link href={wrapHref(mod.href)} className="group block h-full outline-none">
   <Card className={cn(
                 "h-full transition-all duration-300 border border-border/50 bg-card group-hover:shadow-xl group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden rounded-2xl",
                 mod.border

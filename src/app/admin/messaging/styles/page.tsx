@@ -93,6 +93,12 @@ export default function MessageStylesPage() {
     const confirm = useConfirm();
     const { activeWorkspaceId, activeOrganizationId, allowedWorkspaces } = useWorkspace();
     const router = useRouter();
+
+    const wrapHref = React.useCallback((href: string) => {
+        if (!activeWorkspaceId) return href;
+        const separator = href.includes('?') ? '&' : '?';
+        return `${href}${separator}track=${activeWorkspaceId}`;
+    }, [activeWorkspaceId]);
     
     // Deletion prevention state
     const [styleInUseToDelete, setStyleInUseToDelete] = React.useState<MessageStyle | null>(null);
@@ -352,7 +358,7 @@ export default function MessageStylesPage() {
             });
 
             // Automatically route to edit page for newly cloned adopted style
-            router.push(`/admin/messaging/styles/${docRef.id}`);
+            router.push(wrapHref(`/admin/messaging/styles/${docRef.id}`));
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Adoption Failed', description: err.message });
         } finally {
@@ -613,7 +619,7 @@ export default function MessageStylesPage() {
                         <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl">
                             <Sparkles className="h-4 w-4" /> AI Style Generator
                         </RainbowButton>
-                        <Button onClick={() => router.push('/admin/messaging/styles/new')} variant="outline" className="h-11 rounded-xl font-bold border-primary/20 text-primary bg-background/50 hover:bg-muted">
+                        <Button onClick={() => router.push(wrapHref('/admin/messaging/styles/new'))} variant="outline" className="h-11 rounded-xl font-bold border-primary/20 text-primary bg-background/50 hover:bg-muted">
                             <Plus className="mr-2 h-4 w-4" /> Create Style
                         </Button>
                     </div>
@@ -695,7 +701,7 @@ export default function MessageStylesPage() {
                                                                     variant="ghost" 
                                                                     size="icon" 
                                                                     className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted" 
-                                                                    onClick={() => router.push(`/admin/messaging/styles/${style.id}`)}
+                                                                    onClick={() => router.push(wrapHref(`/admin/messaging/styles/${style.id}`))}
                                                                     title="Edit"
                                                                 >
                                                                     <Pencil className="h-3.5 w-3.5" />
@@ -992,7 +998,7 @@ export default function MessageStylesPage() {
                 styles={previewStyle ? [previewStyle] : []}
                 onEdit={previewStyle && !(!previewStyle.workspaceIds || previewStyle.workspaceIds.length === 0 || previewStyle.scope === 'global') ? (tmpl) => {
                     if (tmpl.styleId) {
-                        router.push(`/admin/messaging/styles/${tmpl.styleId}`);
+                        router.push(wrapHref(`/admin/messaging/styles/${tmpl.styleId}`));
                     }
                 } : undefined}
             />
@@ -1025,7 +1031,7 @@ export default function MessageStylesPage() {
                                     onClick={() => {
                                         setStyleInUseToDelete(null);
                                         // Router push to templates page with edit search param
-                                        router.push(`/admin/messaging/templates?edit=${tmpl.id}`);
+                                        router.push(wrapHref(`/admin/messaging/templates?edit=${tmpl.id}`));
                                     }}
                                 >
                                     <Pencil size={12} /> Edit Template
