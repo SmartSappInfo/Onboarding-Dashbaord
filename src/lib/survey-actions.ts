@@ -48,7 +48,7 @@ export interface EntityMutationPayload {
  * Helper to identify generic choice answers (e.g. "Yes", "No", "Later", "Agree")
  * so they are never erroneously assigned as fallback entity names.
  */
-export function isGenericChoiceValue(val: unknown): boolean {
+function isGenericChoiceValue(val: unknown): boolean {
   if (typeof val !== 'string' && typeof val !== 'boolean') return false;
   const str = String(val).trim().toLowerCase();
   const genericChoices = new Set([
