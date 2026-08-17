@@ -45,9 +45,25 @@ export interface EntityMutationPayload {
 }
 
 /**
- * Sanitizes entity payload prior to database update operations.
- * Ensures pre-existing entity names (e.g. "Kofi Annan Institute") are never overwritten
- * by unmapped question answers (such as option "Yes") or dynamic lead capture fallbacks.
+ * Helper to identify generic choice answers (e.g. "Yes", "No", "Later", "Agree")
+ * so they are never erroneously assigned as fallback entity names.
+ */
+export function isGenericChoiceValue(val: unknown): boolean {
+  if (typeof val !== 'string' && typeof val !== 'boolean') return false;
+  const str = String(val).trim().toLowerCase();
+  const genericChoices = new Set([
+    'yes', 'no', 'later', 'maybe', 'agree', 'disagree', 
+    'true', 'false', 'option 1', 'option 2', 'option 3', 
+    'select', 'none', 'n/a', 'na'
+  ]);
+  return genericChoices.has(str);
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Sanitize entity mutation payload when updating pre-existing entities.
+ * Prevents unintended overwrites of entity display names by unmapped question answers
+ * (such as option "Yes") or dynamic lead capture fallbacks.
  *
  * @param payload Target entity mutation payload
  * @param options Guard evaluation context (isExistingEntity, isExplicitlyMapped, isManualInput)
@@ -361,7 +377,19 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     let finalEntityId = responseData.entityId || null;
     let finalEntityName = '';
     let finalContactName = '';
-    const isFormMode = surveyData?.createEntity && surveyData?.leadCaptureMode === 'form';
+
+    // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+    // Lead Capture Precedence Resolution:
+    // If `leadCaptureMode` is 'form' (CAPTURE WITH LEAD FORM), defer entity creation to `submitPublicSurveyLead`.
+    // Only run question mapping in `submitPublicSurveyResponse` when `leadCaptureMode` is 'questions'.
+    const hasLeadFormConfig = Boolean(
+      surveyData?.leadCaptureFieldsConfig?.name?.show ||
+      surveyData?.leadCaptureFieldsConfig?.email?.show ||
+      surveyData?.leadCaptureFieldsConfig?.phone?.show ||
+      surveyData?.leadCaptureFieldsConfig?.company?.show
+    );
+    const activeLeadMode = surveyData?.leadCaptureMode || (hasLeadFormConfig ? 'form' : 'questions');
+    const isFormMode = surveyData?.createEntity && activeLeadMode === 'form';
 
     if (surveyData && surveyData.createEntity && surveyData.entityMapping && !isFormMode) {
       // FIX 1: Skip entity creation entirely if no workspace is resolved
@@ -377,8 +405,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           return ans ? ans.value : null;
         };
 
-        const eName = getAnswerValue(mapping.entityNameFieldId);
-        const cName = getAnswerValue(mapping.contactNameFieldId);
+        const rawEName = getAnswerValue(mapping.entityNameFieldId);
+        const rawCName = getAnswerValue(mapping.contactNameFieldId);
+        const eName = isGenericChoiceValue(rawEName) ? null : String(rawEName ?? '');
+        const cName = isGenericChoiceValue(rawCName) ? null : String(rawCName ?? '');
         const cEmail = getAnswerValue(mapping.contactEmailFieldId);
         const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
 
@@ -406,13 +436,13 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 const field = m.targetField.replace('customData.', '');
                 mappedCustomData[field] = val;
               } else if (m.targetField === 'entity.name') {
-                overriddenEntityName = val;
+                if (!isGenericChoiceValue(val)) overriddenEntityName = String(val);
               } else if (m.targetField === 'contacts.name') {
-                overriddenContactName = val;
+                if (!isGenericChoiceValue(val)) overriddenContactName = String(val);
               } else if (m.targetField === 'contacts.email') {
-                overriddenContactEmail = val;
+                overriddenContactEmail = String(val);
               } else if (m.targetField === 'contacts.phone') {
-                overriddenContactPhone = val;
+                overriddenContactPhone = String(val);
               }
             }
           });
@@ -1224,23 +1254,17 @@ export async function submitPublicSurveyLead(
       preTrackedEntityId = responseData.assignedUserId;
     }
 
-    const dedupeQuery = adminDb.collection('workspace_entities')
-      .where('workspaceId', '==', workspaceId)
-      .where('displayName', '==', finalEntityName);
+    const dedupeBase = adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId);
     
     let weSnap;
     if (preTrackedEntityId) {
-      weSnap = await adminDb.collection('workspace_entities')
-        .where('workspaceId', '==', workspaceId)
-        .where('entityId', '==', preTrackedEntityId)
-        .limit(1)
-        .get();
+      weSnap = await dedupeBase.where('entityId', '==', preTrackedEntityId).limit(1).get();
     } else if (cEmail) {
-      weSnap = await dedupeQuery.where('primaryEmail', '==', cEmail).limit(1).get();
+      weSnap = await dedupeBase.where('primaryEmail', '==', cEmail).limit(1).get();
     } else if (cPhone) {
-      weSnap = await dedupeQuery.where('primaryPhone', '==', cPhone).limit(1).get();
+      weSnap = await dedupeBase.where('primaryPhone', '==', cPhone).limit(1).get();
     } else {
-      weSnap = await dedupeQuery.limit(1).get();
+      weSnap = await dedupeBase.where('displayName', '==', finalEntityName).limit(1).get();
     }
 
     const systemDefaults = {
@@ -1309,7 +1333,8 @@ export async function submitPublicSurveyLead(
     }
 
     const fieldSources = (leadData.fieldFillSource as Record<string, 'manual' | 'dynamic'> | undefined) || {};
-    const isManualNameInput = fieldSources.name === 'manual' || fieldSources.company === 'manual';
+    const hasLeadFormName = Boolean((leadData.company || leadData.name)?.toString().trim());
+    const isManualNameInput = fieldSources.name === 'manual' || fieldSources.company === 'manual' || hasLeadFormName;
 
     const entityPayload: EntityMutationPayload = {
       name: finalEntityName,
