@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { Survey, OrgBranding, WorkspaceEntity } from '@/lib/types';
+import type { Survey, OrgBranding, WorkspaceEntity, SurveyResponse, SurveyResultPage } from '@/lib/types';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
@@ -267,7 +267,7 @@ export default function SurveyDisplay({
 
     if (isSubmitted) {
         const defaultPage = survey.resultPages && survey.resultPages.length > 0 
-            ? (survey.resultPages.find(p => p.isDefault) || survey.resultPages[0]) 
+            ? (survey.resultPages.find((p: SurveyResultPage) => p.isDefault) || survey.resultPages[0]) 
             : null;
 
         const syntheticResponse: SurveyResponse = {

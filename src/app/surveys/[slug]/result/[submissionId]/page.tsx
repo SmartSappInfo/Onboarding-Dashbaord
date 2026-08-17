@@ -99,7 +99,7 @@ async function getResultData(slug: string, submissionId: string) {
                 resolvedPage = { id: defaultPageSnap.docs[0].id, ...defaultPageSnap.docs[0].data() } as SurveyResultPage;
             } else if (survey.resultPages && survey.resultPages.length > 0) {
                 // Secondary Fallback: Check survey.resultPages array if subcollection document is not present
-                resolvedPage = survey.resultPages.find(p => p.isDefault) || survey.resultPages[0];
+                resolvedPage = survey.resultPages.find((p: SurveyResultPage) => p.isDefault) || survey.resultPages[0];
             }
         }
 

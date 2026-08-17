@@ -1968,6 +1968,7 @@ export interface Survey {
   thankYouRedirectEnabled?: boolean;
   thankYouRedirectUrl?: string;
   thankYouConfettiEnabled?: boolean;
+  resultPages?: SurveyResultPage[];
 }
 
 export interface LeadCaptureFieldSetting {
@@ -2134,8 +2135,9 @@ export interface SurveyResponse {
   workspaceId?: string | null; // Workspace context at time of submission
   assignedUserId?: string; // User who shared the survey link
   sourcePageId?: string | null;
-  leadDetails?: Record<string, string>;
   respondentName?: string | null;
+  respondentEntityId?: string | null;
+  contactEmail?: string | null;
 }
 
 export interface SurveySummary {
