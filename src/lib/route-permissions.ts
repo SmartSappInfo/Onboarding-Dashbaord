@@ -44,6 +44,7 @@ export const ROUTE_PERMISSION_MAP: { path: string; check: RoutePermissionCheck }
     { path: '/admin/portals', check: { label: 'Public Portals', section: 'studios', feature: 'publicPortals' } },
     { path: '/admin/pages', check: { label: 'Landing Pages', section: 'studios', feature: 'landingPages' } },
     { path: '/admin/media', check: { label: 'Media', section: 'studios', feature: 'media' } },
+    { path: '/admin/flipbooks', check: { label: 'Flipbook Studio', section: 'studios', feature: 'media' } },
     { path: '/admin/surveys', check: { label: 'Surveys', section: 'studios', feature: 'surveys' } },
     { path: '/admin/pdfs', check: { label: 'Doc Signing', section: 'studios', feature: 'docSigning' } },
     { path: '/admin/messaging', check: { label: 'Messaging', section: 'studios', feature: 'messaging' } },

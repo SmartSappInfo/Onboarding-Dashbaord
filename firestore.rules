@@ -150,12 +150,22 @@ service cloud.firestore {
     }
 
     match /regions/{regionId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        !('organizationId' in resource.data) || 
+        resource.data.organizationId == null || 
+        isOrgMatch(resource.data.organizationId)
+      );
       allow write: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
     }
 
     match /districts/{districtId} {
-      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        !('organizationId' in resource.data) || 
+        resource.data.organizationId == null || 
+        isOrgMatch(resource.data.organizationId)
+      );
       allow write: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
     }
 

@@ -30,6 +30,7 @@ export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin/portals': 'Public Portals',
   '/admin/pages': 'Landing Pages',
   '/admin/media': 'Media',
+  '/admin/flipbooks': 'Flipbook Studio',
   '/admin/surveys': 'Surveys',
   '/admin/pdfs': 'Doc Signing',
   '/admin/messaging/call-centre': 'Call Centre',

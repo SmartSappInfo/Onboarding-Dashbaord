@@ -113,16 +113,17 @@ export default function BulkUploadClient() {
     const { activeWorkspace } = useWorkspace();
     const firestore = useFirestore();
     const contactScope = activeWorkspace?.contactScope || 'institution';
+    const orgId = activeWorkspace?.organizationId || 'smartsapp-hq';
 
     // Fetch lists for default settings steps
     const regionsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'regions'), orderBy('name')) : null,
-    [firestore]);
+        firestore ? query(collection(firestore, 'regions'), where('organizationId', '==', orgId), orderBy('name')) : null,
+    [firestore, orgId]);
     const { data: regionsList } = useCollection<any>(regionsQuery);
 
     const districtsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'districts'), orderBy('name')) : null,
-    [firestore]);
+        firestore ? query(collection(firestore, 'districts'), where('organizationId', '==', orgId), orderBy('name')) : null,
+    [firestore, orgId]);
     const { data: districtsList } = useCollection<any>(districtsQuery);
 
     const packagesQuery = useMemoFirebase(() => 

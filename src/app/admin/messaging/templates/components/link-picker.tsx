@@ -138,6 +138,25 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
               path: `/book/${data.slug || d.id}`,
             };
           });
+        } else if (targetType === 'flipbooks') {
+          const snap = await getDocs(
+            query(
+              collection(firestore, 'flipbooks'),
+              where('workspaceId', '==', activeWorkspaceId),
+              where('status', '==', 'published')
+            )
+          );
+          fetched = snap.docs.map((d) => {
+            const data = d.data();
+            const internalName = (data.title as string) || 'Untitled Flipbook';
+            const publicSubtitle = data.description ? (data.description as string) : `Page Count: ${data.pageCount || 1}`;
+            return {
+              id: d.id,
+              name: internalName,
+              subtitle: publicSubtitle,
+              path: `/f/${data.slug || d.id}`,
+            };
+          });
         } else if (targetType === 'qrs' && activeOrganizationId) {
           const snap = await getDocs(
             collection(firestore, 'organizations', activeOrganizationId, 'workspaces', activeWorkspaceId, 'qr_codes')
@@ -276,6 +295,7 @@ export function LinkPicker({ onSelect }: LinkPickerProps) {
             <option value="surveys" className="bg-background dark:bg-zinc-900 text-foreground">Published Workspace Surveys</option>
             <option value="forms" className="bg-background dark:bg-zinc-900 text-foreground">Published Forms & PDFs</option>
             <option value="media" className="bg-background dark:bg-zinc-900 text-foreground">Shared Media Pages</option>
+            <option value="flipbooks" className="bg-background dark:bg-zinc-900 text-foreground">Interactive Flipbooks</option>
             <option value="pages" className="bg-background dark:bg-zinc-900 text-foreground">Published Campaign Pages</option>
             <option value="bookings" className="bg-background dark:bg-zinc-900 text-foreground">Published Booking Pages</option>
             <option value="qrs" className="bg-background dark:bg-zinc-900 text-foreground">QR Studio Codes</option>

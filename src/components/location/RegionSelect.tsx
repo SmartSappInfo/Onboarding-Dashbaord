@@ -38,13 +38,14 @@ export function RegionSelect({
   const { activeOrganizationId } = useTenant();
 
   const regionsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    // Query all regions globally, filter by country client-side to avoid composite index requirement
+    if (!firestore || !activeOrganizationId) return null;
+    // Scope regions to active organization to comply with Firestore Security Rules (Requirement: Tenant Data Isolation)
     return query(
       collection(firestore, 'regions'),
+      where('organizationId', '==', activeOrganizationId),
       orderBy('name', 'asc'),
     );
-  }, [firestore]);
+  }, [firestore, activeOrganizationId]);
 
   const { data: allRegions, isLoading } = useCollection<Region>(regionsQuery);
 
