@@ -4,13 +4,12 @@ import * as React from 'react';
 import type { CallOutcomeAutomation } from '@/lib/types';
 import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
 import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scripts/components/OutcomeAutomationsEditor';
-import { TRIGGER_DEFINITIONS, TriggerDefinition } from './ConfiguredAutomationsSummary';
+import { TRIGGER_DEFINITIONS } from './ConfiguredAutomationsSummary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
-  Zap, Plus, Trash2, Edit3, ChevronDown, ChevronRight, 
-  Sparkles, CheckCircle2, AlertCircle 
+  Zap, Plus, Trash2, Edit3, ChevronDown, ChevronRight 
 } from 'lucide-react';
 import {
   Dialog,

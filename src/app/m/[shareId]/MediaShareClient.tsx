@@ -56,6 +56,7 @@ declare global {
 
 import Footer from '@/components/footer';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { useTheme } from 'next-themes';
 import { nanoid } from 'nanoid';
 import { recordMediaPageEventAction } from '@/lib/media-analytics-actions';
 
@@ -98,6 +99,8 @@ export default function MediaShareClient({
     contactId,
     entityId,
 }: MediaShareClientProps) {
+    const { resolvedTheme } = useTheme();
+
     const effectiveDescription = React.useMemo(() => {
         return getEffectiveDescription(description, asset.type);
     }, [description, asset.type]);
@@ -581,8 +584,8 @@ export default function MediaShareClient({
     /**
      * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
      * When viewers click CTA buttons or links on media pages, we MUST propagate their
-     * contact identity (contactId / entityId / ref) to the target destination (e.g. Survey or Landing Page).
-     * We combine URL searchParams AND server-resolved props so tracking is never lost.
+     * contact identity (contactId / entityId / ref) and theme settings to the target destination.
+     * We combine URL searchParams AND server-resolved props so tracking and theme sync are never lost.
      */
     const getFinalCtaUrl = () => {
         if (!ctaTargetUrl) return '';
@@ -602,6 +605,14 @@ export default function MediaShareClient({
                     urlObj.searchParams.set(key, val);
                 }
             });
+
+            // If CTA opens in modal mode, suppress modal theme toggle and pass active parent theme
+            if (ctaMode === 'modal') {
+                urlObj.searchParams.set('embed', 'true');
+                if (resolvedTheme) {
+                    urlObj.searchParams.set('theme', resolvedTheme);
+                }
+            }
 
             // Explicitly ensure server-resolved contactId and entityId are present
             if (contactId && !urlObj.searchParams.has('contactId')) {

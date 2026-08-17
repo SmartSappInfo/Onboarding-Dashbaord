@@ -30,14 +30,12 @@ import type { TemplateVariable } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { checkSlugAvailabilityAction } from '@/lib/media-analytics-actions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { OutcomeAutomationsEditor } from '@/app/admin/messaging/call-centre/scripts/components/OutcomeAutomationsEditor';
 import { useWorkspaceScopedQueries } from '@/app/admin/automations/hooks/useWorkspaceScopedQueries';
 import type { ActionConfigDataSources } from '@/app/admin/messaging/call-centre/scripts/components/ActionConfigFields';
 import type { CallOutcomeAutomation } from '@/lib/types';
 import { useTenant } from '@/context/TenantContext';
 import { MediaSharePreview } from './MediaSharePreview';
 import EventAutomationsAccordion from './EventAutomationsAccordion';
-import ConfiguredAutomationsSummary from './ConfiguredAutomationsSummary';
 import TransferMediaAutomationsModal from './TransferMediaAutomationsModal';
 import ImportMediaAutomationsModal, { ImportMode } from './ImportMediaAutomationsModal';
 
@@ -248,14 +246,6 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
         });
     }, [toast]);
 
-    const handleClearTriggerRules = React.useCallback((triggerKey: string) => {
-        setAutomationRules(prev => {
-            const next = { ...prev };
-            delete next[triggerKey];
-            return next;
-        });
-    }, []);
-
     const actionData = React.useMemo<ActionConfigDataSources>(() => ({
         tags: (scopedData.allTags || []).map(t => ({ id: t.id, name: t.name })),
         stages: (scopedData.stages || []).map(s => ({ id: s.id, name: s.name, pipelineId: s.pipelineId })),
@@ -265,13 +255,6 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
         callCampaigns: (scopedData.callCampaigns || []).map(c => ({ id: c.id, name: c.name })),
         workspaceUsers: (scopedData.users || []).map(u => ({ id: u.id, name: u.name || '', email: u.email || '' })),
     }), [scopedData]);
-
-    const handleRulesChange = React.useCallback((nextRules: CallOutcomeAutomation[]) => {
-        setAutomationRules(prev => ({
-            ...prev,
-            [activeTrigger]: nextRules
-        }));
-    }, [activeTrigger]);
     
     // Lists of options
     const [surveys, setSurveys] = React.useState<SurveyDoc[]>([]);

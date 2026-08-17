@@ -16,7 +16,8 @@ import FormSuccessScreen from './FormSuccessScreen';
 import type { OrgBranding } from '@/lib/types';
 import Footer from '@/components/footer';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
-
+import { useTheme } from 'next-themes';
+import { useSearchParams } from 'next/navigation';
 import { extractTrackingParams } from '@/lib/tracking-utils';
 
 interface ResolvedField extends FormFieldInstance {
@@ -41,14 +42,43 @@ export default function FormRenderer({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [trackingParams, setTrackingParams] = useState<Record<string, string>>({});
+  const { setTheme } = useTheme();
+  const searchParams = useSearchParams();
 
   // Auto-report iframe height if embedded
   useIframeHeightReporter(form.slug);
 
-  // Extract tracking parameters from URL/referrer/sessionStorage on mount
+  /**
+   * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+   * Theme & Tracking Synchronization
+   * ----------------------------------
+   * 1. Detects `theme=dark` or `theme=light` query parameter passed from parent page or iframe modal.
+   * 2. Listens for `postMessage` theme events for dynamic live preview switching.
+   * 3. Prevents XSS by strictly checking theme values against 'dark' | 'light' enums.
+   */
   useEffect(() => {
     setTrackingParams(extractTrackingParams());
-  }, []);
+
+    const themeParam = searchParams?.get('theme');
+    if (themeParam === 'dark' || themeParam === 'light') {
+      setTheme(themeParam);
+    }
+
+    const handlePostMessage = (event: MessageEvent) => {
+      if (event.data && typeof event.data === 'object') {
+        const type = event.data.type;
+        const requestedTheme = event.data.theme;
+        if ((type === 'theme_change' || type === 'set_theme') && (requestedTheme === 'dark' || requestedTheme === 'light')) {
+          setTheme(requestedTheme);
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('message', handlePostMessage);
+      return () => window.removeEventListener('message', handlePostMessage);
+    }
+  }, [searchParams, setTheme]);
 
   // 1. Build Dynamic Zod Schema
   const schemaObject: Record<string, any> = {};
