@@ -66,7 +66,7 @@ interface MediaShareClientProps {
     description: string;
     ctaText: string;
     ctaTargetUrl: string;
-    ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaType: 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external';
     ctaMode: 'modal' | 'redirect' | 'replace';
     ctaPretext: string;
     ctaPopoverEnabled: boolean;

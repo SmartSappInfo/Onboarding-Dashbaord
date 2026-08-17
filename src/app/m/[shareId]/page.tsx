@@ -17,7 +17,7 @@ interface ShareConfig {
     title: string;
     description: string;
     ctaText: string;
-    ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaType: 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external';
     ctaTargetId: string;
     ctaTargetUrl: string;
     ctaMode?: 'modal' | 'redirect' | 'replace';

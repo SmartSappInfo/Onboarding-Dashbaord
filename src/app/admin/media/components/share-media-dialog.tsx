@@ -80,7 +80,7 @@ interface ShareConfig {
     title: string;
     description: string;
     ctaText: string;
-    ctaType: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaType: 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external';
     ctaTargetId: string;
     ctaTargetUrl: string;
     ctaMode?: 'modal' | 'redirect' | 'replace';
@@ -97,7 +97,7 @@ interface ShareConfig {
 interface MediaSharePreset {
     description?: string;
     ctaText?: string;
-    ctaType?: 'none' | 'survey' | 'form' | 'page' | 'external';
+    ctaType?: 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external';
     ctaTargetId?: string;
     ctaTargetUrl?: string;
     ctaMode?: 'modal' | 'redirect' | 'replace';
@@ -149,6 +149,14 @@ interface SurveyDoc {
     slug?: string;
 }
 
+interface FormDoc {
+    id: string;
+    internalName?: string;
+    title?: string;
+    slug?: string;
+    status?: string;
+}
+
 interface PdfDoc {
     id: string;
     name?: string;
@@ -169,7 +177,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     const [title, setTitle] = React.useState<string>(asset.name);
     const [description, setDescription] = React.useState<string>('');
     const [ctaText, setCtaText] = React.useState<string>('');
-    const [ctaType, setCtaType] = React.useState<'none' | 'survey' | 'form' | 'page' | 'external'>('none');
+    const [ctaType, setCtaType] = React.useState<'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external'>('none');
     const [ctaTargetId, setCtaTargetId] = React.useState<string>('');
     const [ctaTargetUrl, setCtaTargetUrl] = React.useState<string>('');
     const [ctaMode, setCtaMode] = React.useState<'modal' | 'redirect' | 'replace'>('redirect');
@@ -248,6 +256,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     
     // Lists of options
     const [surveys, setSurveys] = React.useState<SurveyDoc[]>([]);
+    const [forms, setForms] = React.useState<FormDoc[]>([]);
     const [pdfs, setPdfs] = React.useState<PdfDoc[]>([]);
     const [pages, setPages] = React.useState<PageDoc[]>([]);
     const [variables, setVariables] = React.useState<TemplateVariable[]>([]);
@@ -278,7 +287,16 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                 setTitle(data.title || asset.name);
                 setDescription(getEffectiveDescription(data.description, asset.type));
                 setCtaText(data.ctaText || '');
-                setCtaType(data.ctaType || 'none');
+
+                const rawCtaType = data.ctaType || 'none';
+                let effectiveCtaType: 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external' = rawCtaType;
+                // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+                // Legacy Data Normalization: Pre-existing saved configs stored PDF document targets under ctaType === 'form'
+                // with target URLs like '/forms/...'. Normalize to 'pdf' so users see 'Form (PDF)' selected seamlessly.
+                if (rawCtaType === 'form' && data.ctaTargetUrl?.startsWith('/forms/')) {
+                    effectiveCtaType = 'pdf';
+                }
+                setCtaType(effectiveCtaType);
                 setCtaTargetId(data.ctaTargetId || '');
                 setCtaTargetUrl(data.ctaTargetUrl || '');
                 setCtaMode(data.ctaMode || 'redirect');
@@ -420,7 +438,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             });
             setSurveys(fetchedSurveys);
 
-            // 3. Fetch PDFs
+            // 3. Fetch PDFs (PDF Forms)
             const pdfSnap = await getDocs(
                 query(collection(firestore, 'pdfs'), where('workspaceIds', 'array-contains', activeWorkspaceId))
             );
@@ -430,7 +448,32 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
             }));
             setPdfs(fetchedPdfs);
 
-            // 4. Fetch Pages
+            // 4. Fetch Web/App Forms (Published forms from the forms collection)
+            // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+            // Query both workspaceId (string) and workspaceIds (array) to ensure complete workspace scoping,
+            // filtering strictly for published forms.
+            const [formSnapByWsId, formSnapByWsIds] = await Promise.all([
+                getDocs(query(collection(firestore, 'forms'), where('workspaceId', '==', activeWorkspaceId))),
+                getDocs(query(collection(firestore, 'forms'), where('workspaceIds', 'array-contains', activeWorkspaceId)))
+            ]);
+
+            const formMap = new Map<string, FormDoc>();
+            [...formSnapByWsId.docs, ...formSnapByWsIds.docs].forEach((d) => {
+                const data = d.data();
+                const status = (data.status as string) || 'draft';
+                if (status === 'published' && !formMap.has(d.id)) {
+                    formMap.set(d.id, {
+                        id: d.id,
+                        internalName: (data.internalName as string) || (data.title as string) || '',
+                        title: (data.title as string) || (data.internalName as string) || '',
+                        slug: (data.slug as string) || '',
+                        status,
+                    });
+                }
+            });
+            setForms(Array.from(formMap.values()));
+
+            // 5. Fetch Pages
             const pageSnap = await getDocs(
                 query(collection(firestore, 'campaign_pages'), where('workspaceIds', 'array-contains', activeWorkspaceId))
             );
@@ -456,11 +499,20 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
     }, [open, loadConfig, loadResources]);
 
     // Handle target url resolution
+    // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+    // Maps selected target resource IDs to their canonical public routes:
+    // - 'survey': /surveys/${slug || id}
+    // - 'form' (Web Form): /p/f/${slug || id}
+    // - 'pdf' (PDF Form): /forms/${id}
+    // - 'page': /p/${slug || id}
     React.useEffect(() => {
         if (ctaType === 'survey') {
             const match = surveys.find((s) => s.id === ctaTargetId);
             if (match) setCtaTargetUrl(`/surveys/${match.slug || match.id}`);
         } else if (ctaType === 'form') {
+            const match = forms.find((f) => f.id === ctaTargetId);
+            if (match) setCtaTargetUrl(`/p/f/${match.slug || match.id}`);
+        } else if (ctaType === 'pdf') {
             if (ctaTargetId) setCtaTargetUrl(`/forms/${ctaTargetId}`);
         } else if (ctaType === 'page') {
             const match = pages.find((p) => p.id === ctaTargetId);
@@ -470,7 +522,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
         } else {
             setCtaTargetUrl('');
         }
-    }, [ctaType, ctaTargetId, surveys, pages]);
+    }, [ctaType, ctaTargetId, surveys, forms, pdfs, pages]);
 
     // Handle Save / Submit
     const handleSave = async (e: React.FormEvent) => {
@@ -761,14 +813,15 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     <select
                                                         value={ctaType}
                                                         onChange={(e) => {
-                                                            setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'page' | 'external');
+                                                            setCtaType(e.target.value as 'none' | 'survey' | 'form' | 'pdf' | 'page' | 'external');
                                                             setCtaTargetId('');
                                                         }}
-                                                        className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                        className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px] cursor-pointer"
                                                     >
                                                         <option value="none">None</option>
                                                         <option value="survey">Survey</option>
-                                                        <option value="form">Form (PDF)</option>
+                                                        <option value="form">Form (Web Form)</option>
+                                                        <option value="pdf">Form (PDF)</option>
                                                         <option value="page">Landing Page</option>
                                                         <option value="external">External Link</option>
                                                     </select>
@@ -781,7 +834,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                         onChange={(e) => setCtaText(e.target.value)}
                                                         placeholder="e.g. Get Started"
                                                         disabled={ctaType === 'none'}
-                                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3 min-h-[44px]"
                                                     />
                                                 </div>
                                             </div>
@@ -797,23 +850,26 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                                 value={ctaTargetId}
                                                                 onChange={(e) => setCtaTargetId(e.target.value)}
                                                                 placeholder="https://example.com"
-                                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3"
+                                                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-xs px-3 min-h-[44px]"
                                                             />
                                                         ) : (
                                                             <select
                                                                 value={ctaTargetId}
                                                                 onChange={(e) => setCtaTargetId(e.target.value)}
-                                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                                                className="w-full h-11 px-3 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[44px] cursor-pointer"
                                                             >
                                                                 <option value="">Select resource...</option>
                                                                 {ctaType === 'survey' && surveys.map((s) => (
-                                                                    <option key={s.id} value={s.id}>{s.internalName}</option>
+                                                                    <option key={s.id} value={s.id}>{s.internalName || s.name || s.id}</option>
                                                                 ))}
-                                                                {ctaType === 'form' && pdfs.map((f) => (
-                                                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                                                {ctaType === 'form' && forms.map((f) => (
+                                                                    <option key={f.id} value={f.id}>{f.title || f.internalName || f.id}</option>
+                                                                ))}
+                                                                {ctaType === 'pdf' && pdfs.map((f) => (
+                                                                    <option key={f.id} value={f.id}>{f.name || f.id}</option>
                                                                 ))}
                                                                 {ctaType === 'page' && pages.map((p) => (
-                                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                                    <option key={p.id} value={p.id}>{p.name || p.id}</option>
                                                                 ))}
                                                             </select>
                                                         )}
