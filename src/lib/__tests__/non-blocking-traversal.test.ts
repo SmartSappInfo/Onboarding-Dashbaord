@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Automation } from '../types';
+import type { ExecutionContext } from '../automations/execution-types';
 
 vi.mock('../firebase-admin', () => ({
   adminDb: {
@@ -8,14 +9,16 @@ vi.mock('../firebase-admin', () => ({
         get: vi.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
         update: vi.fn().mockResolvedValue({}),
       }),
+      add: vi.fn().mockResolvedValue({ id: 'job_test_123' }),
       where: vi.fn().mockReturnThis(),
       get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
     }),
   },
 }));
 
-vi.mock('../step-logger', () => ({
-  logStepExecution: vi.fn(),
+const mockLogStepExecution = vi.fn();
+vi.mock('../automations/step-logger', () => ({
+  logStepExecution: (...args: unknown[]) => mockLogStepExecution(...args),
   getStepNumbers: vi.fn().mockReturnValue({}),
   getNodeLabelWithStep: vi.fn().mockReturnValue('Step #1'),
 }));
@@ -23,6 +26,22 @@ vi.mock('../step-logger', () => ({
 vi.mock('../activity-logger', () => ({
   logActivity: vi.fn().mockResolvedValue(true),
 }));
+
+vi.mock('../automations/actions', () => ({
+  processActionNode: vi.fn().mockImplementation(async (node) => {
+    if (node.id === 'action_email_1') {
+      throw new Error('Email dispatch failed: Recipient bounced');
+    }
+    return { success: true };
+  }),
+}));
+
+vi.mock('../automations/nodes/delay', () => ({
+  handleDelayNode: vi.fn().mockResolvedValue(true),
+  calculateExecuteAt: vi.fn().mockResolvedValue(new Date(Date.now() + 86400000)),
+}));
+
+import { traverseNodes } from '../automations/nodes/traverse';
 
 describe('Non-blocking Messaging Traversal Protocol', () => {
   beforeEach(() => {
@@ -33,9 +52,11 @@ describe('Non-blocking Messaging Traversal Protocol', () => {
     const mockAutomation: Automation = {
       id: 'auto_test_123',
       name: 'Test Non-Blocking Automation',
-      status: 'active',
       workspaceIds: ['ws_test'],
-      trigger: { type: 'event', config: {} },
+      triggerTypes: ['ENTITY_CREATED'],
+      triggers: [{ id: 'trig_1', type: 'ENTITY_CREATED', config: {} }],
+      isActive: true,
+      createdBy: 'user_1',
       nodes: [
         { id: 'trigger_1', type: 'triggerNode', data: { label: 'Trigger' }, position: { x: 0, y: 0 } },
         { id: 'action_email_1', type: 'actionNode', data: { actionType: 'send_email', label: 'Send Email' }, position: { x: 0, y: 100 } },
@@ -49,7 +70,27 @@ describe('Non-blocking Messaging Traversal Protocol', () => {
       updatedAt: new Date().toISOString(),
     };
 
-    expect(mockAutomation.nodes.length).toBe(3);
-    expect(mockAutomation.edges.length).toBe(2);
+    const context: ExecutionContext = {
+      runId: 'run_test_123',
+      automationId: mockAutomation.id,
+      workspaceId: 'ws_test',
+      entityId: 'entity_test_123',
+      entityType: 'person',
+      payload: {},
+    };
+
+    // Traversal should NOT throw when action_email_1 fails!
+    await expect(traverseNodes('action_email_1', mockAutomation, context, true)).resolves.not.toThrow();
+
+    // Verify step logging recorded failed status for action_email_1
+    const failedCall = mockLogStepExecution.mock.calls.find(
+      (call) => (call[1] as { nodeId?: string; status?: string }).nodeId === 'action_email_1'
+    );
+    expect(failedCall).toBeDefined();
+    expect((failedCall![1] as { status: string }).status).toBe('failed');
+    expect((failedCall![1] as { error?: string }).error).toContain('Recipient bounced');
+
+    // Verify run context was NOT terminated
+    expect(context.isTerminated).not.toBe(true);
   });
 });

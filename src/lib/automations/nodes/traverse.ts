@@ -1,4 +1,4 @@
-import type { Automation, MessageResendConfig } from '../../types';
+import type { Automation } from '../../types';
 import { evaluateConditionNode } from '../../automation-condition';
 import { processActionNode } from '../actions';
 import type { ExecutionContext } from '../execution-types';
@@ -10,6 +10,72 @@ import { fetchLiveEntityTags, nodeChecksTags } from '../tag-enrichment';
 import { nodeChecksMessageActions } from '../payload-enricher';
 import { notifyAutomationFailed } from '../automation-lifecycle-notify';
 import * as crypto from 'crypto';
+
+async function executeActionOrTagNodeSafely(
+  node: Automation['nodes'][number],
+  automation: Automation,
+  context: ExecutionContext,
+  stepStart: number
+): Promise<void> {
+  try {
+    if (node.type === 'actionNode') {
+      const output = await processActionNode(node, context);
+
+      if (output && typeof output === 'object' && '__halt' in output) {
+        context.isTerminated = true;
+        return;
+      }
+
+      const stepNumbers = getStepNumbers(automation);
+      const stepNum = stepNumbers[node.id];
+      if (stepNum && output && typeof output === 'object') {
+        for (const [key, val] of Object.entries(output)) {
+          context.payload[`${stepNum}.${key}`] = val;
+          context.payload[`${node.id}.${key}`] = val;
+        }
+      }
+
+      const isSkipped = Boolean(output && typeof output === 'object' && ('skipped' in output || 'isDisabled' in output));
+      logStepExecution(context.runId, {
+        nodeId: node.id,
+        nodeType: 'actionNode',
+        nodeLabel: getNodeLabelWithStep(node, automation.nodes, 'Action'),
+        status: isSkipped ? 'skipped' : 'success',
+        executedAt: new Date().toISOString(),
+        durationMs: Date.now() - stepStart,
+        metadata: {
+          actionType: node.data?.actionType,
+          ...(isSkipped ? { isDisabled: true, reason: 'Messaging step disabled by designer' } : {}),
+        },
+      });
+    } else if (node.type === 'tagActionNode') {
+      await processTagActionNode(node, context);
+      logStepExecution(context.runId, {
+        nodeId: node.id,
+        nodeType: 'tagActionNode',
+        nodeLabel: getNodeLabelWithStep(node, automation.nodes, 'Tag Action'),
+        status: 'success',
+        executedAt: new Date().toISOString(),
+        durationMs: Date.now() - stepStart,
+        metadata: { actionType: node.data?.action },
+      });
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    const label = getNodeLabelWithStep(node, automation.nodes, node.id);
+    console.warn(`[TRAVERSE] Non-blocking action node failure at [${label}]: ${message}`);
+
+    logStepExecution(context.runId, {
+      nodeId: node.id,
+      nodeType: node.type || 'actionNode',
+      nodeLabel: label,
+      status: 'failed',
+      executedAt: new Date().toISOString(),
+      durationMs: Date.now() - stepStart,
+      error: message,
+    });
+  }
+}
 
 export function getSplitAssignment(entityId: string, automationId: string, nodeId: string, splitRatio: number, payload: Record<string, unknown> | null | undefined): 'a' | 'b' {
   const fallbackId = entityId || payload?.email || payload?.phone || Math.random().toString();
@@ -193,66 +259,7 @@ export async function traverseNodes(
   if (executeCurrentAction) {
     const stepStart = Date.now();
     if (currentNode.type === 'actionNode' || currentNode.type === 'tagActionNode') {
-      try {
-        if (currentNode.type === 'actionNode') {
-          const output = await processActionNode(currentNode, context);
-
-          if (output && typeof output === 'object' && '__halt' in output) {
-            context.isTerminated = true;
-            return;
-          }
-
-          const stepNumbers = getStepNumbers(automation);
-          const stepNum = stepNumbers[currentNode.id];
-          if (stepNum && output && typeof output === 'object') {
-            for (const [key, val] of Object.entries(output)) {
-              context.payload[`${stepNum}.${key}`] = val;
-              context.payload[`${currentNode.id}.${key}`] = val;
-            }
-          }
-
-          const isSkipped = Boolean(output && typeof output === 'object' && ('skipped' in output || 'isDisabled' in output));
-          logStepExecution(context.runId, {
-            nodeId: currentNode.id,
-            nodeType: 'actionNode',
-            nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Action'),
-            status: isSkipped ? 'skipped' : 'success',
-            executedAt: new Date().toISOString(),
-            durationMs: Date.now() - stepStart,
-            metadata: {
-              actionType: currentNode.data?.actionType,
-              ...(isSkipped ? { isDisabled: true, reason: 'Messaging step disabled by designer' } : {}),
-            },
-          });
-        } else if (currentNode.type === 'tagActionNode') {
-          await processTagActionNode(currentNode, context);
-          logStepExecution(context.runId, {
-            nodeId: currentNode.id,
-            nodeType: 'tagActionNode',
-            nodeLabel: getNodeLabelWithStep(currentNode, automation.nodes, 'Tag Action'),
-            status: 'success',
-            executedAt: new Date().toISOString(),
-            durationMs: Date.now() - stepStart,
-            metadata: { actionType: currentNode.data?.action },
-          });
-        }
-      } catch (e: unknown) {
-        // Non-blocking messaging & action node execution error!
-        // Record step execution as failed for log history, but allow contact to traverse downstream.
-        const message = e instanceof Error ? e.message : String(e);
-        const label = getNodeLabelWithStep(currentNode, automation.nodes, currentNode.id);
-        console.warn(`[TRAVERSE] Non-blocking action node failure at [${label}]: ${message}`);
-
-        logStepExecution(context.runId, {
-          nodeId: currentNode.id,
-          nodeType: currentNode.type || 'actionNode',
-          nodeLabel: label,
-          status: 'failed',
-          executedAt: new Date().toISOString(),
-          durationMs: Date.now() - stepStart,
-          error: message,
-        });
-      }
+      await executeActionOrTagNodeSafely(currentNode, automation, context, stepStart);
     }
   }
 
@@ -394,48 +401,8 @@ export async function traverseNodes(
     const stepStart = Date.now();
 
     try {
-      if (nextNode.type === 'actionNode') {
-        const output = await processActionNode(nextNode, context);
-
-        if (output && typeof output === 'object' && '__halt' in output) {
-          context.isTerminated = true;
-          return;
-        }
-
-        // Enrich context payload with action output
-        const stepNumbers = getStepNumbers(automation);
-        const stepNum = stepNumbers[nextNode.id];
-        if (stepNum && output && typeof output === 'object') {
-          for (const [key, val] of Object.entries(output)) {
-            context.payload[`${stepNum}.${key}`] = val;
-            context.payload[`${nextNode.id}.${key}`] = val;
-          }
-        }
-
-        const isSkipped = Boolean(output && typeof output === 'object' && ('skipped' in output || 'isDisabled' in output));
-        logStepExecution(context.runId, {
-          nodeId: nextNode.id,
-          nodeType: 'actionNode',
-          nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Action'),
-          status: isSkipped ? 'skipped' : 'success',
-          executedAt: new Date().toISOString(),
-          durationMs: Date.now() - stepStart,
-          metadata: {
-            actionType: nextNode.data?.actionType,
-            ...(isSkipped ? { isDisabled: true, reason: 'Messaging step disabled by designer' } : {}),
-          },
-        });
-      } else if (nextNode.type === 'tagActionNode') {
-        await processTagActionNode(nextNode, context);
-        logStepExecution(context.runId, {
-          nodeId: nextNode.id,
-          nodeType: 'tagActionNode',
-          nodeLabel: getNodeLabelWithStep(nextNode, automation.nodes, 'Tag Action'),
-          status: 'success',
-          executedAt: new Date().toISOString(),
-          durationMs: Date.now() - stepStart,
-          metadata: { actionType: nextNode.data?.action },
-        });
+      if (nextNode.type === 'actionNode' || nextNode.type === 'tagActionNode') {
+        await executeActionOrTagNodeSafely(nextNode, automation, context, stepStart);
       } else if (nextNode.type === 'delayNode') {
         const config = nextNode.data?.config || {};
         const now = new Date();

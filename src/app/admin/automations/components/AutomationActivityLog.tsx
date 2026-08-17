@@ -307,7 +307,6 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
     async function fetchCounts() {
       try {
         const runsCol = collection(firestore!, 'automation_runs');
-        const jobsCol = collection(firestore!, 'automation_jobs');
 
         const totalQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId));
         const runningQuery = query(runsCol, where('automationId', '==', automationId), where('workspaceId', '==', activeWorkspaceId), where('status', '==', 'running'));
