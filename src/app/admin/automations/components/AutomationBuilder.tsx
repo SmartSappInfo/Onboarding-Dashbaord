@@ -22,7 +22,11 @@ import { WorkflowEdge } from '../[id]/edit/components/edges/WorkflowEdge';
 import { canInsertNodeOnEdge, spliceNodeOnEdge, healGraphGap, type SplicingOptions } from '@/lib/automations/graph-rewriter';
 import { ReconcileDropDialog } from './ReconcileDropDialog';
 import { NodeDeletionReconcileDialog } from './NodeDeletionReconcileDialog';
-import { getParkedJobsCount, reconcileParkedJobsOnNodeDeletion, type ParkedContactStrategy } from '@/lib/automations/node-deletion-reconciliation';
+import {
+  getParkedJobsCountAction as getParkedJobsCount,
+  reconcileParkedJobsOnNodeDeletionAction as reconcileParkedJobsOnNodeDeletion,
+} from '@/app/actions/node-deletion-reconciliation-actions';
+import type { ParkedContactStrategy } from '@/lib/automations/node-deletion-reconciliation';
 import 'reactflow/dist/style.css';
 import { TriggerNode } from '../[id]/edit/components/nodes/TriggerNode';
 import { ActionNode } from '../[id]/edit/components/nodes/ActionNode';
