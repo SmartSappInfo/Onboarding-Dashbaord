@@ -963,6 +963,26 @@ export default function SurveyForm({
     const isEmbedded = searchParams?.get('embed') === 'true' || searchParams?.get('inModal') === 'true' || isInModal;
     const { toast } = useToast();
 
+    // Dispatch height to parent window when embedded in iframe/modal
+    React.useEffect(() => {
+        if (!isEmbedded || typeof window === 'undefined' || window.parent === window) return;
+
+        const sendHeight = () => {
+            const height = document.body.scrollHeight || document.documentElement.scrollHeight;
+            if (height > 0) {
+                window.parent.postMessage({ type: 'iframe_resize', height }, '*');
+            }
+        };
+
+        sendHeight();
+        const observer = new ResizeObserver(() => sendHeight());
+        if (document.body) {
+            observer.observe(document.body);
+        }
+
+        return () => observer.disconnect();
+    }, [isEmbedded]);
+
     const interpolateText = React.useCallback((text: string | undefined | null): string => {
         return interpolateWithMap(text, simulatedValues, isPreview);
     }, [simulatedValues, isPreview]);
