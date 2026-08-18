@@ -95,7 +95,8 @@ export async function handleSignupAction(input: SignupInput) {
       input.userId || 'system',
       input.workspaceId,
       'institution',
-      input.organizationId
+      input.organizationId,
+      true // forceCreate = true for public new school signup flow
     );
     
     if (!createResult.success) {

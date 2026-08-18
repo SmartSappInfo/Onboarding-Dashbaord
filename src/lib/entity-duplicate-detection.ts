@@ -28,12 +28,16 @@ export async function findDuplicateEntities(
     queries.push(baseQuery.where('displayName', '==', name.trim()).get());
   }
   
-  if (email?.trim()) {
-    queries.push(baseQuery.where('primaryEmail', '==', email.trim()).get());
-  }
-  
-  if (phone?.trim()) {
-    queries.push(baseQuery.where('primaryPhone', '==', phone.trim()).get());
+  // For individual entities (person/family), email and phone indicate identity duplicates.
+  // For institutions, contact persons (e.g. proprietors/consultants) may manage multiple schools.
+  if (entityType !== 'institution') {
+    if (email?.trim()) {
+      queries.push(baseQuery.where('primaryEmail', '==', email.trim()).get());
+    }
+    
+    if (phone?.trim()) {
+      queries.push(baseQuery.where('primaryPhone', '==', phone.trim()).get());
+    }
   }
 
   if (queries.length === 0) return [];
