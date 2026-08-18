@@ -16,7 +16,7 @@
  *    No `any` or `any[]` types are permitted.
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { 
@@ -26,12 +26,13 @@ import type {
 } from '@/lib/types/flipbook-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   BookOpen, ChevronLeft, ChevronRight, Maximize, Volume2, VolumeX, 
   Grid, Download, Lock, Video, ExternalLink, Sparkles
 } from 'lucide-react';
+import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
+import LikeButton from '@/components/shared/LikeButton';
 import { submitFlipbookLeadAction, logFlipbookAnalyticsAction } from '@/lib/flipbook-actions';
 import {
   Dialog,
@@ -57,10 +58,8 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Password Protection State
   const [enteredPassword, setEnteredPassword] = useState('');
@@ -112,7 +111,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         }
 
         const fbData = snap.docs[0].data() as FlipbookConfig;
-        if (fbData.status !== 'published') {
+        if (fbData.status?.toLowerCase() !== 'published') {
           setError('This publication is currently in draft mode.');
           setIsLoading(false);
           return;
@@ -146,7 +145,8 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
     }
 
     loadData();
-  }, [firestore, slug]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
   // Lead Gate Threshold Evaluation
   useEffect(() => {
@@ -319,6 +319,9 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         </div>
 
         <div className="flex items-center gap-2">
+          <LikeButton initialLikes={flipbook.likesCount || 0} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
+          <ShareSocialDropdown title={flipbook.title} url={typeof window !== 'undefined' ? window.location.href : ''} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
+
           <Button
             variant="ghost"
             size="icon"
@@ -391,13 +394,27 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         {/* Page Render Canvas Spread */}
         <div className="h-full max-h-[85vh] aspect-[3/4] md:aspect-[3/2] bg-white rounded-2xl shadow-2xl flex relative overflow-hidden text-slate-900 border border-white/10">
           
-          {/* Simulated 3D Page Curl Effect Container */}
-          <div className="flex-1 h-full relative flex items-center justify-center p-6 text-center">
-            <div className="space-y-4 max-w-md">
-              <BookOpen className="h-16 w-16 text-indigo-600 mx-auto" />
-              <h2 className="text-2xl font-black text-slate-900">{flipbook.title}</h2>
-              <p className="text-sm text-slate-600">Page {currentPage} of {flipbook.pageCount || 1}</p>
-            </div>
+          {/* 3D Page Canvas Container */}
+          <div className="flex-1 h-full relative flex items-center justify-center p-4 text-center overflow-hidden">
+            {(() => {
+              const activePage = pages.find(p => p.pageNumber === currentPage);
+              if (activePage?.imageUrl) {
+                return (
+                  <img
+                    src={activePage.imageUrl}
+                    alt={`Page ${currentPage}`}
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-md"
+                  />
+                );
+              }
+              return (
+                <div className="space-y-4 max-w-md">
+                  <BookOpen className="h-16 w-16 text-indigo-600 mx-auto" />
+                  <h2 className="text-2xl font-black text-slate-900">{flipbook.title}</h2>
+                  <p className="text-sm text-slate-600">Page {currentPage} of {flipbook.pageCount || 1}</p>
+                </div>
+              );
+            })()}
 
             {/* Render Hotspot Overlays */}
             {currentHotspots.map((hs) => (

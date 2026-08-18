@@ -38,18 +38,23 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(() => ({ id: 'flipbooks_col' })),
+  query: vi.fn(() => ({ id: 'flipbooks_query' })),
+  where: vi.fn(),
+  orderBy: vi.fn(),
+  doc: vi.fn(),
+}));
+
 // Mock Firebase hooks
 let mockFlipbooksData: FlipbookConfig[] | null = [];
 let mockIsLoading = false;
 
 vi.mock('@/firebase', () => ({
-  useFirestore: () => ({}),
-  useMemoFirebase: (fn: () => unknown) => fn(),
-  useCollection: () => ({
-    data: mockFlipbooksData,
-    isLoading: mockIsLoading,
-    error: null,
-  }),
+  useFirestore: vi.fn(() => ({})),
+  useCollection: vi.fn(() => ({ data: mockFlipbooksData, isLoading: mockIsLoading })),
+  useUser: vi.fn(() => ({ user: { uid: 'test_user_id' }, isLoaded: true })),
+  useMemoFirebase: vi.fn((factory: () => unknown) => factory()),
 }));
 
 // Mock server actions
@@ -168,7 +173,7 @@ describe('FlipbookStudioClient Component', () => {
     const searchInput = screen.getByPlaceholderText(/Search flipbooks by title.../i);
     fireEvent.change(searchInput, { target: { value: 'Curriculum' } });
 
-    expect(screen.getByText('Draft Curriculum Brochure')).toBeInTheDocument();
+    expect(screen.getAllByText('Draft Curriculum Brochure')[0]).toBeInTheDocument();
     expect(screen.queryByText('2026 Prospectus')).not.toBeInTheDocument();
   });
 
@@ -178,7 +183,7 @@ describe('FlipbookStudioClient Component', () => {
     const publishedBtn = screen.getByRole('button', { name: /^PUBLISHED$/i });
     fireEvent.click(publishedBtn);
 
-    expect(screen.getByText('2026 Prospectus')).toBeInTheDocument();
+    expect(screen.getAllByText('2026 Prospectus')[0]).toBeInTheDocument();
     expect(screen.queryByText('Draft Curriculum Brochure')).not.toBeInTheDocument();
   });
 

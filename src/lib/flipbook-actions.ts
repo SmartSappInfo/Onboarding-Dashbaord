@@ -15,6 +15,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { 
   FlipbookConfig, 
   FlipbookPage, 
@@ -115,25 +116,29 @@ export async function createFlipbookAction(payload: CreateFlipbookPayload): Prom
 
     await adminDb.collection('flipbooks').doc(id).set(newFlipbook);
 
-    // Save rendered pages if provided
+    // Save rendered pages in chunked batches of 150
     if (payload.pages && payload.pages.length > 0) {
-      const batch = adminDb.batch();
-      payload.pages.forEach((p) => {
-        const pageDocId = `${id}_page_${p.pageNumber}`;
-        const pageRef = adminDb.collection('flipbook_pages').doc(pageDocId);
-        const pageData: FlipbookPage = {
-          id: pageDocId,
-          flipbookId: id,
-          pageNumber: p.pageNumber,
-          imageUrl: p.imageUrl,
-          thumbnailUrl: p.thumbnailUrl || p.imageUrl,
-          width: p.width,
-          height: p.height,
-          extractedText: p.extractedText || '',
-        };
-        batch.set(pageRef, pageData);
-      });
-      await batch.commit();
+      const BATCH_SIZE = 150;
+      for (let i = 0; i < payload.pages.length; i += BATCH_SIZE) {
+        const chunk = payload.pages.slice(i, i + BATCH_SIZE);
+        const batch = adminDb.batch();
+        chunk.forEach((p) => {
+          const pageDocId = `${id}_page_${p.pageNumber}`;
+          const pageRef = adminDb.collection('flipbook_pages').doc(pageDocId);
+          const pageData: FlipbookPage = {
+            id: pageDocId,
+            flipbookId: id,
+            pageNumber: p.pageNumber,
+            imageUrl: p.imageUrl,
+            thumbnailUrl: p.thumbnailUrl || p.imageUrl,
+            width: p.width,
+            height: p.height,
+            extractedText: p.extractedText || '',
+          };
+          batch.set(pageRef, pageData);
+        });
+        await batch.commit();
+      }
     }
 
     return { success: true, flipbookId: id };
@@ -248,10 +253,10 @@ export async function submitFlipbookLeadAction(payload: {
 
     await adminDb.collection('flipbook_leads').doc(leadId).set(submission);
 
-    // Increment leadsCount on flipbook doc
+    // Increment leadsCount on flipbook doc atomically
     const flipbookRef = adminDb.collection('flipbooks').doc(payload.flipbookId);
     await flipbookRef.update({
-      leadsCount: (await flipbookRef.get()).data()?.leadsCount ? ((await flipbookRef.get()).data()?.leadsCount + 1) : 1
+      leadsCount: FieldValue.increment(1),
     }).catch(() => {});
 
     return { success: true, submissionId: leadId };
@@ -272,20 +277,12 @@ export async function logFlipbookAnalyticsAction(event: Omit<FlipbookAnalyticsEv
 
     await adminDb.collection('flipbook_analytics').doc(eventId).set(record);
 
-    // Increment view / flip counter on flipbook document
+    // Increment view / flip counter on flipbook document atomically
     const flipbookRef = adminDb.collection('flipbooks').doc(event.flipbookId);
     if (event.eventType === 'view') {
-      const snap = await flipbookRef.get();
-      if (snap.exists) {
-        const cur = snap.data()?.viewsCount || 0;
-        await flipbookRef.update({ viewsCount: cur + 1 });
-      }
+      await flipbookRef.update({ viewsCount: FieldValue.increment(1) }).catch(() => {});
     } else if (event.eventType === 'flip') {
-      const snap = await flipbookRef.get();
-      if (snap.exists) {
-        const cur = snap.data()?.flipsCount || 0;
-        await flipbookRef.update({ flipsCount: cur + 1 });
-      }
+      await flipbookRef.update({ flipsCount: FieldValue.increment(1) }).catch(() => {});
     }
 
     return { success: true };

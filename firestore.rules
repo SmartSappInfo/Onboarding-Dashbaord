@@ -389,28 +389,31 @@ service cloud.firestore {
     // 1. Multi-Tenant Workspace Isolation:
     //    All admin operations on flipbooks require caller to have workspace access via `hasWorkspaceAccess`.
     // 2. Public Reader Access Scoping:
-    //    Anonymous and authenticated readers can only read published flipbooks (`status == 'published'`).
+    //    Anonymous readers can only read flipbooks (`status in ['published', 'PUBLISHED']`) and their associated pages.
     // 3. Public Lead Capture & Analytics Submissions:
     //    Public readers are permitted to create `flipbook_leads` and `flipbook_analytics` documents.
     match /flipbooks/{flipbookId} {
-      allow read: if isAuthorized() || resource.data.status == 'published' || resource.data.status == 'PUBLISHED';
+      allow get: if (resource.data.status in ['published', 'PUBLISHED']) || 
+                    (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId)));
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /flipbook_pages/{pageId} {
-      allow read: if isAuthorized() || true;
+      allow read: if (isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)))) || 
+                    get(/databases/$(database)/documents/flipbooks/$(resource.data.flipbookId)).data.status in ['published', 'PUBLISHED'];
       allow write: if isAuthorized();
     }
 
     match /flipbook_leads/{leadId} {
       allow create: if true;
-      allow read, list, update, delete: if isAuthorized();
+      allow read, list, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /flipbook_analytics/{eventId} {
       allow create: if true;
-      allow read, list: if isAuthorized();
+      allow read, list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /media/{mediaId} {

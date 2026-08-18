@@ -126,7 +126,7 @@ describe('FlipbookReaderClient Component', () => {
     render(<FlipbookReaderClient slug="student-handbook" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Public Student Handbook')).toBeInTheDocument();
+      expect(screen.getAllByText('Public Student Handbook')[0]).toBeInTheDocument();
       expect(screen.getAllByText(/Page 1 of 5/i).length).toBeGreaterThan(0);
     });
   });

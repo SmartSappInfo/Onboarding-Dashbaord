@@ -257,11 +257,11 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 const updatesList: string[] = [];
                 if (config.pipelineId) updatesList.push('Pipeline');
                 if (config.stageId) {
-                    const stage = stages?.find((s: any) => s.id === config.stageId);
+                    const stage = stages?.find((s) => s.id === config.stageId);
                     updatesList.push(`Stage (${stage ? stage.name : 'Updated'})`);
                 }
                 if (config.assignedTo) {
-                    const user = users?.find((u: any) => u.uid === config.assignedTo);
+                    const user = users?.find((u) => u.id === config.assignedTo);
                     updatesList.push(`Assignee (${user ? user.name : 'Updated'})`);
                 }
                 if (config.updates && Object.keys(config.updates).length > 0) {

@@ -13,8 +13,8 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { FlipbookConfig } from '@/lib/types/flipbook-types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +42,7 @@ export default function FlipbookStudioClient() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
   const { activeWorkspaceId, isLoading: isWorkspaceLoading } = useWorkspace();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +121,7 @@ export default function FlipbookStudioClient() {
         sourceFileName: sourceFileName.trim() || 'document.pdf',
         pageCount: 1,
         aspectRatio: 1.414,
-        userId: 'admin',
+        userId: user?.uid || 'admin',
       });
 
       if (res.success && res.flipbookId) {
@@ -430,10 +431,13 @@ export default function FlipbookStudioClient() {
               <Input
                 value={sourceFileUrl}
                 onChange={(e) => {
-                  setSourceFileUrl(e.target.value);
-                  if (!sourceFileName) {
-                    const filename = e.target.value.split('/').pop()?.split('?')[0] || 'document.pdf';
-                    setSourceFileName(filename);
+                  const val = e.target.value;
+                  setSourceFileUrl(val);
+                  if (val.includes('/') && val.length > 10) {
+                    const extracted = val.split('/').pop()?.split('?')[0];
+                    if (extracted && extracted.includes('.')) {
+                      setSourceFileName(extracted);
+                    }
                   }
                 }}
                 placeholder="https://storage.googleapis.com/.../document.pdf"

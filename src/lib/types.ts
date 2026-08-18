@@ -1800,6 +1800,7 @@ export interface MediaAsset {
   linkDescription?: string;
   previewImageUrl?: string;
   category?: string;
+  likesCount?: number;
 }
 
 export interface SurveyEntityDefaults {

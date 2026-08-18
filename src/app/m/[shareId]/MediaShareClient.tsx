@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import type { MediaAsset, OrgBranding } from '@/lib/types';
 import { getEffectiveDescription } from '@/app/admin/media/components/share-media-dialog';
+import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
+import LikeButton from '@/components/shared/LikeButton';
 
 interface YTPlayerEvent {
   data: number;
@@ -117,6 +119,7 @@ export default function MediaShareClient({
     const [modalContentHeight, setModalContentHeight] = React.useState<number | null>(null);
     const [isVideoPlaying, setIsVideoPlaying] = React.useState(autoPlay && asset.type === 'video');
     const [isPlaybackFinished, setIsPlaybackFinished] = React.useState(false);
+    const displayTitle = (asset as unknown as Record<string, unknown>).title as string || (asset as unknown as Record<string, unknown>).fileName as string || asset.name || 'Shared Media';
 
     React.useEffect(() => {
         const handleIframeMessage = (event: MessageEvent) => {
@@ -959,7 +962,14 @@ export default function MediaShareClient({
                         </span>
                     </a>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <LikeButton initialLikes={((asset as unknown as Record<string, unknown>).likesCount as number) || 0} className="h-9 px-3 text-xs" />
+                        <ShareSocialDropdown 
+                            title={displayTitle} 
+                            url={typeof window !== 'undefined' ? window.location.href : ''} 
+                            onShareClick={() => logEvent('download')} 
+                            className="h-9 px-3 text-xs" 
+                        />
                         <ThemeToggle />
                         <Button
                             variant="ghost"
@@ -968,7 +978,7 @@ export default function MediaShareClient({
                                 logEvent('download');
                                 window.open(asset.url, '_blank');
                             }}
-                            className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer"
+                            className="rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/60 border border-slate-200 dark:border-slate-800/40 gap-1.5 h-9 cursor-pointer min-h-[44px]"
                         >
                             <Download className="h-3.5 w-3.5" /> Save
                         </Button>

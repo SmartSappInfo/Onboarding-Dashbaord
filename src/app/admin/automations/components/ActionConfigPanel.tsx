@@ -87,8 +87,8 @@ interface UpdateEntityConfigPanelProps {
   pipelines: Pipeline[];
   stages: OnboardingStage[];
   activeWorkspace: any;
-  appFields: any[];
-  fieldGroups: any[];
+  appFields: (EntityField | AppField)[];
+  fieldGroups: Record<string, unknown>[];
 }
 
 const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
@@ -137,12 +137,12 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
     if (!fieldGroups || !appFields) return [];
     const activeNonSystemGroupIds = new Set(
       (fieldGroups || [])
-        .filter((g: any) => !g.isSystem)
-        .map((g: any) => g.id)
+        .filter((g: Record<string, unknown>) => !g.isSystem)
+        .map((g: Record<string, unknown>) => g.id as string)
     );
     const contactScope = activeWorkspace?.contactScope || 'institution';
 
-    const custom = (appFields || []).filter((f: any) => {
+    const custom = (appFields || []).filter((f: EntityField | AppField) => {
       const scopes = f.compatibilityScope || ['common'];
       const isCompatible = scopes.includes('common') || scopes.includes(contactScope);
       const isActive = f.status === 'active';
@@ -152,16 +152,16 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
       return isCompatible && isActive && isNotHidden && belongsToNonSystemGroup;
     });
 
-    const native = NATIVE_ENTITY_FIELDS.filter((f: any) => {
+    const native = NATIVE_ENTITY_FIELDS.filter((f: { compatibilityScope?: string[] }) => {
       const scopes = f.compatibilityScope || ['common'];
       return scopes.includes('common') || scopes.includes(contactScope);
     });
 
     const seen = new Set<string>();
-    const combined: any[] = [];
+    const combined: (EntityField | AppField | typeof NATIVE_ENTITY_FIELDS[number])[] = [];
     
     [...native, ...custom].forEach(f => {
-      const key = f.id || f.name;
+      const key = f.id || ('name' in f ? f.name : '');
       if (!seen.has(key)) {
         seen.add(key);
         combined.push(f);
@@ -172,11 +172,14 @@ const UpdateEntityConfigPanel = React.memo(function UpdateEntityConfigPanel({
   }, [appFields, fieldGroups, activeWorkspace?.contactScope]);
 
   const customFields = React.useMemo(() => {
-    return filteredAppFields.map((f: any) => ({
-      key: f.id || f.name,
-      label: f.label || f.name,
-      type: f.options && f.options.length > 0 ? 'select' : 'text',
-      options: f.options?.map((o: any) => ({ value: o.value || o, label: o.label || o.value || o }))
+    return filteredAppFields.map((f: EntityField | AppField | typeof NATIVE_ENTITY_FIELDS[number]) => ({
+      key: f.id || ('name' in f ? f.name : ''),
+      label: f.label || ('name' in f ? f.name : ''),
+      type: 'options' in f && f.options && f.options.length > 0 ? 'select' : 'text',
+      options: 'options' in f ? f.options?.map((o: { value?: string; label?: string } | string) => ({
+        value: typeof o === 'string' ? o : o.value || '',
+        label: typeof o === 'string' ? o : o.label || o.value || ''
+      })) : undefined
     }));
   }, [filteredAppFields]);
 

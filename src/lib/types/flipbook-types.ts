@@ -65,6 +65,15 @@ export interface FlipbookPage {
   extractedText?: string;
 }
 
+export interface InteractionGatePolicy {
+  requireLeadForLike?: boolean;
+  requireLeadForShare?: boolean;
+  requireLeadForDownload?: boolean;
+  leadCaptureType?: 'survey' | 'form' | 'pdf' | 'custom';
+  leadCaptureResourceId?: string;
+  applySameGateToCta?: boolean;
+}
+
 export interface FlipbookConfig {
   id: string;
   workspaceId: string;
@@ -80,6 +89,7 @@ export interface FlipbookConfig {
   style: FlipbookStyleConfig;
   hotspots: FlipbookHotspot[];
   leadGate: FlipbookLeadGate;
+  interactionPolicy?: InteractionGatePolicy;
   password?: string;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +97,7 @@ export interface FlipbookConfig {
   viewsCount?: number;
   leadsCount?: number;
   flipsCount?: number;
+  likesCount?: number;
 }
 
 export interface FlipbookLeadSubmission {
