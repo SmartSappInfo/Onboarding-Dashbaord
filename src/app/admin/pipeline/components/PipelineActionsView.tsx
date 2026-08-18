@@ -231,7 +231,7 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
 
                                                         <Button
                                                             variant="ghost"
-                                                            size="xs"
+                                                            size="sm"
                                                             onClick={() => window.open(`/admin/automations/${auto.id}/edit`, '_blank')}
                                                             className="h-7 px-2 rounded-lg font-bold text-[10px] text-primary hover:bg-primary/10 gap-1 flex items-center"
                                                         >
