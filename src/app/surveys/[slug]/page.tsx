@@ -349,7 +349,7 @@ export default async function PublicSurveyPage({
     const primaryFgHsl = hexToHslChannels(getContrastColor(primaryColor));
     const secondaryFgHsl = hexToHslChannels(getContrastColor(secondaryColor));
 
-    const isEmbedded = embed === 'true';
+    const isEmbedded = embed === 'true' || inModal === 'true' || modal === 'true' || isInModal;
 
     const themeStyles = `
         :root {

@@ -633,6 +633,8 @@ export default function MediaShareClient({
             // If CTA opens in modal mode, suppress modal theme toggle and pass active parent theme
             if (ctaMode === 'modal') {
                 urlObj.searchParams.set('embed', 'true');
+                urlObj.searchParams.set('inModal', 'true');
+                urlObj.searchParams.set('modal', 'true');
                 if (resolvedTheme) {
                     urlObj.searchParams.set('theme', resolvedTheme);
                 }
@@ -913,18 +915,40 @@ export default function MediaShareClient({
 
                 {/* Render the iframe modal inside embed frame */}
                 {isCtaModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-                        <div className="relative w-full max-w-4xl h-[90vh] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
-                            {/* Absolute positioned close button at top-right corner */}
-                            <button
-                                onClick={() => setIsCtaModalOpen(false)}
-                                className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100 dark:bg-slate-950/70 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-lg hover:scale-105 active:scale-95"
-                                aria-label="Close Modal"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                            <div className="flex-1 w-full bg-white relative">
-                                <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" />
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                        <div 
+                            style={{ height: modalContentHeight ? `${modalContentHeight}px` : 'auto', maxHeight: '88vh' }}
+                            className="relative w-full max-w-4xl bg-card border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ease-out"
+                        >
+                            {/* Institutional Header Bar */}
+                            <div className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between shrink-0 backdrop-blur-md">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                                        Interactive Submission
+                                    </span>
+                                    <h3 className="text-xs md:text-sm font-extrabold text-foreground truncate">
+                                        {ctaText || title || 'Complete Request'}
+                                    </h3>
+                                </div>
+
+                                <button
+                                    onClick={() => setIsCtaModalOpen(false)}
+                                    className="h-11 w-11 rounded-full bg-background hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-sm hover:scale-105 active:scale-95 min-h-[44px] shrink-0"
+                                    aria-label="Close Modal"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Padded Inner Viewing Viewport */}
+                            <div className="flex-1 w-full p-4 sm:p-6 md:p-8 bg-slate-50 dark:bg-slate-950/50 relative overflow-hidden flex flex-col">
+                                <div className="w-full h-full rounded-2xl bg-card border border-border/40 shadow-sm overflow-hidden flex flex-col">
+                                    <iframe 
+                                        src={getFinalCtaUrl()} 
+                                        className="w-full flex-1 border-none bg-transparent" 
+                                        style={{ minHeight: '380px' }} 
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1286,21 +1310,40 @@ export default function MediaShareClient({
 
             {/* Render the iframe modal inside public landing layout */}
             {isCtaModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
                     <div 
-                        style={{ height: modalContentHeight ? `${modalContentHeight}px` : '85vh', maxHeight: '90vh' }}
-                        className="relative w-full max-w-4xl min-h-[380px] bg-white dark:bg-[#070913] border border-slate-200 dark:border-slate-800/80 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col transition-[height] duration-300 ease-out"
+                        style={{ height: modalContentHeight ? `${modalContentHeight}px` : 'auto', maxHeight: '88vh' }}
+                        className="relative w-full max-w-4xl bg-card border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ease-out"
                     >
-                        {/* Absolute positioned close button at top-right corner */}
-                        <button
-                            onClick={() => setIsCtaModalOpen(false)}
-                            className="absolute top-4 right-4 z-50 p-2.5 bg-slate-100/90 dark:bg-slate-900/90 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-full transition-all cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 shadow-md hover:scale-105 active:scale-95"
-                            aria-label="Close Modal"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                        <div className="flex-1 w-full bg-transparent dark:bg-[#070913] relative flex items-center justify-center overflow-y-auto">
-                            <iframe src={getFinalCtaUrl()} className="w-full h-full border-none" style={{ minHeight: '350px' }} />
+                        {/* Institutional Header Bar */}
+                        <div className="bg-slate-100/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 flex items-center justify-between shrink-0 backdrop-blur-md">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                                    Interactive Submission
+                                </span>
+                                <h3 className="text-xs md:text-sm font-extrabold text-foreground truncate">
+                                    {ctaText || title || 'Complete Request'}
+                                </h3>
+                            </div>
+
+                            <button
+                                onClick={() => setIsCtaModalOpen(false)}
+                                className="h-11 w-11 rounded-full bg-background hover:bg-muted border border-border flex items-center justify-center transition-all cursor-pointer text-muted-foreground hover:text-foreground shadow-sm hover:scale-105 active:scale-95 min-h-[44px] shrink-0"
+                                aria-label="Close Modal"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Padded Inner Viewing Viewport */}
+                        <div className="flex-1 w-full p-4 sm:p-6 md:p-8 bg-slate-50 dark:bg-slate-950/50 relative overflow-hidden flex flex-col">
+                            <div className="w-full h-full rounded-2xl bg-card border border-border/40 shadow-sm overflow-hidden flex flex-col">
+                                <iframe 
+                                    src={getFinalCtaUrl()} 
+                                    className="w-full flex-1 border-none bg-transparent" 
+                                    style={{ minHeight: '380px' }} 
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

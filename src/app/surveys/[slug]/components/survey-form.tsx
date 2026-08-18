@@ -1791,7 +1791,7 @@ export default function SurveyForm({
     const showTitles = survey.showSurveyTitles !== false;
 
     return (
-        <div className="pb-24">
+        <div className={cn("pb-24", isEmbedded && "pb-6 px-4 sm:px-6 md:px-8 max-w-3xl mx-auto")}>
             <AnimatePresence>
                 {(isSubmitting || isNavigatingToResults) && (
                     <SurveyLoader 
@@ -1802,7 +1802,7 @@ export default function SurveyForm({
             </AnimatePresence>
 
             {/* Top Branding Header */}
-            {survey.showBranding !== false && (
+            {survey.showBranding !== false && !isEmbedded && (
                 <div className="flex flex-col items-center justify-center pt-8 pb-4 animate-in fade-in duration-1000">
                     {(resolvedLogoUrl ?? survey.logoUrl) ? (
                          <div className="h-12 w-32 relative">
