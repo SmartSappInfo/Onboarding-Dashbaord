@@ -18,7 +18,8 @@ import {
     Wallet,
     Percent,
     Loader2, 
-    Target
+    Target,
+    Sparkles
 } from "lucide-react";
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { handleSignupAction } from '@/lib/signup-actions';
@@ -90,9 +91,33 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const DRAFT_STORAGE_KEY = 'smartsapp_school_signup_draft_v1';
+
+const DEFAULT_FORM_VALUES: Partial<FormData> = {
+  organization: "",
+  location: "",
+  nominalRoll: 0,
+  modules: "",
+  includeDroneFootage: false,
+  referee: "",
+  entityContacts: [{ id: 'primary-owner', name: '', email: '', phone: '', typeKey: 'school_owner', typeLabel: 'School Owner', isSignatory: true, isPrimary: true, order: 0 }],
+  billingAddress: "",
+  currency: "GHS",
+  subscriptionPackageId: "none",
+  subscriptionRate: 0,
+  discountPercentage: 0,
+  arrearsBalance: 0,
+  creditBalance: 0,
+  notifySchool: true,
+  notifySmartSapp: true,
+  notifyOnboarding: true,
+  notifySchoolBySms: true,
+};
+
 export default function NewSchoolSignupForm() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const [hasRestoredDraft, setHasRestoredDraft] = React.useState(false);
 
   // For public form, we filter for active packages explicitly shared with the 'onboarding' workspace
   const packagesQuery = useMemoFirebase(() => {
@@ -108,27 +133,75 @@ export default function NewSchoolSignupForm() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      organization: "",
-      location: "",
-      nominalRoll: 0,
-      modules: "",
-      includeDroneFootage: false,
-      referee: "",
-      entityContacts: [{ id: 'primary-owner', name: '', email: '', phone: '', typeKey: 'school_owner', typeLabel: 'School Owner', isSignatory: true, isPrimary: true, order: 0 }],
-      billingAddress: "",
-      currency: "GHS",
-      subscriptionPackageId: "none",
-      subscriptionRate: 0,
-      discountPercentage: 0,
-      arrearsBalance: 0,
-      creditBalance: 0,
-      notifySchool: true,
-      notifySmartSapp: true,
-      notifyOnboarding: true,
-      notifySchoolBySms: true,
-    },
+    defaultValues: DEFAULT_FORM_VALUES as FormData,
   });
+
+  // 1. Rehydrate draft on mount
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedRaw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.implementationDate) {
+            parsed.implementationDate = new Date(parsed.implementationDate);
+          }
+          form.reset({
+            ...DEFAULT_FORM_VALUES,
+            ...parsed,
+          });
+          setHasRestoredDraft(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore signup draft:', e);
+    }
+  }, []);
+
+  // 2. Auto-save form draft state to localStorage on field edits
+  const watchAllFields = form.watch();
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const timeoutId = setTimeout(() => {
+      try {
+        const values = form.getValues();
+        const hasEnteredData = Boolean(
+          values.organization?.trim() ||
+          values.location?.trim() ||
+          values.referee?.trim() ||
+          values.modules?.trim() ||
+          values.entityContacts?.some(c => c.name?.trim() || c.email?.trim() || c.phone?.trim())
+        );
+
+        if (hasEnteredData) {
+          const serializableValues = {
+            ...values,
+            implementationDate: values.implementationDate instanceof Date 
+              ? values.implementationDate.toISOString() 
+              : values.implementationDate,
+          };
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(serializableValues));
+        }
+      } catch (e) {
+        console.warn('Failed to auto-save signup draft:', e);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [watchAllFields]);
+
+  const handleClearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (e) {}
+    form.reset(DEFAULT_FORM_VALUES as FormData);
+    setHasRestoredDraft(false);
+    toast({
+      title: "Draft Cleared",
+      description: "Form reset to blank state.",
+    });
+  };
 
   const watchEntityContacts = form.watch("entityContacts");
   const watchPackageId = form.watch("subscriptionPackageId");
@@ -235,11 +308,15 @@ export default function NewSchoolSignupForm() {
       });
 
       if (result.success) {
+        try {
+          localStorage.removeItem(DRAFT_STORAGE_KEY);
+        } catch (e) {}
+        setHasRestoredDraft(false);
         toast({ 
           title: "Registration Successful!", 
           description: "Institutional profile initialized with entity architecture." 
         });
-        form.reset();
+        form.reset(DEFAULT_FORM_VALUES as FormData);
       } else {
         throw new Error(result.error || 'Failed to create signup');
       }
@@ -255,6 +332,23 @@ export default function NewSchoolSignupForm() {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="pb-20">
+        {hasRestoredDraft && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-primary/10 border border-primary/20 px-4 py-3 text-xs font-semibold text-primary animate-in fade-in-50 duration-300">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+              <span>We restored your previously unsaved registration draft.</span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleClearDraft}
+              className="h-7 text-xs font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              Clear Draft
+            </Button>
+          </div>
+        )}
         <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border bg-card overflow-hidden">
             <CardContent className="p-0">
                 {/* School Details Section */}
