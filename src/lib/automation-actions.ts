@@ -124,13 +124,62 @@ export async function resumeRunAction(runId: string, userId: string) {
 // ── Message-step delivery stats ───────────────────────────────────────────────
 
 /**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+ * Safely sanitizes Firestore documents by recursively converting Firestore Timestamps,
+ * Dates, and non-plain objects into plain JSON-serializable primitives (ISO 8601 strings).
+ * Crucial for Next.js Server Actions ('use server') boundary serialization.
+ */
+function sanitizeServerActionData<T>(data: unknown): T {
+  if (data === null || data === undefined) {
+    return data as T;
+  }
+
+  if (typeof data === 'object') {
+    // Handle Firestore Timestamp instances or serialized timestamp-like objects
+    if ('toDate' in data && typeof (data as { toDate: () => Date }).toDate === 'function') {
+      try {
+        return (data as { toDate: () => Date }).toDate().toISOString() as T;
+      } catch {
+        return new Date(0).toISOString() as T;
+      }
+    }
+    if ('_seconds' in data && typeof (data as { _seconds: number })._seconds === 'number') {
+      return new Date((data as { _seconds: number })._seconds * 1000).toISOString() as T;
+    }
+    if (data instanceof Date) {
+      return data.toISOString() as T;
+    }
+    if (Array.isArray(data)) {
+      return data.map(item => sanitizeServerActionData(item)) as T;
+    }
+
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined) {
+        cleaned[key] = sanitizeServerActionData(val);
+      }
+    }
+    return cleaned as T;
+  }
+
+  return data as T;
+}
+
+/**
  * Returns the denormalized per-node delivery counters for a message step, or
  * `null` when the node has not sent anything yet. Drives the stats section under
  * the message step and the inspector statistics tab.
  */
 export async function getMessageNodeStatsAction(automationId: string, nodeId: string) {
-  const { readMessageNodeStats } = await import('./messaging/message-node-stats');
-  return readMessageNodeStats(automationId, nodeId);
+  try {
+    if (!automationId || !nodeId) return null;
+    const { readMessageNodeStats } = await import('./messaging/message-node-stats');
+    const stats = await readMessageNodeStats(automationId, nodeId);
+    return sanitizeServerActionData<MessageNodeStats | null>(stats);
+  } catch (err) {
+    console.error(`[getMessageNodeStatsAction] Error fetching stats for ${automationId}/${nodeId}:`, err);
+    return null;
+  }
 }
 
 export async function resendFailedMessagesAction(
@@ -155,24 +204,32 @@ export async function resendFailedMessagesAction(
  * Fetches via equality constraints and sorts on the client to avoid composite index overhead.
  */
 export async function getMessageNodeLogsAction(automationId: string, nodeId: string): Promise<MessageLog[]> {
-  const { adminDb } = await import('./firebase-admin');
-  const snap = await adminDb.collection('message_logs')
-    .where('automationId', '==', automationId)
-    .where('nodeId', '==', nodeId)
-    .limit(10000)
-    .get();
+  try {
+    if (!automationId || !nodeId) return [];
+    const { adminDb } = await import('./firebase-admin');
+    const snap = await adminDb.collection('message_logs')
+      .where('automationId', '==', automationId)
+      .where('nodeId', '==', nodeId)
+      .limit(10000)
+      .get();
 
-  const logs = snap.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  })) as MessageLog[];
+    const rawLogs = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-  // Sort by sentAt descending on client
-  return logs.sort((a, b) => {
-    const timeA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
-    const timeB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
-    return timeB - timeA;
-  });
+    const sanitizedLogs = sanitizeServerActionData<MessageLog[]>(rawLogs);
+
+    // Sort by sentAt descending on client
+    return sanitizedLogs.sort((a, b) => {
+      const timeA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+      const timeB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  } catch (err) {
+    console.error(`[getMessageNodeLogsAction] Error fetching logs for ${automationId}/${nodeId}:`, err);
+    return [];
+  }
 }
 
 

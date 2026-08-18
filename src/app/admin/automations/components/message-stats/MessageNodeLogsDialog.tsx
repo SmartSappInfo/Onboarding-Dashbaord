@@ -482,7 +482,13 @@ export function MessageNodeLogsDialog({
         setLogs(logsData);
         setNodeStats(statsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load delivery logs');
+        console.error('Failed to load delivery logs:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('upstream connect error') || msg.includes('connection termination')) {
+          setError('Temporary network connection reset while fetching delivery logs. Please click Retry to reload.');
+        } else {
+          setError(msg || 'Failed to load delivery logs');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -1332,9 +1338,35 @@ export function MessageNodeLogsDialog({
         )}
 
         {error && (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive my-2 shrink-0">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive my-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px] font-semibold border-destructive/30 hover:bg-destructive/10 text-destructive shrink-0 active:scale-[0.97] transition-all"
+              onClick={() => {
+                setError(null);
+                setIsLoading(true);
+                Promise.all([
+                  getMessageNodeLogsAction(automationId, nodeId),
+                  getMessageNodeStatsAction(automationId, nodeId)
+                ]).then(([logsData, statsData]) => {
+                  setLogs(logsData || []);
+                  setNodeStats(statsData);
+                }).catch((err) => {
+                  const msg = err instanceof Error ? err.message : String(err);
+                  setError(msg.includes('upstream connect error') ? 'Temporary network connection reset while fetching delivery logs. Please click Retry to reload.' : msg);
+                }).finally(() => {
+                  setIsLoading(false);
+                });
+              }}
+            >
+              <RotateCw className="h-3 w-3 mr-1" /> Retry
+            </Button>
           </div>
         )}
 
