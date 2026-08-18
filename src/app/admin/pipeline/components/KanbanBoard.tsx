@@ -260,6 +260,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         title: 'Deal Updated',
         description: `Deal marked as lost: ${selectedReason}`,
       });
+
       initialDealsByStage.current = dealsByStage;
       setPendingLostDeal(null);
       setSelectedReason('Competitor');
@@ -284,24 +285,14 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveElement(null);
     const { active, over } = event;
-    if (!over) return;
 
-    const activeId = active.id.toString();
-    const overId = over.id.toString();
-
-    // Check if dragging a column
-    if (active.data.current?.type === 'COLUMN') {
-      if (activeId !== overId) {
-        const oldIndex = stages.findIndex((s) => s.id === activeId);
-        const newIndex = stages.findIndex((s) => s.id === overId);
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const reordered = arrayMove(stages, oldIndex, newIndex);
-          // Persist order updates if needed
-        }
-      }
+    if (!over) {
+      setDealsByStage(initialDealsByStage.current);
       return;
     }
 
+    const activeContainer = findContainer(active.id as string);
+    const overContainer = findContainer(over.id as string);
 
     if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
         return;
@@ -343,9 +334,10 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
               variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
             }).catch(console.error);
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Failed to update stage:', error);
-          toast({ variant: 'destructive', title: 'Logic Error', description: error.message || 'Failed to update deal state.' });
+          const msg = error instanceof Error ? error.message : 'Failed to update deal state.';
+          toast({ variant: 'destructive', title: 'Logic Error', description: msg });
           setDealsByStage(initialDealsByStage.current);
         }
       }
