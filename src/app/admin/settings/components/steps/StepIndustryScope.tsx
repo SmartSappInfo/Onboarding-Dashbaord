@@ -115,7 +115,7 @@ export function StepIndustryScope({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {([
-                        { value: 'institution' as const, icon: Building2, label: 'Schools', desc: 'Institutional contacts with billing, contracts, and subscription management.' },
+                        { value: 'institution' as const, icon: Building2, label: 'Institutions', desc: 'Institutional contacts with billing, contracts, and subscription management.' },
                         { value: 'family' as const, icon: Users, label: 'Families', desc: 'Family contacts with guardians, children, and admissions workflows.' },
                         { value: 'person' as const, icon: User, label: 'People', desc: 'Individual contacts with personal CRM and lead management.' }
                     ]).map(({ value, icon: Icon, label, desc }) => {

@@ -344,6 +344,7 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
             description: 'Implementation and school initialization track.',
             color: '#3B5FFF',
             status: 'active',
+            contactScope: 'institution',
             statuses: [
                 { value: 'Onboarding', label: 'Onboarding', color: '#3B5FFF' },
                 { value: 'Active', label: 'Active', color: '#10b981' },
@@ -357,6 +358,7 @@ export async function seedWorkspaces(firestore: Firestore): Promise<number> {
             description: 'Discovery and acquisition track.',
             color: '#10b981',
             status: 'active',
+            contactScope: 'institution',
             statuses: [
                 { value: 'Lead', label: 'Inbound Lead', color: '#3B5FFF' },
                 { value: 'Lost', label: 'Lost Lead', color: '#ef4444' }

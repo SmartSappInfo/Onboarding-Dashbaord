@@ -290,7 +290,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
                   <p className="text-sm font-semibold text-foreground flex flex-wrap items-center gap-2">
                     <span>This workspace manages</span>
                     <span className="text-primary font-bold">
-                      {workspace.contactScope === 'institution' ? 'Schools' : 
+                      {workspace.contactScope === 'institution' ? 'Institutions' : 
                        workspace.contactScope === 'family' ? 'Families' : 'People'}
                     </span>
                     <span className="text-[10px] font-semibold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">

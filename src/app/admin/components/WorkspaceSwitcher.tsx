@@ -35,7 +35,7 @@ function getScopeLabel(scope: ContactScope | undefined): string | null {
     if (!scope) return null;
     
     const scopeMap: Record<ContactScope, string> = {
-        institution: 'Schools',
+        institution: 'Institutions',
         family: 'Families',
         person: 'People'
     };

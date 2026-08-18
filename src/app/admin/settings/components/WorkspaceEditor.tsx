@@ -654,7 +654,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
                                 {contactScope === 'person' && <User className="h-5 w-5 text-primary" />}
                                 <div className="flex-1">
                                     <p className="text-sm font-semibold text-foreground">
-                                        {contactScope === 'institution' ? 'Schools' : 
+                                        {contactScope === 'institution' ? 'Institutions' : 
                                          contactScope === 'family' ? 'Families' : 'People'}
                                     </p>
                                     <p className="text-[10px] font-medium text-muted-foreground leading-relaxed mt-0.5">

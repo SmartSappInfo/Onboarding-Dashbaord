@@ -29,16 +29,28 @@ export function ScopeBadge({ scope, variant = 'secondary', showIcon = false, cla
 }
 
 /**
- * Maps contactScope/entityType values to user-friendly labels and icons
+ * Maps contactScope/entityType values to user-friendly labels and icons.
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - 'institution' displays as 'Institutions' in the UI.
+ * - 'family' displays as 'Families'.
+ * - 'person' displays as 'People'.
  */
-function getScopeConfig(scope: ContactScope | EntityType) {
+function getScopeConfig(scope: ContactScope | EntityType | string) {
+  const normalizedKey = (scope === 'school' || scope === 'schools' || scope === 'institution' || scope === 'institutions')
+    ? 'institution'
+    : (scope === 'family' || scope === 'families')
+    ? 'family'
+    : (scope === 'person' || scope === 'people')
+    ? 'person'
+    : 'institution';
+
   const scopeMap: Record<ContactScope, { label: string; icon: React.ElementType }> = {
-    institution: { label: 'Schools', icon: Building },
+    institution: { label: 'Institutions', icon: Building },
     family: { label: 'Families', icon: Users },
     person: { label: 'People', icon: User }
   };
   
-  return scopeMap[scope] || { label: 'Unknown', icon: User };
+  return scopeMap[normalizedKey] || { label: 'Institutions', icon: Building };
 }
 
 /**
@@ -49,15 +61,15 @@ export function ScopeLabel({ scope, locked }: { scope: ContactScope; locked?: bo
   const scopeConfig = getScopeConfig(scope);
   
   return (
- <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border">
- <div className="p-2 bg-primary/10 rounded-lg">
- <scopeConfig.icon className="h-5 w-5 text-primary" />
+    <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border">
+      <div className="p-2 bg-primary/10 rounded-lg">
+        <scopeConfig.icon className="h-5 w-5 text-primary" />
       </div>
- <div className="flex-1">
- <p className="text-sm font-bold">
- This workspace manages <span className="text-primary">{scopeConfig.label}</span>.
+      <div className="flex-1">
+        <p className="text-sm font-bold">
+          This workspace manages <span className="text-primary">{scopeConfig.label}</span>.
         </p>
- <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Only {scopeConfig.label} records can exist here.
           {locked && ' Scope is locked because this workspace has active contacts.'}
         </p>
@@ -86,8 +98,8 @@ export function ScopeSelector({
   const scopes: ContactScope[] = ['institution', 'family', 'person'];
   
   return (
- <div className="space-y-4">
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {scopes.map((scope) => {
           const config = getScopeConfig(scope);
           const isSelected = value === scope;
@@ -98,26 +110,26 @@ export function ScopeSelector({
               type="button"
               onClick={() => !disabled && onChange(scope)}
               disabled={disabled}
- className={cn(
-                'p-6 rounded-xl border-2 transition-all text-left',
-                'hover:shadow-md hover:scale-105',
+              className={cn(
+                'p-6 rounded-xl border-2 transition-all text-left min-h-[44px]',
+                'hover:shadow-md hover:scale-105 active:scale-[0.97]',
                 isSelected 
                   ? 'border-primary bg-primary/5 shadow-lg' 
                   : 'border-border bg-card',
                 disabled && 'opacity-50 cursor-not-allowed hover:scale-100'
               )}
             >
- <div className="flex items-center gap-3 mb-3">
- <div className={cn(
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn(
                   'p-2 rounded-lg',
                   isSelected ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 )}>
- <config.icon className="h-5 w-5" />
+                  <config.icon className="h-5 w-5" />
                 </div>
- <h3 className="font-bold text-lg">{config.label}</h3>
+                <h3 className="font-bold text-lg">{config.label}</h3>
               </div>
- <p className="text-sm text-muted-foreground">
-                {scope === 'institution' && 'Manage schools and educational institutions with billing, contracts, and enrollment tracking.'}
+              <p className="text-sm text-muted-foreground">
+                {scope === 'institution' && 'Manage institutions and educational organizations with billing, contracts, and enrollment tracking.'}
                 {scope === 'family' && 'Manage families with guardians, children, and admissions workflows.'}
                 {scope === 'person' && 'Manage individual contacts with company info and sales pipeline tracking.'}
               </p>

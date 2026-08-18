@@ -6,15 +6,18 @@
  * 1. Single Source of Truth for PDF Document Rendering:
  *    High-performance, multi-tiered PDF document viewer powered by Mozilla `pdfjs-dist`.
  *    Eliminates cross-origin CORS iframe blank screens on Firebase Storage / GCS signed URLs.
- * 2. High-DPI Canvas & Memory Management:
- *    Renders pages using `window.devicePixelRatio` for retina crispness while setting
- *    CSS style dimensions to 100% container bounds. Active render tasks are explicitly
- *    cancelled (`renderTask.cancel()`) prior to starting a new render or on unmount.
+ * 2. High-DPI Canvas & Responsive Zoom Engine:
+ *    Renders pages using `window.devicePixelRatio` for retina crispness while applying
+ *    CSS transform scaling (`transform: scale(...)`, `transformOrigin: 'top center'`)
+ *    to make Zoom In (+), Zoom Out (-), and Reset controls 100% functional.
  * 3. Multi-Tier Fallback Pipeline:
  *    - Tier 1: pdfjs-dist Canvas Engine.
  *    - Tier 2: HTML5 <object data={url} type="application/pdf">.
- *    - Tier 3: Document Reader Card with direct download button.
- * 4. Touch Target Compliance:
+ *    - Tier 3: Document Reader Card with direct open/download button.
+ * 4. Theme & Layout Synchronization:
+ *    Uses Tailwind semantic design tokens (`bg-card`, `bg-muted/40`, `border-border`, `text-card-foreground`)
+ *    so the viewer container seamlessly aligns with the parent page's Light/Dark mode theme.
+ * 5. Touch Target Compliance:
  *    All toolbar buttons strictly enforce `min-h-[44px]` touch bounds with `active:scale-[0.97]`.
  */
 
@@ -23,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, 
-  Download, FileText, ExternalLink, Loader2 
+  Maximize, FileText, ExternalLink, Loader2 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +51,7 @@ export function PdfCanvasViewer({
 
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(1);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1.0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -113,7 +116,8 @@ export function PdfCanvasViewer({
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        const viewport = page.getViewport({ scale });
+        // Render base scale at 1.5 for high DPI rendering, CSS transform handles zoom
+        const viewport = page.getViewport({ scale: 1.5 });
         const outputScale = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
         canvas.width = Math.floor(viewport.width * outputScale);
@@ -149,7 +153,7 @@ export function PdfCanvasViewer({
         } catch {}
       }
     };
-  }, [pdfDoc, currentPage, scale, autoHeight]);
+  }, [pdfDoc, currentPage, autoHeight]);
 
   const handlePrev = () => {
     if (currentPage > 1) setCurrentPage(prev => prev - 1);
@@ -160,7 +164,7 @@ export function PdfCanvasViewer({
   };
 
   const handleZoomIn = () => {
-    setScale(prev => Math.min(prev + 0.2, 2.5));
+    setScale(prev => Math.min(prev + 0.2, 2.2));
   };
 
   const handleZoomOut = () => {
@@ -168,35 +172,32 @@ export function PdfCanvasViewer({
   };
 
   const handleResetZoom = () => {
-    setScale(1.2);
+    setScale(1.0);
+  };
+
+  const handleOpenFullscreen = () => {
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // Tier 3 Fallback: Interactive Document Reader Card
   if (hasError) {
     return (
-      <div className={cn("w-full h-full min-h-[350px] bg-slate-900 text-white rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 border border-slate-800 shadow-xl", className)}>
-        <div className="p-4 bg-blue-500/10 text-blue-400 rounded-2xl border border-blue-500/20">
+      <div className={cn("w-full h-full min-h-[350px] bg-card text-card-foreground rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 border border-border shadow-xl", className)}>
+        <div className="p-4 bg-primary/10 text-primary rounded-2xl border border-primary/20">
           <FileText className="h-8 w-8" />
         </div>
         <div className="space-y-1">
-          <h4 className="text-base font-extrabold text-white">{title}</h4>
-          <p className="text-xs text-slate-400 max-w-sm">
-            This document is ready for viewing. Click below to open or download the PDF file directly.
+          <h4 className="text-base font-extrabold text-foreground">{title}</h4>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            This document is ready for viewing. Click below to open or view the PDF file directly.
           </p>
         </div>
         <div className="flex items-center gap-3 pt-2">
           <Button
-            onClick={() => window.open(url, '_blank')}
+            onClick={handleOpenFullscreen}
             className="rounded-xl font-bold text-xs gap-2 h-11 px-5 min-h-[44px] shadow-lg active:scale-[0.97]"
           >
             Open PDF Document <ExternalLink className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => window.open(url, '_blank')}
-            className="rounded-xl font-bold text-xs gap-2 h-11 px-4 min-h-[44px] border-slate-700 text-slate-200 hover:bg-slate-800"
-          >
-            <Download className="h-4 w-4" /> Download
           </Button>
         </div>
       </div>
@@ -204,32 +205,32 @@ export function PdfCanvasViewer({
   }
 
   return (
-    <div className={cn("w-full h-full flex flex-col rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-xl text-white relative", className)}>
+    <div className={cn("w-full h-full flex flex-col rounded-2xl bg-card border border-border overflow-hidden shadow-xl text-card-foreground relative transition-colors duration-200", className)}>
       
       {/* Top Toolbar */}
-      <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 backdrop-blur-md">
+      <div className="bg-muted/40 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 backdrop-blur-md">
+        {/* Left Badge: Title removed to avoid duplication with page headline */}
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-xs font-bold truncate max-w-[180px] md:max-w-xs">{title}</span>
-          <Badge className="bg-slate-800 text-slate-300 border-slate-700 text-[9px] uppercase tracking-wider shrink-0">
-            PDF
+          <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-background border-border text-foreground">
+            PDF Document
           </Badge>
         </div>
 
         {/* Page Navigation & Controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             disabled={currentPage <= 1 || isLoading}
             onClick={handlePrev}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 min-h-[44px] min-w-[44px]"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 min-h-[44px] min-w-[44px]"
             title="Previous Page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <span className="text-xs font-mono font-bold px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-200">
+          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-background border border-border text-foreground shadow-sm">
             {currentPage} / {numPages}
           </span>
 
@@ -238,19 +239,19 @@ export function PdfCanvasViewer({
             size="icon"
             disabled={currentPage >= numPages || isLoading}
             onClick={handleNext}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 min-h-[44px] min-w-[44px]"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 min-h-[44px] min-w-[44px]"
             title="Next Page"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          <div className="h-4 w-px bg-slate-800 mx-1 hidden sm:block" />
+          <div className="h-4 w-px bg-border mx-1" />
 
           <Button
             variant="ghost"
             size="icon"
             onClick={handleZoomOut}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex min-h-[44px] min-w-[44px]"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent min-h-[44px] min-w-[44px]"
             title="Zoom Out"
           >
             <ZoomOut className="h-4 w-4" />
@@ -260,7 +261,7 @@ export function PdfCanvasViewer({
             variant="ghost"
             size="icon"
             onClick={handleZoomIn}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex min-h-[44px] min-w-[44px]"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent min-h-[44px] min-w-[44px]"
             title="Zoom In"
           >
             <ZoomIn className="h-4 w-4" />
@@ -270,49 +271,47 @@ export function PdfCanvasViewer({
             variant="ghost"
             size="icon"
             onClick={handleResetZoom}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex min-h-[44px] min-w-[44px]"
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent min-h-[44px] min-w-[44px]"
             title="Reset Zoom"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
 
+          {/* Replaces Download button with Open Fullscreen trigger */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => window.open(url, '_blank')}
-            className="h-9 w-9 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 min-h-[44px] min-w-[44px]"
-            title="Download PDF"
+            onClick={handleOpenFullscreen}
+            className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent min-h-[44px] min-w-[44px]"
+            title="Open Fullscreen"
           >
-            <Download className="h-4 w-4" />
+            <Maximize className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Main Canvas Viewport */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto min-h-[300px] relative bg-slate-950">
+      {/* Main Canvas Viewport with CSS Transform Scale */}
+      <div className="flex-1 flex items-center justify-center p-4 overflow-auto min-h-[350px] relative bg-muted/20">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="text-xs font-semibold">Parsing PDF Pages...</span>
           </div>
         ) : (
-          <canvas
-            ref={canvasRef}
-            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl transition-transform duration-200 select-none bg-white"
-          />
+          <div 
+            style={{ 
+              transform: `scale(${scale})`, 
+              transformOrigin: 'top center',
+              transition: 'transform 0.2s ease-out' 
+            }}
+            className="max-w-full flex items-center justify-center"
+          >
+            <canvas
+              ref={canvasRef}
+              className="max-h-full max-w-full object-contain rounded-xl shadow-xl select-none bg-white border border-border/40"
+            />
+          </div>
         )}
-      </div>
-
-      {/* Bottom Footer Page Indicator */}
-      <div className="bg-slate-900/60 border-t border-slate-800 px-4 py-2 flex items-center justify-between text-[11px] font-semibold text-slate-400 shrink-0">
-        <span>Showing Page {currentPage} of {numPages}</span>
-        <button
-          onClick={() => window.open(url, '_blank')}
-          className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
-        >
-          <span>Open Fullscreen</span>
-          <ExternalLink className="h-3 w-3" />
-        </button>
       </div>
     </div>
   );

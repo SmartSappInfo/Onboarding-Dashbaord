@@ -65,8 +65,8 @@ export async function seedInfrastructureAction(): Promise<SeedInfrastructureResu
 
     // 2. Ensure Core Workspaces anchored to Org
     const coreWorkspaces = [
-      { id: 'onboarding', name: 'Client Onboarding', orgId, color: '#3B5FFF' },
-      { id: 'prospect', name: 'Sales Leads', orgId, color: '#10b981' },
+      { id: 'onboarding', name: 'Client Onboarding', orgId, color: '#3B5FFF', contactScope: 'institution' },
+      { id: 'prospect', name: 'Sales Leads', orgId, color: '#10b981', contactScope: 'institution' },
     ];
 
     for (const w of coreWorkspaces) {
@@ -78,6 +78,7 @@ export async function seedInfrastructureAction(): Promise<SeedInfrastructureResu
           organizationId: w.orgId,
           name: w.name,
           color: w.color,
+          contactScope: w.contactScope,
           status: 'active',
           statuses: [],
           createdAt: timestamp,

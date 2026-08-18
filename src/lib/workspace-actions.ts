@@ -272,3 +272,67 @@ export async function updateWorkspaceScopeAction(
         return { success: false, error: e.message };
     }
 }
+
+/**
+ * Migrates legacy core workspaces (e.g. Client Onboarding & Sales Leads)
+ * to explicitly declare `contactScope: 'institution'`.
+ * 
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Workspaces created prior to scope locking (e.g., Client Onboarding, Sales Leads)
+ *   may lack the `contactScope` field in Firestore or have it set to a legacy value.
+ * - This server action is idempotent and updates those workspace documents so all compatible
+ *   workspaces match during cross-workspace membership operations in ManageWorkspacesModal.
+ */
+export async function migrateLegacyWorkspaceScopesAction(
+    organizationId: string,
+    userId: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+    try {
+        if (!organizationId) {
+            return { success: false, count: 0, error: 'Organization ID is required' };
+        }
+
+        const snapshot = await adminDb
+            .collection('workspaces')
+            .where('organizationId', '==', organizationId)
+            .get();
+
+        let count = 0;
+        const batch = adminDb.batch();
+
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data() as Workspace;
+            const nameLower = (data.name || '').toLowerCase();
+            const isClientOnboarding = docSnap.id === 'onboarding' || nameLower.includes('client onboarding');
+            const isSalesLeads = docSnap.id === 'prospect' || nameLower.includes('sales leads');
+
+            if ((isClientOnboarding || isSalesLeads) && data.contactScope !== 'institution') {
+                batch.update(docSnap.ref, {
+                    contactScope: 'institution',
+                    updatedAt: new Date().toISOString(),
+                });
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            await batch.commit();
+            await logActivity({
+                entityId: '',
+                organizationId,
+                userId,
+                workspaceId: '',
+                type: 'workspace_scope_updated',
+                source: 'system',
+                description: `Migrated ${count} legacy workspace(s) to 'institution' scope.`,
+            });
+            revalidatePath('/admin/settings');
+        }
+
+        return { success: true, count };
+    } catch (e: any) {
+        console.error('[WORKSPACE_MIGRATION] Failed to migrate legacy scopes:', e);
+        return { success: false, count: 0, error: e.message || 'Migration failed' };
+    }
+}
+

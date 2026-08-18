@@ -39,6 +39,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import {
+  areScopesCompatible,
+  normalizeContactScope,
+} from '@/lib/scope-guard';
+import { migrateLegacyWorkspaceScopesAction } from '@/lib/workspace-actions';
+
 interface ManageWorkspacesModalProps {
   entityId: string;
   entityType: string;
@@ -62,6 +68,15 @@ export default function ManageWorkspacesModal({
   const [expandedWorkspaceId, setExpandedWorkspaceId] = React.useState<string | null>(null);
   const [removingWeId, setRemovingWeId] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Auto-migrate legacy workspace scopes (Client Onboarding & Sales Leads) when modal opens
+  React.useEffect(() => {
+    if (open && activeOrganizationId && user?.uid) {
+      migrateLegacyWorkspaceScopesAction(activeOrganizationId, user.uid).catch(err => {
+        console.warn('[WORKSPACE_MODAL] Auto-migrate warning:', err);
+      });
+    }
+  }, [open, activeOrganizationId, user?.uid]);
 
   // 1. All workspace_entities for this entity (cross-workspace)
   const membershipsQuery = useMemoFirebase(() => {
@@ -92,14 +107,19 @@ export default function ManageWorkspacesModal({
     [activeMemberships],
   );
 
-  // Compatible workspaces not yet linked
+  /**
+   * Compatible workspaces not yet linked.
+   * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+   * Uses `areScopesCompatible` to compare entity type with workspace contactScope.
+   * Workspace scope defaults to 'institution' if missing on legacy core workspaces.
+   */
   const unlinkedWorkspaces = React.useMemo(
     () =>
       accessibleWorkspaces.filter(
         w =>
           w.status === 'active' &&
-          w.contactScope === entityType &&
-          !memberWorkspaceIds.has(w.id),
+          !memberWorkspaceIds.has(w.id) &&
+          areScopesCompatible(entityType, w.contactScope || 'institution'),
       ),
     [accessibleWorkspaces, entityType, memberWorkspaceIds],
   );
@@ -256,14 +276,15 @@ export default function ManageWorkspacesModal({
               <div className="flex flex-col items-center justify-center py-8 rounded-2xl border-2 border-dashed border-border/50 text-center">
                 <Check className="h-6 w-6 text-emerald-500/60 mb-2" />
                 <p className="text-xs text-muted-foreground italic">
-                  {accessibleWorkspaces.filter(w => w.contactScope === entityType).length === 0
-                    ? `No ${entityType} workspaces found in your organization`
+                  {accessibleWorkspaces.filter(w => areScopesCompatible(entityType, w.contactScope || 'institution')).length === 0
+                    ? `No compatible workspaces found in your organization`
                     : 'Already in all compatible workspaces'}
                 </p>
               </div>
             ) : (
               unlinkedWorkspaces.map(ws => {
                 const isExpanded = expandedWorkspaceId === ws.id;
+                const displayScope = normalizeContactScope(ws.contactScope) === 'institution' ? 'INSTITUTIONS' : (ws.contactScope || 'INSTITUTIONS').toUpperCase();
                 return (
                   <div
                     key={ws.id}
@@ -278,7 +299,7 @@ export default function ManageWorkspacesModal({
                     <button
                       type="button"
                       className={cn(
-                        'w-full flex items-center justify-between gap-3 p-4 text-left transition-colors',
+                        'w-full flex items-center justify-between gap-3 p-4 text-left transition-colors min-h-[44px] active:scale-[0.98]',
                         isExpanded ? 'bg-primary/5' : 'bg-card hover:bg-muted/30',
                       )}
                       onClick={() => handleToggleExpand(ws.id)}
@@ -302,8 +323,8 @@ export default function ManageWorkspacesModal({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="text-[8px] uppercase h-4">
-                          {ws.contactScope}
+                        <Badge variant="outline" className="text-[8px] uppercase h-4 font-bold">
+                          {displayScope}
                         </Badge>
                         {isExpanded ? (
                           <ChevronUp className="h-4 w-4 text-primary" />
