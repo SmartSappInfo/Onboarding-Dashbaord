@@ -278,8 +278,9 @@ export default function PipelineClient() {
         } else {
             throw new Error(res.error || "Failed to initialize pipeline");
         }
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Initialization Failed', description: e.message });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to initialize pipeline';
+        toast({ variant: 'destructive', title: 'Initialization Failed', description: message });
     } finally {
         setIsInitializing(false);
     }

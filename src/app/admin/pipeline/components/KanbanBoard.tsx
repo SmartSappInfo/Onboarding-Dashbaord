@@ -260,17 +260,17 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         title: 'Deal Updated',
         description: `Deal marked as lost: ${selectedReason}`,
       });
-
       initialDealsByStage.current = dealsByStage;
       setPendingLostDeal(null);
       setSelectedReason('Competitor');
       setExtraNotes('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save loss reason:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to complete deal status transition.';
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error.message || 'Failed to complete deal status transition.',
+        description: msg,
       });
       setDealsByStage(initialDealsByStage.current);
       setPendingLostDeal(null);
@@ -284,14 +284,24 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveElement(null);
     const { active, over } = event;
+    if (!over) return;
 
-    if (!over) {
-      setDealsByStage(initialDealsByStage.current);
+    const activeId = active.id.toString();
+    const overId = over.id.toString();
+
+    // Check if dragging a column
+    if (active.data.current?.type === 'COLUMN') {
+      if (activeId !== overId) {
+        const oldIndex = stages.findIndex((s) => s.id === activeId);
+        const newIndex = stages.findIndex((s) => s.id === overId);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const reordered = arrayMove(stages, oldIndex, newIndex);
+          // Persist order updates if needed
+        }
+      }
       return;
     }
 
-    const activeContainer = findContainer(active.id as string);
-    const overContainer = findContainer(over.id as string);
 
     if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
         return;
