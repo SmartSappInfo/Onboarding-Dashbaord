@@ -10,6 +10,7 @@ import type { MediaAsset, OrgBranding } from '@/lib/types';
 import { getEffectiveDescription } from '@/app/admin/media/components/share-media-dialog';
 import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
 import LikeButton from '@/components/shared/LikeButton';
+import PdfCanvasViewer from '@/components/shared/PdfCanvasViewer';
 
 interface YTPlayerEvent {
   data: number;
@@ -1179,16 +1180,9 @@ export default function MediaShareClient({
                         </div>
                     )}
 
-                    {asset.type === 'document' && (
-                        <div className="w-full aspect-video md:aspect-[16/9] relative z-10 bg-slate-950 flex flex-col">
-                            <iframe
-                                src={
-                                    asset.url.endsWith('.pdf')
-                                        ? asset.url
-                                        : `https://docs.google.com/gview?url=${encodeURIComponent(asset.url)}&embedded=true`
-                                }
-                                className="w-full flex-1 border-none bg-white"
-                            />
+                    {(asset.type === 'document' || asset.url.toLowerCase().includes('.pdf')) && (
+                        <div className="w-full aspect-video md:aspect-[16/9] relative z-10 bg-slate-950 flex flex-col rounded-2xl overflow-hidden shadow-2xl">
+                            <PdfCanvasViewer url={asset.url} title={title || asset.name} />
                         </div>
                     )}
 

@@ -20,6 +20,7 @@ import type { MediaAsset, OrgBranding } from '@/lib/types';
 import { getEffectiveDescription } from './share-media-dialog';
 import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
 import LikeButton from '@/components/shared/LikeButton';
+import PdfCanvasViewer from '@/components/shared/PdfCanvasViewer';
 import { cn } from '@/lib/utils';
 
 export interface MediaSharePreviewProps {
@@ -164,12 +165,9 @@ export function MediaSharePreview({
             </div>
           )}
 
-          {asset.type === 'document' && (
-            <div className="p-8 bg-slate-900 text-white text-center space-y-3">
-              <div className="mx-auto w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
-                <Download className="h-6 w-6" />
-              </div>
-              <p className="text-xs font-extrabold truncate px-2">{asset.name}</p>
+          {(asset.type === 'document' || asset.url.toLowerCase().includes('.pdf')) && (
+            <div className="w-full aspect-video relative z-10 bg-slate-950 flex flex-col rounded-2xl overflow-hidden shadow-xl">
+              <PdfCanvasViewer url={asset.url} title={displayTitle} />
             </div>
           )}
 

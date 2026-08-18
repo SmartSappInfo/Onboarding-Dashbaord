@@ -1,6 +1,6 @@
 'use server';
 
-import type { Automation, MessageLog } from './types';
+import type { Automation, MessageLog, MessageNodeStats } from './types';
 import type { AutomationExportEnvelope, ImportMappings } from './automations/portability';
 import {
   removeAutomation,
