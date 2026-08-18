@@ -25,7 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   BookOpen, Plus, Search, Eye, Sparkles, 
-  Trash2, Edit3, ExternalLink, Copy, Check, Users, FileText
+  Trash2, Edit3, ExternalLink, Copy, Check, Users, FileText,
+  Library, FolderOpen
 } from 'lucide-react';
 import { createFlipbookAction, deleteFlipbookAction } from '@/lib/flipbook-actions';
 import {
@@ -37,6 +38,37 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import type { MediaAsset } from '@/lib/types';
+
+type FlipbookSourceFileType = 'pdf' | 'docx' | 'epub' | 'media';
+
+function detectFileTypeFromUrl(url: string, mimeType?: string): FlipbookSourceFileType | null {
+  if (!url) return null;
+  const cleanUrl = url.toLowerCase().split('?')[0].split('#')[0];
+  
+  if (mimeType) {
+    const lowerMime = mimeType.toLowerCase();
+    if (lowerMime.includes('pdf')) return 'pdf';
+    if (lowerMime.includes('word') || lowerMime.includes('docx') || lowerMime.includes('document')) return 'docx';
+    if (lowerMime.includes('epub')) return 'epub';
+    if (lowerMime.includes('image') || lowerMime.includes('video') || lowerMime.includes('audio')) return 'media';
+  }
+
+  if (cleanUrl.endsWith('.pdf')) return 'pdf';
+  if (cleanUrl.endsWith('.docx') || cleanUrl.endsWith('.doc')) return 'docx';
+  if (cleanUrl.endsWith('.epub')) return 'epub';
+  if (
+    cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') ||
+    cleanUrl.endsWith('.webp') || cleanUrl.endsWith('.gif') || cleanUrl.endsWith('.svg') ||
+    cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.mp3') || cleanUrl.endsWith('.wav')
+  ) {
+    return 'media';
+  }
+
+  return null;
+}
 
 export default function FlipbookStudioClient() {
   const router = useRouter();
@@ -50,11 +82,12 @@ export default function FlipbookStudioClient() {
   
   // Create Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sourceFileUrl, setSourceFileUrl] = useState('');
   const [sourceFileName, setSourceFileName] = useState('');
-  const [sourceFileType, setSourceFileType] = useState<'pdf' | 'docx' | 'epub' | 'media'>('pdf');
+  const [sourceFileType, setSourceFileType] = useState<FlipbookSourceFileType>('pdf');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Copied link toast feedback
@@ -427,22 +460,53 @@ export default function FlipbookStudioClient() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Document File URL</Label>
-              <Input
-                value={sourceFileUrl}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSourceFileUrl(val);
-                  if (val.includes('/') && val.length > 10) {
-                    const extracted = val.split('/').pop()?.split('?')[0];
-                    if (extracted && extracted.includes('.')) {
-                      setSourceFileName(extracted);
+              <div className="flex items-center justify-between ml-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Document File URL</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMediaSelectorOpen(true)}
+                  className="h-7 text-[11px] font-bold text-primary hover:text-primary/80 hover:bg-primary/10 gap-1 rounded-lg px-2"
+                >
+                  <FolderOpen className="h-3.5 w-3.5" />
+                  Media Library
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input
+                  value={sourceFileUrl}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSourceFileUrl(val);
+                    if (val.includes('/') && val.length > 5) {
+                      const extracted = val.split('/').pop()?.split('?')[0];
+                      if (extracted && extracted.includes('.')) {
+                        setSourceFileName(extracted);
+                        if (!title) {
+                          const nameWithoutExt = extracted.split('.')[0].replace(/[-_]/g, ' ');
+                          setTitle(nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1));
+                        }
+                      }
+                      const detected = detectFileTypeFromUrl(val);
+                      if (detected) setSourceFileType(detected);
                     }
-                  }
-                }}
-                placeholder="https://storage.googleapis.com/.../document.pdf"
-                className="h-11 rounded-xl bg-muted/20 text-xs font-mono min-h-[44px]"
-              />
+                  }}
+                  placeholder="Paste URL or select from Media Library..."
+                  className="h-11 rounded-xl bg-muted/20 text-xs font-mono min-h-[44px] flex-1"
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsMediaSelectorOpen(true)}
+                  className="h-11 px-3.5 rounded-xl border-dashed border-border/80 text-xs font-bold gap-1.5 hover:bg-primary/10 hover:text-primary transition-all shrink-0 min-h-[44px]"
+                >
+                  <Library className="h-4 w-4" />
+                  Browse
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -476,6 +540,30 @@ export default function FlipbookStudioClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Institutional Media Library Selection Dialog */}
+      <MediaSelectorDialog
+        open={isMediaSelectorOpen}
+        onOpenChange={setIsMediaSelectorOpen}
+        onSelectAsset={(asset: MediaAsset) => {
+          setSourceFileUrl(asset.url);
+          const name = asset.name || asset.url.split('/').pop()?.split('?')[0] || 'document.pdf';
+          setSourceFileName(name);
+          if (!title) {
+            const nameWithoutExt = name.split('.')[0].replace(/[-_]/g, ' ');
+            setTitle(nameWithoutExt.charAt(0).toUpperCase() + nameWithoutExt.slice(1));
+          }
+          const detected = detectFileTypeFromUrl(asset.url, asset.mimeType);
+          if (detected) {
+            setSourceFileType(detected);
+          }
+          setIsMediaSelectorOpen(false);
+          toast({ title: 'Media Selected', description: `Loaded "${name}" from Media Library.` });
+        }}
+        workspaceId={activeWorkspaceId || undefined}
+        title="Select Document or Media Asset"
+        description="Choose a PDF, Word document, eBook, or institutional media asset from your workspace library."
+      />
     </PageContainerFluid>
   );
 }

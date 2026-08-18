@@ -16,7 +16,7 @@
  *    No `any` or `any[]` types are permitted.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { 
@@ -41,6 +41,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+function isImageUrl(url?: string): boolean {
+  if (!url) return false;
+  const clean = url.toLowerCase().split('?')[0].split('#')[0];
+  return (
+    clean.endsWith('.png') ||
+    clean.endsWith('.jpg') ||
+    clean.endsWith('.jpeg') ||
+    clean.endsWith('.webp') ||
+    clean.endsWith('.gif') ||
+    clean.endsWith('.svg')
+  );
+}
+
 interface FlipbookReaderClientProps {
   slug: string;
 }
@@ -53,6 +66,11 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   const [pages, setPages] = useState<FlipbookPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // PDF Canvas Renderer State
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
 
   // Reader Navigation State
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,6 +165,64 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  // Dynamic PDF document loading via pdfjs-dist
+  useEffect(() => {
+    if (!flipbook?.sourceFileUrl) return;
+    const url = flipbook.sourceFileUrl;
+    const isPdf = url.toLowerCase().includes('.pdf') || flipbook.sourceFileType === 'pdf';
+    if (!isPdf) return;
+
+    let isMounted = true;
+
+    async function loadPdf() {
+      try {
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+
+        const loadingTask = pdfjs.getDocument(url);
+        const docProxy = await loadingTask.promise;
+        if (isMounted) {
+          setPdfDoc(docProxy);
+          if (docProxy.numPages > 0) {
+            setFlipbook(prev => prev ? { ...prev, pageCount: docProxy.numPages } : null);
+          }
+        }
+      } catch (err) {
+        console.warn('PDF loading via pdfjs-dist failed, falling back to document embed viewer:', err);
+      }
+    }
+
+    loadPdf();
+    return () => { isMounted = false; };
+  }, [flipbook?.sourceFileUrl, flipbook?.sourceFileType]);
+
+  // Render current PDF page onto canvas
+  useEffect(() => {
+    if (!pdfDoc) return;
+    let isMounted = true;
+
+    async function renderCanvasPage() {
+      try {
+        const page = await pdfDoc.getPage(currentPage);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = canvasRef.current;
+        if (!canvas || !isMounted) return;
+
+        const context = canvas.getContext('2d');
+        if (context) {
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          await page.render({ canvasContext: context, viewport }).promise;
+        }
+      } catch (err) {
+        console.error('Error rendering PDF page on canvas:', err);
+      }
+    }
+
+    renderCanvasPage();
+    return () => { isMounted = false; };
+  }, [pdfDoc, currentPage]);
 
   // Lead Gate Threshold Evaluation
   useEffect(() => {
@@ -361,7 +437,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
             className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
             title="Toggle Fullscreen"
           >
-            <Maximize className="h-5 w-5" />
+            <Maximize className={`h-5 w-5 ${isFullscreen ? 'text-indigo-400' : ''}`} />
           </Button>
         </div>
       </div>
@@ -397,18 +473,57 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
           {/* 3D Page Canvas Container */}
           <div className="flex-1 h-full relative flex items-center justify-center p-4 text-center overflow-hidden">
             {(() => {
+              // 1. Pre-rendered page image
               const activePage = pages.find(p => p.pageNumber === currentPage);
               if (activePage?.imageUrl) {
                 return (
                   <img
                     src={activePage.imageUrl}
                     alt={`Page ${currentPage}`}
-                    className="max-h-full max-w-full object-contain rounded-xl shadow-md"
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-md select-none"
                   />
                 );
               }
+
+              // 2. Direct Image source file
+              if (flipbook.sourceFileUrl && isImageUrl(flipbook.sourceFileUrl)) {
+                return (
+                  <img
+                    src={flipbook.sourceFileUrl}
+                    alt={flipbook.title}
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-md select-none"
+                  />
+                );
+              }
+
+              // 3. Dynamic PDF page rendering on canvas via pdfjs-dist
+              if (pdfDoc) {
+                return (
+                  <canvas
+                    ref={canvasRef}
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300 select-none"
+                  />
+                );
+              }
+
+              // 4. Document viewer iframe fallback (Google Docs / Office / Web Embed)
+              if (flipbook.sourceFileUrl) {
+                const viewerUrl = flipbook.sourceFileUrl.startsWith('http')
+                  ? `https://docs.google.com/gview?url=${encodeURIComponent(flipbook.sourceFileUrl)}&embedded=true`
+                  : flipbook.sourceFileUrl;
+
+                return (
+                  <iframe
+                    src={viewerUrl}
+                    title={flipbook.title}
+                    className="w-full h-full border-none rounded-xl bg-white shadow-md"
+                  />
+                );
+              }
+
+              // 5. Default Fallback Card
               return (
-                <div className="space-y-4 max-w-md">
+                <div className="space-y-4 max-w-md p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
                   <BookOpen className="h-16 w-16 text-indigo-600 mx-auto" />
                   <h2 className="text-2xl font-black text-slate-900">{flipbook.title}</h2>
                   <p className="text-sm text-slate-600">Page {currentPage} of {flipbook.pageCount || 1}</p>
