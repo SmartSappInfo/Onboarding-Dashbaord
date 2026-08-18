@@ -22,8 +22,14 @@ import {
     Sparkles
 } from "lucide-react";
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { handleSignupAction } from '@/lib/signup-actions';
+import { handleSignupAction, type SignupInput } from '@/lib/signup-actions';
 import { dispatchSignupWebhook } from '@/lib/webhook-actions';
+import { 
+  checkSignupDuplicatesAction, 
+  mergeSignupIntoEntityAction, 
+  type EnrichedDuplicateMatch 
+} from '@/lib/signup-conflict-actions';
+import { SignupDuplicateResolutionModal } from '@/components/signup/SignupDuplicateResolutionModal';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -118,6 +124,12 @@ export default function NewSchoolSignupForm() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const [hasRestoredDraft, setHasRestoredDraft] = React.useState(false);
+  
+  // Conflict resolution states
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = React.useState(false);
+  const [isConflictModalOpen, setIsConflictModalOpen] = React.useState(false);
+  const [duplicateMatches, setDuplicateMatches] = React.useState<EnrichedDuplicateMatch[]>([]);
+  const [pendingSignupInput, setPendingSignupInput] = React.useState<SignupInput | null>(null);
 
   // For public form, we filter for active packages explicitly shared with the 'onboarding' workspace
   const packagesQuery = useMemoFirebase(() => {
@@ -220,105 +232,130 @@ export default function NewSchoolSignupForm() {
     form.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
   };
 
-  const onSubmit = async (data: FormData) => {
-    
-    // 1. Send to Pabbly Webhook (via server action to avoid CORS)
+  /**
+   * Helper function to execute registration or merge completion.
+   * Handles webhook dispatch, DB updates, draft cleanup, and toast notices.
+   */
+  const executeSignupCompletion = async (
+    signupInput: SignupInput,
+    rawFormData: FormData,
+    mode: 'create' | 'merge',
+    targetEntityId?: string
+  ) => {
+    // 1. Dispatch Webhook asynchronously (non-blocking)
     try {
-      const schoolEmails = data.entityContacts
+      const schoolEmails = rawFormData.entityContacts
         .map(c => c.email?.trim())
         .filter(email => email && z.string().email().safeParse(email).success);
       
-      const schoolSmsNumbers = data.entityContacts
+      const schoolSmsNumbers = rawFormData.entityContacts
         .map(c => c.phone?.trim())
         .filter(phone => phone && phone.length >= 10);
 
-      const webhookData: Record<string, any> = { ...data };
+      const webhookData: Record<string, any> = { ...rawFormData };
       
       webhookData.submissionDate = new Date().toISOString();
-      webhookData.implementationDate = format(data.implementationDate, 'yyyy-MM-dd');
-      webhookData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
+      webhookData.implementationDate = format(rawFormData.implementationDate, 'yyyy-MM-dd');
+      webhookData.includeDroneFootage = rawFormData.includeDroneFootage ? "Yes" : "No";
       
-      // Extract Primary Contact for targeted template fields
-      const primaryContact = data.entityContacts.find(c => c.isPrimary) || data.entityContacts[0];
+      const primaryContact = rawFormData.entityContacts.find(c => c.isPrimary) || rawFormData.entityContacts[0];
       webhookData.contactPerson = primaryContact?.name || "";
       webhookData.phone = primaryContact?.phone || "";
       webhookData.email = primaryContact?.email || "";
       
-      // Only include addresses if the corresponding notify flag is true
-      webhookData.notifySchoolEmails = data.notifySchool ? [...new Set(schoolEmails)].join(',') : '';
-      webhookData.notifySchoolSmsNumbers = data.notifySchoolBySms ? [...new Set(schoolSmsNumbers)].join(',') : '';
+      webhookData.notifySchoolEmails = rawFormData.notifySchool ? [...new Set(schoolEmails)].join(',') : '';
+      webhookData.notifySchoolSmsNumbers = rawFormData.notifySchoolBySms ? [...new Set(schoolSmsNumbers)].join(',') : '';
       
-      webhookData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
-      webhookData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
+      webhookData.notifySmartSappEmails = rawFormData.notifySmartSapp ? "team@minex360.com" : "";
+      webhookData.notifyOnboardingEmails = rawFormData.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
 
-      webhookData.notifySchool = data.notifySchool ? "Yes" : "No";
-      webhookData.notifySmartSapp = data.notifySmartSapp ? "Yes" : "No";
-      webhookData.notifyOnboarding = data.notifyOnboarding ? "Yes" : "No";
-      webhookData.notifySchoolBySms = data.notifySchoolBySms ? "Yes" : "No";
+      webhookData.notifySchool = rawFormData.notifySchool ? "Yes" : "No";
+      webhookData.notifySmartSapp = rawFormData.notifySmartSapp ? "Yes" : "No";
+      webhookData.notifyOnboarding = rawFormData.notifyOnboarding ? "Yes" : "No";
+      webhookData.notifySchoolBySms = rawFormData.notifySchoolBySms ? "Yes" : "No";
 
-      // Clean non-serializable fields before sending
       delete webhookData.implementationDate_raw;
       
-      console.log('>>> [SIGNUP:FORM] Preparing webhook data:', webhookData);
-      const webhookResult = await dispatchSignupWebhook(webhookData);
-      console.log('>>> [SIGNUP:FORM] Webhook result:', webhookResult);
-      if (!webhookResult.success) {
-        console.warn('Webhook dispatch warning:', webhookResult.error);
-        // Don't block signup on webhook failure — entity creation continues
-      }
-
+      dispatchSignupWebhook(webhookData).catch(err => console.warn('Webhook dispatch error:', err));
     } catch (error) {
       console.warn('Webhook dispatch failed silently:', error);
-      // Don't block signup on webhook failure
     }
 
-    // 2. Create entity and workspace_entity records (Requirements 10.1, 10.2, 10.3)
+    // 2. Perform DB creation or merge
+    let result: { success: boolean; entityId?: string; error?: string };
+
+    if (mode === 'merge' && targetEntityId) {
+      result = await mergeSignupIntoEntityAction(targetEntityId, signupInput);
+    } else {
+      result = await handleSignupAction(signupInput);
+    }
+
+    if (result.success) {
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch (e) {}
+      setHasRestoredDraft(false);
+      setIsConflictModalOpen(false);
+      setPendingSignupInput(null);
+      setDuplicateMatches([]);
+
+      toast({ 
+        title: mode === 'merge' ? "Profile Merged & Saved!" : "Registration Successful!", 
+        description: mode === 'merge' 
+          ? "Institutional contact details updated cleanly."
+          : "Institutional profile initialized with entity architecture." 
+      });
+      form.reset(DEFAULT_FORM_VALUES as FormData);
+    } else {
+      throw new Error(result.error || 'Failed to complete registration');
+    }
+  };
+
+  const onSubmit = async (data: FormData) => {
     if (!firestore) return;
 
     const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
 
-    try {
-      // Use the new signup action that creates entity + workspace_entity
-      // This does NOT create legacy school records (Requirement 10.3)
-      const result = await handleSignupAction({
-        organizationId: 'smartsapp-hq',
-        workspaceId: 'onboarding', // Default workspace for new signups
-        name: data.organization,
-        location: data.location,
-        entityContacts: data.entityContacts.map((c, i) => ({
-            ...c,
-            id: c.id || `contact-${Date.now()}-${i}`,
-            order: i
-        })),
-        nominalRoll: data.nominalRoll,
-        billingAddress: data.billingAddress,
-        currency: data.currency,
-        subscriptionPackageId: data.subscriptionPackageId === 'none' ? undefined : data.subscriptionPackageId,
-        subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
-        subscriptionRate: data.subscriptionRate,
-        discountPercentage: data.discountPercentage,
-        arrearsBalance: data.arrearsBalance,
-        creditBalance: data.creditBalance,
-        implementationDate: data.implementationDate.toISOString(),
-        referee: data.referee,
-        includeDroneFootage: data.includeDroneFootage,
-        pipelineId: 'default_pipeline', // TODO: Get default pipeline for onboarding workspace
-        stageId: 'welcome', // Default stage for new signups
-        userId: 'system-signup', // Prefixed with 'system-' to bypass permission checks in createEntityAction
-      });
+    const preparedInput: SignupInput = {
+      organizationId: 'smartsapp-hq',
+      workspaceId: 'onboarding',
+      name: data.organization,
+      location: data.location,
+      entityContacts: data.entityContacts.map((c, i) => ({
+          ...c,
+          id: c.id || `contact-${Date.now()}-${i}`,
+          order: i
+      })),
+      nominalRoll: data.nominalRoll,
+      billingAddress: data.billingAddress,
+      currency: data.currency,
+      subscriptionPackageId: data.subscriptionPackageId === 'none' ? undefined : data.subscriptionPackageId,
+      subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
+      subscriptionRate: data.subscriptionRate,
+      discountPercentage: data.discountPercentage,
+      arrearsBalance: data.arrearsBalance,
+      creditBalance: data.creditBalance,
+      implementationDate: data.implementationDate.toISOString(),
+      referee: data.referee,
+      includeDroneFootage: data.includeDroneFootage,
+      pipelineId: 'default_pipeline',
+      stageId: 'welcome',
+      userId: 'system-signup',
+    };
 
-      if (result.success) {
-        try {
-          localStorage.removeItem(DRAFT_STORAGE_KEY);
-        } catch (e) {}
-        setHasRestoredDraft(false);
-        toast({ 
-          title: "Registration Successful!", 
-          description: "Institutional profile initialized with entity architecture." 
-        });
-        form.reset(DEFAULT_FORM_VALUES as FormData);
+    setIsCheckingDuplicates(true);
+    try {
+      // Step 1: Run pre-flight duplicate conflict check
+      const dupCheck = await checkSignupDuplicatesAction(preparedInput);
+
+      if (dupCheck.hasDuplicates && dupCheck.duplicates.length > 0) {
+        // Duplicates detected -> Open interactive conflict resolution screen
+        setPendingSignupInput(preparedInput);
+        setDuplicateMatches(dupCheck.duplicates);
+        setIsConflictModalOpen(true);
       } else {
-        throw new Error(result.error || 'Failed to create signup');
+        // No conflicts -> Complete registration directly
+        await executeSignupCompletion(preparedInput, data, 'create');
       }
     } catch (error: any) {
       toast({
@@ -326,7 +363,21 @@ export default function NewSchoolSignupForm() {
         title: "Registration Failed",
         description: error.message || "Could not complete signup. Please try again.",
       });
+    } finally {
+      setIsCheckingDuplicates(false);
     }
+  };
+
+  const handleResolveNew = async () => {
+    if (!pendingSignupInput) return;
+    const currentFormData = form.getValues();
+    await executeSignupCompletion(pendingSignupInput, currentFormData, 'create');
+  };
+
+  const handleResolveMerge = async (targetEntityId: string) => {
+    if (!pendingSignupInput) return;
+    const currentFormData = form.getValues();
+    await executeSignupCompletion(pendingSignupInput, currentFormData, 'merge', targetEntityId);
   };
 
   return (
@@ -719,14 +770,37 @@ export default function NewSchoolSignupForm() {
                 <Separator className="bg-border/50" />
 
                 <div className="p-8 flex justify-center" aria-live="polite">
-                    <Button type="submit" size="lg" disabled={form.formState.isSubmitting} className="h-14 px-16 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 transition-all active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground">
-                        {form.formState.isSubmitting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Building className="mr-3 h-5 w-5" aria-hidden="true" />}
-                        {form.formState.isSubmitting ? "Processing…" : "Register School"}
+                    <Button 
+                      type="submit" 
+                      size="lg" 
+                      disabled={form.formState.isSubmitting || isCheckingDuplicates} 
+                      className="h-14 px-16 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 transition-all active:scale-[0.98] bg-primary hover:bg-primary/90 text-primary-foreground min-h-[44px]"
+                    >
+                        {form.formState.isSubmitting || isCheckingDuplicates ? (
+                          <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                        ) : (
+                          <Building className="mr-3 h-5 w-5" aria-hidden="true" />
+                        )}
+                        {isCheckingDuplicates 
+                          ? "Checking Duplicates..." 
+                          : form.formState.isSubmitting 
+                            ? "Processing…" 
+                            : "Register School"}
                     </Button>
                 </div>
             </CardContent>
         </Card>
       </form>
+
+      {/* Duplicate Conflict Resolution Modal */}
+      <SignupDuplicateResolutionModal
+        isOpen={isConflictModalOpen}
+        onClose={() => setIsConflictModalOpen(false)}
+        signupInput={pendingSignupInput}
+        duplicates={duplicateMatches}
+        onResolveNew={handleResolveNew}
+        onResolveMerge={handleResolveMerge}
+      />
     </FormProvider>
   );
 }

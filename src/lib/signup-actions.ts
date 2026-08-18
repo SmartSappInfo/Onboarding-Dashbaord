@@ -11,7 +11,7 @@ import type { InstitutionData, EntityContact } from './types';
  * FER-01: Exclusively uses `entityContacts`.
  */
 
-interface SignupInput {
+export interface SignupInput {
   // Organization details
   organizationId: string;
   workspaceId: string;
