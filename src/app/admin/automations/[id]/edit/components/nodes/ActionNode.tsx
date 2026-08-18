@@ -249,8 +249,9 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 return `Add note: "${config.content ? config.content.substring(0, 20) + (config.content.length > 20 ? '...' : '') : 'Awaiting content'}"`;
             case 'ASSIGN_ENTITY': {
                 if (config.assignedTo === 'auto') return 'Auto-assign entity';
-                const user = users?.find((u: any) => u.uid === config.assignedTo);
-                return `Assign entity to ${user ? user.name : (config.assignedTo || 'user')}`;
+                const user = users?.find((u) => u.id === config.assignedTo);
+                const name = user?.name || config.assigneeName;
+                return `Assign entity to ${name || config.assignedTo || 'user'}`;
             }
             case 'UPDATE_ENTITY': {
                 const updatesList: string[] = [];

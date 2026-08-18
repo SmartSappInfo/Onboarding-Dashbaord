@@ -1410,7 +1410,16 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
       {actionType === 'ASSIGN_ENTITY' ? (
         <div className="space-y-2">
           <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assign To</Label>
-          <Select value={config.assignedTo || 'auto'} onValueChange={(v) => updateConfig({ assignedTo: v })}>
+          <Select 
+            value={config.assignedTo || 'auto'} 
+            onValueChange={(v) => {
+              const matchedUser = users?.find(u => u.id === v);
+              updateConfig({ 
+                assignedTo: v,
+                assigneeName: matchedUser?.name || (v === 'auto' ? 'Auto-Resolve' : '')
+              });
+            }}
+          >
             <SelectTrigger className="h-12 rounded-xl bg-card border shadow-sm font-bold">
               <SelectValue />
             </SelectTrigger>
@@ -1722,40 +1731,67 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
               <Building className="h-4 w-4 text-primary animate-pulse" /> Target Entity Selection
             </h4>
-            
+
             <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Name (Variable Supported)</Label>
-              <Input 
-                placeholder="e.g. {{companyName}} or {{contact.company}}" 
-                value={config.entityName || ''} 
-                onChange={(e) => updateConfig({ entityName: e.target.value })} 
-                className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
-              />
-              <span className="text-[9px] font-medium text-muted-foreground leading-relaxed block ml-1 opacity-70">
-                Note: Locates the entity in this workspace with the display name matching this field.
-              </span>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={!!config.caseInsensitive}
-                    onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
-                  />
-                  <div className="flex flex-col text-left">
-                    <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
-                    <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
-                  </div>
-                </label>
-              </div>
-
-              {!config.caseInsensitive && (
-                <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 leading-relaxed block ml-1 pt-1">
-                  ⚠️ Exact Case Sensitivity: Matching display names will be case-sensitive.
-                </span>
-              )}
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Entity Resolution</Label>
+              <Select
+                value={String(config.targetEntityMode || 'automatic')}
+                onValueChange={(val) => updateConfig({ targetEntityMode: val })}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
+                  <SelectValue placeholder="Select Entity Targeting Mode" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md font-semibold text-xs">
+                  <SelectItem value="automatic">Automatic (Context Entity)</SelectItem>
+                  <SelectItem value="manual">Manual Search (By Entity Name)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            
+            {(config.targetEntityMode || 'automatic') === 'automatic' ? (
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-left space-y-1">
+                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  ⚡ Automatic Context Targeting
+                </span>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Automatically links this contact to whichever entity is traversing this step. Deduplication is enforced automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Name (Variable Supported)</Label>
+                <Input 
+                  placeholder="e.g. {{companyName}} or {{contact.company}}" 
+                  value={config.entityName || ''} 
+                  onChange={(e) => updateConfig({ entityName: e.target.value })} 
+                  className="h-10 rounded-xl bg-card border shadow-sm font-semibold"
+                />
+                <span className="text-[9px] font-medium text-muted-foreground leading-relaxed block ml-1 opacity-70">
+                  Note: Locates the entity in this workspace with the display name matching this field.
+                </span>
+
+                <div className="pt-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!config.caseInsensitive}
+                      onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                    />
+                    <div className="flex flex-col text-left">
+                      <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
+                      <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
+                    </div>
+                  </label>
+                </div>
+
+                {!config.caseInsensitive && (
+                  <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 leading-relaxed block ml-1 pt-1">
+                    ⚠️ Exact Case Sensitivity: Matching display names will be case-sensitive.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
@@ -1840,89 +1876,119 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           {/* Target Contact Filter section */}
           <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <UserCog className="h-4 w-4 text-primary animate-pulse" /> Target Contact Filter
+              <UserCog className="h-4 w-4 text-primary animate-pulse" /> Target Contact Selection
             </h4>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Define the criteria to locate the contact. If multiple contacts match, the update will fail to prevent data corruption.
-            </p>
-
+            
             <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Match Criteria Logic</Label>
-              <Select 
-                value={String(config.matchLogic || 'all')} 
-                onValueChange={(val) => updateConfig({ matchLogic: val })}
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Contact Resolution</Label>
+              <Select
+                value={String(config.targetEntityMode || 'automatic')}
+                onValueChange={(val) => updateConfig({ targetEntityMode: val })}
               >
                 <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
-                  <SelectValue placeholder="Select Match Logic" />
+                  <SelectValue placeholder="Select Contact Targeting Mode" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border shadow-md font-semibold text-xs">
-                  <SelectItem value="all">Match All Criteria (AND)</SelectItem>
-                  <SelectItem value="any">Match Any Criterion (OR)</SelectItem>
+                  <SelectItem value="automatic">Automatic (Context Contact)</SelectItem>
+                  <SelectItem value="manual">Manual Filter (Search Criteria)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity/Company Name (Variable Supported)</Label>
-              <MappableInputField
-                placeholder="e.g. {{companyName}} or {{contact.company}}"
-                value={String(config.filterEntityName || '')}
-                onChange={(val) => updateConfig({ filterEntityName: val })}
-                inputClassName="h-10 shadow-sm"
-                appFields={appFields}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variable Supported)</Label>
-              <MappableInputField
-                placeholder="e.g. {{contact.name}}"
-                value={String(config.filterContactName || '')}
-                onChange={(val) => updateConfig({ filterContactName: val })}
-                inputClassName="h-10 shadow-sm"
-                appFields={appFields}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Phone (Variable Supported)</Label>
-                <MappableInputField
-                  placeholder="e.g. {{contact.phone}}"
-                  value={String(config.filterContactPhone || '')}
-                  onChange={(val) => updateConfig({ filterContactPhone: val })}
-                  inputClassName="h-10 shadow-sm"
-                  appFields={appFields}
-                />
+            {(config.targetEntityMode || 'automatic') === 'automatic' ? (
+              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-left space-y-1">
+                <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                  ⚡ Automatic Context Targeting
+                </span>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Automatically updates whichever contact is currently traversing this step.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Email (Variable Supported)</Label>
-                <MappableInputField
-                  placeholder="e.g. {{contact.email}}"
-                  value={String(config.filterContactEmail || '')}
-                  onChange={(val) => updateConfig({ filterContactEmail: val })}
-                  inputClassName="h-10 shadow-sm"
-                  appFields={appFields}
-                />
-              </div>
-            </div>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Define the criteria to locate the contact. If multiple contacts match, the update will fail to prevent data corruption.
+                </p>
 
-            <div className="pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={!!config.caseInsensitive}
-                  onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
-                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
-                />
-                <div className="flex flex-col text-left">
-                  <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
-                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Match Criteria Logic</Label>
+                  <Select 
+                    value={String(config.matchLogic || 'all')} 
+                    onValueChange={(val) => updateConfig({ matchLogic: val })}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
+                      <SelectValue placeholder="Select Match Logic" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border shadow-md font-semibold text-xs">
+                      <SelectItem value="all">Match All Criteria (AND)</SelectItem>
+                      <SelectItem value="any">Match Any Criterion (OR)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </label>
-            </div>
 
-            {!config.caseInsensitive ? (
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity/Company Name (Variable Supported)</Label>
+                  <MappableInputField
+                    placeholder="e.g. {{companyName}} or {{contact.company}}"
+                    value={String(config.filterEntityName || '')}
+                    onChange={(val) => updateConfig({ filterEntityName: val })}
+                    inputClassName="h-10 shadow-sm"
+                    appFields={appFields}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variable Supported)</Label>
+                  <MappableInputField
+                    placeholder="e.g. {{contact.name}}"
+                    value={String(config.filterContactName || '')}
+                    onChange={(val) => updateConfig({ filterContactName: val })}
+                    inputClassName="h-10 shadow-sm"
+                    appFields={appFields}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Phone (Variable Supported)</Label>
+                    <MappableInputField
+                      placeholder="e.g. {{contact.phone}}"
+                      value={String(config.filterContactPhone || '')}
+                      onChange={(val) => updateConfig({ filterContactPhone: val })}
+                      inputClassName="h-10 shadow-sm"
+                      appFields={appFields}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Email (Variable Supported)</Label>
+                    <MappableInputField
+                      placeholder="e.g. {{contact.email}}"
+                      value={String(config.filterContactEmail || '')}
+                      onChange={(val) => updateConfig({ filterContactEmail: val })}
+                      inputClassName="h-10 shadow-sm"
+                      appFields={appFields}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!config.caseInsensitive}
+                      onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                    />
+                    <div className="flex flex-col text-left">
+                      <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
+                      <span className="text-[9px] font-medium text-muted-foreground leading-none">Allow matching even if capitalization differs</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            {!config.caseInsensitive && (config.targetEntityMode !== 'automatic') ? (
               <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 leading-relaxed block ml-1 pt-1">
                 ⚠️ Exact Case Sensitivity: Matching names and details will be case-sensitive.
               </span>

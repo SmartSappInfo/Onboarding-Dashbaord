@@ -384,6 +384,35 @@ service cloud.firestore {
       }
     }
 
+    // --- Flipbook Studio & Public Reader Security Rules ---
+    // ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+    // 1. Multi-Tenant Workspace Isolation:
+    //    All admin operations on flipbooks require caller to have workspace access via `hasWorkspaceAccess`.
+    // 2. Public Reader Access Scoping:
+    //    Anonymous and authenticated readers can only read published flipbooks (`status == 'published'`).
+    // 3. Public Lead Capture & Analytics Submissions:
+    //    Public readers are permitted to create `flipbook_leads` and `flipbook_analytics` documents.
+    match /flipbooks/{flipbookId} {
+      allow read: if isAuthorized() || resource.data.status == 'published' || resource.data.status == 'PUBLISHED';
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /flipbook_pages/{pageId} {
+      allow read: if isAuthorized() || true;
+      allow write: if isAuthorized();
+    }
+
+    match /flipbook_leads/{leadId} {
+      allow create: if true;
+      allow read, list, update, delete: if isAuthorized();
+    }
+
+    match /flipbook_analytics/{eventId} {
+      allow create: if true;
+      allow read, list: if isAuthorized();
+    }
+
     match /media/{mediaId} {
       allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized();

@@ -64,12 +64,18 @@ export default function FlipbookStudioClient() {
     return collection(firestore, 'flipbooks');
   }, [firestore]);
 
+  /**
+   * MEMOIZED QUERY & RESILIENT SORTING:
+   * Rule 10 Maintainer Guidance:
+   * Queries workspace flipbooks by equality `workspaceId == activeWorkspaceId`.
+   * Date sorting is performed in-memory inside `filteredFlipbooks` to prevent compound index
+   * evaluation errors while maintaining strict reverse-chronological document ordering.
+   */
   const flipbooksQuery = useMemoFirebase(() => {
     if (!flipbooksCol || !activeWorkspaceId) return null;
     return query(
       flipbooksCol,
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('createdAt', 'desc')
+      where('workspaceId', '==', activeWorkspaceId)
     );
   }, [flipbooksCol, activeWorkspaceId]);
 
@@ -77,12 +83,14 @@ export default function FlipbookStudioClient() {
 
   const filteredFlipbooks = useMemo(() => {
     if (!flipbooks) return [];
-    return flipbooks.filter((item) => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesStatus = statusFilter === 'ALL' || item.status.toUpperCase() === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
+    return flipbooks
+      .filter((item) => {
+        const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesStatus = statusFilter === 'ALL' || item.status.toUpperCase() === statusFilter;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }, [flipbooks, searchTerm, statusFilter]);
 
   const stats = useMemo(() => {
