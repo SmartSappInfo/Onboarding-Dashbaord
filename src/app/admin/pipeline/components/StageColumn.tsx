@@ -4,20 +4,22 @@ import * as React from 'react';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import type { Deal, OnboardingStage } from '@/lib/types';
+import type { Deal, OnboardingStage, Automation } from '@/lib/types';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2 } from 'lucide-react';
+import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2, Zap, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
 import DealCard from './DealCard';
 import CreateDealModal from '../../entities/components/CreateDealModal';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { clearStageDealsAction } from '@/app/actions/deal-actions';
+import { isAutomationLinkedToStage } from '@/lib/automation-stage-helpers';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -25,19 +27,39 @@ interface StageColumnProps {
     isOverlay?: boolean;
     customWidth?: number;
     tasksByDealId?: Record<string, { total: number; completed: number; hasOverdue: boolean }>;
+    pipelineName?: string;
+    pipelineId?: string;
+    automations?: Automation[];
 }
 
 /**
- * @fileOverview High-fidelity Kanban Column.
- * Powered by deals collection for modern transactional tracking.
+ * ARCHITECTURAL POINTER (High-Fidelity Kanban Stage Column):
+ * Renders stage column header, deal list cards, deal creation triggers, and active stage automation indicators.
+ *
+ * CAUTION FOR MAINTAINERS:
+ * When adding automations to a stage via handleAddAutomationToStage, parameters are passed in query params
+ * so NewAutomationPage can auto-populate the workflow title and DEAL_STAGE_CHANGED trigger node.
  */
-export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId }: StageColumnProps) {
+export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId, pipelineName, pipelineId, automations }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const [isClearing, setIsClearing] = React.useState(false);
     const confirm = useConfirm();
     const { user } = useUser();
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
+
+    const activePipelineId = pipelineId || stage.pipelineId;
+
+    const attachedAutomations = React.useMemo(() => {
+        return (automations || []).filter(a => isAutomationLinkedToStage(a, activePipelineId, stage.id));
+    }, [automations, activePipelineId, stage.id]);
+
+    const handleAddAutomationToStage = () => {
+        const pName = pipelineName || 'Pipeline';
+        const sName = stage.name;
+        const url = `/admin/automations/new?pipelineId=${encodeURIComponent(activePipelineId)}&stageId=${encodeURIComponent(stage.id)}&pipelineName=${encodeURIComponent(pName)}&stageName=${encodeURIComponent(sName)}`;
+        window.open(url, '_blank');
+    };
 
     const handleClearStage = async () => {
         if (!user || !activeWorkspaceId) return;
@@ -129,8 +151,61 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                         </div>
                     </div>
                     
-                    {/* Color-Coded Count Badge - High contrast metrics */}
+                    {/* Color-Coded Count Badge & Active Stage Automation Badge */}
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {attachedAutomations.length > 0 && (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition-all shadow-sm active:scale-[0.97]"
+                                        title={`${attachedAutomations.length} automation workflow(s) attached to this stage`}
+                                    >
+                                        <Zap className="h-3 w-3 fill-amber-500 text-amber-500 animate-pulse" />
+                                        <span>{attachedAutomations.length}</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-[280px] p-3 rounded-2xl border border-border/80 shadow-2xl bg-popover z-[200]">
+                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-foreground">
+                                            <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                            <span>Stage Automations ({attachedAutomations.length})</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleAddAutomationToStage}
+                                            className="h-6 px-2 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/10"
+                                        >
+                                            + Add New
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                                        {attachedAutomations.map(auto => (
+                                            <div key={auto.id} className="p-2 rounded-xl bg-muted/40 hover:bg-muted/80 border border-border/50 transition-all flex items-center justify-between gap-2">
+                                                <div className="min-w-0 flex-1 text-left">
+                                                    <p className="text-xs font-bold text-foreground truncate">{auto.name}</p>
+                                                    <p className="text-[9px] text-muted-foreground font-medium truncate">
+                                                        {auto.isActive ? 'Active Workflow' : 'Draft / Paused'}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => window.open(`/admin/automations/${auto.id}/edit`, '_blank')}
+                                                    className="h-7 w-7 rounded-lg shrink-0 border-border hover:bg-primary/10 hover:text-primary"
+                                                    title="Edit Automation"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+
                         <Badge 
                             variant="outline" 
                             className="rounded-full h-6 px-3 font-semibold tabular-nums border-none transition-colors shadow-inner"
@@ -152,7 +227,14 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                                     <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[140px]">
+                            <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[170px]">
+                                <DropdownMenuItem
+                                    onClick={handleAddAutomationToStage}
+                                    className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10 rounded-lg"
+                                >
+                                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                    Add Automation to Stage
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={handleClearStage}
                                     disabled={deals.length === 0 || isClearing}

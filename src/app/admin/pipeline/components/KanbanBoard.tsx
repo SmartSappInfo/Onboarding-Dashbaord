@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Deal, OnboardingStage, Task } from '@/lib/types';
+import type { Deal, OnboardingStage, Task, Automation } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,16 +53,17 @@ import { applyDealFilters } from '../utils/filter-deals';
 
 interface KanbanBoardProps {
     pipelineId: string;
+    pipelineName?: string;
     customWidth?: number;
     filters: KanbanFilters;
+    automations?: Automation[];
 }
 
 /**
- * KanbanBoard - Modern Deal Progression Hub
- * 
- * Powered by deals collection for real-time tracking.
+ * ARCHITECTURAL POINTER (KanbanBoard Component):
+ * Real-time deal progression hub with DnD, stage filters, and stage-linked automation indicators.
  */
-export default function KanbanBoard({ pipelineId, customWidth, filters }: KanbanBoardProps) {
+export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations }: KanbanBoardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
@@ -384,9 +385,12 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
             <StageColumn
               key={stage.id}
               stage={stage}
+              pipelineId={pipelineId}
+              pipelineName={pipelineName}
               customWidth={customWidth}
               deals={dealsByStage[stage.id] || []}
               tasksByDealId={tasksByDealId}
+              automations={automations}
             />
           ))}
         </div>
@@ -397,10 +401,13 @@ export default function KanbanBoard({ pipelineId, customWidth, filters }: Kanban
           'order' in activeElement ? (
             <StageColumn
               stage={activeElement as OnboardingStage}
+              pipelineId={pipelineId}
+              pipelineName={pipelineName}
               customWidth={customWidth}
               deals={dealsByStage[(activeElement as OnboardingStage).id] || []}
               isOverlay
               tasksByDealId={tasksByDealId}
+              automations={automations}
             />
           ) : (
             <div className="w-72 pointer-events-none">
