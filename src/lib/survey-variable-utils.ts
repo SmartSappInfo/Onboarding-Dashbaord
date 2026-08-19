@@ -71,6 +71,8 @@ export function sanitizeHtml(html: string): string {
   return doc.body.innerHTML.replace(/&amp;/g, '&');
 }
 
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
+
 export function interpolateWithMap(
   text: string | undefined | null,
   valuesMap: VariableValuesMap,
@@ -78,28 +80,18 @@ export function interpolateWithMap(
 ): string {
   // Fast path: null/undefined → empty string
   if (!text) return '';
+  if (!text.includes('{{')) return text;
 
-  const hasHtml = text.includes('<');
-  let result = text;
-
-  if (text.includes('{{')) {
-    // Fast path: empty map → strip all tokens (or keep if keepMissing)
-    if (Object.keys(valuesMap).length === 0) {
-      result = keepMissing ? text : text.replace(VARIABLE_TOKEN_REGEX, '');
-    } else {
-      // Reset lastIndex before each use (regex has global flag)
-      VARIABLE_TOKEN_REGEX.lastIndex = 0;
-
-      result = text.replace(VARIABLE_TOKEN_REGEX, (_match: string, key: string) => {
-        const trimmed = key.trim();
-        const value = valuesMap[trimmed];
-        if (value !== undefined) return value;
-        return keepMissing ? _match : '';
-      });
-    }
+  const map = new Map<string, unknown>();
+  if (valuesMap) {
+    Object.entries(valuesMap).forEach(([k, v]) => {
+      map.set(k, v);
+    });
   }
 
-  if (hasHtml || result.includes('<')) {
+  const result = resolveTextWithMap(text, map, keepMissing);
+
+  if (result.includes('<')) {
     return sanitizeHtml(result);
   }
   return result;

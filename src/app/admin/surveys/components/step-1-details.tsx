@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon, Search, Users, User } from 'lucide-react';
+import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon, Search, Users, User, Sparkles } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { useEntityResolver } from '@/context/EntityCacheContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface Step1DetailsProps {}
 
@@ -196,6 +197,86 @@ function EntityPickerField({
     );
 }
 
+function VariableHelperPopover({ onInsert }: { onInsert: (token: string) => void }) {
+    const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+    const [open, setOpen] = React.useState(false);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 px-2 text-xs font-semibold text-primary hover:text-primary/90 hover:bg-primary/10 gap-1.5 rounded-lg"
+                >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Insert Variable</span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[320px] p-3 rounded-2xl shadow-xl border-border bg-card">
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
+                        <span className="text-xs font-bold text-foreground">Personalization Variables</span>
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary bg-primary/10 border-0">
+                            Dynamic
+                        </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Insert inline variables that personalize dynamically. You can add a fallback using <code className="bg-muted px-1 rounded text-[10px]">{'{{key|fallback}}'}</code>.
+                    </p>
+                    <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
+                        {[
+                            { label: 'Entity / School Name', token: '{{entity.name}}', fallbackToken: '{{entity.name|SmartSapp}}' },
+                            { label: 'Recipient Contact Name', token: '{{contact.name}}', fallbackToken: '{{contact.name|Valued Respondent}}' },
+                            { label: 'Recipient Contact Email', token: '{{contact.email}}', fallbackToken: '{{contact.email}}' },
+                            { label: 'Recipient Contact Phone', token: '{{contact.phone}}', fallbackToken: '{{contact.phone}}' },
+                        ].map((v) => (
+                            <div key={v.label} className="p-2 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors flex flex-col gap-1.5">
+                                <span className="text-xs font-semibold text-foreground">{v.label}</span>
+                                <div className="flex items-center gap-1.5">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-[10px] font-mono font-medium rounded-md px-2 bg-background hover:bg-primary hover:text-primary-foreground"
+                                        onClick={() => {
+                                            onInsert(v.token);
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        {v.token}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[10px] font-mono font-medium rounded-md px-2 text-muted-foreground hover:text-foreground"
+                                        onClick={() => {
+                                            onInsert(v.fallbackToken);
+                                            setOpen(false);
+                                        }}
+                                        title="With Fallback"
+                                    >
+                                        + Fallback
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {activeWorkspaceId && (
+                        <div className="pt-2 border-t border-border/50">
+                            <span className="text-[10px] text-muted-foreground/70 block">
+                                Tip: Type <code className="bg-muted px-1 rounded text-[10px]">{'{{'}</code> in text to trigger inline variables.
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export default function Step1Details(_props: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
 
@@ -244,8 +325,11 @@ export default function Step1Details(_props: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-2">
-                                    <Label className="text-sm font-semibold">Public Header Title</Label>
-                                    <Input {...field} placeholder="e.g. Help Us Improve" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-semibold">Public Header Title</Label>
+                                        <VariableHelperPopover onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)} />
+                                    </div>
+                                    <Input {...field} placeholder="e.g. Help Us Improve or {{entity.name|SmartSapp}}" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
                                 </div>
                             )}
                         />
@@ -254,7 +338,10 @@ export default function Step1Details(_props: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-2">
-                                    <Label className="text-sm font-semibold">Introductory Prose</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-semibold">Introductory Prose</Label>
+                                        <VariableHelperPopover onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)} />
+                                    </div>
                                     <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm p-4 focus-visible:ring-1 focus-visible:ring-primary/30" />
                                 </div>
                             )}

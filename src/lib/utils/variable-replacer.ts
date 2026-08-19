@@ -13,21 +13,44 @@ export function resolveTextWithMap(
     const cleanKey = parts[0].trim();
     const userFallback = parts.length > 1 ? parts.slice(1).join('|').trim() : undefined;
 
-    // 1. Try to resolve variable
-    const val = valuesMap.get(cleanKey);
-    if (val !== undefined && val !== null && String(val).trim() !== '') {
-      return String(val);
+    // Build alias key list (e.g. entity.name <-> entity_name <-> entityName)
+    const possibleKeys: string[] = [
+      cleanKey,
+      cleanKey.replace(/\./g, '_'),
+      cleanKey.replace(/_/g, '.'),
+    ];
+    if (cleanKey === 'entity.name' || cleanKey === 'entity_name') {
+      possibleKeys.push('entityName', 'displayName', 'organization_name', 'company');
+    }
+    if (cleanKey === 'contact.name' || cleanKey === 'contact_name') {
+      possibleKeys.push('contactName', 'name', 'recipient_name');
     }
 
-    // 2. Pre-defined fallback
-    const preFallback = valuesMap.get(`__fallback__${cleanKey}`);
-    if (preFallback !== undefined && preFallback !== null && String(preFallback).trim() !== '') {
-      return String(preFallback);
+    // 1. Try to resolve variable value from Map
+    let foundVal: unknown = undefined;
+    for (const k of possibleKeys) {
+      const val = valuesMap.get(k);
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        foundVal = val;
+        break;
+      }
     }
 
-    // 3. User-defined fallback (last option)
+    if (foundVal !== undefined && foundVal !== null && String(foundVal).trim() !== '') {
+      return String(foundVal);
+    }
+
+    // 2. User-defined inline fallback (e.g. {{entity.name|SmartSapp}}) takes priority over static defaults
     if (userFallback !== undefined && userFallback !== null && userFallback.trim() !== '') {
       return userFallback;
+    }
+
+    // 3. Pre-defined system fallback (__fallback__key)
+    for (const k of possibleKeys) {
+      const preFallback = valuesMap.get(`__fallback__${k}`);
+      if (preFallback !== undefined && preFallback !== null && String(preFallback).trim() !== '') {
+        return String(preFallback);
+      }
     }
 
     return keepMissing ? match : '';

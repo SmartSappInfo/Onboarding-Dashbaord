@@ -289,7 +289,7 @@ export default function SurveyDisplay({
                             <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Simulation Mode</span>
                             <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
-                                {survey.title}
+                                {interpolateWithMap(survey.title, simulatedValues, true) || survey.title}
                             </span>
                         </div>
 
@@ -420,7 +420,7 @@ export default function SurveyDisplay({
                         <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Simulation Mode</span>
                         <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
-                            {survey.title}
+                            {interpolateWithMap(survey.title, simulatedValues, true) || survey.title}
                         </span>
                     </div>
 
