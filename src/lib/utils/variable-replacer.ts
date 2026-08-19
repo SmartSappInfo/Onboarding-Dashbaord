@@ -19,11 +19,17 @@ export function resolveTextWithMap(
       cleanKey.replace(/\./g, '_'),
       cleanKey.replace(/_/g, '.'),
     ];
-    if (cleanKey === 'entity.name' || cleanKey === 'entity_name') {
-      possibleKeys.push('entityName', 'displayName', 'organization_name', 'company');
+    if (cleanKey === 'entity.name' || cleanKey === 'entity_name' || cleanKey === 'school.name' || cleanKey === 'school_name' || cleanKey === 'schoolName') {
+      possibleKeys.push('entity_name', 'entity.name', 'entityName', 'displayName', 'organization_name', 'company', 'school_name', 'schoolName');
     }
-    if (cleanKey === 'contact.name' || cleanKey === 'contact_name') {
-      possibleKeys.push('contactName', 'name', 'recipient_name');
+    if (cleanKey === 'contact.name' || cleanKey === 'contact_name' || cleanKey === 'contactName') {
+      possibleKeys.push('contactName', 'name', 'recipient_name', 'contact_name');
+    }
+    if (cleanKey === 'contact.email' || cleanKey === 'contact_email' || cleanKey === 'contactEmail' || cleanKey === 'email') {
+      possibleKeys.push('contact_email', 'contactEmail', 'email');
+    }
+    if (cleanKey === 'contact.phone' || cleanKey === 'contact_phone' || cleanKey === 'contactPhone' || cleanKey === 'phone') {
+      possibleKeys.push('contact_phone', 'contactPhone', 'phone');
     }
 
     // 1. Try to resolve variable value from Map

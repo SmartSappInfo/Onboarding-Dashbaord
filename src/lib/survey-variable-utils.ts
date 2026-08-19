@@ -18,7 +18,7 @@ import type { VariableValuesMap } from '@/lib/types/survey-variable-types';
  * Pre-compiled regex hoisted to module scope per js-hoist-regexp rule.
  * Matches {{variable_name}} and {{ variable_name }} (with optional whitespace).
  */
-const VARIABLE_TOKEN_REGEX = /\{\{([^}]+)\}\}/g;
+export const VARIABLE_TOKEN_REGEX = /\{\{([^}]+)\}\}/g;
 
 /**
  * Interpolates {{variable}} tokens in a string using a pre-resolved values map.
@@ -112,13 +112,19 @@ export function interpolateManyWithMap(
   valuesMap: VariableValuesMap,
   keepMissing = false,
 ): string[] {
-  // Early exit: if no values to substitute, process the whole batch in one pass
-  if (Object.keys(valuesMap).length === 0) {
-    return texts.map((text) => {
-      if (!text) return '';
-      if (!text.includes('{{')) return text;
-      return keepMissing ? text : text.replace(VARIABLE_TOKEN_REGEX, '');
+  if (!texts || texts.length === 0) return [];
+
+  const map = new Map<string, unknown>();
+  if (valuesMap) {
+    Object.entries(valuesMap).forEach(([k, v]) => {
+      map.set(k, v);
     });
   }
-  return texts.map((text) => interpolateWithMap(text, valuesMap, keepMissing));
+
+  return texts.map((text) => {
+    if (!text) return '';
+    if (!text.includes('{{')) return text;
+    const result = resolveTextWithMap(text, map, keepMissing);
+    return result.includes('<') ? sanitizeHtml(result) : result;
+  });
 }
