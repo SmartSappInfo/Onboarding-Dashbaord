@@ -79,13 +79,30 @@ describe('Dual-Button Block Implementation', () => {
             title: 'Safe Primary',
             link: 'javascript:alert("hacked_primary")',
             secondaryTitle: 'Safe Secondary',
-            secondaryLink: 'javascript:alert("hacked_secondary")',
+            secondaryLink: 'JavaScript:alert("hacked_secondary")',
         };
 
         const html = renderBlocksToHtml([maliciousBlock], mockVariables);
 
         expect(html).not.toContain('javascript:alert');
+        expect(html).not.toContain('JavaScript:alert');
         expect(html).toContain('href="#"');
+    });
+
+    it('sanitises mixed-case protocols like DATA: and VBScript: and file:', () => {
+        const maliciousBlock: MessageBlock = {
+            id: 'blk_test_3b',
+            type: 'dual-button',
+            title: 'Safe Data',
+            link: 'DATA:text/html,<script>alert(1)</script>',
+            secondaryTitle: 'Safe File',
+            secondaryLink: 'FILE:///etc/passwd',
+        };
+
+        const html = renderBlocksToHtml([maliciousBlock], mockVariables);
+
+        expect(html).not.toContain('DATA:text/html');
+        expect(html).not.toContain('FILE:///etc/passwd');
     });
 
     it('resolves {{variable}} tokens in primary and secondary button titles and links', () => {
@@ -137,10 +154,15 @@ describe('Dual-Button Block Implementation', () => {
         expect(fallbackPadding).toBe('14px 28px 14px 28px');
     });
 
-    it('sanitises unit string values with ensureUnit correctly', () => {
+    it('sanitises unit string values with ensureUnit correctly including non-px units and functions', () => {
         expect(ensureUnit('12px')).toBe('12px');
         expect(ensureUnit(12)).toBe('12px');
         expect(ensureUnit('2em')).toBe('2em');
+        expect(ensureUnit('100%')).toBe('100%');
+        expect(ensureUnit('100vw')).toBe('100vw');
+        expect(ensureUnit('auto')).toBe('auto');
+        expect(ensureUnit('fit-content')).toBe('fit-content');
+        expect(ensureUnit('calc(100% - 24px)')).toBe('calc(100% - 24px)');
         expect(ensureUnit(undefined)).toBe('');
     });
 });

@@ -121,7 +121,7 @@ const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): strin
 function sanitizeHref(href: string): string {
   const trimmed = href.trim();
   // Reject dangerous protocols — case-insensitive, handles URL-encoding tricks
-  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '#';
+  if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return '#';
   return trimmed;
 }
 

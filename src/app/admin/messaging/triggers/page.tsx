@@ -49,8 +49,17 @@ function convertRegistryDefToTemplate(def: TemplateDef, singularTerm?: string): 
   let formattedSubject = def.subject || def.name;
   let formattedBody = def.body;
   if (singularTerm) {
-    formattedSubject = formattedSubject.replace(/School/g, singularTerm).replace(/school/g, singularTerm.toLowerCase());
-    formattedBody = formattedBody.replace(/School/g, singularTerm).replace(/school/g, singularTerm.toLowerCase());
+    const termCap = singularTerm.charAt(0).toUpperCase() + singularTerm.slice(1);
+    const termLow = singularTerm.toLowerCase();
+    const replaceTerms = (str: string): string =>
+      str
+        .replace(/\bSchools\b/g, `${termCap}s`)
+        .replace(/\bschools\b/g, `${termLow}s`)
+        .replace(/\bSchool\b/g, termCap)
+        .replace(/\bschool\b/g, termLow);
+
+    formattedSubject = replaceTerms(formattedSubject);
+    formattedBody = replaceTerms(formattedBody);
   }
 
   const blocks: MessageBlock[] | undefined = isEmail ? [
@@ -210,7 +219,7 @@ export default function MessagingTriggersPage() {
       if (selectedTarget !== 'all' && trigger.target !== selectedTarget) return false;
 
       // 5. Channel
-      if (selectedChannel !== 'all' && !trigger.supportedChannels.includes(selectedChannel as any)) return false;
+      if (selectedChannel !== 'all' && !trigger.supportedChannels.includes(selectedChannel as MessageChannel)) return false;
 
       return true;
     });
@@ -246,22 +255,30 @@ export default function MessagingTriggersPage() {
     setSelectedChannel('all');
   };
 
-  // ── 5. Data Subscriptions for Template Workshop ─────────────────────────
+  // Handle mobile back button
+  const handleMobileBack = () => {
+    setMobilePanel('list');
+  };
+
+  const handleSelectTrigger = (id: string) => {
+    setSelectedTriggerId(id);
+    setMobilePanel('detail');
+  };
+
+  // ── 5. Auxiliary Data for Customizer Workshop ───────────────────────────
   const varsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'messaging_variables'));
+    return query(collection(firestore, 'template_variables'));
   }, [firestore]);
-  
+
   const stylesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId));
-  }, [firestore, activeWorkspaceId]);
-
-
+    if (!firestore) return null;
+    return query(collection(firestore, 'message_styles'));
+  }, [firestore]);
 
   const meetingsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'meetings'));
+    return query(collection(firestore, 'meetings'), where('status', '==', 'scheduled'));
   }, [firestore]);
 
   const surveysQuery = useMemoFirebase(() => {
@@ -341,10 +358,10 @@ export default function MessagingTriggersPage() {
     setIsAdding(true);
   };
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: Partial<MessageTemplate>) => {
     if (!firestore || !user) return;
 
-    const contentForExtraction = `${data.subject || ''} ${data.body} ${JSON.stringify(data.blocks || [])}`;
+    const contentForExtraction = `${data.subject || ''} ${data.body || ''} ${JSON.stringify(data.blocks || [])}`;
     const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
     const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
@@ -381,8 +398,9 @@ export default function MessagingTriggersPage() {
         toast({ title: 'Override Saved Successfully' });
         setIsAdding(false);
         setEditingTemplate(null);
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast({ variant: 'destructive', title: 'Save Failed', description: message });
     }
   };
 
@@ -394,8 +412,9 @@ export default function MessagingTriggersPage() {
       invalidateAllTemplatesCache();
       toast({ title: 'Reverted to System Default' });
       setTemplateToRevert(null);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to revert', description: error.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ variant: 'destructive', title: 'Failed to revert', description: message });
     } finally {
       setIsReverting(false);
     }

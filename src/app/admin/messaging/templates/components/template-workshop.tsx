@@ -1985,14 +1985,14 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
     
     // Scale styles down for miniature preview representation
     const miniStyle: React.CSSProperties = {
-        textAlign: s.textAlign as any || 'left',
+        textAlign: (s.textAlign as React.CSSProperties['textAlign']) || 'left',
         backgroundColor: s.backgroundColor || 'transparent',
         color: s.color || 'inherit',
         borderRadius: s.borderRadius || '0px',
         borderWidth: s.borderWidth ? `${Math.max(1, parseInt(s.borderWidth) / 2)}px` : undefined,
-        borderStyle: s.borderStyle as any,
+        borderStyle: s.borderStyle as React.CSSProperties['borderStyle'],
         borderColor: s.borderColor,
-        fontWeight: s.fontWeight as any,
+        fontWeight: s.fontWeight as React.CSSProperties['fontWeight'],
         fontSize: '8px',
         paddingTop: s.paddingTop ? `${Math.max(2, parseInt(s.paddingTop) / 4)}px` : '4px',
         paddingBottom: s.paddingBottom ? `${Math.max(2, parseInt(s.paddingBottom) / 4)}px` : '4px',
@@ -2169,7 +2169,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                             paddingLeft: '7px',
                             paddingRight: '7px',
                             borderWidth: ss.borderWidth ? `${Math.max(1, parseInt(ss.borderWidth) / 2)}px` : (ss.variant === 'outline' ? '1px' : undefined),
-                            borderStyle: (ss.borderStyle as any) || (ss.variant === 'outline' ? 'solid' : undefined),
+                            borderStyle: (ss.borderStyle as React.CSSProperties['borderStyle']) || (ss.variant === 'outline' ? 'solid' : undefined),
                             borderColor: ss.borderColor || (ss.variant === 'outline' ? '#2563eb' : undefined),
                         }}
                         className="inline-block text-[7px] font-semibold truncate max-w-[65px] pointer-events-none text-center"

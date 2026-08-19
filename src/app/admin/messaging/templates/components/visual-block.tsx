@@ -285,11 +285,18 @@ function renderTextWithVariablePills(text: string, isButtonContext = false): Rea
 
 export const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
     if (val === undefined || val === null || val === '') return '';
-    const str = String(val);
-    if (str.endsWith('px') || str.endsWith('%') || str.endsWith('pt') || str.endsWith('em') || str.endsWith('rem')) {
+    const str = String(val).trim();
+    // Already has valid CSS unit or keyword / function
+    if (/^(-?\d*\.?\d+)(px|%|pt|em|rem|vw|vh|vmin|vmax|ch|deg|rad)$/i.test(str) ||
+        /^(auto|inherit|initial|unset|fit-content|max-content|min-content)$/i.test(str) ||
+        str.startsWith('calc(') || str.startsWith('var(') || str.startsWith('min(') || str.startsWith('max(') || str.startsWith('clamp(')) {
         return str;
     }
-    return `${str}${defaultUnit}`;
+    // Pure numeric value
+    if (!isNaN(Number(str))) {
+        return `${str}${defaultUnit}`;
+    }
+    return str;
 };
 
 /**
@@ -313,7 +320,7 @@ export const resolveButtonPadding = (
 
 /**
  * PURPOSE: Sanitise href values before embedding in canvas preview anchor tags.
- * Strips dangerous protocols (javascript:, data:, vbscript:) to prevent XSS.
+ * Strips dangerous protocols (javascript:, data:, vbscript:, file:) to prevent XSS.
  *
  * CAUTION: Apply this to ALL user-supplied link/secondaryLink fields before use in <a href>.
  *          Email previews render in iframes — sandboxing is the first defence, but
@@ -321,13 +328,9 @@ export const resolveButtonPadding = (
  *
  * TESTABILITY: See dual-button-block.test.ts → 'sanitises javascript: href to #'.
  */
-function sanitizeHref(rawHref: string): string {
+export function sanitizeHref(rawHref: string): string {
     const trimmed = rawHref.trim();
-    if (
-        trimmed.startsWith('javascript:') ||
-        trimmed.startsWith('data:') ||
-        trimmed.startsWith('vbscript:')
-    ) {
+    if (/^(javascript|data|vbscript|file):/i.test(trimmed)) {
         return '#';
     }
     return trimmed || '#';
