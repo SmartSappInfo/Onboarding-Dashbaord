@@ -2482,7 +2482,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                 <div className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-left text-white space-y-1 shadow-sm overflow-hidden" style={{ backgroundColor: s.backgroundColor || '#020617' }}>
                     <div className="flex items-center justify-between text-[5px] font-mono text-slate-400 border-b border-slate-800/80 pb-0.5">
                         <span className="flex items-center gap-1"><span className="h-1 w-1 rounded-full bg-blue-400"></span> HTML / CSS</span>
-                        <span className="text-[4.5px] text-slate-500 truncate max-w-[60px]">{block.name || 'Custom'}</span>
+                        <span className="text-[4.5px] text-slate-500 truncate max-w-[60px]">{block.title || 'Custom'}</span>
                     </div>
                     <div className="text-[4.5px] font-mono text-blue-300/80 line-clamp-3 leading-tight opacity-90">
                         &lt;table width="100%" ...&gt;<br />

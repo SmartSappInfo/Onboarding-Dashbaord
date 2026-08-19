@@ -433,17 +433,18 @@ function useFormatting(
   };
 }
 
-interface SlashInputProps extends Omit<React.ComponentPropsWithoutRef<'div'>, 'onChange' | 'value' | 'placeholder'> {
+export interface SlashInputProps extends Omit<React.ComponentPropsWithoutRef<'div'>, 'onChange' | 'value' | 'placeholder'> {
   value: string;
   onChange: (val: string) => void;
   variables?: TemplateVariable[];
   enableFormatting?: boolean;
   placeholder?: string;
   autoComplete?: string;
+  variant?: 'default' | 'inline';
 }
 
 export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
-  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, className, placeholder, autoComplete, ...props }, ref) => {
+  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, autoComplete, ...props }, ref) => {
     const localRef = React.useRef<HTMLDivElement>(null);
     React.useImperativeHandle(ref, () => localRef.current as unknown as HTMLInputElement);
 
@@ -594,7 +595,10 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           />
         )}
         {!value && (
-          <div className="absolute pointer-events-none opacity-50 px-3 py-2 text-sm select-none">
+          <div className={cn(
+            "absolute pointer-events-none opacity-50 select-none",
+            variant === 'inline' ? "p-0 text-inherit leading-inherit" : "px-3 py-2 text-sm"
+          )}>
             {placeholder}
           </div>
         )}
@@ -669,7 +673,9 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
             }
           }}
           className={cn(
-            "w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] break-words whitespace-nowrap overflow-x-auto outline-none",
+            variant === 'inline'
+              ? "w-full bg-transparent border-0 rounded-none p-0 min-h-0 h-auto outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0 ring-offset-0 shadow-none disabled:cursor-not-allowed disabled:opacity-50 break-words"
+              : "w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[40px] break-words whitespace-nowrap overflow-x-auto outline-none",
             className
           )}
         />
@@ -755,17 +761,18 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
 
 SlashInput.displayName = 'SlashInput';
 
-interface SlashTextareaProps extends Omit<React.ComponentPropsWithoutRef<'div'>, 'onChange' | 'value' | 'placeholder'> {
+export interface SlashTextareaProps extends Omit<React.ComponentPropsWithoutRef<'div'>, 'onChange' | 'value' | 'placeholder'> {
   value: string;
   onChange: (val: string) => void;
   variables?: TemplateVariable[];
   enableFormatting?: boolean;
   placeholder?: string;
   rows?: number;
+  variant?: 'default' | 'inline';
 }
 
 export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextareaProps>(
-  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, className, placeholder, rows, ...props }, ref) => {
+  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, rows, ...props }, ref) => {
     const localRef = React.useRef<HTMLDivElement>(null);
     React.useImperativeHandle(ref, () => localRef.current as unknown as HTMLTextAreaElement);
 
@@ -913,7 +920,10 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           />
         )}
         {!value && (
-          <div className="absolute pointer-events-none opacity-50 px-3 py-2 text-sm select-none">
+          <div className={cn(
+            "absolute pointer-events-none opacity-50 select-none",
+            variant === 'inline' ? "p-0 text-inherit leading-inherit" : "px-3 py-2 text-sm"
+          )}>
             {placeholder}
           </div>
         )}
@@ -986,7 +996,9 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
             }
           }}
           className={cn(
-            "w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] break-words whitespace-pre-wrap outline-none",
+            variant === 'inline'
+              ? "w-full bg-transparent border-0 rounded-none p-0 min-h-0 h-auto outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0 ring-offset-0 shadow-none disabled:cursor-not-allowed disabled:opacity-50 break-words whitespace-pre-wrap"
+              : "w-full bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] break-words whitespace-pre-wrap outline-none",
             className
           )}
         />

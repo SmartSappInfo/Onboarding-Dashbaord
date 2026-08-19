@@ -494,7 +494,8 @@ export function VisualBlock({
                                         value={pillTextVal}
                                         onChange={(val) => onContentUpdate?.({ pillText: val })}
                                         variables={autocompleteVariables}
-                                        className="bg-transparent border-none outline-none font-black tracking-wider text-blue-300 uppercase p-0 m-0 w-auto text-center focus:ring-0 focus:outline-none h-auto"
+                                        variant="inline"
+                                        className="font-black tracking-wider text-blue-300 uppercase w-auto text-center h-auto"
                                         placeholder="Date / Label"
                                         style={{ width: `${Math.max(pillTextVal.length || 12, 4)}ch`, fontSize: '11px' }}
                                         onKeyDown={(e) => e.stopPropagation()}
@@ -514,7 +515,8 @@ export function VisualBlock({
                                             value={pillTextVal}
                                             onChange={(val) => onContentUpdate?.({ pillText: val })}
                                             variables={autocompleteVariables}
-                                            className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center focus:ring-0 focus:outline-none h-auto"
+                                            variant="inline"
+                                            className="font-semibold text-blue-600 w-full text-xs text-center h-auto"
                                             placeholder="Badge Text"
                                             style={{ color: '#2563eb', width: `${Math.max(pillTextVal.length || 8, 4)}ch` }}
                                             onKeyDown={(e) => e.stopPropagation()}
@@ -536,7 +538,8 @@ export function VisualBlock({
                             onChange={(val) => onContentUpdate?.({ title: val })}
                             variables={autocompleteVariables}
                             enableFormatting={true}
-                            className={cn("tracking-tight leading-tight m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", sizeClass, customAlignClass)}
+                            variant="inline"
+                            className={cn("tracking-tight leading-tight m-0 p-0 font-extrabold select-text resize-none w-full min-h-0", sizeClass, customAlignClass)}
                             style={headingStyle}
                             placeholder="New Heading"
                             rows={1}
@@ -574,7 +577,8 @@ export function VisualBlock({
                                     onChange={(val) => onContentUpdate?.({ content: val })}
                                     variables={autocompleteVariables}
                                     enableFormatting={true}
-                                    className={cn("bg-transparent border-none outline-none p-0 m-0 w-full focus:ring-0 focus:outline-none resize-none select-text", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
+                                    variant="inline"
+                                    className={cn("p-0 m-0 w-full resize-none select-text min-h-0", isNestedCard ? "text-slate-650 font-medium text-[13px] leading-relaxed" : cn(isDarkSlate ? "text-slate-300 font-medium" : "text-slate-500 font-medium", customAlignClass))}
                                     placeholder="Subtext description..."
                                     rows={isNestedCard ? 2 : 1}
                                     onKeyDown={(e) => e.stopPropagation()}
@@ -599,7 +603,8 @@ export function VisualBlock({
                                         value={block.rsvpDate || ''}
                                         onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
                                         variables={autocompleteVariables}
-                                        className="bg-transparent border-none outline-none p-0 m-0 w-full font-extrabold text-slate-800 focus:ring-0 focus:outline-none text-xs h-auto"
+                                        variant="inline"
+                                        className="p-0 m-0 w-full font-extrabold text-slate-800 text-xs h-auto"
                                         placeholder="Date (e.g. Thursday, Oct 26)"
                                         onKeyDown={(e) => e.stopPropagation()}
                                     />
@@ -614,7 +619,8 @@ export function VisualBlock({
                                             value={block.rsvpTime || ''}
                                             onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
                                             variables={autocompleteVariables}
-                                            className="bg-transparent border-none outline-none p-0 m-0 w-full font-medium text-slate-500 focus:ring-0 focus:outline-none text-[10px] h-auto"
+                                            variant="inline"
+                                            className="p-0 m-0 w-full font-medium text-slate-500 text-[10px] h-auto"
                                             placeholder="Time (e.g. 10:00 AM - 11:30 AM)"
                                             onKeyDown={(e) => e.stopPropagation()}
                                         />
@@ -639,7 +645,8 @@ export function VisualBlock({
                             onChange={(val) => onContentUpdate?.({ content: val })}
                             variables={autocompleteVariables}
                             enableFormatting={true}
-                            className={cn("leading-relaxed m-0 bg-transparent border-none outline-none resize-none w-full p-0 font-medium focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
+                            variant="inline"
+                            className={cn("leading-relaxed m-0 p-0 font-medium select-text resize-none w-full min-h-0", alignmentClass)}
                             style={{ ...combinedStyle, fontSize: combinedStyle.fontSize || '16px' }}
                             placeholder="New paragraph content..."
                             rows={1}
@@ -698,7 +705,8 @@ export function VisualBlock({
                                 value={block.title || ''}
                                 onChange={(val) => onContentUpdate?.({ title: val })}
                                 variables={autocompleteVariables}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                variant="inline"
+                                className="text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 select-text h-auto"
                                 style={{ color: btnColor, font: 'inherit', width: `${Math.max((block.title || '').length || 8, 4)}ch` }}
                                 placeholder="Click Me"
                                 onKeyDown={(e) => e.stopPropagation()}
@@ -792,7 +800,8 @@ export function VisualBlock({
                                 value={block.title || ''}
                                 onChange={(val) => onContentUpdate?.({ title: val })}
                                 variables={autocompleteVariables}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                variant="inline"
+                                className="text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 select-text h-auto"
                                 style={{ color: primary.fg, font: 'inherit', width: `${Math.max((block.title || '').length || 8, 4)}ch` }}
                                 placeholder="Get Started"
                                 onKeyDown={(e) => e.stopPropagation()}
@@ -831,7 +840,8 @@ export function VisualBlock({
                                 value={block.secondaryTitle || ''}
                                 onChange={(val) => onContentUpdate?.({ secondaryTitle: val })}
                                 variables={autocompleteVariables}
-                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-semibold focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                variant="inline"
+                                className="text-center p-0 m-0 w-auto font-semibold select-text h-auto"
                                 style={{ color: secondary.fg, font: 'inherit', width: `${Math.max((block.secondaryTitle || '').length || 8, 4)}ch` }}
                                 placeholder="Learn More"
                                 onKeyDown={(e) => e.stopPropagation()}
@@ -989,7 +999,8 @@ export function VisualBlock({
                             onChange={(val) => onContentUpdate?.({ content: val })}
                             variables={autocompleteVariables}
                             enableFormatting={true}
-                            className={cn("bg-transparent border-none outline-none resize-none w-full font-medium italic focus:ring-0 focus:outline-none focus:border-transparent select-text p-4", alignmentClass)}
+                            variant="inline"
+                            className={cn("resize-none w-full font-medium italic select-text p-4 min-h-0", alignmentClass)}
                             style={{ ...typographyStyle, display: 'block', border: 'none' }}
                             placeholder="Quote content..."
                             rows={1}
@@ -1041,7 +1052,8 @@ export function VisualBlock({
                                             }}
                                             variables={autocompleteVariables}
                                             enableFormatting={true}
-                                            className="bg-transparent border-none outline-none p-0 m-0 font-medium flex-1 focus:ring-0 focus:outline-none focus:border-transparent select-text h-auto"
+                                            variant="inline"
+                                            className="p-0 m-0 font-medium flex-1 select-text h-auto"
                                             style={{ color: combinedStyle.color || 'inherit', font: 'inherit' }}
                                             placeholder="List item..."
                                             onKeyDown={(e) => {
@@ -1136,7 +1148,8 @@ export function VisualBlock({
                                     value={block.pillText || ''}
                                     onChange={(val) => onContentUpdate?.({ pillText: val })}
                                     variables={autocompleteVariables}
-                                    className="bg-white/10 text-white border-white/20 border rounded-full px-3 py-1 text-[8px] font-semibold uppercase text-center w-auto focus:ring-0 focus:outline-none h-auto"
+                                    variant="inline"
+                                    className="bg-white/10 text-white border-white/20 border rounded-full px-3 py-1 text-[8px] font-semibold uppercase text-center w-auto h-auto"
                                     placeholder="Assessment Result"
                                     style={{ width: `${Math.max(pillTextVal.length || 18, 4)}ch` }}
                                     onKeyDown={(e) => e.stopPropagation()}
@@ -1156,7 +1169,8 @@ export function VisualBlock({
                                     value={block.content || ''}
                                     onChange={(val) => onContentUpdate?.({ content: val })}
                                     variables={autocompleteVariables}
-                                    className="bg-transparent border-none outline-none font-bold text-[10px] text-white opacity-60 text-center w-full focus:ring-0 focus:outline-none h-auto"
+                                    variant="inline"
+                                    className="font-bold text-[10px] text-white opacity-60 text-center w-full h-auto"
                                     placeholder="Total Points Recorded"
                                     onKeyDown={(e) => e.stopPropagation()}
                                 />
@@ -1261,7 +1275,8 @@ export function VisualBlock({
                                                 value={pillTextVal}
                                                 onChange={(val) => onContentUpdate?.({ pillText: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center h-auto"
+                                                variant="inline"
+                                                className="font-semibold text-blue-600 p-0 m-0 w-full text-xs text-center h-auto"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
                                         ) : (
@@ -1279,7 +1294,8 @@ export function VisualBlock({
                                             value={title}
                                             onChange={(val) => onContentUpdate?.({ title: val })}
                                             variables={autocompleteVariables}
-                                            className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-tight break-words"
+                                            variant="inline"
+                                            className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight select-text leading-tight break-words resize-none w-full p-0 min-h-0"
                                             placeholder="Event Title"
                                             rows={1}
                                             onKeyDown={(e) => {
@@ -1301,7 +1317,8 @@ export function VisualBlock({
                                             value={eventDescVal}
                                             onChange={(val) => onContentUpdate?.({ content: val })}
                                             variables={autocompleteVariables}
-                                            className="text-xs sm:text-sm text-slate-500 bg-transparent border-none outline-none resize-none w-full p-0 focus:ring-0 select-text leading-relaxed break-words"
+                                            variant="inline"
+                                            className="text-xs sm:text-sm text-slate-500 select-text leading-relaxed break-words resize-none w-full p-0 min-h-0"
                                             placeholder="Event Description"
                                             rows={2}
                                             onKeyDown={(e) => e.stopPropagation()}
@@ -1332,7 +1349,8 @@ export function VisualBlock({
                                                 value={rsvpDateLabelVal}
                                                 onChange={(val) => onContentUpdate?.({ rsvpDateLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                variant="inline"
+                                                className="text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
                                                 placeholder="DATE"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1340,7 +1358,8 @@ export function VisualBlock({
                                                 value={rsvpDate}
                                                 onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                variant="inline"
+                                                className="text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
                                                 placeholder="Dec 15, 2024"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1373,7 +1392,8 @@ export function VisualBlock({
                                                 value={rsvpTimeLabelVal}
                                                 onChange={(val) => onContentUpdate?.({ rsvpTimeLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                variant="inline"
+                                                className="text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
                                                 placeholder="TIME"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1381,7 +1401,8 @@ export function VisualBlock({
                                                 value={rsvpTime}
                                                 onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                variant="inline"
+                                                className="text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
                                                 placeholder="2:00 PM"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1414,7 +1435,8 @@ export function VisualBlock({
                                                 value={rsvpLocationLabelVal}
                                                 onChange={(val) => onContentUpdate?.({ rsvpLocationLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
+                                                variant="inline"
+                                                className="text-[10px] font-bold text-slate-400 uppercase tracking-widest p-0 m-0 w-full h-auto"
                                                 placeholder="TYPE"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1422,7 +1444,8 @@ export function VisualBlock({
                                                 value={rsvpLocation}
                                                 onChange={(val) => onContentUpdate?.({ rsvpLocation: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
+                                                variant="inline"
+                                                className="text-sm font-bold text-slate-800 p-0 mt-0.5 w-full break-all h-auto"
                                                 placeholder="Virtual Meeting"
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1455,7 +1478,8 @@ export function VisualBlock({
                                                 value={going}
                                                 onChange={(val) => onContentUpdate?.({ goingLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-white/50 select-text text-white h-auto"
                                                 style={{ color: '#ffffff', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1475,7 +1499,8 @@ export function VisualBlock({
                                                     value={later}
                                                     onChange={(val) => onContentUpdate?.({ laterLabel: val })}
                                                     variables={autocompleteVariables}
-                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                    variant="inline"
+                                                    className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-slate-700 h-auto"
                                                     style={{ color: '#334155', font: 'inherit' }}
                                                     onKeyDown={(e) => e.stopPropagation()}
                                                 />
@@ -1493,7 +1518,8 @@ export function VisualBlock({
                                                     value={declined}
                                                     onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
                                                     variables={autocompleteVariables}
-                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                    variant="inline"
+                                                    className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-slate-700 h-auto"
                                                     style={{ color: '#334155', font: 'inherit' }}
                                                     onKeyDown={(e) => e.stopPropagation()}
                                                 />
@@ -1515,7 +1541,8 @@ export function VisualBlock({
                                                 value={going}
                                                 onChange={(val) => onContentUpdate?.({ goingLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-white/50 select-text text-white h-auto"
                                                 style={{ color: '#ffffff', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1533,7 +1560,8 @@ export function VisualBlock({
                                                 value={later}
                                                 onChange={(val) => onContentUpdate?.({ laterLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-slate-700 h-auto"
                                                 style={{ color: '#334155', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1551,7 +1579,8 @@ export function VisualBlock({
                                                 value={declined}
                                                 onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-slate-700 h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-slate-700 h-auto"
                                                 style={{ color: '#334155', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1593,7 +1622,8 @@ export function VisualBlock({
                                         value={title}
                                         onChange={(val) => onContentUpdate?.({ title: val })}
                                         variables={autocompleteVariables}
-                                        className="tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                        variant="inline"
+                                        className="tracking-tight select-text resize-none w-full p-0 font-extrabold min-h-0"
                                         style={{ 
                                             font: 'inherit',
                                             color: s.color || '#0f172a',
@@ -1631,7 +1661,8 @@ export function VisualBlock({
                                                 value={rsvpDate}
                                                 onChange={(val) => onContentUpdate?.({ rsvpDate: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none p-0 m-0 font-extrabold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                                variant="inline"
+                                                className="p-0 m-0 font-extrabold text-slate-900 select-text w-full text-left h-auto"
                                                 style={{ fontSize: '18px', color: '#0f172a', fontWeight: 800 }}
                                                 placeholder="Tuesday, Sep 24"
                                                 onKeyDown={(e) => e.stopPropagation()}
@@ -1640,7 +1671,8 @@ export function VisualBlock({
                                                 value={rsvpTime}
                                                 onChange={(val) => onContentUpdate?.({ rsvpTime: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none p-0 m-0 font-medium text-slate-500 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                                variant="inline"
+                                                className="p-0 m-0 font-medium text-slate-500 select-text w-full text-left h-auto"
                                                 style={{ fontSize: '14px', color: '#64748b' }}
                                                 placeholder="10:00 - 11:00 AM"
                                                 onKeyDown={(e) => e.stopPropagation()}
@@ -1670,7 +1702,8 @@ export function VisualBlock({
                                             value={rsvpLocation}
                                             onChange={(val) => onContentUpdate?.({ rsvpLocation: val })}
                                             variables={autocompleteVariables}
-                                            className="bg-transparent border-none outline-none p-0 m-0 font-bold text-slate-900 focus:ring-0 focus:outline-none focus:border-transparent select-text w-full text-left h-auto"
+                                            variant="inline"
+                                            className="p-0 m-0 font-bold text-slate-900 select-text w-full text-left h-auto"
                                             style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700 }}
                                             placeholder="Google Meet"
                                             onKeyDown={(e) => e.stopPropagation()}
@@ -1696,7 +1729,8 @@ export function VisualBlock({
                                                 value={going}
                                                 onChange={(val) => onContentUpdate?.({ goingLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-black placeholder:text-white/50 select-text text-white h-auto"
                                                 style={{ color: '#ffffff', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1716,7 +1750,8 @@ export function VisualBlock({
                                                     value={declined}
                                                     onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
                                                     variables={autocompleteVariables}
-                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                    variant="inline"
+                                                    className="text-center p-0 m-0 w-full font-black placeholder:text-slate-450 select-text text-[#0062cc] h-auto"
                                                     style={{ color: '#0062cc', font: 'inherit' }}
                                                     onKeyDown={(e) => e.stopPropagation()}
                                                 />
@@ -1734,7 +1769,8 @@ export function VisualBlock({
                                                     value={later}
                                                     onChange={(val) => onContentUpdate?.({ laterLabel: val })}
                                                     variables={autocompleteVariables}
-                                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-black placeholder:text-slate-450 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                    variant="inline"
+                                                    className="text-center p-0 m-0 w-full font-black placeholder:text-slate-450 select-text text-[#0062cc] h-auto"
                                                     style={{ color: '#0062cc', font: 'inherit' }}
                                                     onKeyDown={(e) => e.stopPropagation()}
                                                 />
@@ -1756,7 +1792,8 @@ export function VisualBlock({
                                                 value={going}
                                                 onChange={(val) => onContentUpdate?.({ goingLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text text-white h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-white/50 select-text text-white h-auto"
                                                 style={{ color: '#ffffff', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1774,7 +1811,8 @@ export function VisualBlock({
                                                 value={declined}
                                                 onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-[#0062cc] h-auto"
                                                 style={{ color: '#0062cc', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1792,7 +1830,8 @@ export function VisualBlock({
                                                 value={later}
                                                 onChange={(val) => onContentUpdate?.({ laterLabel: val })}
                                                 variables={autocompleteVariables}
-                                                className="bg-transparent border-none outline-none text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 focus:ring-0 focus:outline-none focus:border-transparent select-text text-[#0062cc] h-auto"
+                                                variant="inline"
+                                                className="text-center p-0 m-0 w-full font-bold placeholder:text-slate-400 select-text text-[#0062cc] h-auto"
                                                 style={{ color: '#0062cc', font: 'inherit' }}
                                                 onKeyDown={(e) => e.stopPropagation()}
                                             />
@@ -1824,7 +1863,8 @@ export function VisualBlock({
                                 value={title}
                                 onChange={(val) => onContentUpdate?.({ title: val })}
                                 variables={autocompleteVariables}
-                                className={cn("tracking-tight bg-transparent border-none outline-none resize-none w-full p-0 font-extrabold focus:ring-0 focus:outline-none focus:border-transparent select-text", alignmentClass)}
+                                variant="inline"
+                                className={cn("tracking-tight select-text resize-none w-full p-0 font-extrabold min-h-0", alignmentClass)}
                                 style={{ 
                                     font: 'inherit',
                                     color: s.color || undefined,
@@ -1862,7 +1902,8 @@ export function VisualBlock({
                                     value={going}
                                     onChange={(val) => onContentUpdate?.({ goingLabel: val })}
                                     variables={autocompleteVariables}
-                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    variant="inline"
+                                    className="text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 select-text"
                                     style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(going.length || 5, 3)}ch` }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') e.preventDefault();
@@ -1882,7 +1923,8 @@ export function VisualBlock({
                                     value={later}
                                     onChange={(val) => onContentUpdate?.({ laterLabel: val })}
                                     variables={autocompleteVariables}
-                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    variant="inline"
+                                    className="text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 select-text"
                                     style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(later.length || 5, 3)}ch` }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') e.preventDefault();
@@ -1902,7 +1944,8 @@ export function VisualBlock({
                                     value={declined}
                                     onChange={(val) => onContentUpdate?.({ declinedLabel: val })}
                                     variables={autocompleteVariables}
-                                    className="bg-transparent border-none outline-none text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 focus:ring-0 focus:outline-none focus:border-transparent select-text"
+                                    variant="inline"
+                                    className="text-center p-0 m-0 w-auto font-bold placeholder:text-white/50 select-text"
                                     style={{ color: '#ffffff', font: 'inherit', width: `${Math.max(declined.length || 9, 3)}ch` }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') e.preventDefault();

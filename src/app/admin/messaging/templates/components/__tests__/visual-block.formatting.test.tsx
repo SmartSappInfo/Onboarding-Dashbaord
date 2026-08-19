@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as React from 'react';
 import { renderHtmlWithVariablePills } from '../visual-block';
 import { render } from '@testing-library/react';
-import { convertToVisualHtml, convertToCleanHtml, cleanContainerHtml } from '@/components/messaging/SlashInput';
+import { convertToVisualHtml, convertToCleanHtml, cleanContainerHtml, SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { sanitizeBlocksContainerHtml } from '../template-workshop';
 import { renderBlocksToHtml } from '@/lib/messaging-utils';
 import type { MessageBlock } from '@/lib/types';
@@ -278,5 +278,73 @@ describe('Custom HTML / Code Block Outbound Email Compilation & Safety', () => {
     // 2. With variable populated: uses value
     const htmlPopulated = renderBlocksToHtml([htmlBlock], { contact_name: 'Dr. Mensah' });
     expect(htmlPopulated).toContain('Welcome, Dr. Mensah!');
+  });
+});
+
+describe('SlashInput and SlashTextarea Variant Isolation (No Extra Borders or Base Padding)', () => {
+  it('renders SlashTextarea in inline variant without artificial min-h-100px or focus-visible rings', () => {
+    const { container } = render(
+      React.createElement(SlashTextarea, {
+        value: 'Implementation flow',
+        onChange: () => {},
+        variant: 'inline',
+        className: 'font-extrabold text-2xl',
+      })
+    );
+
+    const editableEl = container.querySelector('[contenteditable="true"]');
+    expect(editableEl).not.toBeNull();
+    const classList = editableEl?.className || '';
+
+    // Must NOT contain hardcoded form textarea classes
+    expect(classList).not.toContain('min-h-[100px]');
+    expect(classList).not.toContain('focus-visible:ring-2');
+    expect(classList).not.toContain('border-input');
+    expect(classList).not.toContain('px-3');
+
+    // Must contain clean inline zero-shift classes
+    expect(classList).toContain('min-h-0');
+    expect(classList).toContain('p-0');
+    expect(classList).toContain('border-0');
+    expect(classList).toContain('focus-visible:ring-0');
+  });
+
+  it('preserves default form textarea styling when variant is "default" or omitted for modals/forms', () => {
+    const { container } = render(
+      React.createElement(SlashTextarea, {
+        value: 'Modal notes...',
+        onChange: () => {},
+      })
+    );
+
+    const editableEl = container.querySelector('[contenteditable="true"]');
+    expect(editableEl).not.toBeNull();
+    const classList = editableEl?.className || '';
+
+    // Standard form inputs must retain input border, padding and standard min-height
+    expect(classList).toContain('min-h-[100px]');
+    expect(classList).toContain('border-input');
+    expect(classList).toContain('px-3');
+    expect(classList).toContain('py-2');
+  });
+
+  it('renders SlashInput in inline variant with compact padding and zero focus rings', () => {
+    const { container } = render(
+      React.createElement(SlashInput, {
+        value: 'Badge Text',
+        onChange: () => {},
+        variant: 'inline',
+      })
+    );
+
+    const editableEl = container.querySelector('[contenteditable="true"]');
+    expect(editableEl).not.toBeNull();
+    const classList = editableEl?.className || '';
+
+    expect(classList).not.toContain('min-h-[40px]');
+    expect(classList).not.toContain('focus-visible:ring-2');
+    expect(classList).toContain('min-h-0');
+    expect(classList).toContain('p-0');
+    expect(classList).toContain('border-0');
   });
 });
