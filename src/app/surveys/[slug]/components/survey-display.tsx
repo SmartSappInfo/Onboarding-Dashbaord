@@ -614,8 +614,8 @@ function LeadCaptureFormView({
         company: { show: false, label: 'Company Name', required: false }
     };
 
-    const title = survey.leadCaptureTitle || 'Save Your Results';
-    const description = survey.leadCaptureDescription || 'Kindly provide your details so that we can send you your results';
+    const title = survey.leadCaptureTitle ? interpolateWithMap(survey.leadCaptureTitle, simulatedValues || {}) : 'Save Your Results';
+    const description = survey.leadCaptureDescription ? interpolateWithMap(survey.leadCaptureDescription, simulatedValues || {}) : 'Kindly provide your details so that we can send you your results';
 
     React.useEffect(() => {
         // Resolve initial values from preloaded/simulated variables map
@@ -950,7 +950,13 @@ function LeadCaptureFormView({
                         disabled={isSubmitting}
                         className="w-full h-14 rounded-2xl font-bold text-sm tracking-wide bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/20 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2"
                     >
-                        {isSubmitting ? 'Processing...' : 'Submit & View Results'}
+                        {isSubmitting ? (
+                            'Processing...'
+                        ) : survey.submitButtonText ? (
+                            interpolateWithMap(survey.submitButtonText, simulatedValues || {})
+                        ) : (
+                            'Submit & View Results'
+                        )}
                     </Button>
                 </div>
             </form>

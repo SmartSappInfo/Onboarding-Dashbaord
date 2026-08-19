@@ -569,6 +569,15 @@ export default function SurveyLeadCaptureCard() {
                                     })}
                                 </div>
 
+                                <div className="pt-2">
+                                    <div className="w-full h-12 rounded-2xl font-bold text-xs tracking-wide bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 select-none opacity-95 transition-all">
+                                        {watch('submitButtonText')?.trim() || 'Submit & View Results'}
+                                    </div>
+                                    <p className="text-[9px] font-bold text-center text-muted-foreground/60 mt-1.5">
+                                        Submit button label configured in Step 1 Details
+                                    </p>
+                                </div>
+
                                 <div className="pt-4 border-t border-border/40 flex justify-center">
                                     <Button
                                         type="button"
