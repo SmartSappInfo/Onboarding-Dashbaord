@@ -79,11 +79,9 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         setMounted(true);
     }, []);
 
-    const cleaned = cleanContainerHtml(html);
-
     if (!mounted) {
-        // Strip HTML tags for clean server-rendered preview
-        const stripped = cleaned.replace(/<[^>]*>/g, '');
+        // Strip HTML tags for clean server-rendered preview without hydration mismatch
+        const stripped = (html || '').replace(/<[^>]*>/g, '');
         
         // Render variable text with normal styling during SSR (no HTML tags)
         const parts = stripped.split(/(\{\{.*?\}\})/g);
@@ -107,7 +105,7 @@ export function SafeHtml({ html }: SafeHtmlProps) {
         );
     }
 
-    return <span className="whitespace-pre-wrap break-words">{renderHtmlWithVariablePills(cleaned)}</span>;
+    return <span className="whitespace-pre-wrap break-words">{renderHtmlWithVariablePills(html || '')}</span>;
 }
 
 export function renderHtmlWithVariablePills(html: string): React.ReactNode {
@@ -145,11 +143,11 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
                 );
             }
 
-                        if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
                 const el = node as HTMLElement;
                 const tagName = el.tagName.toLowerCase();
                 
-                const whitelist = ['strong', 'b', 'em', 'i', 'u', 'del', 's', 'strike', 'span', 'font', 'br', 'p', 'div'];
+                const whitelist = ['strong', 'b', 'em', 'i', 'u', 'del', 's', 'strike', 'span', 'font', 'br', 'p', 'div', 'a'];
                 if (!whitelist.includes(tagName)) {
                     return null;
                 }
@@ -189,13 +187,35 @@ export function renderHtmlWithVariablePills(html: string): React.ReactNode {
                         return <del key={key} style={styleObj as React.CSSProperties}>{children}</del>;
                     case 'span':
                         return <span key={key} style={styleObj as React.CSSProperties}>{children}</span>;
-                    case 'font':
+                    case 'font': {
                         // Handle font tag color overrides inline
                         const fontColor = el.getAttribute('color');
                         if (fontColor) {
                             styleObj.color = fontColor;
                         }
                         return <span key={key} style={styleObj as React.CSSProperties}>{children}</span>;
+                    }
+                    case 'br':
+                        return <br key={key} />;
+                    case 'p':
+                    case 'div':
+                        return <div key={key} style={styleObj as React.CSSProperties}>{children}</div>;
+                    case 'a': {
+                        const rawHref = el.getAttribute('href') || '#';
+                        const safeHref = /^(javascript|data|vbscript):/i.test(rawHref.trim()) ? '#' : rawHref;
+                        return (
+                            <a 
+                                key={key} 
+                                href={safeHref} 
+                                style={styleObj as React.CSSProperties}
+                                className="underline text-blue-600 hover:text-blue-700 cursor-pointer"
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                            >
+                                {children}
+                            </a>
+                        );
+                    }
                     default:
                         return <React.Fragment key={key}>{children}</React.Fragment>;
                 }

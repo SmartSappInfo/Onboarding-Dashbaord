@@ -118,63 +118,84 @@ describe('renderHtmlWithVariablePills', () => {
   });
 });
 
-describe('SlashInput HTML Converters & Tag Leakage Safeguard', () => {
+describe('SlashInput HTML Converters & Rich Formatting Persistence', () => {
   it('converts plain variables to visual spans', () => {
     const text = 'Hello {{first_name}}!';
-    const html = convertToVisualHtml(text);
+    const html = convertToVisualHtml(text, true);
     expect(html).toContain('data-variable="first_name"');
     expect(html).toContain('first_name</span>');
   });
 
-  it('serializes visual spans back to variable tokens', () => {
+  it('serializes visual spans back to variable tokens with rich formatting preserved', () => {
     const div = document.createElement('div');
-    div.innerHTML = 'Hi <span data-variable="last_name">last_name</span>!';
-    const cleaned = convertToCleanHtml(div);
-    expect(cleaned).toBe('Hi {{last_name}}!');
+    div.innerHTML = 'Welcome to <font color="#3b82f6"><b>SmartSapp!</b></font> <span data-variable="last_name">last_name</span>!';
+    const cleaned = convertToCleanHtml(div, true);
+    expect(cleaned).toContain('<font color="#3b82f6"><b>SmartSapp!</b></font>');
+    expect(cleaned).toContain('{{last_name}}');
   });
 
-  it('strips legacy <font color="..."> container tags from text content without leaking raw tags', () => {
-    const raw = '<font color="#64748b">Read Or Listen to This Email</font>';
-    const cleaned = cleanContainerHtml(raw);
-    expect(cleaned).toBe('Read Or Listen to This Email');
-    expect(cleaned).not.toContain('<font');
-    expect(cleaned).not.toContain('</font>');
+  it('preserves text color and font styles across convertToVisualHtml and convertToCleanHtml in rich text mode', () => {
+    const richInput = 'Congratulations and welcome to <font color="#3b82f6">SmartSapp!</font> We are thrilled to have {{contact_name | Partner}} on board.';
+    const visualHtml = convertToVisualHtml(richInput, true);
+    expect(visualHtml).toContain('<font color="#3b82f6">SmartSapp!</font>');
+    expect(visualHtml).toContain('data-variable="contact_name"');
+    expect(visualHtml).toContain('contact_name (Partner)');
+
+    const div = document.createElement('div');
+    div.innerHTML = visualHtml;
+    const cleanOutput = convertToCleanHtml(div, true);
+    expect(cleanOutput).toContain('<font color="#3b82f6">SmartSapp!</font>');
+    expect(cleanOutput).toContain('{{contact_name | Partner}}');
   });
 
-  it('prevents raw HTML tags from leaking as raw string text inside convertToVisualHtml', () => {
-    const raw = '<font color="#64748b">Read Or Listen to This Email</font>';
-    const visualHtml = convertToVisualHtml(raw);
-    expect(visualHtml).toBe('Read Or Listen to This Email');
-    expect(visualHtml).not.toContain('&lt;font');
-    expect(visualHtml).not.toContain('&lt;/font&gt;');
+  it('preserves span styles (e.g. style="color: rgb(59, 130, 246)") in rich text mode', () => {
+    const richInput = 'Highlight: <span style="color: rgb(59, 130, 246); font-weight: bold;">Important</span>';
+    const visualHtml = convertToVisualHtml(richInput, true);
+    expect(visualHtml).toContain('<span style="color: rgb(59, 130, 246); font-weight: bold;">Important</span>');
+
+    const div = document.createElement('div');
+    div.innerHTML = visualHtml;
+    const cleanOutput = convertToCleanHtml(div, true);
+    expect(cleanOutput).toContain('color: rgb(59, 130, 246)');
   });
 
-  it('preserves double-brace variable tokens and line breaks while stripping container HTML', () => {
-    const raw = '<p>Dear {{contact_name}},</p><br><font color="#64748b">Manual fee collection carries hidden costs: {{entity_name | Your School}}</font>';
-    const cleaned = cleanContainerHtml(raw);
-    expect(cleaned).toContain('Dear {{contact_name}},');
-    expect(cleaned).toContain('Manual fee collection carries hidden costs: {{entity_name | Your School}}');
-    expect(cleaned).not.toContain('<p>');
-    expect(cleaned).not.toContain('<font');
+  it('strips all HTML tags and converts breaks to newlines when enableFormatting is false (SMS/Plain Text mode)', () => {
+    const div = document.createElement('div');
+    div.innerHTML = '<p>Dear <span data-variable="contact_name">contact_name</span>,</p><br><font color="#64748b">Your code is 1234.</font>';
+    const plainOutput = convertToCleanHtml(div, false);
+    expect(plainOutput).toBe('Dear {{contact_name}},\nYour code is 1234.');
+    expect(plainOutput).not.toContain('<font');
+    expect(plainOutput).not.toContain('<p');
   });
 
-  it('recursively sanitizes legacy container HTML from template blocks in sanitizeBlocksContainerHtml', () => {
-    const rawBlocks = [
+  it('recursively preserves safe rich text while sanitizing dangerous tags in sanitizeBlocksContainerHtml', () => {
+    const rawBlocks: MessageBlock[] = [
       {
         id: 'b1',
-        type: 'text' as const,
-        content: '<font color="#64748b">Read Or Listen to This Email</font>',
+        type: 'text',
+        content: 'Welcome to <font color="#3b82f6"><b>SmartSapp!</b></font><script>alert("xss")</script>',
       },
       {
         id: 'b2',
-        type: 'html' as const,
+        type: 'heading',
+        title: 'Title with <span style="color: #ef4444;">Red Accent</span>',
+      },
+      {
+        id: 'b3',
+        type: 'html',
         content: '<font color="blue">Custom Code Block</font>',
       },
     ];
 
-    const sanitized = sanitizeBlocksContainerHtml(rawBlocks as any);
-    expect(sanitized[0].content).toBe('Read Or Listen to This Email');
-    // Raw HTML code blocks must remain untouched
-    expect(sanitized[1].content).toBe('<font color="blue">Custom Code Block</font>');
+    const sanitized = sanitizeBlocksContainerHtml(rawBlocks);
+    // Preserves safe rich formatting
+    expect(sanitized[0].content).toContain('<font color="#3b82f6"><b>SmartSapp!</b></font>');
+    // Strips script tag
+    expect(sanitized[0].content).not.toContain('<script>');
+    expect(sanitized[0].content).not.toContain('alert');
+    // Heading title preserves span color
+    expect(sanitized[1].title).toContain('<span style="color: #ef4444;">Red Accent</span>');
+    // Raw HTML block remains untouched
+    expect(sanitized[2].content).toBe('<font color="blue">Custom Code Block</font>');
   });
 });

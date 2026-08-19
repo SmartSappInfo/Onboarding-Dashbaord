@@ -116,13 +116,14 @@ import { BlockInspector } from './block-inspector';
 import { PlainTextEditor } from './PlainTextEditor';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
-import { SlashInput, cleanContainerHtml } from '@/components/messaging/SlashInput';
+import { SlashInput, cleanContainerHtml, sanitizeRichHtml } from '@/components/messaging/SlashInput';
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
- * Recursively sanitizes visual template blocks by stripping legacy container HTML tags (<font color="...">)
- * from text fields (content, title, pillText, items, etc.).
- * Prevents legacy HTML tags from leaking into SlashTextarea or onto the canvas when templates are loaded.
+ * Recursively sanitizes visual template blocks using `sanitizeRichHtml` for rich text fields (content, title, items, quote)
+ * to preserve user-formatted colors and styles while stripping malicious scripts, iframes, and legacy outer wrapper tags.
+ *
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  */
 export function sanitizeBlocksContainerHtml(blocks: MessageBlock[]): MessageBlock[] {
     if (!Array.isArray(blocks)) return [];
@@ -131,11 +132,11 @@ export function sanitizeBlocksContainerHtml(blocks: MessageBlock[]): MessageBloc
 
         const cleanedBlock: MessageBlock = {
             ...block,
-            content: block.content ? cleanContainerHtml(block.content) : block.content,
-            title: block.title ? cleanContainerHtml(block.title) : block.title,
+            content: block.content ? sanitizeRichHtml(block.content) : block.content,
+            title: block.title ? sanitizeRichHtml(block.title) : block.title,
             pillText: block.pillText ? cleanContainerHtml(block.pillText) : block.pillText,
             audioTitle: block.audioTitle ? cleanContainerHtml(block.audioTitle) : block.audioTitle,
-            items: Array.isArray(block.items) ? block.items.map((item) => (typeof item === 'string' ? cleanContainerHtml(item) : item)) : block.items,
+            items: Array.isArray(block.items) ? block.items.map((item) => (typeof item === 'string' ? sanitizeRichHtml(item) : item)) : block.items,
         };
 
         if (Array.isArray(block.columns)) {

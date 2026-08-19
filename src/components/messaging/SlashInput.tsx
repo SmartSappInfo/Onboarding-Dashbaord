@@ -56,11 +56,100 @@ export function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const ALLOWED_RICH_TAGS = new Set([
+  'strong', 'b', 'em', 'i', 'u', 'del', 's', 'strike', 
+  'span', 'font', 'br', 'p', 'div', 'a'
+]);
+
+const ALLOWED_RICH_ATTRS: Record<string, Set<string>> = {
+  span: new Set(['style', 'class', 'data-variable', 'data-fallback', 'contenteditable']),
+  font: new Set(['color', 'size', 'face']),
+  a: new Set(['href', 'target', 'rel', 'style']),
+  strong: new Set(['style']),
+  b: new Set(['style']),
+  em: new Set(['style']),
+  i: new Set(['style']),
+  u: new Set(['style']),
+  del: new Set(['style']),
+  s: new Set(['style']),
+  strike: new Set(['style']),
+  p: new Set(['style', 'class']),
+  div: new Set(['style', 'class']),
+  br: new Set([]),
+};
+
+/**
+ * ARCHITECTURAL NOTE & SECURITY STANDARD (Rule 8 & 10 Maintainer Guidance):
+ * Sanitizes rich HTML content by whitelisting safe inline formatting tags (strong, b, em, i, u, del, s, strike, span, font, br)
+ * and their style/color attributes while stripping dangerous script, style, iframe, object, embed tags and all inline event handlers (on*).
+ * Prevents Stored XSS attacks while preserving user-selected text colors, weights, and styles.
+ *
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ * RELATED SURFACES: SlashTextarea, SlashInput, VisualBlock, SafeHtml, template-workshop.tsx.
+ */
+export function sanitizeRichHtml(html: string): string {
+  if (!html) return '';
+  if (typeof window === 'undefined') {
+    // Basic regex fallback during SSR to strip dangerous tags and on* attributes
+    return html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/\son\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+    const container = doc.body.firstElementChild || doc.body;
+
+    const sanitizeElement = (el: Element) => {
+      const children = Array.from(el.children);
+      for (const child of children) {
+        const tagName = child.tagName.toLowerCase();
+        if (!ALLOWED_RICH_TAGS.has(tagName)) {
+          if (['script', 'style', 'iframe', 'object', 'embed', 'head', 'meta', 'title'].includes(tagName)) {
+            child.remove();
+          } else {
+            // Unwrap disallowed wrapper element by replacing it with its child nodes
+            while (child.firstChild) {
+              child.parentNode?.insertBefore(child.firstChild, child);
+            }
+            child.remove();
+          }
+        } else {
+          // Filter attributes on allowed tags
+          const allowedAttrs = ALLOWED_RICH_ATTRS[tagName] || new Set();
+          const attrNames = Array.from(child.attributes).map(a => a.name);
+          for (const attr of attrNames) {
+            const lowerAttr = attr.toLowerCase();
+            if (lowerAttr.startsWith('on') || !allowedAttrs.has(lowerAttr)) {
+              child.removeAttribute(attr);
+            } else if (lowerAttr === 'href') {
+              const val = child.getAttribute('href') || '';
+              if (/^(javascript|data|vbscript):/i.test(val.trim())) {
+                child.setAttribute('href', '#');
+              }
+            }
+          }
+          sanitizeElement(child);
+        }
+      }
+    };
+
+    sanitizeElement(container);
+    return container.innerHTML;
+  } catch (err) {
+    console.error('Error sanitizing rich HTML:', err);
+    return html;
+  }
+}
+
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Strips legacy container HTML tags (<font>, <span>, <div>, <p>, etc.) and converts line break elements (<br>)
  * into clean newline characters, while preserving double-brace variable tokens ({{var_name}}) and plain text.
- * Prevents raw HTML tag leakage (<font color="...">) inside SlashTextarea and visual canvas components.
+ * Used for SMS, plain text mode, and raw string sanitization.
  *
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  * RELATED SURFACES: SlashTextarea, PlainTextEditor, VisualBlock, BlockInspector, template-workshop.tsx.
@@ -114,41 +203,54 @@ export function cleanContainerHtml(text: string): string {
  * Single Source of Truth (SSOT) utility to convert double-brace template strings (`{{key | fallback}}`)
  * into interactive visual pill HTML elements (`<span contenteditable="false" ...>`).
  *
- * CAUTION: Sanitizes raw HTML entities using escapeHtml prior to token replacement to prevent XSS.
- * Supports both pipe (|) and double-pipe (||) delimiters with whitespace tolerance.
+ * When enableFormatting is true: Preserves safe inline rich text HTML (<font color="...">, <span style="...">, <b>, <u>)
+ * while parsing variable tokens into visual badge pills with fallback configuration triggers.
+ * When enableFormatting is false: Sanitizes container tags to plain text and escapes raw HTML for SMS/Plain Text mode.
+ *
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
  */
-export function convertToVisualHtml(text: string): string {
+export function convertToVisualHtml(text: string, enableFormatting = true): string {
   if (!text) return '';
-  // 1. Sanitize legacy container HTML tags (<font color="...">, <span>, etc.) to prevent tag leakage
-  const cleanedText = cleanContainerHtml(text);
 
-  // 2. Escape raw HTML entities to prevent Stored XSS execution in contentEditable
-  const safeText = escapeHtml(cleanedText);
-
-  // 3. Convert variable tokens back to non-editable HTML spans, parsing any pipe fallback values
-  const parsed = safeText.replace(/\{\{(.*?)\}\}/g, (match, rawKey) => {
-    const parts = rawKey.split(/\|\||\|/);
-    const varName = parts[0].trim();
-    const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
+  const pillTemplate = (varName: string, fallback: string) => {
     const fallbackText = fallback ? ` (${fallback})` : '';
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all"><span>${varName}${fallbackText}</span><button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback">⚙️</button></span>`;
+  };
 
-    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all">
-      <span>${varName}${fallbackText}</span>
-      <button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback">⚙️</button>
-    </span>`;
-  });
-  return parsed;
+  const replaceTokens = (str: string) => {
+    return str.replace(/\{\{(.*?)\}\}/g, (_match, rawKey) => {
+      const parts = rawKey.split(/\|\||\|/);
+      const varName = parts[0].trim();
+      const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
+      return pillTemplate(varName, fallback);
+    });
+  };
+
+  if (!enableFormatting) {
+    // 1. Sanitize legacy container HTML tags (<font color="...">, <span>, etc.) to prevent tag leakage in plain text mode
+    const cleanedText = cleanContainerHtml(text);
+    // 2. Escape raw HTML entities to prevent Stored XSS execution in contentEditable
+    const safeText = escapeHtml(cleanedText);
+    return replaceTokens(safeText);
+  }
+
+  // 1. Sanitize dangerous tags while keeping safe inline formatting HTML tags (<b>, <span>, <font>, etc.)
+  const sanitized = sanitizeRichHtml(text);
+  // 2. Convert variable tokens back to non-editable HTML spans
+  return replaceTokens(sanitized);
 }
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Single Source of Truth (SSOT) utility to convert contentEditable HTML DOM nodes
- * back into clean double-brace template text format (`{{variable_key | fallback}}`).
+ * back into clean template text format (`{{variable_key | fallback}}`).
  *
- * CAUTION: When enableFormatting is false (e.g. SMS/Plain Text mode), line break elements (<br>, <div>)
- * MUST be converted to standard '\n' characters without prepending leading newlines at root level.
+ * When enableFormatting is true: Preserves safe inline rich text formatting (colors, bold, italic, underline)
+ * while serializing visual pill elements back into {{variable}} tokens.
+ * When enableFormatting is false (e.g. SMS/Plain Text mode): Converts line breaks to standard '\n'
+ * and strips all container HTML tags cleanly.
+ *
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
  * RELATED SURFACES: SlashTextarea, PlainTextEditor, ShareMediaDialog, VisualBlock.
  */
@@ -177,7 +279,7 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
     return cleanContainerHtml(clone.textContent || '');
   }
 
-  return cleanContainerHtml(clone.innerHTML);
+  return sanitizeRichHtml(clone.innerHTML);
 }
 
 interface FormattingToolbarProps {
@@ -199,49 +301,54 @@ function FormattingToolbar({ onFormat, className }: FormattingToolbarProps) {
   ];
 
   return (
-    <div className={cn("flex items-center gap-0.5 p-1 bg-popover border border-border/80 rounded-xl absolute -top-9 left-0 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150 shadow-md", className)}>
+    <div className={cn("flex items-center gap-0.5 p-1 bg-popover/95 backdrop-blur-md border border-border/80 rounded-xl absolute -top-10 left-0 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150 shadow-lg", className)}>
       <button
         type="button"
         onMouseDown={(e) => { e.preventDefault(); onFormat('bold'); }}
-        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
-        title="Bold"
+        className="p-1.5 hover:bg-muted active:scale-95 rounded-lg text-muted-foreground hover:text-foreground transition-all flex items-center justify-center min-w-[28px] min-h-[28px]"
+        title="Bold (Ctrl/Cmd+B)"
+        aria-label="Bold"
       >
         <Bold className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
         onMouseDown={(e) => { e.preventDefault(); onFormat('italic'); }}
-        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
-        title="Italic"
+        className="p-1.5 hover:bg-muted active:scale-95 rounded-lg text-muted-foreground hover:text-foreground transition-all flex items-center justify-center min-w-[28px] min-h-[28px]"
+        title="Italic (Ctrl/Cmd+I)"
+        aria-label="Italic"
       >
         <Italic className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
         onMouseDown={(e) => { e.preventDefault(); onFormat('underline'); }}
-        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
-        title="Underline"
+        className="p-1.5 hover:bg-muted active:scale-95 rounded-lg text-muted-foreground hover:text-foreground transition-all flex items-center justify-center min-w-[28px] min-h-[28px]"
+        title="Underline (Ctrl/Cmd+U)"
+        aria-label="Underline"
       >
         <Underline className="h-3.5 w-3.5" />
       </button>
       <button
         type="button"
         onMouseDown={(e) => { e.preventDefault(); onFormat('strike'); }}
-        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+        className="p-1.5 hover:bg-muted active:scale-95 rounded-lg text-muted-foreground hover:text-foreground transition-all flex items-center justify-center min-w-[28px] min-h-[28px]"
         title="Strikethrough"
+        aria-label="Strikethrough"
       >
         <Strikethrough className="h-3.5 w-3.5" />
       </button>
       <div className="h-4 w-px bg-border mx-1" />
-      <div className="flex gap-0.5 items-center pr-1">
+      <div className="flex gap-1 items-center pr-1">
         {colors.map((c) => (
           <button
             key={c.name}
             type="button"
             onMouseDown={(e) => { e.preventDefault(); onFormat('color', c.value); }}
-            className="w-3.5 h-3.5 rounded-full border border-border/50 transition-transform hover:scale-110"
+            className="w-4 h-4 rounded-full border border-border/60 transition-transform hover:scale-110 active:scale-90 shrink-0 shadow-xs cursor-pointer"
             style={{ backgroundColor: c.value || 'currentColor' }}
-            title={c.name}
+            title={`Color: ${c.name}`}
+            aria-label={`Color ${c.name}`}
           />
         ))}
       </div>
@@ -415,7 +522,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
 
     React.useEffect(() => {
       if (localRef.current) {
-        localRef.current.innerHTML = convertToVisualHtml(value);
+        localRef.current.innerHTML = convertToVisualHtml(value, enableFormatting);
       }
     }, []);
 
@@ -425,9 +532,9 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
       const cleanVal = convertToCleanHtml(el, enableFormatting);
       if (cleanVal !== value) {
         lastValueRef.current = value;
-        el.innerHTML = convertToVisualHtml(value);
+        el.innerHTML = convertToVisualHtml(value, enableFormatting);
       }
-    }, [value]);
+    }, [value, enableFormatting]);
 
     React.useEffect(() => {
       if (!dropdownRef.current) return;
@@ -737,17 +844,19 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
 
     React.useEffect(() => {
       if (localRef.current) {
-        localRef.current.innerHTML = convertToVisualHtml(value);
+        localRef.current.innerHTML = convertToVisualHtml(value, enableFormatting);
       }
     }, []);
 
     React.useEffect(() => {
       const el = localRef.current;
       if (!el) return;
-      if (value === lastValueRef.current) return;
-      lastValueRef.current = value;
-      el.innerHTML = convertToVisualHtml(value);
-    }, [value]);
+      const cleanVal = convertToCleanHtml(el, enableFormatting);
+      if (cleanVal !== value) {
+        lastValueRef.current = value;
+        el.innerHTML = convertToVisualHtml(value, enableFormatting);
+      }
+    }, [value, enableFormatting]);
 
     React.useEffect(() => {
       if (!dropdownRef.current) return;
