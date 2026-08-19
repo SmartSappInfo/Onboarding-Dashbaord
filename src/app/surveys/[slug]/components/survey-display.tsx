@@ -952,7 +952,7 @@ function LeadCaptureFormView({
                     >
                         {isSubmitting ? (
                             'Processing...'
-                        ) : survey.submitButtonText ? (
+                        ) : survey.submitButtonText?.trim() ? (
                             interpolateWithMap(survey.submitButtonText, simulatedValues || {})
                         ) : (
                             'Submit & View Results'

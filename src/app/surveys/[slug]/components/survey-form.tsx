@@ -1858,7 +1858,7 @@ export default function SurveyForm({
                                         </div>
                                     </div>
                             <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
-                                {survey.startButtonText ? interpolateText(survey.startButtonText) : "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
+                                {survey.startButtonText?.trim() ? interpolateText(survey.startButtonText) : "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                             </button>
                         </div>
                     ) : (
@@ -1946,7 +1946,7 @@ export default function SurveyForm({
                                         ) : isSubmitDisabled ? (
                                             'Submission Disabled'
                                         ) : (
-                                            survey.submitButtonText ? interpolateText(survey.submitButtonText) : 'Submit'
+                                            survey.submitButtonText?.trim() ? interpolateText(survey.submitButtonText) : 'Submit'
                                         )}
                                     </Button>
                                 )}
