@@ -6,7 +6,8 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
-import type { MessageTemplate, MessagingTrigger, MessageChannel, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import { TEMPLATES, type TemplateDef } from '@/lib/messaging-templates-registry';
+import type { MessageTemplate, MessagingTrigger, MessageChannel, MessageBlock, RecipientType, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
 import { TriggerListItem } from './components/TriggerListItem';
 import { TriggerDetailPane } from './components/TriggerDetailPane';
 import { TemplateWorkshop } from '../templates/components/template-workshop';
@@ -37,6 +38,62 @@ import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/use-terminology';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 
+/**
+ * PURPOSE: Converts a canonical TemplateDef from the system registry into a standard
+ * MessageTemplate object for seamless fallback and rendering when no custom override exists.
+ */
+function convertRegistryDefToTemplate(def: TemplateDef, singularTerm?: string): MessageTemplate {
+  const isEmail = def.channel === 'email';
+  const trigger = MESSAGING_TRIGGERS.find(t => t.id === def.templateType);
+
+  let formattedSubject = def.subject || def.name;
+  let formattedBody = def.body;
+  if (singularTerm) {
+    formattedSubject = formattedSubject.replace(/School/g, singularTerm).replace(/school/g, singularTerm.toLowerCase());
+    formattedBody = formattedBody.replace(/School/g, singularTerm).replace(/school/g, singularTerm.toLowerCase());
+  }
+
+  const blocks: MessageBlock[] | undefined = isEmail ? [
+    {
+      id: `block_head_builtin_${def.templateType}_${def.channel}`,
+      type: 'heading',
+      title: formattedSubject,
+      variant: 'h2',
+      style: { textAlign: 'center', fontWeight: 'bold', marginTop: '16px', marginBottom: '16px' }
+    },
+    {
+      id: `block_body_builtin_${def.templateType}_${def.channel}`,
+      type: 'text',
+      content: formattedBody,
+      style: { textAlign: 'left', lineHeight: '1.6', marginTop: '8px', marginBottom: '16px' }
+    }
+  ] : undefined;
+
+  return {
+    id: `global_${def.templateType}_${def.channel}`,
+    scope: 'global',
+    category: def.category,
+    channel: def.channel,
+    target: trigger?.target || (def.recipientType === 'internal_alert' ? 'internal_team' : 'external_client'),
+    name: def.name,
+    contentMode: isEmail ? 'rich_builder' : 'plain_text',
+    subject: formattedSubject,
+    body: formattedBody,
+    blocks,
+    styleId: 'default',
+    templateType: def.templateType,
+    recipientType: (def.recipientType || trigger?.recipientType || 'external_alert') as RecipientType,
+    variableContext: def.variableContext || 'common',
+    variables: def.declaredVariables || [],
+    declaredVariables: def.declaredVariables || [],
+    status: 'active',
+    version: 1,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export default function MessagingTriggersPage() {
   const firestore = useFirestore();
   const { user } = useUser();
@@ -53,20 +110,38 @@ export default function MessagingTriggersPage() {
   const [templateToRevert, setTemplateToRevert] = React.useState<string | null>(null);
   const [isReverting, setIsReverting] = React.useState(false);
 
-  // ── 1. Fetch Templates ──────────────────────────────────────────────────
-  const templatesQuery = useMemoFirebase(() => {
+  // ── 1. Fetch Templates (Workspace Overrides + Global System Blueprints) ───────
+  const workspaceTemplatesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
-    // Scoped to the active workspace: templates belong to a tenant, so an
-    // unscoped read would both leak and be rejected by the security rules.
     return query(
       collection(firestore, 'message_templates'),
       where('workspaceIds', 'array-contains', activeWorkspaceId)
     );
   }, [firestore, activeWorkspaceId]);
 
-  const { data: allTemplates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
+  const globalTemplatesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'message_templates'),
+      where('scope', '==', 'global')
+    );
+  }, [firestore]);
 
-  // ── 2. O(1) Pre-indexed Template Mapping ──────────────────────────────────
+  const { data: workspaceTemplates, isLoading: isLoadingW } = useCollection<MessageTemplate>(workspaceTemplatesQuery);
+  const { data: globalTemplates, isLoading: isLoadingG } = useCollection<MessageTemplate>(globalTemplatesQuery);
+  const isLoadingTemplates = isLoadingW || isLoadingG;
+
+  const allTemplates = React.useMemo(() => {
+    const wList = workspaceTemplates || [];
+    const gList = globalTemplates || [];
+    const map = new Map<string, MessageTemplate>();
+    for (const t of [...gList, ...wList]) {
+      if (t.id) map.set(t.id, t);
+    }
+    return Array.from(map.values());
+  }, [workspaceTemplates, globalTemplates]);
+
+  // ── 2. O(1) Pre-indexed Template Mapping with Registry Fallback ───────────
   const activeMappings = React.useMemo(() => {
     const map: Record<string, Record<string, MessageTemplate>> = {};
 
@@ -74,27 +149,35 @@ export default function MessagingTriggersPage() {
       map[trigger.id] = {};
     });
 
-    if (!allTemplates) return map;
-
-    allTemplates.forEach(t => {
-      if (!t.templateType || !t.channel) return;
-      // Previously an `isActive == true` query filter; applied here so the query
-      // can stay workspace-scoped without needing another composite index.
-      if (t.isActive === false) return;
-
-      const existing = map[t.templateType]?.[t.channel];
-      // Org override takes priority over global default
-      if (t.scope === 'organization' && t.workspaceIds?.includes(activeWorkspaceId)) {
-        if (!map[t.templateType]) map[t.templateType] = {};
-        map[t.templateType][t.channel] = t;
-      } else if (t.scope === 'global' && !existing) {
-        if (!map[t.templateType]) map[t.templateType] = {};
-        map[t.templateType][t.channel] = t;
+    // 1. Layer 1: Canonical in-code built-in templates from TEMPLATES registry
+    TEMPLATES.forEach(def => {
+      if (map[def.templateType]) {
+        map[def.templateType][def.channel] = convertRegistryDefToTemplate(def, singular);
       }
     });
 
+    // 2. Layer 2: Firestore Global Templates (overrides built-in if updated globally)
+    if (allTemplates) {
+      allTemplates.forEach(t => {
+        if (!t.templateType || !t.channel || t.isActive === false) return;
+        if (t.scope === 'global') {
+          if (!map[t.templateType]) map[t.templateType] = {};
+          map[t.templateType][t.channel] = t;
+        }
+      });
+
+      // 3. Layer 3: Organization/Workspace Custom Overrides (highest priority)
+      allTemplates.forEach(t => {
+        if (!t.templateType || !t.channel || t.isActive === false) return;
+        if (t.scope === 'organization' && t.workspaceIds?.includes(activeWorkspaceId)) {
+          if (!map[t.templateType]) map[t.templateType] = {};
+          map[t.templateType][t.channel] = t;
+        }
+      });
+    }
+
     return map;
-  }, [allTemplates, activeWorkspaceId]);
+  }, [allTemplates, activeWorkspaceId, singular]);
 
   // ── 3. Filters & Search State (Responsive React Transitions) ────────────
   const [searchQuery, setSearchQuery] = React.useState('');

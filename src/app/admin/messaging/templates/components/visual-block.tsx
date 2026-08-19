@@ -283,7 +283,7 @@ function renderTextWithVariablePills(text: string, isButtonContext = false): Rea
     return node;
 }
 
-const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
+export const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
     if (val === undefined || val === null || val === '') return '';
     const str = String(val);
     if (str.endsWith('px') || str.endsWith('%') || str.endsWith('pt') || str.endsWith('em') || str.endsWith('rem')) {
@@ -293,31 +293,52 @@ const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): strin
 };
 
 /**
+ * PURPOSE: Resolves 4-side button padding strings safely without producing invalid CSS
+ * units (e.g. preventing '12pxpx').
+ */
+export const resolveButtonPadding = (
+    top?: string | number,
+    right?: string | number,
+    bottom?: string | number,
+    left?: string | number,
+    defaultY = '14px',
+    defaultX = '28px'
+): string => {
+    const parse = (v: string | number | undefined, def: string): string => {
+        if (v === undefined || v === null || v === '') return def;
+        return ensureUnit(v);
+    };
+    return `${parse(top, defaultY)} ${parse(right, defaultX)} ${parse(bottom, defaultY)} ${parse(left, defaultX)}`;
+};
+
+/**
  * PURPOSE: Sanitise href values before embedding in canvas preview anchor tags.
  * Strips dangerous protocols (javascript:, data:, vbscript:) to prevent XSS.
  *
  * CAUTION: Apply this to ALL user-supplied link/secondaryLink fields before use in <a href>.
  *          Email previews render in iframes — sandboxing is the first defence, but
- *          sanitisation at the data level is the second defence.
+ *          direct canvas rendering happens in the main React tree.
  *
  * TESTABILITY: See dual-button-block.test.ts → 'sanitises javascript: href to #'.
- * RELATED SURFACES: messaging-utils.ts has an identical function for email export.
- *                   Keep both in sync if the pattern changes.
  */
-function sanitizeHref(href: string): string {
-    const trimmed = href.trim();
-    if (/^(javascript|data|vbscript):/i.test(trimmed)) return '#';
-    return trimmed;
+function sanitizeHref(rawHref: string): string {
+    const trimmed = rawHref.trim();
+    if (
+        trimmed.startsWith('javascript:') ||
+        trimmed.startsWith('data:') ||
+        trimmed.startsWith('vbscript:')
+    ) {
+        return '#';
+    }
+    return trimmed || '#';
 }
 
 /**
- * PURPOSE: Shared pure helper that maps a button variant key + style object to resolved
- * colour/border/shadow CSS values. Eliminates code duplication between 'button' and
- * 'dual-button' canvas cases.
+ * PURPOSE: Resolve background, foreground, border, and shadow styles for a single button
+ * based on its variant type ('default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link').
  *
- * CAUTION: This is defined at MODULE LEVEL (not inside VisualBlock) to satisfy the
- * vercel-react-best-practices rule 'rerender-no-inline-components'.
- * Defining it inside the component would recreate it on every render.
+ * CAUTION: This is a pure style resolver — keep it stateless and outside React renders.
+ *          Defining it inside the component would recreate it on every render.
  *
  * CAUTION: When adding new variant types (e.g. 'brand', 'tonal'), add them here
  * AND in messaging-utils.ts case 'button' and case 'dual-button'. They must stay in sync.
@@ -328,7 +349,7 @@ function sanitizeHref(href: string): string {
 function resolveSingleButtonStyles(variant: string, style: {
     backgroundColor?: string;
     color?: string;
-    borderWidth?: string;
+    borderWidth?: string | number;
     borderStyle?: string;
     borderColor?: string;
 } = {}): {
@@ -342,7 +363,7 @@ function resolveSingleButtonStyles(variant: string, style: {
 } {
     let bg = style.backgroundColor;
     let fg = style.color;
-    let borderWidth = style.borderWidth ? `${style.borderWidth}px` : undefined;
+    let borderWidth = style.borderWidth ? ensureUnit(style.borderWidth) : undefined;
     let borderStyle = style.borderStyle ?? undefined;
     let borderColor = style.borderColor ?? undefined;
     let shadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)';
@@ -358,8 +379,8 @@ function resolveSingleButtonStyles(variant: string, style: {
         borderStyle = borderStyle || 'solid';
         borderColor = borderColor || 'var(--org-primary, rgb(37 99 235))';
     } else if (variant === 'secondary') {
-        bg = bg || '#f3f4f6';
-        fg = fg || '#1f2937';
+        bg = bg || '#f1f5f9';
+        fg = fg || '#334155';
     } else if (variant === 'destructive') {
         bg = bg || '#dc2626';
         fg = fg || '#ffffff';
@@ -678,12 +699,16 @@ export function VisualBlock({
             });
 
             const btnRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '12px';
-            const btnPadding = `${s.paddingTop || 14}px ${s.paddingRight || 28}px ${s.paddingBottom || 14}px ${s.paddingLeft || 28}px`;
+            const btnPadding = resolveButtonPadding(s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, '14px', '28px');
+            const btnLink = sanitizeHref(block.link || '#');
             
             return (
                 <div className={cn("w-full py-4 flex", alignFlexClass)}>
-                    <div 
-                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal max-w-full overflow-hidden"
+                    <a 
+                        href={btnLink}
+                        aria-label={block.title || 'Action button'}
+                        onClick={(e) => { if (!block.link || isEditing) e.preventDefault(); }}
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal max-w-full overflow-hidden min-h-[44px] cursor-pointer"
                         style={{
                             backgroundColor: btnBg,
                             color: btnColor,
@@ -698,6 +723,7 @@ export function VisualBlock({
                             boxShadow: btnShadow,
                             textDecoration: btnTextDecoration,
                             wordBreak: 'break-word',
+                            boxSizing: 'border-box',
                         }}
                     >
                         {isEditing ? (
@@ -719,7 +745,7 @@ export function VisualBlock({
                                 {renderTextWithVariablePills(block.title || '', true)}
                             </span>
                         )}
-                    </div>
+                    </a>
                 </div>
             );
         }
@@ -753,7 +779,7 @@ export function VisualBlock({
                 borderColor: s.borderColor,
             });
             const primaryRadius = s.borderRadius ? ensureUnit(s.borderRadius) : '12px';
-            const primaryPadding = `${s.paddingTop || 14}px ${s.paddingRight || 28}px ${s.paddingBottom || 14}px ${s.paddingLeft || 28}px`;
+            const primaryPadding = resolveButtonPadding(s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, '14px', '28px');
             const primaryLink = sanitizeHref(block.link || '#');
 
             // ── Secondary button resolved styles ─────────────────────────────────────────────────
@@ -768,17 +794,17 @@ export function VisualBlock({
                 borderColor: ss.borderColor,
             });
             const secondaryRadius = ss.borderRadius ? ensureUnit(ss.borderRadius) : primaryRadius;
-            const secondaryPadding = `${ss.paddingTop || 12}px ${ss.paddingRight || 24}px ${ss.paddingBottom || 12}px ${ss.paddingLeft || 24}px`;
+            const secondaryPadding = resolveButtonPadding(ss.paddingTop, ss.paddingRight, ss.paddingBottom, ss.paddingLeft, '14px', '28px');
             const secondaryLink = sanitizeHref(block.secondaryLink || '#');
 
             return (
-                <div className={cn("w-full py-4 flex flex-wrap gap-3", alignFlexClass)}>
+                <div className={cn("w-full py-4 flex flex-wrap gap-3 sm:gap-4 items-center", alignFlexClass)}>
                     {/* ─ Primary Button ─ */}
                     <a
                         href={primaryLink}
                         aria-label={block.title || 'Primary action'}
-                        onClick={(e) => { if (!block.link) e.preventDefault(); }}
-                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] flex-shrink-0"
+                        onClick={(e) => { if (!block.link || isEditing) e.preventDefault(); }}
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] max-w-full min-h-[44px] flex-shrink-0 cursor-pointer"
                         style={{
                             backgroundColor: primary.bg,
                             color: primary.fg,
@@ -793,6 +819,7 @@ export function VisualBlock({
                             boxShadow: primary.shadow,
                             textDecoration: primary.textDecoration,
                             wordBreak: 'break-word',
+                            boxSizing: 'border-box',
                         }}
                     >
                         {isEditing ? (
@@ -817,8 +844,8 @@ export function VisualBlock({
                     <a
                         href={secondaryLink}
                         aria-label={block.secondaryTitle || 'Secondary action'}
-                        onClick={(e) => { if (!block.secondaryLink) e.preventDefault(); }}
-                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] flex-shrink-0"
+                        onClick={(e) => { if (!block.secondaryLink || isEditing) e.preventDefault(); }}
+                        className="inline-flex items-center justify-center motion-safe:transition-all duration-200 active:scale-[0.97] text-center leading-normal overflow-hidden min-w-[120px] max-w-full min-h-[44px] flex-shrink-0 cursor-pointer"
                         style={{
                             backgroundColor: secondary.bg,
                             color: secondary.fg,
@@ -833,6 +860,7 @@ export function VisualBlock({
                             boxShadow: secondary.shadow,
                             textDecoration: secondary.textDecoration,
                             wordBreak: 'break-word',
+                            boxSizing: 'border-box',
                         }}
                     >
                         {isEditing ? (

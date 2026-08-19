@@ -940,6 +940,63 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {/* Custom Secondary Button Overrides */}
+                                <div className="pt-2 border-t border-border/40 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Custom Styling Overrides</Label>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Text Color</Label>
+                                            <div className="flex items-center gap-1.5 bg-background p-1 rounded-xl border border-input h-9">
+                                                <input 
+                                                    type="color" 
+                                                    value={block.secondaryStyle?.color || '#2563eb'}
+                                                    onChange={e => {
+                                                        const currentSS = block.secondaryStyle ?? {};
+                                                        onUpdate({ secondaryStyle: { ...currentSS, color: e.target.value } });
+                                                    }}
+                                                    className="w-5 h-5 rounded-lg border-0 cursor-pointer bg-transparent p-0"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    value={block.secondaryStyle?.color || ''}
+                                                    placeholder="#2563eb"
+                                                    onChange={e => {
+                                                        const currentSS = block.secondaryStyle ?? {};
+                                                        onUpdate({ secondaryStyle: { ...currentSS, color: e.target.value || undefined } });
+                                                    }}
+                                                    className="w-full text-[10px] font-mono bg-transparent border-0 outline-none p-0"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-semibold text-muted-foreground ml-1">Background</Label>
+                                            <div className="flex items-center gap-1.5 bg-background p-1 rounded-xl border border-input h-9">
+                                                <input 
+                                                    type="color" 
+                                                    value={block.secondaryStyle?.backgroundColor || '#ffffff'}
+                                                    onChange={e => {
+                                                        const currentSS = block.secondaryStyle ?? {};
+                                                        onUpdate({ secondaryStyle: { ...currentSS, backgroundColor: e.target.value } });
+                                                    }}
+                                                    className="w-5 h-5 rounded-lg border-0 cursor-pointer bg-transparent p-0"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    value={block.secondaryStyle?.backgroundColor || ''}
+                                                    placeholder="transparent"
+                                                    onChange={e => {
+                                                        const currentSS = block.secondaryStyle ?? {};
+                                                        onUpdate({ secondaryStyle: { ...currentSS, backgroundColor: e.target.value || undefined } });
+                                                    }}
+                                                    className="w-full text-[10px] font-mono bg-transparent border-0 outline-none p-0"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

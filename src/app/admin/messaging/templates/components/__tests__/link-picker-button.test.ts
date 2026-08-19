@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { DYNAMIC_VARIABLES } from '../link-picker';
 
 describe('Dynamic Dashboard Link & Link Picker Tests', () => {
   it('resolves {{dashboard_link}} properly in fallback mode', async () => {
@@ -31,6 +32,35 @@ describe('Dynamic Dashboard Link & Link Picker Tests', () => {
     const dashLink = vars.get('dashboard_link');
     expect(dashLink).toBeDefined();
     expect(typeof dashLink).toBe('string');
+  });
+
+  it('resolves {{entity_console_link}} and {{entity_link}} properly', async () => {
+    const varsWithEntity = await FieldsVariablesService.getVariableValuesMap({
+      workspaceId: 'ws-test-123',
+      entityId: 'ent-school-456',
+    });
+
+    const entityConsoleLink = varsWithEntity.get('entity_console_link');
+    const entityLink = varsWithEntity.get('entity_link');
+    expect(entityConsoleLink).toBeDefined();
+    expect(entityConsoleLink).toContain('/admin/entities/ent-school-456');
+    expect(entityLink).toBeDefined();
+    expect(entityLink).toContain('/admin/entities/ent-school-456');
+
+    // Fallback mode without specific entity
+    const varsFallback = await FieldsVariablesService.getVariableValuesMap({
+      workspaceId: 'ws-test-123',
+    });
+    expect(varsFallback.get('entity_console_link')).toContain('/admin/entities');
+  });
+
+  it('contains Target Entity Console in DYNAMIC_VARIABLES registry', () => {
+    const entityConsoleItem = DYNAMIC_VARIABLES.find(v => v.path === '{{entity_console_link}}');
+    expect(entityConsoleItem).toBeDefined();
+    expect(entityConsoleItem?.name).toBe('Target Entity Console');
+
+    const entityLinkItem = DYNAMIC_VARIABLES.find(v => v.path === '{{entity_link}}');
+    expect(entityLinkItem).toBeDefined();
   });
 
   it('appends base URL to internal relative paths starting with /', () => {

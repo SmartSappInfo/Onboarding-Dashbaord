@@ -1049,10 +1049,10 @@ const blockTypeTemplates: Record<string, Array<{
                     backgroundColor: '#2563eb',
                     color: '#ffffff',
                     borderRadius: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '28px',
+                    paddingRight: '28px',
                     fontWeight: '700',
                     fontSize: '15px'
                 },
@@ -1060,10 +1060,10 @@ const blockTypeTemplates: Record<string, Array<{
                     variant: 'ghost',
                     color: '#4b5563',
                     borderRadius: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '28px',
+                    paddingRight: '28px',
                     fontWeight: '600',
                     fontSize: '15px'
                 }
@@ -1086,10 +1086,10 @@ const blockTypeTemplates: Record<string, Array<{
                     backgroundColor: '#2563eb',
                     color: '#ffffff',
                     borderRadius: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '28px',
+                    paddingRight: '28px',
                     fontWeight: '700',
                     fontSize: '15px'
                 },
@@ -1101,10 +1101,10 @@ const blockTypeTemplates: Record<string, Array<{
                     borderStyle: 'solid',
                     borderColor: '#2563eb',
                     borderRadius: '12px',
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    paddingLeft: '24px',
-                    paddingRight: '24px',
+                    paddingTop: '14px',
+                    paddingBottom: '14px',
+                    paddingLeft: '28px',
+                    paddingRight: '28px',
                     fontWeight: '600',
                     fontSize: '15px'
                 }
@@ -2141,13 +2141,17 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
             const justifyClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
 
             return (
-                <div className={`w-full flex ${justifyClass} gap-1.5 py-2`}>
+                <div className={`w-full flex ${justifyClass} gap-1.5 py-2 px-1 items-center`}>
                     <span 
                         style={{
                             ...miniStyle,
                             backgroundColor: primaryBg,
                             color: primaryFg,
                             borderRadius: radius,
+                            paddingTop: '3px',
+                            paddingBottom: '3px',
+                            paddingLeft: '7px',
+                            paddingRight: '7px',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                         }}
                         className="inline-block text-[7px] font-bold truncate max-w-[65px] pointer-events-none text-center"
@@ -2160,7 +2164,13 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                             backgroundColor: secondaryBg,
                             color: secondaryFg,
                             borderRadius: radius,
-                            border: ss.borderWidth ? `${ss.borderWidth} ${ss.borderStyle || 'solid'} ${ss.borderColor || '#2563eb'}` : undefined
+                            paddingTop: '3px',
+                            paddingBottom: '3px',
+                            paddingLeft: '7px',
+                            paddingRight: '7px',
+                            borderWidth: ss.borderWidth ? `${Math.max(1, parseInt(ss.borderWidth) / 2)}px` : (ss.variant === 'outline' ? '1px' : undefined),
+                            borderStyle: (ss.borderStyle as any) || (ss.variant === 'outline' ? 'solid' : undefined),
+                            borderColor: ss.borderColor || (ss.variant === 'outline' ? '#2563eb' : undefined),
                         }}
                         className="inline-block text-[7px] font-semibold truncate max-w-[65px] pointer-events-none text-center"
                     >

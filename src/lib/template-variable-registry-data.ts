@@ -311,6 +311,28 @@ export const STATIC_VARIABLES: TemplateVariable[] = [
     isDynamic: false,
     isComputed: true,
   },
+  {
+    id: 'common_entity_console_link',
+    name: 'entity_console_link',
+    label: 'Target Entity Console Link',
+    description: 'Direct link to open the target entity profile in the admin console',
+    dataType: 'url',
+    context: 'common',
+    exampleValue: 'https://app.example.com/admin/entities/12345',
+    isDynamic: false,
+    isComputed: true,
+  },
+  {
+    id: 'common_entity_link',
+    name: 'entity_link',
+    label: 'Target Entity Link',
+    description: 'Direct link to the target entity profile or portal',
+    dataType: 'url',
+    context: 'common',
+    exampleValue: 'https://app.example.com/admin/entities/12345',
+    isDynamic: false,
+    isComputed: true,
+  },
 
 
   // ── Meeting ──────────────────────────────────────────────────────────────

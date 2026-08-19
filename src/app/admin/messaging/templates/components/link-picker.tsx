@@ -9,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Link, Search, ChevronDown, RefreshCw } from 'lucide-react';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 
+import { useTerminology } from '@/hooks/use-terminology';
+
 interface LinkPickerProps {
   onSelect: (url: string, item?: ResourceItem) => void;
 }
@@ -31,7 +33,9 @@ const PREDEFINED_PAGES: ResourceItem[] = [
   { id: 'static-6', name: 'Thank You', subtitle: 'Standard thank you page', path: '/thank-you' },
 ];
 
-const DYNAMIC_VARIABLES: ResourceItem[] = [
+export const DYNAMIC_VARIABLES: ResourceItem[] = [
+  { id: 'dyn-entity-console', name: 'Target Entity Console', subtitle: '{{entity_console_link}} — Direct link to entity profile in admin console', path: '{{entity_console_link}}' },
+  { id: 'dyn-entity-url', name: 'Target Entity Link', subtitle: '{{entity_link}} — Direct URL for recipient entity', path: '{{entity_link}}' },
   { id: 'dyn-1', name: 'Personalized Survey Link', subtitle: '{{survey_link}} — Recipient specific survey URL', path: '{{survey_link}}' },
   { id: 'dyn-2', name: 'Personalized Form Link', subtitle: '{{form_link}} — Recipient specific form URL', path: '{{form_link}}' },
   { id: 'dyn-3', name: 'Personalized Agreement Link', subtitle: '{{contract_link}} — Recipient specific agreement URL', path: '{{contract_link}}' },
@@ -45,16 +49,39 @@ const DYNAMIC_VARIABLES: ResourceItem[] = [
 export function LinkPicker({ onSelect }: LinkPickerProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { singular } = useTerminology();
+  const entityLabel = singular || 'Entity';
   const [search, setSearch] = React.useState<string>('');
   const [targetType, setTargetType] = React.useState<string>('dynamic');
   const [loading, setLoading] = React.useState<boolean>(false);
   const searchInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Dynamic variables with active terminology translation
+  const dynamicVariables: ResourceItem[] = React.useMemo(() => [
+    { id: 'dyn-entity-console', name: `Target ${entityLabel} Console`, subtitle: `{{entity_console_link}} — Direct link to ${entityLabel.toLowerCase()} profile in admin console`, path: '{{entity_console_link}}' },
+    { id: 'dyn-entity-url', name: `Target ${entityLabel} Link`, subtitle: `{{entity_link}} — Direct URL for ${entityLabel.toLowerCase()}`, path: '{{entity_link}}' },
+    { id: 'dyn-1', name: 'Personalized Survey Link', subtitle: '{{survey_link}} — Recipient specific survey URL', path: '{{survey_link}}' },
+    { id: 'dyn-2', name: 'Personalized Form Link', subtitle: '{{form_link}} — Recipient specific form URL', path: '{{form_link}}' },
+    { id: 'dyn-3', name: 'Personalized Agreement Link', subtitle: '{{contract_link}} — Recipient specific agreement URL', path: '{{contract_link}}' },
+    { id: 'dyn-4', name: 'Personalized Meeting Link', subtitle: '{{meeting_link}} — Recipient specific meeting URL', path: '{{meeting_link}}' },
+    { id: 'dyn-5', name: 'Personalized Dashboard Link', subtitle: '{{dashboard_link}} — Recipient specific dashboard URL', path: '{{dashboard_link}}' },
+    { id: 'dyn-6', name: 'Add to Calendar Link', subtitle: '{{calendar_link}} — Calendar event invitation URL', path: '{{calendar_link}}' },
+    { id: 'dyn-7', name: 'Unsubscribe Link', subtitle: '{{unsubscribe_link}} — Recipient opt-out URL', path: '{{unsubscribe_link}}' },
+    { id: 'dyn-8', name: 'Survey Results Link', subtitle: '{{result_url}} — Live survey analytics URL', path: '{{result_url}}' },
+  ], [entityLabel]);
+
   // Cached resource stores to avoid re-fetching on tab switches
   const [resources, setResources] = React.useState<Record<string, ResourceItem[]>>({
-    dynamic: DYNAMIC_VARIABLES,
+    dynamic: dynamicVariables,
     static: PREDEFINED_PAGES,
   });
+
+  React.useEffect(() => {
+    setResources(prev => ({
+      ...prev,
+      dynamic: dynamicVariables,
+    }));
+  }, [dynamicVariables]);
 
   /**
    * PURPOSE: Lazy-loads published workspace items for the active targetType tab on demand.

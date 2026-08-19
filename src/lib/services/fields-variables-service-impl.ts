@@ -568,6 +568,12 @@ export class FieldsVariablesService {
           // Resolve tag computed variables (avoiding school/entity renaming errors)
           const targetEntityId = context.entityId || entityData.id;
           if (targetEntityId) {
+            const baseUrl = getBaseUrl();
+            valuesMap.set('entity_id', targetEntityId);
+            valuesMap.set('entity_console_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+            valuesMap.set('entity_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+            valuesMap.set('entity_dashboard_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+
             const { resolveTagVariables } = await import('../messaging-actions');
             const tagVars = await resolveTagVariables(targetEntityId, 'school', context.workspaceId);
             Object.entries(tagVars).forEach(([k, v]) => {
@@ -1159,6 +1165,19 @@ export class FieldsVariablesService {
     if (!valuesMap.has('dashboard_link') || !valuesMap.get('dashboard_link')) {
       const baseUrl = getBaseUrl();
       valuesMap.set('dashboard_link', `${baseUrl}/admin/dashboard`);
+    }
+
+    // Default fallback for entity_console_link and entity_link
+    if (!valuesMap.has('entity_console_link') || !valuesMap.get('entity_console_link')) {
+      const baseUrl = getBaseUrl();
+      const targetEntityId = context.entityId || valuesMap.get('entity_id');
+      if (targetEntityId) {
+        valuesMap.set('entity_console_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+        valuesMap.set('entity_link', `${baseUrl}/admin/entities/${targetEntityId}`);
+      } else {
+        valuesMap.set('entity_console_link', `${baseUrl}/admin/entities`);
+        valuesMap.set('entity_link', `${baseUrl}/admin/entities`);
+      }
     }
 
     // Map legacy uppercase aliases to ensure compatibility with call centre templates
