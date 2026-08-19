@@ -199,3 +199,84 @@ describe('SlashInput HTML Converters & Rich Formatting Persistence', () => {
     expect(sanitized[2].content).toBe('<font color="blue">Custom Code Block</font>');
   });
 });
+
+describe('Custom HTML / Code Block Outbound Email Compilation & Safety', () => {
+  it('compiles SmartSapp process timeline HTML table with colors and responsive styles', () => {
+    const timelineHtml = `<!-- SMARTSAPP IMPLEMENTATION TIMELINE -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:700px; margin:0 auto; font-family:Arial, Helvetica, sans-serif; color:#16213A;">
+  <tr>
+    <td width="65" valign="top" style="width:65px; padding:0 14px 35px 0; border-right:3px solid #3A86FF; text-align:center;">
+      <div style="width:44px; height:44px; line-height:44px; border-radius:50%; background-color:#3A86FF; color:#FFFFFF; font-size:18px; font-weight:700; text-align:center; margin:0 auto;">
+        1
+      </div>
+    </td>
+    <td valign="top" style="padding:0 0 35px 24px;">
+      <div style="background-color:#F4F8FF; border:1px solid #D5E4FF; border-radius:10px; padding:20px 22px;">
+        <div style="font-size:20px; line-height:1.4; color:#16213A; font-weight:700; margin-bottom:8px;">
+          Understand Your School First
+        </div>
+        <div style="font-size:17px; line-height:1.65; color:#3D4A61;">
+          We start with a quick baseline study for {{entity_name | Your School}}.
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>`;
+
+    const htmlBlock: MessageBlock = {
+      id: 'custom_html_1',
+      type: 'html',
+      content: timelineHtml
+    };
+
+    const compiledEmail = renderBlocksToHtml([htmlBlock], { entity_name: 'St. Peter High' });
+    expect(compiledEmail).toContain('#3A86FF');
+    expect(compiledEmail).toContain('#F4F8FF');
+    expect(compiledEmail).toContain('Understand Your School First');
+    expect(compiledEmail).toContain('St. Peter High');
+    expect(compiledEmail).not.toContain('{{entity_name');
+  });
+
+  it('safely strips malicious scripts while preserving table and styling markup', () => {
+    const maliciousHtml = `<table width="100%">
+      <tr>
+        <td onclick="alert('hack')" style="color: red;">
+          Safe Text
+          <script>window.location='https://evil.com'</script>
+          <iframe src="https://evil.com"></iframe>
+        </td>
+      </tr>
+    </table>`;
+
+    const htmlBlock: MessageBlock = {
+      id: 'custom_html_2',
+      type: 'html',
+      content: maliciousHtml
+    };
+
+    const compiledEmail = renderBlocksToHtml([htmlBlock], {});
+    expect(compiledEmail).toContain('Safe Text');
+    expect(compiledEmail).toContain('style="color: red;"');
+    expect(compiledEmail).not.toContain('<script');
+    expect(compiledEmail).not.toContain('<iframe');
+    expect(compiledEmail).not.toContain('onclick');
+    expect(compiledEmail).not.toContain('evil.com');
+  });
+
+  it('resolves fallback variable tokens inside custom HTML code blocks', () => {
+    const codeWithFallback = '<div style="padding: 10px;">Welcome, {{contact_name | School Leader}}!</div>';
+    const htmlBlock: MessageBlock = {
+      id: 'custom_html_3',
+      type: 'html',
+      content: codeWithFallback
+    };
+
+    // 1. Without variable populated: uses fallback
+    const htmlFallback = renderBlocksToHtml([htmlBlock], {});
+    expect(htmlFallback).toContain('Welcome, School Leader!');
+
+    // 2. With variable populated: uses value
+    const htmlPopulated = renderBlocksToHtml([htmlBlock], { contact_name: 'Dr. Mensah' });
+    expect(htmlPopulated).toContain('Welcome, Dr. Mensah!');
+  });
+});

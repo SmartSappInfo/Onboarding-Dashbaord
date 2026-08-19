@@ -30,8 +30,247 @@ import {
     Layers,
     Database,
     Zap,
-    X
+    X,
+    Code2
 } from 'lucide-react';
+
+const HTML_SNIPPET_PRESETS: Array<{ label: string; description: string; code: string }> = [
+    {
+        label: 'SmartSapp Process Timeline',
+        description: '7-step numbered vertical process timeline with active card and connector lines',
+        code: `<!-- SMARTSAPP IMPLEMENTATION TIMELINE -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="width:100%; max-width:700px; margin:0 auto; font-family:Arial, Helvetica, sans-serif; color:#16213A;">
+
+  <!-- STEP 1 — PRIMARY FOCUS -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 35px 0; border-right:3px solid #3A86FF; text-align:center;">
+
+      <div style="width:44px; height:44px; line-height:44px; border-radius:50%;
+                  background-color:#3A86FF; color:#FFFFFF; font-size:18px;
+                  font-weight:700; text-align:center; margin:0 auto;">
+        1
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 35px 24px;">
+
+      <div style="background-color:#F4F8FF;
+                  border:1px solid #D5E4FF;
+                  border-radius:10px;
+                  padding:20px 22px;">
+
+        <div style="font-size:20px; line-height:1.4; color:#16213A;
+                    font-weight:700; margin-bottom:8px;">
+          Understand Your School First
+        </div>
+
+        <div style="font-size:17px; line-height:1.65; color:#3D4A61;">
+          We start with a quick baseline study to understand your school’s daily workflow.
+        </div>
+
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 2 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        2
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          We Set Everything Up for You
+        </strong><br>
+        You share your student, parent, and staff data—and we handle the setup for you.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 3 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        3
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Train Your Team with Confidence
+        </strong><br>
+        We train your staff so they know how to use every tool in SmartSapp.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 4 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        4
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Get Parents Involved Early
+        </strong><br>
+        We help you engage parents from the start through Zoom calls and messages.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 5 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        5
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Test Before You Launch
+        </strong><br>
+        We run a live trial on campus to make sure everything works in real time.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 6 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        6
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Go Live with Full Support
+        </strong><br>
+        Our team will be on-site during launch to support your staff and smooth things out.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 7 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 0 0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        7
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 0 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Monitor, Improve, and Grow
+        </strong><br>
+        We track your progress and help your school improve as you grow.
+      </div>
+
+    </td>
+  </tr>
+
+</table>
+<!-- END SMARTSAPP IMPLEMENTATION TIMELINE -->`
+    },
+    {
+        label: 'Callout Alert Box',
+        description: 'Accent border card for high-priority announcements and notes',
+        code: `<div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 18px 22px; font-family: Arial, sans-serif; color: #1e3a8a; margin: 16px 0;">
+  <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px;">Important Note for {{contact_name | Valued Partner}}</div>
+  <div style="font-size: 14px; line-height: 1.6; color: #1e40af;">
+    Here is an important update from our team regarding your upcoming setup and launch schedule.
+  </div>
+</div>`
+    },
+    {
+        label: '2-Column Features Grid',
+        description: 'Email-safe 2-column comparison or feature overview layout',
+        code: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; font-family: Arial, sans-serif; margin: 16px 0;">
+  <tr>
+    <td width="50%" valign="top" style="width: 50%; padding-right: 10px;">
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+        <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 6px;">Feature 1</div>
+        <div style="font-size: 13px; line-height: 1.5; color: #64748b;">Fast and reliable automation workflow setup.</div>
+      </div>
+    </td>
+    <td width="50%" valign="top" style="width: 50%; padding-left: 10px;">
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+        <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 6px;">Feature 2</div>
+        <div style="font-size: 13px; line-height: 1.5; color: #64748b;">Live reporting and real-time delivery metrics.</div>
+      </div>
+    </td>
+  </tr>
+</table>`
+    }
+];
 import type { MessageBlock, VariableDefinition, MessageTemplate, TemplateVariable, VariableContext } from '@/lib/types';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import { cn } from '@/lib/utils';
@@ -100,6 +339,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const scoreCardPillRef = React.useRef<HTMLInputElement>(null);
     const scoreCardSubRef = React.useRef<HTMLInputElement>(null);
     const scoreCardValRef = React.useRef<HTMLInputElement>(null);
+    const htmlCodeRef = React.useRef<HTMLTextAreaElement>(null);
 
     if (!block) return null;
 
@@ -159,8 +399,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     // Relevance Flags for Accordion panels
     const hasTypography = ['heading', 'text', 'quote', 'list', 'button', 'dual-button', 'header', 'footer', 'rsvp', 'score-card'].includes(block.type);
     const hasSpacing = true; // Spacing is universally applicable
-    const hasBorders = ['heading', 'text', 'quote', 'button', 'dual-button', 'image', 'video', 'columns', 'score-card', 'rsvp'].includes(block.type);
-    const hasBackground = ['heading', 'text', 'quote', 'button', 'dual-button', 'list', 'columns', 'score-card', 'logo', 'rsvp'].includes(block.type);
+    const hasBorders = ['heading', 'text', 'quote', 'button', 'dual-button', 'image', 'video', 'columns', 'score-card', 'rsvp', 'html'].includes(block.type);
+    const hasBackground = ['heading', 'text', 'quote', 'button', 'dual-button', 'list', 'columns', 'score-card', 'logo', 'rsvp', 'html'].includes(block.type);
 
     return (
         <div className="flex flex-col h-full bg-background animate-in fade-in slide-in-from-left-4 duration-300">
@@ -1396,6 +1636,85 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     placeholder="e.g. 85 or {{score | 0}}"
                                     onKeyDown={(e) => e.stopPropagation()}
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Custom HTML & Code Settings */}
+                    {block.type === 'html' && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
+                                        <Code2 className="h-3.5 w-3.5 text-blue-600" /> Custom HTML &amp; CSS
+                                    </Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <InlineVariablePicker 
+                                            targetRef={htmlCodeRef} 
+                                            currentValue={block.content || ''} 
+                                            onFieldChange={val => onUpdate({ content: val })} 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2">
+                                    <Select 
+                                        onValueChange={(val) => {
+                                            const preset = HTML_SNIPPET_PRESETS.find(p => p.label === val);
+                                            if (preset) {
+                                                onUpdate({ content: preset.code });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs font-semibold rounded-lg bg-muted/20 border-dashed border-primary/30 hover:border-primary/60">
+                                            <SelectValue placeholder="⚡ Load Preset Snippet..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl max-w-sm">
+                                            {HTML_SNIPPET_PRESETS.map((preset) => (
+                                                <SelectItem key={preset.label} value={preset.label} className="text-xs">
+                                                    <div className="flex flex-col text-left py-0.5">
+                                                        <span className="font-bold text-foreground">{preset.label}</span>
+                                                        <span className="text-[10px] text-muted-foreground line-clamp-1">{preset.description}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="relative rounded-xl overflow-hidden border bg-slate-950 dark:bg-slate-950/80 shadow-inner group">
+                                    <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 text-[10px] font-mono text-slate-400">
+                                        <span>HTML / CSS</span>
+                                        <span>{(block.content || '').length} chars</span>
+                                    </div>
+                                    <Textarea
+                                        ref={htmlCodeRef}
+                                        value={block.content || ''}
+                                        onChange={(e) => onUpdate({ content: e.target.value })}
+                                        placeholder={`<!-- Paste your custom email HTML here -->\n<table width='100%'>\n  <tr>\n    <td>Hello {{contact_name}}</td>\n  </tr>\n</table>`}
+                                        className="font-mono text-xs leading-relaxed p-3 bg-transparent text-slate-100 placeholder:text-slate-500 border-none outline-none focus-visible:ring-0 resize-y min-h-[260px] w-full selection:bg-blue-600/40"
+                                        spellCheck={false}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Tab') {
+                                                e.preventDefault();
+                                                const target = e.currentTarget;
+                                                const start = target.selectionStart;
+                                                const end = target.selectionEnd;
+                                                const currentVal = target.value;
+                                                const nextVal = currentVal.substring(0, start) + '  ' + currentVal.substring(end);
+                                                onUpdate({ content: nextVal });
+                                                setTimeout(() => {
+                                                    target.selectionStart = target.selectionEnd = start + 2;
+                                                }, 0);
+                                            }
+                                            e.stopPropagation();
+                                        }}
+                                    />
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground leading-relaxed px-1">
+                                    Paste email-compatible HTML &amp; inline CSS. Supports dynamic variable tags like <code className="text-blue-600 font-mono text-[9px] bg-blue-500/10 px-1 py-0.5 rounded">{'{{contact_name | Valued Partner}}'}</code>.
+                                </p>
                             </div>
                         </div>
                     )}

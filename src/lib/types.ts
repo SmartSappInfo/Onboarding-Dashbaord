@@ -2877,7 +2877,7 @@ export interface MessageBlock {
    * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx,
    *                   template-workshop.tsx (BlockTemplatePreview + blockTypeTemplates).
    */
-  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'dual-button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp';
+  type: 'heading' | 'text' | 'image' | 'video' | 'audio' | 'button' | 'dual-button' | 'quote' | 'divider' | 'list' | 'logo' | 'header' | 'footer' | 'score-card' | 'columns' | 'rsvp' | 'html';
   title?: string;
   content?: string;
   url?: string;

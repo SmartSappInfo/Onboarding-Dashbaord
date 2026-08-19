@@ -1697,6 +1697,286 @@ const blockTypeTemplates: Record<string, Array<{
                 }
             })
         }
+    ],
+    html: [
+        {
+            name: 'SmartSapp Process Timeline',
+            description: '7-step numbered vertical process timeline with active card and connector lines',
+            aspectRatio: 'aspect-[3/4]',
+            create: () => ({
+                id: `blk_html_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'html',
+                content: `<!-- SMARTSAPP IMPLEMENTATION TIMELINE -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="width:100%; max-width:700px; margin:0 auto; font-family:Arial, Helvetica, sans-serif; color:#16213A;">
+
+  <!-- STEP 1 — PRIMARY FOCUS -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 35px 0; border-right:3px solid #3A86FF; text-align:center;">
+
+      <div style="width:44px; height:44px; line-height:44px; border-radius:50%;
+                  background-color:#3A86FF; color:#FFFFFF; font-size:18px;
+                  font-weight:700; text-align:center; margin:0 auto;">
+        1
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 35px 24px;">
+
+      <div style="background-color:#F4F8FF;
+                  border:1px solid #D5E4FF;
+                  border-radius:10px;
+                  padding:20px 22px;">
+
+        <div style="font-size:20px; line-height:1.4; color:#16213A;
+                    font-weight:700; margin-bottom:8px;">
+          Understand Your School First
+        </div>
+
+        <div style="font-size:17px; line-height:1.65; color:#3D4A61;">
+          We start with a quick baseline study to understand your school’s daily workflow.
+        </div>
+
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 2 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        2
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          We Set Everything Up for You
+        </strong><br>
+        You share your student, parent, and staff data—and we handle the setup for you.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 3 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        3
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Train Your Team with Confidence
+        </strong><br>
+        We train your staff so they know how to use every tool in SmartSapp.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 4 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        4
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Get Parents Involved Early
+        </strong><br>
+        We help you engage parents from the start through Zoom calls and messages.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 5 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        5
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Test Before You Launch
+        </strong><br>
+        We run a live trial on campus to make sure everything works in real time.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 6 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 30px 0;
+               border-right:2px solid #E3E8F0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        6
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 30px 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Go Live with Full Support
+        </strong><br>
+        Our team will be on-site during launch to support your staff and smooth things out.
+      </div>
+
+    </td>
+  </tr>
+
+
+  <!-- STEP 7 -->
+  <tr>
+    <td width="65" valign="top"
+        style="width:65px; padding:0 14px 0 0; text-align:center;">
+
+      <div style="width:36px; height:36px; line-height:36px; border-radius:50%;
+                  background-color:#F1F4F8; color:#8A96A8; font-size:15px;
+                  font-weight:600; text-align:center; margin:0 auto;">
+        7
+      </div>
+
+    </td>
+
+    <td valign="top" style="padding:0 0 0 24px;">
+
+      <div style="font-size:17px; line-height:1.6; color:#68758A;">
+        <strong style="color:#3D4A61;">
+          Monitor, Improve, and Grow
+        </strong><br>
+        We track your progress and help your school improve as you grow.
+      </div>
+
+    </td>
+  </tr>
+
+</table>
+<!-- END SMARTSAPP IMPLEMENTATION TIMELINE -->`,
+                style: {
+                    paddingTop: '20px',
+                    paddingBottom: '20px',
+                    paddingLeft: '10px',
+                    paddingRight: '10px',
+                }
+            })
+        },
+        {
+            name: 'Callout Alert Box',
+            description: 'Accent border card for high-priority announcements and notes',
+            aspectRatio: 'aspect-[16/7]',
+            create: () => ({
+                id: `blk_html_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'html',
+                content: `<div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 18px 22px; font-family: Arial, sans-serif; color: #1e3a8a; margin: 16px 0;">
+  <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px;">Important Note for {{contact_name | Valued Partner}}</div>
+  <div style="font-size: 14px; line-height: 1.6; color: #1e40af;">
+    Here is an important update from our team regarding your upcoming setup and launch schedule.
+  </div>
+</div>`,
+                style: {
+                    paddingTop: '10px',
+                    paddingBottom: '10px'
+                }
+            })
+        },
+        {
+            name: '2-Column Features Grid',
+            description: 'Email-safe 2-column comparison or feature overview layout',
+            aspectRatio: 'aspect-[16/9]',
+            create: () => ({
+                id: `blk_html_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'html',
+                content: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; font-family: Arial, sans-serif; margin: 16px 0;">
+  <tr>
+    <td width="50%" valign="top" style="width: 50%; padding-right: 10px;">
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+        <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 6px;">Feature 1</div>
+        <div style="font-size: 13px; line-height: 1.5; color: #64748b;">Fast and reliable automation workflow setup.</div>
+      </div>
+    </td>
+    <td width="50%" valign="top" style="width: 50%; padding-left: 10px;">
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px;">
+        <div style="font-weight: 700; font-size: 16px; color: #0f172a; margin-bottom: 6px;">Feature 2</div>
+        <div style="font-size: 13px; line-height: 1.5; color: #64748b;">Live reporting and real-time delivery metrics.</div>
+      </div>
+    </td>
+  </tr>
+</table>`,
+                style: {
+                    paddingTop: '10px',
+                    paddingBottom: '10px'
+                }
+            })
+        },
+        {
+            name: 'Blank Custom HTML',
+            description: 'Clean HTML starter template with table wrapper and comments',
+            aspectRatio: 'aspect-[16/9]',
+            create: () => ({
+                id: `blk_html_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'html',
+                content: `<!-- Custom Email HTML Block -->\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width: 100%; font-family: Arial, sans-serif;">\n  <tr>\n    <td style="padding: 20px; background-color: #f8fafc; border-radius: 8px; text-align: center;">\n      <h3 style="margin: 0 0 8px 0; color: #0f172a;">Custom Section for {{contact_name | Partner}}</h3>\n      <p style="margin: 0; color: #64748b; font-size: 14px;">Add your custom email HTML &amp; CSS markup here.</p>\n    </td>\n  </tr>\n</table>`,
+                style: {
+                    paddingTop: '10px',
+                    paddingBottom: '10px'
+                }
+            })
+        }
     ]
 };
 
@@ -2193,6 +2473,21 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                         <span className="bg-emerald-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{going}</span>
                         <span className="bg-amber-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{later}</span>
                         <span className="bg-rose-500 text-white rounded px-1.5 py-0.5 text-[4px] font-bold leading-none select-none">{declined}</span>
+                    </div>
+                </div>
+            );
+        }
+        case 'html': {
+            return (
+                <div className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-left text-white space-y-1 shadow-sm overflow-hidden" style={{ backgroundColor: s.backgroundColor || '#020617' }}>
+                    <div className="flex items-center justify-between text-[5px] font-mono text-slate-400 border-b border-slate-800/80 pb-0.5">
+                        <span className="flex items-center gap-1"><span className="h-1 w-1 rounded-full bg-blue-400"></span> HTML / CSS</span>
+                        <span className="text-[4.5px] text-slate-500 truncate max-w-[60px]">{block.name || 'Custom'}</span>
+                    </div>
+                    <div className="text-[4.5px] font-mono text-blue-300/80 line-clamp-3 leading-tight opacity-90">
+                        &lt;table width="100%" ...&gt;<br />
+                        &nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;...&lt;/td&gt;&lt;/tr&gt;<br />
+                        &lt;/table&gt;
                     </div>
                 </div>
             );

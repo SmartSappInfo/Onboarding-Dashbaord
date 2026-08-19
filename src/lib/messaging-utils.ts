@@ -38,12 +38,64 @@ function fromBase64(str: string): string {
  */
 function sanitizeContent(html: unknown): string {
   if (!html) return '';
-  const str = String(html);
-  return str
-    .replace(/class="isSelectedEnd"/g, '')
-    .replace(/class='isSelectedEnd'/g, '')
-    .replace(/<p><\/p>/g, '<br/>')
+  return String(html)
+    .replace(/ class="[^"]*"/g, '')
+    .replace(/<p><\/p>/g, '')
+    .replace(/<div><\/div>/g, '')
     .trim();
+}
+
+/**
+ * ARCHITECTURAL NOTE & SECURITY STANDARD (Rule 8 & 10 Maintainer Guidance):
+ * Sanitizes custom email HTML code blocks by stripping dangerous scripts, iframes, and event handlers
+ * while preserving all email table structures, styles, images, center, links, and formatting.
+ * Safe for both server-side Node execution (regex) and client-side browser execution (DOMParser).
+ *
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx.
+ */
+export function sanitizeEmailCustomHtml(html: string): string {
+  if (!html) return '';
+  if (typeof window === 'undefined') {
+    return html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+      .replace(/\son\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+    const container = doc.body.firstElementChild || doc.body;
+
+    // Remove dangerous script, iframe, object, embed, head, meta tags
+    const dangerousElements = container.querySelectorAll('script, iframe, object, embed, meta, head, link[rel="import"]');
+    dangerousElements.forEach(el => el.remove());
+
+    // Strip inline on* event handlers and dangerous javascript: URLs
+    const allElements = container.querySelectorAll('*');
+    allElements.forEach(el => {
+      const attrNames = Array.from(el.attributes).map(a => a.name);
+      for (const attr of attrNames) {
+        const lowerAttr = attr.toLowerCase();
+        if (lowerAttr.startsWith('on')) {
+          el.removeAttribute(attr);
+        } else if (lowerAttr === 'href' || lowerAttr === 'src') {
+          const val = el.getAttribute(attr) || '';
+          if (/^(javascript|data|vbscript):/i.test(val.trim())) {
+            el.setAttribute(attr, '#');
+          }
+        }
+      }
+    });
+
+    return container.innerHTML;
+  } catch (err) {
+    console.error('Failed to sanitize custom email HTML:', err);
+    return html;
+  }
 }
 
 const ensureUnit = (val: string | number | undefined, defaultUnit = 'px'): string => {
@@ -1402,6 +1454,23 @@ export function renderBlocksToHtml(
             </table>
           </div>
         `;
+        break;
+      }
+
+      case 'html': {
+        /**
+         * ARCHITECTURAL NOTE & SECURITY STANDARD (Rule 8 & 10 Maintainer Guidance):
+         * Compiles custom HTML / code block for outbound email.
+         * 1. Resolves all template variables ({{contact_name | fallback}})
+         * 2. Sanitizes dangerous scripts/iframes while preserving full table layouts, styles, images
+         * 3. Wraps inside container styling
+         *
+         * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+         */
+        const rawContent = block.content || '';
+        const resolvedContent = rawContent ? resolveVariables(rawContent, variables) : '';
+        const safeContent = sanitizeEmailCustomHtml(resolvedContent);
+        blockHtml = `<div style="${wrapperStyle}">${safeContent}</div>`;
         break;
       }
 

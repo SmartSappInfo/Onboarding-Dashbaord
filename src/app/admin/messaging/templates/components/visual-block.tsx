@@ -20,14 +20,15 @@ import {
     Square, 
     List, 
     Trophy,
-    Layout
+    Layout,
+    Code2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { MessageBlock, TemplateVariable } from '@/lib/types';
-import { resolveVariables } from '@/lib/messaging-utils';
+import { resolveVariables, sanitizeEmailCustomHtml } from '@/lib/messaging-utils';
 import { useDroppable } from '@dnd-kit/core';
 import { blockIcons } from './block-icons';
 import { SlashInput, SlashTextarea, cleanContainerHtml } from '@/components/messaging/SlashInput';
@@ -1951,6 +1952,39 @@ export function VisualBlock({
                             />
                         </SortableContext>
                     ))}
+                </div>
+            );
+        }
+        case 'html': {
+            const rawContent = block.content || '';
+            const resolvedContent = rawContent ? resolveVariables(rawContent, simulationVars || {}) : '';
+            const sanitizedContent = sanitizeEmailCustomHtml(resolvedContent);
+
+            return (
+                <div 
+                    className={cn("w-full transition-all duration-200", alignmentClass)}
+                    style={{
+                        ...spacingStyle,
+                        ...borderStyle,
+                        backgroundColor: s.backgroundColor || 'transparent',
+                    }}
+                >
+                    {sanitizedContent ? (
+                        <div 
+                            className="w-full select-text overflow-x-auto"
+                            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/60 rounded-2xl bg-muted/10 text-center transition-all hover:bg-muted/15">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2.5">
+                                <Code2 className="h-5 w-5" />
+                            </div>
+                            <p className="text-xs font-bold text-foreground">Custom HTML / Code Block</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 max-w-sm leading-relaxed">
+                                Click to select this block and paste your custom HTML & CSS in the Inspector panel on the right.
+                            </p>
+                        </div>
+                    )}
                 </div>
             );
         }

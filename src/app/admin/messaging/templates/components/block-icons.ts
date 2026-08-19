@@ -12,7 +12,8 @@ import {
     Square,
     CalendarCheck,
     Volume2,
-    Layers2
+    Layers2,
+    Code2
 } from 'lucide-react';
 
 /**
@@ -38,5 +39,6 @@ export const blockIcons: Record<string, React.ComponentType<{ className?: string
     logo: Trophy,
     'score-card': Trophy,
     columns: Layout,
-    rsvp: CalendarCheck
+    rsvp: CalendarCheck,
+    html: Code2
 };
