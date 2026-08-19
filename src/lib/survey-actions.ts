@@ -352,6 +352,148 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
 
 
 
+export interface EntityMatchResult {
+  entityId: string;
+  entityName: string;
+  entityContacts?: EntityContact[];
+  matchedBy: 'tracked_id' | 'primary_email' | 'primary_phone' | 'contact_email' | 'contact_phone' | 'display_name';
+  existingEntityDoc?: Record<string, unknown>;
+}
+
+/**
+ * Multi-layered helper to resolve or match an existing workspace entity before
+ * attempting to create a new one. Guarantees zero duplicate entities in CRM.
+ */
+export async function resolveOrMatchWorkspaceEntity(
+  workspaceId: string,
+  params: {
+    preTrackedEntityId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    name?: string | null;
+  }
+): Promise<EntityMatchResult | null> {
+  if (!workspaceId) return null;
+
+  const dedupeBase = adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId);
+  const cleanEmail = params.email?.toLowerCase().trim() || null;
+  const cleanPhone = params.phone?.trim() || null;
+  const cleanName = params.name?.trim() || null;
+  const preTrackedId = params.preTrackedEntityId?.trim() || null;
+
+  // Layer 1: Check Pre-Tracked Entity ID (from trackingToken, ref, respondentEntityId)
+  if (preTrackedId && !preTrackedId.includes(':') && !preTrackedId.startsWith('usr_')) {
+    // Check in workspace_entities
+    const weSnap = await dedupeBase.where('entityId', '==', preTrackedId).limit(1).get();
+    if (!weSnap.empty) {
+      const data = weSnap.docs[0].data();
+      return {
+        entityId: data.entityId || preTrackedId,
+        entityName: data.displayName || data.primaryName || '',
+        entityContacts: data.contacts || [],
+        matchedBy: 'tracked_id',
+        existingEntityDoc: data,
+      };
+    }
+    // Check direct entities collection
+    const entSnap = await adminDb.collection('entities').doc(preTrackedId).get();
+    if (entSnap.exists) {
+      const data = entSnap.data();
+      const wsIds: string[] = data?.workspaceIds || [];
+      if (wsIds.includes(workspaceId) || wsIds.length === 0) {
+        return {
+          entityId: entSnap.id,
+          entityName: data?.name || '',
+          entityContacts: data?.entityContacts || [],
+          matchedBy: 'tracked_id',
+          existingEntityDoc: data,
+        };
+      }
+    }
+  }
+
+  // Layer 2: Match by Primary Email in workspace_entities
+  if (cleanEmail) {
+    const emailSnap = await dedupeBase.where('primaryEmail', '==', cleanEmail).limit(1).get();
+    if (!emailSnap.empty) {
+      const data = emailSnap.docs[0].data();
+      return {
+        entityId: data.entityId,
+        entityName: data.displayName || data.primaryName || '',
+        entityContacts: data.contacts || [],
+        matchedBy: 'primary_email',
+        existingEntityDoc: data,
+      };
+    }
+  }
+
+  // Layer 3: Match by Primary Phone in workspace_entities
+  if (cleanPhone) {
+    const phoneSnap = await dedupeBase.where('primaryPhone', '==', cleanPhone).limit(1).get();
+    if (!phoneSnap.empty) {
+      const data = phoneSnap.docs[0].data();
+      return {
+        entityId: data.entityId,
+        entityName: data.displayName || data.primaryName || '',
+        entityContacts: data.contacts || [],
+        matchedBy: 'primary_phone',
+        existingEntityDoc: data,
+      };
+    }
+  }
+
+  // Layer 4: Deep Search in `entities` for secondary contact email or phone
+  if (cleanEmail || cleanPhone) {
+    try {
+      const entitiesQuery = adminDb.collection('entities').where('workspaceIds', 'array-contains', workspaceId);
+      const allEntsSnap = await entitiesQuery.limit(50).get();
+      for (const doc of allEntsSnap.docs) {
+        const entData = doc.data();
+        const contacts: EntityContact[] = entData.entityContacts || [];
+        for (const c of contacts) {
+          if (cleanEmail && c.email && c.email.toLowerCase().trim() === cleanEmail) {
+            return {
+              entityId: doc.id,
+              entityName: entData.name || '',
+              entityContacts: contacts,
+              matchedBy: 'contact_email',
+              existingEntityDoc: entData,
+            };
+          }
+          if (cleanPhone && c.phone && c.phone.trim() === cleanPhone) {
+            return {
+              entityId: doc.id,
+              entityName: entData.name || '',
+              entityContacts: contacts,
+              matchedBy: 'contact_phone',
+              existingEntityDoc: entData,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[survey-actions] Secondary contact scan failed:', err);
+    }
+  }
+
+  // Layer 5: Match by Display Name in workspace_entities
+  if (cleanName && cleanName.length > 2 && !cleanName.startsWith('[Placeholder]')) {
+    const nameSnap = await dedupeBase.where('displayName', '==', cleanName).limit(1).get();
+    if (!nameSnap.empty) {
+      const data = nameSnap.docs[0].data();
+      return {
+        entityId: data.entityId,
+        entityName: data.displayName || data.primaryName || '',
+        entityContacts: data.contacts || [],
+        matchedBy: 'display_name',
+        existingEntityDoc: data,
+      };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Submits a public survey response using the Admin SDK.
  * Bypasses client-side security rules to ensure reliability for public paths.
@@ -376,7 +518,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     if (surveySnap.exists) {
       surveyData = surveySnap.data() as Survey;
       organizationId = surveyData.organizationId || 'default';
-      // FIX 1: Guard workspaceId — never fall back to 'default' for entity writes
+      // Guard workspaceId — never fall back to 'default' for entity writes
       workspaceId = surveyData.workspaceIds?.[0] || '';
     }
 
@@ -384,6 +526,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     let finalEntityId = responseData.entityId || null;
     let finalEntityName = '';
     let finalContactName = '';
+    let existingMatch: EntityMatchResult | null = null;
 
     // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
     // Lead Capture Precedence Resolution:
@@ -399,7 +542,6 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     const isFormMode = surveyData?.createEntity && activeLeadMode === 'form';
 
     if (surveyData && surveyData.createEntity && surveyData.entityMapping && !isFormMode) {
-      // FIX 1: Skip entity creation entirely if no workspace is resolved
       if (!workspaceId) {
         console.error(`[survey-actions] Survey ${surveyId} has no workspaceId — entity creation skipped`);
       } else {
@@ -461,35 +603,20 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         const contactScope = (wsData?.contactScope || 'institution') as EntityType;
         const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
 
-        // FIX 4: Resolve workspace industry for industryData payload
         const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
 
         // Accept entity.name OR contact.name as the entity name source
         const resolvedName = overriddenEntityName || eName || cName || '';
         finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
         
-        const resolvedEmail = overriddenContactEmail || cEmail || '';
-        const resolvedPhone = overriddenContactPhone || cPhone || '';
+        const resolvedEmail = (overriddenContactEmail || cEmail ? String(overriddenContactEmail || cEmail).toLowerCase().trim() : '') || '';
+        const resolvedPhone = (overriddenContactPhone || cPhone ? String(overriddenContactPhone || cPhone).trim() : '') || '';
 
         // Validate contact identifiers per workspace policy
         const policyCheck = validateContactIdentifier(resolvedPhone, resolvedEmail, contactPolicy);
 
         if (finalEntityName && policyCheck.valid) {
-          // 3.1 Deduplication — search within this workspace only
-          const dedupeQuery = adminDb.collection('workspace_entities')
-            .where('workspaceId', '==', workspaceId)
-            .where('displayName', '==', finalEntityName);
-          
-          let weSnap;
-          if (resolvedEmail) {
-            weSnap = await dedupeQuery.where('primaryEmail', '==', resolvedEmail).limit(1).get();
-          } else if (resolvedPhone) {
-            weSnap = await dedupeQuery.where('primaryPhone', '==', resolvedPhone).limit(1).get();
-          } else {
-            weSnap = await dedupeQuery.limit(1).get();
-          }
-
-          // 3.2 Resolve entity defaults chain: system → org → workspace survey defaults → workspace entity defaults
+          // Resolve entity defaults chain: system → org → workspace survey defaults → workspace entity defaults
           const systemDefaults = {
             currency: 'GHS',
             subscriptionPackageName: 'Standard',
@@ -508,10 +635,8 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           const wsSurveyDefaults = (wsData?.surveyEntityDefaults as Record<string, unknown>) || {};
           const wsEntityDefaults = (wsData?.entityDefaults?.[contactScope as 'institution' | 'family' | 'person'] as Record<string, unknown>) || {};
           
-          // Merge: system < org < workspace survey defaults < workspace entity defaults
           const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
 
-          // FIX 7: contactScope alignment guard
           if (contactScope === 'person' && Object.keys(mappedInstitutionData).length > 0) {
             console.warn(`[survey-actions] institutionData mappings ignored — workspace contactScope is "person"`);
           }
@@ -519,7 +644,6 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             console.warn(`[survey-actions] personData mappings on institution workspace — will be passed as personData`);
           }
 
-          // FIX 5+6: Build industryData using defaults + survey-mapped fields
           let industryDataPayload: Record<string, unknown> | undefined;
           if (workspaceIndustry) {
             const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
@@ -528,7 +652,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             industryDataPayload = {
               industry: workspaceIndustry,
               ...industryDefaults,
-              ...surveyMapped, // Survey answers override defaults
+              ...surveyMapped,
             };
           }
 
@@ -549,48 +673,73 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             workspaceTags: surveyData.autoTags || [],
           };
 
-          // Attach polymorphic data to the correct slot
           if (industryDataPayload) {
             entityPayload.industryData = industryDataPayload;
           }
-          // Pass personData for person entities (non-industry fields like custom CRM props)
           if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
             entityPayload.personData = mappedPersonData;
           }
-          // Pass customData
           if (Object.keys(mappedCustomData).length > 0) {
             entityPayload.customData = mappedCustomData;
           }
 
-          if (!weSnap.empty) {
-            // Match found → Update existing entity safely via sanitizeEntityPayloadForUpdate
-            const existingWE = weSnap.docs[0].data();
-            finalEntityId = existingWE.entityId;
+          // Multi-Layered Deduplication / Entity Recognition
+          existingMatch = await resolveOrMatchWorkspaceEntity(workspaceId, {
+            preTrackedEntityId: responseData.entityId || responseData.assignedUserId || null,
+            email: resolvedEmail,
+            phone: resolvedPhone,
+            name: finalEntityName,
+          });
 
-            const safePayload = sanitizeEntityPayloadForUpdate(entityPayload, {
+          if (existingMatch) {
+            // Match found → Update existing entity safely via sanitizeEntityPayloadForUpdate
+            finalEntityId = existingMatch.entityId;
+
+            const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
               isExistingEntity: true,
               isExplicitlyMapped: Boolean(overriddenEntityName),
               isManualInput: false,
+              existingEntityName: existingMatch.entityName || null,
             });
 
             await updateEntityAction(
               finalEntityId,
               safePayload,
-              'system-survey', // FIX 2: hyphen prefix for system exemption
+              'system-survey',
               workspaceId,
               organizationId
             );
           } else {
-            // No match → Create new
+            // No match → Create new entity
             const createRes = await createEntityAction(
               entityPayload,
-              'system-survey', // FIX 2: hyphen prefix for system exemption
+              'system-survey',
               workspaceId,
               contactScope,
               organizationId
             );
             if (createRes.success) {
               finalEntityId = createRes.id;
+            } else if (createRes.isDuplicate && createRes.duplicates && createRes.duplicates.length > 0) {
+              // Graceful duplicate fallback
+              const duplicate = createRes.duplicates[0];
+              const targetEntityId = duplicate.entityId.replace(`${workspaceId}_`, '');
+              finalEntityId = targetEntityId;
+
+              const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
+                isExistingEntity: true,
+                isExplicitlyMapped: Boolean(overriddenEntityName),
+                isManualInput: false,
+                existingEntityName: duplicate.name || null,
+              });
+
+              await updateEntityAction(
+                targetEntityId,
+                safePayload,
+                'system-survey',
+                workspaceId,
+                organizationId
+              );
             } else {
               console.error(`[survey-actions] Entity creation failed: ${createRes.error}`);
             }
@@ -601,6 +750,32 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             await docRef.update({ 
               entityId: finalEntityId,
               assignedUserId: responseData.assignedUserId || null 
+            });
+
+            // Log survey submission activity on the entity's CRM timeline
+            after(async () => {
+              try {
+                await logActivity({
+                  organizationId,
+                  workspaceId,
+                  entityId: finalEntityId!,
+                  entityType: contactScope,
+                  type: 'survey_submission',
+                  title: `Completed Survey: ${surveyData!.title}`,
+                  details: `Respondent completed survey "${surveyData!.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
+                  metadata: {
+                    surveyId,
+                    surveyTitle: surveyData!.title,
+                    submissionId: docRef.id,
+                    score: responseData.score || null,
+                    isExistingEntity: Boolean(existingMatch),
+                    matchedBy: existingMatch?.matchedBy || 'new_entity',
+                    skipAutomationTrigger: true,
+                  },
+                });
+              } catch (err) {
+                console.error('[survey-actions] Failed to log survey submission activity:', err);
+              }
             });
             
             // Trigger automations via the Logic Processor (Phase 1 completion)
@@ -1261,18 +1436,12 @@ export async function submitPublicSurveyLead(
       preTrackedEntityId = responseData.assignedUserId;
     }
 
-    const dedupeBase = adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId);
-    
-    let weSnap;
-    if (preTrackedEntityId) {
-      weSnap = await dedupeBase.where('entityId', '==', preTrackedEntityId).limit(1).get();
-    } else if (cEmail) {
-      weSnap = await dedupeBase.where('primaryEmail', '==', cEmail).limit(1).get();
-    } else if (cPhone) {
-      weSnap = await dedupeBase.where('primaryPhone', '==', cPhone).limit(1).get();
-    } else {
-      weSnap = await dedupeBase.where('displayName', '==', finalEntityName).limit(1).get();
-    }
+    const existingMatch = await resolveOrMatchWorkspaceEntity(workspaceId, {
+      preTrackedEntityId,
+      email: cEmail,
+      phone: cPhone,
+      name: finalEntityName,
+    });
 
     const systemDefaults = {
       currency: 'GHS',
@@ -1366,18 +1535,59 @@ export async function submitPublicSurveyLead(
     }
 
     let finalEntityId: string | null = null;
-    if (!weSnap.empty) {
-      const existingWE = weSnap.docs[0].data();
-      finalEntityId = existingWE.entityId;
+    if (existingMatch) {
+      finalEntityId = existingMatch.entityId;
 
-      // ENTITY IDENTITY GUARD: When updating a pre-existing entity (e.g. "Kofi Annan Institute"),
-      // ONLY update the entity name if it was explicitly typed by the user in the lead form (manual)
-      // OR explicitly mapped to `entity.name` in additionalMappings/entityNameFieldId.
+      // Merge or append respondent contact into existing entity contacts
+      const targetEntitySnap = await adminDb.collection('entities').doc(finalEntityId).get();
+      const targetData = targetEntitySnap.data();
+      const existingContacts: EntityContact[] = targetData?.entityContacts || existingMatch.entityContacts || [];
+
+      let contactExists = false;
+      const mergedContacts = [...existingContacts];
+
+      for (let i = 0; i < mergedContacts.length; i++) {
+        const ec = mergedContacts[i];
+        const emailMatch = cEmail && ec.email && ec.email.toLowerCase().trim() === cEmail;
+        const phoneMatch = cPhone && ec.phone && ec.phone.trim() === cPhone;
+
+        if (emailMatch || phoneMatch) {
+          mergedContacts[i] = {
+            ...ec,
+            name: isManualNameInput ? (leadData.name || ec.name || finalEntityName) : (ec.name || leadData.name || finalEntityName),
+            email: cEmail || ec.email || '',
+            phone: cPhone || ec.phone || '',
+          };
+          contactExists = true;
+          break;
+        }
+      }
+
+      if (!contactExists) {
+        mergedContacts.push({
+          id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+          name: leadData.name || finalEntityName,
+          email: cEmail,
+          phone: cPhone,
+          isPrimary: mergedContacts.length === 0,
+          isSignatory: false,
+          typeKey: resolvedDefaults.contactTypeKey,
+          typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Primary' : 'Other',
+          order: mergedContacts.length,
+          updatedAt: new Date().toISOString()
+        });
+      }
+
+      entityPayload.entityContacts = mergedContacts;
+      delete entityPayload.contacts;
+
+      // ENTITY IDENTITY GUARD: When updating a pre-existing entity, lock entity name
+      // unless explicitly typed by the user (manual) or explicitly mapped to `entity.name`.
       const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
         isExistingEntity: true,
         isExplicitlyMapped: isExplicitEntityNameMapped,
         isManualInput: isManualNameInput,
-        existingEntityName: existingWE.displayName || existingWE.primaryName || null,
+        existingEntityName: existingMatch.entityName || targetData?.name || null,
       });
 
       await updateEntityAction(
@@ -1472,6 +1682,35 @@ export async function submitPublicSurveyLead(
         leadDetails: leadData
       });
 
+      // Log lead capture activity on the entity's CRM timeline
+      after(async () => {
+        try {
+          await logActivity({
+            organizationId,
+            workspaceId,
+            entityId: finalEntityId!,
+            entityType: contactScope,
+            type: 'survey_submission',
+            title: `Claimed Results for Survey: ${surveyData.title}`,
+            details: `Lead captured for survey "${surveyData.title}" (${leadData.name || leadData.email || 'Anonymous'}).`,
+            metadata: {
+              surveyId,
+              surveyTitle: surveyData.title,
+              submissionId: responseId,
+              outcomeId: outcomeId || null,
+              leadName: leadData.name || null,
+              leadEmail: leadData.email || null,
+              leadPhone: leadData.phone || null,
+              isExistingEntity: Boolean(existingMatch),
+              matchedBy: existingMatch?.matchedBy || 'new_entity',
+              skipAutomationTrigger: true,
+            },
+          });
+        } catch (err) {
+          console.error('[survey-actions] Failed to log lead capture activity:', err);
+        }
+      });
+
       // Trigger post-submission automations, notifications, webhooks, and logs
       after(async () => {
         await triggerPostSubmissionAutomations(
@@ -1546,6 +1785,47 @@ export async function finalizeSurveySubmission(
     const respondentEmail = emailQuestion ? getAnswerValue(emailQuestion.id) : null;
     const respondentPhone = phoneQuestion ? getAnswerValue(phoneQuestion.id) : null;
 
+    let finalEntityId = responseData.entityId || null;
+    let existingMatch: EntityMatchResult | null = null;
+    if (!finalEntityId && (respondentEmail || respondentPhone)) {
+      existingMatch = await resolveOrMatchWorkspaceEntity(workspaceId, {
+        email: respondentEmail ? String(respondentEmail) : null,
+        phone: respondentPhone ? String(respondentPhone) : null,
+      });
+      if (existingMatch) {
+        finalEntityId = existingMatch.entityId;
+        await responseRef.update({ entityId: finalEntityId });
+      }
+    }
+
+    if (finalEntityId) {
+      after(async () => {
+        try {
+          await logActivity({
+            organizationId,
+            workspaceId,
+            entityId: finalEntityId!,
+            entityType: 'institution',
+            type: 'survey_submission',
+            title: `Completed Survey: ${surveyData.title}`,
+            details: `Respondent completed survey "${surveyData.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
+            metadata: {
+              surveyId,
+              surveyTitle: surveyData.title,
+              submissionId: responseId,
+              outcomeId: outcomeId || responseData.outcomeId || null,
+              score: responseData.score || null,
+              isExistingEntity: Boolean(existingMatch || responseData.entityId),
+              matchedBy: existingMatch?.matchedBy || (responseData.entityId ? 'tracked_id' : 'new_entity'),
+              skipAutomationTrigger: true,
+            },
+          });
+        } catch (err) {
+          console.error('[survey-actions] Failed to log survey submission activity in finalizeSurveySubmission:', err);
+        }
+      });
+    }
+
     after(async () => {
       await triggerPostSubmissionAutomations(
         surveyData,
@@ -1559,7 +1839,7 @@ export async function finalizeSurveySubmission(
         },
         workspaceId,
         organizationId,
-        responseData.entityId || null,
+        finalEntityId,
         respondentEmail ? String(respondentEmail) : null,
         respondentPhone ? String(respondentPhone) : null,
         outcomeId
