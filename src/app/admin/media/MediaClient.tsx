@@ -2,9 +2,10 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, where, onSnapshot, doc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, doc, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset, MediaCategory } from '@/lib/types';
+import { deduplicateCategories, getDeterministicCategoryId } from '@/lib/utils/category-utils';
 
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -77,20 +78,31 @@ export default function MediaClient() {
     );
 
     const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
-      const cats = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const cats = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<MediaCategory, 'id'>),
       })) as MediaCategory[];
 
-      // Seeding logic: if completely empty, seed standard ones
+      // Seeding logic: if completely empty, seed standard ones idempotently with deterministic IDs
       if (cats.length === 0) {
         const seedCategories = async () => {
           try {
-            const colRef = collection(firestore, 'media_categories');
             await Promise.all([
-              addDoc(colRef, { name: 'General', workspaceId: activeWorkspaceId, createdAt: new Date().toISOString() }),
-              addDoc(colRef, { name: 'Marketing', workspaceId: activeWorkspaceId, createdAt: new Date().toISOString() }),
-              addDoc(colRef, { name: 'Messaging', workspaceId: activeWorkspaceId, createdAt: new Date().toISOString() })
+              setDoc(doc(firestore, 'media_categories', getDeterministicCategoryId(activeWorkspaceId, 'General')), {
+                name: 'General',
+                workspaceId: activeWorkspaceId,
+                createdAt: new Date().toISOString(),
+              }, { merge: true }),
+              setDoc(doc(firestore, 'media_categories', getDeterministicCategoryId(activeWorkspaceId, 'Marketing')), {
+                name: 'Marketing',
+                workspaceId: activeWorkspaceId,
+                createdAt: new Date().toISOString(),
+              }, { merge: true }),
+              setDoc(doc(firestore, 'media_categories', getDeterministicCategoryId(activeWorkspaceId, 'Messaging')), {
+                name: 'Messaging',
+                workspaceId: activeWorkspaceId,
+                createdAt: new Date().toISOString(),
+              }, { merge: true }),
             ]);
           } catch (err) {
             console.error('Failed to seed categories', err);
@@ -98,7 +110,7 @@ export default function MediaClient() {
         };
         seedCategories();
       } else {
-        setCategories(cats);
+        setCategories(deduplicateCategories(cats));
       }
     });
 
@@ -108,21 +120,23 @@ export default function MediaClient() {
   const handleAddCategory = async () => {
     if (!firestore || !activeWorkspaceId || !newCategoryName.trim()) return;
 
-    const normalized = newCategoryName.trim().toLowerCase();
+    const trimmed = newCategoryName.trim();
+    const normalized = trimmed.toLowerCase();
     if (categories.some(c => c.name.toLowerCase() === normalized)) {
-      toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' });
+      toast({ variant: 'destructive', title: 'Duplicate Category', description: `Category "${trimmed}" already exists.` });
       return;
     }
 
     setIsSavingCategory(true);
     try {
-      await addDoc(collection(firestore, 'media_categories'), {
-        name: newCategoryName.trim(),
+      const categoryId = getDeterministicCategoryId(activeWorkspaceId, trimmed);
+      await setDoc(doc(firestore, 'media_categories', categoryId), {
+        name: trimmed,
         workspaceId: activeWorkspaceId,
         createdAt: new Date().toISOString()
-      });
+      }, { merge: true });
       setNewCategoryName('');
-      toast({ title: 'Category Created', description: `"${newCategoryName.trim()}" is now available.` });
+      toast({ title: 'Category Created', description: `"${trimmed}" is now available.` });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not create category.';
       toast({ variant: 'destructive', title: 'Failed to create category', description: msg });

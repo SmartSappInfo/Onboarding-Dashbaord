@@ -5,12 +5,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { addDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { addDoc, collection, query, where, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { File as FileIcon, Upload, Loader2, Info, Layout, Plus } from 'lucide-react';
 import type { MediaAsset, MediaCategory } from '@/lib/types';
+import { deduplicateCategories, getDeterministicCategoryId, sanitizeFirestorePayload } from '@/lib/utils/category-utils';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
@@ -100,20 +101,20 @@ export default function MediaUploader({
     );
 
     const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
-      const cats = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const cats = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...(docSnap.data() as Omit<MediaCategory, 'id'>),
       })) as MediaCategory[];
       
       // Fallback/Default categories if empty
       if (cats.length === 0) {
         setCategories([
-          { id: 'general', name: 'General', workspaceId: activeWorkspaceId, createdAt: '' },
-          { id: 'marketing', name: 'Marketing', workspaceId: activeWorkspaceId, createdAt: '' },
-          { id: 'messaging', name: 'Messaging', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: `${activeWorkspaceId}_general`, name: 'General', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: `${activeWorkspaceId}_marketing`, name: 'Marketing', workspaceId: activeWorkspaceId, createdAt: '' },
+          { id: `${activeWorkspaceId}_messaging`, name: 'Messaging', workspaceId: activeWorkspaceId, createdAt: '' },
         ]);
       } else {
-        setCategories(cats);
+        setCategories(deduplicateCategories(cats));
       }
     });
 
@@ -363,10 +364,11 @@ export default function MediaUploader({
                     newAssetData.format = fileState.editingState.format;
                 }
 
-                const docRef = await addDoc(collection(firestore, 'media'), newAssetData);
+                const sanitizedAssetData = sanitizeFirestorePayload(newAssetData);
+                const docRef = await addDoc(collection(firestore, 'media'), sanitizedAssetData);
 
                 if (onUploadComplete) {
-                  onUploadComplete({ id: docRef.id, ...newAssetData } as MediaAsset);
+                  onUploadComplete({ id: docRef.id, ...sanitizedAssetData } as MediaAsset);
                 }
                 setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'completed' } : fs));
                 resolve();
@@ -410,25 +412,27 @@ export default function MediaUploader({
   };
 
   const handleAddCategory = async () => {
-    if (!firestore || !activeWorkspaceId) return;
+    if (!firestore || !activeWorkspaceId || !newCategoryName.trim()) return;
 
-    const normalized = newCategoryName.trim().toLowerCase();
+    const trimmed = newCategoryName.trim();
+    const normalized = trimmed.toLowerCase();
     if (categories.some(c => c.name.toLowerCase() === normalized)) {
-      toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' });
+      toast({ variant: 'destructive', title: 'Duplicate Category', description: `Category "${trimmed}" already exists.` });
       return;
     }
 
     setIsSavingCategory(true);
     try {
-      await addDoc(collection(firestore, 'media_categories'), {
-        name: newCategoryName.trim(),
+      const categoryId = getDeterministicCategoryId(activeWorkspaceId, trimmed);
+      await setDoc(doc(firestore, 'media_categories', categoryId), {
+        name: trimmed,
         workspaceId: activeWorkspaceId,
         createdAt: new Date().toISOString()
-      });
-      setSelectedCategory(newCategoryName.trim());
+      }, { merge: true });
+      setSelectedCategory(trimmed);
       setNewCategoryName('');
       setIsAddCatOpen(false);
-      toast({ title: 'Category Created', description: `"${newCategoryName.trim()}" is now available.` });
+      toast({ title: 'Category Created', description: `"${trimmed}" is now available.` });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not create category.';
       toast({ variant: 'destructive', title: 'Failed to create category', description: msg });
