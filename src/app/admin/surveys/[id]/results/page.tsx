@@ -54,7 +54,9 @@ function formatAnswerForCsv(value: unknown): string {
         if ('option' in valObj) {
             const other = valObj.other ? String(valObj.other).trim() : '';
             const option = valObj.option ? String(valObj.option).trim() : '';
-            // If "other" text is filled and meaningful, prefer it; otherwise use the option
+            if (option === '__other__') {
+                return other.length > 0 ? `Other: ${other}` : 'Other (not specified)';
+            }
             return other.length > 0 ? `${option} (${other})` : option;
         }
         // Generic object fallback — extract values
@@ -315,12 +317,14 @@ function SurveyResultsPageContent() {
             });
 
             const csvContent = [headerRow, ...rows].join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            // Prepend UTF-8 BOM (\uFEFF) so Excel on Windows/macOS correctly recognizes international characters
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             
             const url = URL.createObjectURL(blob);
             link.href = url;
-            link.setAttribute('download', `${survey.slug}-responses.csv`);
+            const exportFileName = `${survey.slug || survey.id || 'survey'}-responses.csv`;
+            link.setAttribute('download', exportFileName);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

@@ -68,6 +68,13 @@ function EntityInfo({
     const [contact, setContact] = React.useState<ResolvedContact | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
+    const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        };
+    }, []);
 
     React.useEffect(() => {
         let active = true;
@@ -111,7 +118,8 @@ function EntityInfo({
                 title: type === 'phone' ? "Phone Copied" : "Email Copied",
                 description: `${text} copied to clipboard.`,
             });
-            setTimeout(() => setCopiedField(null), 2000);
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+            copyTimeoutRef.current = setTimeout(() => setCopiedField(null), 2000);
         } catch {
             toast({
                 variant: "destructive",
@@ -223,7 +231,7 @@ function EntityInfo({
                 {details.primaryContactPhone ? (
                     <div className="flex items-center gap-1">
                         <a
-                            href={`tel:${details.primaryContactPhone}`}
+                            href={`tel:${details.primaryContactPhone.replace(/[\s()\-]/g, '')}`}
                             aria-label={`Call ${details.primaryContactPhone}`}
                             className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold transition-all active:scale-[0.97] min-h-[28px] flex-1 truncate"
                             title={`Click to call ${details.primaryContactPhone}`}

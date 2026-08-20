@@ -105,6 +105,7 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(sanitizeForCsv('@calc')).toBe("'@calc");
       expect(sanitizeForCsv('\tmalicious_tab')).toBe("'\tmalicious_tab");
       expect(sanitizeForCsv('\rmalicious_cr')).toBe("'\rmalicious_cr");
+      expect(sanitizeForCsv('\nmalicious_nl')).toBe("'\nmalicious_nl");
     });
 
     it('handles null, undefined, numbers, and booleans safely', () => {

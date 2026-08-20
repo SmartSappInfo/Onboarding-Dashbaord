@@ -231,14 +231,14 @@ export function extractResponseContactDetails(
 
 /**
  * Sanitizes a cell value for CSV output to prevent CSV / Formula Injection attacks
- * (OWASP CSV Injection guidelines: prepend single quote if cell starts with =, +, -, @, tab, or CR)
+ * (OWASP CSV Injection guidelines: prepend single quote if cell starts with =, +, -, @, tab, CR, or newline)
  */
 export function sanitizeForCsv(val: string | number | boolean | null | undefined): string {
   if (val === null || val === undefined) return '';
   const rawStr = String(val);
   if (!rawStr) return '';
   const trimmed = rawStr.trim();
-  if (/^[=+\-@\t\r]/.test(rawStr) || /^[=+\-@]/.test(trimmed)) {
+  if (/^[=+\-@\t\r\n]/.test(rawStr) || /^[=+\-@]/.test(trimmed)) {
     return `'${rawStr}`;
   }
   return trimmed;

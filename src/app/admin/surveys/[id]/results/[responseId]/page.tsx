@@ -33,6 +33,13 @@ function ResponseContactCard({ response }: { response: SurveyResponse }) {
     const [contact, setContact] = React.useState<ResolvedContact | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
+    const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        };
+    }, []);
 
     React.useEffect(() => {
         let active = true;
@@ -67,7 +74,8 @@ function ResponseContactCard({ response }: { response: SurveyResponse }) {
                 title: type === 'phone' ? "Phone Copied" : "Email Copied",
                 description: `${text} copied to clipboard.`,
             });
-            setTimeout(() => setCopiedField(null), 2000);
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+            copyTimeoutRef.current = setTimeout(() => setCopiedField(null), 2000);
         } catch {
             toast({ variant: "destructive", title: "Copy Failed", description: "Could not access clipboard." });
         }
@@ -146,7 +154,7 @@ function ResponseContactCard({ response }: { response: SurveyResponse }) {
                             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Phone Number</span>
                             <div className="flex items-center justify-between gap-2">
                                 <a
-                                    href={`tel:${details.primaryContactPhone}`}
+                                    href={`tel:${details.primaryContactPhone.replace(/[\s()\-]/g, '')}`}
                                     className="inline-flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-colors truncate active:scale-[0.97]"
                                     title="Click to call"
                                 >
