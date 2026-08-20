@@ -184,4 +184,70 @@ describe('Automation Message Guard', () => {
     );
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it('should send WhatsApp message even if contact phoneVerificationScore is less than 40 (lead score contribution)', async () => {
+    vi.mocked(resolveContact).mockResolvedValue({
+      id: 'entity_123',
+      name: 'Test Entity',
+      entityContacts: [
+        {
+          phone: '+233240561313',
+          isPrimary: true,
+          phoneStatus: 'format_valid',
+          phoneVerificationScore: 5, // Lead score contribution, not hygiene score
+          hasWhatsapp: true,
+        },
+      ],
+    } as any);
+
+    await handleSendMessage(
+      {
+        channel: 'whatsapp',
+        recipientTargets: ['primary'],
+        templateCategory: 'general',
+        templateType: 'custom',
+      },
+      {
+        entityId: 'entity_123',
+        workspaceId: 'ws_123',
+        payload: {},
+      } as any
+    );
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ recipient: '+233240561313' })
+    );
+  });
+
+  it('should inline verify unverified phone contact before sending WhatsApp message', async () => {
+    vi.mocked(resolveContact).mockResolvedValue({
+      id: 'entity_123',
+      name: 'Test Entity',
+      entityContacts: [
+        {
+          phone: '+233240561313',
+          isPrimary: true,
+          phoneStatus: 'unverified',
+        },
+      ],
+    } as any);
+
+    await handleSendMessage(
+      {
+        channel: 'whatsapp',
+        recipientTargets: ['primary'],
+        templateCategory: 'general',
+        templateType: 'custom',
+      },
+      {
+        entityId: 'entity_123',
+        workspaceId: 'ws_123',
+        payload: {},
+      } as any
+    );
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ recipient: '+233240561313' })
+    );
+  });
 });

@@ -137,11 +137,59 @@ export async function handleSendMessage(
     }
   }
 
-  // Filter final recipients based on contact emailStatus and score
+  // Filter final recipients based on contact hygiene status
   const finalRecipientsList = new Set<string>();
   if (context.entityId) {
     const contact = await resolveContact(context.entityId, context.workspaceId);
-    const entityContacts = contact?.entityContacts || [];
+    let entityContacts = contact?.entityContacts || [];
+
+    // Inline Pre-Send Verification: If phone channel, check for unverified candidate contacts
+    if (usePhone && entityContacts.length > 0) {
+      const { PhoneVerificationEngine } = await import('../../phone-verifier');
+      const verifier = new PhoneVerificationEngine();
+      let updatedContactsAny = false;
+
+      entityContacts = await Promise.all(
+        entityContacts.map(async (ec) => {
+          if (!ec.phone) return ec;
+
+          const isUnchecked = !ec.phoneStatus || ec.phoneStatus === 'unverified' || ec.hasWhatsapp === undefined;
+          if (isUnchecked) {
+            try {
+              const result = await verifier.verify(ec.phone);
+              updatedContactsAny = true;
+              const next: typeof ec = { ...ec };
+              if (result.lineType) {
+                next.phoneType = result.lineType;
+                if (result.lineType === 'mobile' || result.lineType === 'fixed_line_or_mobile') {
+                  next.hasWhatsapp = true;
+                }
+              }
+              if (result.status && result.status !== 'invalid') {
+                next.phoneStatus = result.status;
+              }
+              return next;
+            } catch (vErr) {
+              console.warn(`[MessageActionInlineVerify] Inline verification error for ${ec.phone}:`, vErr);
+              return ec;
+            }
+          }
+          return ec;
+        })
+      );
+
+      // Best-effort transactional writeback for inline pre-send verification results
+      if (updatedContactsAny && typeof adminDb?.runTransaction === 'function') {
+        try {
+          const entityRef = adminDb.collection('entities').doc(context.entityId);
+          await adminDb.runTransaction(async (txn) => {
+            txn.set(entityRef, { entityContacts }, { merge: true });
+          });
+        } catch (txErr) {
+          console.warn(`[MessageActionInlineVerify] Writeback failed for entity ${context.entityId}:`, txErr);
+        }
+      }
+    }
     
     for (const r of recipients) {
       const matchedContact = entityContacts.find(ec => 
@@ -150,10 +198,11 @@ export async function handleSendMessage(
       if (matchedContact) {
         if (usePhone) {
           const phoneStatus = matchedContact.phoneStatus;
-          const isBouncedOrSuspended = phoneStatus && ['failed', 'archived', 'unsubscribed'].includes(phoneStatus);
-          const isLowScore = typeof matchedContact.phoneVerificationScore === 'number' && matchedContact.phoneVerificationScore < 40;
-          if (isBouncedOrSuspended || isLowScore) {
-            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to failed/archived/low verification phone status (${phoneStatus}).`);
+          const isBouncedOrSuspended = phoneStatus && ['failed', 'invalid', 'archived', 'unsubscribed', 'opted_out'].includes(phoneStatus);
+          // CAUTION: EntityContact.phoneVerificationScore stores the rule-mapped lead-score contribution
+          // (e.g. +5 points), NOT the 0-100 raw hygiene score. Do not compare against < 40 here.
+          if (isBouncedOrSuspended) {
+            console.log(`[MessageActionGuard] Skipped sending message to ${r} due to failed/archived/unsubscribed/invalid phone status (${phoneStatus}).`);
             continue;
           }
         } else {
