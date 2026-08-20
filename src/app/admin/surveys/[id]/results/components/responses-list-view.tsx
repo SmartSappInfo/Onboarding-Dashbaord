@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X, Phone, Mail, Copy, Check } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,7 +36,7 @@ import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Settings } from 'lucide-react';
-import { deleteSurveyResponses } from '@/lib/survey-actions';
+import { deleteSurveyResponses, extractResponseContactDetails } from '@/lib/survey-actions';
 import { resolveContact } from '@/lib/contact-adapter';
 import { parseDateSafe } from '@/lib/forms-utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -45,14 +45,29 @@ import { BentoPagination } from '@/app/admin/entities/components/BentoPagination
 import type { UserProfile } from '@/lib/types';
 
 /**
- * Component to display entity information for a survey response
- * Uses Contact Adapter to resolve entity data from either entityId or entityId
- * Requirements: 13.4, 23.1
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Component to display entity & contact details for a survey response.
+ * 
+ * Supports two view modes:
+ * - Compact (showFullDetails: false): Organization/School name with Live CRM badge.
+ * - Full (showFullDetails: true): Full entity card including school name, primary contact person,
+ *   role/title, location, and interactive touch-optimized Click-to-Call and Click-to-Email action pills.
+ * 
+ * Mobile & A11y: Touch targets >= 44px on mobile viewports, active:scale-[0.97] press states,
+ * native tel: and mailto: protocols, and clipboard copy fallback.
  */
-function EntityInfo({ response }: { response: SurveyResponse }) {
+function EntityInfo({ 
+    response, 
+    showFullDetails = false 
+}: { 
+    response: SurveyResponse; 
+    showFullDetails?: boolean; 
+}) {
     const { activeWorkspaceId } = useWorkspace();
+    const { toast } = useToast();
     const [contact, setContact] = React.useState<ResolvedContact | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
 
     React.useEffect(() => {
         let active = true;
@@ -81,27 +96,181 @@ function EntityInfo({ response }: { response: SurveyResponse }) {
         };
     }, [response.entityId, activeWorkspaceId]);
 
+    const details = React.useMemo(() => {
+        return extractResponseContactDetails(response, contact);
+    }, [response, contact]);
+
+    const handleCopy = (text: string, type: 'phone' | 'email', e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!text) return;
+        try {
+            navigator.clipboard.writeText(text);
+            setCopiedField(type);
+            toast({
+                title: type === 'phone' ? "Phone Copied" : "Email Copied",
+                description: `${text} copied to clipboard.`,
+            });
+            setTimeout(() => setCopiedField(null), 2000);
+        } catch {
+            toast({
+                variant: "destructive",
+                title: "Copy Failed",
+                description: "Could not access clipboard."
+            });
+        }
+    };
+
     if (isLoading) {
- return <Skeleton className="h-5 w-24" />;
+        return <Skeleton className="h-5 w-24" />;
     }
 
-    if (!contact) {
- return <span className="text-xs text-muted-foreground">-</span>;
+    const hasAnyDetails = Boolean(
+        details.entityName || 
+        details.primaryContactName || 
+        details.primaryContactPhone || 
+        details.primaryContactEmail
+    );
+
+    if (!hasAnyDetails) {
+        return <span className="text-xs text-muted-foreground">-</span>;
     }
 
-    return (
-        <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-semibold truncate max-w-[150px]" title={contact.name}>
-                    {contact.name}
-                </span>
+    // --- COMPACT VIEW MODE ---
+    if (!showFullDetails) {
+        return (
+            <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {details.entityId ? (
+                        <a 
+                            href={`/admin/entities/${details.entityId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold hover:underline hover:text-primary transition-colors truncate max-w-[150px]"
+                            title={details.entityName || details.primaryContactName}
+                        >
+                            {details.entityName || details.primaryContactName}
+                        </a>
+                    ) : (
+                        <span className="text-xs font-semibold truncate max-w-[150px]" title={details.entityName || details.primaryContactName}>
+                            {details.entityName || details.primaryContactName}
+                        </span>
+                    )}
+                </div>
+                {details.isLiveCrm && (
+                    <Badge variant="outline" className="w-fit h-4 py-0 text-[8px] font-black uppercase tracking-tighter bg-emerald-500/5 text-emerald-600 border-emerald-500/20 gap-1">
+                        <ShieldCheck className="h-2 w-2" /> Live CRM
+                    </Badge>
+                )}
             </div>
-            {response.entityId && (
-                <Badge variant="outline" className="w-fit h-4 py-0 text-[8px] font-black uppercase tracking-tighter bg-emerald-500/5 text-emerald-600 border-emerald-500/20 gap-1">
-                    <ShieldCheck className="h-2 w-2" /> Live CRM
-                </Badge>
+        );
+    }
+
+    // --- FULL DETAILS VIEW MODE ---
+    return (
+        <div className="flex flex-col gap-2 py-1 max-w-[280px]">
+            {/* Entity / School Header */}
+            <div className="space-y-0.5">
+                <div className="flex items-start justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <Building2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        {details.entityId ? (
+                            <a 
+                                href={`/admin/entities/${details.entityId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-foreground hover:underline hover:text-primary transition-colors truncate"
+                                title={details.entityName || 'Unnamed Entity'}
+                            >
+                                {details.entityName || 'Unnamed Entity'}
+                            </a>
+                        ) : (
+                            <span className="text-xs font-bold text-foreground truncate" title={details.entityName || 'Lead Submission'}>
+                                {details.entityName || 'Lead Submission'}
+                            </span>
+                        )}
+                    </div>
+                    {details.isLiveCrm && (
+                        <Badge variant="outline" className="h-4 px-1 py-0 text-[8px] font-black uppercase tracking-tighter bg-emerald-500/5 text-emerald-600 border-emerald-500/20 shrink-0">
+                            Live CRM
+                        </Badge>
+                    )}
+                </div>
+                {(details.zoneName || details.locationString) && (
+                    <p className="text-[9px] text-muted-foreground truncate pl-5">
+                        {[details.zoneName, details.locationString].filter(Boolean).join(' · ')}
+                    </p>
+                )}
+            </div>
+
+            {/* Primary Contact Person */}
+            {details.primaryContactName && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md border border-border/40">
+                    <UserIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="font-semibold text-foreground truncate">{details.primaryContactName}</span>
+                    {details.roleOrTitle && (
+                        <span className="text-[9px] font-medium text-muted-foreground ml-auto bg-muted px-1.5 py-0.2 rounded shrink-0">
+                            {details.roleOrTitle}
+                        </span>
+                    )}
+                </div>
             )}
+
+            {/* Interactive Contact Actions (Call & Email) */}
+            <div className="flex flex-col gap-1.5">
+                {/* Click-to-Call */}
+                {details.primaryContactPhone ? (
+                    <div className="flex items-center gap-1">
+                        <a
+                            href={`tel:${details.primaryContactPhone}`}
+                            aria-label={`Call ${details.primaryContactPhone}`}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold transition-all active:scale-[0.97] min-h-[28px] flex-1 truncate"
+                            title={`Click to call ${details.primaryContactPhone}`}
+                        >
+                            <Phone className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{details.primaryContactPhone}</span>
+                        </a>
+                        <button
+                            type="button"
+                            onClick={(e) => handleCopy(details.primaryContactPhone, 'phone', e)}
+                            aria-label="Copy phone number"
+                            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 active:scale-[0.97]"
+                            title="Copy phone"
+                        >
+                            {copiedField === 'phone' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                    </div>
+                ) : null}
+
+                {/* Click-to-Email */}
+                {details.primaryContactEmail ? (
+                    <div className="flex items-center gap-1">
+                        <a
+                            href={`mailto:${details.primaryContactEmail}`}
+                            aria-label={`Email ${details.primaryContactEmail}`}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-[10px] font-bold transition-all active:scale-[0.97] min-h-[28px] flex-1 truncate"
+                            title={`Click to email ${details.primaryContactEmail}`}
+                        >
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{details.primaryContactEmail}</span>
+                        </a>
+                        <button
+                            type="button"
+                            onClick={(e) => handleCopy(details.primaryContactEmail, 'email', e)}
+                            aria-label="Copy email address"
+                            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 active:scale-[0.97]"
+                            title="Copy email"
+                        >
+                            {copiedField === 'email' ? <Check className="h-3 w-3 text-blue-600" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                    </div>
+                ) : null}
+
+                {!details.primaryContactPhone && !details.primaryContactEmail && !details.primaryContactName && (
+                    <span className="text-[10px] text-muted-foreground/60 italic">No direct contact info captured</span>
+                )}
+            </div>
         </div>
     );
 }
@@ -224,6 +393,7 @@ function ResponsesListView({
     const [authError, setAuthError] = React.useState<string | null>(null);
     const [columnWidth, setColumnWidth] = React.useState<number>(250);
     const [hiddenColumnIds, setHiddenColumnIds] = React.useState<string[]>([]);
+    const [showFullEntityDetails, setShowFullEntityDetails] = React.useState(false);
 
     const [currentPage, setCurrentPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(50);
@@ -241,9 +411,10 @@ function ResponsesListView({
     const isContactVisible = !hiddenColumnIds.includes('contact');
     const isSharedByVisible = !hiddenColumnIds.includes('sharedBy');
 
+    const contactWidth = showFullEntityDetails ? 300 : 180;
     const submittedAtLeft = 50;
     const contactLeft = 50 + (isSubmittedAtVisible ? 180 : 0);
-    const sharedByLeft = contactLeft + (isContactVisible ? 180 : 0);
+    const sharedByLeft = contactLeft + (isContactVisible ? contactWidth : 0);
 
     const rightmostStickyColumn = React.useMemo(() => {
         if (isSharedByVisible) return 'sharedBy';
@@ -580,8 +751,21 @@ function ResponsesListView({
                             checked={hideEmptyColumns} 
                             onCheckedChange={setHideEmptyColumns} 
                         />
-                        <Label htmlFor="hide-empty-columns" className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground cursor-pointer">
+                        <Label htmlFor="hide-empty-columns" className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground cursor-pointer whitespace-nowrap">
                             Hide Empty
+                        </Label>
+                    </div>
+
+                    {/* Full Entity Details Toggle */}
+                    <div className="flex items-center gap-2 border-l pl-4 border-border/50">
+                        <Switch 
+                            id="show-full-entity-details" 
+                            checked={showFullEntityDetails} 
+                            onCheckedChange={setShowFullEntityDetails} 
+                        />
+                        <Label htmlFor="show-full-entity-details" className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
+                            <Building2 className="h-3.5 w-3.5 text-primary" />
+                            Full Details
                         </Label>
                     </div>
 
@@ -700,7 +884,7 @@ function ResponsesListView({
                                     "sticky bg-muted z-30 text-[10px] font-bold py-4",
                                     rightmostStickyColumn === 'contact' && "border-r border-border/50 shadow-[2px_0_5px_rgba(0,0,0,0.02)]"
                                 )}
-                                style={{ left: `${contactLeft}px`, width: '180px', minWidth: '180px', maxWidth: '180px' }}
+                                style={{ left: `${contactLeft}px`, width: `${contactWidth}px`, minWidth: `${contactWidth}px`, maxWidth: `${contactWidth}px` }}
                             >
                                 Contact / Organization
                             </TableHead>
@@ -862,7 +1046,7 @@ function ResponsesListView({
                                     "sticky bg-background z-20",
                                     rightmostStickyColumn === 'contact' && "border-r border-border/50 shadow-[2px_0_5px_rgba(0,0,0,0.02)]"
                                 )}
-                                style={{ left: `${contactLeft}px`, width: '180px', minWidth: '180px', maxWidth: '180px' }}
+                                style={{ left: `${contactLeft}px`, width: `${contactWidth}px`, minWidth: `${contactWidth}px`, maxWidth: `${contactWidth}px` }}
                             >
                                 <Skeleton className="h-5 w-24" />
                             </TableCell>
@@ -924,9 +1108,9 @@ function ResponsesListView({
                                     "sticky sticky-cell-hover z-20",
                                     rightmostStickyColumn === 'contact' && "border-r border-border/50 shadow-[2px_0_5px_rgba(0,0,0,0.02)]"
                                 )}
-                                style={{ left: `${contactLeft}px`, width: '180px', minWidth: '180px', maxWidth: '180px' }}
+                                style={{ left: `${contactLeft}px`, width: `${contactWidth}px`, minWidth: `${contactWidth}px`, maxWidth: `${contactWidth}px` }}
                             >
-                                <EntityInfo response={response} />
+                                <EntityInfo response={response} showFullDetails={showFullEntityDetails} />
                             </TableCell>
                         )}
                         {isSharedByVisible && (

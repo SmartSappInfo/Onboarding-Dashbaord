@@ -4,12 +4,12 @@
 import * as React from 'react';
 import { useParams, useRouter } from "next/navigation";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyElement, SurveyQuestion } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyElement, SurveyQuestion, ResolvedContact } from '@/lib/types';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info } from "lucide-react";
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info, Building2, User as UserIcon, Phone, Mail, Copy, Check, ShieldCheck, ExternalLink, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,185 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { FileText } from 'lucide-react';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
+import { resolveContact } from '@/lib/contact-adapter';
+import { extractResponseContactDetails } from '@/lib/survey-actions';
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Component to display resolved CRM Entity and Primary Contact Information
+ * on the survey response detail page, with interactive Click-to-Call and Click-to-Email.
+ */
+function ResponseContactCard({ response }: { response: SurveyResponse }) {
+    const { activeWorkspaceId } = useWorkspace();
+    const { toast } = useToast();
+    const [contact, setContact] = React.useState<ResolvedContact | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
+
+    React.useEffect(() => {
+        let active = true;
+        async function load() {
+            if (!response.entityId) {
+                if (active) setIsLoading(false);
+                return;
+            }
+            try {
+                const resolved = await resolveContact(response.entityId, activeWorkspaceId);
+                if (active) setContact(resolved);
+            } catch (err) {
+                console.error("Failed to load contact in response detail:", err);
+            } finally {
+                if (active) setIsLoading(false);
+            }
+        }
+        load();
+        return () => { active = false; };
+    }, [response.entityId, activeWorkspaceId]);
+
+    const details = React.useMemo(() => {
+        return extractResponseContactDetails(response, contact);
+    }, [response, contact]);
+
+    const handleCopy = (text: string, type: 'phone' | 'email') => {
+        if (!text) return;
+        try {
+            navigator.clipboard.writeText(text);
+            setCopiedField(type);
+            toast({
+                title: type === 'phone' ? "Phone Copied" : "Email Copied",
+                description: `${text} copied to clipboard.`,
+            });
+            setTimeout(() => setCopiedField(null), 2000);
+        } catch {
+            toast({ variant: "destructive", title: "Copy Failed", description: "Could not access clipboard." });
+        }
+    };
+
+    if (isLoading) {
+        return <Skeleton className="h-32 w-full mb-8 rounded-[2rem]" />;
+    }
+
+    const hasAnyContact = Boolean(
+        details.entityName || 
+        details.primaryContactName || 
+        details.primaryContactPhone || 
+        details.primaryContactEmail
+    );
+
+    if (!hasAnyContact) return null;
+
+    return (
+        <Card className="mb-8 border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-card/60 backdrop-blur-sm">
+            <CardHeader className="bg-muted/30 border-b pb-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-primary" />
+                        <div>
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                {details.entityId ? (
+                                    <a
+                                        href={`/admin/entities/${details.entityId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:underline hover:text-primary transition-colors flex items-center gap-1.5"
+                                    >
+                                        {details.entityName || 'Entity Contact Details'}
+                                        <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                                    </a>
+                                ) : (
+                                    details.entityName || 'Respondent Contact Details'
+                                )}
+                            </CardTitle>
+                            {(details.zoneName || details.locationString) && (
+                                <CardDescription className="text-xs font-medium">
+                                    {[details.zoneName, details.locationString].filter(Boolean).join(' · ')}
+                                </CardDescription>
+                            )}
+                        </div>
+                    </div>
+                    {details.isLiveCrm && (
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] gap-1 py-1 px-2.5">
+                            <ShieldCheck className="h-3.5 w-3.5" /> Live CRM Entity
+                        </Badge>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Primary Contact */}
+                    {details.primaryContactName && (
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/20 border border-border/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Primary Contact</span>
+                            <div className="flex items-center gap-2">
+                                <UserIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="text-sm font-bold text-foreground truncate">{details.primaryContactName}</span>
+                                {details.roleOrTitle && (
+                                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 shrink-0">
+                                        {details.roleOrTitle}
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Phone / Click-to-Call */}
+                    {details.primaryContactPhone && (
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/20 border border-border/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Phone Number</span>
+                            <div className="flex items-center justify-between gap-2">
+                                <a
+                                    href={`tel:${details.primaryContactPhone}`}
+                                    className="inline-flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-colors truncate active:scale-[0.97]"
+                                    title="Click to call"
+                                >
+                                    <Phone className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{details.primaryContactPhone}</span>
+                                </a>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                    onClick={() => handleCopy(details.primaryContactPhone, 'phone')}
+                                    title="Copy phone"
+                                >
+                                    {copiedField === 'phone' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Email / Click-to-Email */}
+                    {details.primaryContactEmail && (
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/20 border border-border/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Email Address</span>
+                            <div className="flex items-center justify-between gap-2">
+                                <a
+                                    href={`mailto:${details.primaryContactEmail}`}
+                                    className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline transition-colors truncate active:scale-[0.97]"
+                                    title="Click to send email"
+                                >
+                                    <Mail className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{details.primaryContactEmail}</span>
+                                </a>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                    onClick={() => handleCopy(details.primaryContactEmail, 'email')}
+                                    title="Copy email"
+                                >
+                                    {copiedField === 'email' ? <Check className="h-3.5 w-3.5 text-blue-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -202,6 +380,9 @@ export default function ResponseDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Entity & Contact Information Card */}
+            <ResponseContactCard response={response} />
 
             {/* Scoring Summary Header */}
             {survey.scoringEnabled && (

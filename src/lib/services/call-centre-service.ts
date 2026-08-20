@@ -7,7 +7,8 @@ import type {
   CallActionParams,
   EntityContact,
   Workspace,
-  CallOutcomeAutomation
+  CallOutcomeAutomation,
+  MeetingFacilitator
 } from '../types';
 import { previewCampaignAudience, resolveRecipientContacts } from '../messaging-actions';
 import { updateEntityAction } from '../entity-actions';
@@ -1537,7 +1538,8 @@ export class CallCentreService {
                 id: fid,
                 type: 'workspace_user',
                 userId: fid,
-                name: uSnap.data()?.name || uSnap.data()?.email || 'Agent'
+                name: (uSnap.data()?.name || uSnap.data()?.email || 'Agent') as string,
+                joinLink: meetingLink,
               });
             }
           }

@@ -25,6 +25,8 @@ import { stripHtml } from "@/lib/utils";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import AiModelSelector from "@/components/ai/AiModelSelector";
 import { parseDateSafe } from "@/lib/forms-utils";
+import { resolveMultipleContacts } from "@/lib/contact-adapter";
+import { extractResponseContactDetails, sanitizeForCsv } from "@/lib/survey-actions";
 
 // Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
 const FieldTeamView = dynamic(() => import('./components/field-team-view'), {
@@ -71,8 +73,9 @@ function SurveyResultsPageContent() {
     const { id: surveyId } = params;
     const { toast } = useToast();
     const { user } = useUser();
-    const { activeOrganizationId } = useWorkspace();
+    const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
+    const [isExporting, setIsExporting] = React.useState(false);
     const activeTab = searchParams.get("view") || "responses";
 
     // Filter states
@@ -239,46 +242,102 @@ function SurveyResultsPageContent() {
         }
     };
 
-    const handleExport = () => {
-        if (!survey || !filteredResponses) {
+    /**
+     * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+     * Survey Responses CSV Exporter.
+     * 
+     * Exports response submissions along with resolved CRM entity data
+     * (Entity/School Name, Primary Contact Name, Primary Contact Email, Primary Contact Phone)
+     * and question answers. All fields are sanitized with sanitizeForCsv to prevent
+     * OWASP CSV / Formula Injection vulnerabilities in spreadsheet tools.
+     */
+    const handleExport = async () => {
+        if (!survey || !filteredResponses || filteredResponses.length === 0) {
             toast({ variant: "destructive", title: "No data to export" });
             return;
         }
 
-        const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
-        const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
-        const questionIds = questions.map(q => q.id);
+        setIsExporting(true);
+        try {
+            // 1. Collect unique entity IDs for efficient batch resolution
+            const uniqueEntityIds = Array.from(
+                new Set(filteredResponses.map(r => r.entityId).filter((id): id is string => Boolean(id)))
+            );
 
-        const headerRow = ["Submitted At", ...questionIds.map(id => `"${stripHtml(questionIdToTitleMap.get(id) || '').replace(/"/g, '""') ?? id}"`)].join(',');
+            // 2. Batch resolve CRM contacts in parallel chunks
+            const contactsMap = await resolveMultipleContacts(uniqueEntityIds, activeWorkspaceId || '');
 
-        const rows = filteredResponses.map(response => {
-            const answerMap = new Map((response.answers || []).map(a => [a.questionId, a.value]));
-            const d = parseDateSafe(response.submittedAt);
-            const submittedAtCell = d ? `"${format(d, "yyyy-MM-dd HH:mm:ss")}"` : `""`;
-            const answerCells = questionIds.map(id => {
-                const value = answerMap.get(id);
-                let cellValue = '';
-                if (value !== undefined && value !== null) {
-                    cellValue = formatAnswerForCsv(value);
-                }
-                return `"${cellValue.replace(/"/g, '""')}"`;
+            const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
+            const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
+            const questionIds = questions.map(q => q.id);
+
+            // 3. Build CSV Header Row with Contact & Entity Columns
+            const headerRow = [
+                "Submitted At",
+                "Entity / Organization",
+                "Primary Contact Name",
+                "Primary Contact Email",
+                "Primary Contact Phone",
+                ...questionIds.map(id => `"${stripHtml(questionIdToTitleMap.get(id) || '').replace(/"/g, '""') ?? id}"`)
+            ].join(',');
+
+            // 4. Build CSV Data Rows
+            const rows = filteredResponses.map(response => {
+                const answerMap = new Map((response.answers || []).map(a => [a.questionId, a.value]));
+                const d = parseDateSafe(response.submittedAt);
+                const submittedAtCell = d ? `"${format(d, "yyyy-MM-dd HH:mm:ss")}"` : `""`;
+
+                const contact = response.entityId ? contactsMap[response.entityId] : null;
+                const details = extractResponseContactDetails(response, contact);
+
+                const entityCell = `"${sanitizeForCsv(details.entityName).replace(/"/g, '""')}"`;
+                const contactNameCell = `"${sanitizeForCsv(details.primaryContactName).replace(/"/g, '""')}"`;
+                const emailCell = `"${sanitizeForCsv(details.primaryContactEmail).replace(/"/g, '""')}"`;
+                const phoneCell = `"${sanitizeForCsv(details.primaryContactPhone).replace(/"/g, '""')}"`;
+
+                const answerCells = questionIds.map(id => {
+                    const value = answerMap.get(id);
+                    let cellValue = '';
+                    if (value !== undefined && value !== null) {
+                        cellValue = formatAnswerForCsv(value);
+                    }
+                    return `"${sanitizeForCsv(cellValue).replace(/"/g, '""')}"`;
+                });
+
+                return [
+                    submittedAtCell,
+                    entityCell,
+                    contactNameCell,
+                    emailCell,
+                    phoneCell,
+                    ...answerCells
+                ].join(',');
             });
-            return [submittedAtCell, ...answerCells].join(',');
-        });
 
-        const csvContent = [headerRow, ...rows].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.setAttribute('download', `${survey.slug}-responses.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        toast({ title: "Export Started", description: "Your CSV file is downloading." });
+            const csvContent = [headerRow, ...rows].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', `${survey.slug}-responses.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            toast({ title: "Export Completed", description: "Your CSV file with entity contact details has been downloaded." });
+        } catch (error) {
+            console.error("Export failed:", error);
+            const err = error as Error;
+            toast({
+                variant: "destructive",
+                title: "Export Failed",
+                description: err.message || "Failed to generate CSV export. Please try again."
+            });
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     if (isSurveyLoading) {
@@ -324,9 +383,13 @@ function SurveyResultsPageContent() {
                     <div className="flex shrink-0 items-center gap-4">
                         <AiModelSelector hideLabel className="scale-90" />
                         {activeTab === "responses" ? (
-                            <Button onClick={handleExport} disabled={!filteredResponses || filteredResponses.length === 0}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Export CSV
+                            <Button onClick={handleExport} disabled={isExporting || !filteredResponses || filteredResponses.length === 0} className="active:scale-[0.97] transition-all">
+                                {isExporting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Download className="mr-2 h-4 w-4" />
+                                )}
+                                {isExporting ? "Exporting..." : "Export CSV"}
                             </Button>
                         ) : (
                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">

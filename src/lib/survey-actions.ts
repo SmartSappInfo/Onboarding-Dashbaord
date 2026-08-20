@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence, ResolvedContact } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -138,6 +138,110 @@ export function extractFileNameFromStorageUrl(urlStr: string): string {
   } catch {
     return 'uploaded-file';
   }
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Extracted Contact Details Interface.
+ * 
+ * Standardized structure holding resolved entity and contact fields
+ * for table displays, response detail cards, and CSV exports.
+ */
+export interface ExtractedContactDetails {
+  entityName: string;
+  primaryContactName: string;
+  primaryContactEmail: string;
+  primaryContactPhone: string;
+  isLiveCrm: boolean;
+  entityId?: string | null;
+  locationString?: string;
+  zoneName?: string;
+  roleOrTitle?: string;
+}
+
+/**
+ * Resolves contact & entity details from a SurveyResponse with a fallback hierarchy:
+ * 1. ResolvedContact from CRM (if entityId is attached)
+ * 2. Response snapshot fields (entityName, respondentName, contactEmail, contactPhone)
+ * 3. Response variables map (entity_name, school_name, contact_name, phone, email, etc.)
+ */
+export function extractResponseContactDetails(
+  response: SurveyResponse,
+  contact?: ResolvedContact | null
+): ExtractedContactDetails {
+  const vars = (response as unknown as { variables?: Record<string, unknown> }).variables || {};
+
+  // 1. Entity / School Name
+  const entityName = (
+    contact?.name ||
+    response.entityName ||
+    (typeof vars.entity_name === 'string' ? vars.entity_name : '') ||
+    (typeof vars.school_name === 'string' ? vars.school_name : '') ||
+    (typeof vars.organization_name === 'string' ? vars.organization_name : '') ||
+    ''
+  ).trim();
+
+  // 2. Primary Contact Name
+  const primaryContactName = (
+    contact?.primaryContactName ||
+    response.respondentName ||
+    (typeof vars.contact_name === 'string' ? vars.contact_name : '') ||
+    (typeof vars.respondent_name === 'string' ? vars.respondent_name : '') ||
+    (typeof vars.name === 'string' ? vars.name : '') ||
+    ''
+  ).trim();
+
+  // 3. Primary Contact Email
+  const primaryContactEmail = (
+    contact?.primaryContactEmail ||
+    response.contactEmail ||
+    (typeof vars.contact_email === 'string' ? vars.contact_email : '') ||
+    (typeof vars.email === 'string' ? vars.email : '') ||
+    ''
+  ).trim();
+
+  // 4. Primary Contact Phone
+  const rawContactPhone = (response as unknown as { contactPhone?: string }).contactPhone;
+  const primaryContactPhone = (
+    contact?.primaryContactPhone ||
+    rawContactPhone ||
+    (typeof vars.contact_phone === 'string' ? vars.contact_phone : '') ||
+    (typeof vars.phone === 'string' ? vars.phone : '') ||
+    ''
+  ).trim();
+
+  // 5. Role or Title
+  const primaryEntityContact = contact?.entityContacts?.find((c) => c.isPrimary);
+  const roleOrTitle = primaryEntityContact?.typeLabel || (typeof vars.role === 'string' ? vars.role : '') || undefined;
+
+  const isLiveCrm = Boolean(response.entityId && contact);
+
+  return {
+    entityName,
+    primaryContactName,
+    primaryContactEmail,
+    primaryContactPhone,
+    isLiveCrm,
+    entityId: response.entityId || null,
+    locationString: contact?.locationString,
+    zoneName: contact?.zoneName,
+    roleOrTitle,
+  };
+}
+
+/**
+ * Sanitizes a cell value for CSV output to prevent CSV / Formula Injection attacks
+ * (OWASP CSV Injection guidelines: prepend single quote if cell starts with =, +, -, @, tab, or CR)
+ */
+export function sanitizeForCsv(val: string | number | boolean | null | undefined): string {
+  if (val === null || val === undefined) return '';
+  const rawStr = String(val);
+  if (!rawStr) return '';
+  const trimmed = rawStr.trim();
+  if (/^[=+\-@\t\r]/.test(rawStr) || /^[=+\-@]/.test(trimmed)) {
+    return `'${rawStr}`;
+  }
+  return trimmed;
 }
 
 export interface ParsedSurveyMappings {

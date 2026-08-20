@@ -63,6 +63,47 @@ export async function clearContactCache(): Promise<void> {
 }
 
 /**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Batch Contact Resolver.
+ * 
+ * Resolves multiple contacts concurrently in chunks of 25 with in-memory caching
+ * to prevent socket exhaustion and performance bottlenecks during CSV list exports
+ * or multi-row survey views.
+ */
+export async function resolveMultipleContacts(
+  entityIds: string[],
+  workspaceId: string
+): Promise<Record<string, ResolvedContact>> {
+  const result: Record<string, ResolvedContact> = {};
+  if (!entityIds || entityIds.length === 0) return result;
+
+  const uniqueIds = Array.from(new Set(entityIds.filter(Boolean)));
+  
+  const CHUNK_SIZE = 25;
+  for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+    const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
+    const resolvedChunk = await Promise.all(
+      chunk.map(async (id) => {
+        try {
+          const contact = await resolveContact(id, workspaceId);
+          return { id, contact };
+        } catch (err) {
+          console.error(`[ADAPTER] Error resolving contact ${id}:`, err);
+          return { id, contact: null };
+        }
+      })
+    );
+    resolvedChunk.forEach(({ id, contact }) => {
+      if (contact) {
+        result[id] = contact;
+      }
+    });
+  }
+
+  return result;
+}
+
+/**
  * Resolves contact data from the new entities + workspace_entities model
  */
 async function resolveFromEntity(
