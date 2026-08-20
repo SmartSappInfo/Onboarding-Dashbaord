@@ -31,8 +31,8 @@ export async function createCallScriptAction(
     });
     revalidatePath('/admin/messaging/call-centre');
     return { success: true, id };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create script' };
   }
 }
 
@@ -49,8 +49,8 @@ export async function updateCallScriptAction(
     await CallCentreService.updateScript(id, cleanData);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update script' };
   }
 }
 
@@ -62,8 +62,8 @@ export async function deleteCallScriptAction(id: string, workspaceId: string, us
     await CallCentreService.deleteScript(id);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete script' };
   }
 }
 
@@ -122,8 +122,8 @@ export async function importCallScriptAction(
     const id = await CallCentreService.createScript(data);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true, id };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to import script' };
   }
 }
 
@@ -183,8 +183,8 @@ export async function createCallCampaignAction(
     });
     revalidatePath('/admin/messaging/call-centre');
     return { success: true, id };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to create campaign' };
   }
 }
 
@@ -201,8 +201,8 @@ export async function updateCallCampaignAction(
     await CallCentreService.updateCampaign(id, cleanData);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update campaign' };
   }
 }
 
@@ -214,8 +214,8 @@ export async function deleteCallCampaignAction(id: string, workspaceId: string, 
     await CallCentreService.deleteCampaign(id);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete campaign' };
   }
 }
 
@@ -250,8 +250,8 @@ export async function generateCampaignQueueAction(campaignId: string, workspaceI
     const result = await CallCentreService.generateCampaignQueue(campaignId);
     revalidatePath('/admin/messaging/call-centre');
     return result;
-  } catch (error: any) {
-    return { success: false, error: error.message, count: 0 };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to generate queue', count: 0 };
   }
 }
 
@@ -263,8 +263,8 @@ export async function lockQueueItemAction(queueItemId: string, workspaceId: stri
 
   try {
     return await CallCentreService.lockQueueItem(queueItemId, userId);
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to lock queue item' };
   }
 }
 
@@ -275,8 +275,8 @@ export async function releaseQueueItemAction(queueItemId: string, workspaceId: s
   try {
     await CallCentreService.releaseQueueItem(queueItemId, userId);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to release queue item' };
   }
 }
 
@@ -324,8 +324,8 @@ export async function updateNotesDraftAction(
   try {
     await CallCentreService.updateNotesDraft(queueItemId, notes);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update draft' };
   }
 }
 
@@ -337,8 +337,8 @@ export async function skipQueueItemAction(queueItemId: string, workspaceId: stri
     await CallCentreService.skipQueueItem(queueItemId);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to skip queue item' };
   }
 }
 
@@ -350,8 +350,8 @@ export async function deferQueueItemAction(queueItemId: string, workspaceId: str
     await CallCentreService.deferQueueItem(queueItemId);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to defer queue item' };
   }
 }
 
@@ -368,8 +368,8 @@ export async function scheduleCallbackAction(
     await CallCentreService.scheduleCallback(queueItemId, callbackDate);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to schedule callback' };
   }
 }
 
@@ -397,8 +397,8 @@ export async function generateCallScriptAction(
       tone: params.tone,
       customGuidelines: params.customGuidelines,
     });
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to generate script' };
   }
 }
 
@@ -418,8 +418,8 @@ export async function refineCallScriptAction(
       original: params.original,
       instruction: params.instruction,
     });
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to refine script' };
   }
 }
 
@@ -431,8 +431,8 @@ export async function cloneCallCampaignAction(campaignId: string, workspaceId: s
     const id = await CallCentreService.cloneCampaign(campaignId, userId);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true, id };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to clone campaign' };
   }
 }
 
@@ -486,8 +486,8 @@ export async function removeContactsFromCampaignAction(
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return result;
-  } catch (error: any) {
-    return { success: false, count: 0, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, count: 0, error: error instanceof Error ? error.message : 'Failed to remove contacts' };
   }
 }
 
@@ -499,8 +499,8 @@ export async function archiveCallCampaignAction(campaignId: string, workspaceId:
     await CallCentreService.archiveCampaign(campaignId);
     revalidatePath('/admin/messaging/call-centre');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to archive campaign' };
   }
 }
 
@@ -513,8 +513,8 @@ export async function endCallCampaignAction(campaignId: string, workspaceId: str
     revalidatePath('/admin/messaging/call-centre');
     revalidatePath(`/admin/messaging/call-centre/analytics/${campaignId}`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to end campaign' };
   }
 }
 

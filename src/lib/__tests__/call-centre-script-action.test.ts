@@ -67,9 +67,21 @@ const mockDocGet = vi.fn().mockImplementation(async () => {
       }),
     };
   }
+  if (lastCollection === 'meetings') {
+    return {
+      exists: true,
+      data: () => ({
+        id: 'existing-meeting-123',
+        title: 'Discovery Call',
+        organizationId: 'org_1',
+        workspaceIds: ['ws_1'],
+        meetingTime: '2026-09-01T10:00:00.000Z',
+      }),
+    };
+  }
   return {
     exists: true,
-    data: () => ({ name: 'Test Entity', slug: 'test-entity', displayName: 'Agent User' }),
+    data: () => ({ name: 'Test Entity', slug: 'test-entity', displayName: 'Agent User', organizationId: 'org_1' }),
   };
 });
 
@@ -423,6 +435,8 @@ describe('executeScriptActionAction', () => {
       data: () => ({
         id: 'existing-meeting-123',
         title: 'Discovery Call',
+        organizationId: 'org_1',
+        workspaceIds: ['ws_1'],
         meetingTime: '2026-09-01T10:00:00.000Z',
       }),
     }));
@@ -444,5 +458,38 @@ describe('executeScriptActionAction', () => {
         meetingTime: '2026-09-02T14:30:00.000Z',
       })
     );
+  });
+
+  it('rejects SCHEDULE_MEETING update if meeting belongs to a different organization (cross-tenant safety)', async () => {
+    mockDocGet.mockImplementation(async () => {
+      if (lastCollection === 'meetings') {
+        return {
+          exists: true,
+          data: () => ({
+            id: 'other-org-meeting',
+            organizationId: 'different_org_999',
+            meetingTime: '2026-09-01T10:00:00.000Z',
+          }),
+        };
+      }
+      return {
+        exists: true,
+        data: () => ({ name: 'Test Entity', slug: 'test-entity', organizationId: 'org_1' }),
+      };
+    });
+
+    const res = await executeScriptActionAction({
+      actionType: 'SCHEDULE_MEETING',
+      actionConfig: {
+        meetingMode: 'create',
+        createdMeetingId: 'other-org-meeting',
+        meetingTimeOverride: '2026-09-02T14:30:00.000Z',
+      },
+      ...ctx
+    }, 'user_1');
+
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Unauthorized');
+    expect(mockDocUpdate).not.toHaveBeenCalled();
   });
 });

@@ -387,15 +387,17 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   // ─── Call Timer Effect ─────────────────────────────────────────────────────
 
   React.useEffect(() => {
-    let interval: any = null;
+    let interval: NodeJS.Timeout | null = null;
     if (isTimerActive) {
       interval = setInterval(() => {
         setSeconds(prev => prev + 1);
       }, 1000);
-    } else {
+    } else if (interval) {
       clearInterval(interval);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isTimerActive]);
 
   const formatTime = (secs: number) => {
@@ -735,7 +737,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       setValidationError(null);
 
       const fieldBinding = qc.fieldBinding || 'contact';
-      let castValue: any = value;
+      let castValue: string | number = value;
       if (qc.fieldType === 'number') {
         castValue = Number(value) || 0;
       }
@@ -1348,7 +1350,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground">Due Date</Label>
                 <Input
                   type="date"
-                  value={localActionConfig.taskDueDate ? new Date(localActionConfig.taskDueDate).toISOString().split('T')[0] : ''}
+                  value={localActionConfig.taskDueDate ? (() => {
+                    const d = new Date(localActionConfig.taskDueDate);
+                    if (isNaN(d.getTime())) return '';
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                  })() : ''}
                   onChange={e => {
                     const dateVal = e.target.value;
                     if (!dateVal) return;
@@ -1462,7 +1469,12 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                   <Label className="text-[10px] font-bold uppercase text-muted-foreground">Meeting Date</Label>
                   <Input
                     type="date"
-                    value={localActionConfig.meetingTimeOverride ? new Date(localActionConfig.meetingTimeOverride).toISOString().split('T')[0] : ''}
+                    value={localActionConfig.meetingTimeOverride ? (() => {
+                      const d = new Date(localActionConfig.meetingTimeOverride);
+                      if (isNaN(d.getTime())) return '';
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                    })() : ''}
                     onChange={e => {
                       const dateVal = e.target.value;
                       if (!dateVal) return;
@@ -2283,6 +2295,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                       currentContact={currentContact}
                       entityData={entityData}
                       triggerActionsAutomatically={triggerActionsAutomatically}
+                      activeNodeId={currentNodeId}
+                      onActiveNodeChange={setCurrentNodeId}
                     />
                   </div>
                 ) : isBranching ? (

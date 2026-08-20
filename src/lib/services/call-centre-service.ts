@@ -6,6 +6,8 @@ import type {
   CallActionType,
   CallActionParams,
   EntityContact,
+  EntityType,
+  MessageTemplate,
   Workspace,
   CallOutcomeAutomation,
   MeetingFacilitator
@@ -1241,10 +1243,10 @@ export class CallCentreService {
             description: resolvedDescription,
             priority: params.taskPriority || 'medium',
             status: 'todo',
-            category: 'call_follow_up' as any,
+            category: 'call',
             assignedTo: params.taskAssigneeId ? [params.taskAssigneeId] : (userId ? [userId] : []),
             entityId,
-            entityType: 'person' as any,
+            entityType: 'person' as EntityType,
             dueDate: params.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
             reminders: [],
             reminderSent: false,
@@ -1421,14 +1423,14 @@ export class CallCentreService {
             const { sendWhatsApp } = await import('../whatsapp/whatsapp-send');
             await sendWhatsApp({
               recipient: phone,
-              template: templateData as any,
+              template: templateData as MessageTemplate,
               resolvedBody: body,
               variables: {},
               organizationId,
             });
             return { success: true };
-          } catch (e: any) {
-            return { success: false, error: e?.message || 'WhatsApp send failed' };
+          } catch (e: unknown) {
+            return { success: false, error: e instanceof Error ? e.message : 'WhatsApp send failed' };
           }
         }
 
@@ -1492,6 +1494,13 @@ export class CallCentreService {
           // Guest-list mode: add the called contact to an existing, not-yet-due meeting.
           if (meetingMode === 'guest_list') {
             if (!params.meetingId) return { success: false, error: 'No meeting selected.' };
+            const targetMeetingSnap = await adminDb.collection('meetings').doc(params.meetingId).get();
+            if (!targetMeetingSnap.exists) return { success: false, error: 'Selected meeting was not found.' };
+            const targetMeetingData = targetMeetingSnap.data();
+            if (targetMeetingData?.organizationId && targetMeetingData.organizationId !== organizationId) {
+              return { success: false, error: 'Unauthorized: Meeting does not belong to this organization.' };
+            }
+
             const entitySnap = await adminDb.collection('entities').doc(entityId).get();
             if (!entitySnap.exists) return { success: false, error: 'Entity not found.' };
             const entityData = entitySnap.data();
@@ -1529,6 +1538,11 @@ export class CallCentreService {
             const meetingRef = adminDb.collection('meetings').doc(existingMeetingId);
             const meetingSnap = await meetingRef.get();
             if (meetingSnap.exists) {
+              const existingMeetingData = meetingSnap.data();
+              if (existingMeetingData?.organizationId && existingMeetingData.organizationId !== organizationId) {
+                return { success: false, error: 'Unauthorized: Meeting does not belong to this organization.' };
+              }
+
               await meetingRef.update({
                 meetingTime,
                 updatedAt: timestamp,
@@ -1540,7 +1554,7 @@ export class CallCentreService {
                 entityId,
                 entityType: entityData?.entityType || 'person',
                 userId,
-                type: 'meeting_created' as 'meeting_created',
+                type: 'meeting_created',
                 source: 'system',
                 description: `Updated scheduled meeting time to ${new Date(meetingTime).toLocaleString()} for ${entityName}`,
                 metadata: {
@@ -1699,18 +1713,21 @@ export class CallCentreService {
           }
 
           const entityData = entitySnap.data();
-          const contacts = (entityData?.entityContacts || []) as any[];
+          const contacts = (entityData?.entityContacts || []) as EntityContact[];
           
           if (updateMode === 'new') {
             const newId = typeof globalThis.crypto !== 'undefined' && globalThis.crypto.randomUUID
               ? globalThis.crypto.randomUUID()
               : `cnt_${Math.random().toString(36).substring(2, 11)}`;
-            const targetContact: any = {
+            const targetContact: EntityContact = {
               id: newId,
               name: contactName || 'New Contact',
               email: contactEmail || '',
               phone: '',
+              typeKey: 'other',
               isPrimary: contacts.length === 0,
+              isSignatory: false,
+              order: contacts.length,
             };
 
             if (contactPhone) {
