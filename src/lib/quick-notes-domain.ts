@@ -182,7 +182,15 @@ export function isSafeHttpUrl(raw: string): boolean {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
 
   const host = url.hostname.toLowerCase();
-  if (host === 'localhost' || host === '0.0.0.0' || host === '::1' || host.endsWith('.local')) {
+  if (
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.compute.internal') ||
+    host === 'metadata.google.internal'
+  ) {
     return false;
   }
   // IPv4 private / loopback / link-local ranges.

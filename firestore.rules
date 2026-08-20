@@ -1137,7 +1137,12 @@ service cloud.firestore {
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)
       );
-      allow update, delete: if isAuthorized() && (
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );

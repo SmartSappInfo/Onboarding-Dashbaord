@@ -81,7 +81,14 @@ export function FloatingNotesProvider({ children }: { children: React.ReactNode 
       // Exclude sub-pages like /admin/entities/lead-scoring or upload
       const isSubPage = ['lead-scoring', 'upload', 'components'].includes(match[1]);
       if (!isSubPage) {
-        setActiveEntityId(match[1]);
+        const newEntityId = match[1];
+        setActiveEntityId((prevId) => {
+          // Invalidate cached entityName if route navigated to a different entity
+          if (prevId !== newEntityId) {
+            setActiveEntityName(null);
+          }
+          return newEntityId;
+        });
         return;
       }
     }

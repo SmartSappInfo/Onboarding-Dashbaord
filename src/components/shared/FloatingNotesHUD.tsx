@@ -300,7 +300,7 @@ export default function FloatingNotesHUD() {
               variant="ghost" 
               size="icon" 
               onClick={minimize}
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted min-h-[28px]"
+              className="h-8 w-8 md:h-7 md:w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted min-h-[32px] md:min-h-[28px]"
               aria-label="Minimize Quick Note"
             >
               <Minus className="h-3.5 w-3.5" />
@@ -310,7 +310,7 @@ export default function FloatingNotesHUD() {
             variant="ghost" 
             size="icon" 
             onClick={close}
-            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[28px]"
+            className="h-8 w-8 md:h-7 md:w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[32px] md:min-h-[28px]"
             aria-label="Close Quick Note"
           >
             <X className="h-3.5 w-3.5" />
