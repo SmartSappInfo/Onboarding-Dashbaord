@@ -177,30 +177,46 @@ export function extractResponseContactDetails(
   const lead = (response as unknown as { leadDetails?: Record<string, unknown> }).leadDetails || {};
   const answers = response.answers || [];
 
-  // Helper to find answer value by question title keyword or regex
+  // Helper to find answer value by question title keyword or questionId
   const findAnswerByKeyword = (keywords: string[]): string => {
     if (!answers || !Array.isArray(answers) || answers.length === 0) return '';
-    
-    // First try matching with survey questions if provided
+
+    const unpackValue = (value: unknown): string => {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        const valObj = value as Record<string, unknown>;
+        if (typeof valObj.other === 'string' && valObj.other.trim().length > 0) return valObj.other.trim();
+        if (typeof valObj.option === 'string' && valObj.option.trim().length > 0 && valObj.option !== '__other__') return valObj.option.trim();
+      }
+      return '';
+    };
+
+    // 1. First try matching with survey questions if provided
     if (surveyQuestions && Array.isArray(surveyQuestions)) {
       for (const q of surveyQuestions) {
         const qTitle = (q.title || '').toLowerCase();
         const qType = (q.type || '').toLowerCase();
         if (keywords.some((kw) => qTitle.includes(kw) || qType.includes(kw))) {
           const matchedAns = answers.find((a) => a.questionId === q.id);
-          if (matchedAns && matchedAns.value) {
-            if (typeof matchedAns.value === 'string' && matchedAns.value.trim().length > 0) {
-              return matchedAns.value.trim();
-            }
-            if (typeof matchedAns.value === 'object' && matchedAns.value !== null) {
-              const valObj = matchedAns.value as Record<string, unknown>;
-              if (typeof valObj.other === 'string' && valObj.other.trim().length > 0) return valObj.other.trim();
-              if (typeof valObj.option === 'string' && valObj.option.trim().length > 0 && valObj.option !== '__other__') return valObj.option.trim();
-            }
+          if (matchedAns && matchedAns.value !== undefined && matchedAns.value !== null) {
+            const unpacked = unpackValue(matchedAns.value);
+            if (unpacked) return unpacked;
           }
         }
       }
     }
+
+    // 2. Direct fallback on answer.questionId if surveyQuestions is omitted or yielded no match
+    for (const ans of answers) {
+      const qId = (ans.questionId || '').toLowerCase();
+      if (keywords.some((kw) => qId.includes(kw.replace(/\s+/g, '_')) || qId.includes(kw.replace(/\s+/g, '')))) {
+        const unpacked = unpackValue(ans.value);
+        if (unpacked) return unpacked;
+      }
+    }
+
     return '';
   };
 
@@ -989,11 +1005,31 @@ export async function resolveOrMatchWorkspaceEntity(
   return null;
 }
 
+export interface PublicSurveyResponseInput {
+  surveyId: string;
+  submittedAt?: string;
+  answers: Array<{ questionId: string; value: unknown }>;
+  score?: number;
+  respondentName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  variables?: Record<string, unknown>;
+  sourcePageId?: string | null;
+  entityId?: string | null;
+  entityName?: string | null;
+  entityType?: EntityType;
+  workspaceId?: string | null;
+  assignedUserId?: string | null;
+  respondentEntityId?: string | null;
+  channel?: string;
+  [key: string]: unknown;
+}
+
 /**
- * Submits a public survey response using the Admin SDK.
+ * Submits a public survey response using Admin Firestore SDK.
  * Bypasses client-side security rules to ensure reliability for public paths.
  */
-export async function submitPublicSurveyResponse(surveyId: string, responseData: any, sessionId?: string | null) {
+export async function submitPublicSurveyResponse(surveyId: string, responseData: PublicSurveyResponseInput, sessionId?: string | null) {
   try {
     const surveyRef = adminDb.collection('surveys').doc(surveyId);
     
@@ -1045,7 +1081,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
         const getAnswerValue = (qId?: string) => {
           if (!qId) return null;
-          const ans = answers.find((a: any) => a.questionId === qId);
+          const ans = answers.find((a: { questionId: string; value: unknown }) => a.questionId === qId);
           return ans ? ans.value : null;
         };
 
@@ -1183,7 +1219,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
               organizationId
             );
             if (createRes.success) {
-              finalEntityId = createRes.id;
+              finalEntityId = createRes.id || null;
             } else if (createRes.isDuplicate && createRes.duplicates && createRes.duplicates.length > 0) {
               // Graceful duplicate fallback
               const duplicate = createRes.duplicates[0];
@@ -1337,7 +1373,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
               after(async () => {
                 try {
                   // Execute Matched Result Rule Pipeline Action
-                  if (matchedRulePipelineAction) {
+                  if (matchedRulePipelineAction && finalEntityId) {
                     await addOrMoveEntityInPipeline({
                       entityId: finalEntityId,
                       entityName: finalEntityName,
@@ -1353,7 +1389,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                   }
 
                   // Execute Workbench Pipeline Action
-                  if (workbenchPipelineAction) {
+                  if (workbenchPipelineAction && finalEntityId) {
                     // Avoid redundant execution if workbench points to exact same pipeline & stage as outcome rule
                     if (
                       !matchedRulePipelineAction ||
@@ -1564,7 +1600,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       // Internal Team Alerts
       if (surveyData.adminAlertsEnabled) {
         await triggerInternalNotification({
-          entityId: finalEntityId,
+          entityId: finalEntityId || undefined,
           notifyManager: surveyData.adminAlertNotifyManager,
           specificUserIds: surveyData.adminAlertSpecificUserIds,
           emailTemplateId: surveyData.adminAlertEmailTemplateId,
@@ -1598,7 +1634,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
         if (hasEmail || hasSms) {
           await triggerInternalNotification({
-            entityId: finalEntityId,
+            entityId: finalEntityId || undefined,
             specificUserIds: [assignedUserId],
             emailTemplateId: hasEmail ? config.emailTemplateId : undefined,
             smsTemplateId: hasSms ? config.smsTemplateId : undefined,

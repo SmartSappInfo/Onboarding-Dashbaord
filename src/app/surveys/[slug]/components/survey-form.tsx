@@ -40,7 +40,7 @@ import {
   formatFileSize,
   FILE_TYPE_PRESETS 
 } from '@/lib/survey-file-utils';
-import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
+import { extractFileNameFromStorageUrl, type PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
@@ -1752,7 +1752,7 @@ export default function SurveyForm({
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        const variables: Record<string, any> = {
+        const variables: Record<string, string | number | boolean | null> = {
             survey_title: survey.title,
             survey_score: score !== undefined ? score : 0,
             score: score !== undefined ? score : 0,
@@ -1765,17 +1765,31 @@ export default function SurveyForm({
 
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
-            if (val !== undefined) {
+            if (val !== undefined && val !== null) {
                 let resolvedVal = '';
                 if (q.type === 'checkboxes') {
-                    const selected = q.allowOther ? (val?.options || []) : (Array.isArray(val) ? val : []);
+                    const selected = q.allowOther ? ((val as { options?: string[] })?.options || []) : (Array.isArray(val) ? val : []);
                     resolvedVal = selected.join(', ');
-                    if (q.allowOther && val?.other) {
-                        resolvedVal += resolvedVal ? `, Other: ${val.other}` : val.other;
+                    if (q.allowOther && (val as { other?: string })?.other) {
+                        resolvedVal += resolvedVal ? `, Other: ${(val as { other?: string }).other}` : (val as { other?: string }).other!;
                     }
                 } else if (q.type === 'date' && val) {
-                    const d = val instanceof Date ? val : new Date(val);
+                    const d = val instanceof Date ? val : new Date(val as string | number);
                     resolvedVal = isValid(d) ? format(d, 'PPP') : String(val);
+                } else if (typeof val === 'object' && !Array.isArray(val)) {
+                    const valObj = val as { option?: string; other?: string };
+                    if (valObj.option === '__other__') {
+                        resolvedVal = valObj.other ? valObj.other.trim() : 'Other';
+                    } else if (valObj.option) {
+                        resolvedVal = String(valObj.option).trim();
+                        if (valObj.other && valObj.other.trim()) {
+                            resolvedVal += ` (${valObj.other.trim()})`;
+                        }
+                    } else if (valObj.other) {
+                        resolvedVal = String(valObj.other).trim();
+                    } else {
+                        resolvedVal = JSON.stringify(val);
+                    }
                 } else {
                     resolvedVal = String(val);
                 }
@@ -1826,18 +1840,18 @@ export default function SurveyForm({
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
         // Build response document with unified entity reference and mapped variables
-        const responseData = { 
+        const responseData: PublicSurveyResponseInput = { 
             surveyId: survey.id, 
             submittedAt: new Date().toISOString(), 
             answers, 
             score,
-            respondentName: variables.contact_name || variables.respondent_name || variables.name || variables.fullName || null,
-            contactPhone: variables.contact_phone || variables.phone || variables.respondent_phone || null,
-            contactEmail: variables.contact_email || variables.email || variables.respondent_email || resolvedRecipientContact || null,
+            respondentName: (variables.contact_name || variables.respondent_name || variables.name || variables.fullName ? String(variables.contact_name || variables.respondent_name || variables.name || variables.fullName) : null),
+            contactPhone: (variables.contact_phone || variables.phone || variables.respondent_phone ? String(variables.contact_phone || variables.phone || variables.respondent_phone) : null),
+            contactEmail: (variables.contact_email || variables.email || variables.respondent_email || resolvedRecipientContact ? String(variables.contact_email || variables.email || variables.respondent_email || resolvedRecipientContact) : null),
             variables,
             sourcePageId: sourcePageId || null,
             entityId: survey.entityId || respondentEntityId || null,
-            entityName: variables.entity_name || variables.school_name || variables.q_entity_name_input || survey.entityName || null,
+            entityName: (variables.entity_name || variables.school_name || variables.q_entity_name_input || survey.entityName ? String(variables.entity_name || variables.school_name || variables.q_entity_name_input || survey.entityName) : null),
             entityType: (survey.entityId || respondentEntityId) ? 'institution' as const : undefined,
             workspaceId: survey.workspaceIds?.[0] || null,
             assignedUserId: assignedUserId || null,

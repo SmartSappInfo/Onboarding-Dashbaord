@@ -263,6 +263,49 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(details.primaryContactEmail).toBe('abena@greatminds.edu');
     });
 
+    it('unpacks { option: "__other__", other: "Custom Academy" } objects during heuristic extraction', () => {
+      const mockResponse = {
+        id: 'resp_other_1',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'q_school_custom', value: { option: '__other__', other: 'Custom Heritage Academy' } },
+          { questionId: 'q_person_name', value: 'Kofi Kingston' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const mockQuestions = [
+        { id: 'q_school_custom', title: 'Select or specify your School / Institution', type: 'dropdown' },
+        { id: 'q_person_name', title: 'Contact Person Name', type: 'short-text' },
+      ];
+
+      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
+
+      expect(details.entityName).toBe('Custom Heritage Academy');
+      expect(details.primaryContactName).toBe('Kofi Kingston');
+    });
+
+    it('falls back to scanning answer.questionId directly when surveyQuestions array is omitted', () => {
+      const mockResponse = {
+        id: 'resp_qId_fallback',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'school_name', value: 'St. Augustine College' },
+          { questionId: 'contact_name', value: 'Sister Mary' },
+          { questionId: 'phone_number', value: '0551234567' },
+          { questionId: 'email_address', value: 'mary@staugustine.edu' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const details = extractResponseContactDetails(mockResponse, null);
+
+      expect(details.entityName).toBe('St. Augustine College');
+      expect(details.primaryContactName).toBe('Sister Mary');
+      expect(details.primaryContactPhone).toBe('0551234567');
+      expect(details.primaryContactEmail).toBe('mary@staugustine.edu');
+    });
+
     it('handles completely empty response records without error', () => {
       const emptyResponse = {
         id: 'resp_empty',

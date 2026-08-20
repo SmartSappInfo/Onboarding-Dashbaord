@@ -163,7 +163,7 @@ function SummaryRespondentCell({
                     {details.primaryContactPhone && (
                         <div className="flex items-center gap-0.5">
                             <a
-                                href={`tel:${details.primaryContactPhone.replace(/[\s()\-]/g, '')}`}
+                                href={`tel:${details.primaryContactPhone.replace(/[^0-9+]/g, '')}`}
                                 aria-label={`Call ${details.primaryContactPhone}`}
                                 title={`Click to call ${details.primaryContactPhone}`}
                                 className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline active:scale-[0.97] transition-all"
@@ -177,7 +177,7 @@ function SummaryRespondentCell({
                                 onClick={(e) => handleCopy(details.primaryContactPhone, 'phone', e)}
                                 aria-label="Copy phone"
                                 title="Copy phone"
-                                className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                className="h-6 w-6 sm:h-4 sm:w-4 min-h-[28px] min-w-[28px] sm:min-h-0 sm:min-w-0 flex items-center justify-center p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground active:scale-[0.95]"
                             >
                                 {copiedField === 'phone' ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : <Copy className="h-2.5 w-2.5" />}
                             </button>
@@ -186,7 +186,7 @@ function SummaryRespondentCell({
                     {details.primaryContactEmail && (
                         <div className="flex items-center gap-0.5">
                             <a
-                                href={`mailto:${details.primaryContactEmail}`}
+                                href={`mailto:${encodeURIComponent(details.primaryContactEmail.trim())}`}
                                 aria-label={`Email ${details.primaryContactEmail}`}
                                 title={`Click to email ${details.primaryContactEmail}`}
                                 className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 hover:underline active:scale-[0.97] transition-all"
@@ -200,7 +200,7 @@ function SummaryRespondentCell({
                                 onClick={(e) => handleCopy(details.primaryContactEmail, 'email', e)}
                                 aria-label="Copy email"
                                 title="Copy email"
-                                className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                className="h-6 w-6 sm:h-4 sm:w-4 min-h-[28px] min-w-[28px] sm:min-h-0 sm:min-w-0 flex items-center justify-center p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground active:scale-[0.95]"
                             >
                                 {copiedField === 'email' ? <Check className="h-2.5 w-2.5 text-blue-600" /> : <Copy className="h-2.5 w-2.5" />}
                             </button>
@@ -225,7 +225,7 @@ const cardVariants = {
 };
 
 // Helper to format answers for the preview table
-function extractFirstMeaningfulAnswer(answers: { questionId: string; value: any }[] | undefined): string {
+function extractFirstMeaningfulAnswer(answers: { questionId: string; value: unknown }[] | undefined): string {
     if (!answers || !Array.isArray(answers) || answers.length === 0) return '—';
     for (const ans of answers) {
         const val = ans.value;
@@ -234,9 +234,20 @@ function extractFirstMeaningfulAnswer(answers: { questionId: string; value: any 
             const stripped = stripHtml(String(val)).trim();
             if (stripped.length > 0) return stripped.substring(0, 100) + (stripped.length > 100 ? '...' : '');
         }
-        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-             if (val.option) return String(val.option);
-             if (val.other) return String(val.other);
+        if (Array.isArray(val) && val.length > 0) {
+            return val.map(String).join(', ').substring(0, 100);
+        }
+        if (typeof val === 'object' && val !== null) {
+            const valObj = val as { option?: string; other?: string; options?: string[] };
+            if (valObj.options && Array.isArray(valObj.options)) {
+                const combined = [...valObj.options, valObj.other].filter(Boolean).join(', ');
+                if (combined) return combined.substring(0, 100);
+            }
+            if (valObj.option === '__other__') {
+                return valObj.other ? `Other: ${valObj.other.substring(0, 80)}` : 'Other';
+            }
+            if (valObj.option) return String(valObj.option).substring(0, 100);
+            if (valObj.other) return String(valObj.other).substring(0, 100);
         }
     }
     return 'Data Submitted';
