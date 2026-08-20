@@ -21,7 +21,7 @@ import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveContact } from '@/lib/contact-adapter';
-import { extractResponseContactDetails } from '@/lib/survey-actions';
+import { extractResponseContactDetails } from '@/lib/survey-response-utils';
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):

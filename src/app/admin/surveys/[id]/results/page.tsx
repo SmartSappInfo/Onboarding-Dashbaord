@@ -26,7 +26,7 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import AiModelSelector from "@/components/ai/AiModelSelector";
 import { parseDateSafe } from "@/lib/forms-utils";
 import { resolveMultipleContacts } from "@/lib/contact-adapter";
-import { extractResponseContactDetails, sanitizeForCsv } from "@/lib/survey-actions";
+import { extractResponseContactDetails, sanitizeForCsv } from "@/lib/survey-response-utils";
 
 // Lazy-load Field Team view since it's behind a conditional tab (bundle-dynamic-imports)
 const FieldTeamView = dynamic(() => import('./components/field-team-view'), {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   extractResponseContactDetails,
   sanitizeForCsv,
-} from '../survey-actions';
+} from '../survey-response-utils';
 import { resolveMultipleContacts } from '../contact-adapter';
 import type { SurveyResponse, ResolvedContact } from '../types';
 

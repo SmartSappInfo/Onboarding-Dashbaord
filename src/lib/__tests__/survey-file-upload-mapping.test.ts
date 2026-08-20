@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { 
   parseAndDistributeSurveyMappings, 
   extractFileNameFromStorageUrl,
-  syncSurveyUploadedFilesToMedia
+} from '../survey-response-utils';
+import {
+  syncSurveyUploadedFilesToMedia,
 } from '../survey-actions';
 
 // Mock Firebase Admin

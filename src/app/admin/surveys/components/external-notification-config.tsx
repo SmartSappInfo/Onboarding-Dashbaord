@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
+import type { TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
-export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: string }) {
+export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: TemplateCategory }) {
     const { control, watch, setValue } = useFormContext();
 
     const enabled = watch(`${prefix}sEnabled`);

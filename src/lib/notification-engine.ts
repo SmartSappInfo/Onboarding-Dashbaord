@@ -1,10 +1,10 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
-import type { School, UserProfile } from './types';
+import type { UserProfile } from './types';
+import { resolveActiveChannels } from './notification-channel-utils';
 
 interface InternalNotificationOptions {
   triggerKey?: string;
@@ -34,52 +34,6 @@ interface ExternalNotificationOptions {
 }
 
 /**
- * Normalizes multi-channel and legacy channel string configurations into an active channel set.
- */
-export function resolveActiveChannels(
-  channelOrOptions?: string | { channels?: Array<'email' | 'sms' | 'whatsapp'>; channel?: string },
-  explicitChannels?: Array<'email' | 'sms' | 'whatsapp'>
-): Array<'email' | 'sms' | 'whatsapp'> {
-  const result = new Set<'email' | 'sms' | 'whatsapp'>();
-
-  let ch: string | undefined;
-  let channelsList: Array<'email' | 'sms' | 'whatsapp'> | undefined =
-    (typeof channelOrOptions === 'object' && channelOrOptions !== null ? channelOrOptions.channels : undefined) || explicitChannels;
-
-  if (typeof channelOrOptions === 'object' && channelOrOptions !== null) {
-    ch = channelOrOptions.channel;
-  } else if (typeof channelOrOptions === 'string') {
-    ch = channelOrOptions;
-  }
-
-  if (Array.isArray(channelsList) && channelsList.length > 0) {
-    channelsList.forEach(c => {
-      if (c === 'email' || c === 'sms' || c === 'whatsapp') result.add(c);
-    });
-    if (result.size > 0) return Array.from(result);
-  }
-
-  if (!ch) return [];
-
-  if (ch === 'all') {
-    result.add('email');
-    result.add('sms');
-    result.add('whatsapp');
-  } else if (ch === 'both') {
-    result.add('email');
-    result.add('sms');
-  } else if (ch === 'email') {
-    result.add('email');
-  } else if (ch === 'sms') {
-    result.add('sms');
-  } else if (ch === 'whatsapp') {
-    result.add('whatsapp');
-  }
-
-  return Array.from(result);
-}
-
-/**
  * High-performance internal notification router.
  * Resolves recipients (Manager vs Specific Users) and dispatches alerts.
  * 
@@ -105,57 +59,36 @@ export async function triggerInternalNotification(options: InternalNotificationO
 
   if (triggerKey) {
     try {
-      let orgId: string | null = (variables.organizationId as string | undefined) || null;
-      if (!orgId && resolvedWorkspaceId) {
-        const wsSnap = await adminDb.collection('workspaces').doc(resolvedWorkspaceId).get();
-        if (wsSnap.exists) {
-          orgId = (wsSnap.data()?.organizationId as string | undefined) || null;
-        }
-      }
-      if (!orgId && entityId) {
-        const contact = await resolveContact(entityId, resolvedWorkspaceId);
-        if (contact && contact.schoolData?.organizationId) {
-          orgId = contact.schoolData.organizationId;
-        }
-      }
-      if (!orgId) {
-        const wsSnap = await adminDb.collection('workspaces').limit(1).get();
-        if (!wsSnap.empty) {
-          orgId = (wsSnap.docs[0].data().organizationId as string | undefined) || null;
-        }
-      }
-      const finalOrgId = orgId || 'default_org';
-
       const { resolveActiveTemplate } = await import('./template-resolver');
-
-      if (!emailTemplateId && activeChannels.has('email')) {
+      const finalOrgId = (variables.organizationId as string) || 'default';
+      if (!emailTemplateId) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'email');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
             emailTemplateId = tpl.id;
           }
-        } catch (e: unknown) {
-          console.warn(`[NOTIFY] Could not resolve email template for trigger ${triggerKey}:`, e);
+        } catch {
+          // ignore
         }
       }
-      if (!smsTemplateId && activeChannels.has('sms')) {
+      if (!smsTemplateId) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'sms');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
             smsTemplateId = tpl.id;
           }
-        } catch (e: unknown) {
-          console.warn(`[NOTIFY] Could not resolve sms template for trigger ${triggerKey}:`, e);
+        } catch {
+          // ignore
         }
       }
-      if (!whatsappTemplateId && activeChannels.has('whatsapp')) {
+      if (!whatsappTemplateId) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'whatsapp');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
             whatsappTemplateId = tpl.id;
           }
-        } catch (e: unknown) {
-          console.warn(`[NOTIFY] Could not resolve whatsapp template for trigger ${triggerKey}:`, e);
+        } catch {
+          // ignore
         }
       }
       if (!inAppTemplateId) {
@@ -164,7 +97,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
             inAppTemplateId = tpl.id;
           }
-        } catch (e: unknown) {
+        } catch {
           // ignore
         }
       }
@@ -174,7 +107,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
             pushTemplateId = tpl.id;
           }
-        } catch (e: unknown) {
+        } catch {
           // ignore
         }
       }

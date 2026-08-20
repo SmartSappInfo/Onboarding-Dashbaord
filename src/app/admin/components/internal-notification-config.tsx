@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Bell, UserCheck } from 'lucide-react';
@@ -20,7 +20,7 @@ import { MessagingTemplateSelector } from './MessagingTemplateSelector';
  * Reusable configuration component for Internal Team Notifications.
  * Hooks directly into react-hook-form context.
  */
-export default function InternalNotificationConfig({ prefix = "adminAlert", category = "general" }: { prefix?: string, category?: string }) {
+export default function InternalNotificationConfig({ prefix = "adminAlert", category = "surveys" }: { prefix?: string, category?: TemplateCategory }) {
     const { control, watch, setValue } = useFormContext();
     const firestore = useFirestore();
     const { activeOrganizationId } = useTenant();

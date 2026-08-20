@@ -40,7 +40,8 @@ import {
   formatFileSize,
   FILE_TYPE_PRESETS 
 } from '@/lib/survey-file-utils';
-import { extractFileNameFromStorageUrl, type PublicSurveyResponseInput } from '@/lib/survey-actions';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
+import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon, SmartSappLogo } from '@/components/icons';

@@ -2088,6 +2088,7 @@ export interface SurveyResultRule {
   pipelineEnabled?: boolean;
   pipelineId?: string;
   pipelineStageId?: string;
+  stageId?: string;
 }
 
 export interface SurveyResultPage {

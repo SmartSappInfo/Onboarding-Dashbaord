@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resolveActiveChannels } from '../notification-engine';
+import { resolveActiveChannels } from '../notification-channel-utils';
 
 describe('Survey Multi-Channel & Pipeline Automations', () => {
   beforeEach(() => {
@@ -44,26 +44,18 @@ describe('Survey Multi-Channel & Pipeline Automations', () => {
   });
 
   describe('Execution Strategy Logic: Fallback vs Additional', () => {
-    it('in fallback mode, top-level pipeline triggers ONLY if outcome rule did not move deal', () => {
-      const mode = 'fallback';
-      const outcomeMovedDealTrue = true;
-      const shouldRunWorkbench1 = mode === 'additional' || !outcomeMovedDealTrue;
-      expect(shouldRunWorkbench1).toBe(false);
+    const shouldExecuteWorkbench = (mode: 'fallback' | 'additional', outcomeMovedDeal: boolean): boolean => {
+      return mode === 'additional' || !outcomeMovedDeal;
+    };
 
-      const outcomeMovedDealFalse = false;
-      const shouldRunWorkbench2 = mode === 'additional' || !outcomeMovedDealFalse;
-      expect(shouldRunWorkbench2).toBe(true);
+    it('in fallback mode, top-level pipeline triggers ONLY if outcome rule did not move deal', () => {
+      expect(shouldExecuteWorkbench('fallback', true)).toBe(false);
+      expect(shouldExecuteWorkbench('fallback', false)).toBe(true);
     });
 
     it('in additional mode, top-level pipeline triggers regardless of outcome rule move', () => {
-      const mode = 'additional';
-      const outcomeMovedDealTrue = true;
-      const shouldRunWorkbench1 = mode === 'additional' || !outcomeMovedDealTrue;
-      expect(shouldRunWorkbench1).toBe(true);
-
-      const outcomeMovedDealFalse = false;
-      const shouldRunWorkbench2 = mode === 'additional' || !outcomeMovedDealFalse;
-      expect(shouldRunWorkbench2).toBe(true);
+      expect(shouldExecuteWorkbench('additional', true)).toBe(true);
+      expect(shouldExecuteWorkbench('additional', false)).toBe(true);
     });
   });
 

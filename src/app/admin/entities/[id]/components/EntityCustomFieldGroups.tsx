@@ -8,7 +8,7 @@ import * as LucideIcons from 'lucide-react';
 import { 
   Pencil, Save, X, Loader2, Info, FileText, FileSpreadsheet, FileImage, File, ExternalLink
 } from 'lucide-react';
-import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 import { splitFileUrls } from '@/lib/survey-file-utils';
 
 import type { Entity, AppField, FieldGroup, AppPermissionId } from '@/lib/types';

@@ -6,7 +6,8 @@ import {
   formatFileSize,
   normalizeCustomExtensions,
 } from '../survey-file-utils';
-import { syncSurveyUploadedFilesToMedia, extractFileNameFromStorageUrl } from '../survey-actions';
+import { syncSurveyUploadedFilesToMedia } from '../survey-actions';
+import { extractFileNameFromStorageUrl } from '../survey-response-utils';
 
 // Mock Firebase Admin
 vi.mock('../firebase-admin', () => {

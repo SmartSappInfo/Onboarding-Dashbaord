@@ -15,7 +15,7 @@ import VideoEmbed from '@/components/video-embed';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
-import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
