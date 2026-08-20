@@ -46,12 +46,10 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
             setValue(`${prefix}Channel`, 'all', { shouldDirty: true });
         } else if (next.includes('email') && next.includes('sms')) {
             setValue(`${prefix}Channel`, 'both', { shouldDirty: true });
-        } else if (next.includes('whatsapp')) {
-            setValue(`${prefix}Channel`, next.length === 1 ? 'whatsapp' : 'all', { shouldDirty: true });
-        } else if (next.includes('sms')) {
-            setValue(`${prefix}Channel`, 'sms', { shouldDirty: true });
+        } else if (next.length === 1) {
+            setValue(`${prefix}Channel`, next[0], { shouldDirty: true });
         } else {
-            setValue(`${prefix}Channel`, 'email', { shouldDirty: true });
+            setValue(`${prefix}Channel`, next.includes('whatsapp') ? 'all' : 'both', { shouldDirty: true });
         }
     };
 

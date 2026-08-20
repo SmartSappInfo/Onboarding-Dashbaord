@@ -2618,6 +2618,7 @@ export type RecipientType =
 export interface NotificationPreferences {
   email: boolean;
   sms: boolean;
+  whatsapp?: boolean;
   inApp: boolean;
   push: boolean;
   categories?: Record<string, boolean>; // e.g. { 'tasks': true, 'surveys': false }

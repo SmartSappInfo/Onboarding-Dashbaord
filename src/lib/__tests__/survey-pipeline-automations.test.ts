@@ -12,6 +12,13 @@ describe('Survey Multi-Channel & Pipeline Automations', () => {
       expect(resolveActiveChannels(undefined, [])).toEqual([]);
     });
 
+    it('correctly parses object options with channels array', () => {
+      expect(resolveActiveChannels({ channels: ['email', 'whatsapp'] })).toEqual(['email', 'whatsapp']);
+      expect(resolveActiveChannels({ channels: ['sms'] })).toEqual(['sms']);
+      expect(resolveActiveChannels({ channel: 'email', channels: ['whatsapp'] })).toEqual(['whatsapp']);
+      expect(resolveActiveChannels({ channel: 'all' })).toEqual(['email', 'sms', 'whatsapp']);
+    });
+
     it('correctly maps legacy single string channel', () => {
       expect(resolveActiveChannels('email')).toEqual(['email']);
       expect(resolveActiveChannels('sms')).toEqual(['sms']);

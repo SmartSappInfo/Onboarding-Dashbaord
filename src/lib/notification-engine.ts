@@ -43,11 +43,11 @@ export function resolveActiveChannels(
   const result = new Set<'email' | 'sms' | 'whatsapp'>();
 
   let ch: string | undefined;
-  let channelsList: Array<'email' | 'sms' | 'whatsapp'> | undefined = explicitChannels;
+  let channelsList: Array<'email' | 'sms' | 'whatsapp'> | undefined =
+    (typeof channelOrOptions === 'object' && channelOrOptions !== null ? channelOrOptions.channels : undefined) || explicitChannels;
 
   if (typeof channelOrOptions === 'object' && channelOrOptions !== null) {
     ch = channelOrOptions.channel;
-    channelsList = channelOrOptions.channels;
   } else if (typeof channelOrOptions === 'string') {
     ch = channelOrOptions;
   }
@@ -185,7 +185,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
 
   try {
     const recipients = new Set<string>(); // Set of user IDs
-    const resolvedContacts: { id: string; email?: string; phone?: string; name: string; preferences?: any }[] = [];
+    const resolvedContacts: { id: string; email?: string; phone?: string; name: string; preferences?: UserProfile['notificationPreferences'] }[] = [];
 
     // 1. Resolve Assigned Manager using adapter layer (Requirement 18)
     if (notifyManager && entityId) {
@@ -313,8 +313,8 @@ export async function triggerInternalNotification(options: InternalNotificationO
     await Promise.allSettled(dispatchPromises);
     console.log(`>>> [NOTIFY] Successfully queued ${dispatchPromises.length} alerts for ${resolvedContacts.length} recipients.`);
 
-  } catch (error: any) {
-    console.error(">>> [NOTIFY] Critical Failure in Notification Engine:", error.message);
+  } catch (error: unknown) {
+    console.error(">>> [NOTIFY] Critical Failure in Notification Engine:", error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -324,7 +324,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
  */
 export async function triggerExternalNotification(options: ExternalNotificationOptions) {
   const { entityId, contactTypes, emailTemplateId, smsTemplateId, whatsappTemplateId, variables } = options;
-  const activeChannels = resolveActiveChannels(options);
+  const activeChannels = new Set(resolveActiveChannels(options));
 
   console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId} (Channels: ${Array.from(activeChannels).join(', ')})`);
 
@@ -410,7 +410,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
     await Promise.allSettled(dispatchPromises);
     console.log(`>>> [EXTERNAL-NOTIFY] Successfully queued ${dispatchPromises.length} alerts for ${targetContacts.length} stakeholders.`);
 
-  } catch (error: any) {
-    console.error(">>> [EXTERNAL-NOTIFY] Critical Failure in External Notification Engine:", error.message);
+  } catch (error: unknown) {
+    console.error(">>> [EXTERNAL-NOTIFY] Critical Failure in External Notification Engine:", error instanceof Error ? error.message : String(error));
   }
 }

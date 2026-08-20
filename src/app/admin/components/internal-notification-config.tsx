@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil } from 'lucide-react';
+import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Bell, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
@@ -56,12 +56,10 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
             setValue(`${prefix}Channel`, 'all', { shouldDirty: true });
         } else if (next.includes('email') && next.includes('sms')) {
             setValue(`${prefix}Channel`, 'both', { shouldDirty: true });
-        } else if (next.includes('whatsapp')) {
-            setValue(`${prefix}Channel`, next.length === 1 ? 'whatsapp' : 'all', { shouldDirty: true });
-        } else if (next.includes('sms')) {
-            setValue(`${prefix}Channel`, 'sms', { shouldDirty: true });
+        } else if (next.length === 1) {
+            setValue(`${prefix}Channel`, next[0], { shouldDirty: true });
         } else {
-            setValue(`${prefix}Channel`, 'email', { shouldDirty: true });
+            setValue(`${prefix}Channel`, next.includes('whatsapp') ? 'all' : 'both', { shouldDirty: true });
         }
     };
 

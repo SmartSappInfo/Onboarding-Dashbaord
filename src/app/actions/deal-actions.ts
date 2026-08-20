@@ -47,17 +47,16 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
         const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`);
         const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
         
-        let stageQueryOrDoc: any;
+        let stageSnap: FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QuerySnapshot | null = null;
         if (!data.stageId) {
-            stageQueryOrDoc = adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1);
+            stageSnap = await adminDb.collection('onboardingStages').where('pipelineId', '==', pipelineId).orderBy('order', 'asc').limit(1).get();
         } else if (!data.stageName) {
-            stageQueryOrDoc = adminDb.collection('onboardingStages').doc(data.stageId);
+            stageSnap = await adminDb.collection('onboardingStages').doc(data.stageId).get();
         }
 
-        const [entitySnap, pipelineSnap, stageSnap] = await Promise.all([
+        const [entitySnap, pipelineSnap] = await Promise.all([
             entityRef.get(),
             pipelineRef.get(),
-            stageQueryOrDoc ? stageQueryOrDoc.get() : Promise.resolve(null)
         ]);
 
         if (!entitySnap.exists) throw new Error('Entity not found');
@@ -110,13 +109,11 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
         let stageName = data.stageName;
 
         if (stageSnap) {
-            if (!stageId) {
+            if (!stageId && 'docs' in stageSnap) {
                 stageId = stageSnap.empty ? 'default_stage' : stageSnap.docs[0].id;
-                stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data().name as string | undefined);
-            } else if (!stageName) {
-                if (stageSnap.exists) {
-                    stageName = stageSnap.data()?.name as string | undefined;
-                }
+                stageName = stageSnap.empty ? undefined : (stageSnap.docs[0].data()?.name as string | undefined);
+            } else if (!stageName && 'exists' in stageSnap && stageSnap.exists) {
+                stageName = (stageSnap.data() as { name?: string } | undefined)?.name;
             }
         }
 
@@ -186,9 +183,9 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
         });
 
         return { id: docRef.id };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to create deal:', e);
-        return { error: e.message };
+        return { error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -228,9 +225,9 @@ export async function updateDealStageAction(dealId: string, stageId: string): Pr
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to update deal stage:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -262,9 +259,9 @@ export async function updateDealValueAction(dealId: string, value: number): Prom
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to update deal value:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -313,9 +310,9 @@ export async function updateDealStatusAction(
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to update deal status:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -351,9 +348,9 @@ export async function updateDealOwnerAction(
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to update deal owner:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -366,7 +363,7 @@ export async function updateDealDetailsAction(
         description?: string | null;
         assignedTo?: { userId: string | null; name: string | null; email: string | null } | null;
         focalContacts?: DealFocalContact[];
-        customFields?: Record<string, any>;
+        customFields?: Record<string, unknown>;
     }
 ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -376,7 +373,7 @@ export async function updateDealDetailsAction(
         const deal = dealSnap.data() as Deal;
 
         const timestamp = new Date().toISOString();
-        const finalUpdates: any = {
+        const finalUpdates: Record<string, unknown> = {
             ...updates,
             updatedAt: timestamp
         };
@@ -396,9 +393,9 @@ export async function updateDealDetailsAction(
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to update deal details:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -451,9 +448,9 @@ export async function addDealContactAction(
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to add deal contact:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -493,9 +490,9 @@ export async function removeDealContactAction(
         });
 
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Failed to remove deal contact:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
 
