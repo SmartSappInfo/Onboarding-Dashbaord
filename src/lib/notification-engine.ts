@@ -16,9 +16,10 @@ interface InternalNotificationOptions {
   whatsappTemplateId?: string;
   inAppTemplateId?: string;
   pushTemplateId?: string;
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
   // 'both' = email+sms (legacy); 'all' includes whatsapp; 'whatsapp' = whatsapp only.
   channel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
+  channels?: Array<'email' | 'sms' | 'whatsapp'>;
 }
 
 interface ExternalNotificationOptions {
@@ -27,8 +28,55 @@ interface ExternalNotificationOptions {
   emailTemplateId?: string;
   smsTemplateId?: string;
   whatsappTemplateId?: string;
-  variables: Record<string, any>;
-  channel?: 'email' | 'sms' | 'whatsapp' | 'both';
+  variables: Record<string, unknown>;
+  channel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
+  channels?: Array<'email' | 'sms' | 'whatsapp'>;
+}
+
+/**
+ * Normalizes multi-channel and legacy channel string configurations into an active channel set.
+ */
+export function resolveActiveChannels(
+  channelOrOptions?: string | { channels?: Array<'email' | 'sms' | 'whatsapp'>; channel?: string },
+  explicitChannels?: Array<'email' | 'sms' | 'whatsapp'>
+): Array<'email' | 'sms' | 'whatsapp'> {
+  const result = new Set<'email' | 'sms' | 'whatsapp'>();
+
+  let ch: string | undefined;
+  let channelsList: Array<'email' | 'sms' | 'whatsapp'> | undefined = explicitChannels;
+
+  if (typeof channelOrOptions === 'object' && channelOrOptions !== null) {
+    ch = channelOrOptions.channel;
+    channelsList = channelOrOptions.channels;
+  } else if (typeof channelOrOptions === 'string') {
+    ch = channelOrOptions;
+  }
+
+  if (Array.isArray(channelsList) && channelsList.length > 0) {
+    channelsList.forEach(c => {
+      if (c === 'email' || c === 'sms' || c === 'whatsapp') result.add(c);
+    });
+    if (result.size > 0) return Array.from(result);
+  }
+
+  if (!ch) return [];
+
+  if (ch === 'all') {
+    result.add('email');
+    result.add('sms');
+    result.add('whatsapp');
+  } else if (ch === 'both') {
+    result.add('email');
+    result.add('sms');
+  } else if (ch === 'email') {
+    result.add('email');
+  } else if (ch === 'sms') {
+    result.add('sms');
+  } else if (ch === 'whatsapp') {
+    result.add('whatsapp');
+  }
+
+  return Array.from(result);
 }
 
 /**
@@ -38,7 +86,8 @@ interface ExternalNotificationOptions {
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
 export async function triggerInternalNotification(options: InternalNotificationOptions) {
-  const { entityId, specificUserIds, notifyManager, variables, channel = 'both', triggerKey } = options;
+  const { entityId, specificUserIds, notifyManager, variables, triggerKey } = options;
+  const activeChannels = new Set(resolveActiveChannels(options));
   const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
   const resolvedWorkspaceId = (variables.workspaceId as string | undefined) || (entityId ? await resolveWorkspaceIdFromEntity(entityId) : null) || undefined;
   if (!resolvedWorkspaceId) {
@@ -52,7 +101,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
   let inAppTemplateId = options.inAppTemplateId;
   let pushTemplateId = options.pushTemplateId;
 
-  console.log(`>>> [NOTIFY] Triggering Internal Notification Hub...`);
+  console.log(`>>> [NOTIFY] Triggering Internal Notification Hub... Active channels: ${Array.from(activeChannels).join(', ')}`);
 
   if (triggerKey) {
     try {
@@ -79,7 +128,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
 
       const { resolveActiveTemplate } = await import('./template-resolver');
 
-      if (!emailTemplateId && (channel === 'email' || channel === 'both' || channel === 'all')) {
+      if (!emailTemplateId && activeChannels.has('email')) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'email');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
@@ -89,7 +138,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
           console.warn(`[NOTIFY] Could not resolve email template for trigger ${triggerKey}:`, e);
         }
       }
-      if (!smsTemplateId && (channel === 'sms' || channel === 'both' || channel === 'all')) {
+      if (!smsTemplateId && activeChannels.has('sms')) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'sms');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
@@ -99,7 +148,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
           console.warn(`[NOTIFY] Could not resolve sms template for trigger ${triggerKey}:`, e);
         }
       }
-      if (!whatsappTemplateId && (channel === 'whatsapp' || channel === 'all')) {
+      if (!whatsappTemplateId && activeChannels.has('whatsapp')) {
         try {
           const tpl = await resolveActiveTemplate(triggerKey, finalOrgId, 'whatsapp');
           if (tpl && (tpl.status === 'active' || tpl.isActive === true)) {
@@ -185,13 +234,13 @@ export async function triggerInternalNotification(options: InternalNotificationO
       const prefs = contact.preferences || { email: true, sms: true, inApp: true, push: true };
 
       // Check category-specific opt-outs if defined
-      const category = variables.category || 'general';
+      const category = (variables.category as string | undefined) || 'general';
       if (prefs.categories && prefs.categories[category] === false) {
         continue; // User opted out of this category entirely
       }
 
       // Email Dispatch
-      if ((channel === 'email' || channel === 'both' || channel === 'all') && emailTemplateId && contact.email && prefs.email !== false) {
+      if (activeChannels.has('email') && emailTemplateId && contact.email && prefs.email !== false) {
         dispatchPromises.push(
           sendMessage({
             templateId: emailTemplateId,
@@ -205,7 +254,7 @@ export async function triggerInternalNotification(options: InternalNotificationO
       }
 
       // SMS Dispatch
-      if ((channel === 'sms' || channel === 'both' || channel === 'all') && smsTemplateId && contact.phone && prefs.sms !== false) {
+      if (activeChannels.has('sms') && smsTemplateId && contact.phone && prefs.sms !== false) {
         dispatchPromises.push(
           sendMessage({
             templateId: smsTemplateId,
@@ -218,8 +267,8 @@ export async function triggerInternalNotification(options: InternalNotificationO
         );
       }
 
-      // WhatsApp Dispatch (delivers to phone; opt-in via 'whatsapp'/'all' channel)
-      if ((channel === 'whatsapp' || channel === 'all') && whatsappTemplateId && contact.phone && prefs.whatsapp !== false) {
+      // WhatsApp Dispatch (delivers to phone)
+      if (activeChannels.has('whatsapp') && whatsappTemplateId && contact.phone && prefs.whatsapp !== false) {
         dispatchPromises.push(
           sendMessage({
             templateId: whatsappTemplateId,
@@ -274,9 +323,10 @@ export async function triggerInternalNotification(options: InternalNotificationO
  * Resolves contacts at a specific campus/entity and dispatches alerts.
  */
 export async function triggerExternalNotification(options: ExternalNotificationOptions) {
-  const { entityId, contactTypes, emailTemplateId, smsTemplateId, whatsappTemplateId, variables, channel = 'both' } = options;
+  const { entityId, contactTypes, emailTemplateId, smsTemplateId, whatsappTemplateId, variables } = options;
+  const activeChannels = resolveActiveChannels(options);
 
-  console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId}`);
+  console.log(`>>> [EXTERNAL-NOTIFY] Triggering External Notification Hub for Entity: ${entityId} (Channels: ${Array.from(activeChannels).join(', ')})`);
 
   try {
     const { resolveWorkspaceIdFromEntity } = await import('./services/workspace-resolver');
@@ -315,7 +365,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
       };
 
       // Email Dispatch
-      if ((channel === 'email' || channel === 'both') && emailTemplateId && stakeholder.email) {
+      if (activeChannels.has('email') && emailTemplateId && stakeholder.email) {
         dispatchPromises.push(
           sendMessage({
             templateId: emailTemplateId,
@@ -329,7 +379,7 @@ export async function triggerExternalNotification(options: ExternalNotificationO
       }
 
       // SMS Dispatch
-      if ((channel === 'sms' || channel === 'both') && smsTemplateId && stakeholder.phone) {
+      if (activeChannels.has('sms') && smsTemplateId && stakeholder.phone) {
         dispatchPromises.push(
           sendMessage({
             templateId: smsTemplateId,
@@ -342,8 +392,8 @@ export async function triggerExternalNotification(options: ExternalNotificationO
         );
       }
 
-      // WhatsApp Dispatch (delivers to phone; opt-in via 'whatsapp' channel)
-      if (channel === 'whatsapp' && whatsappTemplateId && stakeholder.phone) {
+      // WhatsApp Dispatch (delivers to phone)
+      if (activeChannels.has('whatsapp') && whatsappTemplateId && stakeholder.phone) {
         dispatchPromises.push(
           sendMessage({
             templateId: whatsappTemplateId,

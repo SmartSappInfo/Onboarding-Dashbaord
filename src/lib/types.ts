@@ -1906,14 +1906,16 @@ export interface Survey {
   webhookId?: string;
   showDebugProcessingModal?: boolean;
   adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
+  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
+  adminAlertChannels?: Array<'email' | 'sms' | 'whatsapp'>;
   adminAlertNotifyManager?: boolean;
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
   adminAlertWhatsappTemplateId?: string;
   externalAlertsEnabled?: boolean;
-  externalAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
+  externalAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
+  externalAlertChannels?: Array<'email' | 'sms' | 'whatsapp'>;
   externalAlertContactTypes?: string[];
   externalAlertEmailTemplateId?: string;
   externalAlertSmsTemplateId?: string;
@@ -2230,7 +2232,8 @@ export interface PDFForm {
   confirmationTemplateId?: string;
   confirmationSenderProfileId?: string;
   adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both';
+  adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
+  adminAlertChannels?: Array<'email' | 'sms' | 'whatsapp'>;
   adminAlertNotifyManager?: boolean;
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;

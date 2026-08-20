@@ -2,14 +2,9 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import type { MessageTemplate, WorkspaceEntity } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Bell, UserCheck, Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
+import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
@@ -17,29 +12,50 @@ import { Button } from '@/components/ui/button';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 
-const CONTACT_ROLE_TYPES = [
-    'Champion',
-    'Accountant',
-    'Administrator',
-    'Principal',
-    'School Owner'
-];
-
-/**
- * Reusable configuration component for External Team Notifications.
- * targets Entity Contacts at the associated Entity.
- */
-export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: any }) {
+export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: string }) {
     const { control, watch, setValue } = useFormContext();
-    const firestore = useFirestore();
 
     const enabled = watch(`${prefix}sEnabled`);
-    const channel = watch(`${prefix}Channel`);
-    const entityId = watch('entityId');
+    const rawChannel = watch(`${prefix}Channel`);
+    const rawChannels = watch(`${prefix}Channels`);
+
+    // Parse active channels supporting both new array and legacy string format
+    const activeChannels = React.useMemo<Array<'email' | 'sms' | 'whatsapp'>>(() => {
+        if (Array.isArray(rawChannels) && rawChannels.length > 0) {
+            return rawChannels.filter((c): c is 'email' | 'sms' | 'whatsapp' => ['email', 'sms', 'whatsapp'].includes(c));
+        }
+        if (rawChannel === 'both') return ['email', 'sms'];
+        if (rawChannel === 'all') return ['email', 'sms', 'whatsapp'];
+        if (rawChannel === 'sms') return ['sms'];
+        if (rawChannel === 'whatsapp') return ['whatsapp'];
+        return ['email'];
+    }, [rawChannels, rawChannel]);
+
+    const handleToggleChannel = (c: 'email' | 'sms' | 'whatsapp') => {
+        let next: Array<'email' | 'sms' | 'whatsapp'>;
+        if (activeChannels.includes(c)) {
+            if (activeChannels.length <= 1) return; // Keep at least one channel active
+            next = activeChannels.filter(x => x !== c);
+        } else {
+            next = [...activeChannels, c];
+        }
+        setValue(`${prefix}Channels`, next, { shouldDirty: true });
+        
+        // Sync legacy channel field for backwards compatibility
+        if (next.includes('email') && next.includes('sms') && next.includes('whatsapp')) {
+            setValue(`${prefix}Channel`, 'all', { shouldDirty: true });
+        } else if (next.includes('email') && next.includes('sms')) {
+            setValue(`${prefix}Channel`, 'both', { shouldDirty: true });
+        } else if (next.includes('whatsapp')) {
+            setValue(`${prefix}Channel`, next.length === 1 ? 'whatsapp' : 'all', { shouldDirty: true });
+        } else if (next.includes('sms')) {
+            setValue(`${prefix}Channel`, 'sms', { shouldDirty: true });
+        } else {
+            setValue(`${prefix}Channel`, 'email', { shouldDirty: true });
+        }
+    };
 
     const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean, templateId?: string } | null>(null);
-
-    const contactRoleOptions = CONTACT_ROLE_TYPES.map(type => ({ label: type, value: type }));
 
     return (
         <div className="space-y-4">
@@ -106,40 +122,48 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                             </div>
 
                             <div className="space-y-4">
-                                <Label className="text-[10px] font-semibold text-primary ml-1">2. Delivery Medium</Label>
-                                <Controller
-                                    name={`${prefix}Channel`}
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="grid grid-cols-4 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
-                                            {(['email', 'sms', 'whatsapp', 'both'] as const).map(c => (
-                                                <button
-                                                    key={c}
-                                                    type="button"
-                                                    onClick={() => field.onChange(c)}
-                                                    className={cn(
-                                                        "h-10 rounded-xl font-semibold uppercase text-[9px]  transition-all",
-                                                        field.value === c ? "bg-card shadow-md text-primary" : "text-muted-foreground opacity-60 hover:opacity-100"
-                                                    )}
-                                                >
-                                                    {c}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                />
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-semibold text-primary ml-1">2. Delivery Medium (Multi-Select)</Label>
+                                    <span className="text-[9px] text-muted-foreground font-medium">Toggle any combination</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                    {([
+                                        { key: 'email' as const, label: 'Email', icon: Mail },
+                                        { key: 'sms' as const, label: 'SMS', icon: Smartphone },
+                                        { key: 'whatsapp' as const, label: 'WhatsApp', icon: MessageCircle },
+                                    ]).map(({ key: c, label, icon: Icon }) => {
+                                        const isSelected = activeChannels.includes(c);
+                                        return (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => handleToggleChannel(c)}
+                                                className={cn(
+                                                    "h-11 rounded-xl font-bold uppercase text-[10px] flex items-center justify-center gap-1.5 transition-all min-h-[44px] active:scale-[0.97]",
+                                                    isSelected 
+                                                        ? "bg-card shadow-md text-primary border border-primary/20 ring-1 ring-primary/20" 
+                                                        : "text-muted-foreground opacity-60 hover:opacity-100 hover:bg-card/50"
+                                                )}
+                                                aria-pressed={isSelected}
+                                            >
+                                                <Icon className="h-3.5 w-3.5 shrink-0" />
+                                                <span>{label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                                 <div className="p-4 rounded-xl bg-purple-50 border border-purple-100 flex items-start gap-3">
                                     <Info className="h-4 w-4 text-purple-600 shrink-0 mt-0.5" />
                                     <p className="text-[9px] font-bold text-purple-800 leading-relaxed tracking-tighter">
-                                        External alerts use public-facing templates. Ensure the tone is appropriate for your customers.
+                                        External alerts use public-facing templates across all toggled channels. Ensure the tone is appropriate for your customers.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Template Selection */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-primary/10 text-left">
-                            {(channel === 'email' || channel === 'both') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-primary/10 text-left">
+                            {activeChannels.includes('email') && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
                                         <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
@@ -192,7 +216,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                 </div>
                             )}
 
-                            {(channel === 'sms' || channel === 'both') && (
+                            {activeChannels.includes('sms') && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
                                         <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
@@ -245,7 +269,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                                 </div>
                             )}
 
-                            {channel === 'whatsapp' && (
+                            {activeChannels.includes('whatsapp') && (
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 px-1">
                                         <MessageCircle className="h-3 w-3" /> WhatsApp Template

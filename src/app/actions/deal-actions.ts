@@ -41,7 +41,10 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
     try {
         const { entityId, workspaceId, organizationId, pipelineId, name, value, assignmentStrategy, eligibleUserIds = [], suppressAutomations = false, ...rest } = data;
 
-        const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${entityId}`);
+        // ARCHITECTURAL NOTE & CAUTION (Zero Double-Prefix Entity ID):
+        // Ensure entityId is normalized without duplicate workspaceId_ prefix.
+        const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+        const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`);
         const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
         
         let stageQueryOrDoc: any;
@@ -150,7 +153,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
             workspaceId,
-            entityId,
+            entityId: cleanEntityId,
             pipelineId,
             stageId: stageId || 'default_stage',
             ...(stageName ? { stageName } : {}),
@@ -171,7 +174,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
         // Broadcast signal via Event Bus (respecting suppressAutomations)
         await logActivity({
             organizationId,
-            entityId,
+            entityId: cleanEntityId,
             userId: null,
             workspaceId,
             type: suppressAutomations ? 'deal_created_suppressed' : 'deal_created',

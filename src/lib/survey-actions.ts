@@ -1300,121 +1300,6 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 console.error('[survey-actions] Failed to sync uploaded files to media:', err);
               }
             });
-            
-            // Trigger automations via the Logic Processor (Phase 1 completion)
-            if (surveyData.autoAutomations?.length) {
-              const automationPayload = {
-                entityId: finalEntityId,
-                entityName: eName,
-                workspaceId,
-                organizationId,
-                surveyId,
-                surveyTitle: surveyData.title,
-                submissionId: docRef.id,
-                assignedUserId: responseData.assignedUserId || null,
-                score: responseData.score || null,
-                autoTags: surveyData.autoTags || [],
-                source: 'survey_submission',
-              };
-
-              // Fire SURVEY_SUBMITTED trigger for each matching automation
-              await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload);
-            }
-
-            // Pipeline Routing Automation Execution (Outcome Rules & Workbench Automations)
-            if (surveyData) {
-              const score = responseData.score !== undefined ? responseData.score : 0;
-              const maxScore = surveyData.maxScore || 100;
-              const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-
-              // 1. Evaluate score outcome rules
-              let matchedRulePipelineAction: { pipelineId: string; stageId: string; label?: string } | null = null;
-              if (surveyData.scoringEnabled && surveyData.resultRules?.length) {
-                const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
-                const matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
-                if (matchedRule?.pipelineEnabled && matchedRule.pipelineId && matchedRule.pipelineStageId) {
-                  matchedRulePipelineAction = {
-                    pipelineId: matchedRule.pipelineId,
-                    stageId: matchedRule.pipelineStageId,
-                    label: matchedRule.label,
-                  };
-                }
-              }
-
-              // 2. Evaluate Workbench Pipeline Automation
-              let workbenchPipelineAction: { pipelineId: string; stageId: string } | null = null;
-              if (surveyData.autoPipelineEnabled && surveyData.autoPipelineId && surveyData.autoPipelineStageId) {
-                const mode = surveyData.autoPipelineMode || 'fallback';
-                if (mode === 'fallback') {
-                  if (!matchedRulePipelineAction) {
-                    workbenchPipelineAction = {
-                      pipelineId: surveyData.autoPipelineId,
-                      stageId: surveyData.autoPipelineStageId,
-                    };
-                  }
-                } else if (mode === 'additional') {
-                  workbenchPipelineAction = {
-                    pipelineId: surveyData.autoPipelineId,
-                    stageId: surveyData.autoPipelineStageId,
-                  };
-                }
-              }
-
-              const scoreDetailsPayload = {
-                score,
-                maxScore,
-                percentage,
-                submittedAt: new Date().toISOString(),
-                surveyTitle: surveyData.title,
-                responseId: docRef.id,
-              };
-
-              // Wrap pipeline routing execution in Next.js after() for non-blocking <50ms response speed
-              after(async () => {
-                try {
-                  // Execute Matched Result Rule Pipeline Action
-                  if (matchedRulePipelineAction && finalEntityId) {
-                    await addOrMoveEntityInPipeline({
-                      entityId: finalEntityId,
-                      entityName: finalEntityName,
-                      workspaceId,
-                      organizationId,
-                      pipelineId: matchedRulePipelineAction.pipelineId,
-                      stageId: matchedRulePipelineAction.stageId,
-                      scoreDetails: {
-                        ...scoreDetailsPayload,
-                        label: matchedRulePipelineAction.label,
-                      },
-                    }).catch((err) => console.error('[survey-actions] Outcome rule pipeline action error:', err));
-                  }
-
-                  // Execute Workbench Pipeline Action
-                  if (workbenchPipelineAction && finalEntityId) {
-                    // Avoid redundant execution if workbench points to exact same pipeline & stage as outcome rule
-                    if (
-                      !matchedRulePipelineAction ||
-                      matchedRulePipelineAction.pipelineId !== workbenchPipelineAction.pipelineId ||
-                      matchedRulePipelineAction.stageId !== workbenchPipelineAction.stageId
-                    ) {
-                      await addOrMoveEntityInPipeline({
-                        entityId: finalEntityId,
-                        entityName: finalEntityName,
-                        workspaceId,
-                        organizationId,
-                        pipelineId: workbenchPipelineAction.pipelineId,
-                        stageId: workbenchPipelineAction.stageId,
-                        scoreDetails: {
-                          ...scoreDetailsPayload,
-                          label: 'Workbench Automations',
-                        },
-                      }).catch((err) => console.error('[survey-actions] Workbench pipeline action error:', err));
-                    }
-                  }
-                } catch (bgError) {
-                  console.error('[survey-actions] Background pipeline routing error:', bgError);
-                }
-              });
-            }
           }
         }
       }
@@ -1444,230 +1329,29 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       }, { merge: true });
     }
     
-    // 6. Handle Notifications (Admin & External)
+    // 6. Handle Post-Submission Automations, Pipeline Deal Moves & Alerts
     if (surveyData && !isFormMode) {
-      let matchedRule: SurveyResultRule | undefined;
-      const score = responseData.score !== undefined ? responseData.score : 0;
-      if (surveyData.scoringEnabled && surveyData.resultRules?.length) {
-        const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
-        matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
-      }
+      const respPhone = (responseData as Record<string, unknown>).contactPhone || (responseData as Record<string, unknown>).respondentPhone || '';
+      const respEmail = (responseData as Record<string, unknown>).contactEmail || (responseData as Record<string, unknown>).respondentEmail || '';
 
-      const resultMsg = matchedRule?.message || matchedRule?.description || matchedRule?.title || matchedRule?.label || '';
-      const resultTitle = matchedRule?.title || matchedRule?.label || surveyData.title || '';
-      const resultDesc = matchedRule?.description || '';
-      const outcomeLabel = matchedRule?.label || matchedRule?.title || '';
-
-      // Persist outcome details on response document for auditability
-      if (matchedRule || resultMsg || outcomeLabel) {
-        await docRef.update({
-          resultMessage: resultMsg || null,
-          resultTitle: resultTitle || null,
-          resultDescription: resultDesc || null,
-          outcome: outcomeLabel || null,
-          matchedRuleId: matchedRule?.id || null,
-        }).catch((err) => console.warn('[survey-actions] Failed to persist outcome on response doc:', err));
-      }
-
-      let resolvedRespondentName = responseData.respondentName;
-      if (!resolvedRespondentName && finalEntityId) {
-        try {
-          const contact = await resolveContact(finalEntityId, workspaceId);
-          if (contact) {
-            resolvedRespondentName = contact.name || contact.schoolData?.name;
-          }
-        } catch (e) {
-          // ignore fallback
-        }
-      }
-      if (!resolvedRespondentName) {
-        resolvedRespondentName = finalContactName || finalEntityName || 'Respondent';
-      }
-
-      const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-      const baseUrl = getBaseUrl();
-
-      // Build question map for variable key alias resolution
-      const questionMap = new Map<string, any>();
-      if (Array.isArray(surveyData.elements)) {
-        surveyData.elements.forEach((el: any) => {
-          if (el && typeof el === 'object' && el.id) {
-            questionMap.set(el.id, el);
-            if (el.variableName) questionMap.set(el.variableName, el);
-            if (el.fieldKey) questionMap.set(el.fieldKey, el);
-            if (el.key) questionMap.set(el.key, el);
-          }
-        });
-      }
-
-      const answerVars: Record<string, string> = {};
-      let respPhone = (responseData as any).contactPhone || (responseData as any).respondentPhone || '';
-      let respEmail = (responseData as any).contactEmail || (responseData as any).respondentEmail || '';
-
-      if (Array.isArray(responseData.answers)) {
-        responseData.answers.forEach((ans: any) => {
-          if (ans && ans.questionId) {
-            const valStr = Array.isArray(ans.value) ? ans.value.join(', ') : String(ans.value ?? '');
-            answerVars[ans.questionId] = valStr;
-
-            const q = questionMap.get(ans.questionId);
-            if (q) {
-              if (q.variableName) {
-                answerVars[q.variableName] = valStr;
-                answerVars[`q_${q.variableName}`] = valStr;
-                const bare = q.variableName.replace(/^q_/, '');
-                answerVars[bare] = valStr;
-                answerVars[`q_${bare}`] = valStr;
-              }
-              if (q.fieldKey) {
-                answerVars[q.fieldKey] = valStr;
-                answerVars[`q_${q.fieldKey}`] = valStr;
-              }
-              if (q.key) {
-                answerVars[q.key] = valStr;
-              }
-
-              const qType = (q.type || '').toLowerCase();
-              const qTitle = (q.title || '').toLowerCase();
-              const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
-
-              if (!respPhone && (qType === 'phone' || qType === 'contact_phone' || qTitle.includes('phone') || qTitle.includes('contact number') || qVar.includes('phone'))) {
-                respPhone = valStr;
-              }
-              if (!respEmail && (qType === 'email' || qType === 'contact_email' || qTitle.includes('email') || qVar.includes('email'))) {
-                respEmail = valStr;
-              }
-            } else if (ans.questionId.startsWith('q_')) {
-              answerVars[ans.questionId.substring(2)] = valStr;
-            }
-          }
-        });
-      }
-
-      const notificationVars: Record<string, any> = {
-        ...answerVars,
-        ...((responseData as any).variables || {}),
-        survey_title: surveyData.title,
-        surveyTitle: surveyData.title,
-        survey_id: surveyId,
-        surveyId: surveyId,
-        submission_id: docRef.id,
-        submissionId: docRef.id,
-        responseId: docRef.id,
-        _surveyId: surveyId,
-        _responseId: docRef.id,
-        workspaceId,
-        entityId: finalEntityId || '',
-        score: responseData.score !== undefined ? responseData.score : 0,
-        survey_score: responseData.score !== undefined ? responseData.score : 0,
-        max_score: surveyData.maxScore || 100,
-        maxScore: surveyData.maxScore || 100,
-        respondent_name: resolvedRespondentName,
-        respondentName: resolvedRespondentName,
-        contact_name: resolvedRespondentName,
-        contactName: resolvedRespondentName,
-        entity_name: finalEntityName || resolvedRespondentName,
-        entityName: finalEntityName || resolvedRespondentName,
-        q_entity_name_input: answerVars.q_entity_name_input || finalEntityName || resolvedRespondentName,
-        result_message: resultMsg,
-        resultMessage: resultMsg,
-        result_title: resultTitle,
-        resultTitle: resultTitle,
-        result_description: resultDesc,
-        resultDescription: resultDesc,
-        outcome_label: outcomeLabel,
-        outcomeLabel: outcomeLabel,
-        survey_result: resultTitle || resultMsg,
-        survey_link: `${baseUrl}/surveys/${surveyData.slug || surveyId}`,
-        surveyLink: `${baseUrl}/surveys/${surveyData.slug || surveyId}`,
-        dashboard_url: `${baseUrl}/admin/surveys/${surveyId}/results`,
-        dashboardUrl: `${baseUrl}/admin/surveys/${surveyId}/results`,
-        submission_link: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
-        submissionLink: `${baseUrl}/admin/surveys/${surveyId}/results?submissionId=${docRef.id}`,
-      };
-
-      if (respPhone) {
-        notificationVars.contact_phone = respPhone;
-        notificationVars.respondent_phone = respPhone;
-        notificationVars.phone = respPhone;
-      }
-      if (respEmail) {
-        notificationVars.contact_email = respEmail;
-        notificationVars.respondent_email = respEmail;
-        notificationVars.email = respEmail;
-      }
-
-      // Internal Team Alerts
-      if (surveyData.adminAlertsEnabled) {
-        await triggerInternalNotification({
-          entityId: finalEntityId || undefined,
-          notifyManager: surveyData.adminAlertNotifyManager,
-          specificUserIds: surveyData.adminAlertSpecificUserIds,
-          emailTemplateId: surveyData.adminAlertEmailTemplateId,
-          smsTemplateId: surveyData.adminAlertSmsTemplateId,
-          whatsappTemplateId: surveyData.adminAlertWhatsappTemplateId,
-          variables: notificationVars,
-          channel: surveyData.adminAlertChannel
-        });
-      }
-
-      // External Stakeholder Alerts
-      if (surveyData.externalAlertsEnabled && finalEntityId) {
-        await triggerExternalNotification({
-          entityId: finalEntityId,
-          contactTypes: surveyData.externalAlertContactTypes || [],
-          emailTemplateId: surveyData.externalAlertEmailTemplateId,
-          smsTemplateId: surveyData.externalAlertSmsTemplateId,
-          whatsappTemplateId: surveyData.externalAlertWhatsappTemplateId,
-          variables: notificationVars,
-          channel: surveyData.externalAlertChannel
-        });
-      }
-
-      // 6.1 Assigned User Attribution Alerts (Phase 3)
-      if (surveyData.notifyAssignedUsers && responseData.assignedUserId) {
-        const assignedUserId = responseData.assignedUserId;
-        const config = surveyData.notifyAssignedUsers;
-
-        const hasEmail = config.email && config.emailTemplateId && config.emailTemplateId !== 'none';
-        const hasSms = config.sms && config.smsTemplateId && config.smsTemplateId !== 'none';
-
-        if (hasEmail || hasSms) {
-          await triggerInternalNotification({
-            entityId: finalEntityId || undefined,
-            specificUserIds: [assignedUserId],
-            emailTemplateId: hasEmail ? config.emailTemplateId : undefined,
-            smsTemplateId: hasSms ? config.smsTemplateId : undefined,
-            variables: { 
-              ...notificationVars, 
-              assigned_userId: assignedUserId,
-              is_assigned_alert: true 
-            },
-            channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
-          });
-        }
-      }
-    }
-
-    // 7. Activity Logging — Creates a timeline entry for entity and survey analytics
-    if (surveyData && !isFormMode) {
-      await logActivity({
-        entityId: finalEntityId || undefined,
-        organizationId,
-        workspaceId,
-        userId: responseData.assignedUserId || 'anonymous',
-        type: 'survey_submitted' as any, // Uses a non-bus type to avoid double-triggering automations
-        source: 'public_survey',
-        description: `Survey "${surveyData.title}" submitted${finalEntityId ? ` — entity linked` : ''}`,
-        metadata: {
-          surveyId,
-          submissionId: docRef.id,
-          surveyTitle: surveyData.title,
-          score: responseData.score || null,
-          assignedUserId: responseData.assignedUserId || null,
-          entityCreated: !!finalEntityId,
-          sourcePageId: responseData.sourcePageId || null,
-        },
+      after(async () => {
+        await triggerPostSubmissionAutomations(
+          surveyData,
+          docRef.id,
+          {
+            answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
+            score: responseData.score,
+            respondentName: finalContactName || finalEntityName || responseData.respondentName,
+            sourcePageId: responseData.sourcePageId,
+            assignedUserId: responseData.assignedUserId,
+          },
+          workspaceId,
+          organizationId,
+          finalEntityId,
+          respEmail ? String(respEmail) : null,
+          respPhone ? String(respPhone) : null,
+          (responseData as Record<string, unknown>).outcomeId ? String((responseData as Record<string, unknown>).outcomeId) : null
+        );
       });
     }
 
@@ -2401,6 +2085,229 @@ export async function finalizeSurveySubmission(
   }
 }
 
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Comprehensive Pipeline & Automations Routing Engine for Survey Submissions.
+ * Handles outcome-specific and survey-level pipeline moves (Fallback vs Additional),
+ * custom automations, global triggers, and auto-tagging.
+ */
+export async function executeSurveyPipelineAndAutomations(params: {
+  surveyData: Survey;
+  responseId: string;
+  responseData: {
+    answers: Array<{ questionId: string; value: string | string[] }>;
+    score?: number;
+    respondentName?: string | null;
+    sourcePageId?: string | null;
+    assignedUserId?: string | null;
+  };
+  workspaceId: string;
+  organizationId: string;
+  entityId: string;
+  entityName?: string | null;
+  outcomeId?: string | null;
+}): Promise<{ outcomeMovedDeal: boolean; workbenchMovedDeal: boolean }> {
+  const { surveyData, responseId, responseData, workspaceId, organizationId, entityId, entityName, outcomeId } = params;
+
+  let outcomeMovedDeal = false;
+  let workbenchMovedDeal = false;
+
+  try {
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+
+    let matchedRule: SurveyResultRule | undefined;
+    if (outcomeId) {
+      matchedRule = surveyData.resultRules?.find(r => r.id === outcomeId);
+    } else if (surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
+      const score = responseData.score;
+      const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
+      matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
+    }
+
+    const score = responseData.score !== undefined ? responseData.score : 0;
+    const maxScore = surveyData.maxScore || 100;
+    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+
+    const scoreDetailsPayload = {
+      score,
+      maxScore,
+      percentage,
+      submittedAt: new Date().toISOString(),
+      surveyTitle: surveyData.title,
+      responseId,
+    };
+
+    // 1. Outcome Rule Pipeline Move
+    let matchedRulePipelineAction: { pipelineId: string; stageId: string; label?: string } | null = null;
+    if (matchedRule) {
+      const pId = matchedRule.pipelineId;
+      const sId = matchedRule.pipelineStageId || matchedRule.stageId;
+      if ((matchedRule.pipelineEnabled ?? true) && pId && sId) {
+        matchedRulePipelineAction = {
+          pipelineId: pId,
+          stageId: sId,
+          label: matchedRule.label || matchedRule.title,
+        };
+      }
+    }
+
+    if (matchedRulePipelineAction) {
+      const outcomeRes = await addOrMoveEntityInPipeline({
+        entityId: cleanEntityId,
+        entityName: entityName || undefined,
+        workspaceId,
+        organizationId,
+        pipelineId: matchedRulePipelineAction.pipelineId,
+        stageId: matchedRulePipelineAction.stageId,
+        scoreDetails: {
+          ...scoreDetailsPayload,
+          label: matchedRulePipelineAction.label,
+        },
+      });
+      if (outcomeRes.success) {
+        outcomeMovedDeal = true;
+      }
+    }
+
+    // 2. Workbench Top-Level Pipeline Move ("Add or Move in Pipeline" toggle)
+    if (surveyData.autoPipelineEnabled && surveyData.autoPipelineId && surveyData.autoPipelineStageId) {
+      const mode = surveyData.autoPipelineMode || 'fallback';
+      const shouldExecuteWorkbench = mode === 'additional' || !outcomeMovedDeal;
+
+      if (shouldExecuteWorkbench) {
+        // Avoid redundant move if workbench points to exact same pipeline & stage as outcome rule
+        if (
+          !matchedRulePipelineAction ||
+          matchedRulePipelineAction.pipelineId !== surveyData.autoPipelineId ||
+          matchedRulePipelineAction.stageId !== surveyData.autoPipelineStageId
+        ) {
+          const wbRes = await addOrMoveEntityInPipeline({
+            entityId: cleanEntityId,
+            entityName: entityName || undefined,
+            workspaceId,
+            organizationId,
+            pipelineId: surveyData.autoPipelineId,
+            stageId: surveyData.autoPipelineStageId,
+            scoreDetails: {
+              ...scoreDetailsPayload,
+              label: 'Survey Automation',
+            },
+          });
+          if (wbRes.success) {
+            workbenchMovedDeal = true;
+          }
+        }
+      }
+    }
+
+    // 3. Outcome-specific Tags
+    const tagEnabled = matchedRule?.tagEnabled ?? (!!matchedRule?.applyTag && matchedRule.applyTag.trim().length > 0);
+    if (tagEnabled && matchedRule?.applyTag && cleanEntityId) {
+      try {
+        const { applyTagsAction } = await import('./tag-actions');
+        await applyTagsAction(
+          cleanEntityId,
+          'workspace_entity',
+          [matchedRule.applyTag],
+          'system-survey-engine',
+          'Survey Outcome Engine'
+        );
+      } catch (tagErr) {
+        console.error('[survey-actions] Failed to apply outcome tag:', tagErr);
+      }
+    }
+
+    // 4. Outcome-specific Automations
+    if (matchedRule?.automationEnabled && matchedRule?.triggerAutomationId && cleanEntityId) {
+      try {
+        const { runAutomationById } = await import('./automation-processor');
+        const automationPayload = {
+          entityId: cleanEntityId,
+          entityName: entityName || '',
+          workspaceId,
+          organizationId,
+          surveyId: surveyData.id,
+          surveyTitle: surveyData.title,
+          submissionId: responseId,
+          assignedUserId: responseData.assignedUserId || null,
+          score: responseData.score || null,
+          source: 'survey_outcome',
+        };
+        await runAutomationById(matchedRule.triggerAutomationId, automationPayload);
+      } catch (autoErr) {
+        console.error('[survey-actions] Failed to run outcome automation:', autoErr);
+      }
+    }
+
+    // 5. Survey-level Auto Tags
+    if (surveyData.autoTags?.length && cleanEntityId) {
+      try {
+        const { applyTagsAction } = await import('./tag-actions');
+        await applyTagsAction(
+          cleanEntityId,
+          'workspace_entity',
+          surveyData.autoTags,
+          'system-survey-engine',
+          'Survey Auto Tags'
+        );
+      } catch (tagErr) {
+        console.error('[survey-actions] Failed to apply autoTags:', tagErr);
+      }
+    }
+
+    // 6. Specific autoAutomations execution
+    if (surveyData.autoAutomations?.length && cleanEntityId) {
+      try {
+        const { runAutomationById } = await import('./automation-processor');
+        const autoPayload = {
+          entityId: cleanEntityId,
+          entityName: entityName || '',
+          workspaceId,
+          organizationId,
+          surveyId: surveyData.id,
+          surveyTitle: surveyData.title,
+          submissionId: responseId,
+          assignedUserId: responseData.assignedUserId || null,
+          score: responseData.score || null,
+          source: 'survey_submission',
+        };
+        for (const autoId of surveyData.autoAutomations) {
+          if (typeof autoId === 'string' && autoId.trim()) {
+            await runAutomationById(autoId, autoPayload).catch((err) =>
+              console.error(`[survey-actions] Failed to run autoAutomation ${autoId}:`, err)
+            );
+          }
+        }
+      } catch (autoErr) {
+        console.error('[survey-actions] Failed to run specific autoAutomations:', autoErr);
+      }
+    }
+
+    // 7. Global Protocol Trigger (SURVEY_SUBMITTED)
+    try {
+      await triggerAutomationProtocols('SURVEY_SUBMITTED', {
+        entityId: cleanEntityId,
+        entityName: entityName || '',
+        workspaceId,
+        organizationId,
+        surveyId: surveyData.id,
+        surveyTitle: surveyData.title,
+        submissionId: responseId,
+        assignedUserId: responseData.assignedUserId || null,
+        score: responseData.score || null,
+        autoTags: surveyData.autoTags || [],
+        source: 'survey_submission',
+      });
+    } catch (protoErr) {
+      console.error('[survey-actions] Failed to trigger SURVEY_SUBMITTED protocol:', protoErr);
+    }
+  } catch (err) {
+    console.error('[survey-actions] executeSurveyPipelineAndAutomations error:', err);
+  }
+
+  return { outcomeMovedDeal, workbenchMovedDeal };
+}
+
 async function triggerPostSubmissionAutomations(
   surveyData: Survey,
   responseId: string,
@@ -2431,6 +2338,21 @@ async function triggerPostSubmissionAutomations(
   const resultTitle = matchedRule?.title || matchedRule?.label || surveyData.title || '';
   const resultDesc = matchedRule?.description || '';
   const outcomeLabel = matchedRule?.label || matchedRule?.title || '';
+
+  // Persist outcome details on response document
+  try {
+    if (matchedRule || resultMsg || outcomeLabel) {
+      await adminDb.collection('surveys').doc(surveyData.id).collection('responses').doc(responseId).update({
+        resultMessage: resultMsg || null,
+        resultTitle: resultTitle || null,
+        resultDescription: resultDesc || null,
+        outcome: outcomeLabel || null,
+        matchedRuleId: matchedRule?.id || null,
+      });
+    }
+  } catch (err) {
+    console.warn('[survey-actions] Failed to persist outcome on response doc in triggerPostSubmissionAutomations:', err);
+  }
 
   let resolvedRespondentName = responseData.respondentName;
   if (!resolvedRespondentName && entityId) {
@@ -2472,6 +2394,8 @@ async function triggerPostSubmissionAutomations(
     respondentName: resolvedRespondentName,
     contact_name: resolvedRespondentName,
     contactName: resolvedRespondentName,
+    entity_name: resolvedRespondentName,
+    entityName: resolvedRespondentName,
     result_message: resultMsg,
     resultMessage: resultMsg,
     result_title: resultTitle,
@@ -2489,6 +2413,17 @@ async function triggerPostSubmissionAutomations(
     submissionLink: `${baseUrl}/admin/surveys/${surveyData.id}/results?submissionId=${responseId}`,
   };
 
+  if (respondentPhone) {
+    notificationVars.contact_phone = respondentPhone;
+    notificationVars.respondent_phone = respondentPhone;
+    notificationVars.phone = respondentPhone;
+  }
+  if (respondentEmail) {
+    notificationVars.contact_email = respondentEmail;
+    notificationVars.respondent_email = respondentEmail;
+    notificationVars.email = respondentEmail;
+  }
+
   // 1. Webhook
   if (surveyData.webhookEnabled && surveyData.webhookId) {
     const payload = { 
@@ -2501,50 +2436,10 @@ async function triggerPostSubmissionAutomations(
     await triggerSurveyWebhook(surveyData.webhookId, payload).catch(console.error);
   }
 
-  // 2. Auto-acknowledgements (outcome-specific)
-  if (outcomeId) {
-    const outcome = surveyData.resultRules?.find(r => r.id === outcomeId);
+  // 2. Execute Outcome Messaging
+  if (outcomeId || matchedRule) {
+    const outcome = outcomeId ? surveyData.resultRules?.find(r => r.id === outcomeId) : matchedRule;
     if (outcome) {
-      // 2a. Apply Tag
-      const tagEnabled = outcome.tagEnabled ?? (!!outcome.applyTag && outcome.applyTag.trim().length > 0);
-      if (tagEnabled && outcome.applyTag && entityId) {
-        try {
-          const { applyTagsAction } = await import('./tag-actions');
-          await applyTagsAction(
-            entityId,
-            'workspace_entity',
-            [outcome.applyTag],
-            'system-survey-engine',
-            'Survey Outcome Engine'
-          );
-        } catch (err: unknown) {
-          console.error(">>> [NOTIFY] Failed to apply outcome contact tag:", err);
-        }
-      }
-
-      // 2b. Trigger Automation
-      if (outcome.automationEnabled && outcome.triggerAutomationId && entityId) {
-        try {
-          const { runAutomationById } = await import('./automation-processor');
-          const automationPayload = {
-            entityId,
-            entityName: String(notificationVars.entityName || ''),
-            workspaceId,
-            organizationId,
-            surveyId: surveyData.id,
-            surveyTitle: surveyData.title,
-            submissionId: responseId,
-            assignedUserId: responseData.assignedUserId || null,
-            score: responseData.score || null,
-            source: 'survey_outcome',
-          };
-          await runAutomationById(outcome.triggerAutomationId, automationPayload);
-        } catch (err: unknown) {
-          console.error(">>> [NOTIFY] Failed to trigger outcome automation:", err);
-        }
-      }
-
-      // 2c. Send Messages
       const messagingEnabled = outcome.messagingEnabled ?? (!!outcome.emailTemplateId || !!outcome.smsTemplateId || !!outcome.whatsappTemplateId);
       if (messagingEnabled) {
         if (outcome.emailTemplateId && outcome.emailTemplateId !== 'none' && respondentEmail) {
@@ -2553,7 +2448,8 @@ async function triggerPostSubmissionAutomations(
             senderProfileId: outcome.emailSenderProfileId || 'default',
             recipient: respondentEmail,
             variables: notificationVars,
-            entityId: entityId || undefined
+            entityId: entityId || undefined,
+            workspaceId
           }).catch(console.error);
         }
         if (outcome.smsTemplateId && outcome.smsTemplateId !== 'none' && respondentPhone) {
@@ -2562,7 +2458,8 @@ async function triggerPostSubmissionAutomations(
             senderProfileId: outcome.smsSenderProfileId || 'default',
             recipient: respondentPhone,
             variables: notificationVars,
-            entityId: entityId || undefined
+            entityId: entityId || undefined,
+            workspaceId
           }).catch(console.error);
         }
         if (outcome.whatsappTemplateId && outcome.whatsappTemplateId !== 'none' && respondentPhone) {
@@ -2571,14 +2468,29 @@ async function triggerPostSubmissionAutomations(
             senderProfileId: outcome.whatsappSenderProfileId || 'default',
             recipient: respondentPhone,
             variables: notificationVars,
-            entityId: entityId || undefined
+            entityId: entityId || undefined,
+            workspaceId
           }).catch(console.error);
         }
       }
     }
   }
 
-  // 3. Admin Alerts
+  // 3. Pipeline Deals & Automations Engine Execution
+  if (entityId) {
+    await executeSurveyPipelineAndAutomations({
+      surveyData,
+      responseId,
+      responseData,
+      workspaceId,
+      organizationId,
+      entityId,
+      entityName: resolvedRespondentName,
+      outcomeId: outcomeId || matchedRule?.id || null,
+    });
+  }
+
+  // 4. Admin Alerts (Multi-channel)
   if (surveyData.adminAlertsEnabled) {
     await triggerInternalNotification({
       entityId: entityId || '',
@@ -2588,17 +2500,19 @@ async function triggerPostSubmissionAutomations(
       smsTemplateId: surveyData.adminAlertSmsTemplateId,
       whatsappTemplateId: surveyData.adminAlertWhatsappTemplateId,
       channel: surveyData.adminAlertChannel,
+      channels: surveyData.adminAlertChannels,
       variables: {
         ...notificationVars,
         event_type: 'Survey Completion',
         surveyId: surveyData.id,
         responseId: responseId,
-        submissionId: responseId
+        submissionId: responseId,
+        workspaceId
       }
     }).catch(console.error);
   }
 
-  // 4. External Alerts
+  // 5. External Alerts (Multi-channel)
   if (surveyData.externalAlertsEnabled && entityId) {
     await triggerExternalNotification({
       entityId: entityId,
@@ -2607,16 +2521,18 @@ async function triggerPostSubmissionAutomations(
       smsTemplateId: surveyData.externalAlertSmsTemplateId,
       whatsappTemplateId: surveyData.externalAlertWhatsappTemplateId,
       channel: surveyData.externalAlertChannel,
+      channels: surveyData.externalAlertChannels,
       variables: {
         ...notificationVars,
         surveyId: surveyData.id,
         responseId: responseId,
-        submissionId: responseId
+        submissionId: responseId,
+        workspaceId
       }
     }).catch(console.error);
   }
 
-  // 5. Assigned User Alerts
+  // 6. Assigned User Alerts
   if (surveyData.notifyAssignedUsers && responseData.assignedUserId) {
     const assignedUserId = responseData.assignedUserId;
     const config = surveyData.notifyAssignedUsers;
@@ -2635,16 +2551,17 @@ async function triggerPostSubmissionAutomations(
           is_assigned_alert: true,
           surveyId: surveyData.id,
           responseId: responseId,
-          submissionId: responseId
+          submissionId: responseId,
+          workspaceId
         },
         channel: hasEmail && hasSms ? 'both' : (hasEmail ? 'email' : 'sms')
-      });
+      }).catch(console.error);
     }
   }
 
-  // 5.5 Survey Completion Team Alert (Default dynamic blueprint)
+  // 7. Survey Completion Team Alert (Default dynamic blueprint)
   try {
-    const outcome = outcomeId ? surveyData.resultRules?.find(r => r.id === outcomeId) : undefined;
+    const outcome = outcomeId ? surveyData.resultRules?.find(r => r.id === outcomeId) : matchedRule;
     let contactName = 'Client';
     if (entityId) {
       const contact = await resolveContact(entityId, workspaceId);
@@ -2669,6 +2586,7 @@ async function triggerPostSubmissionAutomations(
         responseId: responseId,
         submissionId: responseId,
         organizationId: organizationId,
+        workspaceId,
         category: 'surveys'
       },
       channel: 'both'
@@ -2677,25 +2595,7 @@ async function triggerPostSubmissionAutomations(
     console.error(">>> [NOTIFY] Failed to trigger internal survey_completion_team alert:", err);
   }
 
-  // 6. Automations (SURVEY_SUBMITTED trigger)
-  if (surveyData.autoAutomations?.length && entityId) {
-    const automationPayload = {
-      entityId,
-      entityName: notificationVars.entityName || '',
-      workspaceId,
-      organizationId,
-      surveyId: surveyData.id,
-      surveyTitle: surveyData.title,
-      submissionId: responseId,
-      assignedUserId: responseData.assignedUserId || null,
-      score: responseData.score || null,
-      autoTags: surveyData.autoTags || [],
-      source: 'survey_submission',
-    };
-    await triggerAutomationProtocols('SURVEY_SUBMITTED', automationPayload).catch(console.error);
-  }
-
-  // 7. Activity Log
+  // 8. Activity Log
   await logActivity({
     entityId: entityId || undefined,
     organizationId,
@@ -2913,6 +2813,10 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
       return { success: false, error: 'Missing required parameters for pipeline routing' };
     }
 
+    // ARCHITECTURAL NOTE & CAUTION (Zero Double-Prefix Entity ID):
+    // Normalize entityId so that queries on workspace_entities and deals never fail due to double workspace prefixing.
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+
     // 1. Resolve target stageName from onboardingStages
     let stageName: string | undefined;
     try {
@@ -2931,20 +2835,23 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
     const formattedScoreSummary = `Score: ${scoreStr}${pctStr}${outcomeLabelStr} | Submitted: ${scoreDetails.submittedAt} | Survey: "${stripHtml(scoreDetails.surveyTitle)}"`;
 
     // 2. Query open deal for this entity in the targeted workspace & pipeline
+    // Query matching workspaceId and clean/prefixed entityIds, then filter in-memory to guarantee stability without requiring composite index
+    const queryIds = Array.from(new Set([cleanEntityId, entityId, `${workspaceId}_${cleanEntityId}`]));
     const dealsSnap = await adminDb
       .collection('deals')
-      .where('entityId', '==', entityId)
       .where('workspaceId', '==', workspaceId)
-      .where('status', '==', 'open')
-      .where('pipelineId', '==', pipelineId)
-      .orderBy('updatedAt', 'desc')
-      .limit(1)
+      .where('entityId', 'in', queryIds)
       .get();
 
-    if (!dealsSnap.empty) {
+    const matchingOpenDeals = dealsSnap.docs
+      .map(d => ({ id: d.id, data: d.data() }))
+      .filter(d => d.data.status === 'open' && d.data.pipelineId === pipelineId)
+      .sort((a, b) => (b.data.updatedAt || '').localeCompare(a.data.updatedAt || ''));
+
+    if (matchingOpenDeals.length > 0) {
       // 3. Open deal found → Move stage and update score details
-      const existingDealDoc = dealsSnap.docs[0];
-      const existingData = existingDealDoc.data();
+      const existingDealDoc = matchingOpenDeals[0];
+      const existingData = existingDealDoc.data;
       const dealId = existingDealDoc.id;
 
       const existingDescription = existingData.description || '';
@@ -2965,7 +2872,7 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
 
       // Record CRM activity timeline event for deal stage movement
       await logActivity({
-        entityId,
+        entityId: cleanEntityId,
         workspaceId,
         organizationId: organizationId || 'default',
         userId: 'system-survey',
@@ -2987,7 +2894,7 @@ export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Pr
       const resolvedName = entityName ? `[Lead] ${entityName} - ${stripHtml(scoreDetails.surveyTitle)}` : `Survey Lead - ${stripHtml(scoreDetails.surveyTitle)}`;
 
       const createRes = await createDeal({
-        entityId,
+        entityId: cleanEntityId,
         workspaceId,
         organizationId: organizationId || 'default',
         pipelineId,
