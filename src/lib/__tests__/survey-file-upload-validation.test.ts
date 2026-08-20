@@ -6,7 +6,7 @@ import {
   formatFileSize,
   normalizeCustomExtensions,
 } from '../survey-file-utils';
-import { syncSurveyUploadedFilesToMedia } from '../survey-actions';
+import { syncSurveyUploadedFilesToMedia, extractFileNameFromStorageUrl } from '../survey-actions';
 
 // Mock Firebase Admin
 vi.mock('../firebase-admin', () => {
@@ -53,10 +53,14 @@ describe('Survey File Upload Validation Utilities', () => {
       });
       const csvFile = new File(['data'], 'staff.csv', { type: 'text/csv' });
       const pdfFile = new File(['data'], 'report.pdf', { type: 'application/pdf' });
+      const txtFile = new File(['some plain text'], 'notes.txt', { type: 'text/plain' });
+      const pythonFile = new File(['print("hello")'], 'script.py', { type: 'text/plain' });
 
       expect(validateFileType(excelFile, ['spreadsheets']).valid).toBe(true);
       expect(validateFileType(csvFile, ['spreadsheets']).valid).toBe(true);
       expect(validateFileType(pdfFile, ['spreadsheets']).valid).toBe(false);
+      expect(validateFileType(txtFile, ['spreadsheets']).valid).toBe(false);
+      expect(validateFileType(pythonFile, ['spreadsheets']).valid).toBe(false);
       expect(validateFileType(pdfFile, ['spreadsheets']).error).toContain('Allowed formats');
     });
 
@@ -136,6 +140,23 @@ describe('Survey File Upload Validation Utilities', () => {
       expect(formatFileSize(0)).toBe('0 B');
       expect(formatFileSize(1024)).toBe('1.0 KB');
       expect(formatFileSize(1024 * 1024 * 2.5)).toBe('2.5 MB');
+    });
+  });
+
+  describe('extractFileNameFromStorageUrl', () => {
+    it('strips leading 10-14 digit timestamp prefixes', () => {
+      const url = 'https://firebasestorage.googleapis.com/v0/b/app/o/survey-uploads%2F1740001234567-student_roster.xlsx?alt=media';
+      expect(extractFileNameFromStorageUrl(url)).toBe('student_roster.xlsx');
+    });
+
+    it('preserves natural hyphens in filenames without timestamps', () => {
+      const url = 'https://firebasestorage.googleapis.com/v0/b/app/o/survey-uploads%2Fq1-financial-report.pdf?alt=media';
+      expect(extractFileNameFromStorageUrl(url)).toBe('q1-financial-report.pdf');
+    });
+
+    it('handles filenames with multiple hyphens and no timestamp', () => {
+      const url = 'https://firebasestorage.googleapis.com/v0/b/app/o/survey-uploads%2Fschool-annual-budget-plan.docx?alt=media';
+      expect(extractFileNameFromStorageUrl(url)).toBe('school-annual-budget-plan.docx');
     });
   });
 

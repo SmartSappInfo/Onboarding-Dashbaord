@@ -80,7 +80,9 @@ export function interpolateWithMap(
 ): string {
   // Fast path: null/undefined → empty string
   if (!text) return '';
-  if (!text.includes('{{')) return text;
+  if (!text.includes('{{')) {
+    return text.includes('<') ? sanitizeHtml(text) : text;
+  }
 
   const map = new Map<string, unknown>();
   if (valuesMap) {

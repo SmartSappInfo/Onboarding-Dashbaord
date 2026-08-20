@@ -1,4 +1,4 @@
-import type { SurveyElement, SurveyQuestion } from './types';
+import type { SurveyElement, SurveyQuestion, SurveyLogicBlock } from './types';
 
 /**
  * Pure utility function to update survey elements (logic rules, defaultValues, optionScores)
@@ -41,24 +41,20 @@ export function syncElementsOnOptionChange(
               opt === oldOptionValue ? newOptionValue : opt
             );
           }
+
           newDefaultValue = {
-            ...newDefaultValue,
+            ...compound,
             options: updatedOptions,
           };
         }
-      } else {
-        // Standard default value (single string or string[])
-        if (Array.isArray(newDefaultValue)) {
-          if (newOptionValue === null) {
-            newDefaultValue = newDefaultValue.filter((opt) => opt !== oldOptionValue);
-          } else {
-            newDefaultValue = newDefaultValue.map((opt) =>
-              opt === oldOptionValue ? newOptionValue : opt
-            );
-          }
-        } else if (newDefaultValue === oldOptionValue) {
-          newDefaultValue = newOptionValue === null ? undefined : newOptionValue;
+      } else if (Array.isArray(newDefaultValue)) {
+        if (newOptionValue === null) {
+          newDefaultValue = newDefaultValue.filter((v: unknown) => v !== oldOptionValue);
+        } else {
+          newDefaultValue = newDefaultValue.map((v: unknown) => (v === oldOptionValue ? newOptionValue : v));
         }
+      } else if (typeof newDefaultValue === 'string' && newDefaultValue === oldOptionValue) {
+        newDefaultValue = newOptionValue === null ? '' : newOptionValue;
       }
 
       return {
@@ -69,8 +65,8 @@ export function syncElementsOnOptionChange(
 
     // 2. If it's a logic node, we sync the rules targeting this source question
     if (element.type === 'logic' && 'rules' in element) {
-      const logicBlock = element as any;
-      const updatedRules = (logicBlock.rules || []).map((rule: any) => {
+      const logicBlock = element as SurveyLogicBlock;
+      const updatedRules = (logicBlock.rules || []).map((rule) => {
         if (rule.sourceQuestionId === questionId) {
           let updatedTargetValue = rule.targetValue;
           if (updatedTargetValue === oldOptionValue) {
@@ -85,9 +81,9 @@ export function syncElementsOnOptionChange(
       });
 
       return {
-        ...element,
+        ...logicBlock,
         rules: updatedRules,
-      } as any;
+      };
     }
 
     return element;

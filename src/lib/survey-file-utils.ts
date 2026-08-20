@@ -32,7 +32,6 @@ export const FILE_TYPE_PRESETS: Record<string, FileTypePreset> = {
       'application/vnd.ms-excel',
       'text/csv',
       'application/csv',
-      'text/plain',
     ],
     description: 'Excel workbooks and CSV data sheets',
   },
@@ -121,9 +120,17 @@ export function validateFileType(
   }
 
   const matchesExt = acceptedExtensions.has(fileExt);
-  const matchesMime = fileMime ? acceptedMimeTypes.has(fileMime) : false;
+  // Prevent generic text/plain or octet-stream from bypassing format restrictions
+  const isGenericMime = fileMime === 'text/plain' || fileMime === 'application/octet-stream';
+  const matchesMime = fileMime && !isGenericMime ? acceptedMimeTypes.has(fileMime) : false;
 
-  if (matchesExt || matchesMime) {
+  // If MIME is text/plain, it matches ONLY if .txt or .csv is in the accepted extensions and matches the extension
+  const matchesPlainTextSpecial = fileMime === 'text/plain' && (
+    (acceptedExtensions.has('.txt') && fileExt === '.txt') ||
+    (acceptedExtensions.has('.csv') && fileExt === '.csv')
+  );
+
+  if (matchesExt || matchesMime || matchesPlainTextSpecial) {
     return { valid: true };
   }
 

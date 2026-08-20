@@ -267,6 +267,19 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
   const maxFiles = question.maxFiles || (allowMultiple ? 5 : 1);
   const maxFileSizeMB = question.maxFileSizeMB || 25;
 
+  // Cleanup in-flight upload tasks on unmount
+  React.useEffect(() => {
+    return () => {
+      Object.values(uploadTasksRef.current).forEach((task) => {
+        try {
+          task.cancel();
+        } catch (err) {
+          console.warn('[FileUpload] Cleanup upload cancellation error:', err);
+        }
+      });
+    };
+  }, []);
+
   // Initialize stagedFiles from incoming value
   React.useEffect(() => {
     const urls = splitFileUrls(value);
@@ -276,8 +289,8 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
       const isSame = urls.length === currentCompletedUrls.length && urls.every((u, i) => u === currentCompletedUrls[i]);
       if (isSame && prev.length > 0) return prev;
 
-      return urls.map((url) => ({
-        id: `file_${url.substring(url.length - 16).replace(/[^a-zA-Z0-9]/g, '')}`,
+      return urls.map((url, idx) => ({
+        id: `file_${idx}_${Math.random().toString(36).substring(2, 7)}`,
         name: extractFileNameFromStorageUrl(url),
         size: 0,
         progress: 100,
@@ -486,12 +499,21 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
       {/* 1. Drag and Drop Zone */}
       {canAddMore && (
         <div
+          role="button"
+          tabIndex={disabled ? -1 : 0}
+          aria-label="Upload files. Click or press Enter to browse files."
+          onKeyDown={(e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !disabled && fileInputRef.current?.click()}
           className={cn(
-            "relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer text-center group",
+            "relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer text-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             isDragging
               ? "border-primary bg-primary/10 scale-[1.01] shadow-lg ring-4 ring-primary/20"
               : "border-border/60 hover:border-primary/50 bg-muted/20 hover:bg-muted/30",
@@ -524,10 +546,10 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
 
       {/* General Error Notice */}
       {generalError && (
-        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
+        <div aria-live="polite" className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{generalError}</span>
-          <button type="button" onClick={() => setGeneralError(null)} className="ml-auto p-1 hover:bg-destructive/20 rounded-lg">
+          <button type="button" onClick={() => setGeneralError(null)} aria-label="Dismiss error" className="ml-auto min-h-[32px] min-w-[32px] flex items-center justify-center hover:bg-destructive/20 rounded-lg">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -562,7 +584,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
                 </div>
 
                 {file.status === 'uploading' && (
-                  <div className="space-y-1.5 mt-2">
+                  <div aria-live="polite" className="space-y-1.5 mt-2">
                     <div className="flex items-center justify-between text-[10px] font-bold text-primary">
                       <span className="flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" /> Uploading...
@@ -574,7 +596,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
                 )}
 
                 {file.status === 'error' && (
-                  <p className="text-[11px] font-bold text-destructive mt-1 flex items-center gap-1">
+                  <p aria-live="polite" className="text-[11px] font-bold text-destructive mt-1 flex items-center gap-1">
                     <XCircle className="h-3.5 w-3.5 shrink-0" /> {file.error || 'Upload failed.'}
                   </p>
                 )}
@@ -602,8 +624,9 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                  className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
                   onClick={() => handleCancelUpload(file.id)}
+                  aria-label="Cancel upload"
                   title="Cancel upload"
                 >
                   <X className="h-4 w-4" />
@@ -613,9 +636,10 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                  className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
                   onClick={() => handleRemoveFile(file.id)}
                   disabled={disabled}
+                  aria-label="Remove file"
                   title="Remove file"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1071,7 +1095,7 @@ const ElementRenderer = ({
                                         <Button asChild variant="outline" className="min-h-[44px] h-11 px-6 rounded-xl border-2 font-bold shadow-sm transition-all active:scale-[0.97] hover:bg-slate-50 dark:hover:bg-slate-800 text-sm tracking-tight w-full sm:w-auto">
                                             <a href={block.url} target="_blank" rel="noopener noreferrer" download={rawFileName}>
                                                 <Download className="mr-2 h-4 w-4 text-primary" />
-                                                <span dangerouslySetInnerHTML={{ __html: interpolateText(buttonLabel) }} />
+                                                <span className="truncate">{interpolateText(buttonLabel)}</span>
                                             </a>
                                         </Button>
                                     </div>
@@ -1082,7 +1106,7 @@ const ElementRenderer = ({
                                 <Button asChild variant="outline" className="min-h-[44px] h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all active:scale-[0.97] hover:bg-slate-50 dark:hover:bg-slate-800 text-base tracking-tight">
                                     <a href={block.url} target="_blank" rel="noopener noreferrer" download={rawFileName}>
                                         <Download className="mr-2.5 h-5 w-5 text-primary" />
-                                        <span dangerouslySetInnerHTML={{ __html: interpolateText(buttonLabel) }} />
+                                        <span className="truncate">{interpolateText(buttonLabel)}</span>
                                     </a>
                                 </Button>
                             </div>
