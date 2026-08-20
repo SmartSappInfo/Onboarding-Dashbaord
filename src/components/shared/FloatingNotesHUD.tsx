@@ -208,28 +208,26 @@ export default function FloatingNotesHUD() {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       className={cn(
-        "fixed z-[999] flex flex-col w-[360px] h-[320px] bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl transition-shadow select-none overflow-visible",
+        // bg-popover + border-border follows the active CSS theme automatically (light & dark)
+        "fixed z-[999] flex flex-col w-[360px] h-[320px] bg-popover border border-border shadow-2xl backdrop-blur-2xl transition-shadow select-none overflow-visible",
         isMobile 
           ? "bottom-0 inset-x-0 w-full h-[60vh] rounded-t-3xl border-t border-x-0 border-b-0 animate-in slide-in-from-bottom duration-300"
           : "rounded-2xl"
       )}
-      style={{
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px 1px rgba(99, 102, 241, 0.05)'
-      }}
     >
       {/* Draggable Header */}
       <div
         onPointerDown={handlePointerDown}
         className={cn(
-          "flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800/80 cursor-grab active:cursor-grabbing select-none",
+          "flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border cursor-grab active:cursor-grabbing select-none",
           isMobile ? "rounded-t-3xl" : "rounded-t-2xl"
         )}
       >
         <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-violet-400" />
-          <span className="text-xs font-black uppercase tracking-wider text-slate-300">Quick Note</span>
+          <Bot className="h-4 w-4 text-violet-500" />
+          <span className="text-xs font-black uppercase tracking-wider text-foreground/80">Quick Note</span>
           {isSavingDraft && (
-            <span className="text-[9px] text-emerald-400 font-bold animate-pulse">Saved</span>
+            <span className="text-[9px] text-emerald-500 font-bold animate-pulse">Saved</span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
@@ -238,7 +236,7 @@ export default function FloatingNotesHUD() {
               variant="ghost" 
               size="icon" 
               onClick={minimize}
-              className="h-6 w-6 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <Minus className="h-3.5 w-3.5" />
             </Button>
@@ -247,7 +245,7 @@ export default function FloatingNotesHUD() {
             variant="ghost" 
             size="icon" 
             onClick={close}
-            className="h-6 w-6 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+            className="h-6 w-6 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -256,25 +254,23 @@ export default function FloatingNotesHUD() {
 
       {/* Panel Body */}
       <div className="flex-1 p-3 flex flex-col justify-between text-left overflow-visible">
-        {/* Text Editor Area (Largest component) */}
+        {/* Text Editor Area — Textarea inherits shadcn's themed bg/text automatically */}
         <div className="flex-1 flex flex-col min-h-0 relative mb-3">
           <Textarea
             placeholder="Type quick notes here..."
             value={draftText}
             onChange={handleTextChange}
-            className="w-full h-full flex-1 bg-slate-900/60 border-slate-850 rounded-xl text-xs p-3 text-slate-200 placeholder:text-slate-600 focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:ring-offset-0 resize-none"
+            className="w-full h-full flex-1 min-h-0 text-xs resize-none focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:ring-offset-0"
           />
         </div>
 
-        {/* Footer Actions (Select Type Pill and smaller Save button) */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-850/50 overflow-visible">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-border/40 overflow-visible">
           {/* Note Type select dropdown pill */}
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-slate-900 border-slate-800 text-slate-300 hover:text-slate-100 hover:border-slate-700"
-              )}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-muted border-border text-foreground hover:bg-muted/80"
             >
               <ActiveIcon className="h-3.5 w-3.5" />
               <span>{activeType.label}</span>
@@ -282,7 +278,7 @@ export default function FloatingNotesHUD() {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute bottom-full left-0 mb-2 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 z-[999] animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="absolute bottom-full left-0 mb-2 w-36 bg-popover border border-border rounded-xl shadow-2xl py-1 z-[999] animate-in fade-in slide-in-from-bottom-2 duration-200">
                 {NOTE_TYPES.map((t) => {
                   const Icon = t.icon;
                   return (
@@ -293,8 +289,8 @@ export default function FloatingNotesHUD() {
                         setDropdownOpen(false);
                       }}
                       className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-slate-800 transition-colors",
-                        noteType === t.id ? "text-violet-400 bg-slate-800/40" : "text-slate-400 hover:text-slate-200"
+                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-muted transition-colors",
+                        noteType === t.id ? "text-violet-500 bg-muted/50" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -306,7 +302,7 @@ export default function FloatingNotesHUD() {
             )}
           </div>
 
-          {/* Smaller, compact save button */}
+          {/* Save button — violet brand retained intentionally as primary CTA */}
           <Button 
             onClick={handleSaveNote} 
             disabled={isSubmitting || !draftText.trim()}
