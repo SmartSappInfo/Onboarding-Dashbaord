@@ -259,9 +259,20 @@ export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPho
             </span>
           }
         />
-        {contact.hasWhatsapp === undefined && (
-          <p className="pl-[21px] text-[9px] text-slate-600 italic">Automatic WhatsApp detection is coming soon.</p>
-        )}
+        <div className="pl-[21px] flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+          {contact.hasWhatsapp === true ? (
+            <span className="text-emerald-400 font-medium">Capable of receiving WhatsApp template & session messages</span>
+          ) : contact.hasWhatsapp === false ? (
+            <span className="text-rose-400 font-medium">Line type or verification indicates no active WhatsApp account</span>
+          ) : (
+            <span className="text-slate-500 italic">
+              {contact.phone ? 'Phone hygiene scan will verify WhatsApp capability' : 'Add a valid phone number to enable WhatsApp presence checks'}
+            </span>
+          )}
+          {contact.phone && (
+            <RecheckButton onClick={recheckPhone} busy={phoneBusy} />
+          )}
+        </div>
       </div>
     </div>
   );

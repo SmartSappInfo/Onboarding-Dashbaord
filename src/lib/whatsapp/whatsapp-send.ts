@@ -161,6 +161,7 @@ export interface SendWhatsAppInput {
   automationId?: string;
   runId?: string;
   nodeId?: string;
+  entityId?: string;
 }
 
 export interface SendWhatsAppResult {
@@ -238,5 +239,31 @@ export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsA
   }
 
   const res = await client.sendMessage(payload);
+  
+  // Post-send writeback: Mark matching contacts as active WhatsApp confirmed (hasWhatsapp = true)
+  if (input.entityId) {
+    try {
+      const entityRef = adminDb.collection('entities').doc(input.entityId);
+      await adminDb.runTransaction(async (txn) => {
+        const snap = await txn.get(entityRef);
+        if (!snap.exists) return;
+        const contacts = (snap.data()?.entityContacts || []) as import('@/lib/types').EntityContact[];
+        let updated = false;
+        const nextContacts = contacts.map(c => {
+          if (c.phone && c.phone.includes(to.replace('+', ''))) {
+            updated = true;
+            return { ...c, hasWhatsapp: true, phoneStatus: 'active' as const };
+          }
+          return c;
+        });
+        if (updated) {
+          txn.set(entityRef, { entityContacts: nextContacts }, { merge: true });
+        }
+      });
+    } catch (err) {
+      console.warn(`[sendWhatsApp] Best-effort hasWhatsapp writeback failed for entity ${input.entityId}:`, err);
+    }
+  }
+
   return { metaMessageId: res.metaMessageId, status: 'sent' };
 }

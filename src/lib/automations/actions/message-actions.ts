@@ -112,11 +112,24 @@ export async function handleSendMessage(
     let resolvedRecipient = config.recipient as string | undefined;
     if (context.entityId && !resolvedRecipient) {
       const contact = await resolveContact(context.entityId, context.workspaceId);
-      const primaryEmail = contact?.entityContacts?.find((ec) => ec.isPrimary)?.email;
-      if (primaryEmail) {
-        resolvedRecipient = primaryEmail;
-      } else if (contact?.contacts?.[0]?.email) {
-        resolvedRecipient = contact.contacts[0].email;
+      if (usePhone) {
+        const primaryPhone = contact?.entityContacts?.find((ec) => ec.isPrimary)?.phone;
+        if (primaryPhone) {
+          resolvedRecipient = primaryPhone;
+        } else if (contact?.contacts?.[0]?.phone) {
+          resolvedRecipient = contact.contacts[0].phone;
+        } else if (contact?.primaryContactPhone) {
+          resolvedRecipient = contact.primaryContactPhone;
+        }
+      } else {
+        const primaryEmail = contact?.entityContacts?.find((ec) => ec.isPrimary)?.email;
+        if (primaryEmail) {
+          resolvedRecipient = primaryEmail;
+        } else if (contact?.contacts?.[0]?.email) {
+          resolvedRecipient = contact.contacts[0].email;
+        } else if (contact?.primaryContactEmail) {
+          resolvedRecipient = contact.primaryContactEmail;
+        }
       }
     }
     if (resolvedRecipient) {
@@ -163,7 +176,12 @@ export async function handleSendMessage(
 
   const recipientList = Array.from(finalRecipientsList);
   if (recipientList.length === 0) {
-    throw new Error('Message action could not resolve any recipients to send to.');
+    const channelName = channel.toUpperCase();
+    if (recipients.size === 0) {
+      throw new Error(`Message action could not resolve any recipients to send to. No ${usePhone ? 'phone number' : 'email address'} found on entity contact for ${channelName} delivery.`);
+    } else {
+      throw new Error(`Message action could not resolve any recipients to send to. All candidate recipients were skipped due to ${usePhone ? 'phone' : 'email'} status/verification hygiene guards.`);
+    }
   }
 
   const p = context.payload;

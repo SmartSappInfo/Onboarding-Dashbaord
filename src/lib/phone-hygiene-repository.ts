@@ -298,7 +298,13 @@ export class PhoneHygieneRepository {
       if (!p || (p !== target && (!result.e164 || p !== result.e164))) return c;
 
       const next: EntityContact = { ...c };
-      if (result.lineType) next.phoneType = result.lineType;
+      if (result.lineType) {
+        next.phoneType = result.lineType;
+        // Automatically populate hasWhatsapp if lineType indicates a mobile device
+        if (result.lineType === 'mobile' || result.lineType === 'fixed_line_or_mobile') {
+          next.hasWhatsapp = true;
+        }
+      }
       if (!c.phoneStatus || !PROTECTED_PHONE_STATUSES.has(c.phoneStatus)) {
         next.phoneStatus = result.status;
         next.phoneVerificationMethod = 'offline';
