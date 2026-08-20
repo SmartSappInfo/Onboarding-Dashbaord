@@ -5395,6 +5395,12 @@ export interface CallActionParams {
   meetingId?: string;
   /** MEETING_TYPES id for create mode */
   meetingTypeId?: string;
+  /** Configured facilitators for create mode */
+  meetingFacilitatorUserIds?: string[];
+  /** Configured invite scope for create mode */
+  meetingInviteScope?: 'specific' | 'all';
+  /** Execution-time override for the meeting date/time */
+  meetingTimeOverride?: string;
   // Transfer to another call campaign (ADD_TO_CALL_CAMPAIGN) + legacy TRANSFER_CALL
   campaignId?: string;
   contactScope?: 'primary' | 'all';

@@ -666,31 +666,81 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
               </Select>
             </div>
           ) : (
-            <div className="space-y-1">
-              <Label className="text-[8px] font-bold text-muted-foreground uppercase">
-                Meeting Type
-              </Label>
-              <Select
-                value={toSelectValue(params.meetingTypeId)}
-                onValueChange={(val) => onChange({ meetingTypeId: fromSelectValue(val) })}
-              >
-                <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
-                  <SelectValue placeholder="Select meeting type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {meetings.length > 0 ? (
-                    meetings.map((mt) => (
-                      <SelectItem key={mt.id} value={mt.id}>
-                        {mt.title}
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                  Meeting Type
+                </Label>
+                <Select
+                  value={toSelectValue(params.meetingTypeId)}
+                  onValueChange={(val) => onChange({ meetingTypeId: fromSelectValue(val) })}
+                >
+                  <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
+                    <SelectValue placeholder="Select meeting type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {meetings.length > 0 ? (
+                      meetings.map((mt) => (
+                        <SelectItem key={mt.id} value={mt.id}>
+                          {mt.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value={NONE_SENTINEL} disabled>
+                        No meeting types found
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value={NONE_SENTINEL} disabled>
-                      No meeting types found
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                  Invite Scope
+                </Label>
+                <Select
+                  value={params.meetingInviteScope ?? 'specific'}
+                  onValueChange={(val) => onChange({ meetingInviteScope: val as 'specific' | 'all' })}
+                >
+                  <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs">
+                    <SelectValue placeholder="Select invite scope..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="specific">Current Contact Only</SelectItem>
+                    <SelectItem value="all">All Entity Contacts</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                  Facilitators (Auto-assigned to Caller if empty)
+                </Label>
+                <div className="grid grid-cols-2 gap-1.5 mt-1 border border-border p-2 rounded-lg bg-background/50 max-h-32 overflow-y-auto">
+                  {workspaceUsers.map((user) => {
+                    const isSelected = (params.meetingFacilitatorUserIds || []).includes(user.id);
+                    return (
+                      <Button
+                        key={user.id}
+                        type="button"
+                        variant={isSelected ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          const current = params.meetingFacilitatorUserIds || [];
+                          if (isSelected) {
+                            onChange({ meetingFacilitatorUserIds: current.filter(id => id !== user.id) });
+                          } else {
+                            onChange({ meetingFacilitatorUserIds: [...current, user.id] });
+                          }
+                        }}
+                        className="h-7 text-[10px] justify-start truncate px-2"
+                      >
+                        {user.name || user.email}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>

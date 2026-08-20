@@ -767,6 +767,85 @@ export function InteractiveScriptView({
       );
     }
 
+    if (actionType === 'SCHEDULE_MEETING') {
+      const isCreateMode = (localActionConfig.meetingMode || (localActionConfig.meetingId ? 'guest_list' : 'create')) === 'create';
+      
+      return (
+        <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Schedule Meeting</h4>
+          
+          {isCreateMode ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Meeting Date</Label>
+                  <Input
+                    type="date"
+                    value={localActionConfig.meetingTimeOverride ? new Date(localActionConfig.meetingTimeOverride).toISOString().split('T')[0] : ''}
+                    onChange={e => {
+                      const dateVal = e.target.value;
+                      if (!dateVal) return;
+                      setLocalActionConfig(prev => {
+                        const currentFull = prev.meetingTimeOverride ? new Date(prev.meetingTimeOverride) : new Date();
+                        const [yr, mo, dy] = dateVal.split('-').map(Number);
+                        currentFull.setFullYear(yr, mo - 1, dy);
+                        return { ...prev, meetingTimeOverride: currentFull.toISOString() };
+                      });
+                    }}
+                    className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Meeting Time</Label>
+                  <Input
+                    type="time"
+                    value={localActionConfig.meetingTimeOverride ? (() => {
+                      const d = new Date(localActionConfig.meetingTimeOverride);
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    })() : '09:00'}
+                    onChange={e => {
+                      const timeVal = e.target.value;
+                      if (!timeVal) return;
+                      setLocalActionConfig(prev => {
+                        const currentFull = prev.meetingTimeOverride ? new Date(prev.meetingTimeOverride) : new Date();
+                        const [hr, min] = timeVal.split(':').map(Number);
+                        currentFull.setHours(hr, min, 0, 0);
+                        return { ...prev, meetingTimeOverride: currentFull.toISOString() };
+                      });
+                    }}
+                    className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center">Adding contact to an existing meeting...</p>
+          )}
+
+          {actionStatus === 'success' && (
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Meeting scheduled successfully!
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to schedule meeting.'}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={() => handleExecuteMiddleAction()}
+            disabled={actionStatus === 'loading' || (isCreateMode && !localActionConfig.meetingTimeOverride)}
+            className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white mt-2 shadow-sm"
+          >
+            {actionStatus === 'loading' ? 'Scheduling...' : 'Schedule Meeting'}
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm text-center">
         <p className="text-xs text-muted-foreground italic leading-relaxed">

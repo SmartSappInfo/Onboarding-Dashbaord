@@ -1517,21 +1517,38 @@ export class CallCentreService {
 
           const entitySnap = await adminDb.collection('entities').doc(entityId).get();
           if (!entitySnap.exists) return { success: false, error: 'Entity not found.' };
-          const entityName = entitySnap.data()?.name || '';
-          const entitySlug = entitySnap.data()?.slug || '';
+          const entityData = entitySnap.data();
+          const entityName = entityData?.name || '';
+          const entitySlug = entityData?.slug || '';
 
           const timestamp = new Date().toISOString();
-          const meetingTime = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // +2 days default
+          const meetingTime = params.meetingTimeOverride || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
           const meetingSlug = `${meetingType.slug}-${Math.random().toString(36).substring(2, 9)}`;
           const meetingLink = `https://smartsapp.com/meetings/${meetingType.slug}/${meetingSlug}`;
           
+          // Resolve Facilitators
+          const facilitatorIds = params.meetingFacilitatorUserIds?.length ? params.meetingFacilitatorUserIds : [userId];
+          const facilitators: MeetingFacilitator[] = [];
+          for (const fid of facilitatorIds) {
+            if (!fid) continue;
+            const uSnap = await adminDb.collection('users').doc(fid).get();
+            if (uSnap.exists) {
+              facilitators.push({
+                id: fid,
+                type: 'workspace_user',
+                userId: fid,
+                name: uSnap.data()?.name || uSnap.data()?.email || 'Agent'
+              });
+            }
+          }
+
           const meetingData = {
             title: `Outreach Session: ${meetingType.name} with ${entityName}`,
             meetingSlug,
             entityId,
             entityName,
             entitySlug,
-            entityType: entitySnap.data()?.entityType || 'person',
+            entityType: entityData?.entityType || 'person',
             workspaceIds: [workspaceId],
             meetingTime,
             meetingLink,
@@ -1539,17 +1556,44 @@ export class CallCentreService {
             status: 'scheduled',
             publishStatus: 'published',
             organizationId,
+            facilitators,
             createdAt: timestamp,
             updatedAt: timestamp,
           };
 
           const docRef = await adminDb.collection('meetings').add(meetingData);
 
+          // Resolve and batch insert registrants securely scaling up to huge amounts
+          const contacts = (entityData?.entityContacts ?? []) as EntityContact[];
+          let targetContacts = contacts;
+          if (params.meetingInviteScope !== 'all') {
+             const specific = (contactId ? contacts.find(c => c.id === contactId) : undefined) ?? contacts.find(c => c.isPrimary) ?? contacts[0];
+             targetContacts = specific ? [specific] : [];
+          }
+
+          for (let i = 0; i < targetContacts.length; i += 450) {
+            const chunk = targetContacts.slice(i, i + 450);
+            const batch = adminDb.batch();
+            for (const c of chunk) {
+              const registrantId = c.id || adminDb.collection('meetings').doc().id;
+              const regRef = adminDb.collection(`meetings/${docRef.id}/registrants`).doc(registrantId);
+              batch.set(regRef, {
+                entityId,
+                name: c.name ?? entityName,
+                email: c.email ?? '',
+                phone: c.phone ?? '',
+                source: 'call_campaign',
+                createdAt: timestamp,
+              }, { merge: true });
+            }
+            await batch.commit();
+          }
+
           await logActivity({
             organizationId,
             workspaceId,
             entityId,
-            entityType: entitySnap.data()?.entityType || 'person',
+            entityType: entityData?.entityType || 'person',
             userId,
             type: 'meeting_created' as any,
             source: 'system',
