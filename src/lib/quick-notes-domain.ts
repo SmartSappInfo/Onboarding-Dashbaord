@@ -221,3 +221,68 @@ export function buildAiInput(plainText: string | undefined, maxChars: number = A
   const text = (plainText ?? '').trim();
   return text.length > maxChars ? text.slice(0, maxChars) : text;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FloatingNotesHUD helpers — plain-text ↔ TipTap bridge
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Maximum characters allowed for an auto-derived note title. */
+const MAX_HUD_TITLE_CHARS = 80;
+
+/**
+ * Converts a plain-text string into a minimal TipTap-compatible NoteDocument.
+ *
+ * Each line of the source text becomes a `paragraph` node. Empty lines produce
+ * an empty paragraph, preserving intentional vertical whitespace. This produces
+ * a *lossy but valid* document — rich formatting is not preserved. The function
+ * is intentionally used only by the lightweight FloatingNotesHUD; the full
+ * NoteBlockEditor writes its own TipTap JSON natively.
+ *
+ * CAUTION: Do not use this for notes that already have TipTap content — it will
+ * strip all marks and block-level structure.
+ *
+ * TESTABILITY: Pure function — no I/O, no React. Test with multiline strings,
+ * empty strings, strings containing only whitespace.
+ */
+export function plainTextToTipTap(text: string): NoteDocument {
+  const lines = text.split('\n');
+  return {
+    type: 'doc',
+    content: lines.map((line) => {
+      const trimmed = line.trimEnd(); // preserve leading indent, strip trailing
+      if (!trimmed) {
+        // Empty paragraph — explicit empty content array (TipTap convention)
+        return { type: 'paragraph', content: [] };
+      }
+      return {
+        type: 'paragraph',
+        content: [{ type: 'text', text: trimmed }],
+      };
+    }),
+  };
+}
+
+/**
+ * Derives a human-readable note title from a plain-text draft string.
+ *
+ * Algorithm:
+ *  1. Take the first non-empty, non-whitespace line.
+ *  2. Trim it and cap it at MAX_HUD_TITLE_CHARS characters.
+ *  3. Fall back to the provided `fallback` string when the draft is empty.
+ *
+ * CAUTION: This is intentionally simple. Do not add I/O or async logic here.
+ *
+ * TESTABILITY: Pure function. Test with: empty string, whitespace-only, single
+ * line, multiline with blank first line, line longer than MAX_HUD_TITLE_CHARS.
+ */
+export function deriveTitleFromText(text: string, fallback = 'Quick Note'): string {
+  const firstLine = text
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  if (!firstLine) return fallback;
+  return firstLine.length > MAX_HUD_TITLE_CHARS
+    ? firstLine.slice(0, MAX_HUD_TITLE_CHARS)
+    : firstLine;
+}
+

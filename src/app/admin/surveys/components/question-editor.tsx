@@ -28,6 +28,7 @@ import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-auto
 import { sanitizeHtml } from '@/lib/survey-variable-utils';
 import { createPortal } from 'react-dom';
 import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
+import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
 
 const QuestionVariablesContext = React.createContext<TemplateVariable[]>([]);
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -1753,6 +1754,36 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 </div>
                                             </div>
                                         )}
+                                        {element.type === 'file-upload' && (
+                                            <div className="p-6 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-2.5">
+                                                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                                    <Upload className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs sm:text-sm font-bold text-foreground">
+                                                        Drag & drop upload zone
+                                                    </p>
+                                                    <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
+                                                        {(() => {
+                                                            const q = element as SurveyQuestion;
+                                                            if (!q.allowedFileTypes || q.allowedFileTypes.length === 0 || q.allowedFileTypes.includes('all')) {
+                                                                return `Any format • Max ${q.maxFileSizeMB || 25}MB`;
+                                                            }
+                                                            const hints: string[] = [];
+                                                            q.allowedFileTypes.forEach((t) => {
+                                                                if (t === 'custom' && q.customFileExtensions) {
+                                                                    hints.push(q.customFileExtensions);
+                                                                } else if (FILE_TYPE_PRESETS[t]) {
+                                                                    hints.push(FILE_TYPE_PRESETS[t].label.split(' ')[0]);
+                                                                }
+                                                            });
+                                                            return `Accepts ${hints.join(', ')} • Max ${q.maxFileSizeMB || 25}MB`;
+                                                        })()}
+                                                        {(element as SurveyQuestion).allowMultipleFiles && ` • Up to ${(element as SurveyQuestion).maxFiles || 5} files`}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1822,7 +1853,83 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     )} 
                                 />
                             )}
-                            {['image', 'video', 'audio', 'document'].includes(element.type) && (
+                            {element.type === 'document' && (
+                                <div className="space-y-6 pt-4 border-t border-border/50">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                                Template Document File
+                                            </Label>
+                                            <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-50">
+                                                Download Attachment
+                                            </Badge>
+                                        </div>
+                                        <Controller
+                                            name={`elements.${index}.url`}
+                                            control={control}
+                                            render={({ field }) => (
+                                                <MediaSelect 
+                                                    value={field.value} 
+                                                    onValueChange={field.onChange}
+                                                    filterType="document"
+                                                />
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                            Template Headline / Title
+                                        </Label>
+                                        <Controller 
+                                            name={`elements.${index}.title`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Input 
+                                                    {...field} 
+                                                    value={field.value || ''} 
+                                                    placeholder="e.g. Student & Staff Data Template (Excel)"
+                                                    className="h-12 bg-card border border-border/50 rounded-xl px-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                />
+                                            )} 
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                            Template Instructions / Copy
+                                        </Label>
+                                        <Controller 
+                                            name={`elements.${index}.description`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Textarea 
+                                                    {...field} 
+                                                    value={field.value || ''} 
+                                                    placeholder="Download this spreadsheet, enter your records, and upload it in the next step."
+                                                    className="min-h-[80px] bg-card border border-border/50 rounded-xl p-4 text-foreground text-xs font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                />
+                                            )} 
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                            Download Button Label
+                                        </Label>
+                                        <Controller 
+                                            name={`elements.${index}.buttonText`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Input 
+                                                    {...field} 
+                                                    value={field.value || ''} 
+                                                    placeholder="Download Template (Default: Download Document)"
+                                                    className="h-12 bg-card border border-border/50 rounded-xl px-6 text-foreground text-sm font-semibold shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 transition-all" 
+                                                />
+                                            )} 
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                            {['image', 'video', 'audio'].includes(element.type) && (
                                 <div className="space-y-6 pt-4 border-t border-border/50">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">

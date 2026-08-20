@@ -524,6 +524,139 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
                                 </div>
                             </div>
                         )}
+
+                        {element.type === 'file-upload' && (
+                            <div className="space-y-6 pt-2">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Allowed File Types</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.allowedFileTypes`}
+                                        defaultValue={['all']}
+                                        render={({ field }) => {
+                                            const currentType = (field.value && field.value.length > 0) ? field.value[0] : 'all';
+                                            return (
+                                                <Select
+                                                    value={currentType}
+                                                    onValueChange={(val) => field.onChange([val])}
+                                                >
+                                                    <SelectTrigger className="h-11 bg-card border border-border/50 rounded-xl font-bold">
+                                                        <SelectValue placeholder="Select allowed format..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-border/50">
+                                                        <SelectItem value="all">All Formats (No Restriction)</SelectItem>
+                                                        <SelectItem value="spreadsheets">Spreadsheets (.xlsx, .xls, .csv)</SelectItem>
+                                                        <SelectItem value="documents">Documents & PDFs (.pdf, .docx, .txt)</SelectItem>
+                                                        <SelectItem value="images">Images (.png, .jpg, .webp, .svg)</SelectItem>
+                                                        <SelectItem value="archives">Archives (.zip, .rar, .7z)</SelectItem>
+                                                        <SelectItem value="custom">Custom Extensions</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            );
+                                        }}
+                                    />
+                                </div>
+
+                                <Controller
+                                    control={control}
+                                    name={`elements.${activeIndex}.allowedFileTypes`}
+                                    render={({ field }) => {
+                                        const isCustom = field.value?.includes('custom');
+                                        if (!isCustom) return <></>;
+                                        return (
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-semibold">Custom File Extensions</Label>
+                                                <Input
+                                                    {...register(`elements.${activeIndex}.customFileExtensions`)}
+                                                    placeholder=".xlsx, .csv, .pdf"
+                                                    className="h-11 bg-card border border-border/50 rounded-xl font-bold"
+                                                />
+                                                <p className="text-[10px] text-muted-foreground font-medium">
+                                                    Comma-separated extensions (e.g. .xlsx, .csv, .pdf)
+                                                </p>
+                                            </div>
+                                        );
+                                    }}
+                                />
+
+                                <div className="flex items-center justify-between group">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="file-allow-multiple" className="flex items-center gap-2 cursor-pointer">
+                                            <Upload className="h-4 w-4 text-primary" />
+                                            <span className="font-bold">Allow Multiple Files</span>
+                                        </Label>
+                                        <p className="text-[10px] text-muted-foreground font-medium">
+                                            Respondents can upload more than one file.
+                                        </p>
+                                    </div>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.allowMultipleFiles`}
+                                        render={({ field }) => (
+                                            <Switch
+                                                id="file-allow-multiple"
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        )}
+                                    />
+                                </div>
+
+                                <Controller
+                                    control={control}
+                                    name={`elements.${activeIndex}.allowMultipleFiles`}
+                                    render={({ field }) => {
+                                        if (!field.value) return <></>;
+                                        return (
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-semibold">Max Files Allowed</Label>
+                                                <Controller
+                                                    control={control}
+                                                    name={`elements.${activeIndex}.maxFiles`}
+                                                    defaultValue={5}
+                                                    render={({ field: countField }) => (
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={20}
+                                                            className="h-11 bg-card border border-border/50 rounded-xl font-bold"
+                                                            {...countField}
+                                                            onChange={(e) => countField.onChange(parseInt(e.target.value) || 5)}
+                                                        />
+                                                    )}
+                                                />
+                                            </div>
+                                        );
+                                    }}
+                                />
+
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Max File Size</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.maxFileSizeMB`}
+                                        defaultValue={25}
+                                        render={({ field }) => (
+                                            <Select
+                                                value={String(field.value || 25)}
+                                                onValueChange={(val) => field.onChange(parseInt(val) || 25)}
+                                            >
+                                                <SelectTrigger className="h-11 bg-card border border-border/50 rounded-xl font-bold">
+                                                    <SelectValue placeholder="Select max size..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-border/50">
+                                                    <SelectItem value="5">5 MB</SelectItem>
+                                                    <SelectItem value="10">10 MB</SelectItem>
+                                                    <SelectItem value="25">25 MB (Recommended)</SelectItem>
+                                                    <SelectItem value="50">50 MB</SelectItem>
+                                                    <SelectItem value="100">100 MB</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -690,7 +823,56 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
                             />
                         </div>
 
-                        {['image', 'video', 'audio', 'document'].includes(element.type) && (
+                        {element.type === 'document' && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Template / Document Source</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.url`}
+                                        render={({ field }) => (
+                                            <MediaSelect 
+                                                value={field.value} 
+                                                onValueChange={field.onChange}
+                                                filterType="document"
+                                            />
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                        Template Title / Headline
+                                    </Label>
+                                    <Input 
+                                        {...register(`elements.${activeIndex}.title`)} 
+                                        placeholder="e.g. School Data Spreadsheet Template"
+                                        className="h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                        Instructions / Description Copy
+                                    </Label>
+                                    <Textarea 
+                                        {...register(`elements.${activeIndex}.description`)} 
+                                        placeholder="Explain how to fill out the template..."
+                                        className="min-h-[80px] bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl text-xs font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                                        Download Button Label
+                                    </Label>
+                                    <Input 
+                                        {...register(`elements.${activeIndex}.buttonText`)} 
+                                        placeholder="Download Template (Default: Download Document)"
+                                        className="h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {['image', 'video', 'audio'].includes(element.type) && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Media Source</Label>

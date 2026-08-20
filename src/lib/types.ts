@@ -2005,7 +2005,7 @@ export interface SurveyQuestion extends SurveyElement {
   description?: string;
   isRequired: boolean;
   placeholder?: string;
-  defaultValue?: any;
+  defaultValue?: unknown;
   options?: string[];
   allowOther?: boolean;
   minLength?: number;
@@ -2021,6 +2021,11 @@ export interface SurveyQuestion extends SurveyElement {
   variableName?: string;
   fieldKey?: string;
   key?: string;
+  allowedFileTypes?: ('all' | 'spreadsheets' | 'documents' | 'images' | 'archives' | 'custom')[];
+  customFileExtensions?: string;
+  allowMultipleFiles?: boolean;
+  maxFiles?: number;
+  maxFileSizeMB?: number;
 }
 
 export interface SurveyLayoutBlock extends SurveyElement {
@@ -2032,7 +2037,11 @@ export interface SurveyLayoutBlock extends SurveyElement {
   renderAsPage?: boolean;
   validateBeforeNext?: boolean;
   stepperTitle?: string;
-  description?: string; // For section descriptions
+  description?: string; // For section descriptions or document template copy
+  buttonText?: string;  // Customized download button text (e.g. "Download Template")
+  fileName?: string;    // Attached template file name
+  fileSize?: number;    // Attached template file size in bytes
+  fileType?: string;    // Attached template MIME type or extension
   showSectionHeader?: boolean; // Controls visibility of section title/description on client (defaults to true)
   thumbnailUrl?: string;
 }

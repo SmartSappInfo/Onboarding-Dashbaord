@@ -9,6 +9,7 @@ import {
   Pencil, Save, X, Loader2, Info, FileText, FileSpreadsheet, FileImage, File, ExternalLink
 } from 'lucide-react';
 import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
+import { splitFileUrls } from '@/lib/survey-file-utils';
 
 import type { Entity, AppField, FieldGroup, AppPermissionId } from '@/lib/types';
 import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -246,39 +247,48 @@ function CustomFieldGroupCard({
       return <span className="text-muted-foreground/40 font-normal italic">—</span>;
     }
 
-    // Detect File URL (Firebase Storage or generic file downloads)
-    if (
-      typeof val === 'string' &&
-      (val.startsWith('https://firebasestorage.googleapis.com') ||
-        val.match(/^https?:\/\/.*?\.(pdf|xlsx|xls|csv|docx|doc|png|jpg|jpeg|webp|zip)(\?.*)?$/i))
-    ) {
-      const rawFileName = extractFileNameFromStorageUrl(val);
-      const ext = rawFileName.includes('.') ? rawFileName.substring(rawFileName.lastIndexOf('.')).toLowerCase() : '';
-      const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
-      const isSpreadsheet = ['.xlsx', '.xls', '.csv'].includes(ext);
-      const isPdf = ext === '.pdf';
+    // 1. Detect Multi-File or Single File URLs
+    const detectedUrls = splitFileUrls(val);
+    const hasStorageOrFileUrls = detectedUrls.length > 0 && detectedUrls.some((u) => 
+      u.startsWith('https://firebasestorage.googleapis.com') ||
+      u.match(/^https?:\/\/.*?\.(pdf|xlsx|xls|csv|docx|doc|png|jpg|jpeg|webp|zip)(\?.*)?$/i)
+    );
 
+    if (hasStorageOrFileUrls) {
       return (
-        <a
-          href={val}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 text-primary transition-all duration-200 group max-w-full"
-        >
-          {isSpreadsheet ? (
-            <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          ) : isPdf ? (
-            <FileText className="h-4 w-4 shrink-0 text-rose-500 dark:text-rose-400" />
-          ) : isImage ? (
-            <FileImage className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />
-          ) : (
-            <File className="h-4 w-4 shrink-0 text-primary" />
-          )}
-          <span className="text-xs font-bold truncate max-w-[180px] sm:max-w-[240px] underline-offset-4 group-hover:underline">
-            {rawFileName}
-          </span>
-          <ExternalLink className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity ml-1" />
-        </a>
+        <div className="flex flex-wrap gap-2 pt-1 max-w-full">
+          {detectedUrls.map((fileUrl, idx) => {
+            const rawFileName = extractFileNameFromStorageUrl(fileUrl);
+            const ext = rawFileName.includes('.') ? rawFileName.substring(rawFileName.lastIndexOf('.')).toLowerCase() : '';
+            const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
+            const isSpreadsheet = ['.xlsx', '.xls', '.csv'].includes(ext);
+            const isPdf = ext === '.pdf';
+
+            return (
+              <a
+                key={idx}
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 text-primary transition-all duration-200 group max-w-full"
+              >
+                {isSpreadsheet ? (
+                  <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                ) : isPdf ? (
+                  <FileText className="h-4 w-4 shrink-0 text-rose-500 dark:text-rose-400" />
+                ) : isImage ? (
+                  <FileImage className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />
+                ) : (
+                  <File className="h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="text-xs font-bold truncate max-w-[180px] sm:max-w-[240px] underline-offset-4 group-hover:underline">
+                  {rawFileName}
+                </span>
+                <ExternalLink className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5" />
+              </a>
+            );
+          })}
+        </div>
       );
     }
 

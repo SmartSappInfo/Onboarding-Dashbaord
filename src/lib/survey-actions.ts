@@ -19,6 +19,7 @@ import { stripHtml } from './utils';
 import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
+import { splitFileUrls } from './survey-file-utils';
 
 export interface EntityContactPayload {
   id?: string;
@@ -298,7 +299,11 @@ export function parseAndDistributeSurveyMappings(
 }
 
 /**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Survey Uploaded Files Synchronization to Media Library.
+ * 
  * Non-blocking synchronization of survey uploaded files to workspace media collection.
+ * Supports single URLs, comma-separated URLs, and URL arrays from multi-file upload blocks.
  */
 export async function syncSurveyUploadedFilesToMedia(
   workspaceId: string,
@@ -310,51 +315,53 @@ export async function syncSurveyUploadedFilesToMedia(
   if (!workspaceId || !Array.isArray(answers) || answers.length === 0) return registeredUrls;
 
   for (const ans of answers) {
-    if (typeof ans.value === 'string' && ans.value.startsWith('https://firebasestorage.googleapis.com')) {
-      const fileUrl = ans.value.trim();
-      const fileName = extractFileNameFromStorageUrl(fileUrl);
-      const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
-      
-      const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
-      let mimeType = 'application/octet-stream';
-      if (isImage) {
-        mimeType = ext === '.svg' ? 'image/svg+xml' : ext === '.webp' ? 'image/webp' : ext === '.png' ? 'image/png' : 'image/jpeg';
-      } else if (ext === '.pdf') {
-        mimeType = 'application/pdf';
-      } else if (['.xlsx', '.xls'].includes(ext)) {
-        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      } else if (['.csv'].includes(ext)) {
-        mimeType = 'text/csv';
-      } else if (['.docx', '.doc'].includes(ext)) {
-        mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      }
-
-      try {
-        const existingMedia = await adminDb
-          .collection('media')
-          .where('url', '==', fileUrl)
-          .limit(1)
-          .get();
-
-        if (existingMedia.empty) {
-          await adminDb.collection('media').add({
-            name: fileName,
-            originalName: fileName,
-            url: fileUrl,
-            fullPath: `survey-uploads/${fileName}`,
-            type: isImage ? 'image' : 'document',
-            mimeType,
-            size: 0,
-            uploadedBy: 'survey-submission',
-            workspaceIds: [workspaceId],
-            category: 'documents',
-            relatedEntityId: entityId || null,
-            createdAt: new Date().toISOString(),
-          });
+    const urls = splitFileUrls(ans.value);
+    for (const fileUrl of urls) {
+      if (fileUrl.startsWith('https://firebasestorage.googleapis.com')) {
+        const fileName = extractFileNameFromStorageUrl(fileUrl);
+        const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
+        
+        const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
+        let mimeType = 'application/octet-stream';
+        if (isImage) {
+          mimeType = ext === '.svg' ? 'image/svg+xml' : ext === '.webp' ? 'image/webp' : ext === '.png' ? 'image/png' : 'image/jpeg';
+        } else if (ext === '.pdf') {
+          mimeType = 'application/pdf';
+        } else if (['.xlsx', '.xls'].includes(ext)) {
+          mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else if (['.csv'].includes(ext)) {
+          mimeType = 'text/csv';
+        } else if (['.docx', '.doc'].includes(ext)) {
+          mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         }
-        registeredUrls.push(fileUrl);
-      } catch (mediaErr) {
-        console.error('[survey-actions] Failed to register survey uploaded file to media:', mediaErr);
+
+        try {
+          const existingMedia = await adminDb
+            .collection('media')
+            .where('url', '==', fileUrl)
+            .limit(1)
+            .get();
+
+          if (existingMedia.empty) {
+            await adminDb.collection('media').add({
+              name: fileName,
+              originalName: fileName,
+              url: fileUrl,
+              fullPath: `survey-uploads/${fileName}`,
+              type: isImage ? 'image' : 'document',
+              mimeType,
+              size: 0,
+              uploadedBy: 'survey-submission',
+              workspaceIds: [workspaceId],
+              category: 'documents',
+              relatedEntityId: entityId || null,
+              createdAt: new Date().toISOString(),
+            });
+          }
+          registeredUrls.push(fileUrl);
+        } catch (mediaErr) {
+          console.error('[survey-actions] Failed to register survey uploaded file to media:', mediaErr);
+        }
       }
     }
   }

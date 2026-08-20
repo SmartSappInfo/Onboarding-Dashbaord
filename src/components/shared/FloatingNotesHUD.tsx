@@ -16,13 +16,16 @@ import {
 import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useFloatingNotes } from '@/context/FloatingNotesContext';
-import { collection, addDoc } from 'firebase/firestore';
-import { logNoteActivity } from '@/lib/note-actions';
+// NOTE: createQuickNote is the single source of truth for writing to quick_notes.
+// Do NOT use addDoc(collection(firestore, 'entity_notes')) here — that collection
+// is for CRM entity notes managed by EntityNotesTab, not the Quick Notes workspace.
+import { createQuickNote } from '@/lib/quick-notes-hooks';
+import { plainTextToTipTap, deriveTitleFromText } from '@/lib/quick-notes-domain';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { EntityNote } from '@/lib/types';
+
 
 // Predefined note types with matching icons & styling
 const NOTE_TYPES = [
@@ -38,7 +41,8 @@ export default function FloatingNotesHUD() {
     isOpen, 
     isMinimized, 
     draftText, 
-    activeEntityId, 
+    activeEntityId,
+    activeEntityName,
     close, 
     minimize, 
     restore, 
@@ -50,7 +54,9 @@ export default function FloatingNotesHUD() {
   const { activeOrganizationId, activeWorkspaceId } = useTenant();
   const { toast } = useToast();
 
-  const [noteType, setNoteType] = React.useState<NonNullable<EntityNote['noteType']>>('general');
+  // Derive the note-type union from the constant so we never need EntityNote here.
+  // CAUTION: If NOTE_TYPES entries change, this type updates automatically.
+  const [noteType, setNoteType] = React.useState<typeof NOTE_TYPES[number]['id']>('general');
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
@@ -143,42 +149,56 @@ export default function FloatingNotesHUD() {
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  // Note save operation
+  // ─── Core save handler ──────────────────────────────────────────────────────
+  // IMPORTANT: This now writes to `quick_notes` (the Quick Notes workspace
+  // collection), NOT `entity_notes`. The previous write to `entity_notes` caused
+  // notes to silently disappear from the Quick Notes board.
+  //
+  // Activity logging is handled non-blocking inside `createQuickNote` via
+  // `logQuickNoteActivity` — do NOT add a separate logNoteActivity call here.
+  //
+  // CAUTION: Do not change the collection without updating the security rules
+  // and Firestore indexes in firestore.rules / firestore.indexes.json.
   const handleSaveNote = async () => {
     if (!draftText.trim()) {
       toast({ title: 'Please enter note content', variant: 'destructive' });
       return;
     }
-    if (!firestore || !user || !activeWorkspaceId) {
-      toast({ title: 'Authentication context missing', variant: 'destructive' });
+    // Guard: All context fields are required — never write partial data.
+    // organizationId must be present for security-rule enforcement.
+    if (!firestore || !user || !activeWorkspaceId || !activeOrganizationId) {
+      toast({ title: 'Authentication context missing — please reload', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const noteData = {
-        entityId: activeEntityId || activeWorkspaceId || 'general',
-        workspaceId: activeWorkspaceId,
-        content: draftText.trim(),
-        noteType,
-        isPinned: false,
-        createdBy: user.uid,
-        createdByName: user.displayName || 'Unknown User',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      await createQuickNote(firestore, {
+        organizationId: activeOrganizationId,
+        workspaceId:    activeWorkspaceId,
+        createdBy:      user.uid,
+        createdByName:  user.displayName ?? undefined,
+        // Auto-derive a title from the first line (pure domain helper — no I/O).
+        title:    deriveTitleFromText(draftText),
+        // Convert plain textarea text → valid TipTap NoteDocument (domain helper).
+        content:  plainTextToTipTap(draftText),
+        // Encode the note type as a tag (quick_notes uses tags; entity_notes used noteType).
+        // 'general' produces an empty tags array to avoid noise in the tag system.
+        tags:     noteType !== 'general' ? [noteType] : [],
+        // Link to an entity only when the HUD was opened from an entity page.
+        // entityName enrichment is done in Phase 3 via context.
+        links:    activeEntityId ? { entityId: activeEntityId } : {},
+      });
 
-      await addDoc(collection(firestore, 'entity_notes'), noteData);
-
-      // Trigger non-blocking feed activity logging
-      await logNoteActivity(noteData as any, activeOrganizationId || 'default');
-
-      toast({ title: 'Floating note added successfully' });
+      toast({ title: 'Note saved to Quick Notes ✓' });
       setDraftText('');
       close();
-    } catch (err: any) {
-      console.error('Error saving floating note:', err);
-      toast({ title: 'Failed to save note', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      // Log for diagnostics but never expose raw error messages to the UI (security).
+      console.error('[FloatingNotesHUD] createQuickNote failed:', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast({ title: 'Failed to save note', description: message, variant: 'destructive' });
+      // Draft is intentionally NOT cleared on failure so the user can retry.
     } finally {
       setIsSubmitting(false);
     }

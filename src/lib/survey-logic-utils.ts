@@ -25,8 +25,11 @@ export function syncElementsOnOptionChange(
 
       if (question.allowOther) {
         // Compound default value structure: { options: string[], other: string }
-        if (newDefaultValue && typeof newDefaultValue === 'object') {
-          const currentOptions = Array.isArray(newDefaultValue.options) ? newDefaultValue.options : [];
+        if (newDefaultValue && typeof newDefaultValue === 'object' && 'options' in newDefaultValue) {
+          const compound = newDefaultValue as { options?: unknown[]; other?: string };
+          const currentOptions = Array.isArray(compound.options) 
+            ? compound.options.filter((opt): opt is string => typeof opt === 'string') 
+            : [];
           let updatedOptions = [...currentOptions];
 
           if (newOptionValue === null) {

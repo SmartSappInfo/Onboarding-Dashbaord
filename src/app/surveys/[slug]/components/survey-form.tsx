@@ -4,7 +4,7 @@ import { useForm, Controller, useWatch, type Control, type FieldErrors, type Fie
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addDoc, collection, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
 
 import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,12 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info, Building2 } from 'lucide-react';
+import { 
+  CalendarIcon, Star, Upload, File as FileIcon, FileText, X, Check, Loader2, 
+  ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, 
+  Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, 
+  Info, Building2, Download, FileSpreadsheet, FileImage, Trash2, Plus
+} from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -28,6 +33,14 @@ import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { interpolateWithMap } from '@/lib/survey-variable-utils';
+import { 
+  validateFileType, 
+  validateFileSize, 
+  splitFileUrls, 
+  formatFileSize,
+  FILE_TYPE_PRESETS 
+} from '@/lib/survey-file-utils';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
@@ -225,129 +238,393 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     );
 }
 
-const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; onChange: (value?: string) => void; disabled?: boolean; surveyId: string }) => {
-  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [fileName, setFileName] = React.useState<string | null>(null);
-  
+interface StagedUploadFile {
+  id: string;
+  name: string;
+  size: number;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+  url?: string;
+  error?: string;
+}
+
+interface FileUploadProps {
+  value?: string;
+  onChange: (value?: string) => void;
+  disabled?: boolean;
+  surveyId: string;
+  question: SurveyQuestion;
+}
+
+const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploadProps) => {
+  const [stagedFiles, setStagedFiles] = React.useState<StagedUploadFile[]>([]);
+  const [isDragging, setIsDragging] = React.useState<boolean>(false);
+  const [generalError, setGeneralError] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const uploadTasksRef = React.useRef<Record<string, UploadTask>>({});
+
+  const allowMultiple = Boolean(question.allowMultipleFiles);
+  const maxFiles = question.maxFiles || (allowMultiple ? 5 : 1);
+  const maxFileSizeMB = question.maxFileSizeMB || 25;
+
+  // Initialize stagedFiles from incoming value
   React.useEffect(() => {
-    if (value && !fileName) {
-      try {
-        if (value.startsWith('https://firebasestorage.googleapis.com')) {
-          const url = new URL(value);
-          const path = decodeURIComponent(url.pathname);
-          const name = path.substring(path.lastIndexOf('/') + 1);
-          if (name.includes('-')) {
-            const nameWithoutTimestamp = name.substring(name.indexOf('-') + 1);
-            setFileName(nameWithoutTimestamp);
-          } else {
-            setFileName(name);
-          }
-        }
-      } catch (e) {
-        console.error("Could not parse file URL:", e);
-      }
-    } else if (!value && fileName) {
-      setFileName(null);
-      setUploadProgress(null);
-      setError(null);
-    }
-  }, [value, fileName]);
+    const urls = splitFileUrls(value);
+    setStagedFiles((prev) => {
+      // Keep existing uploading or completed items if their URLs match
+      const currentCompletedUrls = prev.filter((f) => f.status === 'completed' && f.url).map((f) => f.url);
+      const isSame = urls.length === currentCompletedUrls.length && urls.every((u, i) => u === currentCompletedUrls[i]);
+      if (isSame && prev.length > 0) return prev;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        setError(null);
-        setUploadProgress(0);
-        setFileName(file.name);
-        onChange(undefined);
+      return urls.map((url) => ({
+        id: `file_${url.substring(url.length - 16).replace(/[^a-zA-Z0-9]/g, '')}`,
+        name: extractFileNameFromStorageUrl(url),
+        size: 0,
+        progress: 100,
+        status: 'completed',
+        url,
+      }));
+    });
+  }, [value]);
 
-        const storage = getStorage();
-        const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${file.name}`;
-        const storageRef = ref(storage, storagePath);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (uploadError) => {
-            console.error("Upload failed:", uploadError);
-            setError("Upload failed. Please try again.");
-            setUploadProgress(null);
-            setFileName(null);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              onChange(downloadURL);
-              setUploadProgress(100);
-              setTimeout(() => {
-                setUploadProgress(null);
-              }, 1500);
-            } catch (urlError) {
-              console.error("Failed to get download URL:", urlError);
-              setError("Could not retrieve file URL.");
-              setUploadProgress(null);
-              setFileName(null);
-            }
-          }
-        );
-    }
-  };
-  
-  const handleRemoveFile = () => {
+  const notifyChange = (updatedFiles: StagedUploadFile[]) => {
+    const completedUrls = updatedFiles
+      .filter((f) => f.status === 'completed' && f.url)
+      .map((f) => f.url as string);
+    if (completedUrls.length === 0) {
       onChange(undefined);
+    } else {
+      onChange(completedUrls.join(', '));
+    }
   };
-  
-  if (uploadProgress !== null && fileName) {
-    return (
-        <div className="space-y-3 p-4 bg-muted/20 rounded-xl">
-            <div className="flex items-center gap-3 text-base">
-                <FileIcon className="h-5 w-5 text-primary" />
-                <span className="truncate flex-1 font-bold">{fileName}</span>
-                {uploadProgress === 100 ? (
-                    <div className="flex items-center gap-1 text-emerald-600 font-bold">
-                        <CheckCircle2 className="h-4 w-4" /> Done
-                    </div>
-                ) : (
-                    <span className="font-bold text-primary">{Math.round(uploadProgress)}%</span>
-                )}
-            </div>
-            <Progress value={uploadProgress} className="h-2" />
-            {error && <p className="text-sm text-destructive font-bold">{error}</p>}
-        </div>
-    );
-  }
 
-  if (value && fileName) {
-    return (
-      <div className="flex items-center gap-4 p-4 border-2 border-primary/20 rounded-xl bg-primary/5 group transition-all hover:bg-primary/10">
-        <FileIcon className="h-6 w-6 text-primary" />
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-base font-bold truncate flex-1 hover:underline">{fileName}</a>
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleRemoveFile} disabled={disabled}>
-            <X className="h-4 w-4" />
-        </Button>
-      </div>
+  const startUpload = (file: File) => {
+    const fileId = `up_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    
+    // Instantaneous staging before network calls (Zero Dead-Pause UX)
+    const newStagedItem: StagedUploadFile = {
+      id: fileId,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      status: 'uploading',
+    };
+
+    setStagedFiles((prev) => {
+      const base = allowMultiple ? prev.filter((f) => f.status === 'completed' || f.status === 'uploading') : [];
+      return [...base, newStagedItem];
+    });
+
+    const storage = getStorage();
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${cleanFileName}`;
+    const storageRef = ref(storage, storagePath);
+    const task = uploadBytesResumable(storageRef, file);
+
+    uploadTasksRef.current[fileId] = task;
+
+    task.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = snapshot.totalBytes > 0 
+          ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) 
+          : 0;
+        setStagedFiles((prev) =>
+          prev.map((f) => (f.id === fileId ? { ...f, progress } : f))
+        );
+      },
+      (err) => {
+        delete uploadTasksRef.current[fileId];
+        if (err.code === 'storage/canceled') {
+          // Handled cancellation cleanly
+          return;
+        }
+        console.error('[FileUpload] Upload error:', err);
+        setStagedFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileId
+              ? { ...f, status: 'error', error: 'Upload failed. Please try again.' }
+              : f
+          )
+        );
+      },
+      async () => {
+        delete uploadTasksRef.current[fileId];
+        try {
+          const downloadURL = await getDownloadURL(task.snapshot.ref);
+          setStagedFiles((prev) => {
+            const next = prev.map((f) =>
+              f.id === fileId
+                ? { ...f, status: 'completed' as const, progress: 100, url: downloadURL }
+                : f
+            );
+            notifyChange(next);
+            return next;
+          });
+        } catch (urlErr) {
+          console.error('[FileUpload] URL fetch error:', urlErr);
+          setStagedFiles((prev) =>
+            prev.map((f) =>
+              f.id === fileId
+                ? { ...f, status: 'error', error: 'Failed to obtain download URL.' }
+                : f
+            )
+          );
+        }
+      }
     );
-  }
+  };
+
+  const handleProcessFiles = (fileList: FileList | File[]) => {
+    setGeneralError(null);
+    const rawFiles = Array.from(fileList);
+    if (rawFiles.length === 0) return;
+
+    const currentCount = stagedFiles.filter((f) => f.status === 'completed' || f.status === 'uploading').length;
+    if (allowMultiple && currentCount + rawFiles.length > maxFiles) {
+      setGeneralError(`Maximum limit of ${maxFiles} file${maxFiles > 1 ? 's' : ''} reached.`);
+      return;
+    }
+
+    const filesToUpload = allowMultiple ? rawFiles.slice(0, maxFiles - currentCount) : [rawFiles[0]];
+
+    for (const file of filesToUpload) {
+      // Validate Type
+      const typeCheck = validateFileType(file, question.allowedFileTypes, question.customFileExtensions);
+      if (!typeCheck.valid) {
+        setGeneralError(typeCheck.error || 'Invalid file format.');
+        return;
+      }
+
+      // Validate Size
+      const sizeCheck = validateFileSize(file, maxFileSizeMB);
+      if (!sizeCheck.valid) {
+        setGeneralError(sizeCheck.error || 'File size exceeds limit.');
+        return;
+      }
+
+      startUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (disabled) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleProcessFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleCancelUpload = (fileId: string) => {
+    const task = uploadTasksRef.current[fileId];
+    if (task) {
+      task.cancel();
+      delete uploadTasksRef.current[fileId];
+    }
+    setStagedFiles((prev) => {
+      const next = prev.filter((f) => f.id !== fileId);
+      notifyChange(next);
+      return next;
+    });
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setStagedFiles((prev) => {
+      const next = prev.filter((f) => f.id !== fileId);
+      notifyChange(next);
+      return next;
+    });
+  };
+
+  const getAcceptedHint = () => {
+    if (!question.allowedFileTypes || question.allowedFileTypes.length === 0 || question.allowedFileTypes.includes('all')) {
+      return `Any format • Max ${maxFileSizeMB}MB`;
+    }
+    const hints: string[] = [];
+    question.allowedFileTypes.forEach((t) => {
+      if (t === 'custom' && question.customFileExtensions) {
+        hints.push(question.customFileExtensions);
+      } else if (FILE_TYPE_PRESETS[t]) {
+        hints.push(FILE_TYPE_PRESETS[t].label.split(' ')[0]);
+      }
+    });
+    return `Accepts ${hints.join(', ')} • Max ${maxFileSizeMB}MB`;
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
+    if (['.xlsx', '.xls', '.csv'].includes(ext)) {
+      return <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+    }
+    if (ext === '.pdf') {
+      return <FileText className="h-5 w-5 text-rose-500 dark:text-rose-400 shrink-0" />;
+    }
+    if (['.png', '.jpg', '.jpeg', '.webp', '.svg'].includes(ext)) {
+      return <FileImage className="h-5 w-5 text-sky-500 dark:text-sky-400 shrink-0" />;
+    }
+    return <FileIcon className="h-5 w-5 text-primary shrink-0" />;
+  };
+
+  const canAddMore = allowMultiple ? stagedFiles.length < maxFiles : stagedFiles.length === 0;
 
   return (
-    <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-14 px-8 rounded-xl border-2 border-dashed bg-background hover:bg-accent transition-all text-base font-black uppercase tracking-widest border-border/50 hover:border-primary/50 group">
-        <div className="cursor-pointer">
-            <Upload className="mr-3 h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-            <span>Upload Document</span>
+    <div className="w-full space-y-4 max-w-2xl">
+      {/* 1. Drag and Drop Zone */}
+      {canAddMore && (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => !disabled && fileInputRef.current?.click()}
+          className={cn(
+            "relative flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border-2 border-dashed transition-all duration-200 cursor-pointer text-center group",
+            isDragging
+              ? "border-primary bg-primary/10 scale-[1.01] shadow-lg ring-4 ring-primary/20"
+              : "border-border/60 hover:border-primary/50 bg-muted/20 hover:bg-muted/30",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple={allowMultiple}
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) handleProcessFiles(e.target.files);
+              e.target.value = '';
+            }}
+            disabled={disabled}
+          />
+          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+            <Upload className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-bold text-foreground mb-1">
+            <span className="text-primary underline underline-offset-4">Click to upload</span> or drag and drop
+          </p>
+          <p className="text-xs font-semibold text-muted-foreground">
+            {getAcceptedHint()}
+            {allowMultiple && ` • Up to ${maxFiles} files`}
+          </p>
         </div>
-      </Button>
-      <input
-        type="file"
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        onChange={handleFileChange}
-        disabled={disabled}
-      />
+      )}
+
+      {/* General Error Notice */}
+      {generalError && (
+        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{generalError}</span>
+          <button type="button" onClick={() => setGeneralError(null)} className="ml-auto p-1 hover:bg-destructive/20 rounded-lg">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. Uploaded / In-Progress Files List */}
+      {stagedFiles.length > 0 && (
+        <div className="space-y-2.5">
+          {stagedFiles.map((file) => (
+            <div
+              key={file.id}
+              className={cn(
+                "flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left bg-card/80 backdrop-blur-sm",
+                file.status === 'error'
+                  ? "border-destructive/40 bg-destructive/5"
+                  : file.status === 'completed'
+                  ? "border-border/60 hover:border-primary/30"
+                  : "border-primary/30 bg-primary/5"
+              )}
+            >
+              {getFileIcon(file.name)}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-foreground truncate">
+                    {file.name}
+                  </span>
+                  {file.size > 0 && (
+                    <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                      {formatFileSize(file.size)}
+                    </span>
+                  )}
+                </div>
+
+                {file.status === 'uploading' && (
+                  <div className="space-y-1.5 mt-2">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-primary">
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Uploading...
+                      </span>
+                      <span>{file.progress}%</span>
+                    </div>
+                    <Progress value={file.progress} className="h-1.5" />
+                  </div>
+                )}
+
+                {file.status === 'error' && (
+                  <p className="text-[11px] font-bold text-destructive mt-1 flex items-center gap-1">
+                    <XCircle className="h-3.5 w-3.5 shrink-0" /> {file.error || 'Upload failed.'}
+                  </p>
+                )}
+
+                {file.status === 'completed' && file.url && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Ready
+                    </span>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-semibold text-muted-foreground hover:text-primary hover:underline truncate"
+                    >
+                      View file
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button: Cancel during upload OR Remove after completion */}
+              {file.status === 'uploading' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                  onClick={() => handleCancelUpload(file.id)}
+                  title="Cancel upload"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                  onClick={() => handleRemoveFile(file.id)}
+                  disabled={disabled}
+                  title="Remove file"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -685,12 +962,13 @@ const ElementRenderer = ({
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <div className={cn("rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
+                                    <div className={cn("w-full rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
                                         <FileUpload
                                             value={field.value}
                                             onChange={(v) => handleValueChange(v, field.onChange)}
                                             disabled={false}
                                             surveyId={surveyId}
+                                            question={question}
                                         />
                                     </div>
                                 )}
@@ -749,12 +1027,69 @@ const ElementRenderer = ({
                  return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white dark:border-slate-800", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} thumbnailUrl={block.thumbnailUrl} /></div> : null;
             case 'audio':
                 return block.url ? <div className="my-6 p-6 bg-muted/10 border border-border/30 rounded-xl"><audio controls src={block.url} className="w-full text-sm">Your browser does not support the audio element.</audio></div> : null;
-            case 'document':
+            case 'document': {
+                const hasCopy = Boolean(block.title?.trim() || block.description?.trim());
+                const rawFileName = block.fileName || (block.url ? extractFileNameFromStorageUrl(block.url) : 'Document');
+                const ext = rawFileName.includes('.') ? rawFileName.substring(rawFileName.lastIndexOf('.')).toLowerCase() : '';
+                const isSpreadsheet = ['.xlsx', '.xls', '.csv'].includes(ext);
+                const isPdf = ext === '.pdf';
+                const isImage = ['.png', '.jpg', '.jpeg', '.webp'].includes(ext);
+                const buttonLabel = block.buttonText?.trim() || 'Download Document';
+
                 return (
-                    <div className={cn("my-6", alignmentClass)}>
-                        <Button asChild variant="outline" className="h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-800 text-base uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2.5 h-5 w-5 text-primary"/> Download Document</a></Button>
+                    <div id={block.id} className={cn("my-6 w-full max-w-2xl", textAlign === 'center' ? 'mx-auto' : textAlign === 'right' ? 'ml-auto' : 'mr-auto')}>
+                        {hasCopy ? (
+                            <div className="p-6 rounded-2xl bg-card/70 backdrop-blur-md border border-border/60 shadow-sm transition-all hover:shadow-md space-y-4 text-left">
+                                <div className="flex items-center gap-3.5">
+                                    <div className={cn(
+                                        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                                        isSpreadsheet ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                                        isPdf ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" :
+                                        isImage ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" :
+                                        "bg-primary/10 text-primary border border-primary/20"
+                                    )}>
+                                        {isSpreadsheet ? <FileSpreadsheet className="h-5 w-5" /> : isPdf ? <FileText className="h-5 w-5" /> : isImage ? <FileImage className="h-5 w-5" /> : <FileIcon className="h-5 w-5" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        {block.title && (
+                                            <h4 className="text-base sm:text-lg font-bold tracking-tight text-foreground leading-snug">
+                                                <span dangerouslySetInnerHTML={{ __html: interpolateText(block.title) }} />
+                                            </h4>
+                                        )}
+                                        <p className="text-xs font-semibold text-muted-foreground truncate">{rawFileName}</p>
+                                    </div>
+                                </div>
+
+                                {block.description && (
+                                    <div className="text-sm text-muted-foreground font-medium leading-relaxed whitespace-pre-wrap pl-0.5">
+                                        <span dangerouslySetInnerHTML={{ __html: interpolateText(block.description) }} />
+                                    </div>
+                                )}
+
+                                {block.url && (
+                                    <div className="pt-2">
+                                        <Button asChild variant="outline" className="min-h-[44px] h-11 px-6 rounded-xl border-2 font-bold shadow-sm transition-all active:scale-[0.97] hover:bg-slate-50 dark:hover:bg-slate-800 text-sm tracking-tight w-full sm:w-auto">
+                                            <a href={block.url} target="_blank" rel="noopener noreferrer" download={rawFileName}>
+                                                <Download className="mr-2 h-4 w-4 text-primary" />
+                                                <span dangerouslySetInnerHTML={{ __html: interpolateText(buttonLabel) }} />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : block.url ? (
+                            <div className={alignmentClass}>
+                                <Button asChild variant="outline" className="min-h-[44px] h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all active:scale-[0.97] hover:bg-slate-50 dark:hover:bg-slate-800 text-base tracking-tight">
+                                    <a href={block.url} target="_blank" rel="noopener noreferrer" download={rawFileName}>
+                                        <Download className="mr-2.5 h-5 w-5 text-primary" />
+                                        <span dangerouslySetInnerHTML={{ __html: interpolateText(buttonLabel) }} />
+                                    </a>
+                                </Button>
+                            </div>
+                        ) : null}
                     </div>
                 );
+            }
             case 'embed':
                 return block.html ? <div className="my-6 rounded-xl overflow-hidden border shadow-sm" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:
