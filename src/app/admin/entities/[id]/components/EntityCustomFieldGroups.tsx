@@ -6,8 +6,9 @@ import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import * as LucideIcons from 'lucide-react';
 import { 
-  Pencil, Save, X, Loader2, Info
+  Pencil, Save, X, Loader2, Info, FileText, FileSpreadsheet, FileImage, File, ExternalLink
 } from 'lucide-react';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-actions';
 
 import type { Entity, AppField, FieldGroup, AppPermissionId } from '@/lib/types';
 import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -241,11 +242,64 @@ function CustomFieldGroupCard({
   const currencyCode = entityData.financeData?.currency || 'GHS';
 
   const formatDisplayValue = (field: AppField, val: string | string[] | number | boolean | undefined | null) => {
-    if (val === undefined || val === null || val === '') return '—';
+    if (val === undefined || val === null || val === '') {
+      return <span className="text-muted-foreground/40 font-normal italic">—</span>;
+    }
+
+    // Detect File URL (Firebase Storage or generic file downloads)
+    if (
+      typeof val === 'string' &&
+      (val.startsWith('https://firebasestorage.googleapis.com') ||
+        val.match(/^https?:\/\/.*?\.(pdf|xlsx|xls|csv|docx|doc|png|jpg|jpeg|webp|zip)(\?.*)?$/i))
+    ) {
+      const rawFileName = extractFileNameFromStorageUrl(val);
+      const ext = rawFileName.includes('.') ? rawFileName.substring(rawFileName.lastIndexOf('.')).toLowerCase() : '';
+      const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
+      const isSpreadsheet = ['.xlsx', '.xls', '.csv'].includes(ext);
+      const isPdf = ext === '.pdf';
+
+      return (
+        <a
+          href={val}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 text-primary transition-all duration-200 group max-w-full"
+        >
+          {isSpreadsheet ? (
+            <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          ) : isPdf ? (
+            <FileText className="h-4 w-4 shrink-0 text-rose-500 dark:text-rose-400" />
+          ) : isImage ? (
+            <FileImage className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />
+          ) : (
+            <File className="h-4 w-4 shrink-0 text-primary" />
+          )}
+          <span className="text-xs font-bold truncate max-w-[180px] sm:max-w-[240px] underline-offset-4 group-hover:underline">
+            {rawFileName}
+          </span>
+          <ExternalLink className="h-3 w-3 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity ml-1" />
+        </a>
+      );
+    }
+
+    // Detect general web link
+    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+      return (
+        <a
+          href={val}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-bold text-primary hover:underline inline-flex items-center gap-1.5 break-all"
+        >
+          {val}
+          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+        </a>
+      );
+    }
 
     if (field.type === 'select' || field.type === 'radio') {
       const option = field.options?.find((opt) => opt.value === val);
-      return option ? option.label : String(val);
+      return <span>{option ? option.label : String(val)}</span>;
     }
 
     if (field.type === 'multi_select') {
@@ -254,38 +308,38 @@ function CustomFieldGroupCard({
         const option = field.options?.find((opt) => opt.value === v);
         return option ? option.label : v;
       });
-      return labels.join(', ') || '—';
+      return <span>{labels.join(', ') || '—'}</span>;
     }
 
     if (field.type === 'yes_no' || field.type === 'checkbox') {
-      return val === 'yes' || val === true || val === 'true' ? 'Yes' : 'No';
+      return <span>{val === 'yes' || val === true || val === 'true' ? 'Yes' : 'No'}</span>;
     }
 
     if (field.type === 'date') {
       try {
-        return format(new Date(String(val)), 'PPP');
+        return <span>{format(new Date(String(val)), 'PPP')}</span>;
       } catch {
-        return String(val);
+        return <span>{String(val)}</span>;
       }
     }
 
     if (field.type === 'datetime') {
       try {
-        return format(new Date(String(val)), 'PPp');
+        return <span>{format(new Date(String(val)), 'PPp')}</span>;
       } catch {
-        return String(val);
+        return <span>{String(val)}</span>;
       }
     }
 
     if (field.type === 'currency') {
       try {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode }).format(Number(val));
+        return <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode }).format(Number(val))}</span>;
       } catch {
-        return `${currencyCode} ${val}`;
+        return <span>{`${currencyCode} ${val}`}</span>;
       }
     }
 
-    return String(val);
+    return <span>{String(val)}</span>;
   };
 
   return (

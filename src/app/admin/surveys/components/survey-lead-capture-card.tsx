@@ -110,7 +110,25 @@ export default function SurveyLeadCaptureCard() {
             options: profileOptions
         };
 
-        // 2. Map existing app fields into their respective groups
+        // 2. Online Presence & Socials Group
+        const onlinePresenceGroup: SearchGroup = {
+            label: 'Online Presence & Socials',
+            options: [
+                { label: 'Website Address', value: 'onlinePresence.website' },
+                { label: 'Facebook Page', value: 'onlinePresence.facebook' },
+                { label: 'Instagram Handle', value: 'onlinePresence.instagram' },
+                { label: 'LinkedIn Profile', value: 'onlinePresence.linkedin' },
+                { label: 'WhatsApp Number', value: 'onlinePresence.whatsapp' },
+                { label: 'TikTok Handle', value: 'onlinePresence.tiktok' },
+                { label: 'YouTube Channel', value: 'onlinePresence.youtube' },
+                { label: 'X (Twitter)', value: 'onlinePresence.x' },
+                { label: 'Digital Address (GPS)', value: 'onlinePresence.digitalAddress' },
+                { label: 'Google Map Location', value: 'onlinePresence.googleMapLocation' },
+                { label: 'Google Business Profile', value: 'onlinePresence.googleBusinessProfile' },
+            ]
+        };
+
+        // 3. Map existing app fields into their respective groups
         const mappedGroups = fieldGroups.map(group => {
             const options = appFields
                 .filter(f => f.groupId === group.id && f.status === 'active' && f.type !== 'hidden')
@@ -138,7 +156,7 @@ export default function SurveyLeadCaptureCard() {
             };
         }).filter(g => g.options.length > 0);
 
-        return [profileGroup, ...mappedGroups];
+        return [profileGroup, onlinePresenceGroup, ...mappedGroups];
     }, [appFields, fieldGroups, activeWorkspace?.contactScope]);
 
     // Dialog state for creating new field on the fly
@@ -240,8 +258,7 @@ export default function SurveyLeadCaptureCard() {
                 toast({ title: 'Field Created', description: `Property "${data.label}" created and mapped.` });
                 setIsCreateFieldOpen(false);
                 
-                const prefix = activeWorkspace?.contactScope === 'person' ? 'personData.' : 'institutionData.';
-                const newTargetField = `${prefix}${data.variableName}`;
+                const newTargetField = `customData.${data.variableName}`;
                 
                 if (activeQuestionIdForNewField) {
                     handleMapQuestion(activeQuestionIdForNewField, newTargetField);

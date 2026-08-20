@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -39,9 +39,326 @@ export interface EntityMutationPayload {
   entityContacts?: EntityContactPayload[];
   globalTags: string[];
   workspaceTags: string[];
-  customData?: Record<string, string | number | boolean>;
+  customData?: Record<string, string | number | boolean | string[]>;
   personData?: Record<string, string | number | boolean | string[]>;
   industryData?: Record<string, unknown>;
+  onlinePresence?: Partial<OnlinePresence>;
+  location?: {
+    locationString?: string;
+    zone?: { id: string; name: string };
+    country?: { id: string; name: string; code: string; flag: string };
+    region?: { id: string; name: string };
+    district?: { id: string; name: string };
+  };
+  initials?: string;
+  slogan?: string;
+  logoUrl?: string;
+  referee?: string;
+  interestsText?: string;
+}
+
+/**
+ * Known schema-validated fields for vertical industries.
+ * Prevents non-schema custom fields from being stripped by validateIndustryData.
+ */
+const INDUSTRY_SCHEMA_FIELDS: Record<string, Set<string>> = {
+  SchoolEnrollment: new Set([
+    'gradeOfferings', 'academicYear', 'capacity', 'currentEnrollment',
+    'applicationIds', 'enrollmentIds', 'schoolVisitIds', 'nominalRoll'
+  ]),
+  Law: new Set([
+    'firmType', 'practiceAreas', 'barAssociations', 'capacity',
+    'conflictCheckRequired', 'matterIds', 'intakeFormIds', 'conflictCheckIds'
+  ]),
+  Marketing: new Set([
+    'clientIndustry', 'targetAudience', 'capacity', 'revenue',
+    'monthlyBudget', 'campaignIds', 'proposalIds', 'deliverableIds'
+  ]),
+  RealEstate: new Set([
+    'propertyPortfolio', 'developerType', 'investmentFocus', 'capacity', 'propertyIds'
+  ]),
+  Consultancy: new Set([
+    'clientIndustry', 'capacity', 'strategicPriorities', 'painPoints',
+    'discoveryIds', 'proposalIds', 'engagementIds'
+  ]),
+  SaaS: new Set([
+    'planType', 'renewalInterval', 'capacity', 'activeUsers',
+    'trialIds', 'onboardingIds', 'supportTicketIds', 'healthScoreIds'
+  ]),
+};
+
+/**
+ * Normalization dictionary for online presence properties
+ */
+const ONLINE_PRESENCE_MAP: Record<string, keyof OnlinePresence> = {
+  website: 'website',
+  web: 'website',
+  url: 'website',
+  site: 'website',
+  schoolwebsite: 'website',
+  schoolwebsiteaddress: 'website',
+  facebook: 'facebook',
+  fb: 'facebook',
+  facebookpage: 'facebook',
+  instagram: 'instagram',
+  ig: 'instagram',
+  linkedin: 'linkedin',
+  whatsapp: 'whatsapp',
+  wa: 'whatsapp',
+  tiktok: 'tiktok',
+  youtube: 'youtube',
+  yt: 'youtube',
+  twitter: 'x',
+  x: 'x',
+  digitaladdress: 'digitalAddress',
+  gpsaddress: 'digitalAddress',
+  googlemap: 'googleMapLocation',
+  googlemaps: 'googleMapLocation',
+  googlemaplocation: 'googleMapLocation',
+  googlebusiness: 'googleBusinessProfile',
+  googlebusinessprofile: 'googleBusinessProfile',
+  gmb: 'googleBusinessProfile',
+};
+
+/**
+ * Extract clean human-readable filename from Firebase Storage URL
+ */
+export function extractFileNameFromStorageUrl(urlStr: string): string {
+  try {
+    const url = new URL(urlStr);
+    const path = decodeURIComponent(url.pathname);
+    const rawName = path.substring(path.lastIndexOf('/') + 1);
+    if (rawName.includes('-')) {
+      return rawName.substring(rawName.indexOf('-') + 1);
+    }
+    return rawName;
+  } catch {
+    return 'uploaded-file';
+  }
+}
+
+export interface ParsedSurveyMappings {
+  mappedInstitutionData: Record<string, unknown>;
+  mappedPersonData: Record<string, string | number | boolean | string[]>;
+  mappedCustomData: Record<string, string | number | boolean | string[]>;
+  mappedOnlinePresence: Partial<OnlinePresence>;
+  mappedLocation: Record<string, unknown>;
+  overriddenEntityName: string | null;
+  overriddenContactName: string | null;
+  overriddenContactEmail: string | null;
+  overriddenContactPhone: string | null;
+  slogan: string | null;
+  initials: string | null;
+  logoUrl: string | null;
+  referee: string | null;
+  interestsText: string | null;
+}
+
+/**
+ * Universal Target Field Resolver for Surveys.
+ * Maps custom fields, industry data, online presence, and location safely.
+ */
+export function parseAndDistributeSurveyMappings(
+  additionalMappings: Array<{ questionId: string; targetField: string }> | undefined,
+  answers: Array<{ questionId: string; value: unknown }> | undefined,
+  workspaceIndustry?: IndustryVertical
+): ParsedSurveyMappings {
+  const result: ParsedSurveyMappings = {
+    mappedInstitutionData: {},
+    mappedPersonData: {},
+    mappedCustomData: {},
+    mappedOnlinePresence: {},
+    mappedLocation: {},
+    overriddenEntityName: null,
+    overriddenContactName: null,
+    overriddenContactEmail: null,
+    overriddenContactPhone: null,
+    slogan: null,
+    initials: null,
+    logoUrl: null,
+    referee: null,
+    interestsText: null,
+  };
+
+  if (!additionalMappings?.length || !answers?.length) {
+    return result;
+  }
+
+  const getAnswerValue = (qId?: string) => {
+    if (!qId) return null;
+    const ans = answers.find(a => a.questionId === qId);
+    return ans ? ans.value : null;
+  };
+
+  additionalMappings.forEach((m) => {
+    const val = getAnswerValue(m.questionId);
+    if (val === null || val === undefined || val === '') return;
+
+    const rawTarget = m.targetField.trim();
+    const cleanLower = rawTarget.toLowerCase().replace(/[\s_-]+/g, '');
+
+    // 1. Identity & Contact Overrides
+    if (rawTarget === 'entity.name' || cleanLower === 'name' || cleanLower === 'schoolname') {
+      if (!isGenericChoiceValue(val)) result.overriddenEntityName = String(val).trim();
+      return;
+    }
+    if (rawTarget === 'contacts.name' || cleanLower === 'contactname' || cleanLower === 'contactperson') {
+      if (!isGenericChoiceValue(val)) result.overriddenContactName = String(val).trim();
+      return;
+    }
+    if (rawTarget === 'contacts.email' || cleanLower === 'contactemail' || cleanLower === 'email') {
+      result.overriddenContactEmail = String(val).trim().toLowerCase();
+      return;
+    }
+    if (rawTarget === 'contacts.phone' || cleanLower === 'contactphone' || cleanLower === 'phone') {
+      result.overriddenContactPhone = String(val).trim();
+      return;
+    }
+
+    // 2. Online Presence (e.g. onlinePresence.website, Website, Facebook, etc.)
+    if (rawTarget.toLowerCase().startsWith('onlinepresence.')) {
+      const subKey = rawTarget.substring('onlinepresence.'.length).trim();
+      const normSub = subKey.toLowerCase().replace(/[\s_-]+/g, '');
+      const mappedKey = ONLINE_PRESENCE_MAP[normSub] || (subKey as keyof OnlinePresence);
+      result.mappedOnlinePresence[mappedKey] = String(val).trim();
+      return;
+    }
+    if (ONLINE_PRESENCE_MAP[cleanLower]) {
+      const mappedKey = ONLINE_PRESENCE_MAP[cleanLower];
+      result.mappedOnlinePresence[mappedKey] = String(val).trim();
+      if (mappedKey === 'digitalAddress') {
+        result.mappedLocation.locationString = String(val).trim();
+      }
+      return;
+    }
+
+    // 3. Location fields
+    if (rawTarget.toLowerCase().startsWith('location.')) {
+      const subKey = rawTarget.substring('location.'.length).trim();
+      result.mappedLocation[subKey] = val;
+      return;
+    }
+    if (cleanLower === 'address' || cleanLower === 'digitaladdress') {
+      result.mappedLocation.locationString = String(val).trim();
+      return;
+    }
+
+    // 4. Direct Root Entity Branding/Attributes
+    if (cleanLower === 'slogan') {
+      result.slogan = String(val).trim();
+      return;
+    }
+    if (cleanLower === 'initials') {
+      result.initials = String(val).trim();
+      return;
+    }
+    if (cleanLower === 'logo' || cleanLower === 'logourl') {
+      result.logoUrl = String(val).trim();
+      return;
+    }
+    if (cleanLower === 'referee') {
+      result.referee = String(val).trim();
+      return;
+    }
+
+    // 5. Custom Data prefix
+    if (rawTarget.startsWith('customData.')) {
+      const field = rawTarget.substring('customData.'.length).trim();
+      result.mappedCustomData[field] = val as string | number | boolean | string[];
+      return;
+    }
+
+    // 6. Institution Data prefix
+    if (rawTarget.startsWith('institutionData.')) {
+      const field = rawTarget.substring('institutionData.'.length).trim();
+      const isSchemaField = workspaceIndustry && INDUSTRY_SCHEMA_FIELDS[workspaceIndustry]?.has(field);
+      if (isSchemaField) {
+        result.mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity' || field === 'currentEnrollment') ? Number(val) : val;
+      } else {
+        // Dynamic/custom field (e.g. staff_data, parent_and_student_data) → preserve in customData!
+        result.mappedCustomData[field] = val as string | number | boolean | string[];
+        result.mappedInstitutionData[field] = val;
+      }
+      return;
+    }
+
+    // 7. Person Data prefix
+    if (rawTarget.startsWith('personData.')) {
+      const field = rawTarget.substring('personData.'.length).trim();
+      result.mappedPersonData[field] = val as string | number | boolean | string[];
+      result.mappedCustomData[field] = val as string | number | boolean | string[];
+      return;
+    }
+
+    // 8. Default fallback: route to customData
+    result.mappedCustomData[rawTarget] = val as string | number | boolean | string[];
+  });
+
+  return result;
+}
+
+/**
+ * Non-blocking synchronization of survey uploaded files to workspace media collection.
+ */
+export async function syncSurveyUploadedFilesToMedia(
+  workspaceId: string,
+  answers: Array<{ questionId: string; value: unknown }>,
+  surveyTitle: string,
+  entityId?: string | null
+): Promise<string[]> {
+  const registeredUrls: string[] = [];
+  if (!workspaceId || !Array.isArray(answers) || answers.length === 0) return registeredUrls;
+
+  for (const ans of answers) {
+    if (typeof ans.value === 'string' && ans.value.startsWith('https://firebasestorage.googleapis.com')) {
+      const fileUrl = ans.value.trim();
+      const fileName = extractFileNameFromStorageUrl(fileUrl);
+      const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
+      
+      const isImage = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'].includes(ext);
+      let mimeType = 'application/octet-stream';
+      if (isImage) {
+        mimeType = ext === '.svg' ? 'image/svg+xml' : ext === '.webp' ? 'image/webp' : ext === '.png' ? 'image/png' : 'image/jpeg';
+      } else if (ext === '.pdf') {
+        mimeType = 'application/pdf';
+      } else if (['.xlsx', '.xls'].includes(ext)) {
+        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      } else if (['.csv'].includes(ext)) {
+        mimeType = 'text/csv';
+      } else if (['.docx', '.doc'].includes(ext)) {
+        mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      }
+
+      try {
+        const existingMedia = await adminDb
+          .collection('media')
+          .where('url', '==', fileUrl)
+          .limit(1)
+          .get();
+
+        if (existingMedia.empty) {
+          await adminDb.collection('media').add({
+            name: fileName,
+            originalName: fileName,
+            url: fileUrl,
+            fullPath: `survey-uploads/${fileName}`,
+            type: isImage ? 'image' : 'document',
+            mimeType,
+            size: 0,
+            uploadedBy: 'survey-submission',
+            workspaceIds: [workspaceId],
+            category: 'documents',
+            relatedEntityId: entityId || null,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        registeredUrls.push(fileUrl);
+      } catch (mediaErr) {
+        console.error('[survey-actions] Failed to register survey uploaded file to media:', mediaErr);
+      }
+    }
+  }
+  return registeredUrls;
 }
 
 /**
@@ -545,7 +862,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
       if (!workspaceId) {
         console.error(`[survey-actions] Survey ${surveyId} has no workspaceId — entity creation skipped`);
       } else {
-        const mapping = surveyData.entityMapping;
+        const mapping = surveyData.entityMapping || {};
         const answers = responseData.answers || [];
 
         const getAnswerValue = (qId?: string) => {
@@ -561,41 +878,8 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         const cEmail = getAnswerValue(mapping.contactEmailFieldId);
         const cPhone = getAnswerValue(mapping.contactPhoneFieldId);
 
-        // Parse additional mappings and resolve overrides early
-        const mappedInstitutionData: Record<string, string | number | boolean> = {};
-        const mappedPersonData: Record<string, string | number | boolean> = {};
-        const mappedCustomData: Record<string, string | number | boolean> = {};
-        
-        let overriddenEntityName: string | null = null;
-        let overriddenContactName: string | null = null;
-        let overriddenContactEmail: string | null = null;
-        let overriddenContactPhone: string | null = null;
-
-        if (mapping.additionalMappings?.length) {
-          mapping.additionalMappings.forEach((m: { questionId: string; targetField: string }) => {
-            const val = getAnswerValue(m.questionId);
-            if (val !== null && val !== undefined && val !== '') {
-              if (m.targetField.startsWith('institutionData.')) {
-                const field = m.targetField.replace('institutionData.', '');
-                mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
-              } else if (m.targetField.startsWith('personData.')) {
-                const field = m.targetField.replace('personData.', '');
-                mappedPersonData[field] = val;
-              } else if (m.targetField.startsWith('customData.')) {
-                const field = m.targetField.replace('customData.', '');
-                mappedCustomData[field] = val;
-              } else if (m.targetField === 'entity.name') {
-                if (!isGenericChoiceValue(val)) overriddenEntityName = String(val);
-              } else if (m.targetField === 'contacts.name') {
-                if (!isGenericChoiceValue(val)) overriddenContactName = String(val);
-              } else if (m.targetField === 'contacts.email') {
-                overriddenContactEmail = String(val);
-              } else if (m.targetField === 'contacts.phone') {
-                overriddenContactPhone = String(val);
-              }
-            }
-          });
-        }
+        const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
+        const parsedMappings = parseAndDistributeSurveyMappings(mapping.additionalMappings, answers, workspaceIndustry);
 
         // Get workspace scope, contact policy, and industry
         const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -603,14 +887,12 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
         const contactScope = (wsData?.contactScope || 'institution') as EntityType;
         const contactPolicy: ContactIdentifierPolicy = wsData?.contactPolicy || 'phone_or_email';
 
-        const { industry: workspaceIndustry } = await getWorkspaceIndustry(workspaceId);
-
         // Accept entity.name OR contact.name as the entity name source
-        const resolvedName = overriddenEntityName || eName || cName || '';
+        const resolvedName = parsedMappings.overriddenEntityName || eName || cName || '';
         finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
         
-        const resolvedEmail = (overriddenContactEmail || cEmail ? String(overriddenContactEmail || cEmail).toLowerCase().trim() : '') || '';
-        const resolvedPhone = (overriddenContactPhone || cPhone ? String(overriddenContactPhone || cPhone).trim() : '') || '';
+        const resolvedEmail = (parsedMappings.overriddenContactEmail || cEmail ? String(parsedMappings.overriddenContactEmail || cEmail).toLowerCase().trim() : '') || '';
+        const resolvedPhone = (parsedMappings.overriddenContactPhone || cPhone ? String(parsedMappings.overriddenContactPhone || cPhone).trim() : '') || '';
 
         // Validate contact identifiers per workspace policy
         const policyCheck = validateContactIdentifier(resolvedPhone, resolvedEmail, contactPolicy);
@@ -637,17 +919,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
           
           const resolvedDefaults = { ...systemDefaults, ...orgDefaults, ...wsSurveyDefaults, ...wsEntityDefaults };
 
-          if (contactScope === 'person' && Object.keys(mappedInstitutionData).length > 0) {
-            console.warn(`[survey-actions] institutionData mappings ignored — workspace contactScope is "person"`);
-          }
-          if (contactScope === 'institution' && Object.keys(mappedPersonData).length > 0 && Object.keys(mappedInstitutionData).length === 0) {
-            console.warn(`[survey-actions] personData mappings on institution workspace — will be passed as personData`);
-          }
-
           let industryDataPayload: Record<string, unknown> | undefined;
           if (workspaceIndustry) {
             const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
-            const surveyMapped = contactScope === 'institution' ? mappedInstitutionData : mappedPersonData;
+            const surveyMapped = contactScope === 'institution' ? parsedMappings.mappedInstitutionData : parsedMappings.mappedPersonData;
 
             industryDataPayload = {
               industry: workspaceIndustry,
@@ -656,7 +931,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             };
           }
 
-          finalContactName = overriddenContactName || cName || finalEntityName;
+          finalContactName = parsedMappings.overriddenContactName || cName || finalEntityName;
 
           const entityPayload: EntityMutationPayload = {
             name: finalEntityName,
@@ -673,15 +948,26 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             workspaceTags: surveyData.autoTags || [],
           };
 
-          if (industryDataPayload) {
+          if (industryDataPayload && Object.keys(industryDataPayload).length > 0) {
             entityPayload.industryData = industryDataPayload;
           }
-          if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
-            entityPayload.personData = mappedPersonData;
+          if (contactScope === 'person' && Object.keys(parsedMappings.mappedPersonData).length > 0) {
+            entityPayload.personData = parsedMappings.mappedPersonData;
           }
-          if (Object.keys(mappedCustomData).length > 0) {
-            entityPayload.customData = mappedCustomData;
+          if (Object.keys(parsedMappings.mappedCustomData).length > 0) {
+            entityPayload.customData = parsedMappings.mappedCustomData;
           }
+          if (Object.keys(parsedMappings.mappedOnlinePresence).length > 0) {
+            entityPayload.onlinePresence = parsedMappings.mappedOnlinePresence;
+          }
+          if (Object.keys(parsedMappings.mappedLocation).length > 0) {
+            entityPayload.location = parsedMappings.mappedLocation;
+          }
+          if (parsedMappings.slogan) entityPayload.slogan = parsedMappings.slogan;
+          if (parsedMappings.initials) entityPayload.initials = parsedMappings.initials;
+          if (parsedMappings.logoUrl) entityPayload.logoUrl = parsedMappings.logoUrl;
+          if (parsedMappings.referee) entityPayload.referee = parsedMappings.referee;
+          if (parsedMappings.interestsText) entityPayload.interestsText = parsedMappings.interestsText;
 
           // Multi-Layered Deduplication / Entity Recognition
           existingMatch = await resolveOrMatchWorkspaceEntity(workspaceId, {
@@ -697,7 +983,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
             const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
               isExistingEntity: true,
-              isExplicitlyMapped: Boolean(overriddenEntityName),
+              isExplicitlyMapped: Boolean(parsedMappings.overriddenEntityName),
               isManualInput: false,
               existingEntityName: existingMatch.entityName || null,
             });
@@ -728,7 +1014,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
               const safePayload = await sanitizeEntityPayloadForUpdate(entityPayload, {
                 isExistingEntity: true,
-                isExplicitlyMapped: Boolean(overriddenEntityName),
+                isExplicitlyMapped: Boolean(parsedMappings.overriddenEntityName),
                 isManualInput: false,
                 existingEntityName: duplicate.name || null,
               });
@@ -761,8 +1047,8 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                   entityId: finalEntityId!,
                   entityType: contactScope,
                   type: 'survey_submission',
-                  title: `Completed Survey: ${surveyData!.title}`,
-                  details: `Respondent completed survey "${surveyData!.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
+                  source: 'survey',
+                  description: `Respondent completed survey "${surveyData!.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
                   metadata: {
                     surveyId,
                     surveyTitle: surveyData!.title,
@@ -775,6 +1061,20 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 });
               } catch (err) {
                 console.error('[survey-actions] Failed to log survey submission activity:', err);
+              }
+            });
+
+            // Synchronize uploaded files to Media Library
+            after(async () => {
+              try {
+                await syncSurveyUploadedFilesToMedia(
+                  workspaceId,
+                  responseData.answers || [],
+                  surveyData!.title,
+                  finalEntityId
+                );
+              } catch (err) {
+                console.error('[survey-actions] Failed to sync uploaded files to media:', err);
               }
             });
             
@@ -1464,42 +1764,24 @@ export async function submitPublicSurveyLead(
 
     // Extract survey mappings from answers
     const answers = responseData.answers || [];
+    const mapping = surveyData.entityMapping || {};
+    const parsedMappings = parseAndDistributeSurveyMappings(mapping.additionalMappings, answers, workspaceIndustry);
+
     const getAnswerValue = (qId?: string) => {
       if (!qId) return null;
       const ans = answers.find(a => a.questionId === qId);
       return ans ? ans.value : null;
     };
 
-    const mappedInstitutionData: Record<string, string | number | string[]> = {};
-    const mappedPersonData: Record<string, string | number | string[]> = {};
-
-    const mapping = surveyData.entityMapping || {};
     let isExplicitEntityNameMapped = Boolean(
-      mapping.entityNameFieldId && getAnswerValue(mapping.entityNameFieldId)?.toString().trim()
+      (mapping.entityNameFieldId && getAnswerValue(mapping.entityNameFieldId)?.toString().trim()) ||
+      parsedMappings.overriddenEntityName
     );
 
-    if (mapping.additionalMappings?.length) {
-      mapping.additionalMappings.forEach((m) => {
-        const val = getAnswerValue(m.questionId);
-        if (m.targetField === 'entity.name' && val && String(val).trim().length > 0) {
-          isExplicitEntityNameMapped = true;
-        }
-        if (val !== null && val !== undefined && val !== '') {
-          if (m.targetField.startsWith('institutionData.')) {
-            const field = m.targetField.replace('institutionData.', '');
-            mappedInstitutionData[field] = (field === 'nominalRoll' || field === 'capacity') ? Number(val) : val;
-          } else if (m.targetField.startsWith('personData.')) {
-            const field = m.targetField.replace('personData.', '');
-            mappedPersonData[field] = val;
-          }
-        }
-      });
-    }
-
-    let industryDataPayload: Record<string, string | number | string[]> | undefined;
+    let industryDataPayload: Record<string, unknown> | undefined;
     if (workspaceIndustry) {
       const industryDefaults = buildIndustryDefaults(workspaceIndustry, contactScope, resolvedDefaults);
-      const surveyMapped = contactScope === 'institution' ? mappedInstitutionData : mappedPersonData;
+      const surveyMapped = contactScope === 'institution' ? parsedMappings.mappedInstitutionData : parsedMappings.mappedPersonData;
 
       industryDataPayload = {
         industry: workspaceIndustry,
@@ -1527,12 +1809,26 @@ export async function submitPublicSurveyLead(
       workspaceTags: surveyData.autoTags || [],
     };
 
-    if (industryDataPayload) {
+    if (industryDataPayload && Object.keys(industryDataPayload).length > 0) {
       entityPayload.industryData = industryDataPayload;
     }
-    if (contactScope === 'person' && Object.keys(mappedPersonData).length > 0) {
-      entityPayload.personData = mappedPersonData;
+    if (contactScope === 'person' && Object.keys(parsedMappings.mappedPersonData).length > 0) {
+      entityPayload.personData = parsedMappings.mappedPersonData;
     }
+    if (Object.keys(parsedMappings.mappedCustomData).length > 0) {
+      entityPayload.customData = parsedMappings.mappedCustomData;
+    }
+    if (Object.keys(parsedMappings.mappedOnlinePresence).length > 0) {
+      entityPayload.onlinePresence = parsedMappings.mappedOnlinePresence;
+    }
+    if (Object.keys(parsedMappings.mappedLocation).length > 0) {
+      entityPayload.location = parsedMappings.mappedLocation;
+    }
+    if (parsedMappings.slogan) entityPayload.slogan = parsedMappings.slogan;
+    if (parsedMappings.initials) entityPayload.initials = parsedMappings.initials;
+    if (parsedMappings.logoUrl) entityPayload.logoUrl = parsedMappings.logoUrl;
+    if (parsedMappings.referee) entityPayload.referee = parsedMappings.referee;
+    if (parsedMappings.interestsText) entityPayload.interestsText = parsedMappings.interestsText;
 
     let finalEntityId: string | null = null;
     if (existingMatch) {
@@ -1691,8 +1987,8 @@ export async function submitPublicSurveyLead(
             entityId: finalEntityId!,
             entityType: contactScope,
             type: 'survey_submission',
-            title: `Claimed Results for Survey: ${surveyData.title}`,
-            details: `Lead captured for survey "${surveyData.title}" (${leadData.name || leadData.email || 'Anonymous'}).`,
+            source: 'survey',
+            description: `Lead captured for survey "${surveyData.title}" (${leadData.name || leadData.email || 'Anonymous'}).`,
             metadata: {
               surveyId,
               surveyTitle: surveyData.title,
@@ -1708,6 +2004,20 @@ export async function submitPublicSurveyLead(
           });
         } catch (err) {
           console.error('[survey-actions] Failed to log lead capture activity:', err);
+        }
+      });
+
+      // Synchronize uploaded files to Media Library
+      after(async () => {
+        try {
+          await syncSurveyUploadedFilesToMedia(
+            workspaceId,
+            responseData.answers || [],
+            surveyData.title,
+            finalEntityId
+          );
+        } catch (err) {
+          console.error('[survey-actions] Failed to sync uploaded files to media in submitPublicSurveyLead:', err);
         }
       });
 
@@ -1807,13 +2117,13 @@ export async function finalizeSurveySubmission(
             entityId: finalEntityId!,
             entityType: 'institution',
             type: 'survey_submission',
-            title: `Completed Survey: ${surveyData.title}`,
-            details: `Respondent completed survey "${surveyData.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
+            source: 'survey',
+            description: `Respondent completed survey "${surveyData.title}"${responseData.score !== undefined ? ` with score ${responseData.score}` : ''}.`,
             metadata: {
               surveyId,
               surveyTitle: surveyData.title,
               submissionId: responseId,
-              outcomeId: outcomeId || responseData.outcomeId || null,
+              outcomeId: outcomeId || (responseData as any).outcomeId || null,
               score: responseData.score || null,
               isExistingEntity: Boolean(existingMatch || responseData.entityId),
               matchedBy: existingMatch?.matchedBy || (responseData.entityId ? 'tracked_id' : 'new_entity'),
