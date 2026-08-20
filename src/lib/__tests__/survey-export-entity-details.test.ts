@@ -210,6 +210,59 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(details.roleOrTitle).toBe('Head of Admissions');
     });
 
+    it('falls back to leadDetails if top-level fields and contact are missing', () => {
+      const mockResponse = {
+        id: 'resp_lead_1',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [],
+        leadDetails: {
+          company: 'Faith Baptist Academy',
+          name: 'Emmanuel Osei',
+          email: 'emmanuel@faithbaptist.edu',
+          phone: '+233244112233',
+          role: 'Administrator',
+        },
+      } as unknown as SurveyResponse;
+
+      const details = extractResponseContactDetails(mockResponse, null);
+
+      expect(details.entityName).toBe('Faith Baptist Academy');
+      expect(details.primaryContactName).toBe('Emmanuel Osei');
+      expect(details.primaryContactEmail).toBe('emmanuel@faithbaptist.edu');
+      expect(details.primaryContactPhone).toBe('+233244112233');
+      expect(details.roleOrTitle).toBe('Administrator');
+      expect(details.isLiveCrm).toBe(false);
+    });
+
+    it('falls back to scanning response.answers when questions match entity or contact keywords', () => {
+      const mockResponse = {
+        id: 'resp_unmapped_1',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'q_school_name', value: 'Great Minds International' },
+          { questionId: 'q_contact_person', value: 'Abena Mensah' },
+          { questionId: 'q_contact_phone', value: '0201112233' },
+          { questionId: 'q_contact_email', value: 'abena@greatminds.edu' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const mockQuestions = [
+        { id: 'q_school_name', title: 'What is the name of your school / institution?', type: 'short-text' },
+        { id: 'q_contact_person', title: 'Your Full Name / Contact Person', type: 'short-text' },
+        { id: 'q_contact_phone', title: 'Phone Number', type: 'phone' },
+        { id: 'q_contact_email', title: 'Email Address', type: 'email' },
+      ];
+
+      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
+
+      expect(details.entityName).toBe('Great Minds International');
+      expect(details.primaryContactName).toBe('Abena Mensah');
+      expect(details.primaryContactPhone).toBe('0201112233');
+      expect(details.primaryContactEmail).toBe('abena@greatminds.edu');
+    });
+
     it('handles completely empty response records without error', () => {
       const emptyResponse = {
         id: 'resp_empty',

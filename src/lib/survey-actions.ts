@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence, ResolvedContact } from './types';
+import type { Survey, SurveyElement, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence, ResolvedContact } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -160,59 +160,124 @@ export interface ExtractedContactDetails {
 }
 
 /**
- * Resolves contact & entity details from a SurveyResponse with a fallback hierarchy:
- * 1. ResolvedContact from CRM (if entityId is attached)
- * 2. Response snapshot fields (entityName, respondentName, contactEmail, contactPhone)
- * 3. Response variables map (entity_name, school_name, contact_name, phone, email, etc.)
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Resolves contact & entity details from a SurveyResponse with a resilient 5-tier fallback hierarchy:
+ * Tier 1: ResolvedContact from CRM (if entityId is attached and loaded from CRM adapter)
+ * Tier 2: Response top-level snapshot fields (entityName, respondentName, contactEmail, contactPhone)
+ * Tier 3: Lead form capture details (response.leadDetails: company, name, email, phone)
+ * Tier 4: Response variables map (entity_name, school_name, contact_name, respondent_name, name, phone, email, etc.)
+ * Tier 5: Answers heuristic scan (searches response.answers for question titles or value patterns)
  */
 export function extractResponseContactDetails(
   response: SurveyResponse,
-  contact?: ResolvedContact | null
+  contact?: ResolvedContact | null,
+  surveyQuestions?: Array<SurveyElement | SurveyQuestion | { id: string; title?: string; type?: string }>
 ): ExtractedContactDetails {
   const vars = (response as unknown as { variables?: Record<string, unknown> }).variables || {};
+  const lead = (response as unknown as { leadDetails?: Record<string, unknown> }).leadDetails || {};
+  const answers = response.answers || [];
 
-  // 1. Entity / School Name
+  // Helper to find answer value by question title keyword or regex
+  const findAnswerByKeyword = (keywords: string[]): string => {
+    if (!answers || !Array.isArray(answers) || answers.length === 0) return '';
+    
+    // First try matching with survey questions if provided
+    if (surveyQuestions && Array.isArray(surveyQuestions)) {
+      for (const q of surveyQuestions) {
+        const qTitle = (q.title || '').toLowerCase();
+        const qType = (q.type || '').toLowerCase();
+        if (keywords.some((kw) => qTitle.includes(kw) || qType.includes(kw))) {
+          const matchedAns = answers.find((a) => a.questionId === q.id);
+          if (matchedAns && matchedAns.value) {
+            if (typeof matchedAns.value === 'string' && matchedAns.value.trim().length > 0) {
+              return matchedAns.value.trim();
+            }
+            if (typeof matchedAns.value === 'object' && matchedAns.value !== null) {
+              const valObj = matchedAns.value as Record<string, unknown>;
+              if (typeof valObj.other === 'string' && valObj.other.trim().length > 0) return valObj.other.trim();
+              if (typeof valObj.option === 'string' && valObj.option.trim().length > 0 && valObj.option !== '__other__') return valObj.option.trim();
+            }
+          }
+        }
+      }
+    }
+    return '';
+  };
+
+  // 1. Entity / School Name (Tiers 1 -> 5)
+  const heuristicEntityName = !contact?.name && !response.entityName && !lead.company && !vars.entity_name && !vars.school_name
+    ? findAnswerByKeyword(['school', 'institution', 'organization', 'company', 'entity name', 'school name'])
+    : '';
+
   const entityName = (
     contact?.name ||
     response.entityName ||
+    (typeof lead.company === 'string' ? lead.company : '') ||
     (typeof vars.entity_name === 'string' ? vars.entity_name : '') ||
     (typeof vars.school_name === 'string' ? vars.school_name : '') ||
     (typeof vars.organization_name === 'string' ? vars.organization_name : '') ||
+    (typeof vars.q_entity_name_input === 'string' ? vars.q_entity_name_input : '') ||
+    heuristicEntityName ||
     ''
   ).trim();
 
-  // 2. Primary Contact Name
+  // 2. Primary Contact Name (Tiers 1 -> 5)
+  const heuristicContactName = !contact?.primaryContactName && !response.respondentName && !lead.name && !vars.contact_name && !vars.respondent_name && !vars.name
+    ? findAnswerByKeyword(['your name', 'contact name', 'full name', 'respondent name', 'contact person', 'principal name', 'headmaster'])
+    : '';
+
   const primaryContactName = (
     contact?.primaryContactName ||
     response.respondentName ||
+    (typeof lead.name === 'string' ? lead.name : '') ||
     (typeof vars.contact_name === 'string' ? vars.contact_name : '') ||
     (typeof vars.respondent_name === 'string' ? vars.respondent_name : '') ||
     (typeof vars.name === 'string' ? vars.name : '') ||
+    (typeof vars.fullName === 'string' ? vars.fullName : '') ||
+    heuristicContactName ||
     ''
   ).trim();
 
-  // 3. Primary Contact Email
+  // 3. Primary Contact Email (Tiers 1 -> 5)
+  const heuristicEmail = !contact?.primaryContactEmail && !response.contactEmail && !lead.email && !vars.contact_email && !vars.email
+    ? findAnswerByKeyword(['email', 'e-mail', 'mail'])
+    : '';
+
   const primaryContactEmail = (
     contact?.primaryContactEmail ||
     response.contactEmail ||
+    (typeof lead.email === 'string' ? lead.email : '') ||
     (typeof vars.contact_email === 'string' ? vars.contact_email : '') ||
     (typeof vars.email === 'string' ? vars.email : '') ||
+    (typeof vars.respondent_email === 'string' ? vars.respondent_email : '') ||
+    heuristicEmail ||
     ''
   ).trim();
 
-  // 4. Primary Contact Phone
+  // 4. Primary Contact Phone (Tiers 1 -> 5)
   const rawContactPhone = (response as unknown as { contactPhone?: string }).contactPhone;
+  const heuristicPhone = !contact?.primaryContactPhone && !rawContactPhone && !lead.phone && !vars.contact_phone && !vars.phone
+    ? findAnswerByKeyword(['phone', 'contact number', 'mobile', 'telephone', 'whatsapp'])
+    : '';
+
   const primaryContactPhone = (
     contact?.primaryContactPhone ||
     rawContactPhone ||
+    (typeof lead.phone === 'string' ? lead.phone : '') ||
     (typeof vars.contact_phone === 'string' ? vars.contact_phone : '') ||
     (typeof vars.phone === 'string' ? vars.phone : '') ||
+    (typeof vars.respondent_phone === 'string' ? vars.respondent_phone : '') ||
+    heuristicPhone ||
     ''
   ).trim();
 
   // 5. Role or Title
   const primaryEntityContact = contact?.entityContacts?.find((c) => c.isPrimary);
-  const roleOrTitle = primaryEntityContact?.typeLabel || (typeof vars.role === 'string' ? vars.role : '') || undefined;
+  const roleOrTitle = primaryEntityContact?.typeLabel || 
+    (typeof lead.role === 'string' ? lead.role : '') ||
+    (typeof vars.role === 'string' ? vars.role : '') || 
+    (typeof vars.title === 'string' ? vars.title : '') || 
+    undefined;
 
   const isLiveCrm = Boolean(response.entityId && contact);
 
@@ -1144,10 +1209,19 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             }
           }
 
-          // Link the response to the entity
+          // Link the response to the entity and persist reconciled contact identifiers
           if (finalEntityId) {
+            const resolvedEntityName = finalEntityName || existingMatch?.entityName || responseData.entityName || null;
+            const resolvedContactName = finalContactName || responseData.respondentName || null;
+            const resolvedEmailVal = resolvedEmail || responseData.contactEmail || null;
+            const resolvedPhoneVal = resolvedPhone || responseData.contactPhone || null;
+
             await docRef.update({ 
               entityId: finalEntityId,
+              entityName: resolvedEntityName,
+              respondentName: resolvedContactName,
+              contactEmail: resolvedEmailVal,
+              contactPhone: resolvedPhoneVal,
               assignedUserId: responseData.assignedUserId || null 
             });
 
@@ -2083,12 +2157,27 @@ export async function submitPublicSurveyLead(
       }
     }
 
-    // Link the response to the entity
+    // Link the response to the entity and persist reconciled contact identifiers
     if (finalEntityId) {
+      const resolvedEntityName = finalEntityName || leadData.company || null;
+      const resolvedContactName = leadData.name || finalEntityName || null;
+      const resolvedEmail = cEmail || leadData.email || null;
+      const resolvedPhone = cPhone || leadData.phone || null;
+      const respVars = (responseData as unknown as { variables?: Record<string, unknown> }).variables || {};
+
       await responseRef.update({ 
         entityId: finalEntityId,
+        entityName: resolvedEntityName,
+        respondentName: resolvedContactName,
+        contactEmail: resolvedEmail,
+        contactPhone: resolvedPhone,
         assignedUserId: responseData.assignedUserId || null,
-        leadDetails: leadData
+        leadDetails: leadData,
+        'variables.entity_name': resolvedEntityName || respVars.entity_name || null,
+        'variables.school_name': resolvedEntityName || respVars.school_name || null,
+        'variables.contact_name': resolvedContactName || respVars.contact_name || null,
+        'variables.contact_email': resolvedEmail || respVars.contact_email || null,
+        'variables.contact_phone': resolvedPhone || respVars.contact_phone || null,
       });
 
       // Log lead capture activity on the entity's CRM timeline

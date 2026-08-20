@@ -6,18 +6,211 @@ import { doc, collection, query, orderBy, limit, getCountFromServer } from 'fire
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { usePermissions } from '@/hooks/use-permissions';
-import { Survey, SurveyResponse } from '@/lib/types';
+import { Survey, SurveyResponse, ResolvedContact } from '@/lib/types';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Edit, Calendar, Activity, Loader2, ListPlus, ExternalLink } from 'lucide-react';
+import { BarChart3, Edit, Calendar, Activity, Loader2, ListPlus, ExternalLink, Building2, User as UserIcon, ShieldCheck, Phone, Mail, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { stripHtml } from '@/lib/utils';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useToast } from '@/hooks/use-toast';
+import { resolveContact } from '@/lib/contact-adapter';
+import { extractResponseContactDetails } from '@/lib/survey-actions';
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * High-performance reconciled respondent cell for Survey Recent Activity overview.
+ * Automatically cascades through:
+ * 1. Live CRM Entity linkage (linked to /admin/entities/[id] with Live CRM badge)
+ * 2. Response top-level snapshot fields
+ * 3. Lead form capture details (leadDetails.company, leadDetails.name, phone, email)
+ * 4. Response dynamic variables map
+ * 5. Response answers heuristic scan
+ */
+function SummaryRespondentCell({ 
+    response, 
+    surveyElements 
+}: { 
+    response: SurveyResponse; 
+    surveyElements?: Survey['elements'];
+}) {
+    const { activeWorkspaceId } = useWorkspace();
+    const { toast } = useToast();
+    const [contact, setContact] = React.useState<ResolvedContact | null>(null);
+    const [isLoading, setIsLoading] = React.useState(Boolean(response.entityId));
+    const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
+    const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        let active = true;
+        async function load() {
+            if (!response.entityId) {
+                if (active) setIsLoading(false);
+                return;
+            }
+            try {
+                const resolved = await resolveContact(response.entityId, activeWorkspaceId);
+                if (active) setContact(resolved);
+            } catch (err) {
+                console.error("Failed to load contact in summary cell:", err);
+            } finally {
+                if (active) setIsLoading(false);
+            }
+        }
+        load();
+        return () => { active = false; };
+    }, [response.entityId, activeWorkspaceId]);
+
+    const details = React.useMemo(() => {
+        return extractResponseContactDetails(response, contact, surveyElements);
+    }, [response, contact, surveyElements]);
+
+    const handleCopy = (text: string, type: 'phone' | 'email', e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!text) return;
+        try {
+            navigator.clipboard.writeText(text);
+            setCopiedField(type);
+            toast({
+                title: type === 'phone' ? "Phone Copied" : "Email Copied",
+                description: `${text} copied to clipboard.`,
+            });
+            if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+            copyTimeoutRef.current = setTimeout(() => setCopiedField(null), 2000);
+        } catch {
+            toast({ variant: "destructive", title: "Copy Failed", description: "Could not access clipboard." });
+        }
+    };
+
+    if (isLoading) {
+        return <Skeleton className="h-5 w-28" />;
+    }
+
+    const hasAnyDetails = Boolean(
+        details.entityName || 
+        details.primaryContactName || 
+        details.primaryContactPhone || 
+        details.primaryContactEmail
+    );
+
+    if (!hasAnyDetails) {
+        return (
+            <span className="text-muted-foreground/70 italic text-xs font-normal">
+                Anonymous
+            </span>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-1 py-0.5 max-w-[240px]">
+            {/* Entity / School Name Header */}
+            {details.entityName ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <Building2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                    {details.entityId ? (
+                        <a
+                            href={`/admin/entities/${details.entityId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-sm hover:underline hover:text-primary transition-colors truncate"
+                            title={details.entityName}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {details.entityName}
+                        </a>
+                    ) : (
+                        <span className="font-bold text-sm text-foreground truncate" title={details.entityName}>
+                            {details.entityName}
+                        </span>
+                    )}
+                    {details.isLiveCrm && (
+                        <Badge variant="outline" className="h-4 px-1 text-[8px] font-black uppercase bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shrink-0 gap-0.5">
+                            <ShieldCheck className="h-2.5 w-2.5" /> Live
+                        </Badge>
+                    )}
+                </div>
+            ) : null}
+
+            {/* Primary Contact Person / Subtext */}
+            {details.primaryContactName && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                    <UserIcon className="h-3 w-3 shrink-0 opacity-70" />
+                    <span className="truncate font-medium">{details.primaryContactName}</span>
+                    {details.roleOrTitle && (
+                        <span className="text-[9px] bg-muted px-1.5 py-0.2 rounded shrink-0">
+                            {details.roleOrTitle}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Quick Contact Actions (Phone & Email) */}
+            {(details.primaryContactPhone || details.primaryContactEmail) && (
+                <div className="flex items-center gap-2 pt-0.5">
+                    {details.primaryContactPhone && (
+                        <div className="flex items-center gap-0.5">
+                            <a
+                                href={`tel:${details.primaryContactPhone.replace(/[\s()\-]/g, '')}`}
+                                aria-label={`Call ${details.primaryContactPhone}`}
+                                title={`Click to call ${details.primaryContactPhone}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline active:scale-[0.97] transition-all"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Phone className="h-2.5 w-2.5 shrink-0" />
+                                <span className="truncate max-w-[90px]">{details.primaryContactPhone}</span>
+                            </a>
+                            <button
+                                type="button"
+                                onClick={(e) => handleCopy(details.primaryContactPhone, 'phone', e)}
+                                aria-label="Copy phone"
+                                title="Copy phone"
+                                className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                            >
+                                {copiedField === 'phone' ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : <Copy className="h-2.5 w-2.5" />}
+                            </button>
+                        </div>
+                    )}
+                    {details.primaryContactEmail && (
+                        <div className="flex items-center gap-0.5">
+                            <a
+                                href={`mailto:${details.primaryContactEmail}`}
+                                aria-label={`Email ${details.primaryContactEmail}`}
+                                title={`Click to email ${details.primaryContactEmail}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-700 hover:underline active:scale-[0.97] transition-all"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Mail className="h-2.5 w-2.5 shrink-0" />
+                                <span className="truncate max-w-[90px]">{details.primaryContactEmail}</span>
+                            </a>
+                            <button
+                                type="button"
+                                onClick={(e) => handleCopy(details.primaryContactEmail, 'email', e)}
+                                aria-label="Copy email"
+                                title="Copy email"
+                                className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                            >
+                                {copiedField === 'email' ? <Check className="h-2.5 w-2.5 text-blue-600" /> : <Copy className="h-2.5 w-2.5" />}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -263,7 +456,7 @@ export default function SurveySummaryClient({ id }: { id: string }) {
                                             recentResponses.map((res) => (
                                                 <TableRow key={res.id} className="border-border hover:bg-muted/30 transition-colors">
                                                     <TableCell className="pl-6 font-medium text-sm">
-                                                        {res.respondentName || 'Anonymous'}
+                                                        <SummaryRespondentCell response={res} surveyElements={survey.elements} />
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground truncate max-w-[200px] md:max-w-md">
                                                         {extractFirstMeaningfulAnswer(res.answers)}
