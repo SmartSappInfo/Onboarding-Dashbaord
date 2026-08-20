@@ -12,6 +12,25 @@ export interface ResendSendOverride {
   resendNumber: number;
 }
 
+// Lazy singleton cache for PhoneVerificationEngine to avoid re-import overhead
+let cachedPhoneVerifier: import('../../phone-verifier').PhoneVerificationEngine | null = null;
+async function getPhoneVerifier(): Promise<import('../../phone-verifier').PhoneVerificationEngine> {
+  if (!cachedPhoneVerifier) {
+    const { PhoneVerificationEngine } = await import('../../phone-verifier');
+    cachedPhoneVerifier = new PhoneVerificationEngine();
+  }
+  return cachedPhoneVerifier;
+}
+
+/** Helper function to chunk large arrays into bounded batch sizes for concurrency control */
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export async function handleSendMessage(
   config: Record<string, unknown>,
   context: ExecutionContext,
@@ -79,7 +98,7 @@ export async function handleSendMessage(
       // 3. Signatories
       if (targets.includes('signatories')) {
         entityContacts.filter(ec => ec.isSignatory).forEach(ec => {
-          const val = usePhone ?ec.phone : ec.email;
+          const val = usePhone ? ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }
@@ -89,7 +108,7 @@ export async function handleSendMessage(
         entityContacts.filter(ec => 
           ec.typeLabel && roles.some(r => r.toLowerCase() === ec.typeLabel?.toLowerCase() || r.toLowerCase() === ec.typeKey?.toLowerCase())
         ).forEach(ec => {
-          const val = usePhone ?ec.phone : ec.email;
+          const val = usePhone ? ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }
@@ -97,7 +116,7 @@ export async function handleSendMessage(
       // 5. All Contacts
       if (targets.includes('all')) {
         entityContacts.forEach(ec => {
-          const val = usePhone ?ec.phone : ec.email;
+          const val = usePhone ? ec.phone : ec.email;
           if (val) recipients.add(val);
         });
       }
@@ -145,38 +164,64 @@ export async function handleSendMessage(
 
     // Inline Pre-Send Verification: If phone channel, check for unverified candidate contacts
     if (usePhone && entityContacts.length > 0) {
-      const { PhoneVerificationEngine } = await import('../../phone-verifier');
-      const verifier = new PhoneVerificationEngine();
+      const verifier = await getPhoneVerifier();
       let updatedContactsAny = false;
 
-      entityContacts = await Promise.all(
-        entityContacts.map(async (ec) => {
-          if (!ec.phone) return ec;
-
-          const isUnchecked = !ec.phoneStatus || ec.phoneStatus === 'unverified' || ec.hasWhatsapp === undefined;
-          if (isUnchecked) {
-            try {
-              const result = await verifier.verify(ec.phone);
-              updatedContactsAny = true;
-              const next: typeof ec = { ...ec };
-              if (result.lineType) {
-                next.phoneType = result.lineType;
-                if (result.lineType === 'mobile' || result.lineType === 'fixed_line_or_mobile') {
-                  next.hasWhatsapp = true;
-                }
-              }
-              if (result.status && result.status !== 'invalid') {
-                next.phoneStatus = result.status;
-              }
-              return next;
-            } catch (vErr) {
-              console.warn(`[MessageActionInlineVerify] Inline verification error for ${ec.phone}:`, vErr);
-              return ec;
+      // Resolve workspace organization's defaultCountryCode hint for legacy local-format parsing
+      let defaultCountryCode: string | undefined = undefined;
+      if (context.workspaceId) {
+        try {
+          const wsSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+          const orgId = wsSnap.data()?.organizationId || context.organizationId;
+          if (orgId) {
+            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
+            const code = orgSnap.data()?.defaultCountryCode;
+            if (typeof code === 'string' && code.length === 2) {
+              defaultCountryCode = code;
             }
           }
-          return ec;
-        })
-      );
+        } catch (orgErr) {
+          console.warn(`[MessageActionInlineVerify] Could not resolve org country hint:`, orgErr);
+        }
+      }
+
+      // Process in bounded chunks of 10 for CPU/event-loop concurrency safety
+      const contactChunks = chunkArray(entityContacts, 10);
+      const verifiedContactsList: typeof entityContacts = [];
+
+      for (const chunk of contactChunks) {
+        const processedChunk = await Promise.all(
+          chunk.map(async (ec) => {
+            if (!ec.phone) return ec;
+
+            const isUnchecked = !ec.phoneStatus || ec.phoneStatus === 'unverified' || ec.hasWhatsapp === undefined;
+            if (isUnchecked) {
+              try {
+                const result = await verifier.verify(ec.phone, defaultCountryCode);
+                updatedContactsAny = true;
+                const next: typeof ec = { ...ec };
+                if (result.lineType) {
+                  next.phoneType = result.lineType;
+                  if (result.lineType === 'mobile' || result.lineType === 'fixed_line_or_mobile') {
+                    next.hasWhatsapp = true;
+                  }
+                }
+                if (result.status && result.status !== 'invalid') {
+                  next.phoneStatus = result.status;
+                }
+                return next;
+              } catch (vErr) {
+                console.warn(`[MessageActionInlineVerify] Inline verification error for ${ec.phone}:`, vErr);
+                return ec;
+              }
+            }
+            return ec;
+          })
+        );
+        verifiedContactsList.push(...processedChunk);
+      }
+
+      entityContacts = verifiedContactsList;
 
       // Best-effort transactional writeback for inline pre-send verification results
       if (updatedContactsAny && typeof adminDb?.runTransaction === 'function') {

@@ -250,4 +250,36 @@ describe('Automation Message Guard', () => {
       expect.objectContaining({ recipient: '+233240561313' })
     );
   });
+
+  it('should inline verify local format phone contact (024...) with org defaultCountry hint', async () => {
+    vi.mocked(resolveContact).mockResolvedValue({
+      id: 'entity_123',
+      name: 'Test Entity',
+      entityContacts: [
+        {
+          phone: '0242737120',
+          isPrimary: true,
+          phoneStatus: 'unverified',
+        },
+      ],
+    } as any);
+
+    await handleSendMessage(
+      {
+        channel: 'whatsapp',
+        recipientTargets: ['primary'],
+        templateCategory: 'general',
+        templateType: 'custom',
+      },
+      {
+        entityId: 'entity_123',
+        workspaceId: 'ws_123',
+        payload: {},
+      } as any
+    );
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ recipient: '0242737120' })
+    );
+  });
 });
