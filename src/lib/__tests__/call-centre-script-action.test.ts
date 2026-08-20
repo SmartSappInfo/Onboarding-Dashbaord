@@ -74,6 +74,7 @@ const mockDocGet = vi.fn().mockImplementation(async () => {
 });
 
 const mockDocSet = vi.fn().mockResolvedValue({});
+const mockDocUpdate = vi.fn().mockResolvedValue({});
 const mockAdd = vi.fn().mockResolvedValue({ id: 'mock-doc-id' });
 
 vi.mock('../firebase-admin', () => {
@@ -90,6 +91,7 @@ vi.mock('../firebase-admin', () => {
             return {
               get: mockDocGet,
               set: mockDocSet,
+              update: mockDocUpdate,
             };
           }),
           add: mockAdd,
@@ -98,6 +100,10 @@ vi.mock('../firebase-admin', () => {
           get: mockGet,
         };
       }),
+      batch: vi.fn(() => ({
+        set: vi.fn(),
+        commit: vi.fn().mockResolvedValue({}),
+      })),
     },
     FieldValue: {},
   };
@@ -392,6 +398,51 @@ describe('executeScriptActionAction', () => {
       expect.any(String),
       'ws_1',
       'org_1'
+    );
+  });
+
+  it('executes SCHEDULE_MEETING in create mode and returns newly created meetingId', async () => {
+    const res = await executeScriptActionAction({
+      actionType: 'SCHEDULE_MEETING',
+      actionConfig: {
+        meetingMode: 'create',
+        meetingTitle: 'Discovery Call',
+        meetingTimeOverride: '2026-09-01T10:00:00.000Z',
+      },
+      ...ctx
+    }, 'user_1');
+
+    expect(res.success).toBe(true);
+    expect(res.meetingId).toBe('mock-doc-id');
+    expect(mockAdd).toHaveBeenCalled();
+  });
+
+  it('executes SCHEDULE_MEETING with existing createdMeetingId to update in-place without creating duplicate meeting', async () => {
+    mockDocGet.mockImplementationOnce(async () => ({
+      exists: true,
+      data: () => ({
+        id: 'existing-meeting-123',
+        title: 'Discovery Call',
+        meetingTime: '2026-09-01T10:00:00.000Z',
+      }),
+    }));
+
+    const res = await executeScriptActionAction({
+      actionType: 'SCHEDULE_MEETING',
+      actionConfig: {
+        meetingMode: 'create',
+        createdMeetingId: 'existing-meeting-123',
+        meetingTimeOverride: '2026-09-02T14:30:00.000Z',
+      },
+      ...ctx
+    }, 'user_1');
+
+    expect(res.success).toBe(true);
+    expect(res.meetingId).toBe('existing-meeting-123');
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meetingTime: '2026-09-02T14:30:00.000Z',
+      })
     );
   });
 });

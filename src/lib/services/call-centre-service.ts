@@ -1109,7 +1109,7 @@ export class CallCentreService {
     type: CallActionType | string,
     params: CallActionParams = {},
     ctx: { entityId: string; userId: string; workspaceId: string; organizationId: string; contactId?: string }
-  ): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
+  ): Promise<{ success: boolean; unsupported?: boolean; error?: string; meetingId?: string }> {
     const { entityId, userId, workspaceId, organizationId, contactId } = ctx;
     const systemActor = `system-call-centre:${userId}`;
 
@@ -1487,7 +1487,7 @@ export class CallCentreService {
           // Back-compat: legacy configs set only `meetingTypeId` (create mode). When the
           // mode is unset, infer it from which target is present; default to guest-list.
           const meetingMode = params.meetingMode
-            ?? (params.meetingId ? 'guest_list' : params.meetingTypeId ? 'create' : 'guest_list');
+            ?? (params.meetingId && !params.createdMeetingId ? 'guest_list' : params.meetingTypeId ? 'create' : 'guest_list');
 
           // Guest-list mode: add the called contact to an existing, not-yet-due meeting.
           if (meetingMode === 'guest_list') {
@@ -1507,14 +1507,12 @@ export class CallCentreService {
               source: 'call_campaign',
               createdAt: new Date().toISOString(),
             }, { merge: true });
-            return { success: true };
+            return { success: true, meetingId: params.meetingId };
           }
 
           // Create mode: spin up a new meeting from a configured MEETING_TYPES type.
-          if (!params.meetingTypeId) return { success: false, error: 'No meeting type configured.' };
-
-          const meetingType = MEETING_TYPES.find(t => t.id === params.meetingTypeId);
-          if (!meetingType) return { success: false, error: `Invalid meeting type ID "${params.meetingTypeId}".` };
+          const meetingTypeId = params.meetingTypeId || 'kickoff';
+          const meetingType = MEETING_TYPES.find(t => t.id === meetingTypeId) || MEETING_TYPES[0];
 
           const entitySnap = await adminDb.collection('entities').doc(entityId).get();
           if (!entitySnap.exists) return { success: false, error: 'Entity not found.' };
@@ -1524,6 +1522,37 @@ export class CallCentreService {
 
           const timestamp = new Date().toISOString();
           const meetingTime = params.meetingTimeOverride || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+
+          // In-place rescheduling check: if a meeting was already scheduled in this session, update its date/time
+          const existingMeetingId = params.createdMeetingId || (params.meetingMode === 'create' ? params.meetingId : undefined);
+          if (existingMeetingId) {
+            const meetingRef = adminDb.collection('meetings').doc(existingMeetingId);
+            const meetingSnap = await meetingRef.get();
+            if (meetingSnap.exists) {
+              await meetingRef.update({
+                meetingTime,
+                updatedAt: timestamp,
+              });
+
+              await logActivity({
+                organizationId,
+                workspaceId,
+                entityId,
+                entityType: entityData?.entityType || 'person',
+                userId,
+                type: 'meeting_created' as 'meeting_created',
+                source: 'system',
+                description: `Updated scheduled meeting time to ${new Date(meetingTime).toLocaleString()} for ${entityName}`,
+                metadata: {
+                  isAutomation: true,
+                  meetingId: existingMeetingId,
+                }
+              });
+
+              return { success: true, meetingId: existingMeetingId };
+            }
+          }
+
           const meetingSlug = `${meetingType.slug}-${Math.random().toString(36).substring(2, 9)}`;
           const meetingLink = `https://smartsapp.com/meetings/${meetingType.slug}/${meetingSlug}`;
           
@@ -1597,7 +1626,7 @@ export class CallCentreService {
             entityId,
             entityType: entityData?.entityType || 'person',
             userId,
-            type: 'meeting_created' as any,
+            type: 'meeting_created' as 'meeting_created',
             source: 'system',
             description: `Scheduled meeting: ${meetingType.name} for ${entityName}`,
             metadata: {
@@ -1606,7 +1635,7 @@ export class CallCentreService {
             }
           });
 
-          return { success: true };
+          return { success: true, meetingId: docRef.id };
         }
 
         case 'WEBHOOK': {
@@ -1704,10 +1733,10 @@ export class CallCentreService {
           } else {
             let contactIdx = -1;
             if (contactId) {
-              contactIdx = contacts.findIndex((c: any) => c.id === contactId);
+              contactIdx = contacts.findIndex((c: EntityContact) => c.id === contactId);
             }
             if (contactIdx === -1) {
-              contactIdx = contacts.findIndex((c: any) => c.isPrimary);
+              contactIdx = contacts.findIndex((c: EntityContact) => c.isPrimary);
             }
             if (contactIdx === -1 && contacts.length > 0) {
               contactIdx = 0;
@@ -1726,12 +1755,12 @@ export class CallCentreService {
               try {
                 const { normalizePhoneNumber } = await import('../phone-utils');
                 const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-                const defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+                const defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
                 const parsed = normalizePhoneNumber(phone, defaultCountryCode);
                 phone = parsed.e164 || phone;
                 if (parsed.countryCode) targetContact.countryCode = parsed.countryCode;
                 if (parsed.callingCode) targetContact.callingCode = parsed.callingCode;
-              } catch (e) {
+              } catch (e: unknown) {
                 console.error('[CALL_CENTRE_SERVICE] Phone normalization failed:', e);
               }
               targetContact.phone = phone;
@@ -1757,8 +1786,8 @@ export class CallCentreService {
         default:
           return { success: false, unsupported: true, error: `Action type "${type}" is not supported yet.` };
       }
-    } catch (err: any) {
-      return { success: false, error: err?.message || 'Action execution failed.' };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Action execution failed.' };
     }
   }
 
@@ -1774,7 +1803,7 @@ export class CallCentreService {
     workspaceId: string;
     organizationId: string;
     contactId?: string;
-  }): Promise<{ success: boolean; unsupported?: boolean; error?: string }> {
+  }): Promise<{ success: boolean; unsupported?: boolean; error?: string; meetingId?: string }> {
     const { actionType, actionConfig, entityId, userId, workspaceId, organizationId, contactId } = params;
     if (!actionType) return { success: false, error: 'No action type configured on this node.' };
     return this.executeCallActionEffect(actionType, actionConfig || {}, {

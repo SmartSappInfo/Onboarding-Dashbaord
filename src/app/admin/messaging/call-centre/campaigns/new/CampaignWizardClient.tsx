@@ -98,7 +98,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [allowAddContactsAfterLaunch, setAllowAddContactsAfterLaunch] = React.useState(false);
-  const [triggerActionsAutomatically, setTriggerActionsAutomatically] = React.useState(true);
+  const [triggerActionsAutomatically, setTriggerActionsAutomatically] = React.useState(false);
   const [campaignProgressCompleted, setCampaignProgressCompleted] = React.useState(0);
   useSetBreadcrumb(campaignId ? `Edit Campaign: ${name}` : 'New Campaign');
   const [selectedScriptId, setSelectedScriptId] = React.useState(initialScriptId || '');
@@ -201,13 +201,14 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
           setContactScope(audDef.contactScope || 'primary');
           
           setAllowAddContactsAfterLaunch(campaign.allowAddContactsAfterLaunch ?? false);
-          setTriggerActionsAutomatically(campaign.triggerActionsAutomatically ?? true);
+          setTriggerActionsAutomatically(campaign.triggerActionsAutomatically ?? false);
           setCampaignProgressCompleted(campaign.progress?.completed || 0);
           // Outcomes + automations are derived from the script (see derivedOutcomes); the
           // legacy campaign.outcomes / automationRules are no longer edited here.
         }
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Error', description: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load campaign';
+        toast({ variant: 'destructive', title: 'Error', description: message });
       } finally {
         setIsLoading(false);
       }

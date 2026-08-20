@@ -150,7 +150,7 @@ export async function executeScriptActionAction(
     if (!result.success) {
       return { success: false, error: result.error, unsupported: result.unsupported };
     }
-    return { success: true };
+    return { success: true, meetingId: result.meetingId };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Action execution failed.' };
   }

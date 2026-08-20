@@ -567,7 +567,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const [triggeredNodeIds, setTriggeredNodeIds] = React.useState<Set<string>>(() => new Set());
 
   // Action Review and Customization States
-  const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, any>>({});
+  const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, string | undefined>>({});
   const [templateDetails, setTemplateDetails] = React.useState<{ subject?: string; body?: string } | null>(null);
   const [loadingTemplate, setLoadingTemplate] = React.useState(false);
 
@@ -1002,10 +1002,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   };
 
   // ─── Interactive-view trigger handlers (passed down to InteractiveScriptView) ──
-  // Execute a single action node's side effect, guarding against double-firing.
-  const handleTriggerAction = React.useCallback(async (node: ScriptNode): Promise<{ ok: boolean; error?: string }> => {
+  // Execute a single action node's side effect, guarding against duplicate non-rescheduling firings.
+  const handleTriggerAction = React.useCallback(async (node: ScriptNode): Promise<{ ok: boolean; error?: string; meetingId?: string }> => {
     if (!node || !currentItem?.entityId) return { ok: false, error: 'No active contact.' };
-    if (triggeredNodeIds.has(node.id)) return { ok: true };
+    const hasMeetingUpdate = Boolean(node.data?.actionConfig?.createdMeetingId || (node.data?.actionType === 'SCHEDULE_MEETING' && node.data?.actionConfig?.meetingTimeOverride));
+    if (triggeredNodeIds.has(node.id) && !hasMeetingUpdate) return { ok: true };
 
     const result = await executeScriptActionAction(
       {
@@ -1022,7 +1023,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     if (result.success) {
       setTriggeredNodeIds(prev => new Set(prev).add(node.id));
       toast({ title: 'Action Triggered', description: `"${node.data?.label || 'Action'}" ran successfully.` });
-      return { ok: true };
+      return { ok: true, meetingId: result.meetingId };
     }
     toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
     return { ok: false, error: result.error };
@@ -1054,12 +1055,11 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       const res = await handleTriggerAction(nodeWithResolvedConfig);
       if (res.ok) {
         setActionStatus('success');
-        // Auto-advance to next node after a brief success display
-        const nextChoices = getNextNodeChoices(scriptGraph, currentNode.id);
-        if (nextChoices.length === 1) {
-          setTimeout(() => {
-            handleChoiceClick(nextChoices[0].targetNode.id);
-          }, 1200);
+        if (res.meetingId) {
+          setLocalActionConfig(prev => ({
+            ...prev,
+            createdMeetingId: res.meetingId,
+          }));
         }
       } else {
         setActionStatus('error');
@@ -1071,9 +1071,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     }
   };
 
-  // Action state initialization for Manual Review mode
+  // Action state initialization for Guided and Manual Review mode
   React.useEffect(() => {
-    if (triggerActionsAutomatically) return;
     if (currentNode?.type === 'action') {
       const actionType = currentNode.data?.actionType || 'SEND_SMS';
       const config = (currentNode.data?.actionConfig as Record<string, string>) || {};
@@ -1098,11 +1097,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     } else {
       setLocalActionConfig({});
     }
-  }, [currentNode?.id, currentContact, triggeredNodeIds, triggerActionsAutomatically, user?.uid]);
+  }, [currentNode?.id, currentContact, triggeredNodeIds, user?.uid]);
 
   // Fetch message template details from firestore client-side in WorkspaceClient
   React.useEffect(() => {
-    if (triggerActionsAutomatically) return;
     const config = currentNode?.data?.actionConfig;
     const templateId = localActionConfig?.templateId || config?.templateId;
     if (currentNode?.type === 'action' && templateId && firestore) {
@@ -1127,154 +1125,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
       setTemplateDetails(null);
       setLoadingTemplate(false);
     }
-  }, [currentNode?.id, localActionConfig?.templateId, firestore, triggerActionsAutomatically]);
-
-  // Automated Actions Trigger Effect
-  React.useEffect(() => {
-    if (!triggerActionsAutomatically) return;
-    if (!currentNode || currentNode.type !== 'action') return;
-    if (triggeredNodeIds.has(currentNode.id)) {
-      if (choices.length === 1) {
-        const timer = setTimeout(() => {
-          handleChoiceClick(choices[0].targetNode.id);
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
-      return;
-    }
-
-    let isMounted = true;
-    const runAction = async () => {
-      const actionType = currentNode.data?.actionType || 'SEND_SMS';
-      const ac = currentNode.data.actionConfig;
-      if (actionType === 'WEBHOOK' && ac?.webhookUrl) {
-        if (isMounted) {
-          setActionStatus('loading');
-          setActionError(null);
-        }
-
-        try {
-          const response = await fetch('/api/call-centre/webhook', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: ac.webhookUrl,
-              headers: ac.webhookHeaders,
-              payload: {
-                campaignId,
-                entityId: currentItem?.entityId,
-                entityName: currentItem?.entityName,
-                entityPhone: currentItem?.entityPhone,
-                entityEmail: currentItem?.entityEmail,
-                collectedAnswers: collectedAnswersRef.current,
-                agentId: user?.uid,
-                agentName: user?.displayName || 'Agent',
-                workspaceId: activeWorkspaceId,
-                timestamp: new Date().toISOString(),
-              }
-            })
-          });
-          const result = await response.json();
-          if (!isMounted) return;
-
-          if (response.ok && result.status >= 200 && result.status < 300) {
-            setActionStatus('success');
-            setTriggeredNodeIds(prev => new Set(prev).add(currentNode.id));
-            toast({
-              title: 'Webhook Success',
-              description: `Successfully executed webhook action.`
-            });
-
-            if (choices.length === 1) {
-              setTimeout(() => {
-                if (isMounted) {
-                  handleChoiceClick(choices[0].targetNode.id);
-                }
-              }, 1500);
-            }
-          } else {
-            setActionStatus('error');
-            const errMsg = result.error || `Failed with status ${result.status}`;
-            setActionError(errMsg);
-            toast({
-              variant: 'destructive',
-              title: 'Webhook Failed',
-              description: errMsg
-            });
-          }
-        } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : 'Webhook error';
-          if (!isMounted) return;
-          setActionStatus('error');
-          setActionError(errMsg);
-          toast({
-            variant: 'destructive',
-            title: 'Webhook Error',
-            description: errMsg
-          });
-        }
-      } else {
-        if (isMounted) {
-          setActionStatus('loading');
-          setActionError(null);
-        }
-        try {
-          const config = ac || {};
-          const initial: Record<string, unknown> = { ...config } as Record<string, unknown>;
-          if (actionType === 'UPDATE_CONTACT') {
-            initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
-            initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
-            initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
-            initial.updateMode = initial.updateMode || 'update';
-          } else if (actionType === 'CREATE_TASK') {
-            initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
-            initial.taskDescription = initial.taskDescription || '';
-            initial.taskPriority = initial.taskPriority || 'medium';
-            initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-            initial.taskAssigneeId = initial.taskAssigneeId || (user?.uid || '');
-          } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
-            initial.templateId = initial.templateId || '';
-          }
-          const nodeWithResolvedConfig = {
-            ...currentNode,
-            data: {
-              ...currentNode.data,
-              actionConfig: initial,
-            }
-          };
-          const res = await handleTriggerAction(nodeWithResolvedConfig);
-          if (!isMounted) return;
-
-          if (res.ok) {
-            setActionStatus('success');
-            if (choices.length === 1) {
-              setTimeout(() => {
-                if (isMounted) {
-                  handleChoiceClick(choices[0].targetNode.id);
-                }
-              }, 1500);
-            }
-          } else {
-            setActionStatus('error');
-            setActionError(res.error || 'Execution failed.');
-          }
-        } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : 'Execution failed.';
-          if (!isMounted) return;
-          setActionStatus('error');
-          setActionError(errMsg);
-        }
-      }
-    };
-
-    runAction();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentNode?.id, campaignId, currentItem, user, activeWorkspaceId, choices, handleChoiceClick, toast, triggerActionsAutomatically, triggeredNodeIds, handleTriggerAction, currentContact]);
+  }, [currentNode?.id, localActionConfig?.templateId, firestore]);
 
   const renderGuidedActionConfig = () => {
     if (!currentNode) return null;
@@ -1591,6 +1442,88 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white mt-2 shadow-sm"
           >
             {actionStatus === 'loading' ? 'Creating...' : 'Confirm & Create Task'}
+          </Button>
+        </div>
+      );
+    }
+
+    if (actionType === 'SCHEDULE_MEETING') {
+      const isCreateMode = (localActionConfig.meetingMode || (localActionConfig.meetingId ? 'guest_list' : 'create')) === 'create';
+      const isAlreadyScheduled = Boolean(localActionConfig.createdMeetingId || (triggeredNodeIds.has(currentNode.id) && actionStatus === 'success'));
+
+      return (
+        <div className="space-y-4 max-w-xl bg-card/60 p-5 rounded-2xl border border-border shadow-sm">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-2">Schedule Meeting</h4>
+
+          {isCreateMode ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Meeting Date</Label>
+                  <Input
+                    type="date"
+                    value={localActionConfig.meetingTimeOverride ? new Date(localActionConfig.meetingTimeOverride).toISOString().split('T')[0] : ''}
+                    onChange={e => {
+                      const dateVal = e.target.value;
+                      if (!dateVal) return;
+                      setLocalActionConfig(prev => {
+                        const currentFull = prev.meetingTimeOverride ? new Date(prev.meetingTimeOverride) : new Date();
+                        const [yr, mo, dy] = dateVal.split('-').map(Number);
+                        currentFull.setFullYear(yr, mo - 1, dy);
+                        return { ...prev, meetingTimeOverride: currentFull.toISOString() };
+                      });
+                    }}
+                    className="h-10 rounded-xl bg-background border-border text-xs px-3 min-h-[44px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Meeting Time</Label>
+                  <Input
+                    type="time"
+                    value={localActionConfig.meetingTimeOverride ? (() => {
+                      const d = new Date(localActionConfig.meetingTimeOverride);
+                      const pad = (n: number) => n.toString().padStart(2, '0');
+                      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    })() : '09:00'}
+                    onChange={e => {
+                      const timeVal = e.target.value;
+                      if (!timeVal) return;
+                      setLocalActionConfig(prev => {
+                        const currentFull = prev.meetingTimeOverride ? new Date(prev.meetingTimeOverride) : new Date();
+                        const [hr, min] = timeVal.split(':').map(Number);
+                        currentFull.setHours(hr, min, 0, 0);
+                        return { ...prev, meetingTimeOverride: currentFull.toISOString() };
+                      });
+                    }}
+                    className="h-10 rounded-xl bg-background border-border text-xs px-3 min-h-[44px]"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center">Adding contact to an existing meeting...</p>
+          )}
+
+          {actionStatus === 'success' && (
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5 animate-in fade-in duration-200">
+              <CheckCircle2 className="h-4 w-4 shrink-0" /> {isAlreadyScheduled ? 'Meeting updated successfully!' : 'Meeting scheduled successfully!'}
+            </div>
+          )}
+          {actionStatus === 'error' && (
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5 animate-in fade-in duration-200">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to schedule meeting.'}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleExecuteGuidedAction}
+            disabled={actionStatus === 'loading' || (isCreateMode && !localActionConfig.meetingTimeOverride)}
+            className="w-full h-11 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 active:scale-[0.97] text-white mt-2 shadow-sm min-h-[44px] transition-all"
+          >
+            {actionStatus === 'loading'
+              ? (isAlreadyScheduled ? 'Updating...' : 'Scheduling...')
+              : (isAlreadyScheduled ? 'Update Scheduled Meeting' : 'Schedule Meeting')}
           </Button>
         </div>
       );

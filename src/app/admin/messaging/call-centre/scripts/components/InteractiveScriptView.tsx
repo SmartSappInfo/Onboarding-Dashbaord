@@ -34,7 +34,8 @@ import {
   Zap,
   ChevronLeft,
   Phone,
-  PhoneOff
+  PhoneOff,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getActionMeta } from '@/lib/call-action-types';
@@ -53,7 +54,7 @@ const MessagingTemplateSelector = dynamic(
   }
 );
 
-type TriggerResult = { ok: boolean; error?: string };
+type TriggerResult = { ok: boolean; error?: string; meetingId?: string };
 
 interface EntityContactInfo {
   id: string;
@@ -101,7 +102,7 @@ export function InteractiveScriptView({
   onEndCall,
   currentContact,
   entityData,
-  triggerActionsAutomatically = true,
+  triggerActionsAutomatically = false,
   hideSidebars = false,
   activeNodeId: controlledActiveNodeId,
   onActiveNodeChange,
@@ -213,7 +214,7 @@ export function InteractiveScriptView({
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Dynamic Action Middle Panel States
-  const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, string>>({});
+  const [localActionConfig, setLocalActionConfig] = React.useState<Record<string, string | undefined>>({});
   const [localOutcomeAutomations, setLocalOutcomeAutomations] = React.useState<CallOutcomeAutomation[]>([]);
   const [actionStatus, setActionStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [actionError, setActionError] = React.useState<string | null>(null);
@@ -407,6 +408,12 @@ export function InteractiveScriptView({
       const res = await onTriggerAction(modifiedNode);
       if (res.ok) {
         setActionStatus('success');
+        if (res.meetingId) {
+          setLocalActionConfig(prev => ({
+            ...prev,
+            createdMeetingId: res.meetingId,
+          }));
+        }
       } else {
         setActionStatus('error');
         setActionError(res.error || 'Execution failed.');
@@ -417,29 +424,6 @@ export function InteractiveScriptView({
       setActionError(message);
     }
   };
-
-  React.useEffect(() => {
-    if (triggerActionsAutomatically && middleNode?.type === 'action' && actionStatus === 'idle' && !isTriggered(middleNode.id)) {
-      const actionType = middleNode.data?.actionType || 'SEND_SMS';
-      const config = (middleNode.data?.actionConfig as Record<string, string>) || {};
-      const initial: Record<string, string> = { ...config };
-      if (actionType === 'UPDATE_CONTACT') {
-        initial.contactName = initial.contactName !== undefined && initial.contactName !== '' ? initial.contactName : (currentContact?.name || '');
-        initial.contactEmail = initial.contactEmail !== undefined && initial.contactEmail !== '' ? initial.contactEmail : (currentContact?.email || '');
-        initial.contactPhone = initial.contactPhone !== undefined && initial.contactPhone !== '' ? initial.contactPhone : (currentContact?.phone || '');
-        initial.updateMode = initial.updateMode || 'update';
-      } else if (actionType === 'CREATE_TASK') {
-        initial.taskTitle = initial.taskTitle || ('Follow up with ' + (currentContact?.name || ''));
-        initial.taskDescription = initial.taskDescription || '';
-        initial.taskPriority = initial.taskPriority || 'medium';
-        initial.taskDueDate = initial.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-        initial.taskAssigneeId = initial.taskAssigneeId || (currentUser?.uid || '');
-      } else if (actionType === 'SEND_SMS' || actionType === 'SEND_WHATSAPP' || actionType === 'SEND_EMAIL') {
-        initial.templateId = initial.templateId || '';
-      }
-      handleExecuteMiddleAction(initial);
-    }
-  }, [middleNode?.id, actionStatus, triggerActionsAutomatically, isTriggered, currentContact]);
 
   const nextEdgeFromAction = React.useMemo(() => {
     if (middleNode?.type !== 'action') return null;
@@ -769,6 +753,7 @@ export function InteractiveScriptView({
 
     if (actionType === 'SCHEDULE_MEETING') {
       const isCreateMode = (localActionConfig.meetingMode || (localActionConfig.meetingId ? 'guest_list' : 'create')) === 'create';
+      const isAlreadyScheduled = Boolean(localActionConfig.createdMeetingId || (isTriggered(middleNode.id) && actionStatus === 'success'));
       
       return (
         <div className="space-y-4 w-full bg-card/60 p-4 rounded-xl border border-border shadow-sm">
@@ -792,7 +777,7 @@ export function InteractiveScriptView({
                         return { ...prev, meetingTimeOverride: currentFull.toISOString() };
                       });
                     }}
-                    className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                    className="h-10 rounded-xl bg-background border-border text-xs px-3 min-h-[44px]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -814,7 +799,7 @@ export function InteractiveScriptView({
                         return { ...prev, meetingTimeOverride: currentFull.toISOString() };
                       });
                     }}
-                    className="h-9 rounded-xl bg-background border-border text-xs px-3"
+                    className="h-10 rounded-xl bg-background border-border text-xs px-3 min-h-[44px]"
                   />
                 </div>
               </div>
@@ -824,12 +809,12 @@ export function InteractiveScriptView({
           )}
 
           {actionStatus === 'success' && (
-            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Meeting scheduled successfully!
+            <div className="text-emerald-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5 animate-in fade-in duration-200">
+              <CheckCircle2 className="h-4 w-4 shrink-0" /> {isAlreadyScheduled ? 'Meeting updated successfully!' : 'Meeting scheduled successfully!'}
             </div>
           )}
           {actionStatus === 'error' && (
-            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5">
+            <div className="text-rose-500 font-bold text-xs text-center py-2 flex items-center justify-center gap-1.5 animate-in fade-in duration-200">
               <AlertCircle className="h-4 w-4 shrink-0" /> {actionError || 'Failed to schedule meeting.'}
             </div>
           )}
@@ -838,9 +823,11 @@ export function InteractiveScriptView({
             type="button"
             onClick={() => handleExecuteMiddleAction()}
             disabled={actionStatus === 'loading' || (isCreateMode && !localActionConfig.meetingTimeOverride)}
-            className="w-full h-10 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white mt-2 shadow-sm"
+            className="w-full h-11 rounded-xl font-bold uppercase tracking-wider bg-blue-600 hover:bg-blue-700 active:scale-[0.97] text-white mt-2 shadow-sm min-h-[44px] transition-all"
           >
-            {actionStatus === 'loading' ? 'Scheduling...' : 'Schedule Meeting'}
+            {actionStatus === 'loading'
+              ? (isAlreadyScheduled ? 'Updating...' : 'Scheduling...')
+              : (isAlreadyScheduled ? 'Update Scheduled Meeting' : 'Schedule Meeting')}
           </Button>
         </div>
       );
@@ -1401,86 +1388,10 @@ export function InteractiveScriptView({
     activeHandlers
   ]);
 
-  // Shared renderer for the Actions and Outcomes tabs (list ⇄ detail/confirm/back + status banner).
+  // Shared renderer for the Actions and Outcomes tabs (list with active highlight indicator).
+  // The configuration and execution details are exclusively rendered in the middle column reading area.
   const renderTriggerTab = (kind: 'action' | 'outcome') => {
     const list = kind === 'action' ? allActions : allOutcomes;
-    const handler = kind === 'action' ? onTriggerAction : onTriggerOutcome;
-    const open = list.find(item => item.id === (kind === 'action' ? selectedActionId : selectedOutcomeId)) || null;
-    const accentText = kind === 'action' ? 'text-indigo-500' : 'text-purple-500';
-    const accentBox = kind === 'action'
-      ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10'
-      : 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10';
-    const confirmLabel = kind === 'action' ? 'Trigger Action' : 'Confirm Outcome';
-
-    if (open) {
-      const triggered = isTriggered(open.id);
-      return (
-        <div className="flex-grow flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
-            <button
-              type="button"
-              onClick={() => {
-                if (kind === 'action') {
-                  setSelectedActionId(null);
-                } else {
-                  setSelectedOutcomeId(null);
-                }
-                setTriggerStatus('idle');
-                setTriggerError(null);
-              }}
-              className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-3 w-3" /> Back
-            </button>
-            <span className={cn('text-[9px] font-bold uppercase truncate max-w-[150px]', accentText)}>
-              {open.data?.label || (kind === 'action' ? 'Action' : open.data?.outcomeValue || 'Outcome')}
-            </span>
-          </div>
-
-          <ScriptBodyDisplay
-            text={bodyOf(open)}
-            resolveText={resolveText}
-            highlightVariables={!resolveText}
-            className={cn('flex-grow overflow-y-auto p-3.5 rounded-xl border text-xs leading-relaxed text-foreground select-text font-medium scrollbar-thin', accentBox)}
-          />
-
-          {/* Trigger status banner */}
-          {triggerStatus === 'loading' ? (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] font-bold text-primary shrink-0">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Triggering…
-            </div>
-          ) : triggerStatus === 'success' ? (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] font-bold text-emerald-600 shrink-0">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {kind === 'action' ? 'Action' : 'Outcome'} triggered successfully.
-            </div>
-          ) : triggerStatus === 'error' ? (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-[10px] font-bold text-rose-600 shrink-0">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{triggerError || 'Trigger failed.'}</span>
-            </div>
-          ) : null}
-
-          {/* Footer: confirm / triggered / preview note */}
-          <div className="pt-3 shrink-0">
-            {triggered ? (
-              <div className="text-center text-[10px] font-bold text-emerald-500 uppercase tracking-wider py-2">✓ Already triggered</div>
-            ) : handler ? (
-              <Button
-                onClick={() => runTrigger(open, kind)}
-                disabled={triggerStatus === 'loading'}
-                className="w-full h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1.5"
-              >
-                {triggerStatus === 'loading' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-                {confirmLabel}
-              </Button>
-            ) : (
-              <div className="text-center text-[9px] text-muted-foreground italic py-2">
-                Preview only — triggering is available during a live call.
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
 
     return (
       <div className="flex-grow flex flex-col h-full overflow-hidden">
@@ -1493,6 +1404,10 @@ export function InteractiveScriptView({
           {list.length > 0 ? (
             list.map((node) => {
               const triggered = isTriggered(node.id);
+              const isSelected =
+                (kind === 'action' && (selectedActionId === node.id || (!selectedActionId && !selectedOutcomeId && !selectedObjectionId && middleNode?.id === node.id))) ||
+                (kind === 'outcome' && (selectedOutcomeId === node.id || (!selectedActionId && !selectedOutcomeId && !selectedObjectionId && middleNode?.id === node.id)));
+
               const meta = kind === 'action' ? getActionMeta(node.data?.actionType || 'SEND_SMS') : null;
               const Icon = meta ? meta.icon : CheckCircle2;
               const iconColor = meta ? meta.colorClass.replace('bg-', 'text-') : 'text-purple-500';
@@ -1508,6 +1423,8 @@ export function InteractiveScriptView({
                       setSelectedSubObjectionIndex(null);
                       setEnteredObjectionFromChoice(false);
                       setRightTab('actions');
+                      setActionStatus(isTriggered(node.id) ? 'success' : 'idle');
+                      setActionError(null);
                     } else {
                       setSelectedOutcomeId(node.id);
                       setSelectedActionId(null);
@@ -1520,17 +1437,23 @@ export function InteractiveScriptView({
                     }
                   }}
                   className={cn(
-                    'w-full flex items-center gap-2 p-2.5 rounded-xl text-left border text-[11px] transition-all',
-                    triggered
-                      ? 'border-border/40 bg-muted/40 text-muted-foreground/50'
+                    'w-full flex items-center gap-2 p-2.5 rounded-xl text-left border text-[11px] min-h-[44px] active:scale-[0.97] transition-all',
+                    isSelected
+                      ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm shadow-primary/5'
+                      : triggered
+                      ? 'border-border/40 bg-muted/40 text-muted-foreground/60'
                       : 'border-border/60 bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  <Icon className={cn('h-3.5 w-3.5 shrink-0', triggered ? 'text-muted-foreground/40' : iconColor)} />
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-primary' : triggered ? 'text-muted-foreground/40' : iconColor)} />
                   <span className="truncate flex-grow">
                     {node.data.label || (kind === 'action' ? 'Action' : node.data.outcomeValue || 'Outcome')}
                   </span>
-                  {triggered ? <span className="text-[8px] font-bold text-emerald-500 uppercase shrink-0">✓ Triggered</span> : null}
+                  {triggered ? (
+                    <span className="text-[8px] font-bold text-emerald-500 uppercase shrink-0">✓ Triggered</span>
+                  ) : isSelected ? (
+                    <span className="text-[8px] font-bold text-primary uppercase shrink-0">Active</span>
+                  ) : null}
                 </button>
               );
             })
@@ -1750,31 +1673,32 @@ export function InteractiveScriptView({
                         </div>
                       )}
 
-                      {/* Display the trigger card directly below the reading area */}
+                      {/* Display the action editor and controls in the middle reading area */}
                       <div className="max-w-md mx-auto w-full text-left pt-4">
                         {renderMiddleActionConfig()}
                       </div>
-
-                      {/* Step Advancement / Continue Button */}
-                      {nextEdgeFromAction && (
-                        <div className="max-w-md mx-auto w-full pt-2">
-                          <Button
-                            type="button"
-                            onClick={() => advanceTo(nextEdgeFromAction.target)}
-                            className="w-full h-11 rounded-xl font-bold uppercase tracking-wider bg-primary hover:bg-primary/95 text-primary-foreground shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
-                          >
-                            Continue Flow <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ) : middleNode.type === 'outcome' ? (
                   <div className="flex flex-col space-y-6 select-text max-w-xl mx-auto py-4 text-center">
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <h3 className="text-[24px] font-black text-foreground uppercase tracking-wide">
-                        {middleNode.data?.label || 'Outcome Step'}
+                        {middleNode.data?.label || middleNode.data?.outcomeValue || 'Call Outcome'}
                       </h3>
+                      {middleNode.data?.text && (
+                        <div className="max-w-md mx-auto text-[18px] text-muted-foreground leading-relaxed italic">
+                          <ScriptBodyDisplay
+                            text={middleNode.data.text}
+                            resolveText={resolveText}
+                            highlightVariables={!resolveText}
+                            zoom={zoom}
+                            className="text-[18px] text-muted-foreground font-serif"
+                          />
+                        </div>
+                      )}
+                      <div className="max-w-md mx-auto w-full text-left pt-2">
+                        {renderMiddleOutcomeConfig()}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -1982,39 +1906,58 @@ export function InteractiveScriptView({
               {displayedObjections.length > 0 ? (
                 displayedObjections.map((obj) => {
                   const subObjections = getSubObjections(obj);
+                  const isParentSelected = selectedObjectionId === obj.id;
+
                   return (
                     <div key={obj.id} className="space-y-1">
-                      <div className="flex items-center gap-1.5 px-1.5 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                        <Layers className="h-3 w-3 text-muted-foreground" />
-                        <span>{obj.data.label || 'Objections'}</span>
-                      </div>
-                      <div className="pl-3 border-l border-border/60 ml-2.5 space-y-1">
-                        {subObjections.map((sub, idx) => {
-                          const isSelected = obj.id === selectedObjectionId && idx === selectedSubObjectionIndex;
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleObjectionClick(obj.id, idx)}
-                              className={cn(
-                                "w-full flex items-start gap-2 p-2 rounded-xl text-left border text-[11px] transition-all",
-                                isSelected
-                                  ? "bg-orange-500/10 text-orange-500 border-orange-500/40 font-bold"
-                                  : "bg-card hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground"
-                              )}
-                            >
-                              <Info className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
-                              <span className="truncate">{sub.title || `Objection ${idx + 1}`}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleObjectionClick(obj.id, subObjections.length > 1 ? null : 0)}
+                        className={cn(
+                          'w-full flex items-center gap-2 p-2.5 rounded-xl text-left border text-[11px] min-h-[44px] active:scale-[0.97] transition-all',
+                          isParentSelected && selectedSubObjectionIndex === null
+                            ? 'border-orange-500 bg-orange-500/10 text-orange-600 font-bold'
+                            : 'border-border/60 bg-card hover:bg-muted text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <ShieldAlert className={cn('h-3.5 w-3.5 shrink-0', isParentSelected ? 'text-orange-500' : 'text-orange-500/70')} />
+                        <span className="truncate flex-grow">{obj.data.label || 'Objection'}</span>
+                        {subObjections.length > 1 && (
+                          <span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {subObjections.length}
+                          </span>
+                        )}
+                      </button>
+
+                      {subObjections.length > 1 && (
+                        <div className="pl-3 border-l border-border/60 ml-2.5 space-y-1">
+                          {subObjections.map((sub, idx) => {
+                            const isSelected = isParentSelected && selectedSubObjectionIndex === idx;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleObjectionClick(obj.id, idx)}
+                                className={cn(
+                                  'w-full flex items-start gap-2 p-2 rounded-xl text-left border text-[11px] min-h-[36px] active:scale-[0.97] transition-all',
+                                  isSelected
+                                    ? 'bg-orange-500/10 text-orange-500 border-orange-500/40 font-bold'
+                                    : 'bg-card hover:bg-muted text-muted-foreground border-border/60 hover:text-foreground'
+                                )}
+                              >
+                                <Info className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
+                                <span className="truncate">{sub.title || `Objection ${idx + 1}`}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })
               ) : (
                 <div className="text-center py-10 text-[11px] text-muted-foreground italic">
-                  No objections found for this step.
+                  No objections found.
                 </div>
               )}
             </div>
@@ -2022,52 +1965,12 @@ export function InteractiveScriptView({
 
           {/* Actions Tab Content */}
           <TabsContent value="actions" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
-            {middleNode?.type === 'action' ? (
-              <div className="flex-grow flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedActionId(null); }}
-                    className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-                  >
-                    <ArrowLeft className="h-3 w-3" /> Back
-                  </button>
-                  <span className="text-[9px] font-bold uppercase truncate max-w-[150px] text-indigo-500">
-                    {middleNode.data.label || 'Action'}
-                  </span>
-                </div>
-                <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin">
-                  {renderMiddleActionConfig()}
-                </div>
-              </div>
-            ) : (
-              renderTriggerTab('action')
-            )}
+            {renderTriggerTab('action')}
           </TabsContent>
 
           {/* Outcomes Tab Content */}
           <TabsContent value="outcomes" className="flex-grow overflow-hidden data-[state=active]:flex data-[state=inactive]:hidden flex-col m-0 p-3 outline-none">
-            {middleNode?.type === 'outcome' ? (
-              <div className="flex-grow flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between h-7 pb-2 mb-2 border-b border-border shrink-0 select-none">
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedOutcomeId(null); }}
-                    className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-                  >
-                    <ArrowLeft className="h-3 w-3" /> Back
-                  </button>
-                  <span className="text-[9px] font-bold uppercase truncate max-w-[150px] text-purple-500">
-                    {middleNode.data.outcomeValue || 'Outcome'}
-                  </span>
-                </div>
-                <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin">
-                  {renderMiddleOutcomeConfig()}
-                </div>
-              </div>
-            ) : (
-              renderTriggerTab('outcome')
-            )}
+            {renderTriggerTab('outcome')}
           </TabsContent>
         </Tabs>
       </div>

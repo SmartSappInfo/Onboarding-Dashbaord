@@ -5406,6 +5406,8 @@ export interface CallActionParams {
   meetingInviteScope?: 'specific' | 'all';
   /** Execution-time override for the meeting date/time */
   meetingTimeOverride?: string;
+  /** Retained meeting ID from in-session schedule action for in-place rescheduling without duplication */
+  createdMeetingId?: string;
   // Transfer to another call campaign (ADD_TO_CALL_CAMPAIGN) + legacy TRANSFER_CALL
   campaignId?: string;
   contactScope?: 'primary' | 'all';
