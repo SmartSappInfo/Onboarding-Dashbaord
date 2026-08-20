@@ -1105,7 +1105,10 @@ service cloud.firestore {
     // --- Quick Notes (Unified Notes Workspace) ---
     // Mirrors the proven entity_notes model: workspace-scoped, author-owned writes.
     match /quick_notes/{noteId} {
-      allow read: if isAuthorized();
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
       allow create: if isAuthorized() &&
         // Author cannot be forged — pins createdBy to the caller (integrity/audit).
         request.resource.data.createdBy == request.auth.uid && (
@@ -1126,7 +1129,10 @@ service cloud.firestore {
     }
 
     match /quick_note_categories/{categoryId} {
-      allow read: if isAuthorized();
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)

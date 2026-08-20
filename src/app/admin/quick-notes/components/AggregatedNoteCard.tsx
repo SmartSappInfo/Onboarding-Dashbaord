@@ -49,15 +49,21 @@ function AggregatedNoteCardImpl({ note }: AggregatedNoteCardProps) {
         <p className="mt-1 text-sm italic text-muted-foreground/60">No text</p>
       )}
 
-      <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5 flex-wrap gap-2">
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
           <span>{formatNoteDate(note.createdAt)}</span>
           {note.createdByName && <span className="truncate max-w-[100px]">· {note.createdByName}</span>}
+          {note.links?.entityName && (
+            <span className="inline-flex items-center gap-1 font-medium text-foreground/80 truncate max-w-[140px]">
+              <School className="h-3 w-3 text-sky-600 dark:text-sky-400 shrink-0" />
+              <span className="truncate">{note.links.entityName}</span>
+            </span>
+          )}
         </div>
-        {note.originHref && (
+        {note.originHref && note.originHref.startsWith('/') && (
           <Link
             href={note.originHref}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary opacity-0 transition-opacity hover:underline group-hover:opacity-100 focus:opacity-100"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary md:opacity-0 md:transition-opacity md:group-hover:opacity-100 focus:opacity-100 shrink-0"
           >
             Open in context
             <ExternalLink className="h-3 w-3" />

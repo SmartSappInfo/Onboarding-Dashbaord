@@ -89,7 +89,7 @@ function QuickNoteCardImpl({ note, category, onEdit, onTogglePin, onDelete }: Qu
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-0.5 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 focus-within:opacity-100">
           <Button
             variant="ghost"
             size="icon"

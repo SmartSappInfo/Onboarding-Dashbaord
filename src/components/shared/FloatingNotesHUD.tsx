@@ -11,7 +11,9 @@ import {
   Calendar, 
   MapPin, 
   Notebook,
-  ChevronDown
+  ChevronDown,
+  FolderClosed,
+  Check
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -19,12 +21,19 @@ import { useFloatingNotes } from '@/context/FloatingNotesContext';
 // NOTE: createQuickNote is the single source of truth for writing to quick_notes.
 // Do NOT use addDoc(collection(firestore, 'entity_notes')) here — that collection
 // is for CRM entity notes managed by EntityNotesTab, not the Quick Notes workspace.
-import { createQuickNote } from '@/lib/quick-notes-hooks';
+import { createQuickNote, useNoteCategories } from '@/lib/quick-notes-hooks';
 import { plainTextToTipTap, deriveTitleFromText } from '@/lib/quick-notes-domain';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { categorySwatch } from '@/app/admin/quick-notes/components/quick-notes-ui';
 
 
 // Predefined note types with matching icons & styling
@@ -54,13 +63,23 @@ export default function FloatingNotesHUD() {
   const { activeOrganizationId, activeWorkspaceId } = useTenant();
   const { toast } = useToast();
 
+  // Lazy-fetch workspace note categories only when HUD is active (performance/bandwidth guard)
+  const { data: rawCategories } = useNoteCategories(isOpen ? activeWorkspaceId : null);
+  const categories = React.useMemo(() => rawCategories ?? [], [rawCategories]);
+
   // Derive the note-type union from the constant so we never need EntityNote here.
   // CAUTION: If NOTE_TYPES entries change, this type updates automatically.
   const [noteType, setNoteType] = React.useState<typeof NOTE_TYPES[number]['id']>('general');
-  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const [categoryId, setCategoryId] = React.useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
+
+  // Selected category resolution
+  const selectedCategory = React.useMemo(
+    () => (categoryId ? categories.find((c) => c.id === categoryId) : undefined),
+    [categories, categoryId]
+  );
 
   // Position coordinates refs for non-re-rendering dragging
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -78,6 +97,18 @@ export default function FloatingNotesHUD() {
       }
     };
   }, []);
+
+  // Keyboard accessibility: Escape key closes the HUD (Mobile & Desktop UX)
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isMinimized) {
+        close();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isMinimized, close]);
 
   // Responsive boundary checking on resize
   React.useEffect(() => {
@@ -179,19 +210,26 @@ export default function FloatingNotesHUD() {
         createdBy:      user.uid,
         createdByName:  user.displayName ?? undefined,
         // Auto-derive a title from the first line (pure domain helper — no I/O).
-        title:    deriveTitleFromText(draftText),
+        title:          deriveTitleFromText(draftText),
         // Convert plain textarea text → valid TipTap NoteDocument (domain helper).
-        content:  plainTextToTipTap(draftText),
+        content:        plainTextToTipTap(draftText),
+        // Pass user-selected category if assigned
+        categoryId:     categoryId || undefined,
         // Encode the note type as a tag (quick_notes uses tags; entity_notes used noteType).
         // 'general' produces an empty tags array to avoid noise in the tag system.
-        tags:     noteType !== 'general' ? [noteType] : [],
-        // Link to an entity only when the HUD was opened from an entity page.
-        // entityName enrichment is done in Phase 3 via context.
-        links:    activeEntityId ? { entityId: activeEntityId } : {},
+        tags:           noteType !== 'general' ? [noteType] : [],
+        // Link to an entity with name enrichment when available.
+        links:          activeEntityId
+          ? {
+              entityId: activeEntityId,
+              entityName: activeEntityName ?? undefined,
+            }
+          : {},
       });
 
       toast({ title: 'Note saved to Quick Notes ✓' });
       setDraftText('');
+      setCategoryId(undefined);
       close();
     } catch (err) {
       // Log for diagnostics but never expose raw error messages to the UI (security).
@@ -207,11 +245,12 @@ export default function FloatingNotesHUD() {
   if (!isOpen) return null;
 
   // Minimized state rendering (sleek horizontally-centered bottom capsule)
+  // NOTE: Minimized pill keeps the violet brand gradient intentionally — it acts as a CTA beacon.
   if (isMinimized) {
     return (
       <div 
         onClick={restore}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[999] bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-full shadow-2xl cursor-pointer flex items-center gap-2.5 animate-in slide-in-from-bottom-8 duration-300 font-bold text-xs border border-violet-500/30 scale-95 hover:scale-100 transition-all select-none"
+        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[999] bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-full shadow-2xl cursor-pointer flex items-center gap-2.5 animate-in slide-in-from-bottom-8 duration-300 font-bold text-xs border border-violet-500/30 scale-95 hover:scale-100 transition-all select-none min-h-[44px]"
       >
         <Bot className="h-4 w-4 animate-bounce" />
         <span>Open Quick Note ({draftText ? 'Draft active' : 'Empty'})</span>
@@ -246,6 +285,11 @@ export default function FloatingNotesHUD() {
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-violet-500" />
           <span className="text-xs font-black uppercase tracking-wider text-foreground/80">Quick Note</span>
+          {activeEntityName && (
+            <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[110px]">
+              · {activeEntityName}
+            </span>
+          )}
           {isSavingDraft && (
             <span className="text-[9px] text-emerald-500 font-bold animate-pulse">Saved</span>
           )}
@@ -256,7 +300,8 @@ export default function FloatingNotesHUD() {
               variant="ghost" 
               size="icon" 
               onClick={minimize}
-              className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted min-h-[28px]"
+              aria-label="Minimize Quick Note"
             >
               <Minus className="h-3.5 w-3.5" />
             </Button>
@@ -265,7 +310,8 @@ export default function FloatingNotesHUD() {
             variant="ghost" 
             size="icon" 
             onClick={close}
-            className="h-6 w-6 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 min-h-[28px]"
+            aria-label="Close Quick Note"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -273,9 +319,9 @@ export default function FloatingNotesHUD() {
       </div>
 
       {/* Panel Body */}
-      <div className="flex-1 p-3 flex flex-col justify-between text-left overflow-visible">
+      <div className="flex-1 p-3 flex flex-col justify-between text-left overflow-visible min-h-0">
         {/* Text Editor Area — Textarea inherits shadcn's themed bg/text automatically */}
-        <div className="flex-1 flex flex-col min-h-0 relative mb-3">
+        <div className="flex-1 flex flex-col min-h-0 relative mb-2.5">
           <Textarea
             placeholder="Type quick notes here..."
             value={draftText}
@@ -284,50 +330,93 @@ export default function FloatingNotesHUD() {
           />
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/40 overflow-visible">
-          {/* Note Type select dropdown pill */}
-          <div className="relative">
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-muted border-border text-foreground hover:bg-muted/80"
-            >
-              <ActiveIcon className="h-3.5 w-3.5" />
-              <span>{activeType.label}</span>
-              <ChevronDown className="h-3 w-3 opacity-60" />
-            </button>
-
-            {dropdownOpen && (
-              <div className="absolute bottom-full left-0 mb-2 w-36 bg-popover border border-border rounded-xl shadow-2xl py-1 z-[999] animate-in fade-in slide-in-from-bottom-2 duration-200">
+        {/* Footer Actions — Radix Dropdowns ensure proper z-index and click-outside handling */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-border/40 overflow-visible">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Note Type select dropdown pill */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-muted border-border text-foreground hover:bg-muted/80 min-h-[32px]"
+                >
+                  <ActiveIcon className="h-3.5 w-3.5 text-violet-500" />
+                  <span>{activeType.label}</span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-36 z-[1000]">
                 {NOTE_TYPES.map((t) => {
                   const Icon = t.icon;
                   return (
-                    <button
+                    <DropdownMenuItem
                       key={t.id}
-                      onClick={() => {
-                        setNoteType(t.id);
-                        setDropdownOpen(false);
-                      }}
+                      onClick={() => setNoteType(t.id)}
                       className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold hover:bg-muted transition-colors",
-                        noteType === t.id ? "text-violet-500 bg-muted/50" : "text-muted-foreground hover:text-foreground"
+                        "flex items-center gap-2 text-xs font-semibold cursor-pointer",
+                        noteType === t.id && "text-violet-500 bg-muted/60"
                       )}
                     >
                       <Icon className="h-3.5 w-3.5" />
                       <span>{t.label}</span>
-                    </button>
+                      {noteType === t.id && <Check className="h-3.5 w-3.5 ml-auto text-violet-500" />}
+                    </DropdownMenuItem>
                   );
                 })}
-              </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Optional Category selector dropdown pill */}
+            {categories.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer bg-muted border-border text-foreground hover:bg-muted/80 max-w-[130px] min-h-[32px]"
+                  >
+                    <FolderClosed className="h-3 w-3 text-muted-foreground shrink-0" />
+                    {selectedCategory ? (
+                      <span className="inline-flex items-center gap-1 truncate">
+                        <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', categorySwatch(selectedCategory.color).dot)} />
+                        <span className="truncate">{selectedCategory.name}</span>
+                      </span>
+                    ) : (
+                      <span className="truncate text-muted-foreground">Category</span>
+                    )}
+                    <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44 z-[1000]">
+                  <DropdownMenuItem onClick={() => setCategoryId(undefined)} className="text-xs cursor-pointer">
+                    <span className="flex items-center gap-2">
+                      {categoryId === undefined && <Check className="h-3.5 w-3.5 text-violet-500" />}
+                      <span className={cn(categoryId !== undefined && 'pl-5')}>No category</span>
+                    </span>
+                  </DropdownMenuItem>
+                  {categories.map((c) => (
+                    <DropdownMenuItem
+                      key={c.id}
+                      onClick={() => setCategoryId(c.id)}
+                      className="text-xs flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="inline-flex items-center gap-2 truncate">
+                        {categoryId === c.id && <Check className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
+                        <span className={cn('h-2 w-2 rounded-full shrink-0', categorySwatch(c.color).dot, categoryId !== c.id && 'ml-5')} />
+                        <span className="truncate">{c.name}</span>
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
 
-          {/* Save button — violet brand retained intentionally as primary CTA */}
+          {/* Save button — violet brand CTA */}
           <Button 
             onClick={handleSaveNote} 
             disabled={isSubmitting || !draftText.trim()}
             size="sm"
-            className="rounded-full h-8 px-4 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/10 active:scale-[0.98] transition-all"
+            className="rounded-full h-8 px-4 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md shadow-violet-500/10 active:scale-[0.98] transition-all min-h-[32px]"
           >
             {isSubmitting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

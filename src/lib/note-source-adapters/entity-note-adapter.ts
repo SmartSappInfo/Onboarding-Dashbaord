@@ -7,6 +7,7 @@ import type { NoteSourceAdapter } from './types';
 export interface RawEntityNote {
   id: string;
   entityId?: string;
+  entityName?: string;
   workspaceId: string;
   content?: string;
   noteType?: string;
@@ -30,6 +31,7 @@ export function entityNoteToUnified(doc: RawEntityNote): UnifiedNote {
     attachments: [],
     links: {
       entityId: doc.entityId,
+      entityName: doc.entityName,
       dealId: doc.dealId,
       dealName: doc.dealName,
     },
