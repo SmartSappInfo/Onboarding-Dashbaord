@@ -9,7 +9,7 @@
  */
 
 import type { MessageTemplate } from '@/lib/types';
-import { getTemplateRuntimeNeeds, hasRuntimeNeeds } from './whatsapp-domain';
+import { getTemplateRuntimeNeeds, hasRuntimeNeeds, toPositionalBody } from './whatsapp-domain';
 
 const WINDOW_HOURS = 24;
 
@@ -32,11 +32,119 @@ export function normalizeWaPhone(phone: string): string {
   return (phone || '').replace(/\D/g, '');
 }
 
-/** Resolve positional params from the variable bag, coercing to strings. */
-export function buildTemplateParams(paramMap: string[], variables: Record<string, unknown>): string[] {
-  return paramMap.map((key) => {
-    const v = variables?.[key];
-    return v === undefined || v === null ? '' : String(v);
+/**
+ * Common semantic alias mappings to resolve named workspace fields to positional parameters.
+ */
+const SEMANTIC_ALIAS_MAP: Record<string, string[]> = {
+  // Contact name aliases (index 1 or contact_name)
+  '1': ['contact_name', 'contactName', 'firstName', 'name', 'recipientName', 'primaryContactName'],
+  'contact_name': ['contact_name', 'contactName', 'firstName', 'name', 'recipientName', 'primaryContactName'],
+  'first_name': ['firstName', 'contact_name', 'contactName', 'name'],
+  
+  // Entity / school aliases (index 2 or entity_name)
+  '2': ['entity_name', 'entityName', 'schoolName', 'organizationName', 'companyName', 'workspace_name'],
+  'entity_name': ['entity_name', 'entityName', 'schoolName', 'organizationName', 'companyName', 'workspace_name'],
+  'school_name': ['schoolName', 'entity_name', 'entityName', 'organizationName'],
+  
+  // Meeting / time aliases (index 3 or meeting_time)
+  '3': ['meeting_time', 'meetingTime', 'meeting_date', 'time', 'scheduleTime'],
+  'meeting_time': ['meeting_time', 'meetingTime', 'meeting_date', 'time', 'scheduleTime'],
+  
+  // Link aliases
+  '4': ['survey_link', 'surveyUrl', 'link', 'registrant_join_link'],
+  'survey_link': ['survey_link', 'surveyUrl', 'link'],
+  '5': ['dashboard_link', 'dashboardUrl', 'link'],
+  'dashboard_link': ['dashboard_link', 'dashboardUrl', 'link'],
+};
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Single Source of Truth helper for resolving Meta WhatsApp template parameters.
+ * 
+ * CAUTION:
+ * 1. Meta Cloud API strictly rejects empty text values (`{ type: 'text', text: "" }`) with Meta Error 131008.
+ *    Therefore, all resolved parameters MUST be sanitized to non-empty strings.
+ * 2. Parameter maps are resolved with a multi-source fallback: `paramMap || whatsappParamMap || toPositionalBody(body).paramMap`.
+ * 3. Lookups perform cascading multi-alias resolution (exact key -> positional token -> camelCase -> semantic aliases).
+ */
+export function buildTemplateParams(
+  paramMapInput: string[] | null | undefined,
+  variables: Record<string, unknown>,
+  options?: {
+    whatsappParamMap?: string[] | null;
+    body?: string | null;
+  }
+): string[] {
+  let paramMap: string[] = Array.isArray(paramMapInput) && paramMapInput.length > 0 ? paramMapInput : [];
+
+  if (paramMap.length === 0 && Array.isArray(options?.whatsappParamMap) && options.whatsappParamMap.length > 0) {
+    paramMap = options.whatsappParamMap;
+  }
+
+  if (paramMap.length === 0 && options?.body) {
+    paramMap = toPositionalBody(options.body).paramMap;
+  }
+
+  return paramMap.map((rawKey, idx) => {
+    const posIndex = idx + 1;
+    let key = (rawKey || '').trim();
+    let pipeFallback = '';
+
+    // Handle pipe fallback text if present, e.g., 'entity_name | Your School'
+    if (key.includes('|')) {
+      const parts = key.split('|');
+      key = parts[0].trim();
+      pipeFallback = parts.slice(1).join('|').trim();
+    }
+
+    // Stripped brace format, e.g., '{{1}}' -> '1'
+    const cleanKey = key.replace(/[\{\}]/g, '').trim();
+
+    // Cascading lookup candidates
+    const candidates: string[] = [
+      key,
+      cleanKey,
+      String(posIndex),
+      `{{${posIndex}}}`,
+      `var_${posIndex}`,
+      `variable_${posIndex}`,
+    ];
+
+    // Add semantic alias candidates
+    const aliases = SEMANTIC_ALIAS_MAP[cleanKey] || SEMANTIC_ALIAS_MAP[String(posIndex)] || [];
+    candidates.push(...aliases);
+
+    // Also add camelCase and snake_case variations
+    const snakeCase = cleanKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+    const camelCase = cleanKey.replace(/_([a-z])/g, (_, g) => g.toUpperCase());
+    candidates.push(snakeCase, camelCase);
+
+    let resolvedVal: unknown = undefined;
+    for (const cand of candidates) {
+      if (cand in variables && variables[cand] !== undefined && variables[cand] !== null) {
+        resolvedVal = variables[cand];
+        break;
+      }
+    }
+
+    let valStr = resolvedVal === undefined || resolvedVal === null ? '' : String(resolvedVal).trim();
+
+    // Non-empty text guard to prevent Meta Error 131008 ("Parameter of type text is missing text value")
+    if (!valStr) {
+      if (pipeFallback) {
+        valStr = pipeFallback;
+      } else if (cleanKey === '1' || cleanKey === 'contact_name' || cleanKey === 'firstName') {
+        valStr = 'Customer';
+      } else if (cleanKey === '2' || cleanKey === 'entity_name' || cleanKey === 'schoolName') {
+        valStr = 'Organization';
+      } else if (cleanKey === '3' || cleanKey === 'meeting_time') {
+        valStr = 'Upcoming';
+      } else {
+        valStr = 'N/A';
+      }
+    }
+
+    return valStr;
   });
 }
 
@@ -228,7 +336,10 @@ export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsA
       to,
       name: wa.name,
       language: wa.language,
-      params: buildTemplateParams(template.whatsappParamMap ?? [], variables ?? {}),
+      params: buildTemplateParams(template.paramMap ?? [], variables ?? {}, {
+        whatsappParamMap: template.whatsappParamMap,
+        body: template.body,
+      }),
     });
   } else if (mode === 'text') {
     payload = buildTextPayload(to, resolvedBody);
