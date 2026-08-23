@@ -3,32 +3,31 @@
 /**
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
  * 
- * 1. Single Source of Truth for PDF Document Rendering:
- *    High-performance, multi-tiered PDF document viewer powered by Mozilla `pdfjs-dist`.
- *    Eliminates cross-origin CORS iframe blank screens on Firebase Storage / GCS signed URLs.
- * 2. High-DPI Canvas & Responsive Zoom Engine:
- *    Renders pages using `window.devicePixelRatio` for retina crispness while applying
- *    CSS transform scaling (`transform: scale(...)`, `transformOrigin: 'top center'`)
- *    to make Zoom In (+), Zoom Out (-), and Reset controls 100% functional.
- * 3. Multi-Tier Fallback Pipeline:
- *    - Tier 1: pdfjs-dist Canvas Engine.
- *    - Tier 2: HTML5 <object data={url} type="application/pdf">.
- *    - Tier 3: Document Reader Card with direct open/download button.
- * 4. Theme & Layout Synchronization:
- *    Uses Tailwind semantic design tokens (`bg-card`, `bg-muted/40`, `border-border`, `text-card-foreground`)
- *    so the viewer container seamlessly aligns with the parent page's Light/Dark mode theme.
- * 5. Touch Target Compliance:
- *    All toolbar buttons strictly enforce `min-h-[44px]` touch bounds with `active:scale-[0.97]`.
+ * 1. Single Source of Truth for Document Viewer & Page Scroll Controls:
+ *    High-performance document viewer supporting PDF (pdfjs-dist canvas engine), Word (.doc/.docx),
+ *    PowerPoint (.ppt/.pptx), and eBooks with multi-tiered fallback capabilities.
+ * 2. Floating Side Chevron Buttons & Gesture Controls:
+ *    Provides floating left (`ChevronLeft`) and right (`ChevronRight`) action buttons anchored on
+ *    either side of the viewport, mouse wheel scroll page turning, mobile touch swipe gestures,
+ *    and keyboard arrow shortcuts (`ArrowRight`/`ArrowLeft`/`PageDown`/`PageUp`).
+ * 3. High-DPI Canvas & Memory Management:
+ *    Renders PDF pages using `window.devicePixelRatio` for retina crispness while applying
+ *    CSS transform scaling (`transform: scale(...)`, `transformOrigin: 'top center'`). Active
+ *    render tasks are explicitly cancelled (`renderTask.cancel()`) on page change or unmount.
+ * 4. Touch Target Compliance:
+ *    All toolbar and side navigation buttons strictly enforce `min-h-[44px] min-w-[44px]` bounds.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, 
-  Maximize, FileText, ExternalLink, Loader2 
+  Maximize, FileText, ExternalLink, Loader2, Presentation, FileCode 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+export type DocumentTypeFormat = 'pdf' | 'word' | 'powerpoint' | 'generic';
 
 export interface PdfCanvasViewerProps {
   url: string;
@@ -37,9 +36,27 @@ export interface PdfCanvasViewerProps {
   autoHeight?: boolean;
 }
 
+export function detectDocumentFormat(url: string, mimeType?: string): DocumentTypeFormat {
+  if (!url) return 'generic';
+  const cleanUrl = url.toLowerCase().split('?')[0].split('#')[0];
+
+  if (mimeType) {
+    const lowerMime = mimeType.toLowerCase();
+    if (lowerMime.includes('pdf')) return 'pdf';
+    if (lowerMime.includes('word') || lowerMime.includes('docx') || lowerMime.includes('msword')) return 'word';
+    if (lowerMime.includes('powerpoint') || lowerMime.includes('presentation') || lowerMime.includes('pptx')) return 'powerpoint';
+  }
+
+  if (cleanUrl.endsWith('.pdf')) return 'pdf';
+  if (cleanUrl.endsWith('.docx') || cleanUrl.endsWith('.doc')) return 'word';
+  if (cleanUrl.endsWith('.pptx') || cleanUrl.endsWith('.ppt')) return 'powerpoint';
+
+  return 'generic';
+}
+
 export function PdfCanvasViewer({
   url,
-  title = 'PDF Document',
+  title = 'Document',
   className,
   autoHeight = false,
 }: PdfCanvasViewerProps) {
@@ -55,9 +72,19 @@ export function PdfCanvasViewer({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // Load PDF Document Proxy via pdfjs-dist
+  const docFormat = detectDocumentFormat(url);
+  const lastWheelTimeRef = useRef<number>(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Load PDF Document Proxy via pdfjs-dist if format is PDF
   useEffect(() => {
     if (!url) return;
+    if (docFormat !== 'pdf') {
+      setIsLoading(false);
+      setNumPages(1);
+      return;
+    }
+
     setIsLoading(true);
     setHasError(false);
     let isMounted = true;
@@ -93,16 +120,15 @@ export function PdfCanvasViewer({
     return () => {
       isMounted = false;
     };
-  }, [url]);
+  }, [url, docFormat]);
 
   // Render current PDF page onto High-DPI canvas
   useEffect(() => {
-    if (!pdfDoc) return;
+    if (!pdfDoc || docFormat !== 'pdf') return;
     let isMounted = true;
 
     async function renderPage() {
       try {
-        // Cancel active rendering task to avoid canvas memory conflict
         if (renderTaskRef.current) {
           try {
             renderTaskRef.current.cancel();
@@ -116,7 +142,6 @@ export function PdfCanvasViewer({
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        // Render base scale at 1.5 for high DPI rendering, CSS transform handles zoom
         const viewport = page.getViewport({ scale: 1.5 });
         const outputScale = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
@@ -153,14 +178,75 @@ export function PdfCanvasViewer({
         } catch {}
       }
     };
-  }, [pdfDoc, currentPage, autoHeight]);
+  }, [pdfDoc, currentPage, autoHeight, docFormat]);
 
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  const handlePrev = useCallback(() => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  }, [currentPage]);
+
+  const handleNext = useCallback(() => {
+    if (currentPage < numPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [currentPage, numPages]);
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key)) {
+        handleNext();
+      } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
+        handlePrev();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNext, handlePrev]);
+
+  // Mouse wheel page scroll handler (debounced 200ms)
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const now = Date.now();
+    if (now - lastWheelTimeRef.current < 200) return;
+
+    if (e.deltaY > 15) {
+      if (currentPage < numPages) {
+        lastWheelTimeRef.current = now;
+        handleNext();
+      }
+    } else if (e.deltaY < -15) {
+      if (currentPage > 1) {
+        lastWheelTimeRef.current = now;
+        handlePrev();
+      }
+    }
   };
 
-  const handleNext = () => {
-    if (currentPage < numPages) setCurrentPage(prev => prev + 1);
+  // Touch swipe gesture handlers
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    if (Math.abs(deltaX) > 40 || Math.abs(deltaY) > 50) {
+      if (deltaX < -40 || deltaY < -50) {
+        handleNext();
+      } else if (deltaX > 40 || deltaY > 50) {
+        handlePrev();
+      }
+    }
   };
 
   const handleZoomIn = () => {
@@ -179,17 +265,35 @@ export function PdfCanvasViewer({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  // Tier 3 Fallback: Interactive Document Reader Card
+  const getFormatBadgeLabel = () => {
+    if (docFormat === 'word') return 'WORD DOCUMENT';
+    if (docFormat === 'powerpoint') return 'POWERPOINT';
+    return 'PDF DOCUMENT';
+  };
+
+  const getFormatIcon = () => {
+    if (docFormat === 'word') return <FileCode className="h-4 w-4 text-blue-500 shrink-0" />;
+    if (docFormat === 'powerpoint') return <Presentation className="h-4 w-4 text-amber-500 shrink-0" />;
+    return <FileText className="h-4 w-4 text-primary shrink-0" />;
+  };
+
+  // Office / Google Docs Viewer embed URL for Word and PowerPoint
+  const getEmbedViewerUrl = () => {
+    const rawUrl = url.split('?')[0];
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(rawUrl)}`;
+  };
+
+  // Fallback view for unparseable documents
   if (hasError) {
     return (
       <div className={cn("w-full h-full min-h-[350px] bg-card text-card-foreground rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 border border-border shadow-xl", className)}>
         <div className="p-4 bg-primary/10 text-primary rounded-2xl border border-primary/20">
-          <FileText className="h-8 w-8" />
+          {getFormatIcon()}
         </div>
         <div className="space-y-1">
           <h4 className="text-base font-extrabold text-foreground">{title}</h4>
           <p className="text-xs text-muted-foreground max-w-sm">
-            This document is ready for viewing. Click below to open or view the PDF file directly.
+            This document is ready for viewing. Click below to open or view the file directly.
           </p>
         </div>
         <div className="flex items-center gap-3 pt-2">
@@ -197,7 +301,7 @@ export function PdfCanvasViewer({
             onClick={handleOpenFullscreen}
             className="rounded-xl font-bold text-xs gap-2 h-11 px-5 min-h-[44px] shadow-lg active:scale-[0.97]"
           >
-            Open PDF Document <ExternalLink className="h-4 w-4" />
+            Open Document <ExternalLink className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -208,12 +312,11 @@ export function PdfCanvasViewer({
     <div className={cn("w-full h-full flex flex-col rounded-2xl bg-card border border-border overflow-hidden shadow-xl text-card-foreground relative transition-colors duration-200", className)}>
       
       {/* Top Toolbar */}
-      <div className="bg-muted/40 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 backdrop-blur-md">
-        {/* Left Badge: Title removed to avoid duplication with page headline */}
+      <div className="bg-muted/40 border-b border-border px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 backdrop-blur-md z-20">
         <div className="flex items-center gap-2 min-w-0">
-          <FileText className="h-4 w-4 text-primary shrink-0" />
+          {getFormatIcon()}
           <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-background border-border text-foreground">
-            PDF Document
+            {getFormatBadgeLabel()}
           </Badge>
         </div>
 
@@ -277,7 +380,6 @@ export function PdfCanvasViewer({
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
 
-          {/* Replaces Download button with Open Fullscreen trigger */}
           <Button
             variant="ghost"
             size="icon"
@@ -290,14 +392,39 @@ export function PdfCanvasViewer({
         </div>
       </div>
 
-      {/* Main Canvas Viewport with CSS Transform Scale */}
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto min-h-[350px] relative bg-muted/20">
+      {/* Main Preview Viewport with Wheel & Swipe Navigation */}
+      <div 
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 flex items-center justify-center p-4 overflow-auto min-h-[350px] relative bg-muted/20 select-none group"
+      >
+        {/* Floating Left Chevron Side Button */}
+        <button
+          onClick={handlePrev}
+          disabled={currentPage <= 1 || isLoading}
+          className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-30 h-11 w-11 md:h-12 md:w-12 rounded-full bg-background/85 hover:bg-background border border-border shadow-xl backdrop-blur-md transition-all active:scale-95 text-foreground flex items-center justify-center cursor-pointer disabled:opacity-20 disabled:pointer-events-none min-h-[44px] min-w-[44px] shrink-0"
+          title="Previous Page (Scroll Up / Swipe Right)"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+
+        {/* Floating Right Chevron Side Button */}
+        <button
+          onClick={handleNext}
+          disabled={currentPage >= numPages || isLoading}
+          className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-30 h-11 w-11 md:h-12 md:w-12 rounded-full bg-background/85 hover:bg-background border border-border shadow-xl backdrop-blur-md transition-all active:scale-95 text-foreground flex items-center justify-center cursor-pointer disabled:opacity-20 disabled:pointer-events-none min-h-[44px] min-w-[44px] shrink-0"
+          title="Next Page (Scroll Down / Swipe Left)"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="text-xs font-semibold">Parsing PDF Pages...</span>
+            <span className="text-xs font-semibold">Loading Document Pages...</span>
           </div>
-        ) : (
+        ) : docFormat === 'pdf' ? (
           <div 
             style={{ 
               transform: `scale(${scale})`, 
@@ -309,6 +436,14 @@ export function PdfCanvasViewer({
             <canvas
               ref={canvasRef}
               className="max-h-full max-w-full object-contain rounded-xl shadow-xl select-none bg-white border border-border/40"
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full min-h-[400px] relative rounded-xl overflow-hidden shadow-lg border border-border/40 bg-white">
+            <iframe
+              src={getEmbedViewerUrl()}
+              title={title}
+              className="w-full h-full border-none"
             />
           </div>
         )}

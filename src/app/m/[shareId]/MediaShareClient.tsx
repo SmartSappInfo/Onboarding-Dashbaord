@@ -1194,7 +1194,7 @@ export default function MediaShareClient({
                         </div>
                     )}
 
-                    {(asset.type === 'document' || asset.url.toLowerCase().includes('.pdf')) && (
+                    {(asset.type === 'document' || asset.url.toLowerCase().includes('.pdf') || asset.url.toLowerCase().includes('.doc') || asset.url.toLowerCase().includes('.ppt')) && (
                         <div className="w-full aspect-video md:aspect-[16/9] relative z-10 bg-slate-950 flex flex-col rounded-2xl overflow-hidden shadow-2xl">
                             <PdfCanvasViewer url={asset.url} title={title || asset.name} />
                         </div>
