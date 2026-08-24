@@ -4484,6 +4484,111 @@ export interface PageBlock {
   blocks?: PageBlock[]; // for nested layouts
 }
 
+// ─── PHASE 1 ARCHITECTURAL EXTENSIONS: DESIGN SYSTEM & COMPONENT REGISTRY ─────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 1 foundational type contracts for Global Design Tokens, Reusable Smart Components,
+ * and Page Validation Results.
+ * 
+ * MAINTENANCE CAUTION:
+ * Do not introduce `any` or `any[]` in these contracts. All properties must be strictly typed or
+ * constrained via `Record<string, unknown>`.
+ */
+
+export interface DesignTokens {
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    surface: string;
+    textPrimary: string;
+    textSecondary: string;
+    border: string;
+    muted: string;
+  };
+  typography: {
+    fontFamilyPrimary: string;
+    fontFamilyHeading: string;
+    fontSizeBase: string;
+    scale: Record<string, string>;
+  };
+  spacing: {
+    spaceXs: string;
+    spaceSm: string;
+    spaceMd: string;
+    spaceLg: string;
+    spaceXl: string;
+    space2Xl: string;
+  };
+  radii: {
+    radiusSm: string;
+    radiusMd: string;
+    radiusLg: string;
+    radiusFull: string;
+  };
+  shadows: {
+    shadowSm: string;
+    shadowMd: string;
+    shadowLg: string;
+  };
+  containers: {
+    maxWSm: string;
+    maxWMd: string;
+    maxWLg: string;
+    maxW7Xl: string;
+    paddingX: string;
+  };
+  breakpoints: {
+    sm: string;
+    md: string;
+    lg: string;
+    xl: string;
+  };
+}
+
+export interface DesignSystem {
+  id: string;
+  name: string;
+  tokens: DesignTokens;
+  mode: 'light' | 'dark';
+}
+
+export interface ValidationError {
+  path: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface PageValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  sanitizedStructure: CampaignPageStructure;
+}
+
+export interface Component {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  description?: string;
+  category: 'hero' | 'testimonial' | 'pricing' | 'faq' | 'cta' | 'lead_form' | 'custom';
+  structure: PageBlock;
+  version: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ComponentVersion {
+  id: string;
+  componentId: string;
+  versionNumber: number;
+  structureSnapshot: PageBlock;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';

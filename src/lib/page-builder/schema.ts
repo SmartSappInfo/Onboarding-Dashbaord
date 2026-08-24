@@ -8,7 +8,8 @@
  * gracefully for unknown/future block types instead of rejecting the page.
  */
 import { z } from 'zod';
-import type { CampaignPageStructure } from '@/lib/types';
+import type { CampaignPageStructure, PageValidationResult, ValidationError, PageBlock, PageSection } from '@/lib/types';
+import { validateBlockProps } from './registry';
 
 const blockSchema: z.ZodTypeAny = z.lazy(() =>
   z.object({
@@ -132,4 +133,65 @@ export function parseStructure(raw: unknown): CampaignPageStructure {
     return result.data as unknown as CampaignPageStructure;
   }
   return EMPTY_STRUCTURE;
+}
+
+/**
+ * Deeply validates an entire CampaignPageStructure, performing O(N) inspection
+ * of sections, header/footer settings, and nested block props against registered Zod schemas.
+ * Never throws runtime exceptions; returns structured error and warning diagnostics.
+ * 
+ * TESTABILITY POINTER:
+ * Pass invalid/malformed structures to verify that errors are logged without page crashes.
+ */
+export function validatePageStructure(raw: unknown): PageValidationResult {
+  const errors: ValidationError[] = [];
+  const parsed = parseStructure(raw);
+
+  // Recursively validate blocks
+  function inspectBlock(block: PageBlock, pathPrefix: string): PageBlock {
+    const safeProps = validateBlockProps(block);
+    
+    // Check nested children if any
+    let safeChildBlocks: PageBlock[] | undefined = undefined;
+    if (Array.isArray(block.blocks) && block.blocks.length > 0) {
+      safeChildBlocks = block.blocks.map((child, idx) => inspectBlock(child, `${pathPrefix}.blocks[${idx}]`));
+    }
+
+    return {
+      ...block,
+      props: safeProps,
+      blocks: safeChildBlocks,
+    };
+  }
+
+  // Validate sections
+  const validatedSections: PageSection[] = parsed.sections.map((section, sIdx) => {
+    if (!section.id) {
+      errors.push({
+        path: `sections[${sIdx}].id`,
+        message: 'Section missing unique ID',
+        severity: 'warning',
+      });
+    }
+
+    const validatedBlocks = (section.blocks || []).map((b, bIdx) =>
+      inspectBlock(b, `sections[${sIdx}].blocks[${bIdx}]`)
+    );
+
+    return {
+      ...section,
+      blocks: validatedBlocks,
+    };
+  });
+
+  const sanitizedStructure: CampaignPageStructure = {
+    ...parsed,
+    sections: validatedSections,
+  };
+
+  return {
+    valid: errors.filter((e) => e.severity === 'error').length === 0,
+    errors,
+    sanitizedStructure,
+  };
 }

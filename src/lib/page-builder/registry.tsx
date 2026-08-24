@@ -68,6 +68,13 @@ export interface BlockDefinition<TProps extends Record<string, unknown>> {
   /** Layout blocks that accept nested blocks (columns/container/grid). */
   allowsChildren?: boolean;
   variants?: ReadonlyArray<BlockVariant>;
+  
+  // Phase 1 Extensions for AI Experience Platform & Analytics Normalization
+  aiInstructions?: string;
+  analyticsEvents?: ReadonlyArray<string>;
+  accessibilityRules?: ReadonlyArray<string>;
+  responsiveConfig?: Record<string, unknown>;
+
   render: (props: TProps, block: PageBlock, ctx: BlockRenderContext) => ReactElement;
 }
 
@@ -96,6 +103,29 @@ export function registerBlock<TProps extends Record<string, unknown>>(
 /** Look up a block definition by type, or `undefined` if unregistered. */
 export function getBlock(type: PageBlockType): AnyBlockDefinition | undefined {
   return blockRegistry[type];
+}
+
+/** Returns an array of all currently registered block definitions. */
+export function getAllRegisteredBlocks(): AnyBlockDefinition[] {
+  return Object.values(blockRegistry).filter((b): b is AnyBlockDefinition => Boolean(b));
+}
+
+/** Returns registered block definitions matching the specified category. */
+export function getBlocksByCategory(category: 'layout' | 'content' | 'data' | 'embed'): AnyBlockDefinition[] {
+  return getAllRegisteredBlocks().filter((b) => b.category === category);
+}
+
+/**
+ * Validates arbitrary block props against the block definition's Zod schema O(1).
+ * Returns safe parsed props or fallback defaults on error without throwing.
+ */
+export function validateBlockProps(block: PageBlock): Record<string, unknown> {
+  const def = getBlock(block.type);
+  if (!def) {
+    return block.props || {};
+  }
+  const result = def.schema.safeParse(block.props);
+  return result.success ? (result.data as Record<string, unknown>) : def.defaults;
 }
 
 /** All registered definitions, useful for building the palette. */
