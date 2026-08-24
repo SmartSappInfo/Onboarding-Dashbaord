@@ -52,8 +52,32 @@ describe('buildTemplateParams', () => {
       '123',
     ]);
   });
-  it('coerces missing/non-string values to empty/string', () => {
-    expect(buildTemplateParams(['a', 'b', 'c'], { a: 0, b: null })).toEqual(['0', '', '']);
+
+  it('resolves semantic aliases (contact_name -> firstName, entity_name -> schoolName)', () => {
+    expect(
+      buildTemplateParams(['contact_name', 'entity_name'], {
+        firstName: 'Ama',
+        schoolName: 'Acme Academy',
+      })
+    ).toEqual(['Ama', 'Acme Academy']);
+  });
+
+  it('falls back to whatsappParamMap or body extraction when paramMap is missing', () => {
+    expect(
+      buildTemplateParams(null, { firstName: 'Kofi', schoolName: 'Global High' }, {
+        whatsappParamMap: ['contact_name', 'entity_name'],
+      })
+    ).toEqual(['Kofi', 'Global High']);
+
+    expect(
+      buildTemplateParams(null, { contact_name: 'Ama', entity_name: 'St. John' }, {
+        body: 'Hi {{1}}, welcome to {{2}}.',
+      })
+    ).toEqual(['Ama', 'St. John']);
+  });
+
+  it('sanitizes missing or empty values to non-empty strings to prevent Meta Error 131008', () => {
+    expect(buildTemplateParams(['a', 'b', 'c'], { a: 0, b: null })).toEqual(['0', 'N/A', 'N/A']);
   });
 });
 
