@@ -15,6 +15,14 @@ import type { Component, ComponentVersion, PageBlock } from '@/lib/types';
 export const smartComponentRegistry: Map<string, Component> = new Map();
 export const smartComponentVersionHistory: Map<string, ComponentVersion[]> = new Map();
 
+/** Safe deep clone helper preserving object shapes without prototype leaks. */
+function safeCloneBlock(block: PageBlock): PageBlock {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(block);
+  }
+  return JSON.parse(JSON.stringify(block)) as PageBlock;
+}
+
 /**
  * Registers or updates a Master Smart Component in the registry.
  */
@@ -27,11 +35,19 @@ export function registerSmartComponent(component: Component): void {
     id: `ver-${component.id}-${component.version}`,
     componentId: component.id,
     versionNumber: component.version,
-    structureSnapshot: JSON.parse(JSON.stringify(component.structure)) as PageBlock,
+    structureSnapshot: safeCloneBlock(component.structure),
     createdBy: component.createdBy,
     createdAt: new Date().toISOString(),
   };
   smartComponentVersionHistory.set(component.id, [...history, newVersion]);
+}
+
+/**
+ * Unregisters a Master Smart Component from the registry, freeing in-memory map resources.
+ */
+export function unregisterSmartComponent(componentId: string): boolean {
+  smartComponentVersionHistory.delete(componentId);
+  return smartComponentRegistry.delete(componentId);
 }
 
 /**
@@ -69,7 +85,7 @@ export function instantiateComponent(
   }
 
   // Deep clone master structure to avoid mutation leaks
-  const clonedStructure: PageBlock = JSON.parse(JSON.stringify(master.structure)) as PageBlock;
+  const clonedStructure = safeCloneBlock(master.structure);
 
   return {
     ...clonedStructure,
@@ -91,7 +107,7 @@ export function propagateMasterComponentUpdate(
   existingBlock: PageBlock,
   newMaster: Component,
 ): PageBlock {
-  const clonedNewStructure: PageBlock = JSON.parse(JSON.stringify(newMaster.structure)) as PageBlock;
+  const clonedNewStructure = safeCloneBlock(newMaster.structure);
 
   // Preserve local overrides while updating master linkage
   return {

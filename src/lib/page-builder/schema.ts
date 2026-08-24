@@ -184,6 +184,19 @@ export function validatePageStructure(raw: unknown): PageValidationResult {
     };
   });
 
+  // Validate header nav items if present
+  if (parsed.header?.navItems) {
+    parsed.header.navItems.forEach((item, idx) => {
+      if (!item.id) {
+        errors.push({
+          path: `header.navItems[${idx}].id`,
+          message: 'Header navigation item missing unique ID',
+          severity: 'warning',
+        });
+      }
+    });
+  }
+
   const sanitizedStructure: CampaignPageStructure = {
     ...parsed,
     sections: validatedSections,
