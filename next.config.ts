@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverExternalPackages: ['@google-cloud/tasks', 'canvas', 'jsdom'],
+  serverExternalPackages: ['@google-cloud/tasks', 'canvas', 'jsdom', 'firebase-admin'],
   experimental: {
     optimizePackageImports: ['lucide-react'],
     serverActions: {

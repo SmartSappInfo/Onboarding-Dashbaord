@@ -3,7 +3,6 @@
  * Automated payment reminders across WhatsApp, Email, and SMS with idempotent dispatch locks.
  */
 
-import { adminDb } from '../firebase-admin';
 import { 
   Invoice, 
   ReminderChannel, 
@@ -88,6 +87,7 @@ export class FinanceAutomationService {
   ): Promise<ReminderCycleResult> {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
+    const { adminDb } = await import('../firebase-admin');
 
     // 1. Fetch all open invoices
     const invSnap = await adminDb
@@ -216,6 +216,7 @@ export class FinanceAutomationService {
    */
   static async sendSingleReminder(params: SingleReminderParams): Promise<FinanceReminderLog> {
     const { workspaceId, invoiceId, channel, customMessage, userId, userName } = params;
+    const { adminDb } = await import('../firebase-admin');
 
     const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
     if (!invSnap.exists) throw new Error('Invoice not found');

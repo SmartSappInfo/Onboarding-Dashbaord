@@ -30,7 +30,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { Loader2, Send, MessageSquare, Mail, Smartphone, CheckCircle2 } from 'lucide-react';
 import { Invoice, ReminderChannel } from '@/lib/types';
 import { sendInvoiceReminderAction } from '@/lib/finance-automation-actions';
-import { FinanceAutomationService } from '@/lib/services/finance-automation-service';
+import { formatReminderMessage } from '@/lib/services/finance-reminder-utils';
 
 export interface SendReminderModalProps {
   isOpen: boolean;
@@ -57,7 +57,7 @@ export function SendReminderModal({
 
   React.useEffect(() => {
     if (isOpen) {
-      const defaultCopy = FinanceAutomationService.formatReminderMessage(invoice, 'manual', entityName);
+      const defaultCopy = formatReminderMessage(invoice, 'manual', entityName);
       setCustomMessage(defaultCopy);
     }
   }, [isOpen, invoice, entityName]);

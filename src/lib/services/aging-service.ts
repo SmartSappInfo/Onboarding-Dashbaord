@@ -8,7 +8,6 @@
  * 3. All monetary calculations round to 2 decimal places with Math.round(val * 100) / 100.
  */
 
-import { adminDb } from '../firebase-admin';
 import { Invoice, AgingBucket, AgingSummary, FinancialAccount } from '../types';
 
 export interface InvoiceAgingResult {
@@ -81,6 +80,7 @@ export class AgingService {
    * Computes workspace-wide aging summary across all unpaid invoices.
    */
   static async calculateWorkspaceAgingSummary(workspaceId: string): Promise<AgingSummary> {
+    const { adminDb } = await import('../firebase-admin');
     const snap = await adminDb
       .collection('invoices')
       .where('workspaceIds', 'array-contains', workspaceId)
@@ -153,6 +153,7 @@ export class AgingService {
    * Retrieves an account's aging receivables profile.
    */
   static async getAccountReceivablesProfile(accountId: string): Promise<AccountAgingProfile | null> {
+    const { adminDb } = await import('../firebase-admin');
     const accSnap = await adminDb.collection('financial_accounts').doc(accountId).get();
     if (!accSnap.exists) {
       return null;

@@ -9,7 +9,8 @@ import { canUser } from './workspace-permissions';
 import { 
   ActionResponse, 
   ExecutiveFinanceMetrics, 
-  CollectorPerformanceMetric 
+  CollectorPerformanceMetric,
+  DateRangePreset 
 } from './types';
 import { 
   FinanceReportingService, 
@@ -66,6 +67,54 @@ export async function getCollectorLeaderboardAction(
     return { success: true, leaderboard };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to calculate collector leaderboard';
+    return { success: false, error: msg };
+  }
+}
+
+export async function getRevenueReportAction(
+  workspaceId: string,
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string
+) {
+  try {
+    const { ModularReportingService } = await import('./services/modular-reporting-service');
+    const data = await ModularReportingService.getRevenueReport(workspaceId, preset, customStart, customEnd);
+    return { success: true, data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate revenue report';
+    return { success: false, error: msg };
+  }
+}
+
+export async function getAgingReportAction(
+  workspaceId: string,
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string
+) {
+  try {
+    const { ModularReportingService } = await import('./services/modular-reporting-service');
+    const data = await ModularReportingService.getAgingReport(workspaceId, preset, customStart, customEnd);
+    return { success: true, data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate aging report';
+    return { success: false, error: msg };
+  }
+}
+
+export async function getTaxAuditReportAction(
+  workspaceId: string,
+  preset: DateRangePreset,
+  customStart?: string,
+  customEnd?: string
+) {
+  try {
+    const { ModularReportingService } = await import('./services/modular-reporting-service');
+    const data = await ModularReportingService.getTaxAuditReport(workspaceId, preset, customStart, customEnd);
+    return { success: true, data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to generate tax audit report';
     return { success: false, error: msg };
   }
 }

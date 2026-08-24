@@ -3,7 +3,6 @@
  * Manages debt collection cases, multi-invoice rollups, and stage progressions.
  */
 
-import { adminDb } from '../firebase-admin';
 import { 
   CollectionCase, 
   CollectionStage, 
@@ -26,6 +25,7 @@ export class CollectionCaseService {
     userId: string,
     userName: string
   ): Promise<CollectionCase> {
+    const { adminDb } = await import('../firebase-admin');
     // 1. Check for existing open case
     const existingSnap = await adminDb
       .collection('collection_cases')
@@ -152,6 +152,7 @@ export class CollectionCaseService {
     userName: string,
     notes?: string
   ): Promise<CollectionCase> {
+    const { adminDb } = await import('../firebase-admin');
     const docRef = adminDb.collection('collection_cases').doc(caseId);
     const snap = await docRef.get();
     if (!snap.exists) {
@@ -215,6 +216,7 @@ export class CollectionCaseService {
     userId: string,
     userName: string
   ): Promise<void> {
+    const { adminDb } = await import('../firebase-admin');
     const docRef = adminDb.collection('collection_cases').doc(caseId);
     const snap = await docRef.get();
     if (!snap.exists) throw new Error('Collection case not found');

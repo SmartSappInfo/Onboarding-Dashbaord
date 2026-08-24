@@ -40,10 +40,12 @@ import {
 import { 
   getExecutiveFinanceMetricsAction, 
   getCashflowTrendAction, 
-  getCollectorLeaderboardAction 
+  getCollectorLeaderboardAction,
+  getRevenueReportAction,
+  getAgingReportAction,
+  getTaxAuditReportAction
 } from '@/lib/reporting-actions';
 import { 
-  ModularReportingService, 
   RevenueReportRow, 
   AgingReportRow, 
   TaxAuditReportRow 
@@ -70,18 +72,14 @@ export function FinanceReportsClient() {
   const [agingData, setAgingData] = React.useState<{ metrics: ReportMetricItem[]; rows: AgingReportRow[] }>({ metrics: [], rows: [] });
   const [taxData, setTaxData] = React.useState<{ metrics: ReportMetricItem[]; rows: TaxAuditReportRow[] }>({ metrics: [], rows: [] });
 
-  // Top Debtors Query
-  const debtorsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeWorkspaceId) return null;
-    return query(
-      collection(firestore, 'financial_accounts'),
-      where('workspaceId', '==', activeWorkspaceId),
-      orderBy('currentBalance', 'desc'),
-      limit(10)
-    );
-  }, [firestore, activeWorkspaceId]);
+  const rawAccounts = useCollection<FinancialAccount>(
+    useMemoFirebase(
+      () => activeWorkspaceId ? query(collection(firestore, 'financial_accounts'), where('workspaceId', '==', activeWorkspaceId), orderBy('balanceDue', 'desc'), limit(5)) : null,
+      [activeWorkspaceId, firestore]
+    )
+  );
 
-  const { data: rawDebtors } = useCollection<FinancialAccount>(debtorsQuery);
+  const rawDebtors = rawAccounts.data;
   const topDebtors = React.useMemo(() => rawDebtors || [], [rawDebtors]);
 
   const loadData = React.useCallback(async (preset: DateRangePreset = 'this_month', start?: string, end?: string) => {
@@ -93,18 +91,18 @@ export function FinanceReportsClient() {
         getExecutiveFinanceMetricsAction(activeWorkspaceId, user.uid),
         getCashflowTrendAction(activeWorkspaceId, user.uid),
         getCollectorLeaderboardAction(activeWorkspaceId, user.uid),
-        ModularReportingService.getRevenueReport(activeWorkspaceId, preset, start, end),
-        ModularReportingService.getAgingReport(activeWorkspaceId, preset, start, end),
-        ModularReportingService.getTaxAuditReport(activeWorkspaceId, preset, start, end),
+        getRevenueReportAction(activeWorkspaceId, preset, start, end),
+        getAgingReportAction(activeWorkspaceId, preset, start, end),
+        getTaxAuditReportAction(activeWorkspaceId, preset, start, end),
       ]);
 
       if (metricsRes.success && metricsRes.metrics) setMetrics(metricsRes.metrics);
       if (trendRes.success && trendRes.trend) setTrend(trendRes.trend);
       if (leadRes.success && leadRes.leaderboard) setLeaderboard(leadRes.leaderboard);
 
-      setRevenueData({ metrics: revReport.metrics, rows: revReport.rows });
-      setAgingData({ metrics: ageReport.metrics, rows: ageReport.rows });
-      setTaxData({ metrics: taxReport.metrics, rows: taxReport.rows });
+      if (revReport.success && revReport.data) setRevenueData({ metrics: revReport.data.metrics, rows: revReport.data.rows });
+      if (ageReport.success && ageReport.data) setAgingData({ metrics: ageReport.data.metrics, rows: ageReport.data.rows });
+      if (taxReport.success && taxReport.data) setTaxData({ metrics: taxReport.data.metrics, rows: taxReport.data.rows });
     } catch (e) {
       console.error('[FINANCE_REPORTS] Error loading reports:', e);
     } finally {

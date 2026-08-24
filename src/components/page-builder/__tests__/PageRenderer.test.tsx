@@ -23,6 +23,17 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminAuth: {},
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  usePathname: () => '/pages/p1',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { PageRenderer, type PageRendererPage } from '../PageRenderer';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 
@@ -50,7 +61,7 @@ function version(): CampaignPageVersion {
           props: { heading: 'Welcome' },
           blocks: [
             { id: 't1', type: 'text', props: { content: '<p>Body copy</p>' } },
-            { id: 'c1', type: 'cta', props: { label: 'Go now', url: '' } },
+            { id: 'c1', type: 'cta', props: { label: 'Go now', url: '', buttons: [{ id: 'btn1', label: 'Go now', url: '', variant: 'primary', actionType: 'url', formId: '', surveyId: '', meetingId: '', qrId: '', openInModal: false, surveyResultMode: 'modal', trackEntity: true }] } },
           ],
         },
       ],
@@ -74,7 +85,7 @@ describe('PageRenderer', () => {
       <PageRenderer page={page} version={version()} theme={resolveTheme()} interpolate={(t) => t} fireTrigger={fireTrigger} />,
     );
     fireEvent.click(screen.getByText('Go now'));
-    expect(fireTrigger).toHaveBeenCalledWith('block_click', 'c1');
+    expect(fireTrigger).toHaveBeenCalledWith('block_click', 'c1_btn_0');
   });
 
   it('interpolates tokens in headings and content', () => {

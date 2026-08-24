@@ -39,7 +39,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { FinancialAccount, Invoice, AgingBucket, AgingSummary } from '@/lib/types';
-import { AgingService } from '@/lib/services/aging-service';
+import { calculateInvoiceAging } from '@/lib/services/aging-utils';
 import Link from 'next/link';
 
 export function ReceivablesClient() {
@@ -98,7 +98,7 @@ export function ReceivablesClient() {
       const accId = inv.accountId || inv.entityId || '';
       if (!accId) return;
 
-      const aging = AgingService.calculateInvoiceAging(inv, now);
+      const aging = calculateInvoiceAging(inv, now);
       if (aging.balanceDue <= 0) return;
 
       let entry = map.get(accId);

@@ -3,7 +3,6 @@
  * Universal reporting engine powering Revenue, AR Aging, Collections, and Tax/VAT Audits.
  */
 
-import { adminDb } from '../firebase-admin';
 import { 
   Invoice, 
   FinancialAccount, 
@@ -144,6 +143,7 @@ export class ModularReportingService {
     customEnd?: string
   ): Promise<ReportPayload<RevenueReportRow>> {
     const { startDate, endDate, label } = this.resolveDateRange(preset, customStart, customEnd);
+    const { adminDb } = await import('../firebase-admin');
 
     const invSnap = await adminDb
       .collection('invoices')
@@ -235,6 +235,7 @@ export class ModularReportingService {
     customEnd?: string
   ): Promise<ReportPayload<AgingReportRow>> {
     const { label } = this.resolveDateRange(preset, customStart, customEnd);
+    const { adminDb } = await import('../firebase-admin');
 
     const [accSnap, invSnap] = await Promise.all([
       adminDb.collection('financial_accounts').where('workspaceId', '==', workspaceId).get(),
@@ -341,6 +342,7 @@ export class ModularReportingService {
     customEnd?: string
   ): Promise<ReportPayload<TaxAuditReportRow>> {
     const { startDate, endDate, label } = this.resolveDateRange(preset, customStart, customEnd);
+    const { adminDb } = await import('../firebase-admin');
 
     const invSnap = await adminDb
       .collection('invoices')

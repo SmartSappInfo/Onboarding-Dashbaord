@@ -57,7 +57,6 @@ export const VariantBar: React.FC<VariantBarProps> = ({
               type="button"
               role="tab"
               aria-selected={isSelected}
-              aria-pressed={isSelected}
               onClick={() => onSelectVariant(variant.id)}
               className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 isSelected
