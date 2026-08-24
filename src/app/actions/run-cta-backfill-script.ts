@@ -1,19 +1,16 @@
-import { firestore } from '../../firebase/config';
-import { backfillDocumentCtaTexts } from '../../lib/media/document-cta-backfill-service';
+import { runDocumentCtaBackfillAction } from './backfill-document-cta-action';
 
 async function run() {
-  console.log('[BACKFILL PROTOCOL] Initializing Document CTA Migration via Client SDK...');
+  console.log('[BACKFILL PROTOCOL] Initializing Document CTA Migration via Admin SDK...');
   
-  const result = await backfillDocumentCtaTexts(firestore, undefined, (report) => {
-    console.log(`[PROGRESS] ${report.message} (Processed: ${report.processed}, Updated: ${report.updated}, Errors: ${report.errors})`);
-  });
+  const result = await runDocumentCtaBackfillAction();
 
-  console.log('--------------------------------------------------');
-  console.log(`STATUS: COMPLETE`);
-  console.log(`PROCESSED: ${result.processed} document shares inspected`);
-  console.log(`UPDATED: ${result.updated} document shares updated`);
-  console.log(`ERRORS: ${result.errors}`);
-  console.log('--------------------------------------------------');
+  console.log('================================================--');
+  console.log(`STATUS: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+  console.log(`MESSAGE: ${result.message}`);
+  console.log(`PROCESSED / INSPECTED DOCUMENT SHARES: ${result.processed}`);
+  console.log(`UPDATED DOCUMENT SHARES: ${result.updated}`);
+  console.log('================================================--');
 }
 
 run().catch((err) => {
