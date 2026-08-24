@@ -1066,19 +1066,19 @@ service cloud.firestore {
 
     match /ai_change_sets/{changeSetId} {
       allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
-      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
     }
 
     match /audiences/{audienceId} {
       allow get: if true;
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
-      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
     }
 
     match /experience_rules/{ruleId} {
       allow get: if true;
       allow list: if isAuthorized() || resource.data.isEnabled == true;
-      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
     }
 
     match /page_templates/{tId} {
