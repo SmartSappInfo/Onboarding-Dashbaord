@@ -171,11 +171,11 @@ function compareBlocks(origBlocks: PageBlock[], targetBlocks: PageBlock[]): Bloc
 
 /**
  * Deterministic deep equality check preventing false positives from object key reordering.
- * Includes a maximum recursion depth guard (maxDepth = 10) to prevent stack overflow.
+ * Includes a maximum recursion depth guard (maxDepth = 20) to prevent stack overflow.
  */
 function isDeepEqual(a: unknown, b: unknown, depth = 0): boolean {
   if (a === b) return true;
-  if (depth > 10) return false;
+  if (depth > 20) return false;
   if (typeof a !== typeof b) return false;
   if (a === null || b === null || typeof a !== 'object') return false;
 

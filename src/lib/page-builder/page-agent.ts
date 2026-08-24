@@ -60,9 +60,10 @@ export function processAgentMutation(
   workspaceIds: string[],
   userId: string,
 ): { success: boolean; changeSet?: AIChangeSet; errors?: string[] } {
-  let targetStructure: CampaignPageStructure = JSON.parse(
-    JSON.stringify(context.currentStructure),
-  ) as CampaignPageStructure;
+  let targetStructure: CampaignPageStructure =
+    typeof structuredClone === 'function'
+      ? structuredClone(context.currentStructure)
+      : (JSON.parse(JSON.stringify(context.currentStructure)) as CampaignPageStructure);
 
   for (const call of toolCalls) {
     targetStructure = applyToolMutation(targetStructure, call);
