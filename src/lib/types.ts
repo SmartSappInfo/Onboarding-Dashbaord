@@ -4884,6 +4884,45 @@ export interface AIInsight {
   updatedAt: string;
 }
 
+// ─── PHASE 7 ARCHITECTURAL EXTENSIONS: ADAPTIVE TRAFFIC & MULTI-ARMED BANDIT ───
+/**
+ * @file src/lib/types.ts
+ * @description Phase 7 foundational contracts for Multi-Armed Bandit traffic routing policies,
+ * Thompson Sampling Beta distribution parameters, arm allocation weights, and reward updates.
+ */
+
+export interface BanditArm {
+  id: string;
+  armType: 'variant' | 'experience_rule';
+  targetId: string; // Refers to ExperimentVariant ID or ExperienceRule ID
+  name: string;
+  alpha: number; // Successes count + 1 (conversions)
+  beta: number; // Failures count + 1 (non-conversions)
+  currentWeight: number; // Computed allocation weight percentage (0–100%)
+  conversions: number;
+  impressions: number;
+}
+
+export interface SamplingResult {
+  selectedArmId: string;
+  sampledScore: number;
+  armsTested: number;
+}
+
+export interface BanditPolicy {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  algorithm: 'thompson_sampling' | 'epsilon_greedy';
+  epsilon: number; // Exploration parameter (default 0.05 for 5% min exploration)
+  arms: BanditArm[];
+  status: 'active' | 'paused';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';

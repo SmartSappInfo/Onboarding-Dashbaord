@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "bandit_policies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pageId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "page_insights",
       "queryScope": "COLLECTION",
       "fields": [
