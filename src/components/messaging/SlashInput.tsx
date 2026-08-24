@@ -218,8 +218,11 @@ export function convertToVisualHtml(text: string, enableFormatting = true): stri
     const fallbackText = fallback ? ` (${fallback})` : '';
     const trackingAttr = isTracked ? ' data-track="true"' : '';
     const joinerAttr = isTracked ? ` data-track-joiner="${joiner}"` : '';
-    const trackingBadge = isTracked ? `<span data-tracking-badge="true" class="text-[9px] opacity-80" title="Visitor Identity Tracking Active">🔗</span>` : '';
-    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}"${trackingAttr}${joinerAttr} class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all"><span>${varName}${fallbackText}</span>${trackingBadge}<button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback & tracking">⚙️</button></span>`;
+    const trackingBadge = isTracked ? `<span data-tracking-badge="true" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Visitor Identity Tracking Active (Encrypts Recipient Details)">🔗</span>` : '';
+    const themeClasses = isTracked
+      ? 'bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-700/60 hover:bg-emerald-200/30 dark:hover:bg-emerald-900/40'
+      : 'bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/50 hover:bg-blue-200/20 dark:hover:bg-blue-900/30';
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}"${trackingAttr}${joinerAttr} class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded ${themeClasses} font-mono text-[90%] font-bold border align-baseline select-none transition-all"><span>${varName}${fallbackText}</span>${trackingBadge}<button type="button" data-variable-settings="${varName}" class="hover:bg-black/10 dark:hover:bg-white/10 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback & visitor tracking">⚙️</button></span>`;
   };
 
   const replaceTokens = (str: string) => {
@@ -510,13 +513,18 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
         labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
       }
 
-      // Update visual tracking badge inside pill
+      // Update visual theme & tracking badge inside pill
+      const themeClasses = trackVisitor
+        ? 'bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-700/60 hover:bg-emerald-200/30 dark:hover:bg-emerald-900/40'
+        : 'bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/50 hover:bg-blue-200/20 dark:hover:bg-blue-900/30';
+      activePillElement.className = `inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded ${themeClasses} font-mono text-[90%] font-bold border align-baseline select-none transition-all`;
+
       const existingBadge = activePillElement.querySelector('[data-tracking-badge]');
       if (trackVisitor && !existingBadge) {
         const badge = document.createElement('span');
         badge.setAttribute('data-tracking-badge', 'true');
-        badge.className = 'text-[9px] opacity-80';
-        badge.title = 'Visitor Identity Tracking Active';
+        badge.className = 'text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5';
+        badge.title = 'Visitor Identity Tracking Active (Encrypts Recipient Details)';
         badge.textContent = '🔗';
         const settingsBtn = activePillElement.querySelector('[data-variable-settings]');
         if (settingsBtn) {
@@ -875,13 +883,18 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
         labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
       }
 
-      // Update visual tracking badge inside pill
+      // Update visual theme & tracking badge inside pill
+      const themeClasses = trackVisitor
+        ? 'bg-emerald-100/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-700/60 hover:bg-emerald-200/30 dark:hover:bg-emerald-900/40'
+        : 'bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/50 hover:bg-blue-200/20 dark:hover:bg-blue-900/30';
+      activePillElement.className = `inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded ${themeClasses} font-mono text-[90%] font-bold border align-baseline select-none transition-all`;
+
       const existingBadge = activePillElement.querySelector('[data-tracking-badge]');
       if (trackVisitor && !existingBadge) {
         const badge = document.createElement('span');
         badge.setAttribute('data-tracking-badge', 'true');
-        badge.className = 'text-[9px] opacity-80';
-        badge.title = 'Visitor Identity Tracking Active';
+        badge.className = 'text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-0.5';
+        badge.title = 'Visitor Identity Tracking Active (Encrypts Recipient Details)';
         badge.textContent = '🔗';
         const settingsBtn = activePillElement.querySelector('[data-variable-settings]');
         if (settingsBtn) {

@@ -348,7 +348,7 @@ describe('SlashInput and SlashTextarea Variant Isolation (No Extra Borders or Ba
     expect(classList).toContain('border-0');
   });
 
-  it('converts tracked URL variables to unified visual pills with tracking badge', () => {
+  it('converts tracked URL variables to unified visual pills with tracking badge and emerald accent', () => {
     const text = 'Check report: {{visibility_report | https://smartsapp.com}}?ref={{encrypted_recipient_token}}';
     const html = convertToVisualHtml(text, false);
 
@@ -356,6 +356,7 @@ describe('SlashInput and SlashTextarea Variant Isolation (No Extra Borders or Ba
     expect(html).toContain('data-fallback="https://smartsapp.com"');
     expect(html).toContain('data-track="true"');
     expect(html).toContain('data-tracking-badge="true"');
+    expect(html).toContain('text-emerald-700');
     expect(html).toContain('visibility_report (https://smartsapp.com)');
   });
 
