@@ -10,11 +10,13 @@ import {
   Scale, 
   RefreshCw, 
   Loader2, 
-  FileCheck 
+  FileCheck,
+  Download 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ReportExportService } from '@/lib/services/report-export-service';
 import { 
   Table, 
   TableBody, 
@@ -142,6 +144,25 @@ export function ReconciliationClient() {
     }
   };
 
+  const handleExportCsv = () => {
+    if (items.length === 0) return;
+    ReportExportService.exportToCsv({
+      filename: `payment_reconciliation_${activeWorkspaceId}_${new Date().toISOString().split('T')[0]}`,
+      title: 'Payment Gateway Reconciliation Report',
+      headers: ['Reference #', 'Channel', 'Date', 'Ledger Amount (GHS)', 'Gateway Amount (GHS)', 'Discrepancy (GHS)', 'Status', 'Customer'],
+      rows: items.map((i) => [
+        i.reference,
+        i.channel,
+        i.transactionDate,
+        i.ledgerAmount ?? 0,
+        i.gatewayAmount ?? 0,
+        i.discrepancy,
+        i.status,
+        i.customerName || '',
+      ]),
+    });
+  };
+
   const totalTransactions = matchedCount + unmatchedCount;
   const matchRate = totalTransactions > 0 ? Math.round((matchedCount / totalTransactions) * 100) : 100;
 
@@ -162,16 +183,29 @@ export function ReconciliationClient() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadReport}
-          disabled={isLoading}
-          className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
-        >
-          <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh Report
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={items.length === 0}
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            Export CSV
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadReport}
+            disabled={isLoading}
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh Report
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}

@@ -24,7 +24,7 @@ export class FinanceMigrationService {
       adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).get(),
       adminDb.collection('financial_accounts').where('workspaceId', '==', workspaceId).get(),
       adminDb.collection('invoices').where('workspaceIds', 'array-contains', workspaceId).get(),
-      adminDb.collection('financial_transactions').where('workspaceIds', 'array-contains', workspaceId).get(),
+      adminDb.collection('financial_transactions').where('workspaceId', '==', workspaceId).get(),
     ]);
 
     const totalLegacyEntities = entSnap.size;

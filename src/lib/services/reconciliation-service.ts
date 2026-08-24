@@ -27,7 +27,7 @@ export class ReconciliationService {
   ): Promise<ReconciliationReportPayload> {
     const paySnap = await adminDb
       .collection('payments')
-      .where('workspaceIds', 'array-contains', workspaceId)
+      .where('workspaceId', '==', workspaceId)
       .get();
 
     const items: ReconciliationItem[] = [];

@@ -12,6 +12,7 @@
 import { adminDb } from '../firebase-admin';
 import { Invoice, FinancialTransaction, PaymentAllocation, Payment } from '../types';
 import { InvoiceSnapshotService } from './invoice-snapshot-service';
+import { MaterializedSummaryService } from './materialized-summary-service';
 import { logActivity } from '../activity-logger';
 
 export interface VoidInvoiceParams {
@@ -159,6 +160,13 @@ export class InvoiceLifecycleService {
       issuedAt: timestamp,
       sentAt: timestamp,
       updatedAt: timestamp,
+    });
+
+    // 5. Update Materialized Workspace Summary Atomically
+    MaterializedSummaryService.incrementWorkspaceSummaryInTx(tx, workspaceId, {
+      billedDelta: totalDebit,
+      arDelta: balanceDue,
+      invoicesCountDelta: 1,
     });
 
     return { invoiceNumber, totalDebit };

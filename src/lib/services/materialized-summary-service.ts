@@ -59,11 +59,14 @@ export class MaterializedSummaryService {
    * Recalibrates and self-heals the entire materialized workspace summary from authoritative live ledger documents.
    */
   static async recalibrateWorkspaceSummary(workspaceId: string): Promise<WorkspaceFinancialSummary> {
-    const [invSnap, paySnap, accSnap] = await Promise.all([
+    const [invSnap, paySnap, accSnap, wsSnap] = await Promise.all([
       adminDb.collection('invoices').where('workspaceIds', 'array-contains', workspaceId).get(),
-      adminDb.collection('payments').where('workspaceIds', 'array-contains', workspaceId).get(),
+      adminDb.collection('payments').where('workspaceId', '==', workspaceId).get(),
       adminDb.collection('financial_accounts').where('workspaceId', '==', workspaceId).get(),
+      adminDb.collection('workspaces').doc(workspaceId).get(),
     ]);
+
+    const orgId = wsSnap.exists ? ((wsSnap.data() as { organizationId?: string })?.organizationId || 'default') : 'default';
 
     const now = new Date();
     let totalBilled = 0;
@@ -112,7 +115,7 @@ export class MaterializedSummaryService {
 
     const summary: WorkspaceFinancialSummary = {
       workspaceId,
-      organizationId: 'default',
+      organizationId: orgId,
       totalBilledRevenue: Math.round(totalBilled * 100) / 100,
       totalCollectedRevenue: Math.round(totalCollected * 100) / 100,
       totalOutstandingAR: Math.round(totalAR * 100) / 100,

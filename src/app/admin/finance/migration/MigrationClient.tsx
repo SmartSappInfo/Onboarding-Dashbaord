@@ -73,6 +73,11 @@ export function MigrationClient() {
         toast({
           title: 'Migration Complete',
           description: `Successfully provisioned ${res.progress.migratedEntities} accounts and backfilled ${res.progress.migratedInvoices} ledger transactions.`,
+          actionConfig: {
+            label: 'View Reports',
+            path: '/admin/finance/reports',
+          },
+          duration: 8000,
         });
         loadParity();
       } else {

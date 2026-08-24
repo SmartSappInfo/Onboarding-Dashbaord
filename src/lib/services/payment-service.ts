@@ -13,6 +13,7 @@ import { adminDb } from '../firebase-admin';
 import { Payment, PaymentAllocation, PaymentMethod, Invoice, FinancialTransaction } from '../types';
 import { FinancialEventService } from './financial-event-service';
 import { PromiseToPayService } from './promise-to-pay-service';
+import { MaterializedSummaryService } from './materialized-summary-service';
 
 export interface InvoiceAllocationTarget {
   invoiceId: string;
@@ -148,6 +149,8 @@ export class PaymentService {
 
         // 5. Create Payment Allocations and update Invoices
         const createdAllocations: PaymentAllocation[] = [];
+        let fullyPaidCount = 0;
+
         for (const alloc of sanitizedAllocations) {
           const invoiceInfo = invoiceDocsMap.get(alloc.invoiceId);
           if (!invoiceInfo) continue;
@@ -160,6 +163,10 @@ export class PaymentService {
           const newPaid = Math.round((currentPaid + alloc.amount) * 100) / 100;
           const calculatedBalanceDue = Math.max(0, Math.round((totalPayable - newPaid - currentCredited) * 100) / 100);
           const newPaymentStatus = calculatedBalanceDue === 0 ? 'paid' : 'partially_paid';
+
+          if (calculatedBalanceDue === 0 && Number(invData.balanceDue ?? (totalPayable - currentPaid)) > 0) {
+            fullyPaidCount++;
+          }
 
           // Create Allocation Doc
           const allocDocRef = adminDb.collection('payment_allocations').doc();
@@ -226,6 +233,13 @@ export class PaymentService {
           totalPaid: newTotalPaid,
           availableCredit: newAvailableCredit,
           updatedAt: timestamp,
+        });
+
+        // 8. Update Materialized Workspace Summary Atomically
+        MaterializedSummaryService.incrementWorkspaceSummaryInTx(tx, input.workspaceId, {
+          collectedDelta: totalAmount,
+          arDelta: -totalAllocated,
+          paidInvoicesCountDelta: fullyPaidCount,
         });
 
         return {
