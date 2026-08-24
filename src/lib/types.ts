@@ -5014,6 +5014,37 @@ export interface CampaignOrchestration {
   updatedAt: string;
 }
 
+// ─── PHASE 10 ARCHITECTURAL EXTENSIONS: PLATFORM PRODUCTION OBSERVABILITY ─────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 10 foundational contracts for platform health monitoring, edge cache management,
+ * latency diagnostics, and global observability summaries.
+ */
+
+export interface PlatformHealthMetric {
+  name: string;
+  status: 'healthy' | 'degraded' | 'critical';
+  latencyMs: number;
+  errorRate: number;
+  lastChecked: string;
+}
+
+export interface EdgeCacheStatus {
+  pageId: string;
+  cached: boolean;
+  hitRate: number;
+  ttlSeconds: number;
+  lastPurgedAt: string;
+}
+
+export interface SystemObservabilitySummary {
+  status: 'healthy' | 'degraded' | 'critical';
+  uptimePercent: number;
+  activePages: number;
+  edgeHitRate: number;
+  metrics: PlatformHealthMetric[];
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
