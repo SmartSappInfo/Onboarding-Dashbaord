@@ -4,8 +4,10 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
-import type { Invoice, InvoiceItem, BillingProfile } from '@/lib/types';
+import type { Invoice, InvoiceItem, BillingProfile, PaymentAllocation } from '@/lib/types';
 import { updateInvoiceAction } from '@/lib/billing-actions';
+import { getInvoiceAllocationsAction } from '@/lib/finance-actions';
+import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { useToast } from '@/hooks/use-toast';
 import { 
     Receipt, 
@@ -18,9 +20,12 @@ import {
     Calculator, 
     Zap, 
     X,
-    ShieldCheck
+    ShieldCheck,
+    CreditCard,
+    Split
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +38,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
  * Upgraded to:
  * - Bind tax & levy calculations directly to the invoice's selected `billingProfileId`
  *   (from `billing_profiles` collection), deprecating legacy global doc fallback.
+ * - Integrated SmartSapp Finance 2.0 Sub-Ledger & Record Payment settlement modal.
  * - Enforce strict typing with zero `any` usage.
  * - Emil Kowalski animation and mobile accessibility compliance.
  */
@@ -45,6 +51,8 @@ export default function InvoiceStudioClient() {
     const invoiceId = (params?.id as string) || '';
 
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
+    const [allocations, setAllocations] = React.useState<PaymentAllocation[]>([]);
     const [localItems, setLocalItems] = React.useState<InvoiceItem[]>([]);
     const [localDiscount, setLocalDiscount] = React.useState(0);
     const [localArrears, setLocalArrears] = React.useState(0);
@@ -71,6 +79,16 @@ export default function InvoiceStudioClient() {
             setLocalCredit(invoice.creditDeducted || 0);
         }
     }, [invoice]);
+
+    React.useEffect(() => {
+        if (invoiceId) {
+            getInvoiceAllocationsAction(invoiceId).then((res) => {
+                if (res.success && res.data) {
+                    setAllocations(res.data);
+                }
+            });
+        }
+    }, [invoiceId, invoice?.amountPaid]);
 
     const totals = React.useMemo(() => {
         const subtotal = localItems.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)), 0);
@@ -193,6 +211,9 @@ export default function InvoiceStudioClient() {
     }
 
     const isFinalized = invoice.status !== 'draft';
+    const amountPaid = Number(invoice.amountPaid || 0);
+    const balanceDue = Number(invoice.balanceDue ?? Math.max(0, totals.totalPayable - amountPaid));
+    const paymentStatus = invoice.paymentStatus || (invoice.status === 'paid' ? 'paid' : amountPaid > 0 ? 'partially_paid' : 'unpaid');
 
     return (
         <PageContainerFluid>
@@ -221,13 +242,12 @@ export default function InvoiceStudioClient() {
                         </div>
 
                         <div className="flex items-center gap-2.5">
-                            {invoice.status === 'sent' && (
+                            {isFinalized && balanceDue > 0 && (
                                 <Button 
-                                    onClick={() => handleSave('paid')} 
-                                    disabled={isSaving} 
+                                    onClick={() => setIsRecordPaymentOpen(true)} 
                                     className="rounded-xl font-bold text-xs h-10 px-5 shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
                                 >
-                                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark as Paid
+                                    <CreditCard className="mr-1.5 h-3.5 w-3.5" /> Record Payment
                                 </Button>
                             )}
                             <Button 
@@ -277,46 +297,47 @@ export default function InvoiceStudioClient() {
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
-                                    <TableHeader className="bg-background">
-                                        <TableRow>
-                                            <TableHead className="pl-6 text-[10px] font-bold uppercase tracking-wider py-3.5">Item Detail</TableHead>
-                                            <TableHead className="w-20 text-[10px] font-bold uppercase tracking-wider text-center">Qty</TableHead>
-                                            <TableHead className="w-28 text-[10px] font-bold uppercase tracking-wider text-right">Rate</TableHead>
-                                            <TableHead className="w-28 text-[10px] font-bold uppercase tracking-wider text-right pr-6">Subtotal</TableHead>
+                                    <TableHeader className="bg-muted/10">
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead className="text-xs font-bold text-muted-foreground pl-6">Service / Item</TableHead>
+                                            <TableHead className="text-xs font-bold text-muted-foreground w-24 text-center">Qty / Head</TableHead>
+                                            <TableHead className="text-xs font-bold text-muted-foreground w-28 text-right">Rate ({invoice.currency})</TableHead>
+                                            <TableHead className="text-xs font-bold text-muted-foreground w-36 text-right pr-6">Amount ({invoice.currency})</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {localItems.map((item, idx) => (
-                                            <TableRow key={idx} className="group transition-colors">
+                                            <TableRow key={idx} className="group hover:bg-muted/5 transition-colors">
                                                 <TableCell className="pl-6 py-4">
                                                     <div className="space-y-1">
                                                         <Input 
                                                             value={item.name} 
-                                                            onChange={(e) => updateItem(idx, { name: e.target.value })} 
+                                                            onChange={(e) => updateItem(idx, { name: e.target.value })}
                                                             disabled={isFinalized}
-                                                            className="font-bold text-xs tracking-tight border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" 
+                                                            placeholder="Service Name"
+                                                            className="h-8 font-bold text-xs rounded-lg bg-transparent border-none focus-visible:bg-muted/40 transition-colors p-0" 
                                                         />
                                                         <Input 
                                                             value={item.description || ''} 
-                                                            onChange={(e) => updateItem(idx, { description: e.target.value })} 
+                                                            onChange={(e) => updateItem(idx, { description: e.target.value })}
                                                             disabled={isFinalized}
-                                                            placeholder="Add specific details..."
-                                                            className="text-[11px] font-medium text-muted-foreground border-none shadow-none p-0 h-auto bg-transparent focus-visible:ring-0" 
+                                                            placeholder="Description or billing metrics..."
+                                                            className="h-6 text-[11px] text-muted-foreground rounded-md bg-transparent border-none focus-visible:bg-muted/40 transition-colors p-0" 
                                                         />
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input 
                                                         type="number" 
+                                                        min="1"
                                                         value={item.quantity} 
                                                         onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })}
                                                         disabled={isFinalized}
-                                                        className="h-8 rounded-lg bg-muted/20 border-none font-bold text-center text-xs shadow-inner" 
+                                                        className="h-8 w-16 mx-auto rounded-lg bg-muted/20 border-none font-bold text-center text-xs shadow-inner" 
                                                     />
                                                 </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-1 justify-end">
-                                                        <span className="text-[10px] font-semibold opacity-40">{invoice.currency}</span>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end">
                                                         <Input 
                                                             type="number" 
                                                             step="0.01" 
@@ -353,6 +374,81 @@ export default function InvoiceStudioClient() {
 
                         {/* Summary & Adjustments Panel */}
                         <div className="space-y-5 text-left">
+                            {/* Settlement & Balance Card */}
+                            <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+                                <CardHeader className="bg-muted/20 border-b p-5 flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-xs font-bold text-foreground flex items-center gap-2">
+                                            <CreditCard className="h-4 w-4 text-primary" /> Settlement State
+                                        </CardTitle>
+                                        <CardDescription className="text-[11px] text-muted-foreground">
+                                            Live collection & sub-ledger sync
+                                        </CardDescription>
+                                    </div>
+                                    <Badge 
+                                        variant="outline" 
+                                        className={`rounded-lg text-[10px] font-bold uppercase px-2 py-0.5 ${
+                                            paymentStatus === 'paid' 
+                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                                : paymentStatus === 'partially_paid'
+                                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                        }`}
+                                    >
+                                        {paymentStatus === 'paid' ? 'Paid in Full' : paymentStatus === 'partially_paid' ? 'Partially Paid' : 'Unpaid'}
+                                    </Badge>
+                                </CardHeader>
+                                <CardContent className="p-5 space-y-3.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-muted-foreground font-medium">Total Billed</span>
+                                        <span className="font-bold tabular-nums text-foreground">
+                                            {invoice.currency} {totals.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-muted-foreground font-medium">Amount Settled</span>
+                                        <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                                            {invoice.currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                    <div className="pt-2 border-t flex justify-between items-center">
+                                        <span className="text-xs font-bold text-foreground">Balance Due</span>
+                                        <span className={`text-xl font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'}`}>
+                                            {invoice.currency} {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+
+                                    {/* Allocations Breakdown */}
+                                    {allocations.length > 0 && (
+                                        <div className="pt-2 border-t space-y-1.5">
+                                            <div className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                                                <Split className="h-3 w-3 text-primary" /> Remittance History
+                                            </div>
+                                            <div className="space-y-1 max-h-28 overflow-y-auto divide-y divide-border/40 text-[11px]">
+                                                {allocations.map((alloc) => (
+                                                    <div key={alloc.id} className="py-1 flex justify-between items-center">
+                                                        <span className="text-muted-foreground">{new Date(alloc.allocatedAt).toLocaleDateString()}</span>
+                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                            +{alloc.currency} {alloc.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isFinalized && balanceDue > 0 && (
+                                        <Button 
+                                            onClick={() => setIsRecordPaymentOpen(true)} 
+                                            className="w-full rounded-xl font-bold text-xs h-9 shadow-xs text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] mt-1"
+                                        >
+                                            <CreditCard className="mr-1.5 h-3.5 w-3.5" /> Record Payment
+                                        </Button>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Logic Reconciliation Card */}
                             <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
                                 <CardHeader className="bg-primary/5 border-b p-5">
                                     <CardTitle className="text-xs font-bold text-primary flex items-center gap-2">
@@ -426,15 +522,6 @@ export default function InvoiceStudioClient() {
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="pt-4 border-t-2 border-primary/20">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-primary">Total Payable</span>
-                                            <span className="text-2xl font-black tracking-tight text-foreground tabular-nums">
-                                                {invoice.currency} {totals.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-                                    </div>
                                 </CardContent>
                             </Card>
 
@@ -443,7 +530,7 @@ export default function InvoiceStudioClient() {
                                 <div className="space-y-0.5 text-left">
                                     <p className="text-xs font-bold text-amber-900 dark:text-amber-300">Finalization Protocol</p>
                                     <p className="text-[10px] text-amber-800 dark:text-amber-400 leading-relaxed font-medium">
-                                        Once finalized, the invoice amounts are locked. The public invoice view will be immediately available.
+                                        Once finalized, the invoice amounts are locked and posted to the customer ledger. The public invoice view will be immediately available.
                                     </p>
                                 </div>
                             </div>
@@ -451,6 +538,26 @@ export default function InvoiceStudioClient() {
                     </div>
                 </div>
             </div>
+
+            {/* Record Payment Modal */}
+            {invoice && (
+                <RecordPaymentModal
+                    isOpen={isRecordPaymentOpen}
+                    onClose={() => setIsRecordPaymentOpen(false)}
+                    entityId={invoice.entityId || ''}
+                    entityName={invoice.entityName || 'Organization'}
+                    workspaceId={invoice.workspaceIds?.[0] || 'default'}
+                    organizationId={invoice.organizationId || 'default'}
+                    accountId={invoice.accountId || ''}
+                    currency={invoice.currency || 'GHS'}
+                    preselectedInvoiceId={invoice.id}
+                    preselectedInvoiceNumber={invoice.invoiceNumber}
+                    preselectedBalanceDue={balanceDue}
+                    onPaymentSuccess={() => {
+                        toast({ title: 'Payment Synchronized', description: 'Ledger and invoice balances updated.' });
+                    }}
+                />
+            )}
         </PageContainerFluid>
     );
 }

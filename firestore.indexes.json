@@ -1,6 +1,48 @@
 {
   "indexes": [
     {
+      "collectionGroup": "financial_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountId", "order": "ASCENDING" },
+        { "fieldPath": "effectiveAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financial_transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "transactionType", "order": "ASCENDING" },
+        { "fieldPath": "effectiveAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "accountId", "order": "ASCENDING" },
+        { "fieldPath": "receivedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "receivedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payment_allocations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "invoiceId", "order": "ASCENDING" },
+        { "fieldPath": "allocatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "workspace_entities",
       "queryScope": "COLLECTION",
       "fields": [

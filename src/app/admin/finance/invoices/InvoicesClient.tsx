@@ -20,8 +20,10 @@ import {
     TrendingUp, 
     Zap, 
     ShieldCheck,
-    ArrowUpRight
+    ArrowUpRight,
+    CreditCard
 } from 'lucide-react';
+import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,6 +77,7 @@ export default function InvoicesClient() {
     const [statusFilter, setStatusFilter] = React.useState<string>('all');
     const [isAdding, setIsAdding] = React.useState(false);
     const [isGenerating, setIsGenerating] = React.useState(false);
+    const [payingInvoice, setPayingInvoice] = React.useState<Invoice | null>(null);
 
     const { can } = usePermissions();
     const canCreate = can('finance', 'invoices', 'create');
@@ -396,7 +399,8 @@ export default function InvoicesClient() {
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4 text-left">Invoice Reference</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-left">Target {singular}</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-left">Billing Cycle</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Total Payable</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Total Billed</TableHead>
+                                    <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right">Balance Due</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Status</TableHead>
                                     <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right pr-6">Actions</TableHead>
                                 </TableRow>
@@ -405,65 +409,101 @@ export default function InvoicesClient() {
                                 {isLoading ? (
                                     Array.from({ length: 5 }).map((_, i) => (
                                         <TableRow key={i}>
-                                            <TableCell colSpan={6} className="py-4 px-6">
+                                            <TableCell colSpan={7} className="py-4 px-6">
                                                 <Skeleton className="h-10 w-full rounded-xl" />
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : filteredInvoices.length > 0 ? (
-                                    filteredInvoices.map((invoice) => (
-                                        <TableRow key={invoice.id} className="group hover:bg-muted/25 transition-colors text-left">
-                                            <TableCell className="pl-6 py-3.5 text-left">
-                                                <span className="font-bold text-xs text-foreground tracking-tight block text-left">
-                                                    {invoice.invoiceNumber}
-                                                </span>
-                                                <span className="text-[10px] font-semibold text-muted-foreground tabular-nums text-left">
-                                                    {format(new Date(invoice.createdAt), 'MMM d, yyyy')}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-left">
-                                                <span className="text-xs font-bold text-foreground text-left block">
-                                                    {invoice.entityName}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-[11px] font-semibold text-muted-foreground text-left">
-                                                {invoice.periodName}
-                                            </TableCell>
-                                            <TableCell className="text-right font-black text-xs tabular-nums text-foreground">
-                                                {invoice.currency} {invoice.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {getStatusBadge(invoice.status)}
-                                            </TableCell>
-                                            <TableCell className="text-right pr-6">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className="h-8 px-2.5 rounded-lg text-xs font-bold text-primary hover:bg-primary/10 active:scale-[0.97]" 
-                                                        asChild
-                                                    >
-                                                        <Link href={`/admin/finance/invoices/${invoice.id}`}>
-                                                            <Eye className="h-3.5 w-3.5 mr-1" /> View
-                                                        </Link>
-                                                    </Button>
-                                                    {canDelete && (
+                                    filteredInvoices.map((invoice) => {
+                                        const amountPaid = Number(invoice.amountPaid || 0);
+                                        const balanceDue = Number(invoice.balanceDue ?? Math.max(0, invoice.totalPayable - amountPaid));
+
+                                        return (
+                                            <TableRow key={invoice.id} className="group hover:bg-muted/25 transition-colors text-left">
+                                                <TableCell className="pl-6 py-3.5 text-left">
+                                                    <span className="font-bold text-xs text-foreground tracking-tight block text-left">
+                                                        {invoice.invoiceNumber}
+                                                    </span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground tabular-nums text-left">
+                                                        {format(new Date(invoice.createdAt), 'MMM d, yyyy')}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-left">
+                                                    <span className="text-xs font-bold text-foreground text-left block">
+                                                        {invoice.entityName}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-[11px] font-semibold text-muted-foreground text-left">
+                                                    {invoice.periodName}
+                                                </TableCell>
+                                                <TableCell className="text-right font-black text-xs tabular-nums text-foreground">
+                                                    {invoice.currency} {invoice.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="text-right">
+                                                        <div className="font-bold text-xs tabular-nums">
+                                                            {balanceDue > 0 ? (
+                                                                <span className="text-rose-600 dark:text-rose-400">
+                                                                    {invoice.currency} {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                    Settled
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {amountPaid > 0 && balanceDue > 0 && (
+                                                            <div className="text-[10px] text-muted-foreground tabular-nums">
+                                                                Paid: {invoice.currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {getStatusBadge(invoice.status)}
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {invoice.status !== 'draft' && balanceDue > 0 && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="h-8 px-2 rounded-lg text-xs font-bold text-emerald-600 hover:bg-emerald-500/10 active:scale-[0.97]" 
+                                                                onClick={() => setPayingInvoice(invoice)}
+                                                                title="Record Payment"
+                                                            >
+                                                                <CreditCard className="h-3.5 w-3.5 mr-1" /> Pay
+                                                            </Button>
+                                                        )}
                                                         <Button 
                                                             variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg active:scale-[0.97]" 
-                                                            onClick={() => handleDelete(invoice)}
+                                                            size="sm" 
+                                                            className="h-8 px-2.5 rounded-lg text-xs font-bold text-primary hover:bg-primary/10 active:scale-[0.97]" 
+                                                            asChild
                                                         >
-                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            <Link href={`/admin/finance/invoices/${invoice.id}`}>
+                                                                <Eye className="h-3.5 w-3.5 mr-1" /> View
+                                                            </Link>
                                                         </Button>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                        {canDelete && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg active:scale-[0.97]" 
+                                                                onClick={() => handleDelete(invoice)}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 ) : (
                                     <TableRow className="text-left">
-                                        <TableCell colSpan={6} className="h-44 text-center text-muted-foreground">
+                                        <TableCell colSpan={7} className="h-44 text-center text-muted-foreground">
                                             <Building className="h-7 w-7 mx-auto mb-2 opacity-30" />
                                             <p className="text-xs font-semibold">No invoice records found.</p>
                                         </TableCell>
@@ -588,6 +628,26 @@ export default function InvoicesClient() {
                             </form>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Record Payment Settlement Modal */}
+                    {payingInvoice && (
+                        <RecordPaymentModal
+                            isOpen={!!payingInvoice}
+                            onClose={() => setPayingInvoice(null)}
+                            entityId={payingInvoice.entityId || ''}
+                            entityName={payingInvoice.entityName || 'Organization'}
+                            workspaceId={payingInvoice.workspaceIds?.[0] || activeWorkspaceId}
+                            organizationId={payingInvoice.organizationId || 'default'}
+                            accountId={payingInvoice.accountId || ''}
+                            currency={payingInvoice.currency || 'GHS'}
+                            preselectedInvoiceId={payingInvoice.id}
+                            preselectedInvoiceNumber={payingInvoice.invoiceNumber}
+                            preselectedBalanceDue={Number(payingInvoice.balanceDue ?? Math.max(0, payingInvoice.totalPayable - (payingInvoice.amountPaid || 0)))}
+                            onPaymentSuccess={() => {
+                                toast({ title: 'Payment Synchronized', description: 'Ledger and invoice balances updated.' });
+                            }}
+                        />
+                    )}
                 </div>
             </div>
         </PageContainerFluid>

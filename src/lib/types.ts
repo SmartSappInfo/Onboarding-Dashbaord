@@ -1386,10 +1386,23 @@ export interface InvoiceItem {
   amount: number;
 }
 
-export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
+export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'paid' | 'partial' | 'overdue' | 'void' | 'cancelled';
+export type InvoicePaymentStatus = 'unpaid' | 'partially_paid' | 'paid';
+export type InvoiceCollectionStatus =
+  | 'none'
+  | 'reminder'
+  | 'follow_up'
+  | 'collection'
+  | 'escalated'
+  | 'promise_to_pay'
+  | 'disputed'
+  | 'written_off';
 
 export interface Invoice {
   id: string;
+  organizationId?: string;
+  accountId?: string; // Links to financial_accounts
+  publicToken?: string; // Secure token for public access without database ID exposure
   entityName?: string | null;
   invoiceNumber: string;
   entityId?: string | null; // Unified entity reference
@@ -1408,7 +1421,12 @@ export interface Invoice {
   arrearsAdded: number;
   creditDeducted: number;
   totalPayable: number;
+  amountPaid?: number;
+  amountCredited?: number;
+  balanceDue?: number;
   status: InvoiceStatus;
+  paymentStatus?: InvoicePaymentStatus;
+  collectionStatus?: InvoiceCollectionStatus;
   items: InvoiceItem[];
   paymentInstructions: string;
   signatureName: string;
@@ -1416,9 +1434,147 @@ export interface Invoice {
   signatureUrl?: string;
   createdAt: string;
   updatedAt: string;
+  issuedAt?: string;
   sentAt?: string;
+  paidAt?: string;
+  voidedAt?: string;
   workspaceIds: string[]; // Shared
   billingProfileId: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Core Sub-Ledger & Financial Account Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type FinancialAccountStatus = 'active' | 'on_hold' | 'restricted' | 'closed';
+export type FinancialAccountType = 'customer' | 'partner' | 'other';
+export type FinancialCollectionStatus =
+  | 'current'
+  | 'reminder'
+  | 'follow_up'
+  | 'collection'
+  | 'escalated'
+  | 'disputed'
+  | 'written_off';
+export type FinancialRiskLevel = 'low' | 'medium' | 'high';
+
+export interface FinancialAccount {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  entityId: string;
+  accountNumber: string;
+  accountName: string;
+  currency: string;
+  status: FinancialAccountStatus;
+  accountType: FinancialAccountType;
+  creditLimit?: number;
+  currentBalance: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  totalOverdue: number;
+  availableCredit: number;
+  collectionStatus: FinancialCollectionStatus;
+  riskLevel: FinancialRiskLevel;
+  assignedTo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FinancialTransactionType =
+  | 'invoice_issued'
+  | 'payment_received'
+  | 'payment_allocated'
+  | 'credit_note'
+  | 'debit_note'
+  | 'refund'
+  | 'adjustment'
+  | 'write_off'
+  | 'reversal';
+
+export type FinancialTransactionSource =
+  | 'system'
+  | 'user'
+  | 'payment_provider'
+  | 'migration'
+  | 'automation';
+
+export interface FinancialTransaction {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  accountId: string;
+  entityId: string;
+  transactionType: FinancialTransactionType;
+  referenceType: 'invoice' | 'payment' | 'credit_note' | 'debit_note' | 'adjustment' | 'manual';
+  referenceId: string;
+  referenceNumber?: string;
+  debit: number;
+  credit: number;
+  currency: string;
+  balanceAfter: number;
+  effectiveAt: string;
+  source: FinancialTransactionSource;
+  createdBy?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export type PaymentMethod =
+  | 'mobile_money'
+  | 'bank_transfer'
+  | 'card'
+  | 'cash'
+  | 'cheque'
+  | 'manual'
+  | 'other';
+
+export type PaymentRecordStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'failed'
+  | 'reversed'
+  | 'refunded';
+
+export interface PaymentAllocation {
+  id: string;
+  paymentId: string;
+  accountId: string;
+  invoiceId: string;
+  invoiceNumber?: string;
+  amount: number;
+  currency: string;
+  allocatedAt: string;
+  allocatedBy?: string;
+  workspaceId: string;
+  organizationId: string;
+}
+
+export interface Payment {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  accountId: string;
+  entityId: string;
+  amount: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+  currency: string;
+  paymentMethod: PaymentMethod;
+  provider?: string;
+  providerTransactionId?: string;
+  status: PaymentRecordStatus;
+  reference?: string;
+  receivedAt: string;
+  settledAt?: string;
+  payerName?: string;
+  notes?: string;
+  idempotencyKey?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Meeting {

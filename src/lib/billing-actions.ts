@@ -7,6 +7,11 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { canUser } from './workspace-permissions';
 
+import { FinancialAccountService } from './services/financial-account-service';
+import { LedgerService } from './services/ledger-service';
+import { FinancialEventService } from './services/financial-event-service';
+import crypto from 'crypto';
+
 /**
  * @fileOverview Server-side actions for the Invoicing Engine.
  * Supports multi-workspace scoping, strict typing, and zero `any` usage.
@@ -122,6 +127,17 @@ export async function generateInvoiceAction(
         const school = contact.schoolData;
         const entityId = contact.id;
         const entityType = contact.entityType || 'institution';
+        const organizationId = school.organizationId || profile.organizationId || 'default';
+
+        // Auto-provision or retrieve linked financial account
+        const financialAccount = await FinancialAccountService.getOrCreateFinancialAccount({
+            entityId,
+            workspaceId: activeWorkspaceId,
+            organizationId,
+            entityName: school.name || contact.name || 'Organization',
+            currency: school.currency || 'GHS',
+            actorId: userId
+        });
 
         const pkgSnap = await db.collection('subscription_packages').doc(school.subscriptionPackageId || 'none').get();
         const pkgData = pkgSnap.exists ? pkgSnap.data() : null;
@@ -130,19 +146,23 @@ export async function generateInvoiceAction(
         const nominalRoll = Number(school.nominalRoll) || 0;
         const rate = Number(school.subscriptionRate) || Number(pkgData?.ratePerStudent) || 0;
         
-        const subtotal = nominalRoll * rate;
-        const levyAmount = (subtotal * (Number(profile.levyPercent) || 0)) / 100;
-        const vatAmount = (subtotal * (Number(profile.vatPercent) || 0)) / 100;
-        const discount = (subtotal * (Number(profile.defaultDiscount) || 0)) / 100;
+        const subtotal = Math.round((nominalRoll * rate) * 100) / 100;
+        const levyAmount = Math.round(((subtotal * (Number(profile.levyPercent) || 0)) / 100) * 100) / 100;
+        const vatAmount = Math.round(((subtotal * (Number(profile.vatPercent) || 0)) / 100) * 100) / 100;
+        const discount = Math.round(((subtotal * (Number(profile.defaultDiscount) || 0)) / 100) * 100) / 100;
 
-        const totalPayable = subtotal + levyAmount + vatAmount + (Number(school.arrearsBalance) || 0) - (Number(school.creditBalance) || 0) - discount;
+        const totalPayable = Math.max(0, Math.round((subtotal + levyAmount + vatAmount + (Number(school.arrearsBalance) || 0) - (Number(school.creditBalance) || 0) - discount) * 100) / 100);
 
-        // 3. Generate Invoice Number
+        // 3. Generate Invoice Number & Public Token
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const invoiceNumber = `INV-${new Date().getFullYear()}-${randomStr}`;
+        const publicToken = crypto.randomUUID();
 
         // 4. Construct Record
         const invoiceData: Omit<Invoice, 'id'> = {
+            organizationId,
+            accountId: financialAccount.id,
+            publicToken,
             invoiceNumber,
             entityId,
             entityName: school.name || contact.name || 'Organization',
@@ -161,7 +181,12 @@ export async function generateInvoiceAction(
             arrearsAdded: Number(school.arrearsBalance) || 0,
             creditDeducted: Number(school.creditBalance) || 0,
             totalPayable,
+            amountPaid: 0,
+            amountCredited: 0,
+            balanceDue: totalPayable,
             status: 'draft',
+            paymentStatus: 'unpaid',
+            collectionStatus: 'none',
             items: [
                 { 
                     name: `Subscription (${school.subscriptionPackageName || 'Standard'})`, 
@@ -186,7 +211,7 @@ export async function generateInvoiceAction(
         // Log activity
         await logActivity({
             entityId,
-            organizationId: school.organizationId || 'default',
+            organizationId,
             userId,
             workspaceId: activeWorkspaceId,
             type: 'entity_updated',
@@ -205,7 +230,7 @@ export async function generateInvoiceAction(
 }
 
 /**
- * Updates an existing invoice record.
+ * Updates an existing invoice record and posts ledger transactions upon issuance.
  */
 export async function updateInvoiceAction(
     id: string, 
@@ -218,23 +243,72 @@ export async function updateInvoiceAction(
             throw new Error('Invoice not found');
         }
         
-        const existingInvoice = existingDoc.data() as Invoice;
-        const workspaceId = existingInvoice.workspaceIds?.[0];
+        const existingInvoice = { id: existingDoc.id, ...(existingDoc.data() as Omit<Invoice, 'id'>) };
+        const workspaceId = existingInvoice.workspaceIds?.[0] || 'default';
 
         const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
         if (!permission.granted) {
             return { success: false, error: permission.reason };
         }
         
+        const timestamp = new Date().toISOString();
         const safeUpdates: Record<string, unknown> = {
             ...updates,
             entityId: updates.entityId ?? existingInvoice.entityId,
             entityType: updates.entityType ?? existingInvoice.entityType,
-            updatedAt: new Date().toISOString()
+            updatedAt: timestamp
         };
+
+        // If transitioning from draft to sent/issued, post ledger debit entry
+        const isBecomingIssued = (updates.status === 'sent' || updates.status === 'issued') && existingInvoice.status === 'draft';
+        if (isBecomingIssued) {
+            safeUpdates.issuedAt = timestamp;
+            safeUpdates.sentAt = timestamp;
+
+            // Ensure financial account linkage
+            let accountId = existingInvoice.accountId;
+            if (!accountId && existingInvoice.entityId) {
+                const acc = await FinancialAccountService.getOrCreateFinancialAccount({
+                    entityId: existingInvoice.entityId,
+                    workspaceId,
+                    organizationId: existingInvoice.organizationId || 'default',
+                    entityName: existingInvoice.entityName || 'Organization',
+                    currency: existingInvoice.currency || 'GHS',
+                    actorId: userId
+                });
+                accountId = acc.id;
+                safeUpdates.accountId = acc.id;
+            }
+
+            if (accountId && existingInvoice.entityId) {
+                const totalDebit = Number(updates.totalPayable ?? existingInvoice.totalPayable) || 0;
+                await LedgerService.postTransaction({
+                    organizationId: existingInvoice.organizationId || 'default',
+                    workspaceId,
+                    accountId,
+                    entityId: existingInvoice.entityId,
+                    transactionType: 'invoice_issued',
+                    referenceType: 'invoice',
+                    referenceId: id,
+                    referenceNumber: existingInvoice.invoiceNumber,
+                    debit: totalDebit,
+                    credit: 0,
+                    currency: existingInvoice.currency || 'GHS',
+                    source: 'user',
+                    createdBy: userId,
+                    description: `Invoice ${existingInvoice.invoiceNumber} issued for ${existingInvoice.currency || 'GHS'} ${totalDebit}`,
+                });
+
+                await FinancialEventService.emitInvoiceIssued(
+                    { ...existingInvoice, ...updates, id } as Invoice,
+                    userId
+                );
+            }
+        }
         
         await adminDb.collection('invoices').doc(id).update(safeUpdates);
         revalidatePath('/admin/finance/invoices');
+        revalidatePath(`/admin/finance/invoices/${id}`);
         return { success: true };
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Failed to update invoice';
