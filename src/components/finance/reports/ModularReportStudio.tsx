@@ -25,6 +25,7 @@ export interface ModularReportStudioProps {
   subtitle?: string;
   tabs: ReportTabConfig[];
   defaultTabId?: string;
+  onFilterChange?: (filter: { preset: DateRangePreset; startDate?: string; endDate?: string }) => void;
   onExportCsv?: (tabId: string) => void;
   onPrintPdf?: () => void;
   isLoading?: boolean;
@@ -35,6 +36,7 @@ export function ModularReportStudio({
   subtitle,
   tabs,
   defaultTabId,
+  onFilterChange,
   onExportCsv,
   onPrintPdf,
   isLoading,
@@ -43,6 +45,17 @@ export function ModularReportStudio({
   const [preset, setPreset] = React.useState<DateRangePreset>('this_month');
   const [customStart, setCustomStart] = React.useState<string>('');
   const [customEnd, setCustomEnd] = React.useState<string>('');
+
+  const handlePresetChange = (newPreset: DateRangePreset) => {
+    setPreset(newPreset);
+    onFilterChange?.({ preset: newPreset, startDate: customStart, endDate: customEnd });
+  };
+
+  const handleCustomDateChange = (start: string, end: string) => {
+    setCustomStart(start);
+    setCustomEnd(end);
+    onFilterChange?.({ preset, startDate: start, endDate: end });
+  };
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -96,13 +109,10 @@ export function ModularReportStudio({
         {/* Unified Filter Bar */}
         <ReportFilterBar
           selectedPreset={preset}
-          onPresetChange={setPreset}
+          onPresetChange={handlePresetChange}
           customStartDate={customStart}
           customEndDate={customEnd}
-          onCustomDateChange={(start, end) => {
-            setCustomStart(start);
-            setCustomEnd(end);
-          }}
+          onCustomDateChange={handleCustomDateChange}
         />
 
         {/* Tab Contents */}

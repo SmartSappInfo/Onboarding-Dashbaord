@@ -159,62 +159,65 @@ export class FinancialApprovalService {
     input: DecideApprovalRequestInput
   ): Promise<FinancialApprovalRequest> {
     const { requestId, decision, decisionNotes, decidedByUserId, decidedByName } = input;
-
     const docRef = adminDb.collection('financial_approval_requests').doc(requestId);
-    const snap = await docRef.get();
-    if (!snap.exists) throw new Error('Approval request not found');
 
-    const request = { id: snap.id, ...(snap.data() as Omit<FinancialApprovalRequest, 'id'>) };
+    const { updatedRequest, newStatus } = await adminDb.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      if (!snap.exists) throw new Error('Approval request not found');
 
-    if (request.status !== 'pending') {
-      throw new Error(`Approval request has already been ${request.status}`);
-    }
+      const request = { id: snap.id, ...(snap.data() as Omit<FinancialApprovalRequest, 'id'>) };
 
-    // Strict Segregation of Duties: cannot approve your own request
-    if (request.requestedByUserId === decidedByUserId) {
-      throw new Error('Unauthorized: Segregation of duties policy prohibits approving your own financial request.');
-    }
+      if (request.status !== 'pending') {
+        throw new Error(`Approval request has already been ${request.status}`);
+      }
 
-    const timestamp = new Date().toISOString();
-    const newStatus: ApprovalStatus = decision === 'approved' ? 'approved' : 'rejected';
+      // Strict Segregation of Duties: cannot approve your own request
+      if (request.requestedByUserId === decidedByUserId) {
+        throw new Error('Unauthorized: Segregation of duties policy prohibits approving your own financial request.');
+      }
 
-    const updates: Partial<FinancialApprovalRequest> = {
-      status: newStatus,
-      decidedByUserId,
-      decidedByName,
-      decidedAt: timestamp,
-      decisionNotes: decisionNotes || '',
-    };
+      const timestamp = new Date().toISOString();
+      const statusVal: ApprovalStatus = decision === 'approved' ? 'approved' : 'rejected';
 
-    await docRef.update(updates);
+      const updates: Partial<FinancialApprovalRequest> = {
+        status: statusVal,
+        decidedByUserId,
+        decidedByName,
+        decidedAt: timestamp,
+        decisionNotes: decisionNotes || '',
+      };
+
+      tx.update(docRef, updates);
+      return { updatedRequest: { ...request, ...updates }, newStatus: statusVal };
+    });
 
     // Audit log
     await FinancialAuditService.logAction({
-      workspaceId: request.workspaceIds[0],
-      organizationId: request.organizationId,
+      workspaceId: updatedRequest.workspaceIds[0],
+      organizationId: updatedRequest.organizationId,
       action: 'approval.decided',
-      entityId: request.entityId,
-      entityName: request.entityName,
+      entityId: updatedRequest.entityId,
+      entityName: updatedRequest.entityName,
       documentType: 'approval_request',
       documentId: requestId,
-      documentNumber: request.referenceNumber,
-      amount: request.amount,
-      currency: request.currency,
+      documentNumber: updatedRequest.referenceNumber,
+      amount: updatedRequest.amount,
+      currency: updatedRequest.currency,
       performedByUserId: decidedByUserId,
       performedByName: decidedByName,
-      changeSummary: `${decision.toUpperCase()} ${request.requestType.toUpperCase()} request for ${request.currency} ${request.amount.toLocaleString()}`,
+      changeSummary: `${decision.toUpperCase()} ${updatedRequest.requestType.toUpperCase()} request for ${updatedRequest.currency} ${updatedRequest.amount.toLocaleString()}`,
     });
 
     await logActivity({
       userId: decidedByUserId,
-      organizationId: request.organizationId,
-      workspaceId: request.workspaceIds[0],
+      organizationId: updatedRequest.organizationId,
+      workspaceId: updatedRequest.workspaceIds[0],
       type: 'interaction',
       source: 'finance_engine',
-      description: `[Approval ${newStatus.toUpperCase()}] ${decidedByName} ${newStatus} ${request.requestType} for ${request.entityName} (${request.currency} ${request.amount.toLocaleString()})`,
-      entityId: request.entityId,
+      description: `[Approval ${newStatus.toUpperCase()}] ${decidedByName} ${newStatus} ${updatedRequest.requestType} for ${updatedRequest.entityName} (${updatedRequest.currency} ${updatedRequest.amount.toLocaleString()})`,
+      entityId: updatedRequest.entityId,
     });
 
-    return { ...request, ...updates };
+    return updatedRequest;
   }
 }

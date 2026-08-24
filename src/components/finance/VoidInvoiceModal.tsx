@@ -78,13 +78,25 @@ export const VoidInvoiceModal: React.FC<VoidInvoiceModalProps> = ({
 
     setIsSubmitting(true);
 
-    const res = await voidInvoiceAction(invoice.id, voidReason.trim(), user.uid);
+    const res = await voidInvoiceAction(
+      invoice.id, 
+      voidReason.trim(), 
+      user.uid,
+      user.displayName || user.email || 'Staff'
+    );
 
     if (res.success) {
-      toast({
-        title: 'Invoice Voided',
-        description: `Invoice ${invoice.invoiceNumber} has been voided. Compensating ledger reversal posted.`,
-      });
+      if (res.data?.requiresApproval) {
+        toast({
+          title: 'Approval Requested',
+          description: `Voiding request for ${invoice.invoiceNumber} has been routed to the managerial approval queue.`,
+        });
+      } else {
+        toast({
+          title: 'Invoice Voided',
+          description: `Invoice ${invoice.invoiceNumber} has been voided. Compensating ledger reversal posted.`,
+        });
+      }
       if (onVoidSuccess) {
         onVoidSuccess();
       }

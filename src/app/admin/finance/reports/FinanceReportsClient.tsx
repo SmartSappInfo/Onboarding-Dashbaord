@@ -437,6 +437,7 @@ export function FinanceReportsClient() {
       subtitle={`Institutional financial intelligence, revenue telemetry, and statutory audits for ${activeWorkspace?.name || activeWorkspaceId}.`}
       tabs={tabs}
       defaultTabId="executive"
+      onFilterChange={({ preset, startDate, endDate }) => loadData(preset, startDate, endDate)}
       onExportCsv={handleExportCsv}
       onPrintPdf={() => window.print()}
       isLoading={isLoading}

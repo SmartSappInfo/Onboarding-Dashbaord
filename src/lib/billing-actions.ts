@@ -17,6 +17,8 @@ import { FinancialAccountService } from './services/financial-account-service';
 import { FinancialEventService } from './services/financial-event-service';
 import { InvoiceSequenceService } from './services/invoice-sequence-service';
 import { InvoiceLifecycleService } from './services/invoice-lifecycle-service';
+import { FinancialApprovalService } from './services/financial-approval-service';
+import { FinancialAuditService } from './services/financial-audit-service';
 import crypto from 'crypto';
 
 export interface ActionResponse<T = undefined> {
@@ -317,13 +319,14 @@ export async function updateInvoiceAction(
 export async function voidInvoiceAction(
     invoiceId: string,
     voidReason: string,
-    userId: string
-): Promise<ActionResponse> {
+    userId: string,
+    userName: string = 'Authorized Staff'
+): Promise<ActionResponse<{ requiresApproval?: boolean }>> {
     try {
         const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
         if (!invSnap.exists) return { success: false, error: 'Invoice not found' };
 
-        const invoice = invSnap.data() as Invoice;
+        const invoice = { id: invSnap.id, ...(invSnap.data() as Omit<Invoice, 'id'>) };
         const workspaceId = invoice.workspaceIds?.[0] || 'default';
 
         const permission = await canUser(userId, 'finance', 'invoices', 'delete', workspaceId);
@@ -331,6 +334,37 @@ export async function voidInvoiceAction(
             return { success: false, error: permission.reason };
         }
 
+        // 1. Check if workspace approval policy requires managerial signoff
+        const needsApproval = await FinancialApprovalService.requiresApproval(
+            workspaceId,
+            'void_issued_invoice',
+            Number(invoice.totalPayable || 0)
+        );
+
+        if (needsApproval && invoice.status !== 'draft') {
+            await FinancialApprovalService.createApprovalRequest({
+                organizationId: invoice.organizationId || 'default',
+                workspaceId,
+                requestType: 'void_issued_invoice',
+                referenceId: invoiceId,
+                referenceNumber: invoice.invoiceNumber,
+                entityId: invoice.entityId || '',
+                entityName: invoice.entityName || 'Customer',
+                amount: Number(invoice.totalPayable || 0),
+                currency: invoice.currency || 'GHS',
+                reason: voidReason,
+                requestedByUserId: userId,
+                requestedByName: userName,
+            });
+
+            return {
+                success: true,
+                data: { requiresApproval: true },
+                error: undefined,
+            };
+        }
+
+        // 2. Direct voiding execution
         const res = await InvoiceLifecycleService.voidInvoice({
             invoiceId,
             voidReason,
@@ -338,6 +372,23 @@ export async function voidInvoiceAction(
         });
 
         if (res.success) {
+            // 3. Log to immutable FinancialAuditService
+            await FinancialAuditService.logAction({
+                workspaceId,
+                organizationId: invoice.organizationId || undefined,
+                action: 'invoice.voided',
+                entityId: invoice.entityId || undefined,
+                entityName: invoice.entityName || undefined,
+                documentType: 'invoice',
+                documentId: invoiceId,
+                documentNumber: invoice.invoiceNumber,
+                amount: Number(invoice.totalPayable || 0),
+                currency: invoice.currency || 'GHS',
+                performedByUserId: userId,
+                performedByName: userName,
+                changeSummary: `Voided invoice ${invoice.invoiceNumber}. Reason: ${voidReason}`,
+            });
+
             revalidatePath('/admin/finance/invoices');
             revalidatePath(`/admin/finance/invoices/${invoiceId}`);
             return { success: true };

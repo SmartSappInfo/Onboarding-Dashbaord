@@ -36,8 +36,16 @@ export function ReportMetricsGrid({ metrics }: ReportMetricsGridProps) {
     }
   };
 
+  const gridColsMap: Record<number, string> = {
+    1: 'lg:grid-cols-1',
+    2: 'lg:grid-cols-2',
+    3: 'lg:grid-cols-3',
+    4: 'lg:grid-cols-4',
+  };
+  const lgCols = gridColsMap[Math.min(metrics.length, 4)] || 'lg:grid-cols-4';
+
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(metrics.length, 4)} gap-4`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 ${lgCols} gap-4`}>
       {metrics.map((item) => (
         <Card
           key={item.id}

@@ -60,14 +60,17 @@ export class ReportExportService {
       }
     }
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + lines.join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvString = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     const cleanName = filename.endsWith('.csv') ? filename : `${filename}.csv`;
     link.setAttribute('download', cleanName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 }

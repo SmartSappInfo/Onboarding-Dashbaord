@@ -247,6 +247,20 @@ export class ModularReportingService {
     let totalOverdue = 0;
     let total90Plus = 0;
 
+    // Index active invoices by accountId for O(N + M) complexity
+    const invoicesByAccount = new Map<string, Invoice[]>();
+    for (const invDoc of invSnap.docs) {
+      const inv = invDoc.data() as Invoice;
+      if (inv.status === 'paid' || inv.status === 'void') continue;
+      const bal = Number(inv.balanceDue ?? inv.totalPayable ?? 0);
+      if (bal <= 0) continue;
+
+      const accId = inv.accountId || '';
+      const list = invoicesByAccount.get(accId) || [];
+      list.push(inv);
+      invoicesByAccount.set(accId, list);
+    }
+
     for (const accDoc of accSnap.docs) {
       const acc = accDoc.data() as FinancialAccount;
       const balance = Number(acc.currentBalance || 0);
@@ -260,12 +274,9 @@ export class ModularReportingService {
       let d61_90 = 0;
       let d90_plus = 0;
 
-      for (const invDoc of invSnap.docs) {
-        const inv = invDoc.data() as Invoice;
-        if (inv.accountId !== accDoc.id || inv.status === 'paid' || inv.status === 'void') continue;
+      const accountInvoices = invoicesByAccount.get(accDoc.id) || [];
+      for (const inv of accountInvoices) {
         const bal = Number(inv.balanceDue ?? inv.totalPayable ?? 0);
-        if (bal <= 0) continue;
-
         const aging = AgingService.calculateInvoiceAging(inv, now);
         if (aging.bucket === 'current') currentAmt += bal;
         else if (aging.bucket === '1_30') d1_30 += bal;
