@@ -19,11 +19,11 @@ import {
     AlertCircle, 
     TrendingUp, 
     Zap, 
-    ShieldCheck,
-    ArrowUpRight,
-    CreditCard
+    CreditCard,
+    AlertTriangle
 } from 'lucide-react';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { VoidInvoiceModal } from '@/components/finance/VoidInvoiceModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,12 +56,13 @@ import { PageContainerFluid } from '@/components/ui/page-container';
  * InvoicesClient - Invoice Registry UI
  * 
  * Upgraded with:
- * - UnifiedEntitySelector integration with full filtering & segmentation
- * - Financial KPI Metrics Bar (Total Invoiced, Paid, Drafts, Overdue)
- * - Quick Status Tabs with real-time counts
- * - Actionable Toasts with relative navigation paths (`actionConfig`)
- * - Dynamic Industry Terminology (`useTerminology`)
- * - Zero `any` usage, strict typing, Emil Kowalski animations
+ * - SmartSapp Finance 2.0 Multi-State Lifecycle Engine (Draft, Issued, Sent, Paid, Void, Cancelled, Disputed).
+ * - Controlled Voiding with Sub-Ledger Compensating Reversals.
+ * - UnifiedEntitySelector integration with full filtering & segmentation.
+ * - Financial KPI Metrics Bar (Total Invoiced, Paid, Drafts, Overdue).
+ * - Multi-Status Tabs (All, Drafts, Issued, Paid, Overdue, Voided).
+ * - Actionable Toasts with relative navigation paths.
+ * - Zero `any` usage, strict typing, Emil Kowalski animations.
  */
 export default function InvoicesClient() {
     const firestore = useFirestore();
@@ -78,6 +79,7 @@ export default function InvoicesClient() {
     const [isAdding, setIsAdding] = React.useState(false);
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [payingInvoice, setPayingInvoice] = React.useState<Invoice | null>(null);
+    const [voidingInvoice, setVoidingInvoice] = React.useState<Invoice | null>(null);
 
     const { can } = usePermissions();
     const canCreate = can('finance', 'invoices', 'create');
@@ -99,94 +101,104 @@ export default function InvoicesClient() {
         );
     }, [firestore, activeWorkspaceId]);
 
+    const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
+
+    // Periods query
     const periodsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'billing_periods'), 
-            where('status', '==', 'open'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('startDate', 'desc')
+            limit(50)
         );
     }, [firestore, activeWorkspaceId]);
+    const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
 
+    // Profiles query
     const profilesQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
-            collection(firestore, 'billing_profiles'),
+            collection(firestore, 'billing_profiles'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('name', 'asc')
+            limit(50)
         );
     }, [firestore, activeWorkspaceId]);
-
-    const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
-    const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
     const { data: profiles } = useCollection<BillingProfile>(profilesQuery);
 
-    // Auto-select first profile & period if only 1 available when dialog opens
+    // Set defaults when opening modal
     React.useEffect(() => {
         if (isAdding) {
-            if (profiles && profiles.length === 1 && !selectedProfileId) {
+            if (periods && periods.length > 0 && !selectedPeriodId) {
+                const active = periods.find(p => p.status === 'open') || periods[0];
+                setSelectedPeriodId(active.id);
+            }
+            if (profiles && profiles.length > 0 && !selectedProfileId) {
                 setSelectedProfileId(profiles[0].id);
             }
-            if (periods && periods.length === 1 && !selectedPeriodId) {
-                setSelectedPeriodId(periods[0].id);
-            }
         }
-    }, [isAdding, profiles, periods, selectedProfileId, selectedPeriodId]);
+    }, [isAdding, periods, profiles, selectedPeriodId, selectedProfileId]);
 
-    // Financial KPI Aggregations
+    // Financial KPI Metrics
     const kpiMetrics = React.useMemo(() => {
-        if (!invoices || invoices.length === 0) {
-            return { totalInvoiced: 0, totalPaid: 0, totalDraft: 0, totalOverdue: 0, count: 0 };
-        }
-        let totalInvoiced = 0;
-        let totalPaid = 0;
-        let totalDraft = 0;
-        let totalOverdue = 0;
-
-        invoices.forEach((inv) => {
-            const amount = Number(inv.totalPayable) || 0;
-            totalInvoiced += amount;
-            if (inv.status === 'paid') totalPaid += amount;
-            else if (inv.status === 'draft') totalDraft += amount;
-            else if (inv.status === 'overdue') totalOverdue += amount;
-        });
-
-        return {
-            totalInvoiced,
-            totalPaid,
-            totalDraft,
-            totalOverdue,
-            count: invoices.length,
-        };
+        if (!invoices) return { totalInvoiced: 0, totalPaid: 0, totalDraft: 0, totalOverdue: 0, count: 0 };
+        return invoices.reduce(
+            (acc, inv) => {
+                if (inv.status === 'void' || inv.lifecycleStatus === 'void') {
+                    return acc; // Voided invoices are excluded from gross invoiced KPIs
+                }
+                acc.count++;
+                acc.totalInvoiced += Number(inv.totalPayable) || 0;
+                acc.totalPaid += Number(inv.amountPaid) || 0;
+                if (inv.status === 'draft') {
+                    acc.totalDraft += Number(inv.totalPayable) || 0;
+                }
+                if (inv.status === 'overdue') {
+                    acc.totalOverdue += Number(inv.balanceDue ?? inv.totalPayable) || 0;
+                }
+                return acc;
+            },
+            { totalInvoiced: 0, totalPaid: 0, totalDraft: 0, totalOverdue: 0, count: 0 }
+        );
     }, [invoices]);
 
     // Status Tab Counts
     const statusCounts = React.useMemo(() => {
-        const counts: Record<string, number> = { all: invoices?.length || 0, draft: 0, sent: 0, paid: 0, overdue: 0 };
-        if (invoices) {
-            invoices.forEach((inv) => {
-                if (counts[inv.status] !== undefined) {
-                    counts[inv.status]++;
-                }
-            });
-        }
+        const counts: Record<string, number> = { all: 0, draft: 0, issued: 0, sent: 0, paid: 0, overdue: 0, void: 0 };
+        if (!invoices) return counts;
+        counts.all = invoices.length;
+        invoices.forEach((i) => {
+            if (i.status === 'void' || i.lifecycleStatus === 'void') {
+                counts.void = (counts.void || 0) + 1;
+            } else if (i.status === 'issued') {
+                counts.issued = (counts.issued || 0) + 1;
+            } else if (i.status === 'sent') {
+                counts.sent = (counts.sent || 0) + 1;
+            } else if (i.status === 'paid') {
+                counts.paid = (counts.paid || 0) + 1;
+            } else if (i.status === 'draft') {
+                counts.draft = (counts.draft || 0) + 1;
+            } else if (i.status === 'overdue') {
+                counts.overdue = (counts.overdue || 0) + 1;
+            }
+        });
         return counts;
     }, [invoices]);
 
     const handleGenerate = async () => {
-        if (!selectedEntityId || !selectedPeriodId || !selectedProfileId || !user) {
-            toast({ 
-                variant: 'destructive', 
-                title: 'Context Missing', 
-                description: `Institutional record (${singular}), billing cycle, and billing profile are mandatory.`,
-                actionConfig: !profiles || profiles.length === 0 ? {
-                    path: '/admin/finance/settings',
-                    label: 'Configure Billing'
-                } : !periods || periods.length === 0 ? {
-                    path: '/admin/finance/periods',
-                    label: 'Create Billing Cycle'
-                } : undefined
+        if (!selectedEntityId || !selectedPeriodId || !selectedProfileId) {
+            toast({
+                variant: 'destructive',
+                title: 'Missing Context',
+                description: `Please select a target ${singular.toLowerCase()}, billing cycle, and billing profile.`
+            });
+            return;
+        }
+
+        if (!user) {
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Required',
+                description: 'You must be logged in to initialize billing.'
             });
             return;
         }
@@ -195,8 +207,8 @@ export default function InvoicesClient() {
         const result = await generateInvoiceAction(
             selectedEntityId, 
             selectedPeriodId, 
-            selectedProfileId,
-            user.uid, 
+            selectedProfileId, 
+            user.uid,
             activeWorkspaceId
         );
 
@@ -221,28 +233,39 @@ export default function InvoicesClient() {
     const handleDelete = async (invoice: Invoice) => {
         if (!user) return;
         if (!(await confirm({ 
-            title: 'Delete invoice?', 
-            description: `${invoice.invoiceNumber} will be permanently deleted.`, 
+            title: 'Delete draft invoice?', 
+            description: `${invoice.invoiceNumber} will be permanently removed.`, 
             confirmText: 'Delete', 
             variant: 'destructive' 
         }))) return;
 
         const result = await deleteInvoiceAction(invoice.id, invoice.invoiceNumber, user.uid);
         if (result.success) {
-            toast({ title: 'Invoice Removed' });
+            toast({ title: 'Draft Removed' });
         } else {
             toast({ variant: 'destructive', title: 'Deletion Failed', description: result.error });
         }
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (invoice: Invoice) => {
+        const status = invoice.status;
+        const isVoid = status === 'void' || invoice.lifecycleStatus === 'void';
+        if (isVoid) {
+            return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border border-rose-500/20 text-[9px] h-5 uppercase px-2 font-bold">Void</Badge>;
+        }
+        if (invoice.collectionStatus === 'disputed') {
+            return <Badge className="bg-purple-500/10 text-purple-600 border border-purple-500/20 text-[9px] h-5 uppercase px-2 font-bold">Disputed</Badge>;
+        }
         switch (status) {
             case 'paid': 
                 return <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[9px] h-5 uppercase px-2 font-bold">Paid</Badge>;
             case 'draft': 
                 return <Badge variant="secondary" className="text-[9px] h-5 uppercase px-2 font-bold">Draft</Badge>;
+            case 'issued': 
             case 'sent': 
-                return <Badge className="bg-blue-500/10 text-blue-600 border border-blue-500/20 text-[9px] h-5 uppercase px-2 font-bold">Sent</Badge>;
+                return <Badge className="bg-blue-500/10 text-blue-600 border border-blue-500/20 text-[9px] h-5 uppercase px-2 font-bold">Issued</Badge>;
+            case 'partial':
+                return <Badge className="bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[9px] h-5 uppercase px-2 font-bold">Partial</Badge>;
             case 'overdue': 
                 return <Badge variant="destructive" className="text-[9px] h-5 uppercase px-2 font-bold animate-pulse">Overdue</Badge>;
             default: 
@@ -254,7 +277,13 @@ export default function InvoicesClient() {
         if (!invoices) return [];
         let temp = invoices;
         if (statusFilter !== 'all') {
-            temp = temp.filter((i) => i.status === statusFilter);
+            if (statusFilter === 'void') {
+                temp = temp.filter((i) => i.status === 'void' || i.lifecycleStatus === 'void');
+            } else if (statusFilter === 'issued') {
+                temp = temp.filter((i) => (i.status === 'issued' || i.status === 'sent') && i.lifecycleStatus !== 'void');
+            } else {
+                temp = temp.filter((i) => i.status === statusFilter);
+            }
         }
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
@@ -307,7 +336,7 @@ export default function InvoicesClient() {
                             <p className="text-xl font-black text-foreground tabular-nums">
                                 {defaultCurrency} {kpiMetrics.totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
-                            <p className="text-[10px] text-muted-foreground font-medium">Across {kpiMetrics.count} total records</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">Across {kpiMetrics.count} active records</p>
                         </Card>
 
                         <Card className="rounded-2xl border border-border/70 shadow-xs bg-card/60 p-4 space-y-2 text-left">
@@ -352,9 +381,10 @@ export default function InvoicesClient() {
                                 {[
                                     { id: 'all', label: 'All Invoices' },
                                     { id: 'draft', label: 'Drafts' },
-                                    { id: 'sent', label: 'Sent' },
+                                    { id: 'issued', label: 'Issued' },
                                     { id: 'paid', label: 'Paid' },
                                     { id: 'overdue', label: 'Overdue' },
+                                    { id: 'void', label: 'Voided' },
                                 ].map((tab) => (
                                     <button
                                         key={tab.id}
@@ -385,7 +415,7 @@ export default function InvoicesClient() {
                                     placeholder={`Search reference or ${singular.toLowerCase()}...`} 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9 h-9 bg-background border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
+                                    className="pl-9 h-11 min-h-[44px] bg-background border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
                                 />
                             </div>
                         </CardContent>
@@ -409,13 +439,14 @@ export default function InvoicesClient() {
                                 {isLoading ? (
                                     Array.from({ length: 5 }).map((_, i) => (
                                         <TableRow key={i}>
-                                            <TableCell colSpan={7} className="py-4 px-6">
+                                             <TableCell colSpan={7} className="py-4 px-6">
                                                 <Skeleton className="h-10 w-full rounded-xl" />
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : filteredInvoices.length > 0 ? (
                                     filteredInvoices.map((invoice) => {
+                                        const isVoid = invoice.status === 'void' || invoice.lifecycleStatus === 'void';
                                         const amountPaid = Number(invoice.amountPaid || 0);
                                         const balanceDue = Number(invoice.balanceDue ?? Math.max(0, invoice.totalPayable - amountPaid));
 
@@ -443,7 +474,11 @@ export default function InvoicesClient() {
                                                 <TableCell className="text-right">
                                                     <div className="text-right">
                                                         <div className="font-bold text-xs tabular-nums">
-                                                            {balanceDue > 0 ? (
+                                                            {isVoid ? (
+                                                                <span className="text-muted-foreground line-through">
+                                                                    {invoice.currency} {invoice.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            ) : balanceDue > 0 ? (
                                                                 <span className="text-rose-600 dark:text-rose-400">
                                                                     {invoice.currency} {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                 </span>
@@ -453,7 +488,7 @@ export default function InvoicesClient() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        {amountPaid > 0 && balanceDue > 0 && (
+                                                        {!isVoid && amountPaid > 0 && balanceDue > 0 && (
                                                             <div className="text-[10px] text-muted-foreground tabular-nums">
                                                                 Paid: {invoice.currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                             </div>
@@ -461,11 +496,11 @@ export default function InvoicesClient() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    {getStatusBadge(invoice.status)}
+                                                    {getStatusBadge(invoice)}
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {invoice.status !== 'draft' && balanceDue > 0 && (
+                                                        {!isVoid && invoice.status !== 'draft' && balanceDue > 0 && (
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="sm" 
@@ -486,12 +521,24 @@ export default function InvoicesClient() {
                                                                 <Eye className="h-3.5 w-3.5 mr-1" /> View
                                                             </Link>
                                                         </Button>
-                                                        {canDelete && (
+                                                        {!isVoid && invoice.status !== 'draft' && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="icon" 
+                                                                className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 rounded-lg active:scale-[0.97]" 
+                                                                onClick={() => setVoidingInvoice(invoice)}
+                                                                title="Void Invoice"
+                                                            >
+                                                                <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                                                            </Button>
+                                                        )}
+                                                        {invoice.status === 'draft' && canDelete && (
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg active:scale-[0.97]" 
                                                                 onClick={() => handleDelete(invoice)}
+                                                                title="Delete Draft"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -518,88 +565,56 @@ export default function InvoicesClient() {
                         <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden border border-border shadow-2xl text-left bg-card">
                             <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }}>
                                 <DialogHeader className="p-6 bg-muted/20 border-b shrink-0 text-left">
-                                    <div className="flex items-center gap-3 text-left">
-                                        <div className="p-2.5 bg-primary text-white rounded-xl shadow-md shadow-primary/20 text-left">
-                                            <Plus className="h-5 w-5" />
-                                        </div>
-                                        <div className="text-left">
-                                            <DialogTitle className="text-xl font-bold tracking-tight text-left">
-                                                Initialize Bill
-                                            </DialogTitle>
-                                            <DialogDescription className="text-xs text-muted-foreground text-left">
-                                                Select target {singular.toLowerCase()} and configure billing cycle & protocol.
-                                            </DialogDescription>
-                                        </div>
-                                    </div>
+                                    <DialogTitle className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                                        <Receipt className="h-5 w-5 text-primary" /> Initialize Billing Record
+                                    </DialogTitle>
+                                    <DialogDescription className="text-xs text-muted-foreground">
+                                        Select target {singular.toLowerCase()} and binding profile. Rate, headcount, and taxes will be applied automatically.
+                                    </DialogDescription>
                                 </DialogHeader>
 
-                                <div className="p-6 space-y-5 text-left bg-background">
-                                    {/* 1. Target Entity with Unified Entity Selector */}
+                                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                                    {/* Unified Entity Selector */}
                                     <div className="space-y-1.5 text-left">
-                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1 text-left">
-                                            1. Target {singular}
+                                        <Label className="text-xs font-bold text-foreground">
+                                            Target {singular} *
                                         </Label>
                                         <UnifiedEntitySelector
                                             value={selectedEntityId}
-                                            onChange={(id) => setSelectedEntityId(id)}
-                                            valueKey="entityId"
-                                            placeholder={`Select ${singular.toLowerCase()}...`}
-                                            showPreviewCard={true}
+                                            onChange={(val) => setSelectedEntityId(val || null)}
+                                            valueKey="id"
+                                            placeholder={`Select target ${singular.toLowerCase()}...`}
                                         />
                                     </div>
 
-                                    {/* 2. Billing Cycle */}
+                                    {/* Billing Cycle */}
                                     <div className="space-y-1.5 text-left">
-                                        <div className="flex items-center justify-between ml-1">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-left">
-                                                2. Billing Cycle
-                                            </Label>
-                                            {(!periods || periods.length === 0) && (
-                                                <Link 
-                                                    href="/admin/finance/periods" 
-                                                    className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5"
-                                                >
-                                                    Create Cycle <ArrowUpRight className="h-2.5 w-2.5" />
-                                                </Link>
-                                            )}
-                                        </div>
-                                        <Select onValueChange={setSelectedPeriodId} value={selectedPeriodId || ''}>
-                                            <SelectTrigger className="h-11 rounded-xl bg-background border-border text-xs font-semibold text-left">
-                                                <SelectValue placeholder="Select billing cycle..." />
+                                        <Label className="text-xs font-bold text-foreground">Billing Cycle / Period *</Label>
+                                        <Select value={selectedPeriodId || ''} onValueChange={setSelectedPeriodId}>
+                                            <SelectTrigger className="rounded-xl h-11 min-h-[44px] bg-background font-semibold text-xs text-foreground">
+                                                <SelectValue placeholder="Select Cycle" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl text-left">
-                                                {periods?.map((p) => (
-                                                    <SelectItem key={p.id} value={p.id} className="text-xs text-left">
-                                                        {p.name}
+                                            <SelectContent className="rounded-xl">
+                                                {periods?.map((period) => (
+                                                    <SelectItem key={period.id} value={period.id} className="text-xs">
+                                                        {period.name} {period.status === 'open' ? '(Current)' : ''}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
 
-                                    {/* 3. Financial Protocol (Billing Profile) */}
+                                    {/* Billing Profile */}
                                     <div className="space-y-1.5 text-left">
-                                        <div className="flex items-center justify-between ml-1">
-                                            <Label className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5 text-left">
-                                                <ShieldCheck className="h-3.5 w-3.5" /> 3. Financial Protocol (Profile)
-                                            </Label>
-                                            {(!profiles || profiles.length === 0) && (
-                                                <Link 
-                                                    href="/admin/finance/settings" 
-                                                    className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5"
-                                                >
-                                                    Setup Profile <ArrowUpRight className="h-2.5 w-2.5" />
-                                                </Link>
-                                            )}
-                                        </div>
-                                        <Select onValueChange={setSelectedProfileId} value={selectedProfileId || ''}>
-                                            <SelectTrigger className="h-11 bg-background border-border text-foreground rounded-xl text-xs font-semibold text-left">
-                                                <SelectValue placeholder="Pick billing profile..." />
+                                        <Label className="text-xs font-bold text-foreground">Billing Protocol / Tax Profile *</Label>
+                                        <Select value={selectedProfileId || ''} onValueChange={setSelectedProfileId}>
+                                            <SelectTrigger className="rounded-xl h-11 min-h-[44px] bg-background font-semibold text-xs text-foreground">
+                                                <SelectValue placeholder="Select Profile" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl border-border bg-card text-left">
-                                                {profiles?.map((p) => (
-                                                    <SelectItem key={p.id} value={p.id} className="text-xs text-left">
-                                                        {p.name} (VAT: {p.vatPercent || 0}%, Levy: {p.levyPercent || 0}%)
+                                            <SelectContent className="rounded-xl">
+                                                {profiles?.map((profile) => (
+                                                    <SelectItem key={profile.id} value={profile.id} className="text-xs">
+                                                        {profile.name} (VAT: {profile.vatPercent}%, Levy: {profile.levyPercent}%)
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -607,19 +622,20 @@ export default function InvoicesClient() {
                                     </div>
                                 </div>
 
-                                <DialogFooter className="p-4 bg-muted/20 border-t flex justify-between gap-3 items-center text-left">
+                                <DialogFooter className="p-4 bg-muted/20 border-t flex flex-col-reverse sm:flex-row items-center justify-end gap-2 shrink-0">
                                     <Button 
                                         type="button" 
-                                        variant="ghost" 
+                                        variant="outline" 
                                         onClick={() => setIsAdding(false)} 
-                                        className="font-bold rounded-xl h-10 px-5 text-xs text-left active:scale-[0.97]"
+                                        className="rounded-xl h-11 min-h-[44px] px-5 text-xs font-semibold active:scale-[0.97]"
                                     >
-                                        Discard
+                                        Cancel
                                     </Button>
                                     <Button 
+                                        type="submit" 
                                         onClick={handleGenerate} 
                                         disabled={isGenerating || !selectedEntityId || !selectedPeriodId || !selectedProfileId} 
-                                        className="rounded-xl font-bold h-10 px-6 shadow-md bg-primary text-white gap-2 text-xs text-left active:scale-[0.97]"
+                                        className="rounded-xl font-bold h-11 min-h-[44px] px-6 shadow-md bg-primary text-white gap-2 text-xs text-left active:scale-[0.97]"
                                     >
                                         {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />} 
                                         Generate Draft
@@ -645,6 +661,18 @@ export default function InvoicesClient() {
                             preselectedBalanceDue={Number(payingInvoice.balanceDue ?? Math.max(0, payingInvoice.totalPayable - (payingInvoice.amountPaid || 0)))}
                             onPaymentSuccess={() => {
                                 toast({ title: 'Payment Synchronized', description: 'Ledger and invoice balances updated.' });
+                            }}
+                        />
+                    )}
+
+                    {/* Void Invoice Modal */}
+                    {voidingInvoice && (
+                        <VoidInvoiceModal
+                            isOpen={!!voidingInvoice}
+                            onClose={() => setVoidingInvoice(null)}
+                            invoice={voidingInvoice}
+                            onVoidSuccess={() => {
+                                toast({ title: 'Invoice Voided', description: 'Compensating ledger reversal posted.' });
                             }}
                         />
                     )}

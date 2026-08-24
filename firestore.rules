@@ -339,10 +339,17 @@ service cloud.firestore {
     }
 
     match /invoices/{invoiceId} {
-      allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.status in ['sent', 'paid', 'issued'];
+      allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.status in ['sent', 'paid', 'issued', 'void', 'partial'];
       allow list: if isAuthorized();
       allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
       allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
+    }
+
+    match /system_counters/{counterId} {
+      allow get: if isAuthorized();
+      allow list: if isAuthorized() && isSystemAdmin();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || hasPermission('finance_manage'));
+      allow delete: if isAuthorized() && isSystemAdmin();
     }
 
     match /financial_accounts/{accountId} {

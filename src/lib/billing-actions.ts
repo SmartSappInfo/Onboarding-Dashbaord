@@ -1,5 +1,11 @@
 'use server';
 
+/**
+ * SmartSapp Finance 2.0 - Billing & Invoicing Actions
+ * Comprehensive server actions for invoice creation, issuance, lifecycle transitions,
+ * snapshot freezing, voiding with ledger reversals, and tokenized public viewing.
+ */
+
 import { adminDb } from './firebase-admin';
 import { resolveContact } from './contact-adapter';
 import type { Invoice, BillingProfile, BillingPeriod } from './types';
@@ -8,14 +14,10 @@ import { logActivity } from './activity-logger';
 import { canUser } from './workspace-permissions';
 
 import { FinancialAccountService } from './services/financial-account-service';
-import { LedgerService } from './services/ledger-service';
 import { FinancialEventService } from './services/financial-event-service';
+import { InvoiceSequenceService } from './services/invoice-sequence-service';
+import { InvoiceLifecycleService } from './services/invoice-lifecycle-service';
 import crypto from 'crypto';
-
-/**
- * @fileOverview Server-side actions for the Invoicing Engine.
- * Supports multi-workspace scoping, strict typing, and zero `any` usage.
- */
 
 export interface ActionResponse<T = undefined> {
     success: boolean;
@@ -55,48 +57,34 @@ export async function getPublicInvoiceAction(id: string): Promise<ActionResponse
  * Fetches invoices for a specific entity.
  * 
  * @param entityId - Canonical entity ID
- * @param workspaceId - Optional workspace filter
+ * @param workspaceId - Workspace ID
  */
-export async function getInvoicesForContactAction(
-    entityId: string,
-    workspaceId?: string
-): Promise<ActionResponse> {
+export async function getInvoicesByEntityAction(entityId: string, workspaceId: string): Promise<ActionResponse> {
     try {
-        const db = adminDb;
-        let invoiceQuery: FirebaseFirestore.Query = db.collection('invoices');
+        if (!entityId || !workspaceId) return { success: true, invoices: [] };
         
-        if (entityId) {
-            invoiceQuery = invoiceQuery.where('entityId', '==', entityId);
-        } else {
-            throw new Error('Entity ID must be provided');
-        }
-        
-        if (workspaceId) {
-            invoiceQuery = invoiceQuery.where('workspaceIds', 'array-contains', workspaceId);
-        }
-        
-        invoiceQuery = invoiceQuery.orderBy('createdAt', 'desc');
-        
-        const snapshot = await invoiceQuery.get();
-        const invoices = snapshot.docs.map((doc) => ({
-            ...(doc.data() as Invoice),
-            id: doc.id
-        }));
-        
+        const snap = await adminDb.collection('invoices')
+            .where('entityId', '==', entityId)
+            .where('workspaceIds', 'array-contains', workspaceId)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const invoices = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Invoice, 'id'>) }));
         return { success: true, invoices };
     } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Failed to retrieve invoices for entity';
-        return { success: false, error: message, invoices: [] };
+        const message = e instanceof Error ? e.message : 'Failed to retrieve invoices';
+        return { success: false, error: message };
     }
 }
 
 /**
- * Generates a draft invoice for a specific entity and period using a selected profile.
+ * Generates a draft invoice from institutional configuration.
+ * Auto-provisions FinancialAccount and assigns sequential draft number.
  * 
- * @param contactId - Either entityId or document ID
- * @param periodId - Billing period ID
+ * @param contactId - Target contact/entity ID
+ * @param periodId - Billing cycle ID
  * @param profileId - Billing profile ID
- * @param userId - User creating the invoice
+ * @param userId - Requesting user UID
  * @param activeWorkspaceId - Active workspace ID
  */
 export async function generateInvoiceAction(
@@ -160,9 +148,8 @@ export async function generateInvoiceAction(
 
         const totalPayable = Math.max(0, Math.round((subtotal + levyAmount + vatAmount + (Number(school.arrearsBalance) || 0) - (Number(school.creditBalance) || 0) - discount) * 100) / 100);
 
-        // 3. Generate Invoice Number & Public Token
-        const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-        const invoiceNumber = `INV-${new Date().getFullYear()}-${randomStr}`;
+        // 3. Generate Sequence Number & Public Token
+        const invoiceNumber = await InvoiceSequenceService.getNextInvoiceNumber(activeWorkspaceId, 'DRAFT');
         const publicToken = crypto.randomUUID();
 
         // 4. Construct Record
@@ -192,52 +179,58 @@ export async function generateInvoiceAction(
             amountCredited: 0,
             balanceDue: totalPayable,
             status: 'draft',
+            lifecycleStatus: 'draft',
             paymentStatus: 'unpaid',
             collectionStatus: 'none',
             items: [
                 { 
                     name: `Subscription (${school.subscriptionPackageName || 'Standard'})`, 
                     description: `Billing cycle fee for ${nominalRoll} enrolled units/members.`,
-                    quantity: nominalRoll,
+                    quantity: nominalRoll, 
                     unitPrice: rate,
-                    amount: subtotal
+                    amount: Math.round((nominalRoll * rate) * 100) / 100
                 }
             ],
-            billingProfileId: profileId,
-            paymentInstructions: profile.paymentInstructions || '',
-            signatureName: profile.signatureName || '',
-            signatureDesignation: profile.signatureDesignation || '',
-            signatureUrl: profile.signatureUrl || '',
+            paymentInstructions: profile.paymentInstructions || 'Direct bank transfer to SmartSapp Collection Account.',
+            signatureName: profile.signatureName || 'Finance Administrator',
+            signatureDesignation: profile.signatureDesignation || 'Head of Financial Operations',
+            signatureUrl: profile.signatureUrl || undefined,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            workspaceIds: [activeWorkspaceId]
+            workspaceIds: [activeWorkspaceId],
+            billingProfileId: profileId
         };
 
         const docRef = await db.collection('invoices').add(invoiceData);
         
-        // Log activity
         await logActivity({
-            entityId,
-            organizationId,
             userId,
+            organizationId,
             workspaceId: activeWorkspaceId,
-            type: 'entity_updated',
-            source: 'user_action',
-            description: `generated draft invoice ${invoiceNumber} for "${school.name}"`
+            type: 'status_change',
+            source: 'finance_engine',
+            description: `Generated draft invoice ${invoiceNumber} for ${school.name || contact.name}`,
+            entityId,
+            entityName: school.name || contact.name,
+            metadata: {
+                invoiceId: docRef.id,
+                invoiceNumber,
+                totalPayable,
+                periodId
+            }
         });
 
         revalidatePath('/admin/finance/invoices');
         return { success: true, id: docRef.id };
-
     } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Invoice generation failed';
-        console.error('>>> [BILLING] Action Failure:', message);
+        const message = e instanceof Error ? e.message : 'Failed to generate invoice';
         return { success: false, error: message };
     }
 }
 
 /**
- * Updates an existing invoice record and posts ledger transactions upon issuance.
+ * Updates an invoice record or publishes a draft into an official issued invoice.
+ * Enforces atomic sub-ledger posting, sequential numbering, and snapshot freezing.
  */
 export async function updateInvoiceAction(
     id: string, 
@@ -246,9 +239,7 @@ export async function updateInvoiceAction(
 ): Promise<ActionResponse> {
     try {
         const existingDoc = await adminDb.collection('invoices').doc(id).get();
-        if (!existingDoc.exists) {
-            throw new Error('Invoice not found');
-        }
+        if (!existingDoc.exists) throw new Error('Invoice not found');
         
         const existingInvoice = { id: existingDoc.id, ...(existingDoc.data() as Omit<Invoice, 'id'>) };
         const workspaceId = existingInvoice.workspaceIds?.[0] || 'default';
@@ -266,7 +257,7 @@ export async function updateInvoiceAction(
             updatedAt: timestamp
         };
 
-        // If transitioning from draft to sent/issued, post ledger debit entry inside an atomic transaction
+        // If transitioning from draft to sent/issued, run atomic issuance routine
         const isBecomingIssued = (updates.status === 'sent' || updates.status === 'issued') && existingInvoice.status === 'draft';
         
         let accountId = existingInvoice.accountId;
@@ -283,42 +274,24 @@ export async function updateInvoiceAction(
             safeUpdates.accountId = acc.id;
         }
 
-        if (isBecomingIssued) {
-            safeUpdates.issuedAt = timestamp;
-            safeUpdates.sentAt = timestamp;
-
+        if (isBecomingIssued && accountId) {
             await adminDb.runTransaction(async (tx) => {
                 const invRef = adminDb.collection('invoices').doc(id);
 
-                if (accountId && existingInvoice.entityId) {
-                    const totalDebit = Number(updates.totalPayable ?? existingInvoice.totalPayable) || 0;
-                    await LedgerService.postTransactionInTx(tx, {
-                        organizationId: existingInvoice.organizationId || 'default',
-                        workspaceId,
-                        accountId,
-                        entityId: existingInvoice.entityId,
-                        transactionType: 'invoice_issued',
-                        referenceType: 'invoice',
-                        referenceId: id,
-                        referenceNumber: existingInvoice.invoiceNumber,
-                        debit: totalDebit,
-                        credit: 0,
-                        currency: existingInvoice.currency || 'GHS',
-                        source: 'user',
-                        createdBy: userId,
-                        description: `Invoice ${existingInvoice.invoiceNumber} issued for ${existingInvoice.currency || 'GHS'} ${totalDebit}`,
-                    });
-                }
-
-                tx.update(invRef, safeUpdates);
+                await InvoiceLifecycleService.issueInvoiceInTx(
+                    tx,
+                    invRef,
+                    { ...existingInvoice, ...updates, id } as Invoice,
+                    userId,
+                    workspaceId,
+                    accountId!
+                );
             });
 
-            if (accountId && existingInvoice.entityId) {
-                FinancialEventService.emitInvoiceIssued(
-                    { ...existingInvoice, ...updates, id } as Invoice,
-                    userId
-                ).catch(err => console.error('[BILLING_ACTION] Event emit error:', err));
-            }
+            FinancialEventService.emitInvoiceIssued(
+                { ...existingInvoice, ...updates, id } as Invoice,
+                userId
+            ).catch(err => console.error('[BILLING_ACTION] Event emit error:', err));
         } else {
             await adminDb.collection('invoices').doc(id).update(safeUpdates);
         }
@@ -333,7 +306,80 @@ export async function updateInvoiceAction(
 }
 
 /**
- * Permanently removes an invoice record.
+ * Controlled invoice voiding with compensating sub-ledger reversal and allocation release.
+ */
+export async function voidInvoiceAction(
+    invoiceId: string,
+    voidReason: string,
+    userId: string
+): Promise<ActionResponse> {
+    try {
+        const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+        if (!invSnap.exists) return { success: false, error: 'Invoice not found' };
+
+        const invoice = invSnap.data() as Invoice;
+        const workspaceId = invoice.workspaceIds?.[0] || 'default';
+
+        const permission = await canUser(userId, 'finance', 'invoices', 'delete', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        const res = await InvoiceLifecycleService.voidInvoice({
+            invoiceId,
+            voidReason,
+            userId,
+        });
+
+        if (res.success) {
+            revalidatePath('/admin/finance/invoices');
+            revalidatePath(`/admin/finance/invoices/${invoiceId}`);
+            return { success: true };
+        }
+
+        return { success: false, error: res.error };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to void invoice';
+        return { success: false, error: message };
+    }
+}
+
+/**
+ * Flags an invoice as disputed with audit trail.
+ */
+export async function disputeInvoiceAction(
+    invoiceId: string,
+    disputeReason: string,
+    userId: string
+): Promise<ActionResponse> {
+    try {
+        const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
+        if (!invSnap.exists) return { success: false, error: 'Invoice not found' };
+
+        const invoice = invSnap.data() as Invoice;
+        const workspaceId = invoice.workspaceIds?.[0] || 'default';
+
+        const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason };
+        }
+
+        const res = await InvoiceLifecycleService.disputeInvoice(invoiceId, disputeReason, userId);
+        if (res.success) {
+            revalidatePath('/admin/finance/invoices');
+            revalidatePath(`/admin/finance/invoices/${invoiceId}`);
+            return { success: true };
+        }
+
+        return { success: false, error: res.error };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to dispute invoice';
+        return { success: false, error: message };
+    }
+}
+
+/**
+ * Permanently removes an unfinalized draft invoice record.
  */
 export async function deleteInvoiceAction(
     id: string, 
@@ -343,14 +389,32 @@ export async function deleteInvoiceAction(
     try {
         const docSnap = await adminDb.collection('invoices').doc(id).get();
         if (!docSnap.exists) throw new Error('Invoice not found');
-        const workspaceId = docSnap.data()?.workspaceIds?.[0];
+        
+        const invoiceData = docSnap.data() as Invoice;
+        if (invoiceData.status !== 'draft') {
+            throw new Error('Issued or finalized invoices cannot be deleted. Use Void Invoice instead.');
+        }
 
+        const workspaceId = invoiceData.workspaceIds?.[0] || 'default';
         const permission = await canUser(userId, 'finance', 'invoices', 'delete', workspaceId);
         if (!permission.granted) {
             return { success: false, error: permission.reason };
         }
 
         await adminDb.collection('invoices').doc(id).delete();
+        
+        await logActivity({
+            userId,
+            organizationId: invoiceData.organizationId || 'default',
+            workspaceId,
+            type: 'status_change',
+            source: 'finance_engine',
+            description: `Deleted draft invoice ${invoiceNumber}`,
+            entityId: invoiceData.entityId || undefined,
+            entityName: invoiceData.entityName || undefined,
+            metadata: { invoiceNumber }
+        });
+
         revalidatePath('/admin/finance/invoices');
         return { success: true };
     } catch (e: unknown) {

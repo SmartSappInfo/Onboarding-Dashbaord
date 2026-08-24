@@ -1387,6 +1387,7 @@ export interface InvoiceItem {
 }
 
 export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'paid' | 'partial' | 'overdue' | 'void' | 'cancelled';
+export type InvoiceLifecycleStatus = 'draft' | 'issued' | 'sent' | 'void' | 'cancelled' | 'disputed';
 export type InvoicePaymentStatus = 'unpaid' | 'partially_paid' | 'paid';
 export type InvoiceCollectionStatus =
   | 'none'
@@ -1397,6 +1398,38 @@ export type InvoiceCollectionStatus =
   | 'promise_to_pay'
   | 'disputed'
   | 'written_off';
+
+export interface InvoiceSnapshot {
+  snapshotAt: string;
+  entityName: string;
+  entitySlug?: string;
+  entityPhone?: string;
+  entityEmail?: string;
+  entityAddress?: string;
+  billingProfileName: string;
+  vatPercent: number;
+  levyPercent: number;
+  currency: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankBranch?: string;
+  bankSortCode?: string;
+  remittanceInstructions?: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  vatAmount: number;
+  levyAmount: number;
+  discount: number;
+  totalPayable: number;
+}
+
+export interface InvoiceVoidAudit {
+  voidedAt: string;
+  voidedBy: string;
+  voidReason: string;
+  ledgerReversalTransactionId?: string;
+  releasedAllocationsAmount?: number;
+}
 
 export interface Invoice {
   id: string;
@@ -1425,8 +1458,13 @@ export interface Invoice {
   amountCredited?: number;
   balanceDue?: number;
   status: InvoiceStatus;
+  lifecycleStatus?: InvoiceLifecycleStatus;
   paymentStatus?: InvoicePaymentStatus;
   collectionStatus?: InvoiceCollectionStatus;
+  snapshot?: InvoiceSnapshot;
+  voidAudit?: InvoiceVoidAudit;
+  disputeReason?: string;
+  disputedAt?: string;
   items: InvoiceItem[];
   paymentInstructions: string;
   signatureName: string;

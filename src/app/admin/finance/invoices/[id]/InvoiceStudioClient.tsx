@@ -8,6 +8,8 @@ import type { Invoice, InvoiceItem, BillingProfile, PaymentAllocation } from '@/
 import { updateInvoiceAction } from '@/lib/billing-actions';
 import { getInvoiceAllocationsAction } from '@/lib/finance-actions';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { VoidInvoiceModal } from '@/components/finance/VoidInvoiceModal';
+import { InvoiceSnapshotView } from '@/components/finance/InvoiceSnapshotView';
 import { useToast } from '@/hooks/use-toast';
 import { 
     Receipt, 
@@ -20,9 +22,9 @@ import {
     Calculator, 
     Zap, 
     X,
-    ShieldCheck,
     CreditCard,
-    Split
+    Split,
+    AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,11 +38,12 @@ import { PageContainerFluid } from '@/components/ui/page-container';
  * InvoiceStudioClient - Invoice Editor UI
  * 
  * Upgraded to:
- * - Bind tax & levy calculations directly to the invoice's selected `billingProfileId`
- *   (from `billing_profiles` collection), deprecating legacy global doc fallback.
- * - Integrated SmartSapp Finance 2.0 Sub-Ledger & Record Payment settlement modal.
- * - Enforce strict typing with zero `any` usage.
- * - Emil Kowalski animation and mobile accessibility compliance.
+ * - SmartSapp Finance 2.0 Multi-State Lifecycle Engine (Draft, Issued, Sent, Paid, Void, Cancelled, Disputed).
+ * - Immutable Point-in-time Snapshot display upon finalization.
+ * - Controlled Voiding with Sub-Ledger Compensating Reversals.
+ * - Integrated Sub-Ledger & Record Payment settlement modal.
+ * - Strict typing with zero `any` usage.
+ * - Emil Kowalski animations & 44px mobile touch targets.
  */
 export default function InvoiceStudioClient() {
     const params = useParams();
@@ -52,6 +55,7 @@ export default function InvoiceStudioClient() {
 
     const [isSaving, setIsSaving] = React.useState(false);
     const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
+    const [isVoidModalOpen, setIsVoidModalOpen] = React.useState(false);
     const [allocations, setAllocations] = React.useState<PaymentAllocation[]>([]);
     const [localItems, setLocalItems] = React.useState<InvoiceItem[]>([]);
     const [localDiscount, setLocalDiscount] = React.useState(0);
@@ -108,109 +112,106 @@ export default function InvoiceStudioClient() {
         
         const levyAmount = Math.round(((subtotal * levyPercent) / 100) * 100) / 100;
         const vatAmount = Math.round(((subtotal * vatPercent) / 100) * 100) / 100;
-        const calculatedTotal = subtotal + levyAmount + vatAmount + (Number(localArrears) || 0) - (Number(localCredit) || 0) - (Number(localDiscount) || 0);
-        const totalPayable = Math.max(0, Math.round(calculatedTotal * 100) / 100);
+        
+        const totalPayable = Math.max(0, Math.round((subtotal + levyAmount + vatAmount + localArrears - localCredit - localDiscount) * 100) / 100);
 
-        return { 
-            subtotal: Math.round(subtotal * 100) / 100, 
-            levyPercent, 
-            vatPercent, 
-            levyAmount, 
-            vatAmount, 
-            totalPayable 
+        return {
+            subtotal: Math.round(subtotal * 100) / 100,
+            levyAmount,
+            vatAmount,
+            levyPercent,
+            vatPercent,
+            totalPayable
         };
     }, [localItems, profile, invoice, localArrears, localCredit, localDiscount]);
 
-    const addItem = () => {
-        const newItem: InvoiceItem = { 
-            name: 'Additional Service', 
-            description: '', 
-            quantity: 1, 
-            unitPrice: 0, 
-            amount: 0 
-        };
-        setLocalItems((prev) => [...prev, newItem]);
+    const handleItemChange = (index: number, field: keyof InvoiceItem, value: string | number) => {
+        const next = [...localItems];
+        const current = { ...next[index], [field]: value };
+        current.amount = Math.round(((Number(current.quantity) || 0) * (Number(current.unitPrice) || 0)) * 100) / 100;
+        next[index] = current;
+        setLocalItems(next);
     };
 
-    const updateItem = (index: number, updates: Partial<InvoiceItem>) => {
-        setLocalItems((prev) => {
-            const next = [...prev];
-            const current = next[index];
-            const updated = { ...current, ...updates };
-            const qty = Number(updated.quantity) || 0;
-            const price = Number(updated.unitPrice) || 0;
-            updated.amount = Math.round(qty * price * 100) / 100;
-            next[index] = updated;
-            return next;
-        });
+    const addItem = () => {
+        setLocalItems(prev => [
+            ...prev,
+            { name: 'Additional Service / Assessment', description: '', quantity: 1, unitPrice: 0, amount: 0 }
+        ]);
     };
 
     const removeItem = (index: number) => {
-        setLocalItems((prev) => prev.filter((_, i) => i !== index));
+        setLocalItems(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleSave = async (status: Invoice['status'] = 'draft') => {
-        if (!user || !invoice) return;
+    const handleSave = async (statusOverride?: Invoice['status']) => {
+        if (!invoice || !user) return;
         setIsSaving(true);
+        try {
+            const res = await updateInvoiceAction(invoice.id, {
+                items: localItems,
+                discount: localDiscount,
+                arrearsAdded: localArrears,
+                creditDeducted: localCredit,
+                subtotal: totals.subtotal,
+                levyAmount: totals.levyAmount,
+                vatAmount: totals.vatAmount,
+                totalPayable: totals.totalPayable,
+                status: statusOverride || invoice.status
+            }, user.uid);
 
-        const updateData: Partial<Invoice> = {
-            items: localItems,
-            discount: Number(localDiscount) || 0,
-            arrearsAdded: Number(localArrears) || 0,
-            creditDeducted: Number(localCredit) || 0,
-            subtotal: totals.subtotal,
-            levyAmount: totals.levyAmount,
-            vatAmount: totals.vatAmount,
-            totalPayable: totals.totalPayable,
-            status,
-            updatedAt: new Date().toISOString()
-        };
-
-        const result = await updateInvoiceAction(invoiceId, updateData, user.uid);
-        if (result.success) {
-            toast({ 
-                title: 'Logic Synchronized', 
-                description: status === 'draft' 
-                    ? 'Draft changes saved successfully.' 
-                    : status === 'paid'
-                        ? 'Invoice marked as Paid.'
-                        : 'Invoice finalized and published.' 
-            });
-            if (status !== 'draft') {
-                router.push('/admin/finance/invoices');
+            if (res.success) {
+                toast({
+                    title: statusOverride === 'sent' ? 'Invoice Finalized & Issued' : 'Draft Saved',
+                    description: statusOverride === 'sent'
+                        ? 'Invoice posted to ledger and immutable snapshot captured.'
+                        : 'Draft updates saved successfully.'
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Save Failed',
+                    description: res.error || 'Could not update invoice.'
+                });
             }
-        } else {
-            toast({ variant: 'destructive', title: 'Sync Failed', description: result.error });
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: 'Operation Failed',
+                description: 'An unexpected error occurred.'
+            });
+        } finally {
+            setIsSaving(false);
         }
-        setIsSaving(false);
     };
 
     if (isLoadingInvoice) {
         return (
-            <div className="p-16 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-xs font-semibold text-muted-foreground">Loading Invoice Studio...</p>
-            </div>
+            <PageContainerFluid>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm font-semibold text-muted-foreground animate-pulse">Loading Invoice Studio...</p>
+                </div>
+            </PageContainerFluid>
         );
     }
 
     if (!invoice) {
         return (
-            <div className="p-16 text-center space-y-3">
-                <Receipt className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
-                <p className="text-sm font-bold">Invoice not found.</p>
-                <Button 
-                    variant="outline" 
-                    onClick={() => router.push('/admin/finance/invoices')}
-                    className="h-9 px-4 rounded-xl text-xs font-semibold active:scale-[0.97]"
-                >
-                    Return to Registry
-                </Button>
-            </div>
+            <PageContainerFluid>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                    <Receipt className="h-12 w-12 text-muted-foreground" />
+                    <p className="text-base font-bold text-foreground">Invoice Document Not Found</p>
+                    <Button onClick={() => router.push('/admin/finance/invoices')} variant="outline" className="rounded-xl active:scale-[0.97]">
+                        Return to Invoices
+                    </Button>
+                </div>
+            </PageContainerFluid>
         );
     }
 
     const isFinalized = invoice.status !== 'draft';
+    const isVoided = invoice.status === 'void' || invoice.lifecycleStatus === 'void';
     const amountPaid = Number(invoice.amountPaid || 0);
     const balanceDue = Number(invoice.balanceDue ?? Math.max(0, totals.totalPayable - amountPaid));
     const paymentStatus = invoice.paymentStatus || (invoice.status === 'paid' ? 'paid' : amountPaid > 0 ? 'partially_paid' : 'unpaid');
@@ -241,255 +242,280 @@ export default function InvoiceStudioClient() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5">
-                            {isFinalized && balanceDue > 0 && (
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            {isFinalized && !isVoided && balanceDue > 0 && (
                                 <Button 
                                     onClick={() => setIsRecordPaymentOpen(true)} 
-                                    className="rounded-xl font-bold text-xs h-10 px-5 shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
+                                    className="rounded-xl font-bold text-xs h-11 min-h-[44px] px-5 shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
                                 >
-                                    <CreditCard className="mr-1.5 h-3.5 w-3.5" /> Record Payment
+                                    <CreditCard className="mr-1.5 h-4 w-4" /> Record Payment
                                 </Button>
                             )}
-                            <Button 
-                                variant="outline" 
-                                onClick={() => handleSave('draft')} 
-                                disabled={isSaving || isFinalized} 
-                                className="rounded-xl font-bold text-xs h-10 px-4 border-primary/20 text-primary active:scale-[0.97]"
-                            >
-                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                                Save Draft
-                            </Button>
-                            <Button 
-                                onClick={() => handleSave('sent')} 
-                                disabled={isSaving || isFinalized} 
-                                className="rounded-xl font-bold text-xs h-10 px-5 shadow-sm text-white bg-primary hover:bg-primary/90 active:scale-[0.97]"
-                            >
-                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Finalize & Sync
-                            </Button>
+
+                            {isFinalized && !isVoided && (
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => setIsVoidModalOpen(true)} 
+                                    className="rounded-xl font-bold text-xs h-11 min-h-[44px] px-4 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]"
+                                >
+                                    <AlertTriangle className="mr-1.5 h-4 w-4" /> Void Invoice
+                                </Button>
+                            )}
+
+                            {!isFinalized && (
+                                <>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => handleSave('draft')} 
+                                        disabled={isSaving} 
+                                        className="rounded-xl font-bold text-xs h-11 min-h-[44px] px-4 border-primary/20 text-primary active:scale-[0.97]"
+                                    >
+                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Save className="h-4 w-4 mr-1.5" />}
+                                        Save Draft
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleSave('sent')} 
+                                        disabled={isSaving} 
+                                        className="rounded-xl font-bold text-xs h-11 min-h-[44px] px-5 shadow-sm text-white bg-primary hover:bg-primary/90 active:scale-[0.97]"
+                                    >
+                                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Finalize & Issue
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     </div>
 
+                    {/* Voided Banner */}
+                    {isVoided && (
+                        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-left">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-rose-500/20 text-rose-600 rounded-xl">
+                                    <AlertTriangle className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-rose-700 dark:text-rose-300">Invoice Voided</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        {invoice.voidAudit?.voidReason || 'This invoice has been voided and ledger debit reversed.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <Badge variant="destructive" className="uppercase font-bold text-xs">Void</Badge>
+                        </div>
+                    )}
+
                     {/* Main Layout Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Line Items Editor */}
-                        <Card className="lg:col-span-2 rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
-                            <CardHeader className="bg-muted/20 border-b p-5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="p-2 bg-primary/10 text-primary rounded-xl">
-                                            <Layout className="h-4 w-4" />
+                        {/* Line Items Editor & Snapshot Panel */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+                                <CardHeader className="bg-muted/20 border-b p-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                                                <Layout className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-sm font-bold tracking-tight">Invoice Architecture</CardTitle>
+                                                <CardDescription className="text-xs text-muted-foreground">Modify services, student headcount, or custom line items.</CardDescription>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-sm font-bold tracking-tight">Invoice Architecture</CardTitle>
-                                            <CardDescription className="text-xs text-muted-foreground">Modify services, student headcount, or custom line items.</CardDescription>
-                                        </div>
+                                        {!isFinalized && (
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                onClick={addItem} 
+                                                className="rounded-lg font-bold text-xs h-8 border-dashed border-2 active:scale-[0.97]"
+                                            >
+                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
+                                            </Button>
+                                        )}
                                     </div>
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        onClick={addItem} 
-                                        disabled={isFinalized} 
-                                        className="rounded-lg font-bold text-xs h-8 border-dashed border-2 active:scale-[0.97]"
-                                    >
-                                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <Table>
-                                    <TableHeader className="bg-muted/10">
-                                        <TableRow className="hover:bg-transparent">
-                                            <TableHead className="text-xs font-bold text-muted-foreground pl-6">Service / Item</TableHead>
-                                            <TableHead className="text-xs font-bold text-muted-foreground w-24 text-center">Qty / Head</TableHead>
-                                            <TableHead className="text-xs font-bold text-muted-foreground w-28 text-right">Rate ({invoice.currency})</TableHead>
-                                            <TableHead className="text-xs font-bold text-muted-foreground w-36 text-right pr-6">Amount ({invoice.currency})</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {localItems.map((item, idx) => (
-                                            <TableRow key={idx} className="group hover:bg-muted/5 transition-colors">
-                                                <TableCell className="pl-6 py-4">
-                                                    <div className="space-y-1">
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <Table>
+                                        <TableHeader className="bg-muted/10">
+                                            <TableRow>
+                                                <TableHead className="w-[45%] text-xs font-bold">Service / Line Item</TableHead>
+                                                <TableHead className="w-[20%] text-xs font-bold text-center">Qty</TableHead>
+                                                <TableHead className="w-[25%] text-xs font-bold text-right">Unit Rate ({invoice.currency || 'GHS'})</TableHead>
+                                                {!isFinalized && <TableHead className="w-[10%] text-xs font-bold text-center">Action</TableHead>}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {localItems.map((item, idx) => (
+                                                <TableRow key={idx} className="hover:bg-muted/5">
+                                                    <TableCell className="space-y-1">
                                                         <Input 
                                                             value={item.name} 
-                                                            onChange={(e) => updateItem(idx, { name: e.target.value })}
+                                                            onChange={(e) => handleItemChange(idx, 'name', e.target.value)} 
+                                                            placeholder="Item title" 
                                                             disabled={isFinalized}
-                                                            placeholder="Service Name"
-                                                            className="h-8 font-bold text-xs rounded-lg bg-transparent border-none focus-visible:bg-muted/40 transition-colors p-0" 
+                                                            className="h-8 font-bold text-xs rounded-lg"
                                                         />
                                                         <Input 
                                                             value={item.description || ''} 
-                                                            onChange={(e) => updateItem(idx, { description: e.target.value })}
+                                                            onChange={(e) => handleItemChange(idx, 'description', e.target.value)} 
+                                                            placeholder="Additional notes / scope" 
                                                             disabled={isFinalized}
-                                                            placeholder="Description or billing metrics..."
-                                                            className="h-6 text-[11px] text-muted-foreground rounded-md bg-transparent border-none focus-visible:bg-muted/40 transition-colors p-0" 
+                                                            className="h-7 text-[11px] text-muted-foreground rounded-lg"
                                                         />
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input 
-                                                        type="number" 
-                                                        min="1"
-                                                        value={item.quantity} 
-                                                        onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })}
-                                                        disabled={isFinalized}
-                                                        className="h-8 w-16 mx-auto rounded-lg bg-muted/20 border-none font-bold text-center text-xs shadow-inner" 
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end">
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input 
+                                                            type="number" 
+                                                            value={item.quantity} 
+                                                            onChange={(e) => handleItemChange(idx, 'quantity', Number(e.target.value))} 
+                                                            disabled={isFinalized}
+                                                            className="h-8 text-center font-bold text-xs rounded-lg"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <Input 
                                                             type="number" 
                                                             step="0.01" 
                                                             value={item.unitPrice} 
-                                                            onChange={(e) => updateItem(idx, { unitPrice: Number(e.target.value) })}
+                                                            onChange={(e) => handleItemChange(idx, 'unitPrice', Number(e.target.value))} 
                                                             disabled={isFinalized}
-                                                            className="h-8 w-20 rounded-lg bg-muted/20 border-none font-bold text-right text-xs shadow-inner" 
+                                                            className="h-8 text-right font-bold text-xs rounded-lg"
                                                         />
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <span className="font-bold text-xs tabular-nums text-foreground">
-                                                            {(Number(item.quantity) * Number(item.unitPrice)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </span>
-                                                        {!isFinalized && localItems.length > 1 && (
+                                                    </TableCell>
+                                                    {!isFinalized && (
+                                                        <TableCell className="text-center">
                                                             <Button 
-                                                                variant="ghost" 
                                                                 size="icon" 
+                                                                variant="ghost" 
                                                                 onClick={() => removeItem(idx)} 
-                                                                className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all rounded-md"
+                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-lg active:scale-[0.97]"
                                                             >
-                                                                <X className="h-3 w-3" />
+                                                                <X className="h-4 w-4" />
                                                             </Button>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-
-                        {/* Summary & Adjustments Panel */}
-                        <div className="space-y-5 text-left">
-                            {/* Settlement & Balance Card */}
-                            <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-                                <CardHeader className="bg-muted/20 border-b p-5 flex flex-row items-center justify-between">
-                                    <div>
-                                        <CardTitle className="text-xs font-bold text-foreground flex items-center gap-2">
-                                            <CreditCard className="h-4 w-4 text-primary" /> Settlement State
-                                        </CardTitle>
-                                        <CardDescription className="text-[11px] text-muted-foreground">
-                                            Live collection & sub-ledger sync
-                                        </CardDescription>
-                                    </div>
-                                    <Badge 
-                                        variant="outline" 
-                                        className={`rounded-lg text-[10px] font-bold uppercase px-2 py-0.5 ${
-                                            paymentStatus === 'paid' 
-                                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                                : paymentStatus === 'partially_paid'
-                                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                                        }`}
-                                    >
-                                        {paymentStatus === 'paid' ? 'Paid in Full' : paymentStatus === 'partially_paid' ? 'Partially Paid' : 'Unpaid'}
-                                    </Badge>
-                                </CardHeader>
-                                <CardContent className="p-5 space-y-3.5">
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted-foreground font-medium">Total Billed</span>
-                                        <span className="font-bold tabular-nums text-foreground">
-                                            {invoice.currency} {totals.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                        <span className="text-muted-foreground font-medium">Amount Settled</span>
-                                        <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                                            {invoice.currency} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
-                                    <div className="pt-2 border-t flex justify-between items-center">
-                                        <span className="text-xs font-bold text-foreground">Balance Due</span>
-                                        <span className={`text-xl font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'}`}>
-                                            {invoice.currency} {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
-
-                                    {/* Allocations Breakdown */}
-                                    {allocations.length > 0 && (
-                                        <div className="pt-2 border-t space-y-1.5">
-                                            <div className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                                                <Split className="h-3 w-3 text-primary" /> Remittance History
-                                            </div>
-                                            <div className="space-y-1 max-h-28 overflow-y-auto divide-y divide-border/40 text-[11px]">
-                                                {allocations.map((alloc) => (
-                                                    <div key={alloc.id} className="py-1 flex justify-between items-center">
-                                                        <span className="text-muted-foreground">{new Date(alloc.allocatedAt).toLocaleDateString()}</span>
-                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                                            +{alloc.currency} {alloc.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {isFinalized && balanceDue > 0 && (
-                                        <Button 
-                                            onClick={() => setIsRecordPaymentOpen(true)} 
-                                            className="w-full rounded-xl font-bold text-xs h-9 shadow-xs text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] mt-1"
-                                        >
-                                            <CreditCard className="mr-1.5 h-3.5 w-3.5" /> Record Payment
-                                        </Button>
-                                    )}
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </CardContent>
                             </Card>
 
-                            {/* Logic Reconciliation Card */}
-                            <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-                                <CardHeader className="bg-primary/5 border-b p-5">
-                                    <CardTitle className="text-xs font-bold text-primary flex items-center gap-2">
-                                        <Calculator className="h-4 w-4" /> Logic Reconciliation
-                                    </CardTitle>
-                                    {profile?.name && (
-                                        <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mt-0.5">
-                                            <ShieldCheck className="h-3 w-3 text-primary" />
-                                            Bound to: {profile.name}
-                                        </p>
-                                    )}
-                                </CardHeader>
-                                <CardContent className="p-5 space-y-4 text-left">
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center border-b pb-2">
-                                            <span className="text-xs font-medium text-muted-foreground">Base Subtotal</span>
-                                            <span className="text-sm font-bold tabular-nums">
-                                                {invoice.currency} {totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
+                            {/* Snapshot View when Finalized */}
+                            {isFinalized && (
+                                <InvoiceSnapshotView
+                                    snapshot={invoice.snapshot}
+                                    voidAudit={invoice.voidAudit}
+                                    currency={invoice.currency}
+                                />
+                            )}
+                        </div>
+
+                        {/* Financial Ledger & Breakdown Sidebar */}
+                        <div className="space-y-6">
+                            {/* Settlement Status Card */}
+                            {isFinalized && (
+                                <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+                                    <CardHeader className="bg-muted/20 border-b p-5">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Split className="h-4 w-4 text-primary" />
+                                                <CardTitle className="text-xs font-bold uppercase tracking-wider">
+                                                    Settlement State
+                                                </CardTitle>
+                                            </div>
+                                            <Badge
+                                                variant={
+                                                    isVoided
+                                                        ? 'destructive'
+                                                        : paymentStatus === 'paid'
+                                                        ? 'default'
+                                                        : paymentStatus === 'partially_paid'
+                                                        ? 'secondary'
+                                                        : 'outline'
+                                                }
+                                                className="text-[10px] uppercase font-bold"
+                                            >
+                                                {isVoided ? 'Voided' : paymentStatus}
+                                            </Badge>
                                         </div>
-                                        <div className="flex justify-between items-center border-b pb-2">
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                                Levy ({totals.levyPercent}%)
-                                            </span>
-                                            <span className="text-xs font-bold tabular-nums text-foreground/80">
-                                                {totals.levyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
+                                    </CardHeader>
+                                    <CardContent className="p-5 space-y-4">
+                                        <div className="grid grid-cols-2 gap-3 text-center">
+                                            <div className="p-3 bg-muted/40 rounded-xl border">
+                                                <div className="text-[10px] text-muted-foreground uppercase font-bold">Paid to Date</div>
+                                                <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                                    {invoice.currency || 'GHS'} {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-primary/5 rounded-xl border border-primary/20">
+                                                <div className="text-[10px] text-primary uppercase font-bold">Balance Due</div>
+                                                <div className="text-sm font-bold text-primary">
+                                                    {invoice.currency || 'GHS'} {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center border-b pb-2">
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                                VAT ({totals.vatPercent}%)
-                                            </span>
-                                            <span className="text-xs font-bold tabular-nums text-foreground/80">
-                                                {totals.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
+
+                                        {allocations.length > 0 && (
+                                            <div className="space-y-2 pt-2 border-t text-xs">
+                                                <div className="text-[11px] font-bold text-muted-foreground uppercase">
+                                                    Remittance Allocations ({allocations.length})
+                                                </div>
+                                                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                                                    {allocations.map((a) => (
+                                                        <div key={a.id} className="flex justify-between items-center p-2 rounded-lg bg-muted/30 text-[11px]">
+                                                            <span className="font-medium text-foreground">
+                                                                {a.allocatedAt ? new Date(a.allocatedAt).toLocaleDateString() : 'Settled'}
+                                                            </span>
+                                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                                                +{invoice.currency || 'GHS'} {a.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Statutory Calculations Card */}
+                            <Card className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
+                                <CardHeader className="bg-muted/20 border-b p-5">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                                            <Calculator className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-sm font-bold tracking-tight">Statutory Calculations</CardTitle>
+                                            <CardDescription className="text-xs text-muted-foreground">
+                                                Profile: <span className="font-semibold text-foreground">{profile?.name || 'Default Profile'}</span>
+                                            </CardDescription>
                                         </div>
                                     </div>
+                                </CardHeader>
+                                <CardContent className="p-5 space-y-3.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-muted-foreground">Subtotal:</span>
+                                        <span className="font-bold">{invoice.currency || 'GHS'} {totals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                        <span>Levy Profile ({totals.levyPercent}%):</span>
+                                        <span className="font-medium">+{invoice.currency || 'GHS'} {totals.levyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                                        <span>VAT Profile ({totals.vatPercent}%):</span>
+                                        <span className="font-medium">+{invoice.currency || 'GHS'} {totals.vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    </div>
 
-                                    <div className="space-y-3 pt-2">
+                                    <div className="pt-3 border-t border-border flex justify-between items-center">
+                                        <span className="text-sm font-bold text-foreground">Total Invoiced:</span>
+                                        <span className="text-base font-extrabold text-primary tabular-nums">
+                                            {invoice.currency || 'GHS'} {totals.totalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+
+                                    {/* Manual Modifiers Grid */}
+                                    <div className="grid grid-cols-3 gap-2 pt-2 border-t">
                                         <div className="space-y-1">
-                                            <Label className="text-[10px] font-bold text-rose-600 ml-1">Arrears Addition (+)</Label>
+                                            <Label className="text-[10px] font-bold text-rose-600 ml-1">Arrears (+)</Label>
                                             <Input 
                                                 type="number" 
                                                 step="0.01" 
@@ -530,7 +556,7 @@ export default function InvoiceStudioClient() {
                                 <div className="space-y-0.5 text-left">
                                     <p className="text-xs font-bold text-amber-900 dark:text-amber-300">Finalization Protocol</p>
                                     <p className="text-[10px] text-amber-800 dark:text-amber-400 leading-relaxed font-medium">
-                                        Once finalized, the invoice amounts are locked and posted to the customer ledger. The public invoice view will be immediately available.
+                                        Once finalized, the invoice amounts are locked, sequential numbering is assigned, and immutable snapshots are captured.
                                     </p>
                                 </div>
                             </div>
@@ -555,6 +581,18 @@ export default function InvoiceStudioClient() {
                     preselectedBalanceDue={balanceDue}
                     onPaymentSuccess={() => {
                         toast({ title: 'Payment Synchronized', description: 'Ledger and invoice balances updated.' });
+                    }}
+                />
+            )}
+
+            {/* Void Invoice Modal */}
+            {invoice && (
+                <VoidInvoiceModal
+                    isOpen={isVoidModalOpen}
+                    onClose={() => setIsVoidModalOpen(false)}
+                    invoice={invoice}
+                    onVoidSuccess={() => {
+                        toast({ title: 'Invoice Voided', description: 'Compensating ledger reversal posted.' });
                     }}
                 />
             )}
