@@ -1087,6 +1087,11 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
     }
 
+    match /page_insights/{insightId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+    }
+
     match /custom_page_analytics/{pageId} {
       allow get: if isAuthorized();
       allow write: if false; // Server-only ingestion via Server Actions & Admin SDK

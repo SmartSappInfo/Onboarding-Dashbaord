@@ -4848,6 +4848,42 @@ export interface Experiment {
   updatedAt: string;
 }
 
+// ─── PHASE 6 ARCHITECTURAL EXTENSIONS: AI INSIGHTS & DIAGNOSTICS COPILOT ───────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 6 foundational contracts for automated landing page diagnostics, severity classification,
+ * conversion friction analysis, copy clarity auditing, and 1-click AI recommendation execution.
+ */
+
+export type DiagnosticSeverity = 'critical' | 'warning' | 'info';
+
+export type DiagnosticCategory =
+  | 'conversion_friction'
+  | 'mobile_layout'
+  | 'copy_clarity'
+  | 'ab_opportunity'
+  | 'performance';
+
+export interface SuggestedAction {
+  toolName: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface AIInsight {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  severity: DiagnosticSeverity;
+  category: DiagnosticCategory;
+  title: string;
+  description: string;
+  suggestedAction?: SuggestedAction;
+  status: 'active' | 'dismissed' | 'applied';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
