@@ -65,6 +65,7 @@ export class FinanceReportingService {
     let totalCollected = 0;
     for (const doc of paySnap.docs) {
       const pay = doc.data() as Payment;
+      if (pay.status && pay.status !== 'confirmed') continue;
       totalCollected += Number(pay.amount || 0);
     }
 
@@ -129,6 +130,7 @@ export class FinanceReportingService {
 
     for (const doc of paySnap.docs) {
       const pay = doc.data() as Payment;
+      if (pay.status && pay.status !== 'confirmed') continue;
       const dateStr = pay.receivedAt || pay.createdAt;
       if (!dateStr) continue;
       const key = dateStr.substring(0, 7);

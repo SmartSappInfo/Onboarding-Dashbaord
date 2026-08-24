@@ -41,7 +41,7 @@ export class FinanceAutomationService {
     if (daysDiff === 3) return 't_plus_3';
     if (daysDiff === 7) return 't_plus_7';
     if (daysDiff === 14) return 't_plus_14';
-    if (daysDiff >= 30) return 't_plus_30';
+    if (daysDiff === 30) return 't_plus_30';
     return null;
   }
 
@@ -113,10 +113,11 @@ export class FinanceAutomationService {
         continue;
       }
 
+      // Normalize calendar dates to UTC midnight to avoid local execution-hour drift
       const dueObj = new Date(inv.dueDate || inv.issuedAt || inv.createdAt);
-      // Calendar day difference
-      const msPerDay = 86400000;
-      const diffDays = Math.floor((today.getTime() - dueObj.getTime()) / msPerDay);
+      const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+      const dueUtc = Date.UTC(dueObj.getUTCFullYear(), dueObj.getUTCMonth(), dueObj.getUTCDate());
+      const diffDays = Math.round((todayUtc - dueUtc) / 86400000);
       const stage = this.determineReminderStage(diffDays);
 
       if (!stage) continue;
@@ -220,6 +221,14 @@ export class FinanceAutomationService {
     if (!invSnap.exists) throw new Error('Invoice not found');
 
     const inv = { id: invSnap.id, ...(invSnap.data() as Omit<Invoice, 'id'>) };
+    if (inv.status === 'void' || inv.lifecycleStatus === 'void') {
+      throw new Error('Cannot send reminder for a voided invoice');
+    }
+    const balance = Number(inv.balanceDue ?? inv.totalPayable ?? 0);
+    if (inv.status === 'paid' || balance <= 0) {
+      throw new Error('Cannot send reminder: invoice is already fully settled');
+    }
+
     const entityName = inv.entityName || 'Customer';
     const messageContent = customMessage?.trim() || this.formatReminderMessage(inv, 'manual', entityName);
     const timestamp = new Date().toISOString();
