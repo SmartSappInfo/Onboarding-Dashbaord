@@ -49,8 +49,12 @@ export function getOrCreateVisitorId(): string {
     // LocalStorage restricted by browser security settings
   }
 
-  // 3. Generate new visitor ID
-  const newId = `vid-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+  // 3. Generate new visitor ID using Web Crypto API when available
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+  const newId = `vid-${uuid}`;
 
   // Persist both in cookie and localStorage
   setVisitorIdCookie(newId);

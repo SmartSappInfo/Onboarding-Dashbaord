@@ -23,12 +23,15 @@ export function calculateStatisticalSignificance(
   variant: { impressions: number; conversions: number },
 ): StatisticalResult {
   const minSample = 100;
+  const minConversions = 5;
 
   if (
     !control ||
     !variant ||
     control.impressions < minSample ||
-    variant.impressions < minSample
+    variant.impressions < minSample ||
+    control.conversions < minConversions ||
+    variant.conversions < minConversions
   ) {
     return {
       zScore: 0,
