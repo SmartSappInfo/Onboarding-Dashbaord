@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -12,16 +11,12 @@ import {
     Pencil, 
     Loader2, 
     Calendar,
-    ArrowRight,
-    Clock,
-    Lock,
-    Unlock,
-    Info,
-    Check,
-    Layout,
-    Share2
+    Lock, 
+    Unlock, 
+    Check, 
+    Layout, 
+    Search
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,16 +41,17 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 
 /**
  * @fileOverview Billing Cycles Management.
- * Synchronized with workspace context to support track-specific invoicing windows.
+ * Synchronized with workspace context and validated with strict date sequencing.
  */
 export default function PeriodsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
+    const { activeWorkspaceId, allowedWorkspaces, activeWorkspace } = useWorkspace();
     
     const [isAdding, setIsAdding] = React.useState(false);
     const [editingPeriod, setEditingPeriod] = React.useState<BillingPeriod | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [searchTerm, setSearchTerm] = React.useState('');
 
     // Form State
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([activeWorkspaceId]);
@@ -64,11 +60,11 @@ export default function PeriodsClient() {
     const [invoiceDate, setInvoiceDate] = React.useState<Date | undefined>(undefined);
     const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
 
-    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+    const workspaceOptions = allowedWorkspaces.map((w) => ({ label: w.name, value: w.id }));
 
     // Shared Visibility Query
     const periodsQuery = useMemoFirebase(() => 
-        firestore ? query(
+        firestore && activeWorkspaceId ? query(
             collection(firestore, 'billing_periods'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('startDate', 'desc')
@@ -96,7 +92,30 @@ export default function PeriodsClient() {
     const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!firestore || !startDate || !endDate || !invoiceDate || !dueDate || workspaceIds.length === 0) {
-            toast({ variant: 'destructive', title: 'Incomplete Protocol', description: 'Ensure all dates and workspaces are defined.' });
+            toast({ 
+                variant: 'destructive', 
+                title: 'Incomplete Protocol', 
+                description: 'Ensure all dates and workspaces are defined.' 
+            });
+            return;
+        }
+
+        // Date Sequence Validation
+        if (endDate < startDate) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Date Range',
+                description: 'Cycle end date cannot be earlier than cycle start date.'
+            });
+            return;
+        }
+
+        if (dueDate < invoiceDate) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Payment Deadline',
+                description: 'Payment due date cannot be earlier than invoice trigger date.'
+            });
             return;
         }
         
@@ -104,7 +123,7 @@ export default function PeriodsClient() {
         const formData = new FormData(e.currentTarget);
         
         const periodData = {
-            name: String(formData.get('name')),
+            name: String(formData.get('name') || ''),
             startDate: startDate.toISOString(),
             endDate: endDate.toISOString(),
             invoiceDate: invoiceDate.toISOString(),
@@ -127,7 +146,7 @@ export default function PeriodsClient() {
             }
             setIsAdding(false);
             setEditingPeriod(null);
-        } catch (error) {
+        } catch {
             toast({ variant: 'destructive', title: 'Operation Failed' });
         } finally {
             setIsSaving(false);
@@ -138,90 +157,124 @@ export default function PeriodsClient() {
         if (!firestore) return;
         const newStatus = period.status === 'open' ? 'closed' : 'open';
         try {
-            await updateDoc(doc(firestore, 'billing_periods', period.id), { status: newStatus, updatedAt: new Date().toISOString() });
+            await updateDoc(doc(firestore, 'billing_periods', period.id), { 
+                status: newStatus, 
+                updatedAt: new Date().toISOString() 
+            });
             toast({ title: `Cycle ${newStatus === 'open' ? 'Reopened' : 'Finalized'}` });
-        } catch (e) {
+        } catch {
             toast({ variant: 'destructive', title: 'Update Failed' });
         }
     };
 
+    const filteredPeriods = React.useMemo(() => {
+        if (!periods) return [];
+        if (!searchTerm) return periods;
+        const s = searchTerm.toLowerCase();
+        return periods.filter((p) => p.name.toLowerCase().includes(s));
+    }, [periods, searchTerm]);
+
     return (
         <PageContainerFluid>
-            <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-6 pb-32 w-full text-left">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+                            <Timer className="h-8 w-8 text-primary" />
                             Billing Cycles
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Define term-based windows for the {activeWorkspaceId} track
+                        <p className="text-muted-foreground text-xs mt-1">
+                            Define recurring and term-based invoicing windows for {activeWorkspace?.name || activeWorkspaceId}
                         </p>
                     </div>
-                    <Button onClick={() => setIsAdding(true)} className="rounded-xl font-bold shadow-sm h-11 px-8 transition-all active:scale-95 text-foreground bg-transparent ring-1 ring-border">
-                        <Plus className="mr-2 h-5 w-5" /> Initialize Cycle
+                    <Button 
+                        onClick={() => setIsAdding(true)} 
+                        className="rounded-xl font-bold shadow-sm h-11 px-6 active:scale-[0.97] transition-all text-white bg-primary hover:bg-primary/90"
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Initialize Cycle
                     </Button>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
+                {/* Search Bar */}
+                <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
+                    <Input 
+                        placeholder="Search billing cycles..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-9 bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
+                    />
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
                     <Table>
- <TableHeader className="bg-muted/30">
+                        <TableHeader className="bg-muted/20">
                             <TableRow>
- <TableHead className="text-[10px] font-semibold pl-8 py-5">Cycle Window</TableHead>
- <TableHead className="text-[10px] font-semibold ">Visibility</TableHead>
- <TableHead className="text-[10px] font-semibold text-center">Trigger Date</TableHead>
- <TableHead className="text-[10px] font-semibold text-center">Status</TableHead>
- <TableHead className="text-[10px] font-semibold text-right pr-8">Actions</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Cycle Window</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider">Visibility</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Trigger Date</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Status</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right pr-6">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
- <TableCell className="pl-8"><Skeleton className="h-4 w-32" /></TableCell>
- <TableCell><Skeleton className="h-4 w-24" /></TableCell>
- <TableCell className="text-center"><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
- <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
- <TableCell className="text-right pr-8"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                                        <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                        <TableCell className="text-center"><Skeleton className="h-4 w-32 mx-auto" /></TableCell>
+                                        <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
+                                        <TableCell className="text-right pr-6"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                                     </TableRow>
                                 ))
-                            ) : periods?.length ? (
-                                periods.map((period) => (
- <TableRow key={period.id} className={cn("group hover:bg-muted/30 transition-colors", period.status === 'closed' && "opacity-60")}>
- <TableCell className="pl-8 py-4">
- <p className="font-semibold text-foreground tracking-tight">{period.name}</p>
- <p className="text-[9px] font-bold text-muted-foreground opacity-60 tabular-nums">
+                            ) : filteredPeriods.length ? (
+                                filteredPeriods.map((period) => (
+                                    <TableRow key={period.id} className={cn('group hover:bg-muted/25 transition-colors', period.status === 'closed' && 'opacity-60')}>
+                                        <TableCell className="pl-6 py-3.5">
+                                            <p className="font-bold text-xs text-foreground tracking-tight">{period.name}</p>
+                                            <p className="text-[10px] font-semibold text-muted-foreground tabular-nums">
                                                 {format(new Date(period.startDate), 'MMM d')} — {format(new Date(period.endDate), 'MMM d, yyyy')}
                                             </p>
                                         </TableCell>
                                         <TableCell>
- <div className="flex flex-wrap gap-1">
-                                                {period.workspaceIds?.map(wId => (
-                                                    <Badge key={wId} variant="outline" className="text-[8px] font-semibold uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
+                                            <div className="flex flex-wrap gap-1">
+                                                {period.workspaceIds?.map((wId) => (
+                                                    <Badge key={wId} variant="outline" className="text-[8px] font-bold uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
                                                 )) || <Badge variant="secondary" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
                                             </div>
                                         </TableCell>
- <TableCell className="text-center">
- <div className="flex flex-col items-center gap-1">
- <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary">
- <Calendar className="h-3 w-3" />
-                                                    {format(new Date(period.invoiceDate), 'MMM d, yyyy')}
-                                                </div>
+                                        <TableCell className="text-center">
+                                            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-primary">
+                                                <Calendar className="h-3.5 w-3.5 opacity-70" />
+                                                {format(new Date(period.invoiceDate), 'MMM d, yyyy')}
                                             </div>
                                         </TableCell>
- <TableCell className="text-center">
+                                        <TableCell className="text-center">
                                             {period.status === 'open' ? (
-                                                <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold">Active</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[8px] h-5 uppercase px-2 font-bold">Active</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-semibold border-dashed">Closed</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-bold opacity-40">Closed</Badge>
                                             )}
                                         </TableCell>
- <TableCell className="text-right pr-8">
- <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleStatus(period)}>
- {period.status === 'open' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                                        <TableCell className="text-right pr-6">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97]" 
+                                                    onClick={() => toggleStatus(period)}
+                                                    title={period.status === 'open' ? 'Close cycle' : 'Reopen cycle'}
+                                                >
+                                                    {period.status === 'open' ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                                                 </Button>
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setEditingPeriod(period)}>
- <Pencil className="h-4 w-4 text-primary" />
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10 active:scale-[0.97]" 
+                                                    onClick={() => setEditingPeriod(period)}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -229,11 +282,9 @@ export default function PeriodsClient() {
                                 ))
                             ) : (
                                 <TableRow>
- <TableCell colSpan={5} className="h-64 text-center">
- <div className="flex flex-col items-center justify-center gap-3 opacity-20">
- <Clock className="h-12 w-12" />
- <p className="text-xs font-semibold ">No cycles in this hub</p>
-                                        </div>
+                                    <TableCell colSpan={5} className="h-44 text-center text-muted-foreground">
+                                        <Timer className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                        <p className="text-xs font-semibold">No billing cycles found.</p>
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -243,70 +294,91 @@ export default function PeriodsClient() {
             </div>
 
             {/* Editor Dialog */}
-            <Dialog open={isAdding || !!editingPeriod} onOpenChange={(o) => { if(!o) { setIsAdding(false); setEditingPeriod(null); } }}>
- <DialogContent className="sm:max-w-2xl rounded-2xl p-0 overflow-hidden border-none shadow-2xl text-left">
+            <Dialog open={isAdding || !!editingPeriod} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingPeriod(null); } }}>
+                <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden border border-border shadow-2xl bg-card text-left">
                     <form onSubmit={handleSave}>
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <Timer className="h-6 w-6" />
+                        <DialogHeader className="p-6 bg-muted/20 border-b shrink-0 text-left">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="p-2.5 bg-primary text-white rounded-xl shadow-md shadow-primary/20 text-left">
+                                    <Timer className="h-5 w-5" />
                                 </div>
-                                <div>
- <DialogTitle className="text-2xl font-semibold tracking-tight">
-                                        {editingPeriod ? 'Modify Cycle' : 'Initialize Cycle'}
+                                <div className="text-left">
+                                    <DialogTitle className="text-xl font-bold tracking-tight text-left">
+                                        {editingPeriod ? 'Modify Billing Cycle' : 'Initialize Billing Cycle'}
                                     </DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Configure the invoicing window parameters</DialogDescription>
+                                    <DialogDescription className="text-xs text-muted-foreground text-left">
+                                        Configure the active window and payment deadlines
+                                    </DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
- <div className="p-8 space-y-8 bg-background">
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
- <Layout className="h-3 w-3" /> Shared Visibility
+
+                        <div className="p-6 space-y-5 text-left bg-background">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-primary ml-1 flex items-center gap-1.5">
+                                    <Layout className="h-3.5 w-3.5" /> Shared Workspace Visibility
                                 </Label>
                                 <MultiSelect 
                                     options={workspaceOptions}
                                     value={workspaceIds}
                                     onChange={setWorkspaceIds}
-                                    placeholder="Map to hubs..."
+                                    placeholder="Map to workspaces..."
                                 />
                             </div>
 
- <Separator className="opacity-50" />
+                            <Separator className="opacity-40" />
 
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Internal Cycle Label</Label>
- <Input name="name" defaultValue={editingPeriod?.name} placeholder="e.g. Term 1 (Jan - Apr 2026)" className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg shadow-inner" required />
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cycle Label</Label>
+                                <Input 
+                                    name="name" 
+                                    defaultValue={editingPeriod?.name} 
+                                    placeholder="e.g. 2026 Term 1 (Jan - Apr)" 
+                                    className="h-10 rounded-xl bg-background border-border text-xs font-bold shadow-xs" 
+                                    required 
+                                />
                             </div>
                             
- <div className="grid grid-cols-2 gap-8">
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-primary ml-1">Cycle Start</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5 text-left">
+                                    <Label className="text-[10px] font-bold text-primary ml-1">Cycle Start</Label>
                                     <DateTimePicker value={startDate} onChange={setStartDate} />
                                 </div>
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-primary ml-1">Cycle End</Label>
+                                <div className="space-y-1.5 text-left">
+                                    <Label className="text-[10px] font-bold text-primary ml-1">Cycle End</Label>
                                     <DateTimePicker value={endDate} onChange={setEndDate} />
                                 </div>
                             </div>
 
- <div className="grid grid-cols-2 gap-8 pt-4 border-t border-dashed">
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Trigger Date</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border/50">
+                                <div className="space-y-1.5 text-left">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Invoice Trigger Date</Label>
                                     <DateTimePicker value={invoiceDate} onChange={setInvoiceDate} />
- <p className="text-[8px] text-muted-foreground font-bold tracking-tighter px-1 mt-1">Automatic bill generation</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium px-1">Date invoice draft is triggered</p>
                                 </div>
- <div className="space-y-2 text-left">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Payment Deadline</Label>
+                                <div className="space-y-1.5 text-left">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Payment Deadline</Label>
                                     <DateTimePicker value={dueDate} onChange={setDueDate} />
- <p className="text-[8px] text-muted-foreground font-bold tracking-tighter px-1 mt-1">Marked as overdue after this</p>
+                                    <p className="text-[9px] text-muted-foreground font-medium px-1">Marked as overdue after this date</p>
                                 </div>
                             </div>
                         </div>
- <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between gap-3 sm:justify-between">
- <Button type="button" variant="ghost" onClick={() => { setIsAdding(false); setEditingPeriod(null); }} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
- <Button type="submit" disabled={isSaving || !startDate || !endDate || workspaceIds.length === 0} className="rounded-xl font-semibold px-12 shadow-2xl h-12 text-sm active:scale-95 transition-all">
- {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+
+                        <DialogFooter className="bg-muted/20 p-4 border-t flex justify-between gap-3 items-center">
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                onClick={() => { setIsAdding(false); setEditingPeriod(null); }} 
+                                className="font-bold rounded-xl px-5 h-10 text-xs active:scale-[0.97]"
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                disabled={isSaving || !startDate || !endDate || workspaceIds.length === 0} 
+                                className="rounded-xl font-bold px-6 h-10 text-xs bg-primary text-white active:scale-[0.97]"
+                            >
+                                {isSaving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
                                 Commit Cycle
                             </Button>
                         </DialogFooter>

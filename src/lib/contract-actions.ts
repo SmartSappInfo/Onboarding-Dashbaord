@@ -4,16 +4,22 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { sendMessage } from './messaging-engine';
-import type { Contract, ContractStatus } from './types';
+import type { ContractStatus } from './types';
 import { canUser } from './workspace-permissions';
 
 /**
- * @fileOverview Server actions for the Institutional Contract Lifecycle.
- * Updated to support multi-channel template dispatch and bulk operations.
+ * @fileOverview Server actions for the Contract Lifecycle.
+ * Conforms to workspace rules, strict typing, and zero `any` usage.
  */
 
+export interface ContractActionResponse {
+    success: boolean;
+    error?: string;
+    id?: string;
+}
+
 /**
- * Initializes or updates a contract draft for a school.
+ * Initializes or updates a contract draft for an entity.
  */
 export async function upsertContractAction(data: {
     entityId: string;
@@ -23,7 +29,7 @@ export async function upsertContractAction(data: {
     status: ContractStatus;
     userId: string;
     workspaceId: string;
-}) {
+}): Promise<ContractActionResponse> {
     try {
         // 0. Permission Check
         const permission = await canUser(data.userId, 'finance', 'agreements', 'create', data.workspaceId);
@@ -32,7 +38,6 @@ export async function upsertContractAction(data: {
         }
 
         const contractsCol = adminDb.collection('contracts');
-        // Check for existing contract for this school
         const querySnap = await contractsCol.where('entityId', '==', data.entityId).limit(1).get();
         
         const timestamp = new Date().toISOString();
@@ -59,8 +64,9 @@ export async function upsertContractAction(data: {
 
         revalidatePath('/admin/finance/contracts');
         return { success: true, id: contractId };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to initialize agreement';
+        return { success: false, error: message };
     }
 }
 
@@ -77,10 +83,20 @@ export async function sendContractAction(input: {
     recipients: { name: string; email?: string; phone?: string; type: string }[];
     userId: string;
     publicUrl: string;
-    workspaceId?: string; // Workspace context (Requirement 11)
-}) {
+    workspaceId?: string;
+}): Promise<ContractActionResponse> {
     try {
-        const { contractId, emailTemplateId, smsTemplateId, recipients, entityId, entityName, userId, publicUrl, workspaceId } = input;
+        const { 
+            contractId, 
+            emailTemplateId, 
+            smsTemplateId, 
+            recipients, 
+            entityId, 
+            entityName, 
+            userId, 
+            publicUrl, 
+            workspaceId 
+        } = input;
 
         let resolvedWorkspaceId = workspaceId;
         if (!resolvedWorkspaceId || resolvedWorkspaceId === 'onboarding') {
@@ -104,12 +120,15 @@ export async function sendContractAction(input: {
         }
 
         // 1. Prepare Dispatches
-        const dispatchPromises: Promise<any>[] = [];
+        const dispatchPromises: Promise<unknown>[] = [];
 
-        recipients.forEach(recipient => {
-            const baseVars = {
+        recipients.forEach((recipient) => {
+            const baseVars: Record<string, string> = {
+                name: entityName,
                 school_name: entityName,
+                entity_name: entityName,
                 contact_name: recipient.name,
+                first_name: recipient.name.split(' ')[0] || recipient.name,
                 agreement_url: publicUrl,
                 contract_link: publicUrl,
                 link: publicUrl,
@@ -120,11 +139,11 @@ export async function sendContractAction(input: {
             if (emailTemplateId && emailTemplateId !== 'none' && recipient.email) {
                 dispatchPromises.push(sendMessage({
                     templateId: emailTemplateId,
-                    senderProfileId: 'default', // Fallback to default sender
+                    senderProfileId: 'default',
                     recipient: recipient.email,
                     variables: baseVars,
                     entityId,
-                    workspaceId: resolvedWorkspaceId // Pass workspace context (Requirement 11)
+                    workspaceId: resolvedWorkspaceId
                 }));
             }
 
@@ -136,7 +155,7 @@ export async function sendContractAction(input: {
                     recipient: recipient.phone,
                     variables: baseVars,
                     entityId,
-                    workspaceId: resolvedWorkspaceId // Pass workspace context (Requirement 11)
+                    workspaceId: resolvedWorkspaceId
                 }));
             }
         });
@@ -158,25 +177,24 @@ export async function sendContractAction(input: {
             entityId,
             organizationId: 'default',
             userId,
-            workspaceId: "onboarding",
+            workspaceId: resolvedWorkspaceId,
             type: 'notification_sent',
             source: 'user_action',
-            description: `dispatched legal agreements via dual-channel to ${recipients.length} recipients for "${entityName}"`
+            description: `dispatched legal agreements to ${recipients.length} recipients for "${entityName}"`
         });
 
         revalidatePath('/admin/finance/contracts');
         return { success: true };
 
-    } catch (e: any) {
-        console.error(">>> [CONTRACT:DISPATCH] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Agreement dispatch failed';
+        console.error('>>> [CONTRACT:DISPATCH] Failed:', message);
+        return { success: false, error: message };
     }
 }
 
 /**
  * Permanently purges a contract record and its associated submission from the system.
- * Prevents orphan rows in the Doc Signing module.
- * Updated to support entityId (Requirements 25.1, 25.2)
  */
 export async function deleteContractAction(
     contractId: string,
@@ -184,12 +202,10 @@ export async function deleteContractAction(
     submissionId: string | null,
     entityId: string,
     userId: string
-) {
+): Promise<ContractActionResponse> {
     try {
-        // 0. Permission Check (Try to resolve workspace from contract if not provided? 
-        // For contracts, they are workspace-linked. Let's fetch the doc first.)
         const contractSnap = await adminDb.collection('contracts').doc(contractId).get();
-        if (!contractSnap.exists) throw new Error("Contract not found.");
+        if (!contractSnap.exists) throw new Error('Contract not found.');
         const workspaceId = contractSnap.data()?.workspaceId;
 
         const permission = await canUser(userId, 'finance', 'agreements', 'delete', workspaceId);
@@ -198,8 +214,6 @@ export async function deleteContractAction(
         }
 
         const batch = adminDb.batch();
-        
-        // Use unified identifier strictly
         
         // 1. Delete primary Contract doc
         batch.delete(adminDb.collection('contracts').doc(contractId));
@@ -211,22 +225,23 @@ export async function deleteContractAction(
 
         await batch.commit();
 
-        // 3. Log activity for audit trail with both identifiers (Requirement 25.2)
+        // 3. Log activity
         await logActivity({
             entityId: entityId || undefined,
             organizationId: 'default',
             userId,
-            workspaceId: "onboarding",
+            workspaceId: workspaceId || 'default',
             type: 'pdf_status_changed',
             source: 'user_action',
-            description: `permanently purged the agreement record and associated signed document.`,
+            description: `permanently purged agreement record and associated signed document.`,
             metadata: { contractId, pdfId, submissionId }
         });
 
         revalidatePath('/admin/finance/contracts');
         return { success: true };
-    } catch (e: any) {
-        console.error(">>> [CONTRACT:PURGE] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to purge agreement';
+        console.error('>>> [CONTRACT:PURGE] Failed:', message);
+        return { success: false, error: message };
     }
 }

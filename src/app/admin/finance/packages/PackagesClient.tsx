@@ -11,17 +11,11 @@ import {
     Plus, 
     Pencil, 
     Trash2, 
-    Check, 
-    X, 
     Loader2, 
-    BadgeCheck, 
-    AlertCircle,
-    Info,
-    Wallet,
-    Layout,
-    Share2
+    Wallet, 
+    Layout, 
+    Search
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,29 +37,32 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { useTerminology } from '@/hooks/use-terminology';
 
 /**
  * @fileOverview Pricing Tiers Hub.
- * Upgraded to support shared visibility across multiple workspaces.
+ * Upgraded with dynamic multi-industry terminology, search filters, and strict typing.
  */
 export default function PackagesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
+    const { singular } = useTerminology();
     const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
     
     const [isAdding, setIsAdding] = React.useState(false);
     const [editingPackage, setEditingPackage] = React.useState<SubscriptionPackage | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+    const [searchTerm, setSearchTerm] = React.useState('');
 
     // Form Local State
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([activeWorkspaceId]);
 
-    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+    const workspaceOptions = allowedWorkspaces.map((w) => ({ label: w.name, value: w.id }));
 
     // Shared Visibility Query
     const packagesQuery = useMemoFirebase(() => 
-        firestore ? query(
+        firestore && activeWorkspaceId ? query(
             collection(firestore, 'subscription_packages'), 
             where('workspaceIds', 'array-contains', activeWorkspaceId),
             orderBy('name', 'asc')
@@ -85,11 +82,11 @@ export default function PackagesClient() {
         const formData = new FormData(e.currentTarget);
         
         const packageData = {
-            name: String(formData.get('name')),
-            description: String(formData.get('description')),
-            ratePerStudent: Number(formData.get('rate')),
-            billingTerm: String(formData.get('term')) as any,
-            currency: String(formData.get('currency')),
+            name: String(formData.get('name') || ''),
+            description: String(formData.get('description') || ''),
+            ratePerStudent: Number(formData.get('rate')) || 0,
+            billingTerm: (String(formData.get('term') || 'termly')) as SubscriptionPackage['billingTerm'],
+            currency: String(formData.get('currency') || 'GHS'),
             isActive: formData.get('isActive') === 'on',
             workspaceIds,
             updatedAt: new Date().toISOString()
@@ -109,7 +106,7 @@ export default function PackagesClient() {
             setIsAdding(false);
             setEditingPackage(null);
             setWorkspaceIds([activeWorkspaceId]);
-        } catch (error) {
+        } catch {
             toast({ variant: 'destructive', title: 'Operation Failed' });
         } finally {
             setIsSaving(false);
@@ -118,90 +115,128 @@ export default function PackagesClient() {
 
     const handleDelete = async (id: string) => {
         if (!firestore) return;
-        if (!(await confirm({ title: 'Delete pricing tier?', description: 'Records using this package will require manual reassignment.', confirmText: 'Delete', variant: 'destructive' }))) return;
+        if (!(await confirm({ 
+            title: 'Delete pricing tier?', 
+            description: 'Records using this package will require manual reassignment.', 
+            confirmText: 'Delete', 
+            variant: 'destructive' 
+        }))) return;
+
         try {
             await deleteDoc(doc(firestore, 'subscription_packages', id));
             toast({ title: 'Package Purged' });
-        } catch (e) {
+        } catch {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         }
     };
 
+    const filteredPackages = React.useMemo(() => {
+        if (!packages) return [];
+        if (!searchTerm) return packages;
+        const s = searchTerm.toLowerCase();
+        return packages.filter((p) => p.name.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s));
+    }, [packages, searchTerm]);
+
     return (
         <PageContainerFluid>
-            <div className="space-y-8 pb-32 w-full">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="space-y-6 pb-32 w-full text-left">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col items-start">
-                        <h1 className="text-3xl font-bold text-foreground">
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+                            <Package className="h-8 w-8 text-primary" />
                             Pricing Tiers
                         </h1>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Institutional subscription levels for the {activeWorkspaceId} hub
+                        <p className="text-muted-foreground text-xs mt-1">
+                            Subscription tiers and rate protocols for {singular.toLowerCase()} enrollment
                         </p>
                     </div>
-                    <Button onClick={() => { setIsAdding(true); setWorkspaceIds([activeWorkspaceId]); }} className="rounded-xl font-bold shadow-sm h-11 px-8 active:scale-95 text-foreground bg-transparent ring-1 ring-border">
+                    <Button 
+                        onClick={() => { setIsAdding(true); setWorkspaceIds([activeWorkspaceId]); }} 
+                        className="rounded-xl font-bold shadow-sm h-11 px-6 active:scale-[0.97] transition-all text-white bg-primary hover:bg-primary/90"
+                    >
                         <Plus className="mr-2 h-4 w-4" /> New Package
                     </Button>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-transparent ring-1 ring-border shadow-sm overflow-hidden text-left">
+                {/* Search Bar */}
+                <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
+                    <Input 
+                        placeholder="Search pricing tiers..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-9 bg-card border-border/80 text-foreground placeholder:text-muted-foreground rounded-xl text-xs font-medium"
+                    />
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden text-left">
                     <Table>
- <TableHeader className="bg-muted/30">
+                        <TableHeader className="bg-muted/20">
                             <TableRow>
- <TableHead className="text-[10px] font-semibold pl-8 py-5">Package Name</TableHead>
- <TableHead className="text-[10px] font-semibold ">Rate (Per Student)</TableHead>
- <TableHead className="text-[10px] font-semibold text-center">Visibility</TableHead>
- <TableHead className="text-[10px] font-semibold text-center">Status</TableHead>
- <TableHead className="text-[10px] font-semibold text-right pr-8">Actions</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider pl-6 py-4">Package Name</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider">Rate (Per {singular})</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Visibility</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-center">Status</TableHead>
+                                <TableHead className="text-[10px] font-bold uppercase tracking-wider text-right pr-6">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
- <TableCell className="pl-8 py-6"><Skeleton className="h-4 w-32" /></TableCell>
- <TableCell><Skeleton className="h-4 w-24" /></TableCell>
- <TableCell className="text-center"><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
- <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
- <TableCell className="text-right pr-8"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                                        <TableCell className="pl-6 py-5"><Skeleton className="h-4 w-32" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                        <TableCell className="text-center"><Skeleton className="h-4 w-20 mx-auto" /></TableCell>
+                                        <TableCell className="text-center"><Skeleton className="h-6 w-12 mx-auto rounded-full" /></TableCell>
+                                        <TableCell className="text-right pr-6"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                                     </TableRow>
                                 ))
-                            ) : packages?.length ? (
-                                packages.map((pkg) => (
- <TableRow key={pkg.id} className="group hover:bg-muted/30 transition-colors">
- <TableCell className="pl-8 py-4">
+                            ) : filteredPackages.length ? (
+                                filteredPackages.map((pkg) => (
+                                    <TableRow key={pkg.id} className="group hover:bg-muted/25 transition-colors">
+                                        <TableCell className="pl-6 py-3.5">
                                             <div>
- <p className="font-semibold text-foreground tracking-tight">{pkg.name}</p>
- <p className="text-[10px] text-muted-foreground truncate max-w-[250px] font-bold tracking-tighter">{pkg.billingTerm} cycle</p>
+                                                <p className="font-bold text-xs text-foreground tracking-tight">{pkg.name}</p>
+                                                <p className="text-[10px] text-muted-foreground truncate max-w-[250px] font-semibold">{pkg.billingTerm} cycle</p>
                                             </div>
                                         </TableCell>
                                         <TableCell>
- <div className="flex items-center gap-1.5 font-semibold text-sm">
- <span className="text-[10px] opacity-40">{pkg.currency}</span>
+                                            <div className="flex items-center gap-1.5 font-black text-xs">
+                                                <span className="text-[10px] opacity-40">{pkg.currency}</span>
                                                 {pkg.ratePerStudent.toFixed(2)}
                                             </div>
                                         </TableCell>
- <TableCell className="text-center">
- <div className="flex flex-wrap gap-1 justify-center">
-                                                {pkg.workspaceIds?.map(wId => (
-                                                    <Badge key={wId} variant="outline" className="text-[8px] font-semibold uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
+                                        <TableCell className="text-center">
+                                            <div className="flex flex-wrap gap-1 justify-center">
+                                                {pkg.workspaceIds?.map((wId) => (
+                                                    <Badge key={wId} variant="outline" className="text-[8px] font-bold uppercase h-4 border-primary/20 bg-primary/5 text-primary">{wId}</Badge>
                                                 )) || <Badge variant="secondary" className="text-[8px] font-bold opacity-30">Unbound</Badge>}
                                             </div>
                                         </TableCell>
- <TableCell className="text-center">
+                                        <TableCell className="text-center">
                                             {pkg.isActive ? (
-                                                <Badge className="bg-emerald-50 text-white border-none text-[8px] h-5 uppercase px-2 font-semibold">Active</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[8px] h-5 uppercase px-2 font-bold">Active</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-semibold opacity-40">Inactive</Badge>
+                                                <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-bold opacity-40">Inactive</Badge>
                                             )}
                                         </TableCell>
- <TableCell className="text-right pr-8">
- <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
- <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingPackage(pkg); setWorkspaceIds(pkg.workspaceIds || [activeWorkspaceId]); }}>
- <Pencil className="h-4 w-4 text-primary" />
+                                        <TableCell className="text-right pr-6">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10 active:scale-[0.97]" 
+                                                    onClick={() => { setEditingPackage(pkg); setWorkspaceIds(pkg.workspaceIds || [activeWorkspaceId]); }}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
- <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(pkg.id)}>
- <Trash2 className="h-4 w-4" />
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg active:scale-[0.97]" 
+                                                    onClick={() => handleDelete(pkg.id)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -209,11 +244,9 @@ export default function PackagesClient() {
                                 ))
                             ) : (
                                 <TableRow>
- <TableCell colSpan={5} className="h-64 text-center">
- <div className="flex flex-col items-center justify-center gap-3 opacity-20">
- <Package className="h-12 w-12" />
- <p className="text-xs font-semibold ">No tiers in this hub</p>
-                                        </div>
+                                    <TableCell colSpan={5} className="h-44 text-center text-muted-foreground">
+                                        <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                        <p className="text-xs font-semibold">No pricing packages found.</p>
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -223,77 +256,125 @@ export default function PackagesClient() {
             </div>
 
             {/* Editor Dialog */}
-            <Dialog open={isAdding || !!editingPackage} onOpenChange={(o) => { if(!o) { setIsAdding(false); setEditingPackage(null); } }}>
-
- <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
+            <Dialog open={isAdding || !!editingPackage} onOpenChange={(o) => { if (!o) { setIsAdding(false); setEditingPackage(null); } }}>
+                <DialogContent className="sm:max-w-md rounded-2xl p-0 overflow-hidden border border-border shadow-2xl bg-card text-left">
                     <form onSubmit={handleSave}>
- <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
- <div className="flex items-center gap-4">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
- <Wallet className="h-6 w-6" />
+                        <DialogHeader className="p-6 bg-muted/20 border-b shrink-0 text-left">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="p-2.5 bg-primary text-white rounded-xl shadow-md shadow-primary/20 text-left">
+                                    <Wallet className="h-5 w-5" />
                                 </div>
-                                <div>
- <DialogTitle className="text-2xl font-semibold tracking-tight text-left">
-                                        {editingPackage ? 'Sync Pricing' : 'Initialize Tier'}
+                                <div className="text-left">
+                                    <DialogTitle className="text-xl font-bold tracking-tight text-left">
+                                        {editingPackage ? 'Sync Pricing Tier' : 'Initialize Pricing Tier'}
                                     </DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground text-left">Define student-based subscription logic</DialogDescription>
+                                    <DialogDescription className="text-xs text-muted-foreground text-left">
+                                        Define unit-based subscription logic
+                                    </DialogDescription>
                                 </div>
                             </div>
                         </DialogHeader>
- <div className="p-8 space-y-8 text-left bg-background">
- <div className="space-y-4">
- <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2">
- <Layout className="h-3 w-3" /> Shared Visibility
+
+                        <div className="p-6 space-y-5 text-left bg-background">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-primary ml-1 flex items-center gap-1.5">
+                                    <Layout className="h-3.5 w-3.5" /> Shared Workspace Visibility
                                 </Label>
                                 <MultiSelect 
                                     options={workspaceOptions}
                                     value={workspaceIds}
                                     onChange={setWorkspaceIds}
-                                    placeholder="Map to hubs..."
+                                    placeholder="Map to workspaces..."
                                 />
                             </div>
 
- <Separator className="opacity-50" />
+                            <Separator className="opacity-40" />
 
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Package Name</Label>
- <Input name="name" defaultValue={editingPackage?.name} placeholder="e.g. Premium Hub" className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner" required />
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Package Name</Label>
+                                <Input 
+                                    name="name" 
+                                    defaultValue={editingPackage?.name} 
+                                    placeholder="e.g. Standard Tier" 
+                                    className="h-10 rounded-xl bg-background border-border text-xs font-semibold" 
+                                    required 
+                                />
                             </div>
-                            
- <div className="grid grid-cols-2 gap-6">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Rate per student</Label>
- <Input name="rate" type="number" step="0.01" defaultValue={editingPackage?.ratePerStudent} className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg pl-4 shadow-inner" required />
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Description</Label>
+                                <Textarea 
+                                    name="description" 
+                                    defaultValue={editingPackage?.description} 
+                                    placeholder="Brief outline of features..." 
+                                    className="rounded-xl bg-background border-border text-xs font-medium" 
+                                    rows={2} 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Rate (Per {singular})</Label>
+                                    <Input 
+                                        name="rate" 
+                                        type="number" 
+                                        step="0.01" 
+                                        defaultValue={editingPackage?.ratePerStudent ?? 0} 
+                                        className="h-10 rounded-xl bg-background border-border text-xs font-bold" 
+                                        required 
+                                    />
                                 </div>
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Currency</Label>
- <Input name="currency" defaultValue={editingPackage?.currency || 'GHS'} className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-center shadow-inner " required />
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Currency</Label>
+                                    <Input 
+                                        name="currency" 
+                                        defaultValue={editingPackage?.currency || 'GHS'} 
+                                        className="h-10 rounded-xl bg-background border-border text-xs font-bold" 
+                                        required 
+                                    />
                                 </div>
                             </div>
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Billing cycle (Term)</Label>
-                                <Select name="term" defaultValue={editingPackage?.billingTerm || 'term'}>
- <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner"><SelectValue /></SelectTrigger>
- <SelectContent className="rounded-xl">
-                                        <SelectItem value="term">Per Term</SelectItem>
-                                        <SelectItem value="semester">Per Semester</SelectItem>
-                                        <SelectItem value="year">Per Academic Year</SelectItem>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Billing Cycle Term</Label>
+                                <Select name="term" defaultValue={editingPackage?.billingTerm || 'termly'}>
+                                    <SelectTrigger className="h-10 rounded-xl bg-background border-border text-xs font-semibold">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
+                                        <SelectItem value="termly" className="text-xs">Termly / Quarter</SelectItem>
+                                        <SelectItem value="annually" className="text-xs">Annually</SelectItem>
+                                        <SelectItem value="custom" className="text-xs">Custom</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
- <div className="flex items-center justify-between p-4 rounded-2xl border bg-background">
- <div className="space-y-0.5">
- <Label className="text-sm font-bold tracking-tight">Active for Selection</Label>
- <p className="text-[9px] text-muted-foreground ">Enable this tier in the onboarding flow</p>
+
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
+                                <div>
+                                    <p className="text-xs font-bold">Active Tier</p>
+                                    <p className="text-[10px] text-muted-foreground">Allow new invoices to bind this tier</p>
                                 </div>
                                 <Switch name="isActive" defaultChecked={editingPackage ? editingPackage.isActive : true} />
                             </div>
                         </div>
- <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between gap-3 sm:justify-between">
- <Button type="button" variant="ghost" onClick={() => { setIsAdding(false); setEditingPackage(null); }} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
- <Button type="submit" disabled={isSaving || workspaceIds.length === 0} className="rounded-xl font-semibold px-12 shadow-2xl h-12 text-sm">
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-4 w-4" />}
-                                Commit Package
+
+                        <DialogFooter className="p-4 bg-muted/20 border-t flex justify-between gap-3 items-center">
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                onClick={() => { setIsAdding(false); setEditingPackage(null); }}
+                                className="font-bold rounded-xl h-10 px-5 text-xs active:scale-[0.97]"
+                            >
+                                Discard
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                disabled={isSaving} 
+                                className="rounded-xl font-bold h-10 px-6 bg-primary text-white text-xs active:scale-[0.97]"
+                            >
+                                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                                Save Tier
                             </Button>
                         </DialogFooter>
                     </form>

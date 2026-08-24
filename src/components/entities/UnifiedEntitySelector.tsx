@@ -5,7 +5,6 @@ import {
   Search, 
   X, 
   Building, 
-  Filter, 
   Loader2, 
   Check, 
   ChevronsUpDown, 
@@ -15,13 +14,7 @@ import {
   User, 
   BookmarkCheck, 
   Tag as TagIcon, 
-  Layers, 
-  RotateCcw,
-  Sparkles,
-  CheckCircle2,
-  ShieldCheck,
   Building2,
-  ChevronDown,
   SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,21 +28,18 @@ import {
   DialogDescription, 
   DialogFooter 
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
 import { TagFilter, type TagFilter as TagFilterState } from '@/components/tags/TagFilter';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
 import { useEntitySearch, type SearchedEntity } from '@/hooks/use-entity-search';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useTenant } from '@/context/TenantContext';
-import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useAudiences } from '@/lib/audience-hooks';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { getContactsByTagsAction } from '@/lib/tag-actions';
-import { evaluateConditionNode } from '@/lib/automation-condition';
-import type { EntityContact, EntityType, WorkspaceEntity, MessageAudience } from '@/lib/types';
+import type { EntityContact, EntityType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export interface UnifiedEntitySelectorProps {

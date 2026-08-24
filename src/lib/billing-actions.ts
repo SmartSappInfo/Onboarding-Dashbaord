@@ -1,84 +1,87 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
 import { resolveContact } from './contact-adapter';
-import type { Invoice, InvoiceItem, BillingProfile, BillingPeriod, School } from './types';
+import type { Invoice, BillingProfile, BillingPeriod } from './types';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { canUser } from './workspace-permissions';
 
 /**
- * @fileOverview Server-side actions for the SmartSapp Invoicing Engine.
- * Upgraded to select specific Billing Profiles per workspace.
- * 
- * FIRESTORE INDEXES REQUIRED (Requirement 22.3):
- * - invoices: (organizationId ASC, entityId ASC, status ASC)
- * - invoices: (workspaceIds ARRAY, entityId ASC, createdAt DESC)
- * - invoices: (workspaceIds ARRAY, entityId ASC, createdAt DESC) [legacy fallback]
+ * @fileOverview Server-side actions for the Invoicing Engine.
+ * Supports multi-workspace scoping, strict typing, and zero `any` usage.
  */
 
+export interface ActionResponse<T = undefined> {
+    success: boolean;
+    error?: string;
+    id?: string;
+    invoice?: Invoice;
+    invoices?: Invoice[];
+    data?: T;
+}
+
 /**
- * Fetches an invoice for public viewing.
+ * Fetches an invoice for public viewing without authentication requirement.
  */
-export async function getPublicInvoiceAction(id: string) {
+export async function getPublicInvoiceAction(id: string): Promise<ActionResponse> {
     try {
         const docSnap = await adminDb.collection('invoices').doc(id).get();
-        if (!docSnap.exists) return { success: false, error: "Invoice not found." };
+        if (!docSnap.exists) {
+            return { success: false, error: 'Invoice not found.' };
+        }
         
         const data = docSnap.data() as Invoice;
         return { success: true, invoice: { ...data, id: docSnap.id } };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to retrieve invoice';
+        return { success: false, error: message };
     }
 }
 
 /**
- * Fetches invoices for a specific contact (by entityId or entityId).
- * Supports query fallback pattern (Requirement 8.4, 22.1).
+ * Fetches invoices for a specific entity.
  * 
- * @param contactIdentifier - Object with either entityId or entityId
+ * @param entityId - Canonical entity ID
  * @param workspaceId - Optional workspace filter
  */
 export async function getInvoicesForContactAction(
     entityId: string,
     workspaceId?: string
-) {
+): Promise<ActionResponse> {
     try {
         const db = adminDb;
-        let query = db.collection('invoices');
+        let invoiceQuery: FirebaseFirestore.Query = db.collection('invoices');
         
-        // Use unified entityId (Requirement 22.1)
         if (entityId) {
-            query = query.where('entityId', '==', entityId) as any;
+            invoiceQuery = invoiceQuery.where('entityId', '==', entityId);
         } else {
-            throw new Error("Entity ID must be provided");
+            throw new Error('Entity ID must be provided');
         }
         
-        // Add workspace filter if provided
         if (workspaceId) {
-            query = query.where('workspaceIds', 'array-contains', workspaceId) as any;
+            invoiceQuery = invoiceQuery.where('workspaceIds', 'array-contains', workspaceId);
         }
         
-        query = query.orderBy('createdAt', 'desc') as any;
+        invoiceQuery = invoiceQuery.orderBy('createdAt', 'desc');
         
-        const snapshot = await query.get();
-        const invoices = snapshot.docs.map(doc => ({
-            ...doc.data(),
+        const snapshot = await invoiceQuery.get();
+        const invoices = snapshot.docs.map((doc) => ({
+            ...(doc.data() as Invoice),
             id: doc.id
-        })) as Invoice[];
+        }));
         
         return { success: true, invoices };
-    } catch (e: any) {
-        return { success: false, error: e.message, invoices: [] };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to retrieve invoices for entity';
+        return { success: false, error: message, invoices: [] };
     }
 }
 
 /**
- * Generates a draft invoice for a specific contact (school or entity) and period using a selected profile.
- * Supports dual-write pattern: accepts either entityId or entityId, populates both when available.
+ * Generates a draft invoice for a specific entity and period using a selected profile.
  * 
- * @param contactId - Either entityId (legacy) or entityId (new)
+ * @param contactId - Either entityId or document ID
  * @param periodId - Billing period ID
  * @param profileId - Billing profile ID
  * @param userId - User creating the invoice
@@ -90,7 +93,7 @@ export async function generateInvoiceAction(
     profileId: string, 
     userId: string, 
     activeWorkspaceId: string
-) {
+): Promise<ActionResponse> {
     try {
         // 0. Permission Check
         const permission = await canUser(userId, 'finance', 'invoices', 'create', activeWorkspaceId);
@@ -100,26 +103,23 @@ export async function generateInvoiceAction(
 
         const db = adminDb;
         
-        // 1. Fetch Contextual Data (Updated to use adapter layer - Requirement 18)
+        // 1. Fetch Contextual Data
         const [profileSnap, periodSnap] = await Promise.all([
             db.collection('billing_profiles').doc(profileId).get(),
             db.collection('billing_periods').doc(periodId).get(),
         ]);
 
-        if (!profileSnap.exists) throw new Error("Billing profile not found.");
-        if (!periodSnap.exists) throw new Error("Billing cycle not found.");
+        if (!profileSnap.exists) throw new Error('Billing profile not found.');
+        if (!periodSnap.exists) throw new Error('Billing cycle not found.');
 
         const profile = profileSnap.data() as BillingProfile;
         const period = periodSnap.data() as BillingPeriod;
 
-        // Use adapter to resolve contact from either schools or entities + workspace_entities
-        // This supports both legacy entityId and new entityId
+        // Resolve contact from entities & workspace_entities via adapter
         const contact = await resolveContact(contactId, activeWorkspaceId);
-        if (!contact || !contact.schoolData) throw new Error("Institutional record missing.");
+        if (!contact || !contact.schoolData) throw new Error('Institutional record missing.');
         
         const school = contact.schoolData;
-        
-        // Use unified entity identifier
         const entityId = contact.id;
         const entityType = contact.entityType || 'institution';
 
@@ -127,24 +127,25 @@ export async function generateInvoiceAction(
         const pkgData = pkgSnap.exists ? pkgSnap.data() : null;
 
         // 2. Calculation Logic
-        const nominalRoll = school.nominalRoll || 0;
-        const rate = school.subscriptionRate || pkgData?.ratePerStudent || 0;
+        const nominalRoll = Number(school.nominalRoll) || 0;
+        const rate = Number(school.subscriptionRate) || Number(pkgData?.ratePerStudent) || 0;
         
         const subtotal = nominalRoll * rate;
-        const levyAmount = (subtotal * (profile.levyPercent || 0)) / 100;
-        const vatAmount = (subtotal * (profile.vatPercent || 0)) / 100;
-        const discount = (subtotal * (profile.defaultDiscount || 0)) / 100;
+        const levyAmount = (subtotal * (Number(profile.levyPercent) || 0)) / 100;
+        const vatAmount = (subtotal * (Number(profile.vatPercent) || 0)) / 100;
+        const discount = (subtotal * (Number(profile.defaultDiscount) || 0)) / 100;
 
-        const totalPayable = subtotal + levyAmount + vatAmount + (school.arrearsBalance || 0) - (school.creditBalance || 0) - discount;
+        const totalPayable = subtotal + levyAmount + vatAmount + (Number(school.arrearsBalance) || 0) - (Number(school.creditBalance) || 0) - discount;
 
         // 3. Generate Invoice Number
         const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         const invoiceNumber = `INV-${new Date().getFullYear()}-${randomStr}`;
 
-        // 4. Construct Record with dual-write (Requirement 8.1)
+        // 4. Construct Record
         const invoiceData: Omit<Invoice, 'id'> = {
             invoiceNumber,
             entityId,
+            entityName: school.name || contact.name || 'Organization',
             entityType,
             periodId,
             periodName: period.name,
@@ -157,14 +158,14 @@ export async function generateInvoiceAction(
             discount,
             levyAmount,
             vatAmount,
-            arrearsAdded: school.arrearsBalance || 0,
-            creditDeducted: school.creditBalance || 0,
+            arrearsAdded: Number(school.arrearsBalance) || 0,
+            creditDeducted: Number(school.creditBalance) || 0,
             totalPayable,
             status: 'draft',
             items: [
                 { 
-                    name: `SmartSapp Subscription (${school.subscriptionPackageName || 'Standard'})`, 
-                    description: `Termly subscription for ${nominalRoll} students.`,
+                    name: `Subscription (${school.subscriptionPackageName || 'Standard'})`, 
+                    description: `Billing cycle fee for ${nominalRoll} enrolled units/members.`,
                     quantity: nominalRoll,
                     unitPrice: rate,
                     amount: subtotal
@@ -177,7 +178,7 @@ export async function generateInvoiceAction(
             signatureUrl: profile.signatureUrl || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            workspaceIds: [activeWorkspaceId] // Partitioned by active workspace
+            workspaceIds: [activeWorkspaceId]
         };
 
         const docRef = await db.collection('invoices').add(invoiceData);
@@ -196,34 +197,36 @@ export async function generateInvoiceAction(
         revalidatePath('/admin/finance/invoices');
         return { success: true, id: docRef.id };
 
-    } catch (e: any) {
-        console.error(">>> [BILLING] Action Failure:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Invoice generation failed';
+        console.error('>>> [BILLING] Action Failure:', message);
+        return { success: false, error: message };
     }
 }
 
 /**
  * Updates an existing invoice record.
- * Preserves entityId and entityType fields during updates (Requirement 8.2).
  */
-export async function updateInvoiceAction(id: string, updates: Partial<Invoice>, userId: string) {
+export async function updateInvoiceAction(
+    id: string, 
+    updates: Partial<Invoice>, 
+    userId: string
+): Promise<ActionResponse> {
     try {
-        // 0. Permission Check (Assume workspace context from existing invoice if possible, or pass it)
-        // For simplicity in this action, we'll try to find the workspaceId from the invoice
         const existingDoc = await adminDb.collection('invoices').doc(id).get();
         if (!existingDoc.exists) {
-            throw new Error("Invoice not found");
+            throw new Error('Invoice not found');
         }
         
         const existingInvoice = existingDoc.data() as Invoice;
-        const workspaceId = existingInvoice.workspaceIds?.[0]; // Invoices are multi-workspace but usually have a primary one
+        const workspaceId = existingInvoice.workspaceIds?.[0];
 
         const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
         if (!permission.granted) {
             return { success: false, error: permission.reason };
         }
         
-        const safeUpdates = {
+        const safeUpdates: Record<string, unknown> = {
             ...updates,
             entityId: updates.entityId ?? existingInvoice.entityId,
             entityType: updates.entityType ?? existingInvoice.entityType,
@@ -233,18 +236,23 @@ export async function updateInvoiceAction(id: string, updates: Partial<Invoice>,
         await adminDb.collection('invoices').doc(id).update(safeUpdates);
         revalidatePath('/admin/finance/invoices');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to update invoice';
+        return { success: false, error: message };
     }
 }
 
 /**
  * Permanently removes an invoice record.
  */
-export async function deleteInvoiceAction(id: string, invoiceNumber: string, userId: string) {
+export async function deleteInvoiceAction(
+    id: string, 
+    invoiceNumber: string, 
+    userId: string
+): Promise<ActionResponse> {
     try {
         const docSnap = await adminDb.collection('invoices').doc(id).get();
-        if (!docSnap.exists) throw new Error("Invoice not found");
+        if (!docSnap.exists) throw new Error('Invoice not found');
         const workspaceId = docSnap.data()?.workspaceIds?.[0];
 
         const permission = await canUser(userId, 'finance', 'invoices', 'delete', workspaceId);
@@ -255,7 +263,8 @@ export async function deleteInvoiceAction(id: string, invoiceNumber: string, use
         await adminDb.collection('invoices').doc(id).delete();
         revalidatePath('/admin/finance/invoices');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to delete invoice';
+        return { success: false, error: message };
     }
 }
