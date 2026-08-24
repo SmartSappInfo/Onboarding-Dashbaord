@@ -28,17 +28,18 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { Loader2, CreditCard, CheckCircle2, DollarSign, Split, Info } from 'lucide-react';
-import { PaymentMethod, Invoice } from '@/lib/types';
+import { PaymentMethod, Invoice, FinancialAccount } from '@/lib/types';
 import { recordPaymentAction, getUnpaidInvoicesForEntityAction } from '@/lib/finance-actions';
 
 export interface RecordPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entityId: string;
-  entityName: string;
-  workspaceId: string;
-  organizationId: string;
-  accountId: string;
+  account?: FinancialAccount | null;
+  entityId?: string;
+  entityName?: string;
+  workspaceId?: string;
+  organizationId?: string;
+  accountId?: string;
   currency?: string;
   preselectedInvoiceId?: string;
   preselectedInvoiceNumber?: string;
@@ -49,16 +50,23 @@ export interface RecordPaymentModalProps {
 export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   isOpen,
   onClose,
+  account,
   entityId,
   entityName,
   workspaceId,
   organizationId,
   accountId,
-  currency = 'GHS',
+  currency,
   preselectedInvoiceId,
   preselectedBalanceDue,
   onPaymentSuccess,
 }) => {
+  const resolvedEntityId = entityId || account?.entityId || '';
+  const resolvedEntityName = entityName || account?.accountName || 'Organization';
+  const resolvedWorkspaceId = workspaceId || account?.workspaceId || '';
+  const resolvedOrgId = organizationId || account?.organizationId || 'default';
+  const resolvedAccountId = accountId || account?.id || '';
+  const resolvedCurrency = currency || account?.currency || 'GHS';
   const { user } = useUser();
   const { toast } = useToast();
 
@@ -87,9 +95,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     }
 
     const fetchInvoices = async () => {
-      if (!entityId || !workspaceId) return;
+      if (!resolvedEntityId || !resolvedWorkspaceId) return;
       setIsLoadingInvoices(true);
-      const res = await getUnpaidInvoicesForEntityAction(entityId, workspaceId);
+      const res = await getUnpaidInvoicesForEntityAction(resolvedEntityId, resolvedWorkspaceId);
       if (res.success && res.data) {
         setUnpaidInvoices(res.data);
       }
@@ -97,7 +105,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     };
 
     fetchInvoices();
-  }, [isOpen, entityId, workspaceId, preselectedInvoiceId, preselectedBalanceDue]);
+  }, [isOpen, resolvedEntityId, resolvedWorkspaceId, preselectedInvoiceId, preselectedBalanceDue]);
 
   const numAmount = Math.max(0, Math.round((Number(amount) || 0) * 100) / 100);
   const totalAllocated = Object.values(allocations).reduce(
@@ -167,12 +175,12 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
     const res = await recordPaymentAction(
       {
-        organizationId: organizationId || 'default',
-        workspaceId,
-        accountId,
-        entityId,
+        organizationId: resolvedOrgId || 'default',
+        workspaceId: resolvedWorkspaceId,
+        accountId: resolvedAccountId,
+        entityId: resolvedEntityId,
         amount: numAmount,
-        currency,
+        currency: resolvedCurrency,
         paymentMethod,
         reference: reference.trim() || undefined,
         payerName: payerName.trim() || undefined,
@@ -212,7 +220,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           </div>
           <DialogTitle className="text-xl font-bold tracking-tight">Record Payment</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Recording remittance for <span className="font-semibold text-foreground">{entityName}</span>.
+            Recording remittance for <span className="font-semibold text-foreground">{resolvedEntityName}</span>.
           </DialogDescription>
         </DialogHeader>
 
@@ -220,7 +228,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           {/* Top Payment Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Payment Amount ({currency}) *</Label>
+              <Label className="text-xs font-semibold">Payment Amount ({resolvedCurrency}) *</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input

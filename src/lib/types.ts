@@ -1570,6 +1570,75 @@ export interface RecurringBillingBatchResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Accounts Receivable, Aging & Statements (Phase 4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AgingBucket = 'current' | '1_30' | '31_60' | '61_90' | '90_plus';
+export type CreditNoteReason = 'enrollment_decrease' | 'billing_error' | 'goodwill_discount' | 'scholarship_adjustment' | 'cancellation' | 'other';
+export type CreditNoteStatus = 'draft' | 'issued' | 'applied' | 'void';
+
+export interface AgingSummary {
+  totalReceivables: number;
+  current: number; // Not yet due
+  days1_30: number;
+  days31_60: number;
+  days61_90: number;
+  days90Plus: number;
+  accountCount: number;
+  invoiceCount: number;
+}
+
+export interface CreditNote {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  creditNoteNumber: string; // e.g. CRN-2026-000001
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  invoiceId?: string; // Optional linked invoice
+  invoiceNumber?: string;
+  amount: number;
+  currency: string;
+  reason: CreditNoteReason;
+  reasonDetails?: string;
+  status: CreditNoteStatus;
+  appliedToInvoiceAmount: number;
+  creditedToAccountAmount: number; // Excess routed to availableCredit
+  ledgerTransactionId?: string;
+  createdBy: string;
+  issuedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StatementRow {
+  date: string;
+  transactionType: FinancialTransactionType;
+  referenceNumber: string;
+  description: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
+export interface CustomerStatement {
+  accountId: string;
+  accountNumber: string;
+  entityId: string;
+  entityName: string;
+  currency: string;
+  startDate: string;
+  endDate: string;
+  openingBalance: number;
+  closingBalance: number;
+  totalDebits: number;
+  totalCredits: number;
+  rows: StatementRow[];
+  generatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SmartSapp Finance 2.0: Core Sub-Ledger & Financial Account Models
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1605,6 +1674,7 @@ export interface FinancialAccount {
   collectionStatus: FinancialCollectionStatus;
   riskLevel: FinancialRiskLevel;
   assignedTo?: string;
+  statementToken?: string; // Secure UUID token for customer statement viewing without login
   createdAt: string;
   updatedAt: string;
 }

@@ -415,6 +415,20 @@ service cloud.firestore {
       allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
     }
 
+    match /credit_notes/{noteId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /debit_notes/{noteId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
     match /surveys/{surveyId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
       allow list: if isAuthorized();

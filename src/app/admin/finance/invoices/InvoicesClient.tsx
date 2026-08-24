@@ -20,10 +20,12 @@ import {
     TrendingUp, 
     Zap, 
     CreditCard,
-    AlertTriangle
+    AlertTriangle,
+    FileMinus
 } from 'lucide-react';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { VoidInvoiceModal } from '@/components/finance/VoidInvoiceModal';
+import { CreateCreditNoteModal } from '@/components/finance/CreateCreditNoteModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,6 +82,7 @@ export default function InvoicesClient() {
     const [isGenerating, setIsGenerating] = React.useState(false);
     const [payingInvoice, setPayingInvoice] = React.useState<Invoice | null>(null);
     const [voidingInvoice, setVoidingInvoice] = React.useState<Invoice | null>(null);
+    const [creditingInvoice, setCreditingInvoice] = React.useState<Invoice | null>(null);
 
     const { can } = usePermissions();
     const canCreate = can('finance', 'invoices', 'create');
@@ -521,6 +524,17 @@ export default function InvoicesClient() {
                                                                 <Eye className="h-3.5 w-3.5 mr-1" /> View
                                                             </Link>
                                                         </Button>
+                                                        {!isVoid && invoice.status !== 'draft' && Number(invoice.balanceDue ?? invoice.totalPayable ?? 0) > 0 && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                className="h-8 px-2 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]" 
+                                                                onClick={() => setCreditingInvoice(invoice)}
+                                                                title="Issue Credit Note"
+                                                            >
+                                                                <FileMinus className="h-3.5 w-3.5 mr-1" /> Credit
+                                                            </Button>
+                                                        )}
                                                         {!isVoid && invoice.status !== 'draft' && canDelete && (
                                                             <Button 
                                                                 variant="ghost" 
@@ -673,6 +687,18 @@ export default function InvoicesClient() {
                             invoice={voidingInvoice}
                             onVoidSuccess={() => {
                                 toast({ title: 'Invoice Voided', description: 'Compensating ledger reversal posted.' });
+                            }}
+                        />
+                    )}
+
+                    {/* Create Credit Note Modal */}
+                    {creditingInvoice && (
+                        <CreateCreditNoteModal
+                            isOpen={!!creditingInvoice}
+                            onClose={() => setCreditingInvoice(null)}
+                            invoice={creditingInvoice}
+                            onSuccess={() => {
+                                toast({ title: 'Credit Note Applied', description: 'Invoice balance and sub-ledger updated.' });
                             }}
                         />
                     )}
