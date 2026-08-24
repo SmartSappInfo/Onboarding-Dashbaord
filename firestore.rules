@@ -1053,14 +1053,19 @@ service cloud.firestore {
 
     // --- Landing Pages / Campaign Pages ---
     match /campaign_pages/{pageId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if resource.data.status == 'published' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
       allow list: if isAuthorized();
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 
     match /campaign_page_versions/{vId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow get: if resource.data.isPublishedVersion == true || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
       allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /ai_change_sets/{changeSetId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 

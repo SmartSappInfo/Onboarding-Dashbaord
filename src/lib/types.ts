@@ -4589,6 +4589,76 @@ export interface ComponentVersion {
   createdAt: string;
 }
 
+// ─── PHASE 2 ARCHITECTURAL EXTENSIONS: AI AGENT & CHANGE SET SYSTEM ──────────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 2 interfaces for immutable AI Change Sets, Page Agent Tool Calls,
+ * Page Context assembly, and fast O(N) Page Structure Diffs.
+ */
+
+export interface BlockDiff {
+  blockId: string;
+  type: PageBlockType;
+  changeType: 'added' | 'modified' | 'deleted';
+  propChanges?: Record<string, { oldValue: unknown; newValue: unknown }>;
+}
+
+export interface SectionDiff {
+  sectionId: string;
+  changeType: 'added' | 'modified' | 'deleted';
+  blockDiffs: BlockDiff[];
+}
+
+export interface PageStructureDiff {
+  hasChanges: boolean;
+  addedSectionCount: number;
+  modifiedSectionCount: number;
+  deletedSectionCount: number;
+  addedBlockCount: number;
+  modifiedBlockCount: number;
+  deletedBlockCount: number;
+  sections: SectionDiff[];
+  styleChanges?: Record<string, { oldValue: unknown; newValue: unknown }>;
+}
+
+export interface AIChangeSet {
+  id: string;
+  pageId: string;
+  pageVersionId?: string;
+  organizationId: string;
+  workspaceIds: string[];
+  prompt: string;
+  agentId?: string;
+  status: 'draft' | 'pending_approval' | 'applied' | 'rejected' | 'reverted';
+  diff: PageStructureDiff;
+  targetStructure: CampaignPageStructure;
+  audienceContext?: string;
+  experienceGoal?: string;
+  createdBy: string;
+  createdAt: string;
+  appliedAt?: string;
+}
+
+export interface PageAgentContext {
+  pageId: string;
+  pageGoal: 'lead_capture' | 'registration' | 'information' | 'payment' | 'thank_you';
+  currentStructure: CampaignPageStructure;
+  workspaceContactTags?: Array<{ id: string; name: string }>;
+  availableVariables?: string[];
+  themeMode?: 'light' | 'dark';
+  statsSummary?: {
+    views: number;
+    conversions: number;
+    conversionRate: number;
+  };
+}
+
+export interface PageAgentToolCall {
+  id: string;
+  toolName: 'addSection' | 'removeSection' | 'reorderSections' | 'updateBlockProps' | 'replaceBlock' | 'applyDesignTokens' | 'rewriteCopyForAudience';
+  arguments: Record<string, unknown>;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
