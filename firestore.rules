@@ -417,7 +417,8 @@ service cloud.firestore {
     }
 
     match /media/{mediaId} {
-      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow get: if true; // Public access for reading shared, embedded, or public media assets
+      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
@@ -430,13 +431,15 @@ service cloud.firestore {
     }
 
     match /media_categories/{categoryId} {
-      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow get: if true; // Public access for reading category details on shared media
+      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /thumbnail_designs/{designId} {
-      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow get: if true; // Public access for rendering thumbnail designs on shared media
+      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
