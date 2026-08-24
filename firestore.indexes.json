@@ -227,6 +227,14 @@
       ]
     },
     {
+      "collectionGroup": "account_financial_summaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "currentBalance", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "workspace_entities",
       "queryScope": "COLLECTION",
       "fields": [

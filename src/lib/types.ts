@@ -1951,6 +1951,79 @@ export interface FinancialAuditLog {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Materialized Summaries, Migration & Reconciliation (Phase 8)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WorkspaceFinancialSummary {
+  id?: string;
+  workspaceId: string;
+  organizationId: string;
+  totalBilledRevenue: number;
+  totalCollectedRevenue: number;
+  totalOutstandingAR: number;
+  totalAtRiskDebt: number;
+  invoicesCount: number;
+  paidInvoicesCount: number;
+  debtorsCount: number;
+  lastEventId?: string;
+  lastUpdatedAt: string;
+}
+
+export interface AccountFinancialSummary {
+  id?: string;
+  workspaceId: string;
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  currentBalance: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  totalCreditNotes: number;
+  openInvoicesCount: number;
+  lastPaymentAt?: string;
+  lastUpdatedAt: string;
+}
+
+export type ReconciliationStatus = 'matched' | 'unmatched_in_gateway' | 'unmatched_in_ledger' | 'amount_mismatch';
+
+export interface ReconciliationItem {
+  id: string;
+  reference: string;
+  channel: string; // 'paystack' | 'hubtel' | 'bank_transfer' | 'manual'
+  ledgerPaymentId?: string;
+  gatewayTransactionId?: string;
+  ledgerAmount?: number;
+  gatewayAmount?: number;
+  discrepancy: number;
+  status: ReconciliationStatus;
+  transactionDate: string;
+  customerName?: string;
+  resolutionNotes?: string;
+}
+
+export interface MigrationParityResult {
+  workspaceId: string;
+  totalLegacyEntities: number;
+  entitiesWithAccounts: number;
+  unprovisionedEntitiesCount: number;
+  totalLegacyInvoices: number;
+  invoicesWithLedgerDebit: number;
+  unmigratedInvoicesCount: number;
+  parityScore: number; // 0 - 100%
+  balanceDiscrepanciesCount: number;
+}
+
+export interface MigrationProgressPayload {
+  totalEntities: number;
+  migratedEntities: number;
+  totalInvoices: number;
+  migratedInvoices: number;
+  reconciledBalanceCount: number;
+  errors: string[];
+  isComplete: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SmartSapp Finance 2.0: Core Sub-Ledger & Financial Account Models
 // ─────────────────────────────────────────────────────────────────────────────
 

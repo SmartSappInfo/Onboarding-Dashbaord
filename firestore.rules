@@ -492,6 +492,22 @@ service cloud.firestore {
       allow update, delete: if false; // Append-only audit trail invariant: immutable point-in-time entries
     }
 
+    match /workspace_financial_summaries/{workspaceId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /account_financial_summaries/{accountId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /gateway_webhook_events/{eventId} {
+      allow get, list: if isAuthorized() && isSystemAdmin();
+      allow create: if true; // Webhook ingestion from payment providers
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
     match /surveys/{surveyId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
       allow list: if isAuthorized();
