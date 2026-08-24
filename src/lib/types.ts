@@ -1853,6 +1853,104 @@ export interface CollectorPerformanceMetric {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Modular Reporting, Approvals & Audit Models (Phase 7)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DateRangePreset = 'today' | 'this_week' | 'this_month' | 'last_month' | 'this_quarter' | 'this_year' | 'custom';
+
+export interface ReportDateRange {
+  preset: DateRangePreset;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+}
+
+export interface ReportMetricItem {
+  id: string;
+  label: string;
+  value: string | number;
+  subtext?: string;
+  trend?: { direction: 'up' | 'down' | 'neutral'; label: string };
+  variant?: 'default' | 'success' | 'warning' | 'danger';
+}
+
+export interface ReportColumn<TRow> {
+  id: string;
+  header: string;
+  accessor: (row: TRow) => React.ReactNode;
+  sortable?: boolean;
+  align?: 'left' | 'center' | 'right';
+  className?: string;
+}
+
+export type ApprovalRequestType = 'refund' | 'write_off' | 'credit_note' | 'void_issued_invoice';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface FinancialApprovalPolicy {
+  id?: string;
+  workspaceId: string;
+  refundThreshold: number; // e.g. 5000
+  writeOffThreshold: number; // e.g. 10000
+  requireVoidApproval: boolean;
+  requireCreditNoteApprovalThreshold?: number;
+  updatedAt: string;
+}
+
+export interface FinancialApprovalRequest {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  requestType: ApprovalRequestType;
+  referenceId: string; // invoiceId, creditNoteId, paymentId
+  referenceNumber?: string;
+  entityId: string;
+  entityName: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  status: ApprovalStatus;
+  requestedByUserId: string;
+  requestedByName: string;
+  requestedAt: string;
+  decidedByUserId?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  decisionNotes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type FinancialAuditAction =
+  | 'invoice.created'
+  | 'invoice.issued'
+  | 'invoice.voided'
+  | 'payment.recorded'
+  | 'credit_note.issued'
+  | 'collection_case.created'
+  | 'promise_to_pay.recorded'
+  | 'approval.requested'
+  | 'approval.decided'
+  | 'policy.updated';
+
+export interface FinancialAuditLog {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  action: FinancialAuditAction;
+  entityId?: string;
+  entityName?: string;
+  documentType: 'invoice' | 'payment' | 'credit_note' | 'collection_case' | 'promise_to_pay' | 'approval_request' | 'policy';
+  documentId: string;
+  documentNumber?: string;
+  amount?: number;
+  currency?: string;
+  performedByUserId: string;
+  performedByName: string;
+  timestamp: string;
+  previousState?: Record<string, unknown>;
+  newState?: Record<string, unknown>;
+  changeSummary: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SmartSapp Finance 2.0: Core Sub-Ledger & Financial Account Models
 // ─────────────────────────────────────────────────────────────────────────────
 
