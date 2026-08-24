@@ -204,11 +204,14 @@ export class CreditNoteService {
           const totalSettled = totalPaid + newAmountCredited;
 
           const paymentStatus = newBalanceDue <= 0 ? 'paid' : totalSettled > 0 ? 'partially_paid' : 'unpaid';
+          const newStatus = newBalanceDue <= 0 ? 'paid' : totalSettled > 0 ? 'partial' : invData.status;
 
           tx.update(invRef, {
             balanceDue: newBalanceDue,
             amountCredited: newAmountCredited,
             paymentStatus,
+            status: newStatus,
+            paidAt: newBalanceDue <= 0 ? timestamp : (invData.paidAt || undefined),
             updatedAt: timestamp,
           });
         }

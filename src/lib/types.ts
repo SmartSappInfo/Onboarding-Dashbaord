@@ -1628,6 +1628,7 @@ export interface CustomerStatement {
   entityId: string;
   entityName: string;
   currency: string;
+  statementToken?: string; // Secure token for public sharing
   startDate: string;
   endDate: string;
   openingBalance: number;

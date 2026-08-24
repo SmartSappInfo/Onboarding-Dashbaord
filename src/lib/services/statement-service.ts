@@ -97,6 +97,7 @@ export class StatementService {
       entityId: account.entityId,
       entityName: account.accountName,
       currency: account.currency || 'GHS',
+      statementToken,
       startDate: startDate || (allTx.length > 0 ? (allTx[0].effectiveAt || allTx[0].createdAt).split('T')[0] : new Date().toISOString().split('T')[0]),
       endDate: endDate || new Date().toISOString().split('T')[0],
       openingBalance,
@@ -109,21 +110,23 @@ export class StatementService {
   }
 
   /**
-   * Resolves a customer statement via public token.
+   * Resolves a customer statement via public cryptographic token.
+   * Strictly enforces UUID token validation to prevent IDOR access via internal document ID.
    */
   static async getStatementByToken(token: string): Promise<CustomerStatement | null> {
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+      return null;
+    }
+
+    const trimmedToken = token.trim();
+
     const accSnap = await adminDb
       .collection('financial_accounts')
-      .where('statementToken', '==', token)
+      .where('statementToken', '==', trimmedToken)
       .limit(1)
       .get();
 
     if (accSnap.empty) {
-      // Fallback check by doc ID for authenticated links
-      const directSnap = await adminDb.collection('financial_accounts').doc(token).get();
-      if (directSnap.exists) {
-        return this.generateCustomerStatement(directSnap.id);
-      }
       return null;
     }
 

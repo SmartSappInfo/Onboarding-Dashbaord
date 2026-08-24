@@ -116,7 +116,8 @@ export function StatementClient({ accountId }: StatementClientProps) {
   };
 
   const handleCopyPublicLink = () => {
-    if (!account?.statementToken) {
+    const token = statement?.statementToken || account?.statementToken;
+    if (!token) {
       toast({
         title: 'Share link',
         description: 'Generating secure statement link...',
@@ -124,7 +125,7 @@ export function StatementClient({ accountId }: StatementClientProps) {
       return;
     }
 
-    const url = `${window.location.origin}/statement/${account.statementToken}`;
+    const url = `${window.location.origin}/statement/${token}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast({
