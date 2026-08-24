@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { runDocumentCtaBackfillAction } from '@/app/actions/backfill-document-cta-action';
 import { cn } from '@/lib/utils';
 
 export type SourceFilterType = 'ALL' | 'HOSTED' | 'LINKED';
@@ -58,6 +59,13 @@ export default function MediaLibraryBrowser({
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
+
+  // Automatically trigger document CTA backfill protocol on mount
+  useState(() => {
+    runDocumentCtaBackfillAction().catch((err) => {
+      console.warn('[MediaLibraryBrowser] CTA backfill notice:', err);
+    });
+  });
 
   const mediaCol = useMemoFirebase(() => {
     if (!firestore) return null;
