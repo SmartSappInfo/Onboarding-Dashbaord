@@ -521,7 +521,7 @@ export default function InvoicesClient() {
                                                                 <Eye className="h-3.5 w-3.5 mr-1" /> View
                                                             </Link>
                                                         </Button>
-                                                        {!isVoid && invoice.status !== 'draft' && (
+                                                        {!isVoid && invoice.status !== 'draft' && canDelete && (
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="icon" 

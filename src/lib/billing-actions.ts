@@ -46,6 +46,12 @@ export async function getPublicInvoiceAction(id: string): Promise<ActionResponse
         }
         
         const data = docSnap.data() as Invoice;
+
+        // Prevent public viewing of unfinalized draft invoices
+        if (data.status === 'draft' || data.lifecycleStatus === 'draft') {
+            return { success: false, error: 'Draft invoices cannot be accessed publicly prior to official issuance.' };
+        }
+        
         return { success: true, invoice: { ...data, id: docSnap.id } };
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Failed to retrieve invoice';

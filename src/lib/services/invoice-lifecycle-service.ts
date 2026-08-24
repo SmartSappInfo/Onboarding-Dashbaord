@@ -4,15 +4,14 @@
  * 
  * Invariants:
  * 1. Invoices are NEVER hard-deleted once issued; they are voided with compensating ledger entries.
- * 2. Voiding an invoice with allocations automatically releases those payments back to the customer's availableCredit.
- * 3. Strict Firestore transaction lifecycle: All reads execute before writes.
+ * 2. Voiding an invoice with allocations automatically releases those payments back to the customer's availableCredit
+ *    and synchronizes the parent Payment document's allocated/unallocated counters.
+ * 3. Strict Firestore transaction lifecycle: All reads execute before writes across all referenced documents.
  */
 
 import { adminDb } from '../firebase-admin';
-import { Invoice, FinancialTransaction, PaymentAllocation } from '../types';
-import { InvoiceSequenceService } from './invoice-sequence-service';
+import { Invoice, FinancialTransaction, PaymentAllocation, Payment } from '../types';
 import { InvoiceSnapshotService } from './invoice-snapshot-service';
-import { LedgerService } from './ledger-service';
 import { logActivity } from '../activity-logger';
 
 export interface VoidInvoiceParams {
@@ -24,10 +23,7 @@ export interface VoidInvoiceParams {
 export class InvoiceLifecycleService {
   /**
    * Issues a draft invoice atomically:
-   * - Assigns sequential invoice number (e.g. INV-2026-000001)
-   * - Creates immutable snapshot
-   * - Posts debit transaction to sub-ledger
-   * - Updates invoice status to 'issued'
+   * Enforces STRICT Firestore transaction ordering (ALL reads execute before ANY writes).
    */
   static async issueInvoiceInTx(
     tx: FirebaseFirestore.Transaction,
@@ -38,23 +34,85 @@ export class InvoiceLifecycleService {
     accountId: string
   ): Promise<{ invoiceNumber: string; totalDebit: number }> {
     const timestamp = new Date().toISOString();
+    const year = new Date().getFullYear();
 
-    // 1. Sequence number allocation
-    let invoiceNumber = invoiceData.invoiceNumber;
-    if (!invoiceNumber || invoiceNumber.startsWith('DRAFT-')) {
-      invoiceNumber = await InvoiceSequenceService.getNextInvoiceNumberInTx(tx, workspaceId, 'INV');
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 1: ALL TRANSACTIONAL READS FIRST
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 1. Read Invoice to ensure it exists and is still an unfinalized draft (Optimistic Lock)
+    const invSnap = await tx.get(invoiceRef);
+    if (!invSnap.exists) {
+      throw new Error('Invoice document does not exist.');
+    }
+    const currentInvData = invSnap.data() as Invoice;
+    if (currentInvData.status !== 'draft') {
+      throw new Error(`Cannot issue invoice: current status is already '${currentInvData.status}'.`);
     }
 
-    // 2. Snapshot creation
+    // 2. Read Sequence Counter
+    const counterDocId = `invoice_seq_${workspaceId}_${year}`;
+    const counterRef = adminDb.collection('system_counters').doc(counterDocId);
+    const counterSnap = await tx.get(counterRef);
+    let currentSeq = 0;
+    if (counterSnap.exists) {
+      currentSeq = counterSnap.data()?.lastNumber || 0;
+    }
+
+    // 3. Read Financial Account
+    const accountRef = adminDb.collection('financial_accounts').doc(accountId);
+    const accountSnap = await tx.get(accountRef);
+    if (!accountSnap.exists) {
+      throw new Error(`Financial account ${accountId} does not exist.`);
+    }
+    const accountData = accountSnap.data() || {};
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 2: CALCULATIONS & ASYNC DATA RESOLUTION
+    // ─────────────────────────────────────────────────────────────────────────
+    let invoiceNumber = invoiceData.invoiceNumber;
+    let nextSeq = currentSeq;
+    if (!invoiceNumber || invoiceNumber.startsWith('DRAFT-')) {
+      nextSeq = currentSeq + 1;
+      const paddedNumber = String(nextSeq).padStart(6, '0');
+      invoiceNumber = `INV-${year}-${paddedNumber}`;
+    }
+
     const snapshot = await InvoiceSnapshotService.createSnapshot({
       ...invoiceData,
       invoiceNumber,
     });
 
     const totalDebit = Math.round((Number(invoiceData.totalPayable) || 0) * 100) / 100;
+    const currentBalance = Number(accountData.currentBalance || 0);
+    const totalInvoiced = Number(accountData.totalInvoiced || 0);
+    const availableCredit = Number(accountData.availableCredit || 0);
 
-    // 3. Post sub-ledger transaction
-    await LedgerService.postTransactionInTx(tx, {
+    const newBalance = Math.round((currentBalance + totalDebit) * 100) / 100;
+    const newTotalInvoiced = Math.round((totalInvoiced + totalDebit) * 100) / 100;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 3: ALL TRANSACTIONAL WRITES
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 1. Update Sequence Counter
+    if (nextSeq > currentSeq) {
+      tx.set(
+        counterRef,
+        {
+          workspaceId,
+          year,
+          prefix: 'INV',
+          lastNumber: nextSeq,
+          updatedAt: timestamp,
+        },
+        { merge: true }
+      );
+    }
+
+    // 2. Post Sub-Ledger Transaction
+    const transactionDocRef = adminDb.collection('financial_transactions').doc();
+    const transactionData: Omit<FinancialTransaction, 'id'> = {
       organizationId: invoiceData.organizationId || 'default',
       workspaceId,
       accountId,
@@ -66,19 +124,37 @@ export class InvoiceLifecycleService {
       debit: totalDebit,
       credit: 0,
       currency: invoiceData.currency || 'GHS',
+      balanceAfter: newBalance,
+      effectiveAt: timestamp,
       source: 'user',
       createdBy: userId,
       description: `Invoice ${invoiceNumber} issued for ${invoiceData.currency || 'GHS'} ${totalDebit}`,
+      metadata: {},
+      createdAt: timestamp,
+    };
+    tx.set(transactionDocRef, transactionData);
+
+    // 3. Update Financial Account Balance
+    tx.update(accountRef, {
+      currentBalance: newBalance,
+      totalOutstanding: Math.max(0, newBalance),
+      totalInvoiced: newTotalInvoiced,
+      availableCredit,
+      updatedAt: timestamp,
     });
 
-    // 4. Update invoice document
+    // 4. Update Invoice Document
+    const currentPaid = Number(invoiceData.amountPaid || 0);
+    const balanceDue = Math.max(0, Math.round((totalDebit - currentPaid) * 100) / 100);
+    const paymentStatus = currentPaid > 0 ? (totalDebit <= currentPaid ? 'paid' : 'partially_paid') : 'unpaid';
+
     tx.update(invoiceRef, {
       invoiceNumber,
       status: 'issued',
       lifecycleStatus: 'issued',
-      paymentStatus: invoiceData.amountPaid && invoiceData.amountPaid > 0 ? (totalDebit <= (invoiceData.amountPaid || 0) ? 'paid' : 'partially_paid') : 'unpaid',
+      paymentStatus,
       collectionStatus: 'none',
-      balanceDue: Math.max(0, Math.round((totalDebit - (invoiceData.amountPaid || 0)) * 100) / 100),
+      balanceDue,
       snapshot,
       issuedAt: timestamp,
       sentAt: timestamp,
@@ -91,6 +167,7 @@ export class InvoiceLifecycleService {
   /**
    * Voids an issued invoice atomically:
    * - Releases allocated payments back to customer availableCredit
+   * - Synchronizes parent Payment document allocation counters
    * - Posts compensating reversal transaction to sub-ledger
    * - Updates invoice status to 'void' and stores voidAudit
    */
@@ -120,9 +197,20 @@ export class InvoiceLifecycleService {
         allocations.reduce((sum, a) => sum + a.amount, 0) * 100
       ) / 100;
 
+      // Group released amounts by parent paymentId
+      const paymentDeltas = new Map<string, number>();
+      for (const a of allocations) {
+        if (a.paymentId) {
+          paymentDeltas.set(a.paymentId, (paymentDeltas.get(a.paymentId) || 0) + a.amount);
+        }
+      }
+
+      let targetWorkspaceId = 'default';
+      let targetOrgId = 'default';
+
       await adminDb.runTransaction(async (tx) => {
         // ─────────────────────────────────────────────────────────────────────
-        // ALL READS FIRST
+        // PHASE 1: ALL READS FIRST
         // ─────────────────────────────────────────────────────────────────────
         const invRef = adminDb.collection('invoices').doc(invoiceId);
         const invSnap = await tx.get(invRef);
@@ -134,6 +222,9 @@ export class InvoiceLifecycleService {
         if (invoice.status === 'void' || invoice.lifecycleStatus === 'void') {
           throw new Error('Invoice is already voided');
         }
+
+        targetWorkspaceId = invoice.workspaceIds?.[0] || 'default';
+        targetOrgId = invoice.organizationId || 'default';
 
         const accountId = invoice.accountId;
         if (!accountId) {
@@ -149,8 +240,21 @@ export class InvoiceLifecycleService {
         const accountData = accountSnap.data() || {};
         const totalDebitToReverse = Math.round((Number(invoice.totalPayable) || 0) * 100) / 100;
 
+        // Read all parent Payment docs affected by these released allocations
+        const paymentDocsMap = new Map<string, { ref: FirebaseFirestore.DocumentReference; data: Payment }>();
+        for (const paymentId of paymentDeltas.keys()) {
+          const pRef = adminDb.collection('payments').doc(paymentId);
+          const pSnap = await tx.get(pRef);
+          if (pSnap.exists) {
+            paymentDocsMap.set(paymentId, {
+              ref: pRef,
+              data: { id: pSnap.id, ...(pSnap.data() as Omit<Payment, 'id'>) },
+            });
+          }
+        }
+
         // ─────────────────────────────────────────────────────────────────────
-        // ALL WRITES AFTER READS
+        // PHASE 2: ALL WRITES AFTER READS
         // ─────────────────────────────────────────────────────────────────────
 
         // 1. Post Compensating Sub-Ledger Reversal
@@ -194,7 +298,24 @@ export class InvoiceLifecycleService {
           tx.delete(allocRef);
         }
 
-        // 3. Update Financial Account Balances
+        // 3. Synchronize Parent Payment Document Counters
+        for (const [paymentId, releasedAmount] of paymentDeltas.entries()) {
+          const paymentInfo = paymentDocsMap.get(paymentId);
+          if (paymentInfo) {
+            const currentAllocated = Number(paymentInfo.data.allocatedAmount || 0);
+            const currentUnallocated = Number(paymentInfo.data.unallocatedAmount || 0);
+            const newAllocated = Math.max(0, Math.round((currentAllocated - releasedAmount) * 100) / 100);
+            const newUnallocated = Math.round((currentUnallocated + releasedAmount) * 100) / 100;
+
+            tx.update(paymentInfo.ref, {
+              allocatedAmount: newAllocated,
+              unallocatedAmount: newUnallocated,
+              updatedAt: timestamp,
+            });
+          }
+        }
+
+        // 4. Update Financial Account Balances
         tx.update(accountRef, {
           currentBalance: newBalance,
           totalOutstanding: Math.max(0, newBalance),
@@ -202,7 +323,7 @@ export class InvoiceLifecycleService {
           updatedAt: timestamp,
         });
 
-        // 4. Mark Invoice as Void
+        // 5. Mark Invoice as Void
         tx.update(invRef, {
           status: 'void',
           lifecycleStatus: 'void',
@@ -222,11 +343,11 @@ export class InvoiceLifecycleService {
         });
       });
 
-      // 5. Emit CRM Activity (Non-blocking)
+      // 6. Emit CRM Activity (Non-blocking)
       await logActivity({
         userId,
-        organizationId: 'default',
-        workspaceId: 'default',
+        organizationId: targetOrgId,
+        workspaceId: targetWorkspaceId,
         type: 'status_change',
         source: 'finance_engine',
         description: `Invoice ${invoiceId} voided. Reason: ${voidReason.trim()}`,
