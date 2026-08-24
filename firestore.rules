@@ -1098,6 +1098,17 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
     }
 
+    match /page_audit_logs/{logId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create: if isAuthorized() && (isSystemAdmin() || isOrgMatch(request.resource.data.organizationId));
+      allow update, delete: if false; // Immutable append-only audit trail
+    }
+
+    match /approval_requests/{requestId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_admin') && isOrgMatch(request.resource.data.organizationId)));
+    }
+
     match /custom_page_analytics/{pageId} {
       allow get: if isAuthorized();
       allow write: if false; // Server-only ingestion via Server Actions & Admin SDK

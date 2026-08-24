@@ -4923,6 +4923,58 @@ export interface BanditPolicy {
   updatedAt: string;
 }
 
+// ─── PHASE 8 ARCHITECTURAL EXTENSIONS: ENTERPRISE GOVERNANCE & AUDIT TRAIL ────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 8 foundational contracts for enterprise RBAC permission checks, mandatory
+ * publish approval requests, version governance workflows, and immutable audit logs.
+ */
+
+export type BuilderPermission =
+  | 'studios_view'
+  | 'studios_edit'
+  | 'studios_publish'
+  | 'studios_admin';
+
+export type ApprovalRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ApprovalRequest {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  requesterId: string;
+  requesterEmail: string;
+  approverId?: string;
+  approverEmail?: string;
+  status: ApprovalRequestStatus;
+  changeSetId: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PageAuditAction =
+  | 'create'
+  | 'edit'
+  | 'ai_mutation'
+  | 'publish'
+  | 'rollback'
+  | 'approve'
+  | 'reject';
+
+export interface PageAuditLog {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceId?: string;
+  actorId: string;
+  actorEmail: string;
+  action: PageAuditAction;
+  details?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
