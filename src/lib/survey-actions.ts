@@ -20,6 +20,17 @@ import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 import { splitFileUrls } from './survey-file-utils';
+import {
+  extractFileNameFromStorageUrl,
+  isGenericChoiceValue,
+  parseAndDistributeSurveyMappings,
+  type ExtractedContactDetails,
+  type ParsedSurveyMappings,
+} from './survey-response-utils';
+export {
+  type ExtractedContactDetails,
+  type ParsedSurveyMappings,
+};
 
 export interface EntityContactPayload {
   id?: string;
@@ -57,17 +68,6 @@ export interface EntityMutationPayload {
   referee?: string;
   interestsText?: string;
 }
-
-import {
-  extractFileNameFromStorageUrl,
-  type ExtractedContactDetails,
-  type ParsedSurveyMappings,
-  parseAndDistributeSurveyMappings,
-} from './survey-response-utils';
-export {
-  type ExtractedContactDetails,
-  type ParsedSurveyMappings,
-};
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
@@ -139,20 +139,6 @@ export async function syncSurveyUploadedFilesToMedia(
   return registeredUrls;
 }
 
-/**
- * Helper to identify generic choice answers (e.g. "Yes", "No", "Later", "Agree")
- * so they are never erroneously assigned as fallback entity names.
- */
-function isGenericChoiceValue(val: unknown): boolean {
-  if (typeof val !== 'string' && typeof val !== 'boolean') return false;
-  const str = String(val).trim().toLowerCase();
-  const genericChoices = new Set([
-    'yes', 'no', 'later', 'maybe', 'agree', 'disagree', 
-    'true', 'false', 'option 1', 'option 2', 'option 3', 
-    'select', 'none', 'n/a', 'na'
-  ]);
-  return genericChoices.has(str);
-}
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
@@ -571,8 +557,8 @@ export async function resolveOrMatchWorkspaceEntity(
     }
   }
 
-  // Layer 5: Match by Display Name in workspace_entities
-  if (cleanName && cleanName.length > 2 && !cleanName.startsWith('[Placeholder]')) {
+  // Layer 5: Match by Display Name in workspace_entities (Strict Non-Generic Names Only)
+  if (cleanName && cleanName.length > 2 && !cleanName.startsWith('[Placeholder]') && !isGenericChoiceValue(cleanName)) {
     const nameSnap = await dedupeBase.where('displayName', '==', cleanName).limit(1).get();
     if (!nameSnap.empty) {
       const data = nameSnap.docs[0].data();
@@ -687,7 +673,13 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
         // Accept entity.name OR contact.name as the entity name source
         const resolvedName = parsedMappings.overriddenEntityName || eName || cName || '';
-        finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
+        if (resolvedName && !isGenericChoiceValue(resolvedName)) {
+          finalEntityName = resolvedName.trim();
+        } else if (cEmail || cPhone) {
+          finalEntityName = `[Placeholder] ${cEmail || cPhone}`;
+        } else {
+          finalEntityName = '';
+        }
         
         const resolvedEmail = (parsedMappings.overriddenContactEmail || cEmail ? String(parsedMappings.overriddenContactEmail || cEmail).toLowerCase().trim() : '') || '';
         const resolvedPhone = (parsedMappings.overriddenContactPhone || cPhone ? String(parsedMappings.overriddenContactPhone || cPhone).trim() : '') || '';
@@ -831,7 +823,14 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
 
           // Link the response to the entity and persist reconciled contact identifiers
           if (finalEntityId) {
-            const resolvedEntityName = finalEntityName || existingMatch?.entityName || responseData.entityName || null;
+            const candidateEntityName = [
+              finalEntityName,
+              existingMatch?.entityName,
+              responseData.entityName,
+              surveyData.entityName
+            ].find(name => typeof name === 'string' && name.trim() && !isGenericChoiceValue(name));
+
+            const resolvedEntityName = candidateEntityName ? String(candidateEntityName).trim() : null;
             const resolvedContactName = finalContactName || responseData.respondentName || null;
             const resolvedEmailVal = resolvedEmail || responseData.contactEmail || null;
             const resolvedPhoneVal = resolvedPhone || responseData.contactPhone || null;
@@ -1213,7 +1212,9 @@ export async function submitPublicSurveyLead(
 
     const cEmail = leadData.email?.toLowerCase().trim() || '';
     const cPhone = leadData.phone?.trim() || '';
-    const resolvedName = leadData.company || leadData.name || '';
+    const resolvedName = (!isGenericChoiceValue(leadData.company) && leadData.company?.trim()) ||
+      (!isGenericChoiceValue(leadData.name) && leadData.name?.trim()) ||
+      '';
     const finalEntityName = resolvedName || (cEmail || cPhone ? `[Placeholder] ${cEmail || cPhone}` : '');
 
     const policyCheck = validateContactIdentifier(cPhone, cEmail, contactPolicy);
@@ -1463,8 +1464,17 @@ export async function submitPublicSurveyLead(
 
     // Link the response to the entity and persist reconciled contact identifiers
     if (finalEntityId) {
-      const resolvedEntityName = finalEntityName || leadData.company || null;
-      const resolvedContactName = leadData.name || finalEntityName || null;
+      const candidateEntityName = [
+        finalEntityName,
+        leadData.company,
+        existingMatch?.entityName,
+        responseData.entityName,
+        surveyData.entityName
+      ].find(name => typeof name === 'string' && name.trim() && !isGenericChoiceValue(name));
+      const resolvedEntityName = candidateEntityName ? String(candidateEntityName).trim() : null;
+      const resolvedContactName = (!isGenericChoiceValue(leadData.name) && leadData.name?.trim()) ||
+        (!isGenericChoiceValue(finalEntityName) && finalEntityName) ||
+        null;
       const resolvedEmail = cEmail || leadData.email || null;
       const resolvedPhone = cPhone || leadData.phone || null;
       const respVars = (responseData as unknown as { variables?: Record<string, unknown> }).variables || {};
@@ -1598,15 +1608,17 @@ export async function finalizeSurveySubmission(
       return ans ? ans.value : null;
     };
 
-    const respondentEmail = emailQuestion ? getAnswerValue(emailQuestion.id) : null;
-    const respondentPhone = phoneQuestion ? getAnswerValue(phoneQuestion.id) : null;
+    const rawEmail = emailQuestion ? getAnswerValue(emailQuestion.id) : null;
+    const rawPhone = phoneQuestion ? getAnswerValue(phoneQuestion.id) : null;
+    const respondentEmail = typeof rawEmail === 'string' && rawEmail.includes('@') && !isGenericChoiceValue(rawEmail) ? rawEmail.trim().toLowerCase() : null;
+    const respondentPhone = typeof rawPhone === 'string' && /\d/.test(rawPhone) && !isGenericChoiceValue(rawPhone) ? rawPhone.trim() : null;
 
     let finalEntityId = responseData.entityId || null;
     let existingMatch: EntityMatchResult | null = null;
     if (!finalEntityId && (respondentEmail || respondentPhone)) {
       existingMatch = await resolveOrMatchWorkspaceEntity(workspaceId, {
-        email: respondentEmail ? String(respondentEmail) : null,
-        phone: respondentPhone ? String(respondentPhone) : null,
+        email: respondentEmail,
+        phone: respondentPhone,
       });
       if (existingMatch) {
         finalEntityId = existingMatch.entityId;

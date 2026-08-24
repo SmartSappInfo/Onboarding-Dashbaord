@@ -40,7 +40,7 @@ import {
   formatFileSize,
   FILE_TYPE_PRESETS 
 } from '@/lib/survey-file-utils';
-import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
+import { extractFileNameFromStorageUrl, isGenericChoiceValue } from '@/lib/survey-response-utils';
 import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -1753,16 +1753,44 @@ export default function SurveyForm({
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
+        // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+        // Seed initial variables with tracking context and preloaded simulation values.
+        // Guarantees tracked entity identity (e.g. from ?ref=... or entity media pages) is preserved.
+        const trackedEntityName = (survey.entityName || simulatedValues?.entity_name || simulatedValues?.school_name || '').trim();
+        const trackedContactName = (simulatedValues?.contact_name || simulatedValues?.name || simulatedValues?.respondent_name || '').trim();
+        const trackedContactEmail = (resolvedRecipientContact || simulatedValues?.contact_email || simulatedValues?.email || '').trim();
+        const trackedContactPhone = (simulatedValues?.contact_phone || simulatedValues?.phone || '').trim();
+
         const variables: Record<string, string | number | boolean | null> = {
+            ...(simulatedValues || {}),
             survey_title: survey.title,
             survey_score: score !== undefined ? score : 0,
             score: score !== undefined ? score : 0,
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
-            entityId: survey.entityId || '',
-            entityName: survey.entityName || 'SmartSapp'
+            entityId: survey.entityId || respondentEntityId || simulatedValues?.entityId || '',
+            entityName: trackedEntityName || 'SmartSapp'
         };
+        if (trackedEntityName && !isGenericChoiceValue(trackedEntityName)) {
+            variables.entity_name = trackedEntityName;
+            variables.school_name = trackedEntityName;
+        }
+        if (trackedContactName && !isGenericChoiceValue(trackedContactName)) {
+            variables.contact_name = trackedContactName;
+            variables.respondent_name = trackedContactName;
+        }
+        if (trackedContactEmail && trackedContactEmail.includes('@')) {
+            variables.contact_email = trackedContactEmail;
+            variables.email = trackedContactEmail;
+        }
+        if (trackedContactPhone && /\d/.test(trackedContactPhone)) {
+            variables.contact_phone = trackedContactPhone;
+            variables.phone = trackedContactPhone;
+        }
+
+        const entityMapping = survey.entityMapping || {};
+        const additionalMappings = entityMapping.additionalMappings || [];
 
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
@@ -1795,6 +1823,7 @@ export default function SurveyForm({
                     resolvedVal = String(val);
                 }
                 
+                // Store standard question variable bindings
                 variables[q.id] = resolvedVal;
                 if (q.variableName) {
                     variables[q.variableName] = resolvedVal;
@@ -1811,26 +1840,48 @@ export default function SurveyForm({
                     variables[q.key] = resolvedVal;
                 }
 
-                const cleanTitle = q.title.toLowerCase();
+                // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+                // STRICT EXPLICIT MAPPING ENFORCEMENT (Zero-Guessing):
+                // Only assign entity_name or contact identifiers if explicitly mapped in survey.entityMapping
+                // or if the question type is specifically an entity_name / contact_name field.
+                // Arbitrary questions (e.g. single choice, boolean, or questions merely containing the word "school")
+                // MUST NEVER overwrite entity variables.
+                const isExplicitEntityMapped = entityMapping.entityNameFieldId === q.id ||
+                    additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'entity.name' || m.targetField === 'schoolName' || m.targetField === 'name'));
+                const isExplicitContactNameMapped = entityMapping.contactNameFieldId === q.id ||
+                    additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'contacts.name' || m.targetField === 'contactName'));
+                const isExplicitEmailMapped = entityMapping.contactEmailFieldId === q.id ||
+                    additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'contacts.email' || m.targetField === 'email'));
+                const isExplicitPhoneMapped = entityMapping.contactPhoneFieldId === q.id ||
+                    additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'contacts.phone' || m.targetField === 'phone'));
+
+                const isNonGenericVal = !isGenericChoiceValue(resolvedVal);
                 const qType = (q.type || '').toLowerCase();
                 const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
 
-                if ((qType === 'contact_name' || cleanTitle.includes('name') || qVar.includes('name')) && !variables.contact_name) {
+                // 1. Explicit Contact Name
+                if ((isExplicitContactNameMapped || qType === 'contact_name' || qVar === 'contact_name' || qVar === 'respondent_name') && isNonGenericVal) {
                     variables.contact_name = resolvedVal;
                     variables.respondent_name = resolvedVal;
                     variables.respondentName = resolvedVal;
                 }
-                if ((qType === 'phone' || qType === 'contact_phone' || cleanTitle.includes('phone') || cleanTitle.includes('contact number') || qVar.includes('phone')) && !variables.contact_phone) {
+
+                // 2. Explicit Phone
+                if ((isExplicitPhoneMapped || qType === 'phone' || qType === 'contact_phone' || qVar === 'phone' || qVar === 'contact_phone') && isNonGenericVal && /\d/.test(resolvedVal)) {
                     variables.contact_phone = resolvedVal;
                     variables.respondent_phone = resolvedVal;
                     variables.phone = resolvedVal;
                 }
-                if ((qType === 'email' || qType === 'contact_email' || cleanTitle.includes('email') || qVar.includes('email')) && !variables.contact_email) {
+
+                // 3. Explicit Email
+                if ((isExplicitEmailMapped || qType === 'email' || qType === 'contact_email' || qVar === 'email' || qVar === 'contact_email') && isNonGenericVal && resolvedVal.includes('@')) {
                     variables.contact_email = resolvedVal;
                     variables.respondent_email = resolvedVal;
                     variables.email = resolvedVal;
                 }
-                if (qType.includes('entity') || qType.includes('school') || cleanTitle.includes('school') || cleanTitle.includes('institution') || cleanTitle.includes('entity') || qVar.includes('entity') || qVar.includes('school')) {
+
+                // 4. Explicit Entity / School Name
+                if ((isExplicitEntityMapped || qType === 'entity_name' || qType === 'school_name' || qVar === 'entity_name' || qVar === 'school_name') && isNonGenericVal) {
                     variables.entity_name = resolvedVal;
                     variables.school_name = resolvedVal;
                     variables.q_entity_name_input = resolvedVal;
@@ -1840,23 +1891,55 @@ export default function SurveyForm({
 
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
+
+        const candidateEntityName = [
+            variables.entity_name,
+            variables.school_name,
+            variables.q_entity_name_input,
+            trackedEntityName,
+            survey.entityName
+        ].find(name => typeof name === 'string' && name.trim() && !isGenericChoiceValue(name));
+
+        const candidateContactName = [
+            variables.contact_name,
+            variables.respondent_name,
+            variables.name,
+            variables.fullName,
+            trackedContactName
+        ].find(name => typeof name === 'string' && name.trim() && !isGenericChoiceValue(name));
+
+        const candidateContactEmail = [
+            variables.contact_email,
+            variables.email,
+            variables.respondent_email,
+            resolvedRecipientContact,
+            trackedContactEmail
+        ].find(email => typeof email === 'string' && email.trim().includes('@') && !isGenericChoiceValue(email));
+
+        const candidateContactPhone = [
+            variables.contact_phone,
+            variables.phone,
+            variables.respondent_phone,
+            trackedContactPhone
+        ].find(phone => typeof phone === 'string' && /\d/.test(phone) && !isGenericChoiceValue(phone));
+
         // Build response document with unified entity reference and mapped variables
         const responseData: PublicSurveyResponseInput = { 
             surveyId: survey.id, 
             submittedAt: new Date().toISOString(), 
             answers, 
             score,
-            respondentName: (variables.contact_name || variables.respondent_name || variables.name || variables.fullName ? String(variables.contact_name || variables.respondent_name || variables.name || variables.fullName) : null),
-            contactPhone: (variables.contact_phone || variables.phone || variables.respondent_phone ? String(variables.contact_phone || variables.phone || variables.respondent_phone) : null),
-            contactEmail: (variables.contact_email || variables.email || variables.respondent_email || resolvedRecipientContact ? String(variables.contact_email || variables.email || variables.respondent_email || resolvedRecipientContact) : null),
+            respondentName: candidateContactName ? String(candidateContactName).trim() : null,
+            contactPhone: candidateContactPhone ? String(candidateContactPhone).trim() : null,
+            contactEmail: candidateContactEmail ? String(candidateContactEmail).trim() : null,
             variables,
             sourcePageId: sourcePageId || null,
-            entityId: survey.entityId || respondentEntityId || null,
-            entityName: (variables.entity_name || variables.school_name || variables.q_entity_name_input || survey.entityName ? String(variables.entity_name || variables.school_name || variables.q_entity_name_input || survey.entityName) : null),
-            entityType: (survey.entityId || respondentEntityId) ? 'institution' as const : undefined,
+            entityId: survey.entityId || respondentEntityId || simulatedValues?.entityId || null,
+            entityName: candidateEntityName ? String(candidateEntityName).trim() : null,
+            entityType: (survey.entityId || respondentEntityId || simulatedValues?.entityId) ? 'institution' as const : undefined,
             workspaceId: survey.workspaceIds?.[0] || null,
             assignedUserId: assignedUserId || null,
-            respondentEntityId: respondentEntityId || null,
+            respondentEntityId: respondentEntityId || simulatedValues?.entityId || null,
             channel: channel || 'direct',
         };
         setIsSubmitting(true);

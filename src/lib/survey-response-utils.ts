@@ -127,12 +127,32 @@ export const ONLINE_PRESENCE_MAP: Record<string, keyof OnlinePresence> = {
 };
 
 /**
- * Helper to check if a value looks like a generic choice option
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Universal Generic Choice Guard.
+ * Strictly identifies single/multiple choice options, boolean tokens, ratings, and placeholder strings
+ * so they are never erroneously assigned or rendered as entity or contact names.
  */
-function isGenericChoiceValue(val: unknown): boolean {
+export function isGenericChoiceValue(val: unknown): boolean {
+  if (val === null || val === undefined) return true;
+  if (typeof val === 'boolean') return true;
   if (typeof val !== 'string') return false;
   const trimmed = val.trim().toLowerCase();
-  return ['yes', 'no', 'true', 'false', 'n/a', 'none', 'other'].includes(trimmed);
+  if (!trimmed) return true;
+
+  const genericChoices = new Set([
+    'yes', 'no', 'later', 'maybe', 'agree', 'disagree', 
+    'strongly agree', 'strongly disagree', 'neutral',
+    'true', 'false', 'option 1', 'option 2', 'option 3', 'option 4', 'option 5',
+    'select', 'none', 'n/a', 'na', 'not applicable', 'other', '__other__',
+    'undefined', 'null', '[placeholder]', 'unknown', 'anonymous',
+    'submit', 'continue', 'next', 'back', 'cancel'
+  ]);
+  if (genericChoices.has(trimmed)) return true;
+
+  // Reject standalone numeric scores, small rating scales (e.g. "1", "5", "10", "5/5", "10/10"), or single option letters ("a" to "e")
+  if (/^(\d{1,2}(\/\d{1,2})?|[a-e])$/i.test(trimmed)) return true;
+
+  return false;
 }
 
 /**
@@ -175,138 +195,132 @@ export interface ExtractedContactDetails {
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
- * Resolves contact & entity details from a SurveyResponse with a resilient 5-tier fallback hierarchy:
- * Tier 1: ResolvedContact from CRM (if entityId is attached and loaded from CRM adapter)
- * Tier 2: Response top-level snapshot fields (entityName, respondentName, contactEmail, contactPhone)
- * Tier 3: Lead form capture details (response.leadDetails: company, name, email, phone)
- * Tier 4: Response variables map (entity_name, school_name, contact_name, respondent_name, name, phone, email, etc.)
- * Tier 5: Answers heuristic scan (searches response.answers for question titles or value patterns)
+ * ZERO-GUESSING ENTITY & CONTACT RESOLVER:
+ * Resolves contact & entity details strictly from explicit CRM entity links, explicit mappings,
+ * or explicit lead capture fields. Unmapped questions are NEVER guessed as entity or contact names.
+ *
+ * Hierarchy:
+ * Tier 1: Real CRM Entity from `resolveContact(response.entityId)` (Explicit Tracking / Explicit Mapping)
+ * Tier 2: Valid, non-generic `response.entityName` snapshot (Explicit Mapping / Tracked Snapshot)
+ * Tier 3: Explicit Lead Capture details (`response.leadDetails.company`, `response.leadDetails.name`)
+ * Tier 4: Explicit preloaded variables (`vars.entity_name` from tracking links)
+ * Default: Empty string `""` (clean unlinked state, rendering as `-`)
  */
 export function extractResponseContactDetails(
   response: SurveyResponse,
   contact?: ResolvedContact | null,
-  surveyQuestions?: Array<SurveyElement | SurveyQuestion | { id: string; title?: string; type?: string }>
+  _surveyQuestions?: Array<SurveyElement | SurveyQuestion | { id: string; title?: string; type?: string }>
 ): ExtractedContactDetails {
   const vars = (response as unknown as { variables?: Record<string, unknown> }).variables || {};
   const lead = (response as unknown as { leadDetails?: Record<string, unknown> }).leadDetails || {};
-  const answers = response.answers || [];
 
-  // Helper to find answer value by question title keyword or questionId
-  const findAnswerByKeyword = (keywords: string[]): string => {
-    if (!answers || !Array.isArray(answers) || answers.length === 0) return '';
-
-    const unpackValue = (value: unknown): string => {
-      if (typeof value === 'string' && value.trim().length > 0) {
-        return value.trim();
-      }
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        const valObj = value as Record<string, unknown>;
-        if (typeof valObj.other === 'string' && valObj.other.trim().length > 0) return valObj.other.trim();
-        if (typeof valObj.option === 'string' && valObj.option.trim().length > 0 && valObj.option !== '__other__') return valObj.option.trim();
-      }
-      return '';
-    };
-
-    // 1. First try matching with survey questions if provided
-    if (surveyQuestions && Array.isArray(surveyQuestions)) {
-      for (const q of surveyQuestions) {
-        const qTitle = (q.title || '').toLowerCase();
-        const qType = (q.type || '').toLowerCase();
-        if (keywords.some((kw) => qTitle.includes(kw) || qType.includes(kw))) {
-          const matchedAns = answers.find((a) => a.questionId === q.id);
-          if (matchedAns && matchedAns.value !== undefined && matchedAns.value !== null) {
-            const unpacked = unpackValue(matchedAns.value);
-            if (unpacked) return unpacked;
-          }
-        }
-      }
-    }
-
-    // 2. Direct fallback on answer.questionId if surveyQuestions is omitted or yielded no match
-    for (const ans of answers) {
-      const qId = (ans.questionId || '').toLowerCase();
-      if (keywords.some((kw) => qId.includes(kw.replace(/\s+/g, '_')) || qId.includes(kw.replace(/\s+/g, '')))) {
-        const unpacked = unpackValue(ans.value);
-        if (unpacked) return unpacked;
-      }
-    }
-
-    return '';
+  // Helper to validate email format
+  const isValidEmail = (val: unknown): string => {
+    if (typeof val !== 'string') return '';
+    const trimmed = val.trim().toLowerCase();
+    return trimmed.includes('@') && trimmed.includes('.') && !isGenericChoiceValue(trimmed) ? trimmed : '';
   };
 
-  // 1. Entity / School Name (Tiers 1 -> 5)
-  const heuristicEntityName = !contact?.name && !response.entityName && !lead.company && !vars.entity_name && !vars.school_name
-    ? findAnswerByKeyword(['school', 'institution', 'organization', 'company', 'entity name', 'school name'])
-    : '';
+  // Helper to validate phone format
+  const isValidPhone = (val: unknown): string => {
+    if (typeof val !== 'string') return '';
+    const trimmed = val.trim();
+    return /\d/.test(trimmed) && !isGenericChoiceValue(trimmed) ? trimmed : '';
+  };
 
-  const entityName = (
-    contact?.name ||
-    response.entityName ||
-    (typeof lead.company === 'string' ? lead.company : '') ||
-    (typeof vars.entity_name === 'string' ? vars.entity_name : '') ||
-    (typeof vars.school_name === 'string' ? vars.school_name : '') ||
-    (typeof vars.organization_name === 'string' ? vars.organization_name : '') ||
-    (typeof vars.q_entity_name_input === 'string' ? vars.q_entity_name_input : '') ||
-    heuristicEntityName ||
-    ''
-  ).trim();
+  // Helper to extract non-generic string
+  const getNonGenericString = (val: unknown): string => {
+    if (typeof val !== 'string') return '';
+    const trimmed = val.trim();
+    return !isGenericChoiceValue(trimmed) ? trimmed : '';
+  };
 
-  // 2. Primary Contact Name (Tiers 1 -> 5)
-  const heuristicContactName = !contact?.primaryContactName && !response.respondentName && !lead.name && !vars.contact_name && !vars.respondent_name && !vars.name
-    ? findAnswerByKeyword(['your name', 'contact name', 'full name', 'respondent name', 'contact person', 'principal name', 'headmaster'])
-    : '';
+  // 1. Entity / School Name (Strict Explicit Resolution Only - Zero Guessing)
+  const candidateEntityNames: unknown[] = [
+    contact?.name,
+    response.entityName,
+    lead.company,
+    vars.entity_name,
+    vars.school_name,
+    vars.organization_name,
+    vars.company,
+    vars.q_entity_name_input,
+  ];
 
-  const primaryContactName = (
-    contact?.primaryContactName ||
-    response.respondentName ||
-    (typeof lead.name === 'string' ? lead.name : '') ||
-    (typeof vars.contact_name === 'string' ? vars.contact_name : '') ||
-    (typeof vars.respondent_name === 'string' ? vars.respondent_name : '') ||
-    (typeof vars.name === 'string' ? vars.name : '') ||
-    (typeof vars.fullName === 'string' ? vars.fullName : '') ||
-    heuristicContactName ||
-    ''
-  ).trim();
+  let entityName = '';
+  for (const cand of candidateEntityNames) {
+    const clean = getNonGenericString(cand);
+    if (clean) {
+      entityName = clean;
+      break;
+    }
+  }
 
-  // 3. Primary Contact Email (Tiers 1 -> 5)
-  const heuristicEmail = !contact?.primaryContactEmail && !response.contactEmail && !lead.email && !vars.contact_email && !vars.email
-    ? findAnswerByKeyword(['email', 'e-mail', 'mail'])
-    : '';
+  // 2. Primary Contact Person Name (Strict Explicit Resolution Only)
+  const candidateContactNames: unknown[] = [
+    contact?.primaryContactName,
+    response.respondentName,
+    lead.name,
+    vars.contact_name,
+    vars.respondent_name,
+    vars.name,
+    vars.fullName,
+  ];
 
-  const primaryContactEmail = (
-    contact?.primaryContactEmail ||
-    response.contactEmail ||
-    (typeof lead.email === 'string' ? lead.email : '') ||
-    (typeof vars.contact_email === 'string' ? vars.contact_email : '') ||
-    (typeof vars.email === 'string' ? vars.email : '') ||
-    (typeof vars.respondent_email === 'string' ? vars.respondent_email : '') ||
-    heuristicEmail ||
-    ''
-  ).trim();
+  let primaryContactName = '';
+  for (const cand of candidateContactNames) {
+    const clean = getNonGenericString(cand);
+    if (clean) {
+      primaryContactName = clean;
+      break;
+    }
+  }
 
-  // 4. Primary Contact Phone (Tiers 1 -> 5)
+  // 3. Primary Contact Email
+  const candidateEmails: unknown[] = [
+    contact?.primaryContactEmail,
+    response.contactEmail,
+    lead.email,
+    vars.contact_email,
+    vars.email,
+    vars.respondent_email,
+  ];
+
+  let primaryContactEmail = '';
+  for (const cand of candidateEmails) {
+    const valid = isValidEmail(cand);
+    if (valid) {
+      primaryContactEmail = valid;
+      break;
+    }
+  }
+
+  // 4. Primary Contact Phone
   const rawContactPhone = (response as unknown as { contactPhone?: string }).contactPhone;
-  const heuristicPhone = !contact?.primaryContactPhone && !rawContactPhone && !lead.phone && !vars.contact_phone && !vars.phone
-    ? findAnswerByKeyword(['phone', 'contact number', 'mobile', 'telephone', 'whatsapp'])
-    : '';
+  const candidatePhones: unknown[] = [
+    contact?.primaryContactPhone,
+    rawContactPhone,
+    lead.phone,
+    vars.contact_phone,
+    vars.phone,
+    vars.respondent_phone,
+  ];
 
-  const primaryContactPhone = (
-    contact?.primaryContactPhone ||
-    rawContactPhone ||
-    (typeof lead.phone === 'string' ? lead.phone : '') ||
-    (typeof vars.contact_phone === 'string' ? vars.contact_phone : '') ||
-    (typeof vars.phone === 'string' ? vars.phone : '') ||
-    (typeof vars.respondent_phone === 'string' ? vars.respondent_phone : '') ||
-    heuristicPhone ||
-    ''
-  ).trim();
+  let primaryContactPhone = '';
+  for (const cand of candidatePhones) {
+    const valid = isValidPhone(cand);
+    if (valid) {
+      primaryContactPhone = valid;
+      break;
+    }
+  }
 
   // 5. Role or Title
   const primaryEntityContact = contact?.entityContacts?.find((c) => c.isPrimary);
   const roleOrTitle = primaryEntityContact?.typeLabel || 
-    (typeof lead.role === 'string' ? lead.role : '') ||
-    (typeof vars.role === 'string' ? vars.role : '') || 
-    (typeof vars.title === 'string' ? vars.title : '') || 
+    getNonGenericString(lead.role) ||
+    getNonGenericString(vars.role) || 
+    getNonGenericString(vars.title) || 
     undefined;
 
   const isLiveCrm = Boolean(response.entityId && contact);

@@ -16,6 +16,7 @@ import { useTheme } from 'next-themes';
 import Footer from '@/components/footer';
 import { useToast } from '@/hooks/use-toast';
 import { submitPublicSurveyLead, finalizeSurveySubmission, getWorkspaceEntitiesForSimulationAction, logSurveyStartedAction } from '@/lib/survey-actions';
+import { isGenericChoiceValue } from '@/lib/survey-response-utils';
 import { getVariableValuesMapAction } from '@/lib/services/fields-variables-service';
 import { 
     Select, 
@@ -618,14 +619,24 @@ function LeadCaptureFormView({
     const description = survey.leadCaptureDescription ? interpolateWithMap(survey.leadCaptureDescription, simulatedValues || {}) : 'Kindly provide your details so that we can send you your results';
 
     React.useEffect(() => {
-        // Resolve initial values from preloaded/simulated variables map
-        let resolvedName = name || simulatedValues.contact_name || simulatedValues.name || '';
+        // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+        // Resolve initial values strictly from valid non-generic tracking/simulated variables.
+        // Guarantees lead capture form inputs are never pre-populated with choice values like "Yes".
+        const rawCandName = name || simulatedValues.contact_name || simulatedValues.name || '';
+        let resolvedName = !isGenericChoiceValue(rawCandName) ? rawCandName : '';
         if (!resolvedName && (simulatedValues.contact_first_name || simulatedValues.contact_last_name)) {
-            resolvedName = [simulatedValues.contact_first_name, simulatedValues.contact_last_name].filter(Boolean).join(' ');
+            const joined = [simulatedValues.contact_first_name, simulatedValues.contact_last_name].filter(Boolean).join(' ');
+            if (!isGenericChoiceValue(joined)) resolvedName = joined;
         }
-        const resolvedEmail = email || simulatedValues.contact_email || simulatedValues.email || '';
-        const resolvedPhone = phone || simulatedValues.contact_phone || simulatedValues.phone || '';
-        const resolvedCompany = company || simulatedValues.entity_name || simulatedValues.company || simulatedValues.school_name || '';
+
+        const rawEmail = email || simulatedValues.contact_email || simulatedValues.email || '';
+        const resolvedEmail = (typeof rawEmail === 'string' && rawEmail.includes('@') && !isGenericChoiceValue(rawEmail)) ? rawEmail.trim().toLowerCase() : '';
+
+        const rawPhone = phone || simulatedValues.contact_phone || simulatedValues.phone || '';
+        const resolvedPhone = (typeof rawPhone === 'string' && /\d/.test(rawPhone) && !isGenericChoiceValue(rawPhone)) ? rawPhone.trim() : '';
+
+        const rawCompany = company || simulatedValues.entity_name || simulatedValues.company || simulatedValues.school_name || '';
+        const resolvedCompany = !isGenericChoiceValue(rawCompany) ? rawCompany.trim() : '';
 
         console.log('[LeadCaptureFormView] Values check: name:', resolvedName, 'email:', resolvedEmail, 'phone:', resolvedPhone, 'company:', resolvedCompany);
 

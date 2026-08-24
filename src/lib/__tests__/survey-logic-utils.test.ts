@@ -29,20 +29,20 @@ describe('syncElementsOnOptionChange', () => {
   it('renames targetValue and defaultValue when an option is renamed', () => {
     const updated = syncElementsOnOptionChange(mockElements, 'q1', 'Green', 'Emerald Green');
 
-    const q1 = updated.find((e) => e.id === 'q1') as any;
-    const l1 = updated.find((e) => e.id === 'l1') as any;
+    const q1 = updated.find((e) => e.id === 'q1') as SurveyQuestion;
+    const l1 = updated.find((e) => e.id === 'l1') as SurveyLogicBlock;
 
     expect(q1.defaultValue).toBe('Emerald Green');
     expect(l1.rules[0].targetValue).toBe('Emerald Green');
   });
 
-  it('resets targetValue and defaultValue to empty/undefined when option is deleted', () => {
+  it('resets targetValue and defaultValue to empty when option is deleted', () => {
     const updated = syncElementsOnOptionChange(mockElements, 'q1', 'Green', null);
 
-    const q1 = updated.find((e) => e.id === 'q1') as any;
-    const l1 = updated.find((e) => e.id === 'l1') as any;
+    const q1 = updated.find((e) => e.id === 'q1') as SurveyQuestion;
+    const l1 = updated.find((e) => e.id === 'l1') as SurveyLogicBlock;
 
-    expect(q1.defaultValue).toBeUndefined();
+    expect(q1.defaultValue).toBe('');
     expect(l1.rules[0].targetValue).toBe('');
   });
 });

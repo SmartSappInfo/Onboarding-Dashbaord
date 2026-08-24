@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   extractResponseContactDetails,
   sanitizeForCsv,
+  isGenericChoiceValue,
 } from '../survey-response-utils';
 import { resolveMultipleContacts } from '../contact-adapter';
 import type { SurveyResponse, ResolvedContact } from '../types';
@@ -90,6 +91,45 @@ vi.mock('../firebase-admin', () => {
 });
 
 describe('Survey Entity & Contact Export / Resolution', () => {
+  describe('isGenericChoiceValue (Generic Choice & Rating Protection)', () => {
+    it('identifies choice words, boolean strings, and rating tokens as generic', () => {
+      expect(isGenericChoiceValue('Yes')).toBe(true);
+      expect(isGenericChoiceValue('yes')).toBe(true);
+      expect(isGenericChoiceValue('No')).toBe(true);
+      expect(isGenericChoiceValue('Later')).toBe(true);
+      expect(isGenericChoiceValue('Agree')).toBe(true);
+      expect(isGenericChoiceValue('Disagree')).toBe(true);
+      expect(isGenericChoiceValue('Strongly Agree')).toBe(true);
+      expect(isGenericChoiceValue('true')).toBe(true);
+      expect(isGenericChoiceValue(true)).toBe(true);
+      expect(isGenericChoiceValue('false')).toBe(true);
+      expect(isGenericChoiceValue(false)).toBe(true);
+      expect(isGenericChoiceValue('Option 1')).toBe(true);
+      expect(isGenericChoiceValue('option 2')).toBe(true);
+      expect(isGenericChoiceValue('N/A')).toBe(true);
+      expect(isGenericChoiceValue('none')).toBe(true);
+      expect(isGenericChoiceValue('other')).toBe(true);
+      expect(isGenericChoiceValue('__other__')).toBe(true);
+      expect(isGenericChoiceValue('5/5')).toBe(true);
+      expect(isGenericChoiceValue('10')).toBe(true);
+      expect(isGenericChoiceValue('A')).toBe(true);
+      expect(isGenericChoiceValue(null)).toBe(true);
+      expect(isGenericChoiceValue(undefined)).toBe(true);
+      expect(isGenericChoiceValue('')).toBe(true);
+    });
+
+    it('allows genuine entity names, school names, and person names', () => {
+      expect(isGenericChoiceValue('Tulips Hill Academy')).toBe(false);
+      expect(isGenericChoiceValue('Palace Royal International')).toBe(false);
+      expect(isGenericChoiceValue('Edlys Montessori School')).toBe(false);
+      expect(isGenericChoiceValue('Champions College')).toBe(false);
+      expect(isGenericChoiceValue('Crystal Heights International')).toBe(false);
+      expect(isGenericChoiceValue('Yeshiva University')).toBe(false);
+      expect(isGenericChoiceValue('Agree School of Arts')).toBe(false);
+      expect(isGenericChoiceValue('Dr. Mensah Arthur')).toBe(false);
+    });
+  });
+
   describe('sanitizeForCsv (OWASP CSV Formula Injection Protection)', () => {
     it('leaves standard text, names, and emails unchanged', () => {
       expect(sanitizeForCsv('St. Peter International')).toBe('St. Peter International');
@@ -235,75 +275,75 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(details.isLiveCrm).toBe(false);
     });
 
-    it('falls back to scanning response.answers when questions match entity or contact keywords', () => {
-      const mockResponse = {
-        id: 'resp_unmapped_1',
+    it('rejects generic choice values like "Yes", "No", "Agree" from entityName and contact identifiers', () => {
+      const mockCorruptedResponse = {
+        id: 'resp_corrupted_1',
         surveyId: 'survey_100',
         submittedAt: '2026-08-20T10:00:00Z',
+        entityName: 'Yes',
+        respondentName: 'Option 1',
+        contactPhone: 'No',
+        contactEmail: 'undefined',
+        variables: {
+          entity_name: 'Yes',
+          school_name: 'Agree',
+          contact_name: 'True',
+        },
         answers: [
-          { questionId: 'q_school_name', value: 'Great Minds International' },
-          { questionId: 'q_contact_person', value: 'Abena Mensah' },
-          { questionId: 'q_contact_phone', value: '0201112233' },
-          { questionId: 'q_contact_email', value: 'abena@greatminds.edu' },
+          { questionId: 'q_ready_to_join', value: 'Yes' },
         ],
       } as unknown as SurveyResponse;
 
-      const mockQuestions = [
-        { id: 'q_school_name', title: 'What is the name of your school / institution?', type: 'short-text' },
-        { id: 'q_contact_person', title: 'Your Full Name / Contact Person', type: 'short-text' },
-        { id: 'q_contact_phone', title: 'Phone Number', type: 'phone' },
-        { id: 'q_contact_email', title: 'Email Address', type: 'email' },
-      ];
+      const details = extractResponseContactDetails(mockCorruptedResponse, null);
 
-      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
-
-      expect(details.entityName).toBe('Great Minds International');
-      expect(details.primaryContactName).toBe('Abena Mensah');
-      expect(details.primaryContactPhone).toBe('0201112233');
-      expect(details.primaryContactEmail).toBe('abena@greatminds.edu');
+      expect(details.entityName).toBe('');
+      expect(details.primaryContactName).toBe('');
+      expect(details.primaryContactPhone).toBe('');
+      expect(details.primaryContactEmail).toBe('');
+      expect(details.isLiveCrm).toBe(false);
     });
 
-    it('unpacks { option: "__other__", other: "Custom Academy" } objects during heuristic extraction', () => {
+    it('preserves valid entity names like "Yeshiva Academy" that contain choice words within a multi-word phrase', () => {
       const mockResponse = {
-        id: 'resp_other_1',
+        id: 'resp_yeshiva',
         surveyId: 'survey_100',
         submittedAt: '2026-08-20T10:00:00Z',
-        answers: [
-          { questionId: 'q_school_custom', value: { option: '__other__', other: 'Custom Heritage Academy' } },
-          { questionId: 'q_person_name', value: 'Kofi Kingston' },
-        ],
-      } as unknown as SurveyResponse;
-
-      const mockQuestions = [
-        { id: 'q_school_custom', title: 'Select or specify your School / Institution', type: 'dropdown' },
-        { id: 'q_person_name', title: 'Contact Person Name', type: 'short-text' },
-      ];
-
-      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
-
-      expect(details.entityName).toBe('Custom Heritage Academy');
-      expect(details.primaryContactName).toBe('Kofi Kingston');
-    });
-
-    it('falls back to scanning answer.questionId directly when surveyQuestions array is omitted', () => {
-      const mockResponse = {
-        id: 'resp_qId_fallback',
-        surveyId: 'survey_100',
-        submittedAt: '2026-08-20T10:00:00Z',
-        answers: [
-          { questionId: 'school_name', value: 'St. Augustine College' },
-          { questionId: 'contact_name', value: 'Sister Mary' },
-          { questionId: 'phone_number', value: '0551234567' },
-          { questionId: 'email_address', value: 'mary@staugustine.edu' },
-        ],
+        entityName: 'Yeshiva International School',
+        respondentName: 'Rabbi Cohen',
+        contactEmail: 'cohen@yeshiva.edu',
+        contactPhone: '+1234567890',
       } as unknown as SurveyResponse;
 
       const details = extractResponseContactDetails(mockResponse, null);
 
-      expect(details.entityName).toBe('St. Augustine College');
-      expect(details.primaryContactName).toBe('Sister Mary');
-      expect(details.primaryContactPhone).toBe('0551234567');
-      expect(details.primaryContactEmail).toBe('mary@staugustine.edu');
+      expect(details.entityName).toBe('Yeshiva International School');
+      expect(details.primaryContactName).toBe('Rabbi Cohen');
+      expect(details.primaryContactEmail).toBe('cohen@yeshiva.edu');
+      expect(details.primaryContactPhone).toBe('+1234567890');
+    });
+
+    it('does NOT guess entity or contact names from unmapped question answers (Zero-Guessing Invariant)', () => {
+      const mockUnmappedResponse = {
+        id: 'resp_unmapped_choice',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'q_ready_school_program', value: 'Yes' },
+          { questionId: 'q_favorite_subject', value: 'Mathematics' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const mockQuestions = [
+        { id: 'q_ready_school_program', title: 'Ready to Join the School Visibility Program?', type: 'single_choice' },
+        { id: 'q_favorite_subject', title: 'What subject does your institution focus on?', type: 'short_text' },
+      ];
+
+      const details = extractResponseContactDetails(mockUnmappedResponse, null, mockQuestions);
+
+      // Strict Zero-Guessing: unmapped answers are NEVER stored or extracted as entity names
+      expect(details.entityName).toBe('');
+      expect(details.primaryContactName).toBe('');
+      expect(details.isLiveCrm).toBe(false);
     });
 
     it('handles completely empty response records without error', () => {
