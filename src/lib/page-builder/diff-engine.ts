@@ -173,32 +173,44 @@ function compareBlocks(origBlocks: PageBlock[], targetBlocks: PageBlock[]): Bloc
  * Deterministic deep equality check preventing false positives from object key reordering.
  * Includes a maximum recursion depth guard (maxDepth = 20) to prevent stack overflow.
  */
-function isDeepEqual(a: unknown, b: unknown, depth = 0): boolean {
+function isDeepEqual(
+  a: unknown,
+  b: unknown,
+  depth = 0,
+  seen = new WeakSet<object>(),
+): boolean {
   if (a === b) return true;
   if (depth > 20) return false;
   if (typeof a !== typeof b) return false;
   if (a === null || b === null || typeof a !== 'object') return false;
+
+  const objA = a as object;
+  const objB = b as object;
+
+  if (seen.has(objA) || seen.has(objB)) return true;
+  seen.add(objA);
+  seen.add(objB);
 
   if (Array.isArray(a) !== Array.isArray(b)) return false;
 
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
-      if (!isDeepEqual(a[i], b[i], depth + 1)) return false;
+      if (!isDeepEqual(a[i], b[i], depth + 1, seen)) return false;
     }
     return true;
   }
 
-  const objA = a as Record<string, unknown>;
-  const objB = b as Record<string, unknown>;
-  const keysA = Object.keys(objA);
-  const keysB = Object.keys(objB);
+  const recordA = a as Record<string, unknown>;
+  const recordB = b as Record<string, unknown>;
+  const keysA = Object.keys(recordA);
+  const keysB = Object.keys(recordB);
 
   if (keysA.length !== keysB.length) return false;
 
   for (const k of keysA) {
-    if (!Object.prototype.hasOwnProperty.call(objB, k)) return false;
-    if (!isDeepEqual(objA[k], objB[k], depth + 1)) return false;
+    if (!Object.prototype.hasOwnProperty.call(recordB, k)) return false;
+    if (!isDeepEqual(recordA[k], recordB[k], depth + 1, seen)) return false;
   }
 
   return true;
