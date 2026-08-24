@@ -15,7 +15,9 @@ import {
   TrendingDown, 
   Clock, 
   ShieldAlert,
-  FileMinus 
+  FileMinus,
+  Zap,
+  BarChart3 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -232,7 +234,31 @@ export function ReceivablesClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold"
+          >
+            <Link href="/admin/finance/automations">
+              <Zap className="h-4 w-4 mr-1.5 text-primary" />
+              Automations
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-xl h-10 min-h-[44px] text-xs font-semibold"
+          >
+            <Link href="/admin/finance/reports">
+              <BarChart3 className="h-4 w-4 mr-1.5 text-primary" />
+              Reports
+            </Link>
+          </Button>
+
           <Button
             asChild
             size="sm"

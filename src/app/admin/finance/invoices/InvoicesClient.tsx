@@ -21,11 +21,13 @@ import {
     Zap, 
     CreditCard,
     AlertTriangle,
-    FileMinus
+    FileMinus,
+    Send
 } from 'lucide-react';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { VoidInvoiceModal } from '@/components/finance/VoidInvoiceModal';
 import { CreateCreditNoteModal } from '@/components/finance/CreateCreditNoteModal';
+import { SendReminderModal } from '@/components/finance/SendReminderModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,6 +85,7 @@ export default function InvoicesClient() {
     const [payingInvoice, setPayingInvoice] = React.useState<Invoice | null>(null);
     const [voidingInvoice, setVoidingInvoice] = React.useState<Invoice | null>(null);
     const [creditingInvoice, setCreditingInvoice] = React.useState<Invoice | null>(null);
+    const [remindingInvoice, setRemindingInvoice] = React.useState<Invoice | null>(null);
 
     const { can } = usePermissions();
     const canCreate = can('finance', 'invoices', 'create');
@@ -528,6 +531,17 @@ export default function InvoicesClient() {
                                                             <Button 
                                                                 variant="ghost" 
                                                                 size="sm" 
+                                                                className="h-8 px-2 rounded-lg text-xs font-bold text-sky-600 hover:bg-sky-500/10 active:scale-[0.97]" 
+                                                                onClick={() => setRemindingInvoice(invoice)}
+                                                                title="Send Payment Reminder"
+                                                            >
+                                                                <Send className="h-3.5 w-3.5 mr-1" /> Remind
+                                                            </Button>
+                                                        )}
+                                                        {!isVoid && invoice.status !== 'draft' && Number(invoice.balanceDue ?? invoice.totalPayable ?? 0) > 0 && (
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
                                                                 className="h-8 px-2 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-500/10 active:scale-[0.97]" 
                                                                 onClick={() => setCreditingInvoice(invoice)}
                                                                 title="Issue Credit Note"
@@ -699,6 +713,18 @@ export default function InvoicesClient() {
                             invoice={creditingInvoice}
                             onSuccess={() => {
                                 toast({ title: 'Credit Note Applied', description: 'Invoice balance and sub-ledger updated.' });
+                            }}
+                        />
+                    )}
+
+                    {/* Send Reminder Modal */}
+                    {remindingInvoice && (
+                        <SendReminderModal
+                            isOpen={!!remindingInvoice}
+                            onClose={() => setRemindingInvoice(null)}
+                            invoice={remindingInvoice}
+                            onSuccess={() => {
+                                toast({ title: 'Reminder Dispatched', description: 'Payment notice logged to delivery telemetry.' });
                             }}
                         />
                     )}

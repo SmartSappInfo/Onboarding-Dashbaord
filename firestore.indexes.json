@@ -184,6 +184,23 @@
       ]
     },
     {
+      "collectionGroup": "finance_reminder_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "finance_reminder_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "invoiceId", "order": "ASCENDING" },
+        { "fieldPath": "stage", "order": "ASCENDING" },
+        { "fieldPath": "sentDate", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "workspace_entities",
       "queryScope": "COLLECTION",
       "fields": [

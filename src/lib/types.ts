@@ -1473,8 +1473,13 @@ export interface Invoice {
   createdAt: string;
   updatedAt: string;
   issuedAt?: string;
+  dueDate?: string;
   sentAt?: string;
   paidAt?: string;
+  lastReminderSentAt?: string;
+  reminderCount?: number;
+  customerPhone?: string;
+  customerEmail?: string;
   workspaceIds: string[]; // Shared
   billingProfileId: string;
   agreementId?: string; // Links to billing_agreements if generated via recurring billing
@@ -1760,6 +1765,91 @@ export interface CollectionActivity {
   performedBy: string;
   performedByName: string;
   timestamp: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Automation, Reminders & Reporting Models (Phase 6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ReminderChannel = 'whatsapp' | 'email' | 'sms';
+export type ReminderStage =
+  | 't_minus_7'
+  | 't_minus_3'
+  | 'due_date'
+  | 't_plus_3'
+  | 't_plus_7'
+  | 't_plus_14'
+  | 't_plus_30'
+  | 'manual';
+
+export type ReminderDeliveryStatus = 'sent' | 'delivered' | 'failed' | 'simulated';
+
+export interface FinanceReminderLog {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  invoiceId: string;
+  invoiceNumber: string;
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  recipientPhone?: string;
+  recipientEmail?: string;
+  channel: ReminderChannel;
+  stage: ReminderStage;
+  sentDate: string; // YYYY-MM-DD
+  amountDue: number;
+  currency: string;
+  status: ReminderDeliveryStatus;
+  messageContent?: string;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+export interface FinanceAutomationRule {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  description?: string;
+  triggerEvent: 'invoice.issued' | 'invoice.overdue' | 'payment.received' | 'promise.broken';
+  conditions: {
+    minAmount?: number;
+    minDaysOverdue?: number;
+    entityCategory?: string;
+  };
+  actions: {
+    sendReminder?: boolean;
+    channels?: ReminderChannel[];
+    createCollectionCase?: boolean;
+    assignCollectorUserId?: string;
+    addTag?: string;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExecutiveFinanceMetrics {
+  totalBilledRevenue: number;
+  totalCollectedRevenue: number;
+  totalOutstandingAR: number;
+  totalAtRiskDebt: number; // >60d overdue
+  collectionEfficiencyRate: number; // collected / billed %
+  invoicesCount: number;
+  paidInvoicesCount: number;
+  debtorsCount: number;
+  activeCasesCount: number;
+}
+
+export interface CollectorPerformanceMetric {
+  userId: string;
+  userName: string;
+  assignedCasesCount: number;
+  recoveredAmount: number;
+  fulfilledPromisesCount: number;
+  brokenPromisesCount: number;
+  ptpSuccessRate: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
