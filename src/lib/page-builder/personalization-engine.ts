@@ -185,12 +185,14 @@ function extractVisitorAttribute(field: string, context: VisitorContext): unknow
 }
 
 /**
- * Recursively applies block overrides (hiding / prop patches) across block tree.
+ * Recursively applies block overrides (hiding / prop patches) across block tree with max depth guard (maxDepth = 20).
  */
 function applyBlockOverridesToTree(
   blocks: PageBlock[],
   overrideMap: Map<string, BlockOverride>,
+  depth = 0,
 ): PageBlock[] {
+  if (depth > 20) return blocks;
   const result: PageBlock[] = [];
 
   for (const block of blocks) {
@@ -215,7 +217,7 @@ function applyBlockOverridesToTree(
     if (updatedBlock.blocks && updatedBlock.blocks.length > 0) {
       updatedBlock = {
         ...updatedBlock,
-        blocks: applyBlockOverridesToTree(updatedBlock.blocks, overrideMap),
+        blocks: applyBlockOverridesToTree(updatedBlock.blocks, overrideMap, depth + 1),
       };
     }
 

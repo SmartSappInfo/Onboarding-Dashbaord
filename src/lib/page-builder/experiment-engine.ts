@@ -115,12 +115,14 @@ function buildFallbackVariant(): ExperimentVariant {
 }
 
 /**
- * Helper recursively applying block overrides across block tree.
+ * Helper recursively applying block overrides across block tree with max depth guard (maxDepth = 20).
  */
 function applyBlockOverridesToTree(
   blocks: PageBlock[],
   overrideMap: Map<string, BlockOverride>,
+  depth = 0,
 ): PageBlock[] {
+  if (depth > 20) return blocks;
   const result: PageBlock[] = [];
 
   for (const block of blocks) {
@@ -144,7 +146,7 @@ function applyBlockOverridesToTree(
     if (updatedBlock.blocks && updatedBlock.blocks.length > 0) {
       updatedBlock = {
         ...updatedBlock,
-        blocks: applyBlockOverridesToTree(updatedBlock.blocks, overrideMap),
+        blocks: applyBlockOverridesToTree(updatedBlock.blocks, overrideMap, depth + 1),
       };
     }
 
