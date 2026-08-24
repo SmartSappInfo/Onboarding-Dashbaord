@@ -251,6 +251,11 @@ export async function getCollectionCaseDetailsAction(
 
     const collectionCase = { id: caseSnap.id, ...(caseSnap.data() as Omit<CollectionCase, 'id'>) };
 
+    // Tenant Isolation Guard: verify case belongs to the requested workspace
+    if (!collectionCase.workspaceIds?.includes(workspaceId)) {
+      return { success: false, error: 'Unauthorized: collection case does not belong to this workspace.' };
+    }
+
     // Fetch related promises, plans, activities
     const [promisesSnap, plansSnap, activitiesSnap] = await Promise.all([
       adminDb.collection('promises_to_pay').where('caseId', '==', caseId).orderBy('createdAt', 'desc').get(),

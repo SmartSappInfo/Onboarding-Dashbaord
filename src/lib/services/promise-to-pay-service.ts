@@ -109,7 +109,7 @@ export class PromiseToPayService {
 
   /**
    * Evaluates incoming payments against pending promises-to-pay.
-   * Marks matched promises as fulfilled.
+   * Matches sequentially by earliest promisedDate and deducts payment allocation.
    */
   static async checkAndFulfillPromises(
     entityId: string,
@@ -124,14 +124,21 @@ export class PromiseToPayService {
 
     if (snap.empty) return 0;
 
+    // Sort in-memory by earliest promise date
+    const pendingPromises = snap.docs
+      .map(doc => ({ id: doc.id, ref: doc.ref, ...(doc.data() as Omit<PromiseToPay, 'id'>) }))
+      .sort((a, b) => (a.promisedDate || '').localeCompare(b.promisedDate || ''));
+
     let fulfilledCount = 0;
+    let availableAmount = paymentAmount;
     const timestamp = new Date().toISOString();
 
-    for (const doc of snap.docs) {
-      const promise = { id: doc.id, ...(doc.data() as Omit<PromiseToPay, 'id'>) };
-      if (paymentAmount >= promise.promisedAmount * 0.9) {
-        // Fulfilled (within 90% or exact/over threshold)
-        await doc.ref.update({
+    for (const promise of pendingPromises) {
+      if (availableAmount <= 0) break;
+
+      // Fulfill if remaining payment covers at least 90% of the promised commitment
+      if (availableAmount >= promise.promisedAmount * 0.9) {
+        await promise.ref.update({
           status: 'fulfilled',
           fulfilledPaymentId: paymentId,
           fulfilledAt: timestamp,
@@ -139,17 +146,25 @@ export class PromiseToPayService {
         });
 
         if (promise.caseId) {
+          // Clear activePromiseId on collection case
+          await adminDb.collection('collection_cases').doc(promise.caseId).update({
+            activePromiseId: null,
+            updatedAt: timestamp,
+          });
+
           await CollectionActivityService.logActivity({
             workspaceId: promise.workspaceIds[0],
             organizationId: promise.organizationId,
             caseId: promise.caseId,
             entityId,
             type: 'promise_to_pay',
-            summary: `Promise-to-Pay fulfilled via payment ${paymentId} (${promise.currency} ${paymentAmount.toLocaleString()})`,
+            summary: `Promise-to-Pay fulfilled via payment (${promise.currency} ${promise.promisedAmount.toLocaleString()})`,
             userId: 'system',
             userName: 'Settlement Engine',
           });
         }
+
+        availableAmount = Math.max(0, Math.round((availableAmount - promise.promisedAmount) * 100) / 100);
         fulfilledCount++;
       }
     }
@@ -158,7 +173,8 @@ export class PromiseToPayService {
   }
 
   /**
-   * Scans for expired pending promises and marks them broken, auto-escalating the case.
+   * Scans for expired pending promises and marks them broken, auto-escalating the case
+   * without overwriting terminal or legal stages.
    */
   static async evaluateBrokenPromises(
     workspaceId: string,
@@ -185,13 +201,26 @@ export class PromiseToPayService {
         });
 
         if (promise.caseId) {
-          await adminDb.collection('collection_cases').doc(promise.caseId).update({
-            stage: 'escalation',
-            priority: 'critical',
-            nextAction: 'Escalate broken promise with institutional leadership',
-            nextActionDate: todayStr,
-            updatedAt: timestamp,
-          });
+          const caseRef = adminDb.collection('collection_cases').doc(promise.caseId);
+          const caseSnap = await caseRef.get();
+
+          if (caseSnap.exists) {
+            const currentStage = caseSnap.data()?.stage;
+            const updates: Record<string, unknown> = {
+              activePromiseId: null,
+              nextAction: 'Escalate broken promise with institutional leadership',
+              nextActionDate: todayStr,
+              updatedAt: timestamp,
+            };
+
+            // Only elevate stage if not already in terminal or legal stage
+            if (currentStage !== 'legal_external' && currentStage !== 'resolved' && currentStage !== 'final_notice') {
+              updates.stage = 'escalation';
+              updates.priority = 'critical';
+            }
+
+            await caseRef.update(updates);
+          }
 
           await CollectionActivityService.logActivity({
             workspaceId,
@@ -200,7 +229,7 @@ export class PromiseToPayService {
             entityId: promise.entityId,
             type: 'promise_to_pay',
             summary: `BROKEN PROMISE: ${promise.currency} ${promise.promisedAmount.toLocaleString()} was due on ${promise.promisedDate}`,
-            outcome: 'Case automatically escalated to Stage 4 (Escalation)',
+            outcome: 'Promise marked broken and case reviewed for escalation',
             userId,
             userName,
           });

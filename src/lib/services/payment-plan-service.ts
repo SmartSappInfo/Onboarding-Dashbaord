@@ -66,17 +66,22 @@ export class PaymentPlanService {
     const safeDown = Math.max(0, Math.round(downPayment * 100) / 100);
     const remainingBalance = Math.max(0, Math.round((safeDebt - safeDown) * 100) / 100);
 
-    // 2. Generate Installments with penny-precision balancing
+    // 2. Generate Installments with penny-precision balancing & calendar-accurate dates
     const installments: PaymentPlanInstallment[] = [];
     const count = Math.max(1, installmentsCount);
     const baseAmount = Math.floor((remainingBalance / count) * 100) / 100;
     let accumulated = 0;
 
-    const intervalDays = frequency === 'weekly' ? 7 : frequency === 'biweekly' ? 14 : 30;
-    const startObj = new Date(startDate);
-
     for (let i = 1; i <= count; i++) {
-      const dueDateObj = new Date(startObj.getTime() + (i - 1) * intervalDays * 86400000);
+      const dueDateObj = new Date(startDate);
+      if (frequency === 'weekly') {
+        dueDateObj.setDate(dueDateObj.getDate() + (i - 1) * 7);
+      } else if (frequency === 'biweekly') {
+        dueDateObj.setDate(dueDateObj.getDate() + (i - 1) * 14);
+      } else {
+        // Calendar month addition
+        dueDateObj.setMonth(dueDateObj.getMonth() + (i - 1));
+      }
       const dueDateStr = dueDateObj.toISOString().split('T')[0];
 
       let installmentAmount = baseAmount;
