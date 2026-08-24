@@ -1069,6 +1069,18 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 
+    match /audiences/{audienceId} {
+      allow get: if true;
+      allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /experience_rules/{ruleId} {
+      allow get: if true;
+      allow list: if isAuthorized() || resource.data.isEnabled == true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
     match /page_templates/{tId} {
       allow read: if isAuthorized();
       allow write: if isAuthorized() && isSystemAdmin();

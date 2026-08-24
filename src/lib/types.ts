@@ -4659,6 +4659,74 @@ export interface PageAgentToolCall {
   arguments: Record<string, unknown>;
 }
 
+// ─── PHASE 3 ARCHITECTURAL EXTENSIONS: CRM EXPERIENCE & PERSONALIZATION ENGINE ─────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 3 foundational contracts for CRM contact segment audiences, audience rules,
+ * experience variations, visitor context resolution, and dynamic page personalization.
+ */
+
+export interface AudienceCriterion {
+  field: string; // e.g. 'contact.tags', 'contact.lifecycle_stage', 'utm.utm_source', 'visitor.device'
+  operator: 'equals' | 'contains' | 'in' | 'greater_than' | 'less_than' | 'has_tag';
+  value: unknown;
+}
+
+export interface Audience {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  description?: string;
+  criteria: AudienceCriterion[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlockOverride {
+  blockId: string;
+  hidden?: boolean;
+  propPatch?: Record<string, unknown>;
+}
+
+export interface ExperienceRule {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  audienceId: string;
+  priority: number; // 1 = highest priority match
+  isEnabled: boolean;
+  overrides: {
+    blockOverrides?: BlockOverride[];
+    themeOverride?: Partial<DesignTokens>;
+  };
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VisitorContext {
+  contactId?: string;
+  contactTags?: string[];
+  lifecycleStage?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  deviceType?: 'desktop' | 'tablet' | 'mobile';
+  countryCode?: string;
+  customAttributes?: Record<string, unknown>;
+}
+
+export interface ResolvedPageExperience {
+  activeExperienceRuleId?: string;
+  activeExperienceName?: string;
+  structure: CampaignPageStructure;
+  appliedOverrides: BlockOverride[];
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
@@ -4777,6 +4845,7 @@ export interface CampaignPageStructure {
   sections: PageSection[];
   header?: PageHeaderSettings;
   footer?: PageFooterSettings;
+  designSystem?: DesignSystem;
 }
 
 export interface PageTriggerAction {
