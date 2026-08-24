@@ -1,4 +1,24 @@
 /**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Normalizes URL query parameter joins to prevent double question marks (e.g. `https://foo.com?a=1?ref=xyz` -> `https://foo.com?a=1&ref=xyz`).
+ * Ensures safe concatenation when tracked tokens (`?ref={{encrypted_recipient_token}}`) are appended to URLs with existing query strings.
+ *
+ * TESTABILITY: Tested in fields-variables-service.test.ts and link-picker-button.test.ts.
+ * RELATED SURFACES: FieldsVariablesService, messaging-utils.ts, messaging-engine.ts.
+ */
+export function normalizeUrlQueryJoins(text: string): string {
+  if (!text || !text.includes('?')) return text;
+  // Match URLs with multiple ? delimiters: replace any subsequent ? with & in the query string
+  return text.replace(/(https?:\/\/[^\s<"'>]+)/gi, (url) => {
+    const firstQ = url.indexOf('?');
+    if (firstQ === -1) return url;
+    const baseAndFirstQuery = url.slice(0, firstQ + 1);
+    const rest = url.slice(firstQ + 1).replace(/\?/g, '&');
+    return baseAndFirstQuery + rest;
+  });
+}
+
+/**
  * PURE, client-safe utility to substitute double-brace variables in template strings.
  * Extracted to avoid client/server dependency leakage during UI builds.
  */
@@ -8,7 +28,7 @@ export function resolveTextWithMap(
   keepMissing = true
 ): string {
   if (!templateText) return '';
-  return templateText.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+  const resolved = templateText.replace(/\{\{(.*?)\}\}/g, (match, key) => {
     const parts = key.split(/\|\||\|/);
     const cleanKey = parts[0].trim();
     const userFallback = parts.length > 1 ? parts.slice(1).join('|').trim() : undefined;
@@ -61,4 +81,6 @@ export function resolveTextWithMap(
 
     return keepMissing ? match : '';
   });
+
+  return normalizeUrlQueryJoins(resolved);
 }

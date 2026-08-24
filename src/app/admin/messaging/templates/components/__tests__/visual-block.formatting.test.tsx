@@ -347,4 +347,24 @@ describe('SlashInput and SlashTextarea Variant Isolation (No Extra Borders or Ba
     expect(classList).toContain('p-0');
     expect(classList).toContain('border-0');
   });
+
+  it('converts tracked URL variables to unified visual pills with tracking badge', () => {
+    const text = 'Check report: {{visibility_report | https://smartsapp.com}}?ref={{encrypted_recipient_token}}';
+    const html = convertToVisualHtml(text, false);
+
+    expect(html).toContain('data-variable="visibility_report"');
+    expect(html).toContain('data-fallback="https://smartsapp.com"');
+    expect(html).toContain('data-track="true"');
+    expect(html).toContain('data-tracking-badge="true"');
+    expect(html).toContain('visibility_report (https://smartsapp.com)');
+  });
+
+  it('serializes tracked visual pills back to full template tokens with tracking query string', () => {
+    const div = document.createElement('div');
+    div.innerHTML = 'Go to <span data-variable="visibility_report" data-fallback="https://smartsapp.com" data-track="true" data-track-joiner="?"><span>visibility_report (https://smartsapp.com)</span><span data-tracking-badge="true">🔗</span></span>';
+    const cleanOutput = convertToCleanHtml(div, false);
+
+    expect(cleanOutput).toBe('Go to {{visibility_report | https://smartsapp.com}}?ref={{encrypted_recipient_token}}');
+  });
 });
+

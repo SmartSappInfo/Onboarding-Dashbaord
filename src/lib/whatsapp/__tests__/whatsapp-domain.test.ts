@@ -358,6 +358,17 @@ describe('fromPositionalBody', () => {
     expect(restored.body).toBe(originalSms);
     expect(restored.restoredVars).toEqual(['contact_name', 'entity_name | Your School', 'encrypted_recipient_token']);
   });
+
+  it('performs full round-trip conversion (SMS -> WA -> SMS) with tracked dynamic URL variables', () => {
+    const originalSms = 'Hi {{contact_name}}, audit ready at {{visibility_report}}?ref={{encrypted_recipient_token}}';
+    const wa = toPositionalBody(originalSms);
+    expect(wa.text).toBe('Hi {{1}}, audit ready at {{2}}?ref={{3}}');
+    expect(wa.paramMap).toEqual(['contact_name', 'visibility_report', 'encrypted_recipient_token']);
+
+    const restored = fromPositionalBody(wa.text, wa.paramMap);
+    expect(restored.body).toBe(originalSms);
+    expect(restored.restoredVars).toEqual(['contact_name', 'visibility_report', 'encrypted_recipient_token']);
+  });
 });
 
 describe('validateCreateTemplateInput', () => {

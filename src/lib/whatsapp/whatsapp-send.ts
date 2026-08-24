@@ -55,6 +55,8 @@ const SEMANTIC_ALIAS_MAP: Record<string, string[]> = {
   'survey_link': ['survey_link', 'surveyUrl', 'link'],
   '5': ['dashboard_link', 'dashboardUrl', 'link'],
   'dashboard_link': ['dashboard_link', 'dashboardUrl', 'link'],
+  'visibility_report': ['visibility_report', 'visibilityReport', 'visibility_audit', 'report_link'],
+  'encrypted_recipient_token': ['encrypted_recipient_token', 'encryptedRecipientToken', 'ref_token', 'token'],
 };
 
 /**

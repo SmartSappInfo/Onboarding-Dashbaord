@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { TemplateVariable } from '@/lib/types';
 import { Bold, Italic, Underline, Strikethrough } from 'lucide-react';
-import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
+import { FallbackEditorModal, isLikelyUrlVariable } from '@/components/shared/FallbackEditorModal';
 
 export const SCRIPT_VARIABLES: TemplateVariable[] = [
   { id: 'entity_name', name: 'ENTITY_NAME', label: 'Entity Name', context: 'entity', description: 'Name of the entity', dataType: 'string', exampleValue: 'SmartSapp Inc', isDynamic: false, isComputed: false },
@@ -201,10 +201,11 @@ export function cleanContainerHtml(text: string): string {
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Single Source of Truth (SSOT) utility to convert double-brace template strings (`{{key | fallback}}`)
+ * and tracked URL tokens (`{{key | fallback}}?ref={{encrypted_recipient_token}}`)
  * into interactive visual pill HTML elements (`<span contenteditable="false" ...>`).
  *
  * When enableFormatting is true: Preserves safe inline rich text HTML (<font color="...">, <span style="...">, <b>, <u>)
- * while parsing variable tokens into visual badge pills with fallback configuration triggers.
+ * while parsing variable tokens into visual badge pills with fallback and visitor identity configuration triggers.
  * When enableFormatting is false: Sanitizes container tags to plain text and escapes raw HTML for SMS/Plain Text mode.
  *
  * TESTABILITY: Covered in visual-block.formatting.test.tsx.
@@ -213,17 +214,22 @@ export function cleanContainerHtml(text: string): string {
 export function convertToVisualHtml(text: string, enableFormatting = true): string {
   if (!text) return '';
 
-  const pillTemplate = (varName: string, fallback: string) => {
+  const pillTemplate = (varName: string, fallback: string, isTracked = false, joiner = '?') => {
     const fallbackText = fallback ? ` (${fallback})` : '';
-    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}" class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all"><span>${varName}${fallbackText}</span><button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback">⚙️</button></span>`;
+    const trackingAttr = isTracked ? ' data-track="true"' : '';
+    const joinerAttr = isTracked ? ` data-track-joiner="${joiner}"` : '';
+    const trackingBadge = isTracked ? `<span data-tracking-badge="true" class="text-[9px] opacity-80" title="Visitor Identity Tracking Active">🔗</span>` : '';
+    return `<span contenteditable="false" data-variable="${varName}" data-fallback="${fallback}"${trackingAttr}${joinerAttr} class="inline-flex items-center gap-1 mx-0.5 px-2 py-0.5 rounded bg-blue-100/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-mono text-[90%] font-bold border border-blue-200/50 align-baseline select-none hover:bg-blue-200/20 dark:hover:bg-blue-900/30 transition-all"><span>${varName}${fallbackText}</span>${trackingBadge}<button type="button" data-variable-settings="${varName}" class="hover:bg-blue-500/20 p-0.5 rounded transition-all inline-flex items-center justify-center ml-1 text-[9px] cursor-pointer border-0 bg-transparent min-w-[28px] min-h-[28px] touch-manipulation" title="Configure fallback & tracking">⚙️</button></span>`;
   };
 
   const replaceTokens = (str: string) => {
-    return str.replace(/\{\{(.*?)\}\}/g, (_match, rawKey) => {
+    // Matches {{var | fallback}} with optional attached ?ref={{encrypted_recipient_token}} or &ref={{encrypted_recipient_token}}
+    return str.replace(/\{\{(.*?)\}\}(?:([?&])ref=\{\{encrypted_recipient_token\}\})?/g, (_match, rawKey, joiner) => {
       const parts = rawKey.split(/\|\||\|/);
       const varName = parts[0].trim();
       const fallback = parts.length > 1 ? parts.slice(1).join('|').trim() : '';
-      return pillTemplate(varName, fallback);
+      const isTracked = Boolean(joiner);
+      return pillTemplate(varName, fallback, isTracked, joiner || '?');
     });
   };
 
@@ -244,7 +250,7 @@ export function convertToVisualHtml(text: string, enableFormatting = true): stri
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Single Source of Truth (SSOT) utility to convert contentEditable HTML DOM nodes
- * back into clean template text format (`{{variable_key | fallback}}`).
+ * back into clean template text format (`{{variable_key | fallback}}` or `{{variable_key | fallback}}?ref={{encrypted_recipient_token}}`).
  *
  * When enableFormatting is true: Preserves safe inline rich text formatting (colors, bold, italic, underline)
  * while serializing visual pill elements back into {{variable}} tokens.
@@ -262,7 +268,12 @@ export function convertToCleanHtml(element: HTMLElement, enableFormatting = true
   pills.forEach((pill) => {
     const varName = pill.getAttribute('data-variable');
     const fallback = pill.getAttribute('data-fallback') || '';
-    const token = fallback ? `{{${varName} | ${fallback}}}` : `{{${varName}}}`;
+    const isTracked = pill.getAttribute('data-track') === 'true';
+    const joiner = pill.getAttribute('data-track-joiner') || '?';
+    let token = fallback ? `{{${varName} | ${fallback}}}` : `{{${varName}}}`;
+    if (isTracked) {
+      token = `${token}${joiner}ref={{encrypted_recipient_token}}`;
+    }
     const textNode = clone.ownerDocument.createTextNode(token);
     pill.parentNode?.replaceChild(textNode, pill);
   });
@@ -474,17 +485,47 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     const [modalOpen, setModalOpen] = React.useState(false);
     const [editingVarKey, setEditingVarKey] = React.useState('');
     const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+    const [editingVarIsTracked, setEditingVarIsTracked] = React.useState(false);
+    const [editingVarIsUrl, setEditingVarIsUrl] = React.useState(false);
     const [activePillElement, setActivePillElement] = React.useState<HTMLElement | null>(null);
 
-    const handleSaveFallback = React.useCallback((fallbackVal: string) => {
+    const handleSaveFallback = React.useCallback((fallbackVal: string, trackVisitor?: boolean) => {
       if (!activePillElement) return;
       const cleanFallback = fallbackVal.trim();
       activePillElement.setAttribute('data-fallback', cleanFallback);
+      
+      if (trackVisitor) {
+        activePillElement.setAttribute('data-track', 'true');
+        if (!activePillElement.getAttribute('data-track-joiner')) {
+          activePillElement.setAttribute('data-track-joiner', '?');
+        }
+      } else {
+        activePillElement.removeAttribute('data-track');
+        activePillElement.removeAttribute('data-track-joiner');
+      }
       
       const labelSpan = activePillElement.querySelector('span');
       const varName = activePillElement.getAttribute('data-variable') || '';
       if (labelSpan) {
         labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+      }
+
+      // Update visual tracking badge inside pill
+      const existingBadge = activePillElement.querySelector('[data-tracking-badge]');
+      if (trackVisitor && !existingBadge) {
+        const badge = document.createElement('span');
+        badge.setAttribute('data-tracking-badge', 'true');
+        badge.className = 'text-[9px] opacity-80';
+        badge.title = 'Visitor Identity Tracking Active';
+        badge.textContent = '🔗';
+        const settingsBtn = activePillElement.querySelector('[data-variable-settings]');
+        if (settingsBtn) {
+          activePillElement.insertBefore(badge, settingsBtn);
+        } else {
+          activePillElement.appendChild(badge);
+        }
+      } else if (!trackVisitor && existingBadge) {
+        existingBadge.remove();
       }
       
       const el = localRef.current;
@@ -618,8 +659,13 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
               if (pill) {
                 const varName = pill.getAttribute('data-variable') || '';
                 const fallback = pill.getAttribute('data-fallback') || '';
+                const isTracked = pill.getAttribute('data-track') === 'true';
+                const matchedVar = variables.find(v => v.name === varName || v.id === varName);
+                const isUrl = matchedVar?.dataType === 'url' || isLikelyUrlVariable(varName, fallback);
                 setEditingVarKey(varName);
                 setEditingVarCurrentFallback(fallback);
+                setEditingVarIsTracked(isTracked);
+                setEditingVarIsUrl(isUrl);
                 setActivePillElement(pill as HTMLElement);
                 setModalOpen(true);
               }
@@ -752,6 +798,8 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
           onClose={() => setModalOpen(false)}
           variableKey={editingVarKey}
           currentFallback={editingVarCurrentFallback}
+          isUrl={editingVarIsUrl}
+          initialTrackVisitor={editingVarIsTracked}
           onSave={handleSaveFallback}
         />
       </div>
@@ -802,17 +850,47 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     const [modalOpen, setModalOpen] = React.useState(false);
     const [editingVarKey, setEditingVarKey] = React.useState('');
     const [editingVarCurrentFallback, setEditingVarCurrentFallback] = React.useState('');
+    const [editingVarIsTracked, setEditingVarIsTracked] = React.useState(false);
+    const [editingVarIsUrl, setEditingVarIsUrl] = React.useState(false);
     const [activePillElement, setActivePillElement] = React.useState<HTMLElement | null>(null);
 
-    const handleSaveFallback = React.useCallback((fallbackVal: string) => {
+    const handleSaveFallback = React.useCallback((fallbackVal: string, trackVisitor?: boolean) => {
       if (!activePillElement) return;
       const cleanFallback = fallbackVal.trim();
       activePillElement.setAttribute('data-fallback', cleanFallback);
+      
+      if (trackVisitor) {
+        activePillElement.setAttribute('data-track', 'true');
+        if (!activePillElement.getAttribute('data-track-joiner')) {
+          activePillElement.setAttribute('data-track-joiner', '?');
+        }
+      } else {
+        activePillElement.removeAttribute('data-track');
+        activePillElement.removeAttribute('data-track-joiner');
+      }
       
       const labelSpan = activePillElement.querySelector('span');
       const varName = activePillElement.getAttribute('data-variable') || '';
       if (labelSpan) {
         labelSpan.textContent = cleanFallback ? `${varName} (${cleanFallback})` : varName;
+      }
+
+      // Update visual tracking badge inside pill
+      const existingBadge = activePillElement.querySelector('[data-tracking-badge]');
+      if (trackVisitor && !existingBadge) {
+        const badge = document.createElement('span');
+        badge.setAttribute('data-tracking-badge', 'true');
+        badge.className = 'text-[9px] opacity-80';
+        badge.title = 'Visitor Identity Tracking Active';
+        badge.textContent = '🔗';
+        const settingsBtn = activePillElement.querySelector('[data-variable-settings]');
+        if (settingsBtn) {
+          activePillElement.insertBefore(badge, settingsBtn);
+        } else {
+          activePillElement.appendChild(badge);
+        }
+      } else if (!trackVisitor && existingBadge) {
+        existingBadge.remove();
       }
       
       const el = localRef.current;
@@ -943,8 +1021,13 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
               if (pill) {
                 const varName = pill.getAttribute('data-variable') || '';
                 const fallback = pill.getAttribute('data-fallback') || '';
+                const isTracked = pill.getAttribute('data-track') === 'true';
+                const matchedVar = variables.find(v => v.name === varName || v.id === varName);
+                const isUrl = matchedVar?.dataType === 'url' || isLikelyUrlVariable(varName, fallback);
                 setEditingVarKey(varName);
                 setEditingVarCurrentFallback(fallback);
+                setEditingVarIsTracked(isTracked);
+                setEditingVarIsUrl(isUrl);
                 setActivePillElement(pill as HTMLElement);
                 setModalOpen(true);
               }
@@ -1075,6 +1158,8 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
           onClose={() => setModalOpen(false)}
           variableKey={editingVarKey}
           currentFallback={editingVarCurrentFallback}
+          isUrl={editingVarIsUrl}
+          initialTrackVisitor={editingVarIsTracked}
           onSave={handleSaveFallback}
         />
       </div>

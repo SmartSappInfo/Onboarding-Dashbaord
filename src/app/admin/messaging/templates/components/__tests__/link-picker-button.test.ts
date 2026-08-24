@@ -75,4 +75,33 @@ describe('Dynamic Dashboard Link & Link Picker Tests', () => {
     const result = dynamicVar.startsWith('/') ? `${getBaseUrl()}${dynamicVar}` : dynamicVar;
     expect(result).toBe('{{survey_link}}');
   });
+
+  it('correctly detects URL variables with isLikelyUrlVariable', async () => {
+    const { isLikelyUrlVariable } = await import('@/components/shared/FallbackEditorModal');
+    expect(isLikelyUrlVariable('visibility_report')).toBe(true);
+    expect(isLikelyUrlVariable('survey_link')).toBe(true);
+    expect(isLikelyUrlVariable('form_link')).toBe(true);
+    expect(isLikelyUrlVariable('contract_link')).toBe(true);
+    expect(isLikelyUrlVariable('entity_console_link')).toBe(true);
+    expect(isLikelyUrlVariable('custom_audit_url')).toBe(true);
+    expect(isLikelyUrlVariable('custom_audit', 'https://smartsapp.com')).toBe(true);
+    expect(isLikelyUrlVariable('contact_name', 'John Doe')).toBe(false);
+  });
+
+  it('normalizes double question marks when resolving tracked URLs with existing queries', async () => {
+    const { resolveTextWithMap, normalizeUrlQueryJoins } = await import('@/lib/utils/variable-replacer');
+    
+    // Direct URL normalizer test
+    const rawUrl = 'https://smartsapp.com/audit?tenant=123?ref=encrypted_token_456';
+    expect(normalizeUrlQueryJoins(rawUrl)).toBe('https://smartsapp.com/audit?tenant=123&ref=encrypted_token_456');
+
+    // Resolution with Map
+    const valuesMap = new Map<string, unknown>();
+    valuesMap.set('visibility_report', 'https://smartsapp.com/audit?tenant=123');
+    valuesMap.set('encrypted_recipient_token', 'mock_encrypted_token_123');
+
+    const template = 'Go Here: {{visibility_report}}?ref={{encrypted_recipient_token}}';
+    const resolved = resolveTextWithMap(template, valuesMap, false);
+    expect(resolved).toBe('Go Here: https://smartsapp.com/audit?tenant=123&ref=mock_encrypted_token_123');
+  });
 });

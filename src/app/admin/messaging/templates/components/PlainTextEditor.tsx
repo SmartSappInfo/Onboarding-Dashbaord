@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LinkPicker } from './link-picker';
 import { ensureAbsoluteUrl } from '@/lib/utils/url-helpers';
 import { SlashTextarea, convertToCleanHtml } from '@/components/messaging/SlashInput';
+import { isLikelyUrlVariable } from '@/components/shared/FallbackEditorModal';
 
 /** Single SMS segment character limit (GSM-7 standard) */
 const SMS_SINGLE_SEGMENT_LIMIT = 160;
@@ -176,7 +177,8 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
      */
     const templateVars = React.useMemo<TemplateVariable[]>(() => {
         return variables.map(v => {
-            const dataType: TemplateVariable['dataType'] = v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string';
+            const isUrl = v.type === 'url' || isLikelyUrlVariable(v.key, v.constantValue);
+            const dataType: TemplateVariable['dataType'] = isUrl ? 'url' : v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'string';
             const context: VariableContext = (v.source || v.category || 'common') as VariableContext;
             return {
                 id: v.id || v.key,
