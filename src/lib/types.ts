@@ -4975,6 +4975,45 @@ export interface PageAuditLog {
   createdAt: string;
 }
 
+// ─── PHASE 9 ARCHITECTURAL EXTENSIONS: AUTONOMOUS CAMPAIGN ORCHESTRATION & CRM ─
+/**
+ * @file src/lib/types.ts
+ * @description Phase 9 foundational contracts for autonomous cross-channel campaign orchestration,
+ * WhatsApp/email automation triggers, closed-loop revenue attribution, and funnel metrics.
+ */
+
+export interface CrossChannelTrigger {
+  type: 'crm_tag' | 'whatsapp' | 'email';
+  targetId: string;
+  config?: Record<string, unknown>;
+}
+
+export interface CampaignFunnelMetrics {
+  totalVisitors: number;
+  totalLeads: number;
+  totalDeals: number;
+  totalRevenue: number;
+  conversionRate: number;
+}
+
+export interface CampaignOrchestration {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  goalRevenue: number;
+  crmContactTagIds: string[];
+  whatsappTemplateId?: string;
+  emailSequenceId?: string;
+  attributionModel: 'first_touch' | 'last_touch' | 'linear';
+  status: 'active' | 'paused' | 'completed';
+  metrics: CampaignFunnelMetrics;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
