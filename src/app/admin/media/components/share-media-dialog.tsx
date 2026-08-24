@@ -1052,15 +1052,47 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
 
                                                     {/* Dedicated Public Page */}
                                                     <div className="space-y-2 text-left">
-                                                        <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                                                            <Globe className="h-3.5 w-3.5 text-emerald-500" /> Public Viewing Page
-                                                        </Label>
-                                                        <div className="flex gap-2">
-                                                            <Input 
-                                                                readOnly 
-                                                                value={publicUrl}
-                                                                className="h-11 rounded-xl bg-card border border-slate-300 dark:border-slate-700 text-foreground font-bold text-[10px] truncate select-all px-3 w-full shadow-sm"
-                                                            />
+                                                        <div className="flex justify-between items-center">
+                                                            <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                                <Globe className="h-3.5 w-3.5 text-emerald-500" /> Public Viewing Page
+                                                            </Label>
+                                                            {isSlugChecking && (
+                                                                <span className="text-[9px] font-bold text-primary flex items-center gap-1">
+                                                                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying...
+                                                                </span>
+                                                            )}
+                                                            {!isSlugChecking && slugStatus === 'available' && (
+                                                                <span className="text-[9px] font-bold text-emerald-500">
+                                                                    ✓ Slug available
+                                                                </span>
+                                                            )}
+                                                            {!isSlugChecking && slugStatus === 'conflict' && (
+                                                                <span className="text-[9px] font-bold text-destructive">
+                                                                    ✗ Slug already in use
+                                                                </span>
+                                                            )}
+                                                            {!isSlugChecking && slugStatus === 'too-short' && (
+                                                                <span className="text-[9px] font-bold text-amber-500">
+                                                                    ⚠ Too short (min 3 chars)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-2 items-center">
+                                                            <div className="flex-1 flex rounded-xl border border-slate-300 dark:border-slate-700 bg-card overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                                                                <span className="text-[11px] font-bold text-muted-foreground bg-muted/40 px-3 h-11 flex items-center border-r border-slate-200 dark:border-slate-700 select-none font-mono shrink-0">
+                                                                    {typeof window !== 'undefined' ? `${window.location.origin}/m/` : '/m/'}
+                                                                </span>
+                                                                <Input 
+                                                                    value={slug}
+                                                                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                                                                    placeholder={shareId || "custom-slug"}
+                                                                    className={cn(
+                                                                        "h-11 rounded-none border-0 bg-transparent text-foreground font-bold text-[11px] px-3 w-full shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 font-mono min-h-[44px]",
+                                                                        slugStatus === 'conflict' && "text-destructive",
+                                                                        slugStatus === 'available' && "text-emerald-600 dark:text-emerald-400"
+                                                                    )}
+                                                                />
+                                                            </div>
                                                             <Button 
                                                                 type="button"
                                                                 size="icon" 
@@ -1080,6 +1112,9 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                                 <ExternalLink className="h-4 w-4" />
                                                             </Button>
                                                         </div>
+                                                        <p className="text-[9px] font-medium text-slate-500 font-sans">
+                                                            The back half of the viewing URL remains customizable anytime even after saving. Only lowercase alphanumeric, hyphens, and underscores are allowed.
+                                                        </p>
                                                     </div>
 
                                                     <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-1.5 text-left">
@@ -1139,6 +1174,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                         ctaActivationGate={ctaActivationGate}
                                         autoPlay={autoPlay}
                                         orgBranding={orgBranding}
+                                        slug={slug || shareId}
                                     />
                                 </div>
                             </div>

@@ -35,6 +35,7 @@ export interface MediaSharePreviewProps {
   ctaActivationGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
   autoPlay?: boolean;
   orgBranding: OrgBranding | null;
+  slug?: string;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function MediaSharePreview({
   ctaActivationGate = 'immediate',
   autoPlay = false,
   orgBranding,
+  slug,
   className,
 }: MediaSharePreviewProps) {
   const effectiveDesc = React.useMemo(() => {
@@ -79,7 +81,7 @@ export function MediaSharePreview({
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-background/80 border border-slate-200 dark:border-slate-800 text-[10px] font-bold text-muted-foreground font-mono truncate max-w-[200px]">
           <Globe className="h-3 w-3 text-primary shrink-0" />
-          <span className="truncate">/m/preview</span>
+          <span className="truncate">/m/{slug && slug.trim() ? slug.trim() : 'preview'}</span>
         </div>
         <span className="text-[9px] font-black uppercase text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
           Live Preview
