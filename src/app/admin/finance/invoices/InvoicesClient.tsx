@@ -502,7 +502,7 @@ export default function InvoicesClient() {
                                         <UnifiedEntitySelector
                                             value={selectedEntityId}
                                             onChange={(id) => setSelectedEntityId(id)}
-                                            valueKey="id"
+                                            valueKey="entityId"
                                             placeholder={`Select ${singular.toLowerCase()}...`}
                                             showPreviewCard={true}
                                         />

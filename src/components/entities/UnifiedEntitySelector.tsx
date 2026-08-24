@@ -361,7 +361,9 @@ export function UnifiedEntitySelector({
     if (mode !== 'single' || !value) return null;
     return (
       results.find((r) => keyOf(r, valueKey) === value) ||
-      (valueKey === 'entityId' ? (entitiesById.get(value) as SearchedEntity | undefined) : undefined) ||
+      (valueKey === 'entityId'
+        ? (entitiesById.get(value) as SearchedEntity | undefined)
+        : (Array.from(entitiesById.values()).find((e) => e.id === value) as SearchedEntity | undefined)) ||
       null
     );
   }, [mode, value, results, valueKey, entitiesById]);

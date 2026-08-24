@@ -103,6 +103,7 @@ export default function FinanceSettingsClient() {
         const timestamp = new Date().toISOString();
         const payload = {
             name: name.trim(),
+            organizationId: activeWorkspace?.organizationId || 'default',
             levyPercent,
             vatPercent,
             defaultDiscount,

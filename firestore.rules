@@ -198,7 +198,8 @@ service cloud.firestore {
     match /billing_profiles/{profileId} {
       allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds) || isOrgMatch(resource.data.organizationId));
       allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds));
-      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && (canAccessWorkspace(request.resource.data.workspaceIds) || isOrgMatch(request.resource.data.organizationId))));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && (canAccessWorkspace(request.resource.data.workspaceIds) || isOrgMatch(request.resource.data.organizationId))));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && (canAccessWorkspace(resource.data.workspaceIds) || isOrgMatch(resource.data.organizationId))));
     }
 
     match /verification_cache/{docId} {
@@ -346,13 +347,15 @@ service cloud.firestore {
     match /billing_periods/{periodId} {
       allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
       allow list: if isAuthorized();
-      allow write: if isAuthorized() && isSystemAdmin();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
     }
 
     match /subscription_packages/{pkgId} {
       allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.isActive == true;
       allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || resource.data.isActive == true;
-      allow write: if isAuthorized() && isSystemAdmin();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
     }
 
     match /surveys/{surveyId} {

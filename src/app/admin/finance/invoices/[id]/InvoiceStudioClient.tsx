@@ -73,7 +73,7 @@ export default function InvoiceStudioClient() {
     }, [invoice]);
 
     const totals = React.useMemo(() => {
-        const subtotal = localItems.reduce((acc, item) => acc + (Number(item.quantity) * Number(item.unitPrice)), 0);
+        const subtotal = localItems.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)), 0);
         
         // Rate resolution hierarchy: Profile doc -> Invoice snapshot -> Default 0
         const levyPercent = profile?.levyPercent !== undefined 
@@ -88,12 +88,13 @@ export default function InvoiceStudioClient() {
                 ? (invoice.vatAmount / invoice.subtotal) * 100 
                 : 15;
         
-        const levyAmount = (subtotal * levyPercent) / 100;
-        const vatAmount = (subtotal * vatPercent) / 100;
-        const totalPayable = subtotal + levyAmount + vatAmount + localArrears - localCredit - localDiscount;
+        const levyAmount = Math.round(((subtotal * levyPercent) / 100) * 100) / 100;
+        const vatAmount = Math.round(((subtotal * vatPercent) / 100) * 100) / 100;
+        const calculatedTotal = subtotal + levyAmount + vatAmount + (Number(localArrears) || 0) - (Number(localCredit) || 0) - (Number(localDiscount) || 0);
+        const totalPayable = Math.max(0, Math.round(calculatedTotal * 100) / 100);
 
         return { 
-            subtotal, 
+            subtotal: Math.round(subtotal * 100) / 100, 
             levyPercent, 
             vatPercent, 
             levyAmount, 
@@ -118,7 +119,9 @@ export default function InvoiceStudioClient() {
             const next = [...prev];
             const current = next[index];
             const updated = { ...current, ...updates };
-            updated.amount = Number(updated.quantity) * Number(updated.unitPrice);
+            const qty = Number(updated.quantity) || 0;
+            const price = Number(updated.unitPrice) || 0;
+            updated.amount = Math.round(qty * price * 100) / 100;
             next[index] = updated;
             return next;
         });
@@ -134,9 +137,9 @@ export default function InvoiceStudioClient() {
 
         const updateData: Partial<Invoice> = {
             items: localItems,
-            discount: localDiscount,
-            arrearsAdded: localArrears,
-            creditDeducted: localCredit,
+            discount: Number(localDiscount) || 0,
+            arrearsAdded: Number(localArrears) || 0,
+            creditDeducted: Number(localCredit) || 0,
             subtotal: totals.subtotal,
             levyAmount: totals.levyAmount,
             vatAmount: totals.vatAmount,
@@ -151,7 +154,9 @@ export default function InvoiceStudioClient() {
                 title: 'Logic Synchronized', 
                 description: status === 'draft' 
                     ? 'Draft changes saved successfully.' 
-                    : 'Invoice finalized and published.' 
+                    : status === 'paid'
+                        ? 'Invoice marked as Paid.'
+                        : 'Invoice finalized and published.' 
             });
             if (status !== 'draft') {
                 router.push('/admin/finance/invoices');
@@ -216,6 +221,15 @@ export default function InvoiceStudioClient() {
                         </div>
 
                         <div className="flex items-center gap-2.5">
+                            {invoice.status === 'sent' && (
+                                <Button 
+                                    onClick={() => handleSave('paid')} 
+                                    disabled={isSaving} 
+                                    className="rounded-xl font-bold text-xs h-10 px-5 shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
+                                >
+                                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Mark as Paid
+                                </Button>
+                            )}
                             <Button 
                                 variant="outline" 
                                 onClick={() => handleSave('draft')} 

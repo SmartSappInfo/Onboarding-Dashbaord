@@ -38,7 +38,11 @@ export async function upsertContractAction(data: {
         }
 
         const contractsCol = adminDb.collection('contracts');
-        const querySnap = await contractsCol.where('entityId', '==', data.entityId).limit(1).get();
+        const querySnap = await contractsCol
+            .where('entityId', '==', data.entityId)
+            .where('workspaceId', '==', data.workspaceId)
+            .limit(1)
+            .get();
         
         const timestamp = new Date().toISOString();
         let contractId = '';
