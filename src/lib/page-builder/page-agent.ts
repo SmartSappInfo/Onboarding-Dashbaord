@@ -185,7 +185,7 @@ function applyToolMutation(
   };
 }
 
-/** Recursively finds and updates a block inside sections. */
+/** Recursively finds and updates a block inside sections with arbitrary nesting. */
 function updateBlockInSections(
   sections: PageSection[],
   blockId: string,
@@ -211,8 +211,9 @@ function updateBlockInArray(
       blocks[i] = updater(blocks[i]);
       return true;
     }
-    if (blocks[i].blocks && blocks[i].blocks!.length > 0) {
-      if (updateBlockInArray(blocks[i].blocks!, blockId, updater)) {
+    const children = blocks[i].blocks;
+    if (Array.isArray(children) && children.length > 0) {
+      if (updateBlockInArray(children, blockId, updater)) {
         return true;
       }
     }

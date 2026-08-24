@@ -171,9 +171,11 @@ function compareBlocks(origBlocks: PageBlock[], targetBlocks: PageBlock[]): Bloc
 
 /**
  * Deterministic deep equality check preventing false positives from object key reordering.
+ * Includes a maximum recursion depth guard (maxDepth = 10) to prevent stack overflow.
  */
-function isDeepEqual(a: unknown, b: unknown): boolean {
+function isDeepEqual(a: unknown, b: unknown, depth = 0): boolean {
   if (a === b) return true;
+  if (depth > 10) return false;
   if (typeof a !== typeof b) return false;
   if (a === null || b === null || typeof a !== 'object') return false;
 
@@ -182,7 +184,7 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
-      if (!isDeepEqual(a[i], b[i])) return false;
+      if (!isDeepEqual(a[i], b[i], depth + 1)) return false;
     }
     return true;
   }
@@ -196,7 +198,7 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
 
   for (const k of keysA) {
     if (!Object.prototype.hasOwnProperty.call(objB, k)) return false;
-    if (!isDeepEqual(objA[k], objB[k])) return false;
+    if (!isDeepEqual(objA[k], objB[k], depth + 1)) return false;
   }
 
   return true;
