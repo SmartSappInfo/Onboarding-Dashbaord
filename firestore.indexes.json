@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "experiments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pageId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "custom_page_events",
       "queryScope": "COLLECTION",
       "fields": [

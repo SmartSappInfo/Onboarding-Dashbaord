@@ -4793,6 +4793,61 @@ export interface AnalyticsAggregate {
   experienceMetrics: Record<string, { views: number; conversions: number }>;
 }
 
+// ─── PHASE 5 ARCHITECTURAL EXTENSIONS: A/B & MULTIVARIATE EXPERIMENTATION ENGINE ─
+/**
+ * @file src/lib/types.ts
+ * @description Phase 5 foundational contracts for A/B & multivariate experimentation, deterministic variant allocation,
+ * statistical confidence calculation (Z-score / p-value), and winner auto-promotion.
+ */
+
+export interface VariantStructurePatch {
+  blockOverrides?: BlockOverride[];
+  sectionOrder?: string[];
+  themeOverride?: Partial<DesignTokens>;
+}
+
+export interface ExperimentVariant {
+  id: string;
+  experimentId: string;
+  name: string;
+  weight: number; // 0–100 percentage weight
+  isControl: boolean;
+  structurePatch: VariantStructurePatch;
+  stats: {
+    impressions: number;
+    conversions: number;
+    conversionRate: number;
+  };
+}
+
+export interface StatisticalResult {
+  zScore: number;
+  pValue: number;
+  confidencePercentage: number; // e.g. 95.4%
+  isSignificant: boolean; // true if confidencePercentage >= 95%
+  winnerVariantId?: string;
+  sampleSizeReached: boolean;
+}
+
+export interface Experiment {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  hypothesis: string;
+  status: 'draft' | 'running' | 'paused' | 'completed';
+  trafficAllocation: number; // 0–100% total traffic entering test
+  goalMetric: 'conversion_rate' | 'cta_clicks' | 'video_completion' | 'revenue';
+  variants: ExperimentVariant[];
+  winnerVariantId?: string;
+  startDate?: string;
+  endDate?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';
