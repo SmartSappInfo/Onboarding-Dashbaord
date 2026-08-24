@@ -14,6 +14,7 @@ import {
   Loader2, 
   TrendingDown, 
   Clock, 
+  ShieldAlert,
   FileMinus 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -229,6 +230,19 @@ export function ReceivablesClient() {
           <p className="text-sm text-muted-foreground font-medium mt-1">
             Aging analysis, debt risk intelligence, and customer statement generation for {activeWorkspace?.name || activeWorkspaceId}
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            size="sm"
+            className="rounded-xl h-10 min-h-[44px] text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md active:scale-[0.97]"
+          >
+            <Link href="/admin/finance/collections">
+              <ShieldAlert className="h-4 w-4 mr-1.5" />
+              Collections Pipeline
+            </Link>
+          </Button>
         </div>
       </div>
 

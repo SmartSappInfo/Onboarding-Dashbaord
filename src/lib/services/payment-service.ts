@@ -12,6 +12,7 @@
 import { adminDb } from '../firebase-admin';
 import { Payment, PaymentAllocation, PaymentMethod, Invoice, FinancialTransaction } from '../types';
 import { FinancialEventService } from './financial-event-service';
+import { PromiseToPayService } from './promise-to-pay-service';
 
 export interface InvoiceAllocationTarget {
   invoiceId: string;
@@ -240,6 +241,17 @@ export class PaymentService {
         FinancialEventService.emitPaymentReceived(result.payment, result.allocatedList, userId).catch((err) =>
           console.error('[PAYMENT_SERVICE] Event emit error:', err)
         );
+
+        // Check and fulfill active promises-to-pay for this entity
+        if (result.payment.entityId) {
+          PromiseToPayService.checkAndFulfillPromises(
+            result.payment.entityId,
+            result.payment.amount,
+            result.payment.id
+          ).catch((err) =>
+            console.error('[PAYMENT_SERVICE] Promise fulfillment error:', err)
+          );
+        }
       }
 
       return { success: true, paymentId: result.paymentId };

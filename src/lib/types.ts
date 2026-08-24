@@ -1640,6 +1640,129 @@ export interface CustomerStatement {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Debt Collection, PTP & Payment Plans (Phase 5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type CollectionStage =
+  | 'upcoming'
+  | 'reminder'
+  | 'follow_up'
+  | 'active_collection'
+  | 'escalation'
+  | 'final_notice'
+  | 'payment_arrangement'
+  | 'legal_external'
+  | 'resolved';
+
+export type CollectionPriority = 'low' | 'medium' | 'high' | 'critical';
+export type PromiseToPayStatus = 'pending' | 'fulfilled' | 'broken' | 'cancelled';
+export type PaymentPlanStatus = 'draft' | 'active' | 'completed' | 'defaulted' | 'cancelled';
+
+export interface CollectionCase {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  caseNumber: string; // e.g. CAS-2026-000001
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  totalDebt: number;
+  currency: string;
+  oldestInvoiceDays: number;
+  invoiceIds: string[];
+  invoiceNumbers: string[];
+  stage: CollectionStage;
+  priority: CollectionPriority;
+  assignedToUserId?: string;
+  assignedToName?: string;
+  nextAction?: string;
+  nextActionDate?: string;
+  activePromiseId?: string;
+  activePaymentPlanId?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromiseToPay {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  caseId?: string;
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  promisedAmount: number;
+  currency: string;
+  promisedDate: string; // YYYY-MM-DD
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  status: PromiseToPayStatus;
+  fulfilledPaymentId?: string;
+  fulfilledAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentPlanInstallment {
+  installmentNumber: number;
+  dueDate: string;
+  amount: number;
+  status: 'pending' | 'paid' | 'overdue';
+  paidAmount?: number;
+  paidAt?: string;
+}
+
+export interface PaymentPlan {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  planNumber: string; // e.g. PLN-2026-000001
+  caseId?: string;
+  accountId: string;
+  entityId: string;
+  entityName: string;
+  totalDebt: number;
+  downPayment: number;
+  remainingBalance: number;
+  currency: string;
+  installmentsCount: number;
+  frequency: 'weekly' | 'biweekly' | 'monthly';
+  installments: PaymentPlanInstallment[];
+  status: PaymentPlanStatus;
+  startDate: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CollectionActivityType =
+  | 'call'
+  | 'email'
+  | 'sms'
+  | 'whatsapp'
+  | 'meeting'
+  | 'note'
+  | 'promise_to_pay'
+  | 'stage_change';
+
+export interface CollectionActivity {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  caseId: string;
+  entityId: string;
+  type: CollectionActivityType;
+  summary: string;
+  details?: string;
+  outcome?: string;
+  performedBy: string;
+  performedByName: string;
+  timestamp: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SmartSapp Finance 2.0: Core Sub-Ledger & Financial Account Models
 // ─────────────────────────────────────────────────────────────────────────────
 
