@@ -28,12 +28,19 @@ export interface ActionResponse<T = undefined> {
 
 /**
  * Fetches an invoice for public viewing without authentication requirement.
+ * Checks direct document ID or tokenized publicToken UUID.
  */
 export async function getPublicInvoiceAction(id: string): Promise<ActionResponse> {
     try {
-        const docSnap = await adminDb.collection('invoices').doc(id).get();
+        let docSnap = await adminDb.collection('invoices').doc(id).get();
+        
         if (!docSnap.exists) {
-            return { success: false, error: 'Invoice not found.' };
+            const tokenSnap = await adminDb.collection('invoices').where('publicToken', '==', id).limit(1).get();
+            if (!tokenSnap.empty) {
+                docSnap = tokenSnap.docs[0];
+            } else {
+                return { success: false, error: 'Invoice not found.' };
+            }
         }
         
         const data = docSnap.data() as Invoice;
@@ -259,54 +266,63 @@ export async function updateInvoiceAction(
             updatedAt: timestamp
         };
 
-        // If transitioning from draft to sent/issued, post ledger debit entry
+        // If transitioning from draft to sent/issued, post ledger debit entry inside an atomic transaction
         const isBecomingIssued = (updates.status === 'sent' || updates.status === 'issued') && existingInvoice.status === 'draft';
+        
+        let accountId = existingInvoice.accountId;
+        if (isBecomingIssued && !accountId && existingInvoice.entityId) {
+            const acc = await FinancialAccountService.getOrCreateFinancialAccount({
+                entityId: existingInvoice.entityId,
+                workspaceId,
+                organizationId: existingInvoice.organizationId || 'default',
+                entityName: existingInvoice.entityName || 'Organization',
+                currency: existingInvoice.currency || 'GHS',
+                actorId: userId
+            });
+            accountId = acc.id;
+            safeUpdates.accountId = acc.id;
+        }
+
         if (isBecomingIssued) {
             safeUpdates.issuedAt = timestamp;
             safeUpdates.sentAt = timestamp;
 
-            // Ensure financial account linkage
-            let accountId = existingInvoice.accountId;
-            if (!accountId && existingInvoice.entityId) {
-                const acc = await FinancialAccountService.getOrCreateFinancialAccount({
-                    entityId: existingInvoice.entityId,
-                    workspaceId,
-                    organizationId: existingInvoice.organizationId || 'default',
-                    entityName: existingInvoice.entityName || 'Organization',
-                    currency: existingInvoice.currency || 'GHS',
-                    actorId: userId
-                });
-                accountId = acc.id;
-                safeUpdates.accountId = acc.id;
-            }
+            await adminDb.runTransaction(async (tx) => {
+                const invRef = adminDb.collection('invoices').doc(id);
+
+                if (accountId && existingInvoice.entityId) {
+                    const totalDebit = Number(updates.totalPayable ?? existingInvoice.totalPayable) || 0;
+                    await LedgerService.postTransactionInTx(tx, {
+                        organizationId: existingInvoice.organizationId || 'default',
+                        workspaceId,
+                        accountId,
+                        entityId: existingInvoice.entityId,
+                        transactionType: 'invoice_issued',
+                        referenceType: 'invoice',
+                        referenceId: id,
+                        referenceNumber: existingInvoice.invoiceNumber,
+                        debit: totalDebit,
+                        credit: 0,
+                        currency: existingInvoice.currency || 'GHS',
+                        source: 'user',
+                        createdBy: userId,
+                        description: `Invoice ${existingInvoice.invoiceNumber} issued for ${existingInvoice.currency || 'GHS'} ${totalDebit}`,
+                    });
+                }
+
+                tx.update(invRef, safeUpdates);
+            });
 
             if (accountId && existingInvoice.entityId) {
-                const totalDebit = Number(updates.totalPayable ?? existingInvoice.totalPayable) || 0;
-                await LedgerService.postTransaction({
-                    organizationId: existingInvoice.organizationId || 'default',
-                    workspaceId,
-                    accountId,
-                    entityId: existingInvoice.entityId,
-                    transactionType: 'invoice_issued',
-                    referenceType: 'invoice',
-                    referenceId: id,
-                    referenceNumber: existingInvoice.invoiceNumber,
-                    debit: totalDebit,
-                    credit: 0,
-                    currency: existingInvoice.currency || 'GHS',
-                    source: 'user',
-                    createdBy: userId,
-                    description: `Invoice ${existingInvoice.invoiceNumber} issued for ${existingInvoice.currency || 'GHS'} ${totalDebit}`,
-                });
-
-                await FinancialEventService.emitInvoiceIssued(
+                FinancialEventService.emitInvoiceIssued(
                     { ...existingInvoice, ...updates, id } as Invoice,
                     userId
-                );
+                ).catch(err => console.error('[BILLING_ACTION] Event emit error:', err));
             }
+        } else {
+            await adminDb.collection('invoices').doc(id).update(safeUpdates);
         }
         
-        await adminDb.collection('invoices').doc(id).update(safeUpdates);
         revalidatePath('/admin/finance/invoices');
         revalidatePath(`/admin/finance/invoices/${id}`);
         return { success: true };

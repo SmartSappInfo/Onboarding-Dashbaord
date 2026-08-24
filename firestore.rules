@@ -346,30 +346,30 @@ service cloud.firestore {
     }
 
     match /financial_accounts/{accountId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized();
-      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceId)));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId)));
       allow delete: if isAuthorized() && isSystemAdmin();
     }
 
     match /financial_transactions/{transactionId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized();
-      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId)));
       allow update, delete: if false; // Append-only ledger invariant: no client updates or deletes
     }
 
     match /payments/{paymentId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized();
-      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceId)));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId)));
       allow delete: if isAuthorized() && isSystemAdmin();
     }
 
     match /payment_allocations/{allocationId} {
-      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId) || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized();
-      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceId)));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && hasWorkspaceAccess(request.resource.data.workspaceId)));
       allow delete: if isAuthorized() && isSystemAdmin();
     }
 

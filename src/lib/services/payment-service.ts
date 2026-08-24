@@ -1,17 +1,17 @@
 /**
- * SmartSapp Finance 2.0 - Payment Service
- * Handles first-class payments, multi-invoice allocations, and account credit reconciliation.
+ * SmartSapp Finance 2.0 - Payment & Allocation Service
+ * Multi-invoice atomic payment recording, allocation engine, and unallocated customer credit handling.
  * 
  * Invariants:
- * 1. Payments exist independently of single invoices.
- * 2. One payment can be allocated across multiple invoices.
- * 3. Any excess payment amount is held as unallocatedAmount and credited to account availableCredit.
- * 4. All allocations and balance updates run in an atomic Firestore transaction.
+ * 1. Strict Firestore transaction lifecycle: ALL reads execute before ANY writes.
+ * 2. Total allocated across invoices cannot exceed payment amount.
+ * 3. Excess payment is credited directly to account availableCredit.
+ * 4. All currency operations strictly rounded via Math.round(val * 100) / 100.
  */
 
 import { adminDb } from '../firebase-admin';
-import { Payment, PaymentAllocation, PaymentMethod, Invoice } from '../types';
-import { LedgerService } from './ledger-service';
+import { Payment, PaymentAllocation, PaymentMethod, Invoice, FinancialTransaction } from '../types';
+import { FinancialEventService } from './financial-event-service';
 
 export interface InvoiceAllocationTarget {
   invoiceId: string;
@@ -29,16 +29,17 @@ export interface RecordPaymentInput {
   provider?: string;
   providerTransactionId?: string;
   reference?: string;
+  receivedAt?: string;
   payerName?: string;
   notes?: string;
-  receivedAt?: string;
   idempotencyKey?: string;
   allocations?: InvoiceAllocationTarget[];
 }
 
 export class PaymentService {
   /**
-   * Records a payment and applies allocations atomically across targeted invoices and ledger.
+   * Records a payment and atomically allocates it across multiple invoices.
+   * Enforces all reads before writes inside the Firestore transaction.
    */
   static async recordAndAllocatePayment(
     input: RecordPaymentInput,
@@ -53,7 +54,7 @@ export class PaymentService {
       const timestamp = new Date().toISOString();
       const receivedAt = input.receivedAt || timestamp;
 
-      // Validate allocations before transaction
+      // Filter valid allocations
       const rawAllocations = input.allocations || [];
       const sanitizedAllocations: InvoiceAllocationTarget[] = rawAllocations
         .filter((a) => a.invoiceId && Number(a.amount) > 0)
@@ -64,25 +65,42 @@ export class PaymentService {
 
       const totalAllocated = sanitizedAllocations.reduce((sum, a) => sum + a.amount, 0);
       if (totalAllocated > totalAmount) {
-        return { success: false, error: 'Total allocated amount cannot exceed the total payment amount' };
+        return {
+          success: false,
+          error: `Total allocated amount (${totalAllocated}) cannot exceed total payment amount (${totalAmount})`,
+        };
       }
 
       const unallocatedAmount = Math.round((totalAmount - totalAllocated) * 100) / 100;
 
+      // Execute Transaction
       const result = await adminDb.runTransaction(async (tx) => {
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 1: ALL READS FIRST (Strict Firestore Transaction Invariant)
+        // ─────────────────────────────────────────────────────────────────────
+
         // 1. Check idempotency if key provided
         if (input.idempotencyKey) {
-          const existingSnap = await adminDb.collection('payments')
+          const existingSnap = await adminDb
+            .collection('payments')
             .where('idempotencyKey', '==', input.idempotencyKey)
             .limit(1)
             .get();
 
           if (!existingSnap.empty) {
-            return { success: true, paymentId: existingSnap.docs[0].id };
+            return { success: true, paymentId: existingSnap.docs[0].id, allocatedList: [] };
           }
         }
 
-        // 2. Fetch and validate all target invoices inside transaction
+        // 2. Read Financial Account
+        const accountRef = adminDb.collection('financial_accounts').doc(input.accountId);
+        const accountSnap = await tx.get(accountRef);
+        if (!accountSnap.exists) {
+          throw new Error(`Financial account ${input.accountId} does not exist`);
+        }
+        const accountData = accountSnap.data() || {};
+
+        // 3. Read All Target Invoices
         const invoiceDocsMap = new Map<string, { ref: FirebaseFirestore.DocumentReference; data: Invoice }>();
         for (const alloc of sanitizedAllocations) {
           const invRef = adminDb.collection('invoices').doc(alloc.invoiceId);
@@ -90,10 +108,17 @@ export class PaymentService {
           if (!invSnap.exists) {
             throw new Error(`Invoice ${alloc.invoiceId} not found`);
           }
-          invoiceDocsMap.set(alloc.invoiceId, { ref: invRef, data: { id: invSnap.id, ...(invSnap.data() as Omit<Invoice, 'id'>) } });
+          invoiceDocsMap.set(alloc.invoiceId, {
+            ref: invRef,
+            data: { id: invSnap.id, ...(invSnap.data() as Omit<Invoice, 'id'>) },
+          });
         }
 
-        // 3. Create Payment Document
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 2: ALL WRITES AFTER ALL READS
+        // ─────────────────────────────────────────────────────────────────────
+
+        // 4. Create Payment Document
         const paymentDocRef = adminDb.collection('payments').doc();
         const paymentData: Omit<Payment, 'id'> = {
           organizationId: input.organizationId,
@@ -118,10 +143,10 @@ export class PaymentService {
           createdAt: timestamp,
           updatedAt: timestamp,
         };
-
         tx.set(paymentDocRef, paymentData);
 
-        // 4. Create Payment Allocations and update Invoices
+        // 5. Create Payment Allocations and update Invoices
+        const createdAllocations: PaymentAllocation[] = [];
         for (const alloc of sanitizedAllocations) {
           const invoiceInfo = invoiceDocsMap.get(alloc.invoiceId);
           if (!invoiceInfo) continue;
@@ -150,6 +175,7 @@ export class PaymentService {
             organizationId: input.organizationId,
           };
           tx.set(allocDocRef, allocData);
+          createdAllocations.push({ id: allocDocRef.id, ...allocData });
 
           // Update Invoice
           tx.update(invoiceInfo.ref, {
@@ -161,8 +187,16 @@ export class PaymentService {
           });
         }
 
-        // 5. Post Ledger Entry
-        await LedgerService.postTransactionInTx(tx, {
+        // 6. Compute Account Balance & Post Ledger Transaction
+        const currentBalance = Number(accountData.currentBalance || 0);
+        const totalPaid = Number(accountData.totalPaid || 0);
+        const curCredit = Number(accountData.availableCredit || 0);
+        const newBalance = Math.round((currentBalance - totalAmount) * 100) / 100;
+        const newTotalPaid = Math.round((totalPaid + totalAmount) * 100) / 100;
+        const newAvailableCredit = Math.round((curCredit + unallocatedAmount) * 100) / 100;
+
+        const transactionDocRef = adminDb.collection('financial_transactions').doc();
+        const transactionData: Omit<FinancialTransaction, 'id'> = {
           organizationId: input.organizationId,
           workspaceId: input.workspaceId,
           accountId: input.accountId,
@@ -174,44 +208,56 @@ export class PaymentService {
           debit: 0,
           credit: totalAmount,
           currency: input.currency || 'GHS',
+          balanceAfter: newBalance,
+          effectiveAt: receivedAt,
           source: 'user',
           createdBy: userId,
-          effectiveAt: receivedAt,
           description: `Payment of ${input.currency || 'GHS'} ${totalAmount} via ${input.paymentMethod}`,
+          metadata: {},
+          createdAt: timestamp,
+        };
+        tx.set(transactionDocRef, transactionData);
+
+        // 7. Update Account Balances in Single Atomic Write
+        tx.update(accountRef, {
+          currentBalance: newBalance,
+          totalOutstanding: Math.max(0, newBalance),
+          totalPaid: newTotalPaid,
+          availableCredit: newAvailableCredit,
+          updatedAt: timestamp,
         });
 
-        // 6. If there's unallocated amount, update account's available credit
-        if (unallocatedAmount > 0) {
-          const accountRef = adminDb.collection('financial_accounts').doc(input.accountId);
-          const accountSnap = await tx.get(accountRef);
-          if (accountSnap.exists) {
-            const accData = accountSnap.data() || {};
-            const curCredit = Number(accData.availableCredit || 0);
-            tx.update(accountRef, {
-              availableCredit: Math.round((curCredit + unallocatedAmount) * 100) / 100,
-              updatedAt: timestamp,
-            });
-          }
-        }
-
-        return { success: true, paymentId: paymentDocRef.id };
+        return {
+          success: true,
+          paymentId: paymentDocRef.id,
+          payment: { id: paymentDocRef.id, ...paymentData },
+          allocatedList: createdAllocations,
+        };
       });
 
-      return result;
+      // Dispatch async financial events (non-blocking)
+      if (result.success && result.payment) {
+        FinancialEventService.emitPaymentReceived(result.payment, result.allocatedList, userId).catch((err) =>
+          console.error('[PAYMENT_SERVICE] Event emit error:', err)
+        );
+      }
+
+      return { success: true, paymentId: result.paymentId };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Failed to record payment';
+      console.error('[PAYMENT_SERVICE] Error recording payment:', errorMsg);
       return { success: false, error: errorMsg };
     }
   }
 
   /**
-   * Retrieves payments recorded for an account.
+   * Retrieves all payments for an account.
    */
-  static async getPaymentsForAccount(accountId: string, limitCount = 50): Promise<Payment[]> {
-    const snap = await adminDb.collection('payments')
+  static async getPaymentsForAccount(accountId: string): Promise<Payment[]> {
+    const snap = await adminDb
+      .collection('payments')
       .where('accountId', '==', accountId)
       .orderBy('receivedAt', 'desc')
-      .limit(limitCount)
       .get();
 
     return snap.docs.map((doc) => ({
@@ -221,10 +267,11 @@ export class PaymentService {
   }
 
   /**
-   * Retrieves all allocations linked to an invoice.
+   * Retrieves all allocations for an invoice.
    */
   static async getAllocationsForInvoice(invoiceId: string): Promise<PaymentAllocation[]> {
-    const snap = await adminDb.collection('payment_allocations')
+    const snap = await adminDb
+      .collection('payment_allocations')
       .where('invoiceId', '==', invoiceId)
       .orderBy('allocatedAt', 'desc')
       .get();

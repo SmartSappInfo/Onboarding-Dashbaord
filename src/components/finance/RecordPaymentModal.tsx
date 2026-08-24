@@ -106,12 +106,18 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   );
   const unallocatedAmount = Math.max(0, Math.round((numAmount - totalAllocated) * 100) / 100);
 
-  // Auto-allocates payment amount across unpaid invoices in FIFO order
+  // Auto-allocates payment amount across unpaid invoices in FIFO order (oldest first)
   const handleAutoAllocate = () => {
     let remaining = numAmount;
     const nextAllocations: Record<string, number> = {};
 
-    for (const inv of unpaidInvoices) {
+    const sortedInvoices = [...unpaidInvoices].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB;
+    });
+
+    for (const inv of sortedInvoices) {
       if (remaining <= 0) break;
       const invBalance = Number(inv.balanceDue ?? (inv.totalPayable - (inv.amountPaid || 0)));
       if (invBalance <= 0) continue;
@@ -225,7 +231,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="pl-9 rounded-xl h-10 font-semibold"
+                  className="pl-9 rounded-xl h-11 min-h-[44px] font-semibold"
                 />
               </div>
             </div>
@@ -233,7 +239,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Payment Method *</Label>
               <Select value={paymentMethod} onValueChange={(val) => setPaymentMethod(val as PaymentMethod)}>
-                <SelectTrigger className="rounded-xl h-10 font-semibold">
+                <SelectTrigger className="rounded-xl h-11 min-h-[44px] font-semibold">
                   <SelectValue placeholder="Select Method" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -254,7 +260,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 placeholder="e.g. TXN-948292 or Cheque #1029"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                className="rounded-xl h-10 text-xs"
+                className="rounded-xl h-11 min-h-[44px] text-xs"
               />
             </div>
 
@@ -264,7 +270,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 placeholder="Name on bank transfer or MoMo"
                 value={payerName}
                 onChange={(e) => setPayerName(e.target.value)}
-                className="rounded-xl h-10 text-xs"
+                className="rounded-xl h-11 min-h-[44px] text-xs"
               />
             </div>
 
@@ -274,7 +280,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 placeholder="Internal memo, settlement reason, or bank account notes..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="rounded-xl h-10 text-xs"
+                className="rounded-xl h-11 min-h-[44px] text-xs"
               />
             </div>
           </div>
@@ -385,14 +391,14 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-xl h-10 text-xs font-semibold active:scale-[0.97]"
+              className="rounded-xl h-11 min-h-[44px] text-xs font-semibold active:scale-[0.97]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || numAmount <= 0}
-              className="rounded-xl h-10 text-xs font-bold px-5 bg-primary text-white hover:bg-primary/90 active:scale-[0.97]"
+              className="rounded-xl h-11 min-h-[44px] text-xs font-bold px-6 bg-primary text-white hover:bg-primary/90 active:scale-[0.97]"
             >
               {isSubmitting ? (
                 <>

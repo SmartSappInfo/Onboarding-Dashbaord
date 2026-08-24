@@ -173,7 +173,12 @@ export async function getUnpaidInvoicesForEntityAction(
 
     const invoices = snap.docs
       .map((doc) => ({ id: doc.id, ...(doc.data() as Omit<Invoice, 'id'>) }))
-      .filter((inv) => (inv.balanceDue === undefined ? inv.status !== 'paid' : inv.balanceDue > 0));
+      .filter((inv) => (inv.balanceDue === undefined ? inv.status !== 'paid' : inv.balanceDue > 0))
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeA - timeB;
+      });
 
     return { success: true, data: invoices };
   } catch (e: unknown) {
