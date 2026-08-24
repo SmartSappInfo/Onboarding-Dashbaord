@@ -206,7 +206,9 @@ function updateBlockInArray(
   blocks: PageBlock[],
   blockId: string,
   updater: (b: PageBlock) => PageBlock,
+  depth = 0,
 ): boolean {
+  if (depth > 20) return false;
   for (let i = 0; i < blocks.length; i++) {
     if (blocks[i].id === blockId) {
       blocks[i] = updater(blocks[i]);
@@ -214,7 +216,7 @@ function updateBlockInArray(
     }
     const children = blocks[i].blocks;
     if (Array.isArray(children) && children.length > 0) {
-      if (updateBlockInArray(children, blockId, updater)) {
+      if (updateBlockInArray(children, blockId, updater, depth + 1)) {
         return true;
       }
     }

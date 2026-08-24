@@ -52,6 +52,8 @@ export const AdaptiveTrafficPanel: React.FC<AdaptiveTrafficPanelProps> = ({
 
         <button
           type="button"
+          aria-pressed={isRunning}
+          aria-label={isRunning ? 'Pause Adaptive Traffic Routing' : 'Activate Adaptive Traffic Routing'}
           onClick={onTogglePolicyStatus}
           className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             isRunning
