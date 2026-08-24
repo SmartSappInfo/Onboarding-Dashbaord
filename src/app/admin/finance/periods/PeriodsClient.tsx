@@ -15,7 +15,8 @@ import {
     Unlock, 
     Check, 
     Layout, 
-    Search
+    Search,
+    Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ import { Separator } from '@/components/ui/separator';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { ExecuteRecurringBillingModal } from '@/components/finance/ExecuteRecurringBillingModal';
 
 /**
  * @fileOverview Billing Cycles Management.
@@ -52,6 +54,8 @@ export default function PeriodsClient() {
     const [editingPeriod, setEditingPeriod] = React.useState<BillingPeriod | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState('');
+    const [isCycleBillingOpen, setIsCycleBillingOpen] = React.useState(false);
+    const [selectedCyclePeriodId, setSelectedCyclePeriodId] = React.useState<string>('');
 
     // Form State
     const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([activeWorkspaceId]);
@@ -187,12 +191,24 @@ export default function PeriodsClient() {
                             Define recurring and term-based invoicing windows for {activeWorkspace?.name || activeWorkspaceId}
                         </p>
                     </div>
-                    <Button 
-                        onClick={() => setIsAdding(true)} 
-                        className="rounded-xl font-bold shadow-sm h-11 px-6 active:scale-[0.97] transition-all text-white bg-primary hover:bg-primary/90"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Initialize Cycle
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline"
+                            onClick={() => {
+                                setSelectedCyclePeriodId('');
+                                setIsCycleBillingOpen(true);
+                            }} 
+                            className="rounded-xl font-bold border-primary/30 text-primary hover:bg-primary/10 shadow-xs h-11 px-5 active:scale-[0.97] transition-all"
+                        >
+                            <Zap className="mr-2 h-4 w-4 fill-primary/20" /> Run Cycle Invoicing
+                        </Button>
+                        <Button 
+                            onClick={() => setIsAdding(true)} 
+                            className="rounded-xl font-bold shadow-sm h-11 px-6 active:scale-[0.97] transition-all text-white bg-primary hover:bg-primary/90"
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Initialize Cycle
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Search Bar */}
@@ -259,6 +275,20 @@ export default function PeriodsClient() {
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex items-center justify-end gap-1">
+                                                {period.status === 'open' && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10 active:scale-[0.97]" 
+                                                        onClick={() => {
+                                                            setSelectedCyclePeriodId(period.id);
+                                                            setIsCycleBillingOpen(true);
+                                                        }}
+                                                        title="Run Cycle Invoicing"
+                                                    >
+                                                        <Zap className="h-3.5 w-3.5 fill-primary/20" />
+                                                    </Button>
+                                                )}
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
@@ -385,6 +415,12 @@ export default function PeriodsClient() {
                     </form>
                 </DialogContent>
             </Dialog>
+            {/* Recurring Billing Batch Modal */}
+            <ExecuteRecurringBillingModal
+                isOpen={isCycleBillingOpen}
+                onClose={() => setIsCycleBillingOpen(false)}
+                initialPeriodId={selectedCyclePeriodId || undefined}
+            />
         </PageContainerFluid>
     );
 }

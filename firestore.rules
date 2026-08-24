@@ -394,6 +394,27 @@ service cloud.firestore {
       allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
     }
 
+    match /billing_agreements/{agreementId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list: if isAuthorized();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /finance_products/{productId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.isActive == true;
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || resource.data.isActive == true;
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
+    }
+
+    match /finance_pricing_plans/{planId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds))) || resource.data.isActive == true;
+      allow list: if isSystemAdmin() || (isAuthorized() && canAccessWorkspace(resource.data.workspaceIds)) || resource.data.isActive == true;
+      allow create, update: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(request.resource.data.workspaceIds)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('finance_manage') && canAccessWorkspace(resource.data.workspaceIds)));
+    }
+
     match /surveys/{surveyId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
       allow list: if isAuthorized();

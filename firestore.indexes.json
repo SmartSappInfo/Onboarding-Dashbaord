@@ -52,6 +52,22 @@
       ]
     },
     {
+      "collectionGroup": "billing_agreements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "billing_agreements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "workspace_entities",
       "queryScope": "COLLECTION",
       "fields": [

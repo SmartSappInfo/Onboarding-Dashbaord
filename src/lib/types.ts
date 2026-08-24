@@ -1475,9 +1475,98 @@ export interface Invoice {
   issuedAt?: string;
   sentAt?: string;
   paidAt?: string;
-  voidedAt?: string;
   workspaceIds: string[]; // Shared
   billingProfileId: string;
+  agreementId?: string; // Links to billing_agreements if generated via recurring billing
+  agreementNumber?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SmartSapp Finance 2.0: Products, Pricing & Billing Agreements (Phase 3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ActionResponse<T = unknown> {
+  success: boolean;
+  error?: string;
+  data?: T;
+  [key: string]: unknown;
+}
+
+export type BillingFrequency = 'monthly' | 'quarterly' | 'termly' | 'annual' | 'custom';
+export type AgreementStatus = 'draft' | 'active' | 'paused' | 'cancelled' | 'expired';
+export type PricingModel = 'per_unit' | 'flat_fee' | 'tiered';
+
+export interface FinanceProduct {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  sku: string;
+  description: string;
+  category: 'subscription' | 'service' | 'hardware' | 'assessment' | 'other';
+  unitName: string; // e.g. 'student', 'seat', 'school', 'license'
+  defaultBillingProfileId?: string;
+  currency: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancePricingPlan {
+  id: string;
+  productId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  name: string;
+  pricingModel: PricingModel;
+  rate: number;
+  currency: string;
+  billingFrequency: BillingFrequency;
+  minUnits?: number;
+  maxUnits?: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BillingAgreement {
+  id: string;
+  organizationId: string;
+  workspaceIds: string[];
+  agreementNumber: string; // e.g. AGR-2026-000001
+  entityId: string;
+  entityName: string;
+  accountId: string;
+  productId: string;
+  productName: string;
+  pricingPlanId?: string;
+  quantity: number; // Headcount / nominal roll / units
+  ratePerUnit: number;
+  totalAmountPerCycle: number;
+  currency: string;
+  billingFrequency: BillingFrequency;
+  billingProfileId: string;
+  startDate: string;
+  endDate?: string;
+  paymentTermsDays: number;
+  autoRenew: boolean;
+  status: AgreementStatus;
+  lastBilledPeriodId?: string;
+  lastBilledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecurringBillingBatchResult {
+  periodId: string;
+  periodName: string;
+  totalEligible: number;
+  invoicesCreated: number;
+  skippedAlreadyBilled: number;
+  failedCount: number;
+  totalGrossInvoiced: number;
+  createdInvoiceIds: string[];
+  errors: Array<{ agreementId: string; agreementNumber: string; error: string }>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
