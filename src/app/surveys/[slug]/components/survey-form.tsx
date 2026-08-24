@@ -179,17 +179,19 @@ const isValueEmpty = (value: unknown, questionType: string, allowOther?: boolean
     if (Array.isArray(value)) return value.length === 0;
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
     // Checkboxes with allowOther: {options: [], other: ''}
-    if (questionType === 'checkboxes' && typeof value === 'object') {
-        const options = (value as any).options;
-        const other = (value as any).other;
+    if (questionType === 'checkboxes' && typeof value === 'object' && value !== null) {
+        const valObj = value as { options?: unknown[]; other?: string };
+        const options = Array.isArray(valObj.options) ? valObj.options : undefined;
+        const other = typeof valObj.other === 'string' ? valObj.other : undefined;
         if (options !== undefined || other !== undefined) {
             return (!options || options.length === 0) && !other;
         }
     }
     // Multiple-choice with allowOther: {option: '__other__', other: 'some text'}
-    if (questionType === 'multiple-choice' && allowOther && typeof value === 'object') {
-        const option = (value as any).option;
-        const other = (value as any).other;
+    if (questionType === 'multiple-choice' && allowOther && typeof value === 'object' && value !== null) {
+        const valObj = value as { option?: string; other?: string };
+        const option = typeof valObj.option === 'string' ? valObj.option : undefined;
+        const other = typeof valObj.other === 'string' ? valObj.other : undefined;
         if (option === '__other__') return !other || other.trim() === '';
         return !option;
     }

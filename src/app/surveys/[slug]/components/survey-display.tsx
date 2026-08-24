@@ -454,7 +454,7 @@ export default function SurveyDisplay({
                                         <SelectValue placeholder="Select Contact" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-800 border-slate-700 text-white rounded-xl">
-                                        {activeContacts.map((c: any) => (
+                                        {activeContacts.map((c) => (
                                             <SelectItem key={c.email || c.phone} value={c.email} className="text-xs focus:bg-slate-700 focus:text-white rounded-lg">
                                                 {c.name} ({c.typeLabel || c.typeKey || 'Contact'})
                                             </SelectItem>

@@ -949,7 +949,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
  * Triggers a survey webhook from the server.
  * Ensures the webhook endpoint is protected from public read access.
  */
-export async function triggerSurveyWebhook(webhookId: string, payload: any) {
+export async function triggerSurveyWebhook(webhookId: string, payload: Record<string, unknown>) {
     try {
         const webhookDoc = await adminDb.collection('webhooks').doc(webhookId).get();
         if (!webhookDoc.exists) {
@@ -1048,8 +1048,8 @@ export async function autoSaveSurveyAction(
 function buildIndustryDefaults(
   industry: IndustryVertical,
   entityType: EntityType,
-  resolvedDefaults: Record<string, any>
-): Record<string, any> {
+  resolvedDefaults: Record<string, unknown>
+): Record<string, unknown> {
   const d = resolvedDefaults;
 
   switch (industry) {
@@ -2197,7 +2197,7 @@ async function triggerPostSubmissionAutomations(
     organizationId,
     workspaceId,
     userId: responseData.assignedUserId || 'anonymous',
-    type: 'survey_submitted' as any,
+    type: 'survey_submitted',
     source: 'public_survey',
     description: `Survey "${surveyData.title}" submitted${entityId ? ` — entity linked` : ''}`,
     metadata: {
