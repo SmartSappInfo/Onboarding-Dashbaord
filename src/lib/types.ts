@@ -4727,6 +4727,72 @@ export interface ResolvedPageExperience {
   appliedOverrides: BlockOverride[];
 }
 
+// ─── PHASE 4 ARCHITECTURAL EXTENSIONS: ANALYTICS & ATTRIBUTION PIPELINE ───────
+/**
+ * @file src/lib/types.ts
+ * @description Phase 4 foundational contracts for canonical page interaction events, anonymous visitor sessions,
+ * multi-touch attribution records, and real-time analytics aggregates.
+ */
+
+export interface PageEvent {
+  id: string;
+  pageId: string;
+  organizationId: string;
+  workspaceIds: string[];
+  visitorId: string;
+  contactId?: string;
+  sessionId: string;
+  eventType: 'page_view' | 'section_view' | 'block_click' | 'video_milestone' | 'form_submit' | 'conversion';
+  blockId?: string;
+  blockType?: PageBlockType;
+  experienceRuleId?: string;
+  variantId?: string;
+  utmParams?: {
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    utmContent?: string;
+    utmTerm?: string;
+  };
+  metadata?: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface VisitorSession {
+  sessionId: string;
+  visitorId: string;
+  contactId?: string;
+  startedAt: string;
+  lastActiveAt: string;
+  deviceType: 'desktop' | 'tablet' | 'mobile';
+  utmParams?: Record<string, string>;
+}
+
+export interface AttributionRecord {
+  id: string;
+  pageId: string;
+  contactId: string;
+  opportunityId: string;
+  revenue: number;
+  model: 'first_touch' | 'last_touch' | 'linear';
+  touchpoints: Array<{
+    eventId: string;
+    weight: number;
+    attributedRevenue: number;
+  }>;
+  createdAt: string;
+}
+
+export interface AnalyticsAggregate {
+  pageId: string;
+  totalViews: number;
+  uniqueVisitors: number;
+  totalConversions: number;
+  conversionRate: number;
+  blockMetrics: Record<string, { clicks: number; views: number }>;
+  experienceMetrics: Record<string, { views: number; conversions: number }>;
+}
+
 export interface PageSection {
   id: string;
   type: 'section';

@@ -357,12 +357,7 @@ export async function assignCustomPageWorkspaceAction(
           showHeader: false,
           showFooter: false,
         },
-        stats: {
-          views: 0,
-          uniques: 0,
-          conversions: 0,
-          clicks: 0,
-        },
+        stats: DEFAULT_STATS,
         publishedVersionId: null,
         createdBy: 'system',
         createdAt: now,
