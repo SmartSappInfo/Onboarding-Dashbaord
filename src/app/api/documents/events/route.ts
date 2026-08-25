@@ -30,6 +30,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const payload = body as IngestEventPayload;
+    if (!payload.workspaceId || !payload.documentId || !payload.eventType) {
+      return NextResponse.json({ success: false, error: 'Missing required event fields (workspaceId, documentId, eventType)' }, { status: 400 });
+    }
+
     const result = await ingestDocumentEvent(payload);
 
     if (!result.success) {

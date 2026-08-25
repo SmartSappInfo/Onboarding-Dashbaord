@@ -631,7 +631,27 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
             <DocumentLayerOverlay
               hotspots={flipbook.hotspots || []}
               currentPage={currentPage}
-              onHotspotClick={(hs) => setActiveHotspot(hs)}
+              onHotspotClick={(hs) => {
+                setActiveHotspot(hs);
+                if (sessionCtx && flipbook) {
+                  recordDocumentEventAction({
+                    workspaceId: flipbook.workspaceId,
+                    documentId: flipbook.id,
+                    sessionId: sessionCtx.sessionId,
+                    visitorId: sessionCtx.visitorId,
+                    contactId: sessionCtx.contactId,
+                    distributionId: sessionCtx.distributionToken,
+                    campaignId: sessionCtx.campaignId,
+                    eventType: hs.type === 'video' ? 'video_started' : 'link_clicked',
+                    pageNumber: hs.pageNumber,
+                    elementId: hs.id,
+                    metadata: {
+                      targetUrl: hs.targetUrl || '',
+                      layerTitle: hs.title || '',
+                    },
+                  }).catch(() => {});
+                }
+              }}
             />
           </div>
         </div>
