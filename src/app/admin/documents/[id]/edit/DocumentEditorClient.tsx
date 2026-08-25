@@ -57,6 +57,8 @@ import { queueDocumentProcessingAction } from '@/lib/documents/processing-action
 import type { DocumentProcessingJob } from '@/lib/types/document-types';
 import { ProcessingProgressSheet } from '@/components/documents/ProcessingProgressSheet';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { DocumentPageManager } from '@/components/documents/studio/DocumentPageManager';
+import { DocumentLayerInspector } from '@/components/documents/studio/DocumentLayerInspector';
 
 interface DocumentEditorClientProps {
   documentId: string;
@@ -101,6 +103,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
   const [docType, setDocType] = useState<DocumentType>('brochure');
   const [viewerMode, setViewerMode] = useState<ViewerMode>('flipbook');
   const [tags, setTags] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('metadata');
   const [isSaving, setIsSaving] = useState(false);
 
   // Experience Settings
@@ -359,7 +362,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
           </div>
 
           {/* Main 6-Tab Studio Suite */}
-          <Tabs defaultValue="metadata" className="w-full space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
             <TabsList className="h-12 bg-muted/40 p-1 rounded-2xl border border-border/50 grid grid-cols-3 sm:grid-cols-6 gap-1">
               <TabsTrigger value="metadata" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
                 <Sliders className="h-3.5 w-3.5" />
@@ -466,179 +469,65 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
               </Card>
             </TabsContent>
 
-            {/* TAB 2: Pages */}
+            {/* TAB 2: Pages Manager */}
             <TabsContent value="pages" className="space-y-6">
-              <Card className="rounded-3xl border-border/60 bg-card p-6 sm:p-8 shadow-sm space-y-4 text-left">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-black text-foreground">Extracted Pages ({pages.length})</h3>
-                    <p className="text-xs text-muted-foreground">Rendered page assets and OCR text content.</p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (!activeWorkspaceId || !document) return;
-                      const res = await queueDocumentProcessingAction({
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!activeWorkspaceId || !document) return;
+                    const res = await queueDocumentProcessingAction({
+                      workspaceId: activeWorkspaceId,
+                      documentId,
+                      versionId: document.activeVersionId || `${documentId}_v1`,
+                      sourceUrl: (document.metadata?.sourceFileUrl as string) || `https://example.com/${document.slug}.pdf`,
+                      sourceFileName: `${document.title}.pdf`,
+                    });
+                    if (res.success && res.jobId) {
+                      setActiveJob({
+                        id: res.jobId,
                         workspaceId: activeWorkspaceId,
                         documentId,
                         versionId: document.activeVersionId || `${documentId}_v1`,
-                        sourceUrl: (document.metadata?.sourceFileUrl as string) || `https://example.com/${document.slug}.pdf`,
-                        sourceFileName: `${document.title}.pdf`,
+                        jobType: res.stage || 'validate_source',
+                        status: res.status || 'processing',
+                        progress: res.progress || 10,
+                        attempts: 1,
+                        createdAt: new Date().toISOString(),
                       });
-                      if (res.success && res.jobId) {
-                        setActiveJob({
-                          id: res.jobId,
-                          workspaceId: activeWorkspaceId,
-                          documentId,
-                          versionId: document.activeVersionId || `${documentId}_v1`,
-                          jobType: res.stage || 'validate_source',
-                          status: res.status || 'processing',
-                          progress: res.progress || 10,
-                          attempts: 1,
-                          createdAt: new Date().toISOString(),
-                        });
-                        setIsProgressSheetOpen(true);
-                        toast({ title: 'Pipeline Initiated', description: 'Document rendering and search indexing queued.' });
-                      }
-                    }}
-                    className="h-10 rounded-xl font-bold text-xs min-h-[44px] border-primary/30 text-primary hover:bg-primary/10"
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Process Document
-                  </Button>
-                </div>
+                      setIsProgressSheetOpen(true);
+                      toast({ title: 'Pipeline Initiated', description: 'Document rendering and search indexing queued.' });
+                    }
+                  }}
+                  className="h-10 rounded-xl font-bold text-xs min-h-[44px] border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Process Document
+                </Button>
+              </div>
 
-                {pages.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl">
-                    No rendered pages found for this version. The document is being processed or rendered on-the-fly.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                    {pages.map((p) => (
-                      <div
-                        key={p.id}
-                        className="rounded-2xl border border-border/60 bg-muted/20 overflow-hidden shadow-sm flex flex-col items-center p-2 text-center"
-                      >
-                        <div className="w-full aspect-[1/1.41] bg-slate-900 rounded-xl overflow-hidden mb-2">
-                          <img
-                            src={p.thumbnailUrl || p.renderedAssetUrl}
-                            alt={`Page ${p.pageNumber}`}
-                            className="w-full h-full object-cover select-none"
-                          />
-                        </div>
-                        <span className="text-xs font-black text-foreground">Page {p.pageNumber}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
+              <DocumentPageManager
+                workspaceId={activeWorkspaceId || ''}
+                documentId={documentId}
+                pages={pages}
+                onSelectPageForLayers={(pageNum) => {
+                  setSelectedPage(pageNum);
+                  setActiveTab('layers');
+                }}
+              />
             </TabsContent>
 
-            {/* TAB 3: Interactive Layers */}
+            {/* TAB 3: Visual Layer & Hotspot Inspector */}
             <TabsContent value="layers" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-1 rounded-3xl border-border/60 bg-card p-6 shadow-sm space-y-4 text-left">
-                  <div className="space-y-1">
-                    <h3 className="text-base font-black text-foreground">Add Interactive Overlay</h3>
-                    <p className="text-xs text-muted-foreground">Attach links, videos, and WhatsApp triggers to pages.</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold uppercase text-muted-foreground">Target Page</Label>
-                      <select
-                        value={selectedPage}
-                        onChange={(e) => setSelectedPage(parseInt(e.target.value, 10))}
-                        className="w-full h-10 rounded-xl bg-card border border-border px-3 text-xs font-bold"
-                      >
-                        {Array.from({ length: pages.length || 1 }, (_, i) => i + 1).map((num) => (
-                          <option key={num} value={num}>Page {num}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold uppercase text-muted-foreground">Overlay Action Type</Label>
-                      <select
-                        value={hotspotType}
-                        onChange={(e) => setHotspotType(e.target.value as HotspotType)}
-                        className="w-full h-10 rounded-xl bg-card border border-border px-3 text-xs font-bold"
-                      >
-                        <option value="link">Website Link (External)</option>
-                        <option value="video">YouTube / Vimeo Video Modal</option>
-                        <option value="lead_gate">Lead Generation Form</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold uppercase text-muted-foreground">Overlay Label</Label>
-                      <Input
-                        value={hotspotTitle}
-                        onChange={(e) => setHotspotTitle(e.target.value)}
-                        placeholder="e.g. Watch Campus Video"
-                        className="h-10 rounded-xl bg-muted/20 border-border text-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold uppercase text-muted-foreground">Destination URL / Video URL</Label>
-                      <Input
-                        value={hotspotUrl}
-                        onChange={(e) => setHotspotUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="h-10 rounded-xl bg-muted/20 border-border text-xs"
-                      />
-                    </div>
-
-                    <Button
-                      onClick={handleAddHotspot}
-                      className="w-full rounded-xl font-bold text-xs h-10 gap-2 mt-2 min-h-[44px]"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Overlay
-                    </Button>
-                  </div>
-                </Card>
-
-                <Card className="lg:col-span-2 rounded-3xl border-border/60 bg-card p-6 shadow-sm space-y-4 text-left">
-                  <h3 className="text-base font-black text-foreground">Active Overlays ({hotspots.length})</h3>
-                  {hotspots.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl">
-                      No interactive overlays added. Use the form on the left to add your first overlay.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {hotspots.map((h) => (
-                        <div
-                          key={h.id}
-                          className="flex items-center justify-between p-3.5 rounded-2xl border border-border/60 bg-muted/20"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 text-primary rounded-xl">
-                              {h.type === 'video' ? <Video className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-foreground">{h.title}</div>
-                              <div className="text-[11px] text-muted-foreground truncate max-w-sm">{h.targetUrl} (Page {h.pageNumber})</div>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveHotspot(h.id)}
-                            className="h-9 w-9 rounded-xl hover:bg-destructive/10 text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </div>
+              <DocumentLayerInspector
+                pages={pages}
+                activePageNumber={selectedPage}
+                onPageChange={setSelectedPage}
+                hotspots={hotspots}
+                onHotspotsChange={setHotspots}
+              />
             </TabsContent>
 
             {/* TAB 4: Viewer Mode */}
