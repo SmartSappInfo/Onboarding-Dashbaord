@@ -37,9 +37,11 @@ import {
   ArrowDownRight,
   ExternalLink,
   ChevronRight,
+  Activity,
 } from 'lucide-react';
 import type { WorkspaceAdvancedAnalyticsSummary } from '@/lib/types/document-types';
 import { getWorkspaceAdvancedAnalyticsAction } from '@/lib/documents/advanced-analytics-actions';
+import { DocumentObservabilityDashboard } from '@/components/documents/studio/DocumentObservabilityDashboard';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DocumentsAnalyticsHubClient() {
@@ -221,7 +223,7 @@ export default function DocumentsAnalyticsHubClient() {
 
         {/* ── Main Multi-Tab Suite ────────────────────────────────────────────── */}
         <Tabs defaultValue="comparison" className="w-full space-y-6">
-          <TabsList className="h-12 bg-muted/40 p-1 rounded-2xl border border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsList className="h-12 bg-muted/40 p-1 rounded-2xl border border-border/50 grid grid-cols-2 sm:grid-cols-5 gap-1">
             <TabsTrigger value="comparison" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
               <Layers className="h-4 w-4" /> Document Matrix
             </TabsTrigger>
@@ -233,6 +235,9 @@ export default function DocumentsAnalyticsHubClient() {
             </TabsTrigger>
             <TabsTrigger value="retention" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
               <Users className="h-4 w-4" /> Cohort Retention
+            </TabsTrigger>
+            <TabsTrigger value="observability" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
+              <Activity className="h-4 w-4 text-emerald-500" /> SLO & Health
             </TabsTrigger>
           </TabsList>
 
@@ -422,6 +427,11 @@ export default function DocumentsAnalyticsHubClient() {
                 </div>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* TAB 5: Enterprise Observability & System Health */}
+          <TabsContent value="observability" className="space-y-4">
+            <DocumentObservabilityDashboard workspaceId={activeWorkspaceId || ''} />
           </TabsContent>
         </Tabs>
       </div>

@@ -644,6 +644,120 @@ export interface DocumentAiQaResponse {
   suggestedFollowUps?: string[];
 }
 
+// ── 15. Phase 13: Scale & Enterprise Hardening ──────────────────────────────
+export type DocumentPermission =
+  | 'documents.view'
+  | 'documents.create'
+  | 'documents.edit'
+  | 'documents.publish'
+  | 'documents.delete'
+  | 'documents.share'
+  | 'documents.analytics'
+  | 'documents.manage_access'
+  | 'documents.manage_templates'
+  | 'documents.manage_integrations';
+
+export type DocumentRole =
+  | 'workspace_admin'
+  | 'content_manager'
+  | 'marketing_user'
+  | 'sales_executive'
+  | 'viewer';
+
+export const ROLE_PERMISSIONS_MAP: Record<DocumentRole, readonly DocumentPermission[]> = {
+  workspace_admin: [
+    'documents.view',
+    'documents.create',
+    'documents.edit',
+    'documents.publish',
+    'documents.delete',
+    'documents.share',
+    'documents.analytics',
+    'documents.manage_access',
+    'documents.manage_templates',
+    'documents.manage_integrations',
+  ],
+  content_manager: [
+    'documents.view',
+    'documents.create',
+    'documents.edit',
+    'documents.publish',
+    'documents.manage_templates',
+  ],
+  marketing_user: [
+    'documents.view',
+    'documents.share',
+    'documents.analytics',
+  ],
+  sales_executive: [
+    'documents.view',
+    'documents.share',
+    'documents.analytics',
+  ],
+  viewer: [
+    'documents.view',
+  ],
+} as const;
+
+export interface DocumentObservabilityMetric {
+  id: string;
+  workspaceId: string;
+  category: 'pipeline' | 'viewer' | 'event_ingestion' | 'crm_sync' | 'ai_service';
+  operation: string;
+  durationMs: number;
+  success: boolean;
+  errorCode?: string;
+  timestamp: string;
+}
+
+export interface DocumentObservabilitySummary {
+  workspaceId: string;
+  pipelineHealth: {
+    averageDurationSeconds: number;
+    successRatePercentage: number;
+    sloTargetMet: boolean;
+    status: 'healthy' | 'degraded' | 'critical';
+  };
+  viewerAvailability: {
+    uptimePercentage: number;
+    averageRenderLatencyMs: number;
+    sloTargetMet: boolean;
+    status: 'healthy' | 'degraded' | 'critical';
+  };
+  eventThroughput: {
+    eventsPerMinute: number;
+    rejectionRatePercentage: number;
+    rateLimitTrippedCount: number;
+  };
+  aiHealth: {
+    averageInferenceMs: number;
+    fallbackInvocationRatePercentage: number;
+    groundedCitationRatePercentage: number;
+  };
+  overallStatus: 'healthy' | 'degraded' | 'critical';
+  generatedAt: string;
+}
+
+export interface StorageLifecycleReport {
+  workspaceId: string;
+  totalDocumentsCount: number;
+  totalVersionsCount: number;
+  activeVersionsCount: number;
+  archivedVersionsCount: number;
+  totalPagesCount: number;
+  estimatedStorageBytes: number;
+  supersededVersionsEligibleForPurge: number;
+  generatedAt: string;
+}
+
+export interface RetentionPolicy {
+  workspaceId: string;
+  archivedVersionRetentionDays: number;
+  purgeOrphanPages: boolean;
+  dryRun?: boolean;
+}
+
+
 
 
 
