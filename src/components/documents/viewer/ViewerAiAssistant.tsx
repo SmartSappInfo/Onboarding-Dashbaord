@@ -146,10 +146,10 @@ export function ViewerAiAssistant({
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="h-9 w-9 rounded-xl min-h-[36px]"
+          className="h-11 w-11 rounded-xl min-h-[44px] min-w-[44px]"
           title="Close Assistant"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </Button>
       </div>
 
@@ -189,16 +189,16 @@ export function ViewerAiAssistant({
                   <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     <BookOpen className="h-3 w-3 text-primary" /> Cited Sections:
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {msg.citations.map((c, idx) => (
                       <button
                         key={idx}
                         onClick={() => onPageSelect(c.pageNumber)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background/80 hover:bg-primary/10 hover:text-primary text-[11px] font-bold text-foreground border border-border/60 transition-all active:scale-[0.97]"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background/80 hover:bg-primary/10 hover:text-primary text-[11px] font-bold text-foreground border border-border/60 transition-all min-h-[44px] active:scale-[0.97]"
                         title={`Jump to Page ${c.pageNumber}: "${c.textSnippet}"`}
                       >
                         <span>Page {c.pageNumber}</span>
-                        <ArrowRight className="h-3 w-3" />
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     ))}
                   </div>
@@ -220,19 +220,19 @@ export function ViewerAiAssistant({
 
       {/* ── Quick Starter Prompts ───────────────────────────────────────────── */}
       {messages.length === 1 && (
-        <div className="px-4 py-2 border-t border-border/40 space-y-1.5 bg-muted/10">
+        <div className="px-4 py-3 border-t border-border/40 space-y-2 bg-muted/10">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
             Suggested Questions:
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             {STARTER_PROMPTS.map((prompt, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSend(prompt)}
-                className="text-left text-[11px] p-2 rounded-xl bg-background hover:bg-muted/30 border border-border/50 font-medium text-foreground transition-all flex items-center justify-between group active:scale-[0.98]"
+                className="text-left text-[11px] px-3.5 py-2.5 rounded-xl bg-background hover:bg-muted/30 border border-border/50 font-medium text-foreground transition-all flex items-center justify-between group min-h-[44px] active:scale-[0.98]"
               >
                 <span className="line-clamp-1">{prompt}</span>
-                <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
               </button>
             ))}
           </div>

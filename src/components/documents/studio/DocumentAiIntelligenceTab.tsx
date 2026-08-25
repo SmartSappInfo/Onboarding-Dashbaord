@@ -319,10 +319,9 @@ export function DocumentAiIntelligenceTab({
                     </span>
 
                     <Button
-                      size="sm"
                       onClick={() => handleApplyRecommendation(rec)}
                       disabled={isApplied || isApplying}
-                      className="rounded-xl font-bold text-xs h-9 min-h-[36px] gap-1.5 active:scale-[0.97] transition-all"
+                      className="rounded-xl font-bold text-xs h-11 min-h-[44px] px-4 gap-1.5 active:scale-[0.97] transition-all"
                     >
                       {isApplied ? (
                         <>
