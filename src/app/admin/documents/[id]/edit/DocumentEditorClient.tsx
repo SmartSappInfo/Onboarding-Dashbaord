@@ -45,7 +45,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, Save, Sparkles, Sliders, Layers, 
   ExternalLink, Plus, Trash2, Video, Link as LinkIcon, Eye,
-  History, Shield, Code, CheckCircle, RefreshCw, Copy, TrendingUp
+  History, Shield, Code, CheckCircle, RefreshCw, Copy, TrendingUp, Bot
 } from 'lucide-react';
 import { updateDocumentAction } from '@/lib/document-actions';
 import { 
@@ -61,6 +61,7 @@ import { TagSelector } from '@/components/tags/TagSelector';
 import { DocumentPageManager } from '@/components/documents/studio/DocumentPageManager';
 import { DocumentLayerInspector } from '@/components/documents/studio/DocumentLayerInspector';
 import { DocumentDistributionManager } from '@/components/documents/studio/DocumentDistributionManager';
+import { DocumentAiIntelligenceTab } from '@/components/documents/studio/DocumentAiIntelligenceTab';
 
 interface DocumentEditorClientProps {
   documentId: string;
@@ -374,9 +375,9 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
             </div>
           </div>
 
-          {/* Main 6-Tab Studio Suite */}
+          {/* Main 7-Tab Studio Suite */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-            <TabsList className="h-12 bg-muted/40 p-1 rounded-2xl border border-border/50 grid grid-cols-3 sm:grid-cols-6 gap-1">
+            <TabsList className="h-12 bg-muted/40 p-1 rounded-2xl border border-border/50 grid grid-cols-4 sm:grid-cols-7 gap-1">
               <TabsTrigger value="metadata" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
                 <Sliders className="h-3.5 w-3.5" />
                 Overview
@@ -400,6 +401,10 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
               <TabsTrigger value="distribution" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
                 <Shield className="h-3.5 w-3.5" />
                 Access & Links
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="rounded-xl text-xs font-bold gap-1.5 min-h-[40px]">
+                <Bot className="h-3.5 w-3.5 text-primary" />
+                AI Insights
               </TabsTrigger>
             </TabsList>
 
@@ -699,6 +704,14 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
                 versionId={document.activeVersionId || `${documentId}_v1`}
                 slug={slug}
                 title={title}
+              />
+            </TabsContent>
+
+            {/* TAB 7: AI Intelligence & Insights */}
+            <TabsContent value="ai" className="space-y-6">
+              <DocumentAiIntelligenceTab
+                workspaceId={activeWorkspaceId || ''}
+                documentId={documentId}
               />
             </TabsContent>
           </Tabs>

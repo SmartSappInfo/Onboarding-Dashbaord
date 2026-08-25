@@ -588,5 +588,62 @@ export interface WorkspaceAdvancedAnalyticsSummary {
   funnelStages: ConversionFunnelStage[];
 }
 
+// ── 16. AI Document Intelligence & Assistant ──────────────────────────────────
+export interface DocumentAiSummary {
+  documentId: string;
+  executiveSummary: string;
+  keyTakeaways: string[];
+  topics: string[];
+  targetAudience: string;
+  estimatedReadingTimeMinutes: number;
+  generatedAt: string;
+}
+
+export interface DocumentAiCtaRecommendation {
+  id: string;
+  pageNumber: number;
+  suggestedLayerType: LayerType;
+  buttonLabel: string;
+  intentDescription: string;
+  confidenceScore: number; // 0 - 100
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  suggestedAction: {
+    type: LayerAction['type'];
+    targetUrl?: string;
+    phoneNumber?: string;
+    emailAddress?: string;
+    whatsappNumber?: string;
+  };
+}
+
+export interface DocumentAiCitation {
+  pageNumber: number;
+  textSnippet: string;
+}
+
+export interface DocumentAiMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: DocumentAiCitation[];
+  timestamp: string;
+}
+
+export interface DocumentAiQaRequest {
+  documentId: string;
+  question: string;
+  history?: DocumentAiMessage[];
+}
+
+export interface DocumentAiQaResponse {
+  answer: string;
+  citations: DocumentAiCitation[];
+  suggestedFollowUps?: string[];
+}
+
+
 
 

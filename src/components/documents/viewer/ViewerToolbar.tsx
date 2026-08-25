@@ -18,7 +18,7 @@ import React from 'react';
 import { 
   BookOpen, Grid, Volume2, VolumeX, Download, Maximize, 
   Search, ZoomIn, ZoomOut, RotateCcw, Presentation,
-  SunMoon, Columns, AlignJustify
+  SunMoon, Columns, AlignJustify, Sparkles
 } from 'lucide-react';
 import type { ViewerMode } from '@/lib/types/document-types';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,7 @@ interface ViewerToolbarProps {
   onOpenSearch: () => void;
   onOpenThumbnails: () => void;
   onPageSelect: (pageNumber: number) => void;
+  onOpenAiAssistant?: () => void;
   likesCount?: number;
   sourceFileUrl?: string;
   enableDownload?: boolean;
@@ -70,6 +71,7 @@ export function ViewerToolbar({
   onOpenSearch,
   onOpenThumbnails,
   onPageSelect,
+  onOpenAiAssistant,
   likesCount = 0,
   sourceFileUrl,
   enableDownload = true,
@@ -144,6 +146,19 @@ export function ViewerToolbar({
           {/* Social & Engagement */}
           <LikeButton initialLikes={likesCount} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
           <ShareSocialDropdown title={title} url={currentUrl} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
+
+          {/* AI Assistant Trigger */}
+          {onOpenAiAssistant && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onOpenAiAssistant}
+              className="h-11 w-11 rounded-xl text-amber-300 hover:text-amber-200 hover:bg-amber-400/20 min-h-[44px] min-w-[44px]"
+              title="Ask AI Document Assistant"
+            >
+              <Sparkles className="h-5 w-5" />
+            </Button>
+          )}
 
           {/* Search Trigger */}
           <Button

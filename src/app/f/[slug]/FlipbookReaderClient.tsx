@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DocumentSearchBar } from '@/components/documents/DocumentSearchBar';
 import { ViewerToolbar } from '@/components/documents/viewer/ViewerToolbar';
 import { ViewerContainer } from '@/components/documents/viewer/ViewerContainer';
+import { ViewerAiAssistant } from '@/components/documents/viewer/ViewerAiAssistant';
 import { useViewerAudio } from '@/components/documents/viewer/useViewerAudio';
 import { useViewerGestures } from '@/components/documents/viewer/useViewerGestures';
 import { InteractiveLayerModal } from '@/components/documents/InteractiveLayerModal';
@@ -95,6 +96,9 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
   // Active Hotspot Popover State
   const [activeHotspot, setActiveHotspot] = useState<FlipbookHotspot | null>(null);
+
+  // AI Assistant Drawer State
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
   // Procedural Web Audio Engine
   const { isMuted, toggleMute, playPageFlipSound } = useViewerAudio({
@@ -447,6 +451,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         onToggleFullscreen={toggleFullscreen}
         isHighContrast={isHighContrast}
         onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+        onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenThumbnails={() => setIsThumbnailsOpen(!isThumbnailsOpen)}
         onPageSelect={(p) => {
@@ -616,6 +621,19 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
           </div>
         </div>
       )}
+
+      {/* ── In-Reader AI Document Assistant Drawer ────────────────────────── */}
+      <ViewerAiAssistant
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        workspaceId={flipbook.workspaceId || ''}
+        documentId={flipbook.id}
+        documentTitle={flipbook.title}
+        onPageSelect={(pageNum) => {
+          setCurrentPage(pageNum);
+          playPageFlipSound();
+        }}
+      />
 
       {/* ── In-Reader Full-Text Search Modal ───────────────────────────────── */}
       <DocumentSearchBar
