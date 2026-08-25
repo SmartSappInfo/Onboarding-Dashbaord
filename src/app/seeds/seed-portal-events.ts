@@ -10,7 +10,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { EventService } from '@/lib/services/event-service';
 
-async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
+export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Live Events & Cohorts seed for org: ${targetOrgId}...`);
 
   // Find Academy portal

@@ -13,7 +13,7 @@ import { MembershipPlanService } from '@/lib/services/membership-plan-service';
 import { PortalMembershipService } from '@/lib/services/portal-membership-service';
 import { PortalInvitationService } from '@/lib/services/portal-invitation-service';
 
-async function seedPortalMemberships(targetOrgId: string = 'smartsapp-hq') {
+export async function seedPortalMemberships(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Memberships & Plans seed for org: ${targetOrgId}...`);
 
   // Find Academy portal

@@ -12,7 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { ContentService } from '@/lib/services/content-service';
 import type { CreateContentItemInput } from '@/lib/types/content';
 
-async function seedPortalContent(targetOrgId: string = 'smartsapp-hq') {
+export async function seedPortalContent(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Content seed for organization: ${targetOrgId}...`);
 
   // Find Academy portal

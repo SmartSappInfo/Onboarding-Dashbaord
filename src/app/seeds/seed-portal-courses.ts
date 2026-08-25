@@ -11,7 +11,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { CourseService } from '@/lib/services/course-service';
 
-async function seedPortalCourses(targetOrgId: string = 'smartsapp-hq') {
+export async function seedPortalCourses(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Courses & Curriculum seed for org: ${targetOrgId}...`);
 
   // Find Academy portal

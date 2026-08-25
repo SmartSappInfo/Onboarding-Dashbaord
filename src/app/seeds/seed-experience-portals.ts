@@ -12,7 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { PortalService } from '@/lib/services/portal-service';
 import type { PortalMode } from '@/lib/types/portal';
 
-async function seedExperiencePortals(targetOrgId: string = 'smartsapp-hq') {
+export async function seedExperiencePortals(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Experience Portals seed for organization: ${targetOrgId}...`);
 
   const starterPortals: {

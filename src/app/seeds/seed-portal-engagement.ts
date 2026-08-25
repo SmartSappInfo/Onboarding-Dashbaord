@@ -10,7 +10,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { EngagementService } from '@/lib/services/engagement-service';
 
-async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq') {
+export async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Onboarding & Tasks seed for org: ${targetOrgId}...`);
 
   // Find Academy portal

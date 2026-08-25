@@ -685,13 +685,6 @@
       ]
     },
     {
-      "collectionGroup": "issued_certificates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "verificationCode", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "awarded_badges",
       "queryScope": "COLLECTION",
       "fields": [
