@@ -5,7 +5,7 @@
  * 
  * 1. Single Source of Truth for Visual Layer & Hotspot Inspector:
  *    WYSIWYG canvas inspector enabling visual hotspot positioning and property editing
- *    (PRD Section 51–52 & 85).
+ *    across all 10 layer types: Link, Video, Audio, WhatsApp, Phone, Email, Download, Form, CTA (PRD Sections 51–52 & 61–75).
  * 2. Tag Selection Single Source of Truth:
  *    Integrates `<TagSelector>` in client/draft mode (omitting contactId) for applying CRM tags.
  * 3. Normalized Coordinates Standard:
@@ -25,7 +25,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Layers, Plus, Trash2, Video, Link as LinkIcon, 
-  ExternalLink, Sparkles, BookOpen, Tag as TagIcon, Zap
+  ExternalLink, Sparkles, BookOpen, Tag as TagIcon, 
+  Zap, MessageCircle, Music, Phone, Mail, Download, Send
 } from 'lucide-react';
 import { TagSelector } from '@/components/tags/TagSelector';
 
@@ -53,16 +54,39 @@ export function DocumentLayerInspector({
 
   // Add new hotspot on current page with default percentage coordinates
   const handleAddHotspot = (type: HotspotType = 'link') => {
+    let title = 'Learn More';
+    let targetUrl = 'https://example.com';
+
+    if (type === 'video') {
+      title = 'Watch Video';
+      targetUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+    } else if (type === 'whatsapp') {
+      title = 'Chat on WhatsApp';
+      targetUrl = '+1234567890';
+    } else if (type === 'audio') {
+      title = 'Listen to Audio';
+      targetUrl = 'https://example.com/audio.mp3';
+    } else if (type === 'phone') {
+      title = 'Call Admissions';
+      targetUrl = '+1234567890';
+    } else if (type === 'email') {
+      title = 'Email Team';
+      targetUrl = 'contact@example.com';
+    } else if (type === 'download') {
+      title = 'Download Brochure';
+      targetUrl = 'https://example.com/brochure.pdf';
+    }
+
     const newHotspot: FlipbookHotspot = {
       id: `hs_${Date.now()}`,
       pageNumber: activePageNumber,
       x: 35,
       y: 35,
       width: 30,
-      height: 15,
+      height: 12,
       type,
-      title: type === 'video' ? 'Featured Video' : 'Learn More CTA',
-      targetUrl: 'https://example.com',
+      title,
+      targetUrl,
     };
 
     const updated = [...hotspots, newHotspot];
@@ -93,7 +117,7 @@ export function DocumentLayerInspector({
     setSelectedHotspotId(null);
   };
 
-  // Click on page canvas to position or create hotspot
+  // Click on page canvas to position or select hotspot
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!canvasContainerRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
@@ -112,7 +136,7 @@ export function DocumentLayerInspector({
     if (clicked) {
       setSelectedHotspotId(clicked.id);
     } else if (selectedHotspotId) {
-      // If a hotspot is selected and user clicks canvas, center hotspot at click
+      // Reposition selected hotspot center to click location
       const current = selectedHotspot;
       if (current) {
         const newX = Math.max(0, Math.min(100 - current.width, Number((clickX - current.width / 2).toFixed(1))));
@@ -125,10 +149,10 @@ export function DocumentLayerInspector({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* ── Visual Canvas Preview (8 Cols) ─────────────────────────────────── */}
+      {/* ── Visual Canvas Preview (7 Cols) ─────────────────────────────────── */}
       <div className="lg:col-span-7 space-y-4">
-        {/* Page Selector Bar */}
-        <div className="flex items-center justify-between gap-2 p-3 bg-card border rounded-2xl">
+        {/* Page Selector & Quick Add Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-card border rounded-2xl">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-muted-foreground">Select Page:</span>
             <select
@@ -148,21 +172,37 @@ export function DocumentLayerInspector({
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
               size="sm"
               onClick={() => handleAddHotspot('link')}
-              className="h-10 text-xs font-bold rounded-xl gap-1.5 min-h-[40px]"
+              className="h-9 text-xs font-bold rounded-xl gap-1 min-h-[36px]"
             >
-              <Plus className="h-4 w-4" /> Add Link
+              <Plus className="h-3.5 w-3.5" /> Link
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={() => handleAddHotspot('video')}
-              className="h-10 text-xs font-bold rounded-xl gap-1.5 min-h-[40px]"
+              className="h-9 text-xs font-bold rounded-xl gap-1 min-h-[36px] text-rose-400 border-rose-500/30"
             >
-              <Video className="h-4 w-4 text-rose-400" /> Add Video
+              <Video className="h-3.5 w-3.5" /> Video
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddHotspot('whatsapp')}
+              className="h-9 text-xs font-bold rounded-xl gap-1 min-h-[36px] text-emerald-400 border-emerald-500/30"
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddHotspot('audio')}
+              className="h-9 text-xs font-bold rounded-xl gap-1 min-h-[36px] text-violet-400 border-violet-500/30"
+            >
+              <Music className="h-3.5 w-3.5" /> Audio
             </Button>
           </div>
         </div>
@@ -178,7 +218,7 @@ export function DocumentLayerInspector({
               <img
                 src={activePageObj.renderedAssetUrl || activePageObj.thumbnailUrl}
                 alt={`Page ${activePageNumber}`}
-                className="w-full h-full object-contain pointer-events-none"
+                className="w-full h-full object-contain pointer-events-none select-none"
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 space-y-2 p-6">
@@ -190,6 +230,7 @@ export function DocumentLayerInspector({
             {/* Render Hotspot Overlays on Canvas */}
             {activePageHotspots.map((h) => {
               const isSelected = h.id === selectedHotspotId;
+              const type = h.type;
 
               return (
                 <div
@@ -211,7 +252,15 @@ export function DocumentLayerInspector({
                   }}
                 >
                   <span className="truncate text-[10px] font-bold text-white drop-shadow-md flex items-center gap-1">
-                    {h.type === 'video' ? <Video className="h-3 w-3 text-rose-400" /> : <LinkIcon className="h-3 w-3 text-indigo-300" />}
+                    {type === 'video' && <Video className="h-3 w-3 text-rose-400" />}
+                    {type === 'audio' && <Music className="h-3 w-3 text-violet-400" />}
+                    {type === 'whatsapp' && <MessageCircle className="h-3 w-3 text-emerald-400" />}
+                    {type === 'phone' && <Phone className="h-3 w-3 text-sky-400" />}
+                    {type === 'email' && <Mail className="h-3 w-3 text-amber-400" />}
+                    {type === 'download' && <Download className="h-3 w-3 text-indigo-400" />}
+                    {!['video', 'audio', 'whatsapp', 'phone', 'email', 'download'].includes(type) && (
+                      <LinkIcon className="h-3 w-3 text-indigo-300" />
+                    )}
                     {h.title || 'Layer'}
                   </span>
                 </div>
@@ -255,36 +304,52 @@ export function DocumentLayerInspector({
                 />
               </div>
 
+              {/* Layer Type Grid Selector */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Layer Type</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant={selectedHotspot.type === 'link' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleUpdateSelected('type', 'link')}
-                    className="h-11 rounded-xl text-xs font-bold min-h-[44px]"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-1.5" /> External Link
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={selectedHotspot.type === 'video' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handleUpdateSelected('type', 'video')}
-                    className="h-11 rounded-xl text-xs font-bold min-h-[44px]"
-                  >
-                    <Video className="h-4 w-4 mr-1.5 text-rose-400" /> Video Player
-                  </Button>
-                </div>
+                <Label className="text-xs font-bold">Action Type</Label>
+                <select
+                  value={selectedHotspot.type}
+                  onChange={(e) => handleUpdateSelected('type', e.target.value as HotspotType)}
+                  className="w-full h-11 rounded-xl bg-card border px-3 text-xs font-bold min-h-[44px]"
+                >
+                  <option value="link">External Website Link</option>
+                  <option value="video">Embedded Video Modal (YouTube / Vimeo)</option>
+                  <option value="whatsapp">WhatsApp Direct Connect</option>
+                  <option value="audio">Audio Voice Note / Clip</option>
+                  <option value="phone">Click to Call (Phone)</option>
+                  <option value="email">Send Email (Mailto)</option>
+                  <option value="download">Download Attachment</option>
+                  <option value="form">In-Reader Lead Form</option>
+                </select>
               </div>
 
+              {/* Dynamic Target Input */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Target URL</Label>
+                <Label className="text-xs font-bold">
+                  {selectedHotspot.type === 'video'
+                    ? 'Video URL (YouTube / Vimeo / MP4)'
+                    : selectedHotspot.type === 'whatsapp'
+                    ? 'WhatsApp Phone Number with Country Code'
+                    : selectedHotspot.type === 'phone'
+                    ? 'Phone Number'
+                    : selectedHotspot.type === 'email'
+                    ? 'Destination Email Address'
+                    : selectedHotspot.type === 'download'
+                    ? 'Download File URL'
+                    : selectedHotspot.type === 'audio'
+                    ? 'Audio File URL (MP3 / WAV)'
+                    : 'Destination URL'}
+                </Label>
                 <Input
                   value={selectedHotspot.targetUrl || ''}
                   onChange={(e) => handleUpdateSelected('targetUrl', e.target.value)}
-                  placeholder="https://..."
+                  placeholder={
+                    selectedHotspot.type === 'whatsapp'
+                      ? '+1234567890'
+                      : selectedHotspot.type === 'email'
+                      ? 'inquiry@school.edu'
+                      : 'https://...'
+                  }
                   className="h-11 rounded-xl font-mono text-xs min-h-[44px]"
                 />
               </div>
@@ -346,7 +411,7 @@ export function DocumentLayerInspector({
             <Layers className="h-10 w-10 text-muted-foreground mx-auto" />
             <h4 className="text-sm font-bold">No Layer Selected</h4>
             <p className="text-xs text-muted-foreground">
-              Click any hotspot on the page canvas to edit its properties, or click <strong>Add Link</strong> to create a new layer.
+              Click any hotspot on the page canvas to edit its properties, or use the quick buttons above to add an action.
             </p>
           </Card>
         )}

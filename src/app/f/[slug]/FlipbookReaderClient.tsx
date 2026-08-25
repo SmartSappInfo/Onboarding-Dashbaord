@@ -23,12 +23,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { FlipbookConfig, FlipbookPage, FlipbookHotspot } from '@/lib/types/flipbook-types';
-import type { ViewerMode } from '@/lib/types/document-types';
+import type { ViewerMode, LayerType } from '@/lib/types/document-types';
 import { 
   submitDocumentLeadAction, 
   verifyDocumentPasscodeAction, 
   recordDocumentEventAction 
 } from '@/lib/document-actions';
+import { executeLayerActionServerAction } from '@/lib/documents/interactive-layer-actions';
 import { initializeClientSession, ClientSessionContext } from '@/lib/documents/session-tracker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,7 @@ import { ViewerToolbar } from '@/components/documents/viewer/ViewerToolbar';
 import { ViewerContainer } from '@/components/documents/viewer/ViewerContainer';
 import { useViewerAudio } from '@/components/documents/viewer/useViewerAudio';
 import { useViewerGestures } from '@/components/documents/viewer/useViewerGestures';
+import { InteractiveLayerModal } from '@/components/documents/InteractiveLayerModal';
 import {
   Dialog,
   DialogContent,
@@ -325,21 +327,23 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   const handleHotspotClick = (hs: FlipbookHotspot) => {
     setActiveHotspot(hs);
     if (sessionCtx && flipbook) {
-      recordDocumentEventAction({
+      executeLayerActionServerAction({
         workspaceId: flipbook.workspaceId,
         documentId: flipbook.id,
+        layerId: hs.id,
+        layerType: (hs.type as LayerType) || 'link',
+        layerTitle: hs.title,
+        pageNumber: hs.pageNumber,
+        action: {
+          type: 'url',
+          targetUrl: hs.targetUrl,
+        },
         sessionId: sessionCtx.sessionId,
         visitorId: sessionCtx.visitorId,
         contactId: sessionCtx.contactId,
-        distributionId: sessionCtx.distributionToken,
+        distributionToken: sessionCtx.distributionToken,
         campaignId: sessionCtx.campaignId,
-        eventType: hs.type === 'video' ? 'video_started' : 'link_clicked',
-        pageNumber: hs.pageNumber,
-        elementId: hs.id,
-        metadata: {
-          targetUrl: hs.targetUrl || '',
-          layerTitle: hs.title || '',
-        },
+        leadScoreDelta: 10,
       }).catch(() => {});
     }
   };
@@ -542,53 +546,25 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
       )}
 
       {/* ── Active Hotspot Interactive Popover Modal ───────────────────────── */}
-      {activeHotspot && (
-        <Dialog open={!!activeHotspot} onOpenChange={(open) => !open && setActiveHotspot(null)}>
-          <DialogContent className="max-w-md rounded-3xl border-white/20 bg-slate-900 text-white p-6 shadow-2xl text-left">
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
-                {activeHotspot.type === 'video' ? (
-                  <Video className="h-5 w-5 text-rose-400" />
-                ) : (
-                  <ExternalLink className="h-5 w-5 text-indigo-400" />
-                )}
-                {activeHotspot.title || 'Interactive Layer'}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 pt-2">
-              {activeHotspot.type === 'video' ? (
-                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner">
-                  <iframe
-                    src={activeHotspot.targetUrl}
-                    title={activeHotspot.title || 'Video Player'}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full border-none"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-xs text-slate-300">
-                    Click the button below to navigate to the linked external resource:
-                  </p>
-                  <Button
-                    onClick={() => {
-                      if (activeHotspot.targetUrl) {
-                        window.open(activeHotspot.targetUrl, '_blank', 'noopener,noreferrer');
-                      }
-                      setActiveHotspot(null);
-                    }}
-                    className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm min-h-[44px]"
-                  >
-                    Open Link Target <ExternalLink className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <InteractiveLayerModal
+        hotspot={activeHotspot}
+        onClose={() => setActiveHotspot(null)}
+        onPageJump={(pageNum) => {
+          setCurrentPage(pageNum);
+          playPageFlipSound();
+        }}
+        onSubmitLead={async (leadData) => {
+          if (!flipbook) return false;
+          const res = await submitDocumentLeadAction({
+            workspaceId: flipbook.workspaceId,
+            documentId: flipbook.id,
+            email: leadData.email,
+            name: leadData.name,
+            phone: leadData.phone,
+          });
+          return res.success;
+        }}
+      />
 
       {/* ── Gated Lead Capture Modal ───────────────────────────────────────── */}
       {isLeadGateOpen && !isLeadPassed && (

@@ -14,7 +14,18 @@ export * from './document-types';
 
 export type FlipbookPageStyle = 'magazine' | 'booklet' | 'album' | 'notebook' | 'single';
 
-export type HotspotType = 'link' | 'video' | 'audio' | 'image' | 'web';
+export type HotspotType = 
+  | 'link' 
+  | 'video' 
+  | 'audio' 
+  | 'image' 
+  | 'web' 
+  | 'whatsapp' 
+  | 'phone' 
+  | 'email' 
+  | 'download' 
+  | 'form' 
+  | 'lead_gate';
 
 export interface FlipbookHotspot {
   id: string;

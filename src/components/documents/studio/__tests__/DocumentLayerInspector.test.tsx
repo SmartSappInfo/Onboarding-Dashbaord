@@ -72,7 +72,7 @@ describe('DocumentLayerInspector Component', () => {
       />
     );
 
-    const addBtn = screen.getByRole('button', { name: /Add Link/i });
+    const addBtn = screen.getByRole('button', { name: /Link/i });
     fireEvent.click(addBtn);
     expect(onHotspotsChange).toHaveBeenCalled();
   });
