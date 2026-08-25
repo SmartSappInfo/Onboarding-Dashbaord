@@ -33,7 +33,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { 
   BookOpen, Plus, Search, Eye, Sparkles, ExternalLink,
-  Edit3, Trash2, Copy, FileText, Layers, RefreshCw
+  Edit3, Trash2, Copy, FileText, Layers, RefreshCw, BarChart3
 } from 'lucide-react';
 import {
   Dialog,
@@ -280,6 +280,15 @@ export default function DocumentStudioClient() {
             </div>
             
             <div className="flex items-center gap-2.5 shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/documents/analytics')}
+                className="rounded-xl font-bold text-xs gap-2 h-11 px-4 border-border/80 min-h-[44px]"
+              >
+                <BarChart3 className="h-4 w-4 text-primary" />
+                Portfolio Analytics
+              </Button>
+
               <Button
                 variant="outline"
                 onClick={() => setIsMigrationOpen(true)}

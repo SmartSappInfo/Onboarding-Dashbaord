@@ -532,4 +532,61 @@ export interface ContactDocumentInsightsSummary {
   engagements: ContactDocumentEngagement[];
 }
 
+// ── 15. Workspace Advanced Analytics & Strategic Insights ─────────────────────
+export interface DocumentPortfolioMetric {
+  documentId: string;
+  title: string;
+  slug: string;
+  status: DocumentStatus;
+  pageCount?: number;
+  totalViews: number;
+  uniqueVisitors: number;
+  leadsGenerated: number;
+  conversionRatePercentage: number;
+  averageDwellTimeSeconds: number;
+  averageCompletionPercentage: number;
+  averageEngagementScore: number;
+}
+
+export interface CampaignAttributionMetric {
+  campaignId: string;
+  channelType: string;
+  totalViews: number;
+  uniqueVisitors: number;
+  leadsGenerated: number;
+  conversionRatePercentage: number;
+}
+
+export interface CohortRetentionMetric {
+  periodLabel: string;
+  newVisitors: number;
+  returningVisitors: number;
+  returnRatePercentage: number;
+  averageSessionsPerVisitor: number;
+}
+
+export interface ConversionFunnelStage {
+  stageName: string;
+  count: number;
+  dropOffRatePercentage: number;
+  conversionRatePercentage: number;
+}
+
+export interface WorkspaceAdvancedAnalyticsSummary {
+  workspaceId: string;
+  period: 'last_7_days' | 'last_30_days' | 'all_time';
+  totalPortfolioViews: number;
+  totalUniqueReaders: number;
+  totalLeadsGenerated: number;
+  portfolioConversionRatePercentage: number;
+  totalReadingTimeSeconds: number;
+  averagePortfolioCompletionPercentage: number;
+  averagePortfolioEngagementScore: number;
+  documentMetrics: DocumentPortfolioMetric[];
+  campaignMetrics: CampaignAttributionMetric[];
+  cohortMetrics: CohortRetentionMetric[];
+  funnelStages: ConversionFunnelStage[];
+}
+
+
 
