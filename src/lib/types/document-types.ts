@@ -458,3 +458,51 @@ export interface DocumentProcessingJob {
   createdAt: string;
   updatedAt?: string;
 }
+
+// ── 13. Document Analytics & Behavioral Intelligence ──────────────────────────
+export interface PageAnalyticsMetric {
+  pageNumber: number;
+  views: number;
+  averageDwellTimeSeconds: number;
+  dropOffRatePercentage: number;
+  retentionPercentage: number;
+}
+
+export interface HotspotAnalyticsMetric {
+  hotspotId: string;
+  title: string;
+  type: string;
+  pageNumber: number;
+  clicks: number;
+  ctr: number;
+}
+
+export interface ChannelAnalyticsMetric {
+  distributionId: string;
+  type: string;
+  campaignId?: string;
+  views: number;
+  uniqueVisitors: number;
+  leads: number;
+}
+
+export interface DocumentAnalyticsSummary {
+  documentId: string;
+  workspaceId: string;
+  totalViews: number;
+  uniqueVisitors: number;
+  totalLeads: number;
+  averageDurationSeconds: number;
+  averageCompletionPercentage: number;
+  averageEngagementScore: number;
+  pageMetrics: PageAnalyticsMetric[];
+  deviceBreakdown: {
+    mobile: number;
+    tablet: number;
+    desktop: number;
+  };
+  topHotspots: HotspotAnalyticsMetric[];
+  channelMetrics: ChannelAnalyticsMetric[];
+  period: 'last_7_days' | 'last_30_days' | 'all_time';
+}
+

@@ -41,10 +41,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
+import Link from 'next/link';
 import { 
   ArrowLeft, Save, Sparkles, Sliders, Layers, 
   ExternalLink, Plus, Trash2, Video, Link as LinkIcon, Eye,
-  History, Shield, Code, CheckCircle, RefreshCw, Copy
+  History, Shield, Code, CheckCircle, RefreshCw, Copy, TrendingUp
 } from 'lucide-react';
 import { updateDocumentAction } from '@/lib/document-actions';
 import { 
@@ -331,6 +332,17 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                asChild
+                className="rounded-xl h-11 px-4 font-bold text-xs gap-2 min-h-[44px]"
+              >
+                <Link href={`/admin/documents/${documentId}/analytics`}>
+                  <TrendingUp className="h-4 w-4 text-indigo-400" />
+                  Analytics
+                </Link>
+              </Button>
+
               <Button
                 variant="outline"
                 asChild
