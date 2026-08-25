@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
@@ -61,11 +61,11 @@ export default function MediaLibraryBrowser({
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
 
   // Automatically trigger document CTA backfill protocol on mount
-  useState(() => {
+  useEffect(() => {
     runDocumentCtaBackfillAction().catch((err) => {
       console.warn('[MediaLibraryBrowser] CTA backfill notice:', err);
     });
-  });
+  }, []);
 
   const mediaCol = useMemoFirebase(() => {
     if (!firestore) return null;
