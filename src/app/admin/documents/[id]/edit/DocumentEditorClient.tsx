@@ -53,6 +53,9 @@ import {
   archiveDocumentVersionAction, 
   getDocumentVersionsAction 
 } from '@/lib/documents/document-version-actions';
+import { queueDocumentProcessingAction } from '@/lib/documents/processing-actions';
+import type { DocumentProcessingJob } from '@/lib/types/document-types';
+import { ProcessingProgressSheet } from '@/components/documents/ProcessingProgressSheet';
 import { TagSelector } from '@/components/tags/TagSelector';
 
 interface DocumentEditorClientProps {
@@ -123,6 +126,8 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
   // Version History State
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [isProgressSheetOpen, setIsProgressSheetOpen] = useState(false);
+  const [activeJob, setActiveJob] = useState<DocumentProcessingJob | null>(null);
 
   // Synchronize initial data
   useEffect(() => {
@@ -464,11 +469,46 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
             {/* TAB 2: Pages */}
             <TabsContent value="pages" className="space-y-6">
               <Card className="rounded-3xl border-border/60 bg-card p-6 sm:p-8 shadow-sm space-y-4 text-left">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-black text-foreground">Extracted Pages ({pages.length})</h3>
                     <p className="text-xs text-muted-foreground">Rendered page assets and OCR text content.</p>
                   </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      if (!activeWorkspaceId || !document) return;
+                      const res = await queueDocumentProcessingAction({
+                        workspaceId: activeWorkspaceId,
+                        documentId,
+                        versionId: document.activeVersionId || `${documentId}_v1`,
+                        sourceUrl: (document.metadata?.sourceFileUrl as string) || `https://example.com/${document.slug}.pdf`,
+                        sourceFileName: `${document.title}.pdf`,
+                      });
+                      if (res.success && res.jobId) {
+                        setActiveJob({
+                          id: res.jobId,
+                          workspaceId: activeWorkspaceId,
+                          documentId,
+                          versionId: document.activeVersionId || `${documentId}_v1`,
+                          jobType: res.stage || 'validate_source',
+                          status: res.status || 'processing',
+                          progress: res.progress || 10,
+                          attempts: 1,
+                          createdAt: new Date().toISOString(),
+                        });
+                        setIsProgressSheetOpen(true);
+                        toast({ title: 'Pipeline Initiated', description: 'Document rendering and search indexing queued.' });
+                      }
+                    }}
+                    className="h-10 rounded-xl font-bold text-xs min-h-[44px] border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Process Document
+                  </Button>
                 </div>
 
                 {pages.length === 0 ? (
@@ -821,9 +861,19 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
               </Card>
             </TabsContent>
           </Tabs>
-
         </div>
       </div>
+
+      {/* Real-time Ingestion Pipeline Progress Sheet */}
+      {activeWorkspaceId && (
+        <ProcessingProgressSheet
+          open={isProgressSheetOpen}
+          onOpenChange={setIsProgressSheetOpen}
+          job={activeJob}
+          workspaceId={activeWorkspaceId}
+          sourceUrl={(document?.metadata?.sourceFileUrl as string) || `https://example.com/${document?.slug || 'doc'}.pdf`}
+        />
+      )}
     </PageContainerFluid>
   );
 }

@@ -30,11 +30,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   BookOpen, ChevronLeft, ChevronRight, Download, Maximize, 
-  Volume2, VolumeX, Lock, Grid, Video, ExternalLink, Sparkles
+  Volume2, VolumeX, Lock, Grid, Video, ExternalLink, Sparkles, Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LikeButton } from '@/components/shared/LikeButton';
 import { ShareSocialDropdown } from '@/components/shared/ShareSocialDropdown';
+import { DocumentSearchBar } from '@/components/documents/DocumentSearchBar';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   const [isMobile, setIsMobile] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Password Protection State
@@ -493,6 +495,16 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setIsSearchOpen(true)}
+            className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
+            title="Search Publication"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)}
             className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
             title="Thumbnails Grid"
@@ -756,6 +768,20 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
           </div>
         </div>
       )}
+
+      {/* In-Reader Full-Text Search Modal */}
+      <DocumentSearchBar
+        open={isSearchOpen}
+        onOpenChange={setIsSearchOpen}
+        pages={pages.map((p) => ({
+          pageNumber: p.pageNumber,
+          extractedText: p.extractedText || '',
+        }))}
+        onSelectPage={(pageNum) => {
+          setCurrentPage(pageNum);
+          setIsSearchOpen(false);
+        }}
+      />
 
     </div>
   );

@@ -450,11 +450,11 @@ export interface DocumentProcessingJob {
   progress: number; // 0 to 100
   stage?: string;
   attempts: number;
-  maxAttempts: number;
+  maxAttempts?: number;
   errorCode?: string;
   errorMessage?: string;
   startedAt?: string;
   completedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
