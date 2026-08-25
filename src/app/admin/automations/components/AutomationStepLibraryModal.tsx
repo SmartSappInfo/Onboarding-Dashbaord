@@ -334,7 +334,7 @@ const LIBRARY_ITEMS = [
     category: 'contacts_data',
     icon: Tag,
     nodeType: 'actionNode',
-    payload: { type: 'actionNode', label: 'Add to Call Campaign', actionType: 'ADD_TO_CALL_CAMPAIGN', config: { campaignId: '', contactScope: 'primary' } }
+    payload: { type: 'actionNode', label: 'Add to Call Campaign', actionType: 'ADD_TO_CALL_CAMPAIGN', config: { campaignId: '', recipientTargets: ['triggering'] } }
   },
   {
     id: 'create_entity',

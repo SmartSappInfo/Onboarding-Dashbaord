@@ -4481,7 +4481,47 @@ export interface WidgetDefinition {
  *    - Add corresponding KPI cards or metric rows in `AnalyticsClient.tsx`.
  *    - Ensure full Light/Dark theme compatibility (`bg-card`, `text-card-foreground`, `border-border`).
  */
-export type PageBlockType = 'hero' | 'text' | 'form' | 'cta' | 'faq' | 'columns' | 'container' | 'testimonial' | 'stats' | 'survey' | 'agreement' | 'html' | 'payment_methods' | 'procedure_list' | 'image' | 'video' | 'spacer' | 'divider' | 'logo_grid' | 'meeting' | 'qr' | 'video_hero' | 'testimonial_grid' | 'choice_cards' | 'app_download' | 'step_section' | 'countdown' | 'title';
+export type PageBlockType =
+  | 'hero'
+  | 'text'
+  | 'form'
+  | 'cta'
+  | 'faq'
+  | 'columns'
+  | 'container'
+  | 'testimonial'
+  | 'stats'
+  | 'survey'
+  | 'agreement'
+  | 'html'
+  | 'payment_methods'
+  | 'procedure_list'
+  | 'image'
+  | 'video'
+  | 'spacer'
+  | 'divider'
+  | 'logo_grid'
+  | 'meeting'
+  | 'qr'
+  | 'video_hero'
+  | 'testimonial_grid'
+  | 'choice_cards'
+  | 'app_download'
+  | 'step_section'
+  | 'countdown'
+  | 'title'
+  | 'portal_course_list'
+  | 'portal_lesson_list'
+  | 'portal_member_profile'
+  | 'portal_membership_status'
+  | 'portal_upcoming_events'
+  | 'portal_community_feed'
+  | 'portal_certificates'
+  | 'portal_my_tasks'
+  | 'portal_ai_tutor'
+  | 'portal_search'
+  | 'portal_related_content'
+  | 'portal_resource_vault';
 
 export interface PageBlock {
   id: string;
@@ -7097,5 +7137,11 @@ export interface SocialBrandKit {
   bannerText: string;
   updatedAt: string;
 }
+
+// ─── {{Org_name}} Experience Platform Exports ─────────────────────────────────
+export * from './types/portal';
+export * from './types/content';
+export * from './types/membership';
+
 
 

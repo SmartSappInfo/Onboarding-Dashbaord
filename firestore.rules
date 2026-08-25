@@ -1127,6 +1127,79 @@ service cloud.firestore {
       allow write: if isAuthorized();
     }
 
+    // --- {{Org_name}} Experience Platform — Portals ---
+    match /portals/{portalId} {
+      // Public read for published public or password-protected portals
+      allow get: if (resource.data.status == 'published' && 
+                     (resource.data.accessPolicy.visibility == 'public' || 
+                      resource.data.accessPolicy.visibility == 'password_protected')) ||
+                   (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Content Items & Revisions ---
+    match /content_items/{itemId} {
+      // Public read for published public or password-protected content items
+      allow get: if (resource.data.status == 'published' && 
+                     (resource.data.visibility == 'public' || 
+                      resource.data.visibility == 'password_protected')) ||
+                   (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow list: if (resource.data.status == 'published' && 
+                      (resource.data.visibility == 'public' || 
+                       resource.data.visibility == 'password_protected')) ||
+                   (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+
+      match /versions/{versionId} {
+        allow read, write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+      }
+    }
+
+    // --- {{Org_name}} Experience Platform — Memberships & Directory ---
+    match /portal_memberships/{membershipId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                    (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                     (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Cryptographic Invitations ---
+    match /portal_invitations/{invitationId} {
+      // Allow public get for invitation acceptance verification
+      allow get: if resource.data.status == 'pending' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Membership Plans & Tiers ---
+    match /membership_plans/{planId} {
+      allow get, list: if resource.data.status == 'active' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Access Grants ---
+    match /access_grants/{grantId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                    (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                     (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
     // --- Landing Pages / Campaign Pages ---
     match /campaign_pages/{pageId} {
       allow get: if resource.data.status == 'published' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));

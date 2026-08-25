@@ -831,12 +831,12 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
 
   React.useEffect(() => {
     if (
-      (actionType === 'SEND_MESSAGE' || actionType === 'SEND_WHATSAPP' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' || actionType === 'DIRECT_WHATSAPP') &&
+      (actionType === 'SEND_MESSAGE' || actionType === 'SEND_WHATSAPP' || actionType === 'DIRECT_EMAIL' || actionType === 'DIRECT_SMS' || actionType === 'DIRECT_WHATSAPP' || actionType === 'ADD_TO_CALL_CAMPAIGN') &&
       config.recipientTargets === undefined
     ) {
-      onUpdateConfig({ recipientTargets: ['triggering'] });
+      onUpdateConfig({ recipientTargets: config.contactScope ? [config.contactScope] : ['triggering'] });
     }
-  }, [actionType, config.recipientTargets, onUpdateConfig]);
+  }, [actionType, config.recipientTargets, config.contactScope, onUpdateConfig]);
 
   const updateConfig = (updates: Partial<AutomationConfig>) => {
     onUpdateConfig(updates);
@@ -2089,13 +2089,19 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Call Campaign</Label>
             <Select 
               value={config.campaignId || ''} 
-              onValueChange={(val) => onUpdateConfig({ campaignId: val })}
+              onValueChange={(val) => {
+                const matchedCamp = activeCamps.find((c: { id?: string; name?: string }) => c.id === val);
+                onUpdateConfig({ 
+                  campaignId: val,
+                  campaignName: matchedCamp?.name || ''
+                });
+              }}
             >
               <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
                 <SelectValue placeholder="Select call campaign..." />
               </SelectTrigger>
               <SelectContent className="rounded-xl border bg-card">
-                {activeCamps.map((camp: any) => (
+                {activeCamps.map((camp: { id: string; name: string; allowAddContactsAfterLaunch?: boolean }) => (
                   <SelectItem key={camp.id} value={camp.id} className="text-xs font-semibold">
                     {camp.name} ({camp.allowAddContactsAfterLaunch === false ? 'Fixed' : 'Dynamic'})
                   </SelectItem>
@@ -2109,21 +2115,85 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Recipient Contact Scope</Label>
-            <Select 
-              value={config.contactScope || 'primary'} 
-              onValueChange={(val) => onUpdateConfig({ contactScope: val })}
-            >
-              <SelectTrigger className="h-10 rounded-xl bg-card border font-bold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border bg-card">
-                <SelectItem value="primary" className="text-xs font-semibold">Primary Contact Only</SelectItem>
-                <SelectItem value="signatories" className="text-xs font-semibold">Signatories Only</SelectItem>
-                <SelectItem value="all" className="text-xs font-semibold">All Contacts</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Contact Recipients</Label>
+            <div className="space-y-3 p-4 rounded-2xl bg-muted/20 border border-border/50">
+              {[
+                { key: 'triggering', label: 'Triggering Contact', desc: 'The contact that triggered this automation' },
+                { key: 'primary', label: 'Primary Contact', desc: 'The designated primary contact of the entity' },
+                { key: 'signatories', label: 'Campus Signatories', desc: 'All contacts flagged as campus signatories' },
+                { key: 'roles', label: 'Specific Role(s)', desc: 'Contacts with specific custom roles' },
+                { key: 'all', label: 'All Contacts', desc: 'Send to all contacts associated with the entity' },
+              ].map((target) => {
+                const currentTargets = config.recipientTargets === undefined 
+                  ? (config.contactScope ? [config.contactScope] : ['triggering']) 
+                  : (config.recipientTargets || []);
+                const isChecked = currentTargets.includes(target.key as 'triggering' | 'primary' | 'signatories' | 'roles' | 'all');
+                return (
+                  <div key={target.key} className="flex flex-col space-y-1.5 animate-in fade-in duration-200">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = config.recipientTargets === undefined 
+                            ? (config.contactScope ? [config.contactScope] : ['triggering']) 
+                            : (config.recipientTargets || []);
+                          const updated = e.target.checked
+                            ? [...current, target.key]
+                            : current.filter((k: string) => k !== target.key);
+                          updateConfig({ recipientTargets: updated });
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                      />
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold leading-none mb-0.5 text-foreground">{target.label}</span>
+                        <span className="text-[9px] font-medium text-muted-foreground leading-none">{target.desc}</span>
+                      </div>
+                    </label>
+
+                    {target.key === 'roles' && isChecked ? (
+                      <div className="pl-6 pt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {(config.recipientRoles || []).map((role: string) => (
+                            <Badge key={role} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary border-none">
+                              <span className="text-[10px] font-bold tracking-tight">{role}</span>
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-4 w-4 rounded-md hover:bg-primary/20"
+                                onClick={() => updateConfig({ recipientRoles: (config.recipientRoles || []).filter((r: string) => r !== role) })}
+                              >
+                                <XIcon className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <Input
+                          placeholder="Type role and press Enter (e.g. Signatory, Billing)..."
+                          id="new-call-role-input"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = (e.target as HTMLInputElement).value.trim();
+                              if (val) {
+                                const current = config.recipientRoles || [];
+                                if (!current.includes(val)) {
+                                  updateConfig({ recipientRoles: [...current, val] });
+                                }
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }
+                          }}
+                          className="h-8 rounded-lg bg-background text-xs"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}

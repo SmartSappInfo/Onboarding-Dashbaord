@@ -1,6 +1,127 @@
 {
   "indexes": [
     {
+      "collectionGroup": "portals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "organizationId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "slug", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "workspaceIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "slug", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "joinedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_invitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "token", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "membership_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "price", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "access_grants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "resourceType", "order": "ASCENDING" },
+        { "fieldPath": "resourceId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "campaign_orchestrations",
       "queryScope": "COLLECTION",
       "fields": [

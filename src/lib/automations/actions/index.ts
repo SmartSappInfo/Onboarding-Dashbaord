@@ -108,8 +108,8 @@ export async function processActionNode(
     case 'ADD_TO_CALL_CAMPAIGN': {
       try {
         const { CallCentreService } = await import('../../services/call-centre-service');
+        const { resolveContact } = await import('../../contact-adapter');
         const campaignId = String(resolvedConfig.campaignId || '');
-        const contactScope = String(resolvedConfig.contactScope || 'primary');
         if (!campaignId) {
           throw new Error('No campaignId specified for ADD_TO_CALL_CAMPAIGN automation step.');
         }
@@ -118,15 +118,96 @@ export async function processActionNode(
           throw new Error('No entityId available in automation context.');
         }
 
-        // Derives contact overrides if we need custom signaling, or just call service.
-        // Resolve scope and run. We pass target entityId from context.
+        const targets = (resolvedConfig.recipientTargets || (resolvedConfig.contactScope ? [resolvedConfig.contactScope] : ['triggering'])) as string[];
+        const roles = (resolvedConfig.recipientRoles || []) as string[];
+
+        const contactOverrides: { entityId: string; contactId: string; contactName: string; phone: string; email: string }[] = [];
+        const seenContactKeys = new Set<string>();
+
+        const addOverride = (cId: string, name: string, phone: string, email: string) => {
+          const key = `${cId}_${phone || email}`;
+          if (!seenContactKeys.has(key)) {
+            seenContactKeys.add(key);
+            contactOverrides.push({
+              entityId: context.entityId!,
+              contactId: cId || 'primary',
+              contactName: name || 'Contact',
+              phone: phone || '',
+              email: email || '',
+            });
+          }
+        };
+
+        const resolvedEntityContact = await resolveContact(context.entityId, context.workspaceId);
+        const entityContacts = resolvedEntityContact?.entityContacts || [];
+
+        if (targets.length > 0) {
+          // 1. Triggering contact
+          if (targets.includes('triggering')) {
+            const triggerPhone = (context.payload?.phone || context.payload?.contactPhone || context.payload?.phoneNumber || '');
+            const triggerEmail = (context.payload?.email || context.payload?.contactEmail || '');
+            const triggerName = (context.payload?.name || context.payload?.contactName || context.payload?.displayName || '');
+            const triggerContactId = (context.payload?.contactId || context.payload?.id || 'triggering');
+
+            if (triggerPhone || triggerEmail) {
+              addOverride(String(triggerContactId), String(triggerName || 'Triggering Contact'), String(triggerPhone), String(triggerEmail));
+            } else {
+              const primary = entityContacts.find(ec => ec.isPrimary) || entityContacts[0];
+              if (primary) {
+                addOverride(primary.id, primary.name, primary.phone || '', primary.email || '');
+              } else if (resolvedEntityContact?.primaryContactPhone || resolvedEntityContact?.primaryContactEmail) {
+                addOverride('primary', resolvedEntityContact.name || resolvedEntityContact.primaryContactName || 'Primary Contact', resolvedEntityContact.primaryContactPhone || '', resolvedEntityContact.primaryContactEmail || '');
+              }
+            }
+          }
+
+          // 2. Primary contact
+          if (targets.includes('primary')) {
+            const primary = entityContacts.find(ec => ec.isPrimary) || entityContacts[0];
+            if (primary) {
+              addOverride(primary.id, primary.name, primary.phone || '', primary.email || '');
+            } else if (resolvedEntityContact?.primaryContactPhone || resolvedEntityContact?.primaryContactEmail) {
+              addOverride('primary', resolvedEntityContact.name || resolvedEntityContact.primaryContactName || 'Primary Contact', resolvedEntityContact.primaryContactPhone || '', resolvedEntityContact.primaryContactEmail || '');
+            }
+          }
+
+          // 3. Campus Signatories
+          if (targets.includes('signatories')) {
+            entityContacts.filter(ec => ec.isSignatory).forEach(ec => {
+              addOverride(ec.id, ec.name, ec.phone || '', ec.email || '');
+            });
+          }
+
+          // 4. Specific Role(s)
+          if (targets.includes('roles') && roles.length > 0) {
+            entityContacts.filter(ec => 
+              ec.typeLabel && roles.some(r => r.toLowerCase() === ec.typeLabel?.toLowerCase() || r.toLowerCase() === ec.typeKey?.toLowerCase())
+            ).forEach(ec => {
+              addOverride(ec.id, ec.name, ec.phone || '', ec.email || '');
+            });
+          }
+
+          // 5. All Contacts
+          if (targets.includes('all')) {
+            if (entityContacts.length > 0) {
+              entityContacts.forEach(ec => {
+                addOverride(ec.id, ec.name, ec.phone || '', ec.email || '');
+              });
+            } else {
+              addOverride('primary', resolvedEntityContact?.name || resolvedEntityContact?.primaryContactName || 'Primary Contact', resolvedEntityContact?.primaryContactPhone || '', resolvedEntityContact?.primaryContactEmail || '');
+            }
+          }
+        }
+
+        const legacyScope = (resolvedConfig.contactScope as 'primary' | 'signatories' | 'all') || 'primary';
+
         const result = await CallCentreService.addContactsToCampaign(
           campaignId,
           [context.entityId],
           context.workspaceId,
           'automation-actor',
-          undefined, // overrides derived automatically or passed
-          contactScope as 'primary' | 'signatories' | 'all'
+          contactOverrides.length > 0 ? contactOverrides : undefined,
+          legacyScope
         );
 
         if (!result.success) {

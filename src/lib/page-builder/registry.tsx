@@ -55,7 +55,7 @@ export interface BlockVariant {
 export interface BlockDefinition<TProps extends Record<string, unknown>> {
   type: PageBlockType;
   label: string;
-  category: 'layout' | 'content' | 'data' | 'embed';
+  category: 'layout' | 'content' | 'data' | 'embed' | 'portal';
   icon: ComponentType<{ className?: string }>;
   fields: ReadonlyArray<BlockField>;
   defaults: TProps;

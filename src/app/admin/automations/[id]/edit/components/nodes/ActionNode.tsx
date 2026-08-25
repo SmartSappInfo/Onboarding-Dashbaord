@@ -292,6 +292,19 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 const op = config.operation === 'subtract' ? '-' : config.operation === 'set' ? '=' : '+';
                 return `Adjust Score: ${op}${config.value !== undefined ? config.value : 0}`;
             }
+            case 'ADD_TO_CALL_CAMPAIGN': {
+                const campaignTitle = config.campaignName || config.campaignTitle || 'Call Campaign';
+                const targets = (config.recipientTargets || (config.contactScope ? [config.contactScope] : ['triggering'])) as string[];
+                const targetLabels: Record<string, string> = {
+                    triggering: 'Triggering',
+                    primary: 'Primary',
+                    signatories: 'Signatories',
+                    roles: config.recipientRoles?.length ? `Roles (${config.recipientRoles.join(', ')})` : 'Specific Roles',
+                    all: 'All Contacts',
+                };
+                const targetsFormatted = targets.map((t) => targetLabels[t] || t).join(', ');
+                return `${campaignTitle} • ${targetsFormatted || 'Primary'}`;
+            }
             default:
                 return actionType.replace(/_/g, ' ');
         }
