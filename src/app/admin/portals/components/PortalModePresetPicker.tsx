@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { PORTAL_MODE_PRESETS } from '@/lib/services/portal-service';
+import { PORTAL_MODE_PRESETS } from '@/lib/portal-presets';
 import type { PortalMode, PortalModePreset } from '@/lib/types/portal';
 
 interface PortalModePresetPickerProps {

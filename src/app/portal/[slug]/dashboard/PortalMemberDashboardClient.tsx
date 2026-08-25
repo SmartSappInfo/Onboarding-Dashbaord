@@ -40,11 +40,14 @@ import {
   LogOut,
   Sliders,
   Video,
+  ListOrdered,
 } from 'lucide-react';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalMembership, MembershipPlan, AccessGrant } from '@/lib/types/membership';
 import type { ContentItem } from '@/lib/types/content';
 import { PortalAuthModal } from '../components/PortalAuthModal';
+import { MemberOnboardingWidget } from './components/MemberOnboardingWidget';
+import { MemberTasksWidget } from './components/MemberTasksWidget';
 
 interface PortalMemberDashboardClientProps {
   slug: string;
@@ -286,11 +289,21 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
           </div>
         </div>
 
+        {/* Onboarding Checklist Card */}
+        <MemberOnboardingWidget
+          portalId={portal.id}
+          portalSlug={slug}
+          userId={user.uid}
+        />
+
         {/* Dashboard Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-4">
+          <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-5">
             <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5">
               <GraduationCap className="w-3.5 h-3.5" /> Curriculum ({lessons.length})
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5">
+              <ListOrdered className="w-3.5 h-3.5" /> Tasks
             </TabsTrigger>
             <TabsTrigger value="resources" className="rounded-xl text-xs font-bold gap-1.5">
               <FolderArchive className="w-3.5 h-3.5" /> Toolkits ({resources.length})
@@ -356,6 +369,16 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* ── Tab: Daily Action Tasks ───────────────────────────────── */}
+          <TabsContent value="tasks" className="space-y-4 pt-4">
+            <MemberTasksWidget
+              portalId={portal.id}
+              portalSlug={slug}
+              userId={user.uid}
+              organizationId={portal.organizationId}
+            />
           </TabsContent>
 
           {/* ── Tab 2: Resource Toolkits ───────────────────────────────── */}

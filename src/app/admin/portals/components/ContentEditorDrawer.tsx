@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { ContentService } from '@/lib/services/content-service';
+import { sanitizeSlug } from '@/lib/utils/slug-utils';
 import {
   createContentItemAction,
   updateContentItemAction,
@@ -140,7 +140,7 @@ export function ContentEditorDrawer({
     const val = e.target.value;
     setTitle(val);
     if (!initialItem) {
-      setSlug(ContentService.sanitizeSlug(val));
+      setSlug(sanitizeSlug(val));
     }
   };
 
@@ -311,7 +311,7 @@ export function ContentEditorDrawer({
                 <Input
                   id="content-slug"
                   value={slug}
-                  onChange={e => setSlug(ContentService.sanitizeSlug(e.target.value))}
+                  onChange={e => setSlug(sanitizeSlug(e.target.value))}
                   className="h-10 rounded-xl font-mono text-xs"
                 />
               </div>

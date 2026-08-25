@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PortalModePresetPicker } from './PortalModePresetPicker';
 import { createPortalAction, verifyPortalSlugAvailabilityAction } from '@/app/actions/portal-actions';
-import { PortalService } from '@/lib/services/portal-service';
+import { sanitizeSlug } from '@/lib/utils/slug-utils';
 import type { PortalMode } from '@/lib/types/portal';
 import { Sparkles, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
 import { useTenant } from '@/context/TenantContext';
@@ -74,7 +74,7 @@ export function CreatePortalModal({
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setName(newName);
-    const sanitized = PortalService.sanitizeSlug(newName);
+    const sanitized = sanitizeSlug(newName);
     setSlug(sanitized);
   };
 
@@ -219,7 +219,7 @@ export function CreatePortalModal({
                   id="portal-slug"
                   placeholder="academy"
                   value={slug}
-                  onChange={e => setSlug(PortalService.sanitizeSlug(e.target.value))}
+                  onChange={e => setSlug(sanitizeSlug(e.target.value))}
                   className="h-11 rounded-xl font-mono text-sm"
                 />
               </div>

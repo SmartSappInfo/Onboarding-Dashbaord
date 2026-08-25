@@ -20,7 +20,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
       
       // Verify the main message is clear
       expect(screen.getByText(/This workspace manages/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Schools/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Institutions/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Only.*records can exist here/i)).toBeInTheDocument();
     });
 
@@ -65,7 +65,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
       expect(screen.getByText(/Scope Mismatch Error/i)).toBeInTheDocument();
       
       // Verify human-readable explanation
-      expect(screen.getByText(/Families records cannot be added to a workspace that manages Schools/i)).toBeInTheDocument();
+      expect(screen.getByText(/Families records cannot be added to a workspace that manages Institutions/i)).toBeInTheDocument();
       
       // Verify actionable guidance
       expect(screen.getByText(/Please select a workspace with the correct contact scope or create a new workspace/i)).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
     it('displays clear error for institution entity in person workspace', () => {
       render(<ScopeMismatchError entityType="institution" workspaceScope="person" />);
       
-      expect(screen.getByText(/Schools records cannot be added to a workspace that manages People/i)).toBeInTheDocument();
+      expect(screen.getByText(/Institutions records cannot be added to a workspace that manages People/i)).toBeInTheDocument();
     });
 
     it('error messages provide actionable guidance', () => {
@@ -93,10 +93,10 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
 
   describe('Scope Badges - All Relevant Locations', () => {
     describe('Workspace Switcher Badges', () => {
-      it('displays Schools badge for institution workspace', () => {
+      it('displays Institutions badge for institution workspace', () => {
         render(<ScopeBadge scope="institution" />);
         
-        expect(screen.getByText(/Schools/i)).toBeInTheDocument();
+        expect(screen.getByText(/Institutions/i)).toBeInTheDocument();
       });
 
       it('displays Families badge for family workspace', () => {
@@ -124,7 +124,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
       it('displays entity type badge for institution', () => {
         render(<ScopeBadge scope="institution" variant="secondary" />);
         
-        expect(screen.getByText(/Schools/i)).toBeInTheDocument();
+        expect(screen.getByText(/Institutions/i)).toBeInTheDocument();
       });
 
       it('displays entity type badge for family', () => {
@@ -145,7 +145,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
         render(<ScopeLabel scope="institution" locked={true} />);
         
         // Verify scope label
-        expect(screen.getAllByText(/Schools/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Institutions/i).length).toBeGreaterThan(0);
         
         // Verify lock badge
         expect(screen.getByText(/🔒 Locked/i)).toBeInTheDocument();
@@ -175,25 +175,25 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
       render(<ScopeSelector value="institution" onChange={mockOnChange} />);
       
       // Verify all three scope options are displayed
-      expect(screen.getAllByText(/Schools/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Institutions/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Families/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/People/i).length).toBeGreaterThan(0);
       
       // Verify descriptions are present
-      expect(screen.getByText(/Manage schools and educational institutions/i)).toBeInTheDocument();
+      expect(screen.getByText(/Manage institutions and educational organizations/i)).toBeInTheDocument();
       expect(screen.getByText(/Manage families with guardians/i)).toBeInTheDocument();
       expect(screen.getByText(/Manage individual contacts/i)).toBeInTheDocument();
     });
   });
 
   describe('Scope Label Mapping Consistency', () => {
-    it('consistently maps institution to Schools', () => {
+    it('consistently maps institution to Institutions', () => {
       const { unmount: unmount1 } = render(<ScopeBadge scope="institution" />);
-      expect(screen.getByText(/Schools/i)).toBeInTheDocument();
+      expect(screen.getByText(/Institutions/i)).toBeInTheDocument();
       unmount1();
       
       const { unmount: unmount2 } = render(<ScopeLabel scope="institution" />);
-      expect(screen.getAllByText(/Schools/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Institutions/i).length).toBeGreaterThan(0);
       unmount2();
     });
 
@@ -222,7 +222,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
     it('uses consistent terminology across all components', () => {
       const scopes: ContactScope[] = ['institution', 'family', 'person'];
       const expectedLabels = {
-        institution: 'Schools',
+        institution: 'Institutions',
         family: 'Families',
         person: 'People'
       };
@@ -279,7 +279,7 @@ describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
       const { container: secondaryContainer } = render(
         <ScopeBadge scope="institution" variant="secondary" />
       );
-      expect(secondaryContainer.textContent).toContain('Schools');
+      expect(secondaryContainer.textContent).toContain('Institutions');
       
       // Outline variant for emphasis
       const { container: outlineContainer } = render(

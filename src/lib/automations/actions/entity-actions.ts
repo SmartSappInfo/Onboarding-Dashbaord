@@ -358,8 +358,8 @@ export async function handleCreateContactForEntity(
   config: Record<string, unknown>,
   context: ExecutionContext
 ): Promise<void> {
-  const targetEntityMode = (config.targetEntityMode as string) || 'automatic';
   const resolvedEntityName = (config.entityName as string || '').trim();
+  const targetEntityMode = (config.targetEntityMode as string) || (resolvedEntityName ? 'manual' : 'automatic');
   const resolvedContactName = (config.contactName as string || '').trim();
   const resolvedContactPhone = (config.contactPhone as string || '').trim();
   const resolvedContactEmail = (config.contactEmail as string || '').trim();
@@ -378,7 +378,7 @@ export async function handleCreateContactForEntity(
   let entityId = '';
   let entityType: EntityType | undefined;
 
-  if (targetEntityMode === 'automatic' || !resolvedEntityName) {
+  if (targetEntityMode === 'automatic' && !resolvedEntityName) {
     // Automatic Mode: Target entity currently traversing automation context
     entityId = context.entityId || (context.payload?.entityId as string) || '';
     entityType = context.entityType;
@@ -550,7 +550,6 @@ export async function handleUpdateContact(
   config: Record<string, unknown>,
   context: ExecutionContext
 ): Promise<void> {
-  const targetEntityMode = (config.targetEntityMode as string) || 'automatic';
   const filterEntityName = (config.filterEntityName as string || '').trim();
   const filterContactName = (config.filterContactName as string || '').trim();
   const filterContactPhone = (config.filterContactPhone as string || '').trim();
@@ -559,7 +558,8 @@ export async function handleUpdateContact(
   const caseInsensitive = !!config.caseInsensitive;
 
   const hasManualFilters = Boolean(filterEntityName || filterContactName || filterContactPhone || filterContactEmail);
-  const isAutomatic = targetEntityMode === 'automatic' || !hasManualFilters;
+  const targetEntityMode = (config.targetEntityMode as string) || (hasManualFilters ? 'manual' : 'automatic');
+  const isAutomatic = targetEntityMode === 'automatic' && !hasManualFilters;
 
   // 1. Resolve organization default country code for phone normalization
   const organizationId = await resolveOrgId(context);

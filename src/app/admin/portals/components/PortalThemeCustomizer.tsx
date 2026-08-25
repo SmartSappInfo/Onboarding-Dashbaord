@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Paintbrush, Type, Layout, Image, SunMoon } from 'lucide-react';
+import { Paintbrush, Type, Layout, ImageIcon, SunMoon } from 'lucide-react';
 import type { PortalThemeConfig, PortalBranding } from '@/lib/types/portal';
 
 interface PortalThemeCustomizerProps {
@@ -76,7 +76,7 @@ export function PortalThemeCustomizer({
       <Card className="rounded-2xl border-2 border-border shadow-sm">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2 text-primary font-bold text-sm">
-            <Image className="w-4 h-4" /> Brand Assets & Identity
+            <ImageIcon className="w-4 h-4" /> Brand Assets & Identity
           </div>
           <CardDescription className="text-xs">
             Configure logos, favicons, and copyright statements.

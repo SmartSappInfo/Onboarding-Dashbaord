@@ -46,7 +46,10 @@ describe('BlockRenderer', () => {
   });
 
   it('exposes no edit affordances in view mode for any registered block (R11)', () => {
+    // Exclude interactive user-input blocks that contain viewer chat/search inputs at runtime
+    const interactiveUserBlocks = new Set(['portal_ai_tutor', 'portal_search']);
     for (const def of allBlocks()) {
+      if (interactiveUserBlocks.has(def.type)) continue;
       const block: PageBlock = { id: `b-${def.type}`, type: def.type, props: {} };
       const { container, unmount } = render(<BlockRenderer block={block} ctx={ctx('view')} />);
       const editable = container.querySelector('input, textarea, [contenteditable="true"]');

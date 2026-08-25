@@ -41,7 +41,7 @@ describe('VideoUploader', () => {
   it('triggers reset and clear callback when remove is clicked', () => {
     const onChange = vi.fn();
     render(<VideoUploader value={filledValue} onChange={onChange} />);
-    fireEvent.click(screen.getByText('Remove'));
+    fireEvent.click(screen.getByTitle('Remove Video'));
     expect(onChange).toHaveBeenCalledWith({
       videoUrl: '',
       thumbnailUrl: '',
@@ -60,7 +60,7 @@ describe('VideoUploader', () => {
     const checkbox = screen.getByLabelText('Add Title & Description (Optional)');
     expect(checkbox).toBeInTheDocument();
 
-    const titleInput = screen.getByPlaceholderText('Enter video title...');
+    const titleInput = screen.getByPlaceholderText(/Enter video title/i);
     fireEvent.change(titleInput, { target: { value: 'Sunflower Debtor Solution - Updated' } });
     fireEvent.blur(titleInput);
 

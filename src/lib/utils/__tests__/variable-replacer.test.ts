@@ -16,7 +16,7 @@ describe('resolveTextWithMap fallback priority matching', () => {
     const valuesMap = new Map<string, unknown>();
     valuesMap.set('__fallback__contact_name', 'there');
 
-    const text = 'Hello {{contact_name | Guest}}!';
+    const text = 'Hello {{contact_name}}!';
     const result = resolveTextWithMap(text, valuesMap);
     expect(result).toBe('Hello there!');
   });

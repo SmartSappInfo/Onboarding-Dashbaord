@@ -2227,6 +2227,11 @@ export interface Meeting {
   publishStatus?: 'draft' | 'published' | 'archived';
   status?: 'scheduled' | 'active' | 'ended' | 'cancelled';
   endedAt?: string;
+  contactEmail?: string;
+  contactName?: string;
+  hostUserId?: string;
+  hostName?: string;
+  hostEmail?: string;
 }
 
 // ── Meeting Facilitator ────────────────────────────────────────────────────
@@ -2449,6 +2454,9 @@ export interface MeetingTemplate {
   createdAt: string;
   createdBy?: string;
 }
+
+// ── Meetings 2.0 Scheduling & Availability Domain Types ──────────────────────
+export * from '@/lib/meetings/types';
 
 /** Built-in meeting templates (static data, not Firestore) */
 export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
@@ -6941,6 +6949,7 @@ export interface BookingQuestion {
   type: 'text' | 'textarea' | 'dropdown' | 'checkbox' | 'radio';
   required: boolean;
   options?: string[]; // for multi-choice fields
+  placeholder?: string;
 }
 
 export interface BookingPage {
@@ -7142,6 +7151,32 @@ export interface SocialBrandKit {
 export * from './types/portal';
 export * from './types/content';
 export * from './types/membership';
+export * from './types/learning';
+export * from './types/community';
+export * from './types/engagement';
+export type {
+  LiveEvent,
+  EventRegistration,
+  CourseCohort,
+  CohortMember,
+  LiveEventType,
+  EventRegistrationStatus,
+  MeetingProvider,
+  EventStatus,
+  CohortStatus,
+  CreateEventInput,
+  UpdateEventInput,
+  RegisterEventInput,
+  RecordAttendanceInput,
+  PublishReplayInput,
+  CreateCohortInput,
+  UpdateCohortInput,
+} from './types/events';
+export * from './types/commerce';
+export * from './types/ai-experience';
+export * from './types/portal-analytics';
+export * from './types/credentials';
+export * from './types/enterprise';
 
 
 

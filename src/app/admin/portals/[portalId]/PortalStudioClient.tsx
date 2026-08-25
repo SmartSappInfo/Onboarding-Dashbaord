@@ -48,6 +48,15 @@ import { PortalSeoEditor } from '../components/PortalSeoEditor';
 import { PortalLivePreviewCanvas } from '../components/PortalLivePreviewCanvas';
 import { PortalContentManager } from '../components/PortalContentManager';
 import { PortalMemberManager } from '../components/PortalMemberManager';
+import { PortalCourseManager } from '../components/PortalCourseManager';
+import { PortalCommunityManager } from '../components/PortalCommunityManager';
+import { PortalOnboardingManager } from '../components/PortalOnboardingManager';
+import { PortalEventsManager } from '../components/PortalEventsManager';
+import { PortalMonetizationManager } from '../components/PortalMonetizationManager';
+import { PortalAiCopilotDrawer } from '../components/PortalAiCopilotDrawer';
+import { PortalAnalyticsManager } from '../components/PortalAnalyticsManager';
+import { PortalCredentialManager } from '../components/PortalCredentialManager';
+import { PortalEnterpriseManager } from '../components/PortalEnterpriseManager';
 import {
   updatePortalAction,
   publishPortalAction,
@@ -97,6 +106,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
 
   const [activeTab, setActiveTab] = React.useState('identity');
   const [showPreviewMobile, setShowPreviewMobile] = React.useState(false);
+  const [isAiCopilotOpen, setIsAiCopilotOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [hasChanges, setHasChanges] = React.useState(false);
 
@@ -254,6 +264,15 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
               variant="compact"
             />
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAiCopilotOpen(true)}
+              className="h-10 rounded-xl font-bold text-xs bg-indigo-600/10 text-indigo-600 border-indigo-500/30 hover:bg-indigo-600/20 gap-1.5 shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> AI Copilot
+            </Button>
+
             <a href={publicPath} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="h-10 rounded-xl font-bold text-xs gap-1.5">
                 <ExternalLink className="w-3.5 h-3.5" /> View Live
@@ -299,7 +318,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
           {/* Left / Configurator Tabs (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full h-auto p-1.5 bg-card border border-border rounded-2xl grid grid-cols-4 sm:grid-cols-8 gap-1 shadow-xs">
+              <TabsList className="w-full h-auto p-1.5 bg-card border border-border rounded-2xl grid grid-cols-2 sm:grid-cols-6 lg:grid-cols-13 gap-1 shadow-xs">
                 <TabsTrigger
                   value="identity"
                   className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
@@ -311,6 +330,54 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                   className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
                 >
                   Content
+                </TabsTrigger>
+                <TabsTrigger
+                  value="courses"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Courses
+                </TabsTrigger>
+                <TabsTrigger
+                  value="events"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Events
+                </TabsTrigger>
+                <TabsTrigger
+                  value="community"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Community
+                </TabsTrigger>
+                <TabsTrigger
+                  value="onboarding"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Onboarding
+                </TabsTrigger>
+                <TabsTrigger
+                  value="monetization"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Monetization
+                </TabsTrigger>
+                <TabsTrigger
+                  value="analytics"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger
+                  value="credentials"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Credentials
+                </TabsTrigger>
+                <TabsTrigger
+                  value="enterprise"
+                  className="rounded-xl text-xs font-bold py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white"
+                >
+                  Enterprise
                 </TabsTrigger>
                 <TabsTrigger
                   value="members"
@@ -353,6 +420,85 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
               {/* ── Tab: Content Vault ────────────────────────────────── */}
               <TabsContent value="content" className="mt-6">
                 <PortalContentManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Courses Studio ───────────────────────────────── */}
+              <TabsContent value="courses" className="mt-6">
+                <PortalCourseManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Live Events Studio ───────────────────────────── */}
+              <TabsContent value="events" className="mt-6">
+                <PortalEventsManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Community Studio ─────────────────────────────── */}
+              <TabsContent value="community" className="mt-6">
+                <PortalCommunityManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Onboarding & Tasks ───────────────────────────── */}
+              <TabsContent value="onboarding" className="mt-6">
+                <PortalOnboardingManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Monetization & Affiliates ────────────────────── */}
+              <TabsContent value="monetization" className="mt-6">
+                <PortalMonetizationManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Analytics & Intelligence ─────────────────────── */}
+              <TabsContent value="analytics" className="mt-6">
+                <PortalAnalyticsManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Credentials & Badges ──────────────────────────── */}
+              <TabsContent value="credentials" className="mt-6">
+                <PortalCredentialManager
+                  portalId={portalId}
+                  portalSlug={slug}
+                  organizationId={initialPortal.organizationId}
+                  workspaceIds={workspaceIds}
+                />
+              </TabsContent>
+
+              {/* ── Tab: Enterprise & Governance ───────────────────────── */}
+              <TabsContent value="enterprise" className="mt-6">
+                <PortalEnterpriseManager
                   portalId={portalId}
                   portalSlug={slug}
                   organizationId={initialPortal.organizationId}
@@ -553,6 +699,15 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
           </div>
         </div>
       </div>
+
+      {/* ── AI Studio Copilot Drawer ─────────────────────────────────── */}
+      <PortalAiCopilotDrawer
+        isOpen={isAiCopilotOpen}
+        onClose={() => setIsAiCopilotOpen(false)}
+        portalId={portalId}
+        portalSlug={slug}
+        organizationId={initialPortal.organizationId}
+      />
     </PageContainerFluid>
   );
 }

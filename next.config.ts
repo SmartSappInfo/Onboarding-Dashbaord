@@ -8,7 +8,20 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverExternalPackages: ['@google-cloud/tasks', 'canvas', 'jsdom', 'firebase-admin'],
+  serverExternalPackages: [
+    '@google-cloud/tasks',
+    '@google-cloud/storage',
+    'canvas',
+    'jsdom',
+    'firebase-admin',
+    'google-auth-library',
+    'https-proxy-agent',
+    'gaxios',
+    '@genkit-ai/google-genai',
+    '@genkit-ai/core',
+    '@genkit-ai/ai',
+    'genkit',
+  ],
   experimental: {
     optimizePackageImports: ['lucide-react'],
     serverActions: {
@@ -22,7 +35,7 @@ const nextConfig: NextConfig = {
       moduleIds: 'deterministic',
     };
     
-    // Ignore Genkit AI server dependencies and native canvas binaries in client bundles
+    // Ignore server dependencies and native canvas binaries in client bundles
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -38,6 +51,7 @@ const nextConfig: NextConfig = {
         os: false,
         canvas: false,
         jsdom: false,
+        child_process: false,
       };
       
       // Ignore express, canvas, and other server-only/native modules

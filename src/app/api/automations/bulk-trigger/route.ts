@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;
     if (autoOrgId && organizationId && organizationId !== 'default' && autoOrgId !== 'default' && autoOrgId !== organizationId) {
       console.warn(`[BULK-TRIGGER-WORKER] Tenant mismatch: automation ${automationId} (org ${autoOrgId}) requested for org ${organizationId}`);
-      return NextResponse.json({ success: true, processedCount: 0, warning: 'Tenant organization boundary mismatch.' }, { status: 200 });
+      return NextResponse.json({ error: 'Unauthorized automation-workspace mapping' }, { status: 403 });
     }
 
     // 4. Security Check: Validate tenant isolation for all targets in batches

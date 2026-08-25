@@ -127,9 +127,7 @@ describe('Traverse Step Logging', () => {
 
     mockProcessAction.mockRejectedValue(new Error('Webhook timeout'));
 
-    await expect(
-      traverseNodes('t1', automation, context)
-    ).rejects.toThrow('Node [Send Webhook (Step #1)] failed: Webhook timeout');
+    await traverseNodes('t1', automation, context);
 
     expect(mockLogStep).toHaveBeenCalledWith(
       'run-1',

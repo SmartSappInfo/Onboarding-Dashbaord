@@ -15,7 +15,7 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
       render(<ScopeLabel scope="institution" />);
       
       expect(screen.getByText(/This workspace manages/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Schools/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Institutions/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Only.*records can exist here/i)).toBeInTheDocument();
     });
 
@@ -50,7 +50,7 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
       render(<ScopeMismatchError entityType="family" workspaceScope="institution" />);
       
       expect(screen.getByText(/Scope Mismatch Error/i)).toBeInTheDocument();
-      expect(screen.getByText(/Families records cannot be added to a workspace that manages Schools/i)).toBeInTheDocument();
+      expect(screen.getByText(/Families records cannot be added to a workspace that manages Institutions/i)).toBeInTheDocument();
     });
 
     it('displays human-readable error for person -> family mismatch', () => {
@@ -62,7 +62,7 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
     it('displays human-readable error for institution -> person mismatch', () => {
       render(<ScopeMismatchError entityType="institution" workspaceScope="person" />);
       
-      expect(screen.getByText(/Schools records cannot be added to a workspace that manages People/i)).toBeInTheDocument();
+      expect(screen.getByText(/Institutions records cannot be added to a workspace that manages People/i)).toBeInTheDocument();
     });
 
     it('provides guidance to select correct workspace', () => {
@@ -73,10 +73,10 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
   });
 
   describe('38.4: Scope type badge in workspace switcher', () => {
-    it('displays "Schools" badge for institution scope', () => {
+    it('displays "Institutions" badge for institution scope', () => {
       render(<ScopeBadge scope="institution" />);
       
-      expect(screen.getByText(/Schools/i)).toBeInTheDocument();
+      expect(screen.getByText(/Institutions/i)).toBeInTheDocument();
     });
 
     it('displays "Families" badge for family scope', () => {
@@ -108,7 +108,7 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
       entityTypes.forEach(type => {
         const { unmount } = render(<ScopeBadge scope={type} />);
         
-        const expectedLabel = type === 'institution' ? /Schools/i : 
+        const expectedLabel = type === 'institution' ? /Institutions/i : 
                              type === 'family' ? /Families/i : /People/i;
         
         expect(screen.getByText(expectedLabel)).toBeInTheDocument();
@@ -138,9 +138,9 @@ describe('Task 38: Explicit UI Language for Scope Rules', () => {
   });
 
   describe('Scope label mapping', () => {
-    it('maps institution to Schools', () => {
+    it('maps institution to Institutions', () => {
       render(<ScopeBadge scope="institution" />);
-      expect(screen.getByText(/Schools/i)).toBeInTheDocument();
+      expect(screen.getByText(/Institutions/i)).toBeInTheDocument();
     });
 
     it('maps family to Families', () => {

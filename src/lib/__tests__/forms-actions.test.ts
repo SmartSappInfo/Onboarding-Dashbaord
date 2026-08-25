@@ -31,8 +31,10 @@ vi.mock('next/cache', () => ({
 
 // Mock webhook-engine
 const mockDispatchWebhook = vi.fn(async () => {});
+const mockDispatchWebhooksByTrigger = vi.fn(async () => {});
 vi.mock('../webhook-engine', () => ({
-  dispatchWebhook: mockDispatchWebhook
+  dispatchWebhook: mockDispatchWebhook,
+  dispatchWebhooksByTrigger: mockDispatchWebhooksByTrigger,
 }));
 
 // Mock workspace-permissions
@@ -114,7 +116,15 @@ describe('Forms Actions', () => {
 
   describe('exportSubmissionsAsCsvAction', () => {
     it('should return CSV representation of submissions', async () => {
-      const mockForm = { id: 'form-1', internalName: 'Signup Form', workspaceId: 'ws-1' };
+      const mockForm = {
+        id: 'form-1',
+        internalName: 'Signup Form',
+        workspaceId: 'ws-1',
+        fields: [
+          { id: 'f1', appFieldId: 'f1' },
+          { id: 'f2', appFieldId: 'f2' },
+        ],
+      };
       mockStore.forms.set('form-1', mockForm);
 
       const submissions = [

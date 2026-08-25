@@ -97,6 +97,7 @@ const MeetingCalendar = dynamic(() => import('./components/MeetingCalendar'), {
 
 const MeetingQRDialog = dynamic(() => import('./components/MeetingQRDialog'), { ssr: false });
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { MeetingsNavigation } from './components/MeetingsNavigation';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -526,6 +527,7 @@ export default function MeetingsHubClient() {
         <TooltipProvider>
             <PageContainerFluid>
             <div className="h-full overflow-y-auto w-full">
+                <MeetingsNavigation />
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex flex-col items-start">

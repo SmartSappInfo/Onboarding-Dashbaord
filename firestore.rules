@@ -299,9 +299,50 @@ service cloud.firestore {
         allow create: if true;
         allow read, list, update: if isAuthorized();
       }
+
+      match /participants/{pId} {
+        allow read: if true;
+        allow list, write: if isAuthorized();
+      }
+
+      match /registrations/{regId} {
+        allow read: if true;
+        allow list, write: if isAuthorized();
+      }
     }
 
-    // Booking Pages & Calendars Scheduling Engine Rules
+    match /conference_sessions/{sessionId} {
+      allow get: if true;
+      allow list, write: if isAuthorized();
+    }
+
+    match /meeting_activities/{activityId} {
+      allow read, list: if isAuthorized();
+      allow write: if isAuthorized();
+    }
+
+    // Booking Pages & Calendars Scheduling Engine Rules (Meetings 2.0)
+    match /event_types/{eventTypeId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /availability_profiles/{profileId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /scheduling_profiles/{profileId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     match /booking_pages/{pageId} {
       allow read: if true;
       allow create: if isAuthorized();
@@ -309,13 +350,157 @@ service cloud.firestore {
     }
     
     match /bookings/{bookingId} {
-      allow create: if true;
-      allow read: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
-      allow update: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() || isSystemAdmin();
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /booking_holds/{holdId} {
+      // Locking and hold management are exclusively executed via backend server actions (Admin SDK)
+      allow read, write: if false;
     }
 
     match /calendar_connections/{connId} {
-      allow read, write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      // Mutation is strictly via server actions
+      allow write: if false;
+    }
+
+    match /routing_forms/{formId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /routing_submissions/{subId} {
+      // Submissions and qualification history are server-managed
+      allow read, write: if false;
+    }
+
+    match /meeting_recordings/{recId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_transcripts/{transcriptId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_intelligence/{intelId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /recurring_series/{seriesId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_polls/{pollId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow create, update: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+
+      match /votes/{voteId} {
+        allow create, update, get: if true;
+        allow list, delete: if isAuthorized();
+      }
+    }
+
+    match /office_hours_rooms/{roomId} {
+      allow get: if true;
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /office_hours_queue/{entryId} {
+      allow get, create, update: if true;
+      allow list, delete: if isAuthorized();
+    }
+
+    match /meeting_workflows/{ruleId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_webhooks/{webhookId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /webhook_delivery_logs/{logId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_deal_attributions/{attributionId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /webinar_questions/{questionId} {
+      allow read, create, update: if true;
+      allow delete: if isAuthorized();
+    }
+
+    match /meeting_feedback/{feedbackId} {
+      allow create, get: if true;
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_resources/{resId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /resource_reservations/{resId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /payment_transactions/{txId} {
+      allow read, create: if true;
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /meeting_compliance_policies/{policyId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_action_items/{itemId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_reminder_jobs/{jobId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_telemetry_logs/{logId} {
+      allow create: if true;
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /series_instance_overrides/{overrideId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_speech_coaching/{coachingId} {
+      allow list, get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /meeting_templates/{templateId} {
+      allow read: if true;
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
     }
 
     match /user_availabilities/{availId} {
@@ -1198,6 +1383,298 @@ service cloud.firestore {
       allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
       allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
       allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Courses ---
+    match /courses/{courseId} {
+      allow get: if resource.data.status == 'published' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow list: if resource.data.status == 'published' || (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Course Modules ---
+    match /course_modules/{moduleId} {
+      allow get, list: if true;
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Course Lessons ---
+    match /course_lessons/{lessonId} {
+      allow get, list: if true;
+      allow create: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+      allow delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Course Enrollments ---
+    match /course_enrollments/{enrollmentId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                    (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                     (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn() && (request.auth.uid == request.resource.data.userId || isAuthorized());
+      allow update: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                       (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — Learning Progress ---
+    match /learning_progress/{progressId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                    (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                     (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update: if isSignedIn() && (request.auth.uid == request.resource.data.userId || isAuthorized());
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — Assessments & Assignments ---
+    match /course_assessments/{assessmentId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /course_assignments/{assignmentId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /assignment_submissions/{submissionId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                    (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                     (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                       (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — Community Spaces ---
+    match /community_spaces/{spaceId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Community Posts ---
+    match /community_posts/{postId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if (isSignedIn() && request.auth.uid == resource.data.authorId) || (isAuthorized() && isSystemAdmin());
+      allow delete: if (isSignedIn() && request.auth.uid == resource.data.authorId) || (isAuthorized() && isSystemAdmin());
+    }
+
+    // --- {{Org_name}} Experience Platform — Community Comments ---
+    match /community_comments/{commentId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if (isSignedIn() && request.auth.uid == resource.data.authorId) || (isAuthorized() && isSystemAdmin());
+      allow delete: if (isSignedIn() && request.auth.uid == resource.data.authorId) || (isAuthorized() && isSystemAdmin());
+    }
+
+    // --- {{Org_name}} Experience Platform — Community Polls & Votes ---
+    match /community_polls/{pollId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /poll_votes/{voteId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // --- {{Org_name}} Experience Platform — Community Reactions ---
+    match /community_reactions/{reactionId} {
+      allow get, list: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // --- {{Org_name}} Experience Platform — Moderation Reports ---
+    match /moderation_reports/{reportId} {
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.reporterUserId;
+      allow get, list, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — Onboarding & Engagement Engine ---
+    match /onboarding_flows/{flowId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    match /member_onboarding_progress/{progressId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /member_tasks/{taskId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    match /task_submissions/{submissionId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /portal_member_activities/{activityId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /member_engagement_profiles/{profileId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- {{Org_name}} Experience Platform — Live Events, Cohorts & Replays ---
+    match /live_events/{eventId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    match /event_registrations/{registrationId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || (isAuthorized() && isSystemAdmin());
+    }
+
+    match /course_cohorts/{cohortId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    // --- {{Org_name}} Experience Platform — Commerce, Offers & Affiliates ---
+    match /portal_offers/{offerId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    match /portal_coupons/{couponId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(resource.data.organizationId)));
+    }
+
+    match /portal_orders/{orderId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /affiliate_partners/{partnerId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create: if isSignedIn();
+      allow update: if (isSignedIn() && request.auth.uid == resource.data.userId) || (isAuthorized() && isSystemAdmin());
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /affiliate_referrals/{referralId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.partnerId);
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /portal_waitlists/{waitlistId} {
+      allow create: if true;
+      allow get, list, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — AI Experience & Intelligence ---
+    match /ai_generation_tasks/{taskId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /ai_tutor_sessions/{sessionId} {
+      allow get, list: if (isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId))) ||
+                          (isSignedIn() && request.auth.uid == resource.data.userId);
+      allow create, update: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow delete: if (isSignedIn() && request.auth.uid == resource.data.userId) || (isAuthorized() && isSystemAdmin());
+    }
+
+    match /ai_knowledge_chunks/{chunkId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /ai_pedagogy_diagnostics/{diagnosticId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- {{Org_name}} Experience Platform — Analytics & Experience Intelligence ---
+    match /portal_analytics_snapshots/{snapshotId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    // --- {{Org_name}} Experience Platform — Credentials & Learning Interoperability ---
+    match /certificate_templates/{templateId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /issued_certificates/{certId} {
+      // Public read allowed for authentic verification by code or ID
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /badge_definitions/{badgeId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /awarded_badges/{awardId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /xapi_statements/{statementId} {
+      allow get, list, create: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- {{Org_name}} Experience Platform — Enterprise, Scale & Marketplace ---
+    match /enterprise_sso_configs/{configId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /enterprise_whitelabel_configs/{configId} {
+      allow get, list: if true; // Public get for custom domain router resolution
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /org_hierarchy_nodes/{nodeId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
+    }
+
+    match /marketplace_listings/{listingId} {
+      allow get, list: if true; // Public marketplace browse
+      allow create, update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /enterprise_audit_logs/{logId} {
+      allow get, list, create: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow update, delete: if isAuthorized() && isSystemAdmin();
     }
 
     // --- Landing Pages / Campaign Pages ---

@@ -49,7 +49,7 @@ describe('applyDealFilters', () => {
       makeDeal({ id: 'a', assignedTo: { userId: 'u1', name: 'A', email: '' } }),
       makeDeal({ id: 'b', assignedTo: { userId: 'u2', name: 'B', email: '' } }),
     ];
-    const result = applyDealFilters(deals, DEFAULT_FILTERS, 'u1');
+    const result = applyDealFilters(deals, filters({ assignedToId: null }), 'u1');
     expect(result.map(d => d.id)).toEqual(['a']);
   });
 

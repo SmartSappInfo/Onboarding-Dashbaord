@@ -47,6 +47,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import { PortalCard } from './components/PortalCard';
 import { ExperiencePortalCard } from './components/ExperiencePortalCard';
 import { CreatePortalModal } from './components/CreatePortalModal';
+import { PortalMarketplaceHub } from './components/PortalMarketplaceHub';
 import { CustomPageSeoDialog } from './components/CustomPageSeoDialog';
 import { CustomPageWorkspaceDialog } from './components/CustomPageWorkspaceDialog';
 import {
@@ -242,6 +243,7 @@ export default function PortalsClient() {
     title: string;
     workspaceIds: string[];
   } | null>(null);
+  const [isMarketplaceOpen, setIsMarketplaceOpen] = React.useState(false);
 
   const orgName = activeOrganization?.name || 'Organization';
 
@@ -514,6 +516,14 @@ export default function PortalsClient() {
             </div>
 
             <Button
+              variant="outline"
+              onClick={() => setIsMarketplaceOpen(true)}
+              className="h-11 px-4 rounded-xl font-bold text-xs gap-2 shrink-0 bg-background border-border shadow-2xs"
+            >
+              <Sparkles className="w-4 h-4 text-primary" /> Template Marketplace
+            </Button>
+
+            <Button
               onClick={() => setIsCreateModalOpen(true)}
               className="h-11 px-5 rounded-xl font-bold text-xs gap-2 bg-primary text-white hover:bg-primary/90 shadow-sm shrink-0"
             >
@@ -760,6 +770,12 @@ export default function PortalsClient() {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         defaultWorkspaceId={activeWorkspaceId}
+      />
+
+      <PortalMarketplaceHub
+        organizationId={activeOrganizationId || ''}
+        isOpen={isMarketplaceOpen}
+        onOpenChange={setIsMarketplaceOpen}
       />
 
       {editingSeoPage && (

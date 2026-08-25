@@ -85,7 +85,7 @@ describe('WorkspaceSwitcher - Scope Badges', () => {
     });
   });
 
-  it('displays "Schools" badge for institution scope', async () => {
+  it('displays "Institutions" badge for institution scope', async () => {
     const user = userEvent.setup();
     render(<WorkspaceSwitcher />);
     
@@ -93,8 +93,8 @@ describe('WorkspaceSwitcher - Scope Badges', () => {
     const trigger = screen.getByRole('button');
     await user.click(trigger);
     
-    // Check for Schools badge
-    expect(await screen.findByText('Schools')).toBeInTheDocument();
+    // Check for Institutions badge
+    expect(await screen.findByText('Institutions')).toBeInTheDocument();
   });
 
   it('displays "Families" badge for family scope', async () => {
@@ -128,9 +128,9 @@ describe('WorkspaceSwitcher - Scope Badges', () => {
     const legacyWorkspace = await screen.findByText('Legacy Workspace');
     expect(legacyWorkspace).toBeInTheDocument();
     
-    // But it should not have a scope badge (Schools, Families, or People) next to it
+    // But it should not have a scope badge (Institutions, Families, or People) next to it
     // We verify this by checking that only 3 badges exist total (one for each scoped workspace)
-    const badges = screen.queryAllByText(/^(Schools|Families|People)$/);
+    const badges = screen.queryAllByText(/^(Institutions|Families|People)$/);
     expect(badges).toHaveLength(3);
   });
 
@@ -142,7 +142,7 @@ describe('WorkspaceSwitcher - Scope Badges', () => {
     await user.click(trigger);
     
     // All three scope badges should be present
-    expect(await screen.findByText('Schools')).toBeInTheDocument();
+    expect(await screen.findByText('Institutions')).toBeInTheDocument();
     expect(await screen.findByText('Families')).toBeInTheDocument();
     expect(await screen.findByText('People')).toBeInTheDocument();
   });

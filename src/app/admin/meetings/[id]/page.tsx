@@ -52,6 +52,17 @@ import { Input } from '@/components/ui/input';
 import { renderScheduledMessageAction, sendTestMessageAction } from '@/app/actions/scheduled-message-actions';
 import { RecipientLogDrawer } from './components/RecipientLogDrawer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ConferenceSessionCard } from './components/ConferenceSessionCard';
+import { MeetingIntelligenceTab } from './components/MeetingIntelligenceTab';
+import { MeetingCRMTab } from './components/MeetingCRMTab';
+import { MeetingFeedbackTab } from './components/MeetingFeedbackTab';
+import type { ConferenceSession } from '@/lib/meetings/types';
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unexpected error occurred.';
+}
 
 export default function MeetingDetailPage() {
   const params = useParams();
@@ -65,7 +76,13 @@ export default function MeetingDetailPage() {
   const [copiedLink, setCopiedLink] = React.useState<'short' | 'long' | string | null>(null);
   const { user } = useUser();
   const [previewModalOpen, setPreviewModalOpen] = React.useState(false);
-  const [previewContent, setPreviewContent] = React.useState<any>(null);
+  const [previewContent, setPreviewContent] = React.useState<{
+    success: boolean;
+    channel?: string;
+    subject?: string | null;
+    body?: string;
+    error?: string;
+  } | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false);
   const [testRecipient, setTestRecipient] = React.useState('');
   const [isTesting, setIsTesting] = React.useState(false);
@@ -95,8 +112,8 @@ export default function MeetingDetailPage() {
       } else {
         toast({ variant: 'destructive', title: 'Preview Error', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsPreviewLoading(false);
     }
@@ -111,10 +128,10 @@ export default function MeetingDetailPage() {
     setIsTesting(true);
     try {
       const res = await sendTestMessageAction(
-        previewContent.channel,
+        (previewContent.channel as 'email' | 'push' | 'sms' | 'in_app') || 'email',
         testRecipient,
-        previewContent.body,
-        previewContent.subject,
+        previewContent.body || '',
+        previewContent.subject || undefined,
         activeWorkspaceId ? [activeWorkspaceId] : (meeting.workspaceIds || [])
       );
       if (res.success) {
@@ -122,8 +139,8 @@ export default function MeetingDetailPage() {
       } else {
         toast({ variant: 'destructive', title: 'Test Failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsTesting(false);
     }
@@ -131,11 +148,11 @@ export default function MeetingDetailPage() {
 
   // Safe derivation of counts and conversion rates from context
   const invitedGuestsCount = React.useMemo(() => {
-    return registrants.filter((r: any) => r.source === 'invite' || r.source === 'one-click').length;
+    return registrants.filter(r => r.source === 'invite' || r.source === 'one-click').length;
   }, [registrants]);
 
   const registeredCount = React.useMemo(() => {
-    return registrants.filter((r: any) => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length;
+    return registrants.filter(r => r.status === 'registered' || r.status === 'approved' || r.status === 'attended').length;
   }, [registrants]);
 
   const attendedCount = React.useMemo(() => {
@@ -147,7 +164,7 @@ export default function MeetingDetailPage() {
   }, [meeting.facilitators]);
 
   const conversionRate = React.useMemo(() => {
-    const invitedRegisteredCount = registrants.filter((r: any) => 
+    const invitedRegisteredCount = registrants.filter(r => 
       (r.source === 'invite' || r.source === 'one-click') && 
       (r.status === 'registered' || r.status === 'approved' || r.status === 'attended')
     ).length;
@@ -170,8 +187,8 @@ export default function MeetingDetailPage() {
           ? 'Participants can now register for this meeting.'
           : 'Registration has been turned off for this meeting.',
       });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(error) });
     } finally {
       setIsTogglingRegistration(false);
     }
@@ -296,6 +313,19 @@ export default function MeetingDetailPage() {
   const { data: qrCodes, isLoading: isLoadingQR } = useCollection<QRCode>(qrQuery);
   const qrCode = qrCodes && qrCodes.length > 0 ? qrCodes[0] : null;
 
+  // Conference Session Query
+  const confSessionQuery = useMemoFirebase(() => {
+    if (!firestore || !meetingId) return null;
+    return query(
+      collection(firestore, 'conference_sessions'),
+      where('meetingId', '==', meetingId),
+      limit(1)
+    );
+  }, [firestore, meetingId]);
+
+  const { data: confSessions } = useCollection<ConferenceSession>(confSessionQuery);
+  const confSession = confSessions && confSessions.length > 0 ? confSessions[0] : null;
+
   const handleEndMeeting = async () => {
     if (!meeting || meeting.status === 'ended') return;
 
@@ -312,11 +342,11 @@ export default function MeetingDetailPage() {
           } else {
             throw new Error(result.error);
           }
-        } catch (error: any) {
+        } catch (error) {
           toast({
             variant: 'destructive',
             title: 'Failed to end meeting',
-            description: error.message || 'An unknown error occurred.',
+            description: getErrorMessage(error),
           });
         }
       });
@@ -455,6 +485,24 @@ export default function MeetingDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* AI Meeting Intelligence & Recording Tab */}
+          <MeetingIntelligenceTab
+            meetingId={meetingId}
+            workspaceId={activeWorkspaceId || ''}
+            organizationId={activeOrganizationId || undefined}
+            meetingTitle={meeting.title || meeting.entityName || 'Meeting'}
+          />
+
+          {/* CRM Context & Lead Scoring Tab */}
+          <MeetingCRMTab
+            meetingId={meetingId}
+            contactEmail={meeting.contactEmail}
+            contactName={meeting.contactName}
+          />
+
+          {/* Feedback & NPS Tab */}
+          <MeetingFeedbackTab meetingId={meetingId} />
 
           {/* Scheduled Reminders Display */}
           <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl">
@@ -645,6 +693,15 @@ export default function MeetingDetailPage() {
               />
             </Card>
           )}
+
+          {/* Conference Provider & Location Card */}
+          <ConferenceSessionCard
+            meetingId={meetingId}
+            workspaceId={activeWorkspaceId || 'default'}
+            organizationId={activeOrganizationId || undefined}
+            title={meeting.title || meeting.entityName || 'Meeting'}
+            session={confSession}
+          />
 
           {/* Distribution & Access */}
           <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">

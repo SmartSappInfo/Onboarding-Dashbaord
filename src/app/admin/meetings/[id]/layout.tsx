@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { doc, collection, query, updateDoc } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, type DocumentReference } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -25,8 +25,17 @@ import {
   Mail,
   Users,
   ShieldCheck,
-  BarChart3
+  BarChart3,
+  Activity,
+  UserCheck,
 } from 'lucide-react';
+import { MeetingActivityDrawer } from './components/MeetingActivityDrawer';
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unexpected error occurred.';
+}
 
 // Create shared MeetingContext
 export const MeetingContext = React.createContext<{
@@ -34,7 +43,7 @@ export const MeetingContext = React.createContext<{
   registrants: MeetingRegistrant[];
   attendees: Attendee[];
   isLoading: boolean;
-  meetingDocRef: any;
+  meetingDocRef: DocumentReference | null;
 } | null>(null);
 
 export function useMeetingContext() {
@@ -56,6 +65,7 @@ export default function MeetingDetailLayout({ children }: { children: React.Reac
   const [isEditingName, setIsEditingName] = React.useState(false);
   const [editingName, setEditingName] = React.useState('');
   const [isSavingName, setIsSavingName] = React.useState(false);
+  const [isActivityDrawerOpen, setIsActivityDrawerOpen] = React.useState(false);
 
   // Pathname guard: bypass details layout when accessing editing view
   const isEditPage = pathname.endsWith('/edit');
@@ -93,11 +103,11 @@ export default function MeetingDetailLayout({ children }: { children: React.Reac
         description: 'Meeting name has been successfully updated.',
       });
       setIsEditingName(false);
-    } catch (err: any) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: 'Update failed',
-        description: err.message || 'An error occurred.',
+        description: getErrorMessage(err),
       });
     } finally {
       setIsSavingName(false);
@@ -153,6 +163,7 @@ export default function MeetingDetailLayout({ children }: { children: React.Reac
   // Tab definitions
   const tabs = [
     { label: 'Meeting Details', path: `/admin/meetings/${meetingId}`, icon: Building },
+    { label: 'Participants', path: `/admin/meetings/${meetingId}/participants`, icon: UserCheck },
     { label: 'Invited Guests', path: `/admin/meetings/${meetingId}/invitations`, icon: Mail },
     { label: 'Registrants & Attendance', path: `/admin/meetings/${meetingId}/registrants`, icon: Users },
     { label: 'Facilitators', path: `/admin/meetings/${meetingId}/facilitators`, icon: ShieldCheck },
@@ -237,6 +248,15 @@ export default function MeetingDetailLayout({ children }: { children: React.Reac
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsActivityDrawerOpen(true)}
+                className="rounded-xl gap-2 h-10 border-slate-200 hover:bg-slate-50 active:scale-[0.97]"
+              >
+                <Activity className="h-4 w-4 text-slate-600" />
+                <span className="text-slate-700 font-semibold text-xs">Activity Stream</span>
+              </Button>
               <Button asChild variant="outline" size="sm" className="rounded-xl gap-2 h-10 border-slate-200 hover:bg-slate-50">
                 <Link href={publicUrl} target="_blank">
                   <ExternalLink className="h-4 w-4 text-slate-600" />
@@ -283,6 +303,13 @@ export default function MeetingDetailLayout({ children }: { children: React.Reac
             </div>
           </div>
         </div>
+
+        {/* Activity Audit Drawer */}
+        <MeetingActivityDrawer
+          open={isActivityDrawerOpen}
+          onOpenChange={setIsActivityDrawerOpen}
+          meetingId={meetingId}
+        />
       </div>
     </MeetingContext.Provider>
   );
