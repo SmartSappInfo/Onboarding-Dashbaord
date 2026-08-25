@@ -4,22 +4,26 @@
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
  * 
  * 1. Public Reader Security & Scoping:
- *    Queries published flipbooks by `slug` or `id`. Ensures anonymous readers can access
+ *    Queries published publications by `slug` or `id`. Ensures anonymous readers can access
  *    only published content (`status === 'published'`) without exposing internal workspace IDs.
- * 2. High-Load Memory Safety & Page Virtualization:
+ * 2. Viewer Engine 2.0 Integration:
+ *    Delegates rendering and navigation to modular `<ViewerContainer>` and `<ViewerToolbar>`,
+ *    supporting 3 interchangeable modes (`flipbook`, `presentation`, `continuous`) (PRD Section 40).
+ * 3. High-Load Memory Safety & Page Virtualization:
  *    Mounts a virtual window of current page +/- 2 pages in DOM, cleaning up unused canvas
  *    and image resources to prevent memory spikes on 100+ page documents.
- * 3. Mobile Responsiveness & Touch Target Bounds:
- *    Auto-reflows from double-page spread on desktop (w > 768px) to single-page portrait
- *    presentation on mobile (w <= 768px). All toolbar buttons enforce `min-h-[44px]`.
- * 4. Strict Typing Standard:
- *    No `any` or `any[]` types are permitted.
+ * 4. Multi-Touch Gesture Engine & Accessibility:
+ *    Supports pinch zoom ($1.0\times$ to $3.0\times$), bounded panning, double-tap zoom toggle,
+ *    keyboard shortcuts, procedural Web Audio sound effects, and high-contrast styling.
+ * 5. Strict Typing Standard:
+ *    Zero `any` or `any[]` types are permitted.
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { FlipbookConfig, FlipbookPage, FlipbookHotspot } from '@/lib/types/flipbook-types';
+import type { ViewerMode } from '@/lib/types/document-types';
 import { 
   submitDocumentLeadAction, 
   verifyDocumentPasscodeAction, 
@@ -29,34 +33,20 @@ import { initializeClientSession, ClientSessionContext } from '@/lib/documents/s
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  BookOpen, ChevronLeft, ChevronRight, Download, Maximize, 
-  Volume2, VolumeX, Lock, Grid, Video, ExternalLink, Sparkles, Search
+  BookOpen, Lock, Sparkles, X, ExternalLink, Video 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { LikeButton } from '@/components/shared/LikeButton';
-import { ShareSocialDropdown } from '@/components/shared/ShareSocialDropdown';
 import { DocumentSearchBar } from '@/components/documents/DocumentSearchBar';
+import { ViewerToolbar } from '@/components/documents/viewer/ViewerToolbar';
+import { ViewerContainer } from '@/components/documents/viewer/ViewerContainer';
+import { useViewerAudio } from '@/components/documents/viewer/useViewerAudio';
+import { useViewerGestures } from '@/components/documents/viewer/useViewerGestures';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { DocumentLayerOverlay } from '@/components/documents/DocumentLayerOverlay';
-
-function isDirectImageFormat(url?: string): boolean {
-  if (!url) return false;
-  const clean = url.split('?')[0].toLowerCase();
-  return (
-    clean.endsWith('.png') ||
-    clean.endsWith('.jpg') ||
-    clean.endsWith('.jpeg') ||
-    clean.endsWith('.webp') ||
-    clean.endsWith('.gif') ||
-    clean.endsWith('.svg')
-  );
-}
-
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 interface FlipbookReaderClientProps {
@@ -75,14 +65,15 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   // Client Session Context (Visitor & Session Tracking)
   const [sessionCtx, setSessionCtx] = useState<ClientSessionContext | null>(null);
 
-  // PDF Canvas Renderer State (Strictly Typed)
+  // PDF Canvas Renderer State
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
 
-  // Reader Navigation State
+  // Viewer Engine 2.0 Modes & Customization
+  const [viewerMode, setViewerMode] = useState<ViewerMode>('flipbook');
+  const [isHighContrast, setIsHighContrast] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -103,23 +94,32 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   // Active Hotspot Popover State
   const [activeHotspot, setActiveHotspot] = useState<FlipbookHotspot | null>(null);
 
-  // Mobile Touch Swipe Gesture References
-  const touchStartXRef = useRef<number | null>(null);
+  // Procedural Web Audio Engine
+  const { isMuted, toggleMute, playPageFlipSound } = useViewerAudio({
+    soundEnabled: flipbook?.style?.soundEnabled,
+  });
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
-    if (deltaX > 50) {
-      handlePrev();
-    } else if (deltaX < -50) {
-      handleNext();
-    }
-    touchStartXRef.current = null;
-  };
+  // Multi-Touch Gesture & Zoom Engine
+  const {
+    zoomScale,
+    panOffset,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    navigateNext,
+    navigatePrev,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useViewerGestures({
+    pageCount: flipbook?.pageCount || 1,
+    currentPage,
+    onPageChange: (pageNum) => {
+      setCurrentPage(pageNum);
+      playPageFlipSound();
+    },
+    step: isMobile || viewerMode === 'presentation' || viewerMode === 'single_page' ? 1 : 2,
+  });
 
   // Initialize client session metrics on mount
   useEffect(() => {
@@ -133,157 +133,141 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   // Detect mobile viewport
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      setIsMobile(window.innerWidth < 768);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch Flipbook Document & Pages
+  // Fetch Flipbook Configuration from Firestore
   useEffect(() => {
     if (!firestore || !slug) return;
-    setIsLoading(true);
-
-    async function loadData() {
-      try {
-        const col = collection(firestore!, 'flipbooks');
-        let q = query(col, where('slug', '==', slug));
-        let snap = await getDocs(q);
-
-        if (snap.empty) {
-          q = query(col, where('__name__', '==', slug));
-          snap = await getDocs(q);
-        }
-
-        // Check documents collection as fallback
-        if (snap.empty) {
-          const docCol = collection(firestore!, 'documents');
-          let docQ = query(docCol, where('slug', '==', slug));
-          let docSnap = await getDocs(docQ);
-          if (docSnap.empty) {
-            docQ = query(docCol, where('__name__', '==', slug));
-            docSnap = await getDocs(docQ);
-          }
-          if (!docSnap.empty) {
-            snap = docSnap;
-          }
-        }
-
-        if (snap.empty) {
-          setError('Flipbook publication not found');
-          setIsLoading(false);
-          return;
-        }
-
-        const fbData = snap.docs[0].data() as FlipbookConfig;
-        if (fbData.status?.toLowerCase() !== 'published') {
-          setError('This publication is currently in draft mode.');
-          setIsLoading(false);
-          return;
-        }
-
-        setFlipbook(fbData);
-        if (!fbData.password) setIsUnlocked(true);
-
-        // Fetch pages
-        const pagesCol = collection(firestore!, 'flipbook_pages');
-        const pagesQuery = query(pagesCol, where('flipbookId', '==', fbData.id));
-        const pagesSnap = await getDocs(pagesQuery);
-
-        const loadedPages = pagesSnap.docs.map(d => d.data() as FlipbookPage)
-          .sort((a, b) => a.pageNumber - b.pageNumber);
-
-        setPages(loadedPages);
-
-        // Record telemetry view event
-        if (sessionCtx) {
-          recordDocumentEventAction({
-            workspaceId: fbData.workspaceId,
-            documentId: fbData.id,
-            sessionId: sessionCtx.sessionId,
-            visitorId: sessionCtx.visitorId,
-            contactId: sessionCtx.contactId,
-            distributionId: sessionCtx.distributionToken,
-            campaignId: sessionCtx.campaignId,
-            eventType: 'document_opened',
-            pageNumber: 1,
-            device: sessionCtx.device,
-            browser: sessionCtx.browser,
-            os: sessionCtx.os,
-          }).catch(() => {});
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Error loading reader';
-        setError(msg);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, sessionCtx]);
-
-  // Dynamic PDF document loading via pdfjs-dist
-  useEffect(() => {
-    if (!flipbook?.sourceFileUrl) return;
-    const url = flipbook.sourceFileUrl;
-    const isPdf = url.toLowerCase().includes('.pdf') || flipbook.sourceFileType === 'pdf';
-    if (!isPdf) return;
 
     let isMounted = true;
+    async function loadFlipbook() {
+      setIsLoading(true);
+      setError(null);
 
-    async function loadPdf() {
       try {
-        const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+        const colRef = collection(firestore!, 'flipbooks');
+        let snap = await getDocs(query(colRef, where('slug', '==', slug)));
 
-        const loadingTask = pdfjs.getDocument(url);
-        const docProxy = await loadingTask.promise;
+        if (snap.empty) {
+          snap = await getDocs(query(colRef, where('__name__', '==', slug)));
+        }
+
+        if (snap.empty) {
+          if (isMounted) {
+            setError('Flipbook publication not found. Please verify the URL or link.');
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const data = snap.docs[0].data() as FlipbookConfig;
+        const config: FlipbookConfig = {
+          ...data,
+          id: snap.docs[0].id || 'fb_doc',
+        };
+
+        if (config.status && config.status !== 'published') {
+          if (isMounted) {
+            setError('This publication is currently in draft mode or unavailable.');
+            setIsLoading(false);
+          }
+          return;
+        }
+
         if (isMounted) {
-          setPdfDoc(docProxy);
-          if (docProxy.numPages > 0) {
-            setFlipbook(prev => prev ? { ...prev, pageCount: docProxy.numPages } : null);
+          setFlipbook(config);
+          const isProtected = !!config.password;
+          setIsUnlocked(!isProtected);
+
+          if (config.style?.pageStyle === 'single') {
+            setViewerMode('presentation');
           }
+
+          // Fetch Pages Sub-collection
+          const pagesRef = collection(firestore!, 'flipbook_pages');
+          const pagesSnap = await getDocs(
+            query(pagesRef, where('flipbookId', '==', config.id))
+          );
+
+          if (!pagesSnap.empty) {
+            const pageList: FlipbookPage[] = pagesSnap.docs
+              .map((d) => ({
+                id: d.id,
+                flipbookId: config.id,
+                workspaceId: config.workspaceId,
+                pageNumber: (d.data().pageNumber as number) || 1,
+                imageUrl: d.data().imageUrl as string,
+                thumbnailUrl: d.data().thumbnailUrl as string,
+                width: (d.data().width as number) || 800,
+                height: (d.data().height as number) || 1130,
+                aspectRatio: (d.data().aspectRatio as number) || 1.414,
+                extractedText: d.data().extractedText as string,
+                createdAt: (d.data().createdAt as string) || new Date().toISOString(),
+              }))
+              .sort((a, b) => a.pageNumber - b.pageNumber);
+
+            setPages(pageList);
+          }
+
+          setIsLoading(false);
         }
       } catch (err) {
-        console.warn('PDF loading via pdfjs-dist failed, falling back to document embed viewer:', err);
+        console.error('Error fetching flipbook data:', err);
+        if (isMounted) {
+          setError('Failed to load publication. Please try refreshing.');
+          setIsLoading(false);
+        }
       }
     }
 
-    loadPdf();
+    loadFlipbook();
     return () => { isMounted = false; };
-  }, [flipbook?.sourceFileUrl, flipbook?.sourceFileType]);
+  }, [slug]);
 
-  // Render current PDF page onto canvas
+  // Telemetry: Document Opened
   useEffect(() => {
-    if (!pdfDoc) return;
-    const activeDoc = pdfDoc;
-    let isMounted = true;
+    if (!flipbook || !sessionCtx || !isUnlocked) return;
 
-    async function renderCanvasPage() {
-      try {
-        const page = await activeDoc.getPage(currentPage);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = canvasRef.current;
-        if (!canvas || !isMounted) return;
+    recordDocumentEventAction({
+      workspaceId: flipbook.workspaceId,
+      documentId: flipbook.id,
+      sessionId: sessionCtx.sessionId,
+      visitorId: sessionCtx.visitorId,
+      contactId: sessionCtx.contactId,
+      distributionId: sessionCtx.distributionToken,
+      campaignId: sessionCtx.campaignId,
+      eventType: 'document_opened',
+      pageNumber: currentPage,
+      device: sessionCtx.device,
+      browser: sessionCtx.browser,
+      os: sessionCtx.os,
+    }).catch(() => {});
+  }, [flipbook, sessionCtx, isUnlocked]);
 
-        const context = canvas.getContext('2d');
-        if (context) {
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await page.render({ canvasContext: context, viewport } as any).promise;
-        }
-      } catch (err) {
-        console.error('Error rendering PDF page on canvas:', err);
-      }
-    }
+  // Telemetry: Page Viewed
+  useEffect(() => {
+    if (!flipbook || !sessionCtx || !isUnlocked) return;
 
-    renderCanvasPage();
-    return () => { isMounted = false; };
-  }, [pdfDoc, currentPage]);
+    recordDocumentEventAction({
+      workspaceId: flipbook.workspaceId,
+      documentId: flipbook.id,
+      sessionId: sessionCtx.sessionId,
+      visitorId: sessionCtx.visitorId,
+      contactId: sessionCtx.contactId,
+      distributionId: sessionCtx.distributionToken,
+      campaignId: sessionCtx.campaignId,
+      eventType: 'page_viewed',
+      pageNumber: currentPage,
+      device: sessionCtx.device,
+      browser: sessionCtx.browser,
+      os: sessionCtx.os,
+    }).catch(() => {});
+  }, [currentPage, flipbook, sessionCtx, isUnlocked]);
 
   // Lead Gate Threshold Evaluation
   useEffect(() => {
@@ -294,131 +278,94 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
     }
   }, [currentPage, flipbook, isLeadPassed]);
 
-  // Play Page Turn Audio Effect
-  const playFlipSound = () => {
-    if (isSoundMuted || !flipbook?.style?.soundEnabled) return;
-    try {
-      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(() => {});
-    } catch {}
-  };
-
-  const handleNext = () => {
-    if (!flipbook) return;
-    const step = isMobile || flipbook.style?.pageStyle === 'single' ? 1 : 2;
-    if (currentPage + step <= (flipbook.pageCount || 1)) {
-      const nextPageNum = currentPage + step;
-      setCurrentPage(nextPageNum);
-      playFlipSound();
-      if (sessionCtx) {
-        recordDocumentEventAction({
-          workspaceId: flipbook.workspaceId,
-          documentId: flipbook.id,
-          sessionId: sessionCtx.sessionId,
-          visitorId: sessionCtx.visitorId,
-          contactId: sessionCtx.contactId,
-          distributionId: sessionCtx.distributionToken,
-          campaignId: sessionCtx.campaignId,
-          eventType: 'page_flipped',
-          pageNumber: nextPageNum,
-          previousPage: currentPage,
-          nextPage: nextPageNum,
-          device: sessionCtx.device,
-          browser: sessionCtx.browser,
-          os: sessionCtx.os,
-        }).catch(() => {});
-      }
-    }
-  };
-
-  const handlePrev = () => {
-    if (!flipbook) return;
-    const step = isMobile || flipbook.style?.pageStyle === 'single' ? 1 : 2;
-    if (currentPage - step >= 1) {
-      setCurrentPage(prev => prev - step);
-      playFlipSound();
-    }
-  };
-
-  const handleLeadSubmit = async () => {
-    if (!flipbook || !leadEmail.trim()) {
-      toast({ variant: 'destructive', title: 'Email Required', description: 'Please enter your email to continue reading.' });
-      return;
-    }
-
-    setIsSubmittingLead(true);
-    try {
-      const res = await submitDocumentLeadAction({
-        documentId: flipbook.id,
-        workspaceId: flipbook.workspaceId,
-        name: leadName.trim(),
-        email: leadEmail.trim(),
-        phone: leadPhone.trim(),
-      });
-
-      if (res.success) {
-        toast({ title: 'Access Unlocked', description: 'Thank you for registering! You may now continue reading.' });
-        setIsLeadPassed(true);
-        setIsLeadGateOpen(false);
-        if (sessionCtx) {
-          recordDocumentEventAction({
-            workspaceId: flipbook.workspaceId,
-            documentId: flipbook.id,
-            sessionId: sessionCtx.sessionId,
-            visitorId: sessionCtx.visitorId,
-            contactId: sessionCtx.contactId,
-            distributionId: sessionCtx.distributionToken,
-            campaignId: sessionCtx.campaignId,
-            eventType: 'lead_gate_submitted',
-            pageNumber: currentPage,
-            device: sessionCtx.device,
-            browser: sessionCtx.browser,
-            os: sessionCtx.os,
-          }).catch(() => {});
-        }
-      } else {
-        toast({ variant: 'destructive', title: 'Submission Error', description: res.error || 'Could not verify lead details.' });
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error';
-      toast({ variant: 'destructive', title: 'Error', description: msg });
-    } finally {
-      setIsSubmittingLead(false);
-    }
-  };
-
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
+      }
     }
   };
 
+  const handleLeadSubmit = async () => {
+    if (!leadEmail.trim()) {
+      toast({ variant: 'destructive', title: 'Email Required', description: 'Please enter your email to continue reading.' });
+      return;
+    }
+
+    if (!flipbook) return;
+
+    setIsSubmittingLead(true);
+    try {
+      const res = await submitDocumentLeadAction({
+        workspaceId: flipbook.workspaceId,
+        documentId: flipbook.id,
+        email: leadEmail.trim(),
+        name: leadName.trim() || undefined,
+        phone: leadPhone.trim() || undefined,
+      });
+
+      if (res.success) {
+        setIsLeadPassed(true);
+        setIsLeadGateOpen(false);
+        toast({ title: 'Access Unlocked', description: 'Thank you! Enjoy reading the publication.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Submission Error', description: res.error || 'Could not verify details.' });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Submission Error', description: 'An unexpected error occurred.' });
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  const handleHotspotClick = (hs: FlipbookHotspot) => {
+    setActiveHotspot(hs);
+    if (sessionCtx && flipbook) {
+      recordDocumentEventAction({
+        workspaceId: flipbook.workspaceId,
+        documentId: flipbook.id,
+        sessionId: sessionCtx.sessionId,
+        visitorId: sessionCtx.visitorId,
+        contactId: sessionCtx.contactId,
+        distributionId: sessionCtx.distributionToken,
+        campaignId: sessionCtx.campaignId,
+        eventType: hs.type === 'video' ? 'video_started' : 'link_clicked',
+        pageNumber: hs.pageNumber,
+        elementId: hs.id,
+        metadata: {
+          targetUrl: hs.targetUrl || '',
+          layerTitle: hs.title || '',
+        },
+      }).catch(() => {});
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-3">
-        <BookOpen className="h-10 w-10 text-indigo-400 animate-pulse" />
-        <span className="text-sm font-semibold text-slate-300">Loading Interactive Publication...</span>
+      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
+        <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-slate-400 tracking-wider uppercase">Loading publication...</p>
       </div>
     );
   }
 
   if (error || !flipbook) {
     return (
-      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-3 p-4 text-center">
-        <BookOpen className="h-12 w-12 text-rose-500 mb-2" />
-        <h2 className="text-xl font-bold">{error || 'Publication Not Found'}</h2>
-        <p className="text-sm text-slate-400 max-w-sm">This flipbook link may have expired or is not publicly published.</p>
+      <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4 text-center space-y-4">
+        <BookOpen className="h-12 w-12 text-rose-500" />
+        <h2 className="text-xl font-bold">{error || 'Publication Unavailable'}</h2>
+        <p className="text-xs text-slate-400 max-w-sm">
+          The requested document could not be displayed. It may be unpublished or the link has expired.
+        </p>
       </div>
     );
   }
 
-  // Password Protection Gate
+  // Password Unlock Gate
   if (!isUnlocked) {
     return (
       <div className="h-screen w-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
@@ -451,12 +398,12 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
                   const res = await verifyDocumentPasscodeAction(flipbook.id, enteredPassword.trim());
                   if (res.success) {
                     setIsUnlocked(true);
-                    toast({ title: 'Access Granted', description: 'Welcome to the publication.' });
+                    toast({ title: 'Access Granted', description: 'Passcode verified successfully.' });
                   } else {
-                    toast({ variant: 'destructive', title: 'Invalid Passcode', description: res.error || 'The passcode you entered is incorrect.' });
+                    toast({ variant: 'destructive', title: 'Incorrect Passcode', description: 'The passcode entered is invalid.' });
                   }
                 } catch {
-                  toast({ variant: 'destructive', title: 'Verification Error', description: 'Unable to verify passcode.' });
+                  toast({ variant: 'destructive', title: 'Verification Error', description: 'Could not verify passcode.' });
                 } finally {
                   setIsVerifyingPassword(false);
                 }
@@ -473,241 +420,166 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
   return (
     <div 
-      className="h-screen w-screen flex flex-col overflow-hidden relative text-white select-none"
-      style={{ backgroundColor: flipbook.style?.backgroundColor || '#0f172a' }}
+      className={`h-screen w-screen flex flex-col overflow-hidden relative text-white select-none ${
+        isHighContrast ? 'bg-black text-yellow-300' : ''
+      }`}
+      style={{ backgroundColor: isHighContrast ? '#000000' : (flipbook.style?.backgroundColor || '#0f172a') }}
     >
-      
-      {/* Top Header Controls Bar */}
-      <div className="h-16 border-b border-white/10 bg-black/40 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          {flipbook.style?.logoUrl ? (
-            <img src={flipbook.style.logoUrl} alt="Logo" className="h-8 object-contain" />
-          ) : (
-            <BookOpen className="h-6 w-6 text-indigo-400 shrink-0" />
-          )}
-          <h1 className="text-sm md:text-base font-black truncate max-w-xs md:max-w-md">{flipbook.title}</h1>
-        </div>
+      {/* ── Top Header Toolbar ──────────────────────────────────────────────── */}
+      <ViewerToolbar
+        title={flipbook.title}
+        logoUrl={flipbook.style?.logoUrl}
+        currentPage={currentPage}
+        pageCount={flipbook.pageCount || 1}
+        viewerMode={viewerMode}
+        onModeChange={setViewerMode}
+        zoomScale={zoomScale}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onResetZoom={resetZoom}
+        isMuted={isMuted}
+        onToggleMute={toggleMute}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        isHighContrast={isHighContrast}
+        onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenThumbnails={() => setIsThumbnailsOpen(!isThumbnailsOpen)}
+        onPageSelect={(p) => {
+          setCurrentPage(p);
+          playPageFlipSound();
+        }}
+        likesCount={flipbook.likesCount || 0}
+        sourceFileUrl={flipbook.sourceFileUrl}
+        enableDownload={flipbook.style?.enableDownloadPdf}
+      />
 
-        <div className="flex items-center gap-2">
-          <LikeButton initialLikes={flipbook.likesCount || 0} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
-          <ShareSocialDropdown title={flipbook.title} url={typeof window !== 'undefined' ? window.location.href : ''} className="h-10 px-3 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20" />
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSearchOpen(true)}
-            className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
-            title="Search Publication"
-          >
-            <Search className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsThumbnailsOpen(!isThumbnailsOpen)}
-            className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
-            title="Thumbnails Grid"
-          >
-            <Grid className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSoundMuted(!isSoundMuted)}
-            className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
-            title="Toggle Flip Audio"
-          >
-            {isSoundMuted ? <VolumeX className="h-5 w-5 text-rose-400" /> : <Volume2 className="h-5 w-5 text-emerald-400" />}
-          </Button>
-
-          {flipbook.style?.enableDownloadPdf && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => window.open(flipbook.sourceFileUrl, '_blank')}
-              className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
-              title="Download Original PDF"
-            >
-              <Download className="h-5 w-5" />
-            </Button>
-          )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullscreen}
-            className="h-11 w-11 rounded-xl text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
-            title="Toggle Fullscreen"
-          >
-            <Maximize className={`h-5 w-5 ${isFullscreen ? 'text-indigo-400' : ''}`} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Interactive Flipbook Stage */}
-      <div 
+      {/* ── Main Multi-Mode Viewer Container ────────────────────────────────── */}
+      <ViewerContainer
+        mode={viewerMode}
+        currentPage={currentPage}
+        pageCount={flipbook.pageCount || 1}
+        pages={pages}
+        hotspots={flipbook.hotspots || []}
+        onHotspotClick={handleHotspotClick}
+        onNextPage={navigateNext}
+        onPrevPage={navigatePrev}
+        onPageSelect={(p) => {
+          setCurrentPage(p);
+          playPageFlipSound();
+        }}
+        zoomScale={zoomScale}
+        panOffset={panOffset}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex-1 min-h-0 flex items-center justify-center relative p-4 md:p-8 overflow-hidden"
+        isHighContrast={isHighContrast}
+        canvasRef={canvasRef}
+      />
+
+      {/* ── Bottom Page Slider Footer ───────────────────────────────────────── */}
+      <footer 
+        className="h-16 border-t border-white/10 bg-black/50 backdrop-blur-xl px-6 flex items-center justify-between z-30 shrink-0 text-xs font-bold select-none"
+        role="navigation"
+        aria-label="Bottom page scrubber"
       >
-        
-        {/* Prev Page Navigation Arrow */}
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={currentPage <= 1}
-          onClick={handlePrev}
-          className="absolute left-4 z-20 h-14 w-14 rounded-2xl bg-black/40 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white disabled:opacity-20 min-h-[44px] min-w-[44px] shadow-2xl"
-        >
-          <ChevronLeft className="h-8 w-8" />
-        </Button>
-
-        {/* Next Page Navigation Arrow */}
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={currentPage >= (flipbook.pageCount || 1)}
-          onClick={handleNext}
-          className="absolute right-4 z-20 h-14 w-14 rounded-2xl bg-black/40 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white disabled:opacity-20 min-h-[44px] min-w-[44px] shadow-2xl"
-        >
-          <ChevronRight className="h-8 w-8" />
-        </Button>
-
-        {/* Page Render Canvas Spread */}
-        <div className="h-full max-h-[85vh] aspect-[3/4] md:aspect-[3/2] bg-white rounded-2xl shadow-2xl flex relative overflow-hidden text-slate-900 border border-white/10">
-          
-          {/* 3D Page Canvas Container */}
-          <div className="flex-1 h-full relative flex items-center justify-center p-4 text-center overflow-hidden">
-            {(() => {
-              // 1. Pre-rendered page image
-              const activePage = pages.find(p => p.pageNumber === currentPage);
-              if (activePage?.imageUrl) {
-                return (
-                  <img
-                    src={activePage.imageUrl}
-                    alt={`Page ${currentPage}`}
-                    className="max-h-full max-w-full object-contain rounded-xl shadow-md select-none"
-                  />
-                );
-              }
-
-              // 2. Direct Image source file
-              if (flipbook.sourceFileUrl && isDirectImageFormat(flipbook.sourceFileUrl)) {
-                return (
-                  <img
-                    src={flipbook.sourceFileUrl}
-                    alt={flipbook.title}
-                    className="max-h-full max-w-full object-contain rounded-xl shadow-md select-none"
-                  />
-                );
-              }
-
-              // 3. Dynamic PDF page rendering on canvas via pdfjs-dist
-              if (pdfDoc) {
-                return (
-                  <canvas
-                    ref={canvasRef}
-                    className="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300 select-none"
-                  />
-                );
-              }
-
-              // 4. Document viewer iframe fallback (Google Docs / Office / Web Embed)
-              if (flipbook.sourceFileUrl) {
-                const viewerUrl = flipbook.sourceFileUrl.startsWith('http')
-                  ? `https://docs.google.com/gview?url=${encodeURIComponent(flipbook.sourceFileUrl)}&embedded=true`
-                  : flipbook.sourceFileUrl;
-
-                return (
-                  <iframe
-                    src={viewerUrl}
-                    title={flipbook.title}
-                    className="w-full h-full border-none rounded-xl bg-white shadow-md"
-                  />
-                );
-              }
-
-              // 5. Default Fallback Card
-              return (
-                <div className="space-y-4 max-w-md p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
-                  <BookOpen className="h-16 w-16 text-indigo-600 mx-auto" />
-                  <h2 className="text-2xl font-black text-slate-900">{flipbook.title}</h2>
-                  <p className="text-sm text-slate-600">Page {currentPage} of {flipbook.pageCount || 1}</p>
-                </div>
-              );
-            })()}
-
-            {/* Interactive Normalized Layer Overlay */}
-            <DocumentLayerOverlay
-              hotspots={flipbook.hotspots || []}
-              currentPage={currentPage}
-              onHotspotClick={(hs) => {
-                setActiveHotspot(hs);
-                if (sessionCtx && flipbook) {
-                  recordDocumentEventAction({
-                    workspaceId: flipbook.workspaceId,
-                    documentId: flipbook.id,
-                    sessionId: sessionCtx.sessionId,
-                    visitorId: sessionCtx.visitorId,
-                    contactId: sessionCtx.contactId,
-                    distributionId: sessionCtx.distributionToken,
-                    campaignId: sessionCtx.campaignId,
-                    eventType: hs.type === 'video' ? 'video_started' : 'link_clicked',
-                    pageNumber: hs.pageNumber,
-                    elementId: hs.id,
-                    metadata: {
-                      targetUrl: hs.targetUrl || '',
-                      layerTitle: hs.title || '',
-                    },
-                  }).catch(() => {});
-                }
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Footer Navigation Bar */}
-      <div className="h-16 border-t border-white/10 bg-black/40 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0 text-xs font-bold">
         <span>Page {currentPage} of {flipbook.pageCount || 1}</span>
-        
-        {/* Page Slider */}
+
         <input
           type="range"
           min={1}
           max={flipbook.pageCount || 1}
           value={currentPage}
-          onChange={(e) => setCurrentPage(parseInt(e.target.value, 10))}
-          className="w-48 md:w-80 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+          onChange={(e) => {
+            const next = parseInt(e.target.value, 10);
+            setCurrentPage(next);
+            playPageFlipSound();
+          }}
+          className="w-48 sm:w-80 h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-indigo-500 min-h-[44px]"
+          aria-label="Jump to page"
         />
 
-        <span className="hidden sm:inline text-slate-400">Flipbook Reader</span>
-      </div>
+        <span className="text-[11px] font-mono text-slate-400">
+          {Math.round((currentPage / (flipbook.pageCount || 1)) * 100)}% read
+        </span>
+      </footer>
 
-      {/* Hotspot Target Modal */}
+      {/* ── Thumbnails Drawer Grid ─────────────────────────────────────────── */}
+      {isThumbnailsOpen && (
+        <div className="absolute inset-x-0 bottom-16 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-white/10 p-4 max-h-48 overflow-x-auto flex gap-3 shadow-2xl custom-scrollbar animate-in slide-in-from-bottom duration-200">
+          {pages.map((p) => (
+            <button
+              key={`thumb_${p.pageNumber}`}
+              type="button"
+              onClick={() => {
+                setCurrentPage(p.pageNumber);
+                playPageFlipSound();
+                setIsThumbnailsOpen(false);
+              }}
+              className={`relative flex-shrink-0 aspect-[1/1.41] h-36 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 min-h-[44px] min-w-[44px] ${
+                currentPage === p.pageNumber
+                  ? 'border-indigo-500 ring-2 ring-indigo-500/50 shadow-lg'
+                  : 'border-white/10 opacity-70 hover:opacity-100'
+              }`}
+            >
+              {p.thumbnailUrl || p.imageUrl ? (
+                <img
+                  src={p.thumbnailUrl || p.imageUrl}
+                  alt={`Thumbnail ${p.pageNumber}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-xs font-bold text-slate-400">
+                  {p.pageNumber}
+                </div>
+              )}
+              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-[9px] font-bold text-white">
+                {p.pageNumber}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Active Hotspot Interactive Popover Modal ───────────────────────── */}
       {activeHotspot && (
-        <Dialog open={!!activeHotspot} onOpenChange={() => setActiveHotspot(null)}>
-          <DialogContent className="sm:max-w-xl rounded-3xl p-6 bg-slate-900 border-white/10 text-white shadow-2xl">
-            <DialogHeader className="text-left">
-              <DialogTitle className="text-lg font-black">{activeHotspot.title}</DialogTitle>
+        <Dialog open={!!activeHotspot} onOpenChange={(open) => !open && setActiveHotspot(null)}>
+          <DialogContent className="max-w-md rounded-3xl border-white/20 bg-slate-900 text-white p-6 shadow-2xl text-left">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
+                {activeHotspot.type === 'video' ? (
+                  <Video className="h-5 w-5 text-rose-400" />
+                ) : (
+                  <ExternalLink className="h-5 w-5 text-indigo-400" />
+                )}
+                {activeHotspot.title || 'Interactive Layer'}
+              </DialogTitle>
             </DialogHeader>
-            <div className="py-4">
-              {activeHotspot.type === 'video' && activeHotspot.targetUrl ? (
-                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+
+            <div className="space-y-4 pt-2">
+              {activeHotspot.type === 'video' ? (
+                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner">
                   <iframe
-                    src={activeHotspot.targetUrl.replace('watch?v=', 'embed/')}
-                    className="w-full h-full border-none"
+                    src={activeHotspot.targetUrl}
+                    title={activeHotspot.title || 'Video Player'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    className="w-full h-full border-none"
                   />
                 </div>
               ) : (
-                <div className="space-y-4 text-center">
-                  <p className="text-sm text-slate-300">Click below to open target link:</p>
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-300">
+                    Click the button below to navigate to the linked external resource:
+                  </p>
                   <Button
-                    onClick={() => window.open(activeHotspot.targetUrl, '_blank')}
-                    className="rounded-xl font-bold text-xs h-11 px-6 min-h-[44px]"
+                    onClick={() => {
+                      if (activeHotspot.targetUrl) {
+                        window.open(activeHotspot.targetUrl, '_blank', 'noopener,noreferrer');
+                      }
+                      setActiveHotspot(null);
+                    }}
+                    className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm min-h-[44px]"
                   >
                     Open Link Target <ExternalLink className="h-4 w-4 ml-2" />
                   </Button>
@@ -718,7 +590,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         </Dialog>
       )}
 
-      {/* Gated Lead Capture Modal */}
+      {/* ── Gated Lead Capture Modal ───────────────────────────────────────── */}
       {isLeadGateOpen && !isLeadPassed && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-slate-900 border border-white/10 p-8 rounded-3xl space-y-6 text-left shadow-2xl animate-in fade-in zoom-in-95">
@@ -769,7 +641,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         </div>
       )}
 
-      {/* In-Reader Full-Text Search Modal */}
+      {/* ── In-Reader Full-Text Search Modal ───────────────────────────────── */}
       <DocumentSearchBar
         open={isSearchOpen}
         onOpenChange={setIsSearchOpen}
@@ -779,10 +651,10 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         }))}
         onSelectPage={(pageNum) => {
           setCurrentPage(pageNum);
+          playPageFlipSound();
           setIsSearchOpen(false);
         }}
       />
-
     </div>
   );
 }
