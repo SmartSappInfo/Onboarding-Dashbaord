@@ -17,6 +17,9 @@ import {
     CalendarDays,
     StickyNote,
     Milestone,
+    BookOpen,
+    MousePointerClick,
+    Sparkles,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -129,6 +132,17 @@ const TRIGGER_GROUPS: { label: string; options: { value: AutomationTrigger; labe
         options: [
             { value: 'AUTOMATION_ENTERED', label: 'Automation Entered', icon: PlayIconPlaceholder, desc: 'Fires when a contact enters an automation flow.' },
             { value: 'AUTOMATION_COMPLETED', label: 'Automation Completed', icon: CheckSquareIconPlaceholder, desc: 'Fires when a contact completes an automation flow (reaches End Action).' },
+        ],
+    },
+    {
+        label: 'Document Experience',
+        options: [
+            { value: 'DOCUMENT_OPENED', label: 'Document Opened', icon: BookOpen, desc: 'Fires when a recipient or contact opens a document.' },
+            { value: 'DOCUMENT_COMPLETED', label: 'Document Completed (100%)', icon: CheckSquareIconPlaceholder, desc: 'Fires when a contact completes reading 100% of a document.' },
+            { value: 'DOCUMENT_HOTSPOT_CLICKED', label: 'Document CTA Clicked', icon: MousePointerClick, desc: 'Fires when a contact clicks a hotspot CTA or media button.' },
+            { value: 'DOCUMENT_LEAD_CAPTURED', label: 'Document Lead Captured', icon: Sparkles, desc: 'Fires when a contact submits an in-reader inquiry form.' },
+            { value: 'DOCUMENT_REVISITED', label: 'Document Revisited', icon: BookOpen, desc: 'Fires when a returning reader opens a publication again.' },
+            { value: 'DOCUMENT_THRESHOLD_REACHED', label: 'Score Threshold Reached', icon: Sparkles, desc: 'Fires when contact document engagement score reaches threshold.' },
         ],
     },
     {

@@ -225,7 +225,13 @@ export type AutomationTrigger =
   | 'DEAL_OWNER_CHANGED'
   | 'ENTITY_INACTIVE'
   | 'AUTOMATION_ENTERED'
-  | 'AUTOMATION_COMPLETED';
+  | 'AUTOMATION_COMPLETED'
+  | 'DOCUMENT_OPENED'
+  | 'DOCUMENT_COMPLETED'
+  | 'DOCUMENT_HOTSPOT_CLICKED'
+  | 'DOCUMENT_LEAD_CAPTURED'
+  | 'DOCUMENT_REVISITED'
+  | 'DOCUMENT_THRESHOLD_REACHED';
 
 /**
  * A single trigger entry within an automation's trigger list.

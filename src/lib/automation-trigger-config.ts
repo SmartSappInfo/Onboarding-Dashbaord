@@ -179,5 +179,31 @@ export function evaluateTriggerConfig(
     }
   }
 
+  // ── Document Engagement Triggers ──────────────────────────────────────────
+  const documentTriggers: AutomationTrigger[] = [
+    'DOCUMENT_OPENED',
+    'DOCUMENT_COMPLETED',
+    'DOCUMENT_HOTSPOT_CLICKED',
+    'DOCUMENT_LEAD_CAPTURED',
+    'DOCUMENT_REVISITED',
+    'DOCUMENT_THRESHOLD_REACHED',
+  ];
+
+  if (documentTriggers.includes(firingTrigger)) {
+    if (config.documentId && config.documentId !== 'all' && config.documentId !== payload.documentId) {
+      return false;
+    }
+
+    if (firingTrigger === 'DOCUMENT_HOTSPOT_CLICKED' && config.hotspotId && config.hotspotId !== payload.elementId) {
+      return false;
+    }
+
+    if (firingTrigger === 'DOCUMENT_THRESHOLD_REACHED') {
+      const score = (payload.engagementScore as number | undefined) ?? (payload.score as number | undefined) ?? 0;
+      const targetThreshold = (config.threshold as number) ?? 30;
+      if (score < targetThreshold) return false;
+    }
+  }
+
   return true;
 }

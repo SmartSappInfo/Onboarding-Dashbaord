@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert, Plus, StickyNote } from 'lucide-react';
+import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, DollarSign, ArrowRightLeft, Users, Link2, Settings2, Clock, Activity, ShieldAlert, Plus, StickyNote, BookOpen, MousePointerClick, Sparkles } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,12 @@ const TRIGGER_ICONS: Record<string, any> = {
     SCORE_CHANGED: Activity,
     DEAL_OWNER_CHANGED: Target,
     ENTITY_INACTIVE: Clock,
+    DOCUMENT_OPENED: BookOpen,
+    DOCUMENT_COMPLETED: CheckSquare,
+    DOCUMENT_HOTSPOT_CLICKED: MousePointerClick,
+    DOCUMENT_LEAD_CAPTURED: Sparkles,
+    DOCUMENT_REVISITED: BookOpen,
+    DOCUMENT_THRESHOLD_REACHED: Sparkles,
 };
 
 const TRIGGER_NAMES: Record<string, string> = {
@@ -90,6 +96,12 @@ const TRIGGER_NAMES: Record<string, string> = {
     SCORE_CHANGED: 'Score Changed',
     DEAL_OWNER_CHANGED: 'Deal Owner Changed',
     ENTITY_INACTIVE: 'Entity Inactive',
+    DOCUMENT_OPENED: 'Document Opened',
+    DOCUMENT_COMPLETED: 'Document Completed (100%)',
+    DOCUMENT_HOTSPOT_CLICKED: 'Document CTA Clicked',
+    DOCUMENT_LEAD_CAPTURED: 'Document Lead Captured',
+    DOCUMENT_REVISITED: 'Document Revisited',
+    DOCUMENT_THRESHOLD_REACHED: 'Document Score Threshold Reached',
 };
 
 /**

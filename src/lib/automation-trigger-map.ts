@@ -37,6 +37,12 @@ export const ACTIVITY_TO_AUTOMATION_TRIGGER: Record<string, AutomationTrigger> =
   score_changed: 'SCORE_CHANGED',
   deal_owner_changed: 'DEAL_OWNER_CHANGED',
   entity_inactive: 'ENTITY_INACTIVE',
+  document_opened: 'DOCUMENT_OPENED',
+  document_completed: 'DOCUMENT_COMPLETED',
+  document_hotspot_clicked: 'DOCUMENT_HOTSPOT_CLICKED',
+  document_lead_captured: 'DOCUMENT_LEAD_CAPTURED',
+  document_revisited: 'DOCUMENT_REVISITED',
+  document_threshold_reached: 'DOCUMENT_THRESHOLD_REACHED',
 };
 
 export function resolveAutomationTrigger(activityType: string): AutomationTrigger | undefined {
