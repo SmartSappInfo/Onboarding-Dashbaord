@@ -219,13 +219,24 @@ export default function FlipbookStudioClient() {
               </p>
             </div>
             
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="rounded-xl font-bold text-xs gap-2 h-11 px-5 shadow-lg active:scale-[0.97] transition-all min-h-[44px] shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-              Create Flipbook
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/admin/documents')}
+                className="rounded-xl font-bold text-xs gap-2 h-11 px-4 min-h-[44px]"
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+                Document Studio 2.0
+              </Button>
+
+              <Button
+                onClick={() => setIsCreateOpen(true)}
+                className="rounded-xl font-bold text-xs gap-2 h-11 px-5 shadow-lg active:scale-[0.97] transition-all min-h-[44px]"
+              >
+                <Plus className="h-4 w-4" />
+                Create Flipbook
+              </Button>
+            </div>
           </div>
 
           {/* KPI Analytics Overview */}

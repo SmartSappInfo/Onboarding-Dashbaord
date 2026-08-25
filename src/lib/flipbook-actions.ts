@@ -3,25 +3,31 @@
 /**
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
  * 
- * 1. Multi-Tenant Workspace Authorization:
- *    All server actions strictly validate that the calling user belongs to `workspaceId`
- *    before performing any mutations or reads on `flipbooks` or `flipbook_pages`.
- * 2. High-Load Resilience & Batch Safety:
- *    Batch updates (e.g. deleting pages or updating hotspot configurations) enforce
- *    a strict chunked limit of 150 operations per batch to prevent Firestore quotas exhaustion.
- * 3. Security & Input Sanitization:
- *    Slugs are sanitized to lower-case alphanumeric hyphens. Lead capture submissions
- *    are validated with email/phone regex standards to protect against injection/spam.
+ * 1. Backward Compatibility Wrapper for Flipbook Actions:
+ *    Delegates all operations to `document-actions.ts` and `event-collector.ts`
+ *    while preserving legacy action signatures for existing callers and test suites.
+ * 2. Multi-Tenant Workspace Authorization:
+ *    All server actions strictly validate workspace boundaries before mutating resources.
+ * 3. High-Load Resilience:
+ *    Chunked batch limits (150 ops) and atomic increments are enforced across all operations.
+ * 4. Strict Typing Standard:
+ *    Zero `any` or `any[]` types are permitted.
  */
 
-import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { 
+  createDocumentAction, 
+  updateDocumentAction, 
+  deleteDocumentAction, 
+  submitDocumentLeadAction,
+  verifyDocumentPasscodeAction,
+  recordDocumentEventAction
+} from '@/lib/document-actions';
+import { ingestDocumentEvent } from '@/lib/documents/event-collector';
 import type { 
   FlipbookConfig, 
-  FlipbookPage, 
-  FlipbookLeadSubmission,
   FlipbookAnalyticsEvent 
 } from '@/lib/types/flipbook-types';
+import type { DocumentSourceType, DocumentEventType } from '@/lib/types/document-types';
 
 export interface CreateFlipbookPayload {
   workspaceId: string;
@@ -57,170 +63,59 @@ export interface UpdateFlipbookPayload {
   userId: string;
 }
 
+/**
+ * Legacy wrapper: Creates a new flipbook (and its underlying Document aggregate).
+ */
 export async function createFlipbookAction(payload: CreateFlipbookPayload): Promise<{ success: boolean; flipbookId?: string; error?: string }> {
-  try {
-    if (!payload.workspaceId || !payload.title || !payload.sourceFileUrl) {
-      return { success: false, error: 'Required fields missing' };
-    }
+  const result = await createDocumentAction({
+    workspaceId: payload.workspaceId,
+    title: payload.title,
+    description: payload.description,
+    sourceFileUrl: payload.sourceFileUrl,
+    sourceFileType: payload.sourceFileType as DocumentSourceType,
+    sourceFileName: payload.sourceFileName,
+    pageCount: payload.pageCount,
+    aspectRatio: payload.aspectRatio,
+    userId: payload.userId,
+    pages: payload.pages,
+  });
 
-    const id = adminDb.collection('flipbooks').doc().id;
-    const defaultSlug = payload.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || id.slice(0, 8);
-
-    const now = new Date().toISOString();
-
-    const newFlipbook: FlipbookConfig = {
-      id,
-      workspaceId: payload.workspaceId,
-      title: payload.title,
-      description: payload.description || '',
-      slug: defaultSlug,
-      status: 'draft',
-      sourceFileUrl: payload.sourceFileUrl,
-      sourceFileType: payload.sourceFileType,
-      sourceFileName: payload.sourceFileName,
-      pageCount: payload.pageCount || 1,
-      aspectRatio: payload.aspectRatio || 1.414,
-      style: {
-        pageStyle: 'magazine',
-        soundEnabled: true,
-        hardcover: false,
-        backgroundColor: '#f1f5f9',
-        enableDownloadPdf: true,
-        enablePrint: true,
-        enableShare: true,
-        enableSearch: true,
-        enableThumbnails: true,
-      },
-      hotspots: [],
-      leadGate: {
-        enabled: false,
-        triggerPage: 0,
-        title: 'Unlock Full Access',
-        description: 'Enter your contact details to continue reading.',
-        requireName: true,
-        requireEmail: true,
-        requirePhone: false,
-        ctaText: 'Unlock Reader',
-      },
-      createdAt: now,
-      updatedAt: now,
-      createdBy: payload.userId,
-      viewsCount: 0,
-      leadsCount: 0,
-      flipsCount: 0,
-    };
-
-    await adminDb.collection('flipbooks').doc(id).set(newFlipbook);
-
-    // Save rendered pages in chunked batches of 150
-    if (payload.pages && payload.pages.length > 0) {
-      const BATCH_SIZE = 150;
-      for (let i = 0; i < payload.pages.length; i += BATCH_SIZE) {
-        const chunk = payload.pages.slice(i, i + BATCH_SIZE);
-        const batch = adminDb.batch();
-        chunk.forEach((p) => {
-          const pageDocId = `${id}_page_${p.pageNumber}`;
-          const pageRef = adminDb.collection('flipbook_pages').doc(pageDocId);
-          const pageData: FlipbookPage = {
-            id: pageDocId,
-            flipbookId: id,
-            pageNumber: p.pageNumber,
-            imageUrl: p.imageUrl,
-            thumbnailUrl: p.thumbnailUrl || p.imageUrl,
-            width: p.width,
-            height: p.height,
-            extractedText: p.extractedText || '',
-          };
-          batch.set(pageRef, pageData);
-        });
-        await batch.commit();
-      }
-    }
-
-    return { success: true, flipbookId: id };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to create flipbook';
-    return { success: false, error: msg };
-  }
+  return {
+    success: result.success,
+    flipbookId: result.documentId,
+    error: result.error,
+  };
 }
 
+/**
+ * Legacy wrapper: Updates an existing flipbook.
+ */
 export async function updateFlipbookAction(payload: UpdateFlipbookPayload): Promise<{ success: boolean; error?: string }> {
-  try {
-    if (!payload.flipbookId || !payload.workspaceId) {
-      return { success: false, error: 'Flipbook ID and workspace ID required' };
-    }
-
-    const docRef = adminDb.collection('flipbooks').doc(payload.flipbookId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) {
-      return { success: false, error: 'Flipbook not found' };
-    }
-
-    const existing = snap.data() as FlipbookConfig;
-    if (existing.workspaceId !== payload.workspaceId) {
-      return { success: false, error: 'Unauthorized workspace access' };
-    }
-
-    const updates: Partial<FlipbookConfig> = {
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (payload.title !== undefined) updates.title = payload.title;
-    if (payload.description !== undefined) updates.description = payload.description;
-    if (payload.slug !== undefined) {
-      updates.slug = payload.slug.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-    }
-    if (payload.status !== undefined) updates.status = payload.status;
-    if (payload.style !== undefined) updates.style = payload.style;
-    if (payload.hotspots !== undefined) updates.hotspots = payload.hotspots;
-    if (payload.leadGate !== undefined) updates.leadGate = payload.leadGate;
-    if (payload.password !== undefined) updates.password = payload.password;
-
-    await docRef.update(updates);
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to update flipbook';
-    return { success: false, error: msg };
-  }
+  return updateDocumentAction({
+    documentId: payload.flipbookId,
+    workspaceId: payload.workspaceId,
+    title: payload.title,
+    description: payload.description,
+    slug: payload.slug,
+    status: payload.status,
+    style: payload.style,
+    hotspots: payload.hotspots,
+    leadGate: payload.leadGate,
+    password: payload.password,
+    userId: payload.userId,
+  });
 }
 
+/**
+ * Legacy wrapper: Deletes a flipbook.
+ */
 export async function deleteFlipbookAction(flipbookId: string, workspaceId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const docRef = adminDb.collection('flipbooks').doc(flipbookId);
-    const snap = await docRef.get();
-
-    if (!snap.exists) return { success: true };
-
-    const data = snap.data() as FlipbookConfig;
-    if (data.workspaceId !== workspaceId) {
-      return { success: false, error: 'Unauthorized workspace access' };
-    }
-
-    // Delete flipbook doc
-    await docRef.delete();
-
-    // Delete associated pages in chunks of 150
-    const pagesSnap = await adminDb.collection('flipbook_pages').where('flipbookId', '==', flipbookId).get();
-    const BATCH_SIZE = 150;
-    for (let i = 0; i < pagesSnap.docs.length; i += BATCH_SIZE) {
-      const chunk = pagesSnap.docs.slice(i, i + BATCH_SIZE);
-      const batch = adminDb.batch();
-      chunk.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-    }
-
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to delete flipbook';
-    return { success: false, error: msg };
-  }
+  return deleteDocumentAction(flipbookId, workspaceId);
 }
 
+/**
+ * Legacy wrapper: Submits a flipbook lead.
+ */
 export async function submitFlipbookLeadAction(payload: {
   flipbookId: string;
   workspaceId: string;
@@ -228,65 +123,40 @@ export async function submitFlipbookLeadAction(payload: {
   email: string;
   phone?: string;
 }): Promise<{ success: boolean; submissionId?: string; error?: string }> {
-  try {
-    if (!payload.email || !payload.flipbookId || !payload.workspaceId) {
-      return { success: false, error: 'Email is required' };
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(payload.email.trim())) {
-      return { success: false, error: 'Invalid email address' };
-    }
-
-    const leadId = adminDb.collection('flipbook_leads').doc().id;
-    const now = new Date().toISOString();
-
-    const submission: FlipbookLeadSubmission = {
-      id: leadId,
-      flipbookId: payload.flipbookId,
-      workspaceId: payload.workspaceId,
-      name: payload.name?.trim() || '',
-      email: payload.email.trim().toLowerCase(),
-      phone: payload.phone?.trim() || '',
-      submittedAt: now,
-    };
-
-    await adminDb.collection('flipbook_leads').doc(leadId).set(submission);
-
-    // Increment leadsCount on flipbook doc atomically
-    const flipbookRef = adminDb.collection('flipbooks').doc(payload.flipbookId);
-    await flipbookRef.update({
-      leadsCount: FieldValue.increment(1),
-    }).catch(() => {});
-
-    return { success: true, submissionId: leadId };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to submit lead';
-    return { success: false, error: msg };
-  }
+  return submitDocumentLeadAction({
+    documentId: payload.flipbookId,
+    workspaceId: payload.workspaceId,
+    name: payload.name,
+    email: payload.email,
+    phone: payload.phone,
+  });
 }
 
+/**
+ * Legacy wrapper: Logs an analytics event.
+ */
 export async function logFlipbookAnalyticsAction(event: Omit<FlipbookAnalyticsEvent, 'id' | 'timestamp'>): Promise<{ success: boolean }> {
-  try {
-    const eventId = adminDb.collection('flipbook_analytics').doc().id;
-    const record: FlipbookAnalyticsEvent = {
-      ...event,
-      id: eventId,
-      timestamp: new Date().toISOString(),
-    };
+  const eventTypeMap: Record<string, string> = {
+    view: 'document_opened',
+    flip: 'page_flipped',
+    hotspot_click: 'cta_clicked',
+    lead_captured: 'lead_gate_submitted',
+    download: 'document_downloaded',
+  };
 
-    await adminDb.collection('flipbook_analytics').doc(eventId).set(record);
+  const eventType = (eventTypeMap[event.eventType] || 'page_viewed') as DocumentEventType;
 
-    // Increment view / flip counter on flipbook document atomically
-    const flipbookRef = adminDb.collection('flipbooks').doc(event.flipbookId);
-    if (event.eventType === 'view') {
-      await flipbookRef.update({ viewsCount: FieldValue.increment(1) }).catch(() => {});
-    } else if (event.eventType === 'flip') {
-      await flipbookRef.update({ flipsCount: FieldValue.increment(1) }).catch(() => {});
-    }
+  const result = await ingestDocumentEvent({
+    workspaceId: event.workspaceId,
+    documentId: event.flipbookId,
+    sessionId: event.sessionId || `ses_${Date.now()}`,
+    visitorId: `vis_${Date.now()}`,
+    eventType,
+    pageNumber: event.pageNumber,
+    elementId: event.hotspotId,
+  });
 
-    return { success: true };
-  } catch {
-    return { success: false };
-  }
+  return { success: result.success };
 }
+
+export { verifyDocumentPasscodeAction, recordDocumentEventAction };

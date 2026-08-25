@@ -12,104 +12,81 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FlipbookConfig, FlipbookPage } from '@/lib/types/flipbook-types';
 
 // Mock storage maps for simulated Firestore collections
-const mockFlipbooks: Record<string, FlipbookConfig> = {};
-const mockFlipbookPages: Record<string, FlipbookPage> = {};
-const mockFlipbookLeads: Record<string, Record<string, unknown>> = {};
-const mockFlipbookAnalytics: Record<string, Record<string, unknown>> = {};
+const mockCollections: Record<string, Record<string, Record<string, unknown>>> = {
+  flipbooks: {},
+  documents: {},
+  flipbook_pages: {},
+  document_pages: {},
+  flipbook_leads: {},
+  flipbook_analytics: {},
+  document_events: {},
+  viewer_sessions: {},
+  access_policies: {},
+  viewer_experiences: {},
+  document_versions: {},
+  document_sources: {},
+};
+
+const mockFlipbooks = mockCollections.flipbooks as unknown as Record<string, FlipbookConfig>;
+const mockFlipbookPages = mockCollections.flipbook_pages as unknown as Record<string, FlipbookPage>;
+const mockFlipbookLeads = mockCollections.flipbook_leads;
+const mockFlipbookAnalytics = mockCollections.flipbook_analytics;
 
 vi.mock('@/lib/firebase-admin', () => {
   return {
     adminDb: {
       collection: (colName: string) => {
-        if (colName === 'flipbooks') {
-          return {
-            doc: (id?: string) => {
-              const docId = id || `fb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-              return {
-                id: docId,
-                get: vi.fn().mockImplementation(async () => ({
-                  exists: !!mockFlipbooks[docId],
-                  data: () => mockFlipbooks[docId],
-                })),
-                set: vi.fn().mockImplementation(async (data: FlipbookConfig) => {
-                  mockFlipbooks[docId] = { ...data, id: docId };
-                  return { id: docId };
-                }),
-                update: vi.fn().mockImplementation(async (updates: Partial<FlipbookConfig>) => {
-                  if (mockFlipbooks[docId]) {
-                    mockFlipbooks[docId] = { ...mockFlipbooks[docId], ...updates };
-                  }
-                  return { id: docId };
-                }),
-                delete: vi.fn().mockImplementation(async () => {
-                  delete mockFlipbooks[docId];
-                }),
-              };
-            },
-          };
+        if (!mockCollections[colName]) {
+          mockCollections[colName] = {};
         }
+        const store = mockCollections[colName];
 
-        if (colName === 'flipbook_pages') {
-          return {
-            doc: (id?: string) => {
-              const docId = id || `p_${Date.now()}`;
-              return {
-                id: docId,
-                set: vi.fn().mockImplementation(async (data: FlipbookPage) => {
-                  mockFlipbookPages[docId] = data;
-                }),
-                delete: vi.fn().mockImplementation(async () => {
-                  delete mockFlipbookPages[docId];
-                }),
-              };
-            },
-            where: (field: string, op: string, value: string) => {
-              return {
-                get: vi.fn().mockImplementation(async () => {
-                  const matchingDocs = Object.values(mockFlipbookPages)
-                    .filter(p => p.flipbookId === value)
-                    .map(p => ({
+        return {
+          doc: (id?: string) => {
+            const docId = id || `${colName}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            return {
+              id: docId,
+              get: vi.fn().mockImplementation(async () => ({
+                exists: !!store[docId],
+                data: () => store[docId],
+              })),
+              set: vi.fn().mockImplementation(async (data: Record<string, unknown>) => {
+                store[docId] = { ...data, id: docId };
+                return { id: docId };
+              }),
+              update: vi.fn().mockImplementation(async (updates: Record<string, unknown>) => {
+                if (store[docId]) {
+                  store[docId] = { ...store[docId], ...updates };
+                }
+                return { id: docId };
+              }),
+              delete: vi.fn().mockImplementation(async () => {
+                delete store[docId];
+              }),
+            };
+          },
+          where: (field: string, op: string, value: string) => {
+            return {
+              get: vi.fn().mockImplementation(async () => {
+                const matchingDocs = Object.values(store)
+                  .filter((item) => {
+                    const rec = item as Record<string, unknown>;
+                    return rec[field] === value;
+                  })
+                  .map((item) => {
+                    const rec = item as { id: string };
+                    return {
                       ref: {
-                        delete: async () => { delete mockFlipbookPages[p.id]; }
+                        delete: async () => { delete store[rec.id]; }
                       },
-                      data: () => p,
-                    }));
-                  return { docs: matchingDocs };
-                }),
-              };
-            },
-          };
-        }
-
-        if (colName === 'flipbook_leads') {
-          return {
-            doc: (id?: string) => {
-              const docId = id || `lead_${Date.now()}`;
-              return {
-                id: docId,
-                set: vi.fn().mockImplementation(async (data: Record<string, unknown>) => {
-                  mockFlipbookLeads[docId] = data;
-                }),
-              };
-            },
-          };
-        }
-
-        if (colName === 'flipbook_analytics') {
-          return {
-            doc: (id?: string) => {
-              const docId = id || `evt_${Date.now()}`;
-              return {
-                id: docId,
-                set: vi.fn().mockImplementation(async (data: Record<string, unknown>) => {
-                  mockFlipbookAnalytics[docId] = data;
-                }),
-              };
-            },
-          };
-        }
-
-        return { doc: vi.fn() };
+                      data: () => item,
+                    };
+                  });
+                return { docs: matchingDocs };
+              }),
+            };
+          },
+        };
       },
       batch: () => {
         const ops: Array<() => Promise<void>> = [];

@@ -18,7 +18,6 @@ import { doc } from 'firebase/firestore';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import type { 
   FlipbookConfig, 
-  FlipbookPageStyle, 
   FlipbookHotspot, 
   HotspotType 
 } from '@/lib/types/flipbook-types';
@@ -32,7 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { 
-  BookOpen, ArrowLeft, Save, Sparkles, Sliders, 
+  ArrowLeft, Save, Sparkles, Sliders, 
   ExternalLink, Plus, Trash2, Video, Link as LinkIcon, Eye
 } from 'lucide-react';
 import { updateFlipbookAction } from '@/lib/flipbook-actions';

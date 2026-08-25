@@ -1,12 +1,16 @@
 /**
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
  * 
- * 1. Single Source of Truth for Flipbook Models:
- *    Defines all data schemas for Flipbook Studio, including page-turn physics styles,
- *    multimedia hotspot overlays, lead capture gating, and public viewer analytics.
+ * 1. Backward Compatibility & Adapter Anchor for Flipbook Models:
+ *    Maintains legacy schemas for Flipbook Studio (v1) while re-exporting
+ *    all enterprise Document Experience Platform (v2) domain types from `./document-types`.
  * 2. Strict Typing Standard:
  *    No `any` or `any[]` types are permitted. All properties must be explicitly typed.
+ * 3. Caution Areas:
+ *    Code migrating to Document domain models should import directly from `@/lib/types/document-types`.
  */
+
+export * from './document-types';
 
 export type FlipbookPageStyle = 'magazine' | 'booklet' | 'album' | 'notebook' | 'single';
 

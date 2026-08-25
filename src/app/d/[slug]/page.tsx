@@ -2,30 +2,28 @@ import { cache } from 'react';
 import { adminDb } from '@/lib/firebase-admin';
 import { getOrgBranding } from '@/lib/org-branding';
 import { EmbeddedForm } from '@/components/page-builder/embeds/EmbeddedForm';
-import FlipbookReaderClient from './FlipbookReaderClient';
+import FlipbookReaderClient from '@/app/f/[slug]/FlipbookReaderClient';
 import Image from 'next/image';
 import { Metadata } from 'next';
 
 /**
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
  *
- * Single Source of Truth for Public `/f/[slug]` Routes:
- * Unifies resolution for both Flipbooks and Standalone Forms at `/f/[slug]`.
- * Eliminates dynamic route ambiguity in Next.js 16 (which throws an error when `/f/[id]`
- * and `/f/[slug]` exist simultaneously).
- *
- * Resolution Order:
- * 1. Checks `flipbooks` collection by ID or slug. If matched, renders `FlipbookReaderClient`.
- * 2. Checks `forms` collection by ID or slug. If matched, renders `EmbeddedForm`.
- * 3. Fallback to `FlipbookReaderClient` which displays a standard clean 404 screen.
+ * 1. Single Source of Truth for Modern `/d/[slug]` Document Reader:
+ *    Enterprise public entry point for viewing published documents, digital brochures,
+ *    catalogs, and interactive flipbooks at clean URLs (`/d/[slug]`).
+ * 2. Next.js 16 App Router Standards:
+ *    Asynchronously awaits route params (`await params`) with zero-downtime cache resolution.
+ * 3. Strict Typing:
+ *    Zero `any` or `any[]` types are permitted.
  */
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'Public Content Viewer',
-  description: 'View publication or standalone form page.',
+  title: 'Document Viewer | SmartSapp',
+  description: 'View interactive publication, brochure, or digital experience.',
 };
 
 interface PageProps {
@@ -43,42 +41,43 @@ interface FormResource {
   };
 }
 
-interface FlipbookResource {
-  type: 'flipbook';
+interface DocumentResource {
+  type: 'document';
 }
 
-type PublicResource = FormResource | FlipbookResource;
+type PublicResource = FormResource | DocumentResource;
 
 const resolvePublicResource = cache(async function resolvePublicResource(
   slug: string
 ): Promise<PublicResource | null> {
   try {
-    // 1. Check if slug matches a Flipbook or Document doc ID or slug
-    const fbDoc = await adminDb.collection('flipbooks').doc(slug).get();
-    if (fbDoc.exists) {
-      return { type: 'flipbook' };
-    }
-    const fbQuery = await adminDb.collection('flipbooks')
-      .where('slug', '==', slug)
-      .limit(1)
-      .get();
-    if (!fbQuery.empty) {
-      return { type: 'flipbook' };
-    }
-
+    // 1. Check documents collection by ID or slug
     const docDoc = await adminDb.collection('documents').doc(slug).get();
     if (docDoc.exists) {
-      return { type: 'flipbook' };
+      return { type: 'document' };
     }
     const docQuery = await adminDb.collection('documents')
       .where('slug', '==', slug)
       .limit(1)
       .get();
     if (!docQuery.empty) {
-      return { type: 'flipbook' };
+      return { type: 'document' };
     }
 
-    // 2. Check if slug matches a Form doc ID or slug
+    // 2. Check legacy flipbooks collection
+    const fbDoc = await adminDb.collection('flipbooks').doc(slug).get();
+    if (fbDoc.exists) {
+      return { type: 'document' };
+    }
+    const fbQuery = await adminDb.collection('flipbooks')
+      .where('slug', '==', slug)
+      .limit(1)
+      .get();
+    if (!fbQuery.empty) {
+      return { type: 'document' };
+    }
+
+    // 3. Check forms collection
     const formDoc = await adminDb.collection('forms').doc(slug).get();
     if (formDoc.exists) {
       const data = formDoc.data() || {};
@@ -118,7 +117,7 @@ const resolvePublicResource = cache(async function resolvePublicResource(
   }
 });
 
-export default async function PublicPage({ params }: PageProps) {
+export default async function DocumentReaderPage({ params }: PageProps) {
   const { slug } = await params;
   const resource = await resolvePublicResource(slug);
 
@@ -179,6 +178,6 @@ export default async function PublicPage({ params }: PageProps) {
     );
   }
 
-  // Default to FlipbookReaderClient (which loads flipbook or renders clean 404)
+  // Render Reader Client
   return <FlipbookReaderClient slug={slug} />;
 }

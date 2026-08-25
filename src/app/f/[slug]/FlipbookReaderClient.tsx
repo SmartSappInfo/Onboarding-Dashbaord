@@ -16,34 +16,36 @@
  *    No `any` or `any[]` types are permitted.
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { 
-  FlipbookConfig, 
-  FlipbookPage, 
-  FlipbookHotspot 
-} from '@/lib/types/flipbook-types';
+import type { FlipbookConfig, FlipbookPage, FlipbookHotspot } from '@/lib/types/flipbook-types';
+import { 
+  submitDocumentLeadAction, 
+  verifyDocumentPasscodeAction, 
+  recordDocumentEventAction 
+} from '@/lib/document-actions';
+import { initializeClientSession, ClientSessionContext } from '@/lib/documents/session-tracker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 import { 
-  BookOpen, ChevronLeft, ChevronRight, Maximize, Volume2, VolumeX, 
-  Grid, Download, Lock, Video, ExternalLink, Sparkles
+  BookOpen, ChevronLeft, ChevronRight, Download, Maximize, 
+  Volume2, VolumeX, Lock, Grid, Video, ExternalLink, Sparkles
 } from 'lucide-react';
-import ShareSocialDropdown from '@/components/shared/ShareSocialDropdown';
-import LikeButton from '@/components/shared/LikeButton';
-import { submitFlipbookLeadAction, logFlipbookAnalyticsAction } from '@/lib/flipbook-actions';
+import { useToast } from '@/hooks/use-toast';
+import { LikeButton } from '@/components/shared/LikeButton';
+import { ShareSocialDropdown } from '@/components/shared/ShareSocialDropdown';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DocumentLayerOverlay } from '@/components/documents/DocumentLayerOverlay';
 
-function isImageUrl(url?: string): boolean {
+function isDirectImageFormat(url?: string): boolean {
   if (!url) return false;
-  const clean = url.toLowerCase().split('?')[0].split('#')[0];
+  const clean = url.split('?')[0].toLowerCase();
   return (
     clean.endsWith('.png') ||
     clean.endsWith('.jpg') ||
@@ -53,6 +55,8 @@ function isImageUrl(url?: string): boolean {
     clean.endsWith('.svg')
   );
 }
+
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 interface FlipbookReaderClientProps {
   slug: string;
@@ -67,10 +71,12 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // PDF Canvas Renderer State
+  // Client Session Context (Visitor & Session Tracking)
+  const [sessionCtx, setSessionCtx] = useState<ClientSessionContext | null>(null);
+
+  // PDF Canvas Renderer State (Strictly Typed)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
 
   // Reader Navigation State
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,6 +88,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   // Password Protection State
   const [enteredPassword, setEnteredPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
 
   // Lead Gate Modal State
   const [isLeadGateOpen, setIsLeadGateOpen] = useState(false);
@@ -93,6 +100,33 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
   // Active Hotspot Popover State
   const [activeHotspot, setActiveHotspot] = useState<FlipbookHotspot | null>(null);
+
+  // Mobile Touch Swipe Gesture References
+  const touchStartXRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    if (deltaX > 50) {
+      handlePrev();
+    } else if (deltaX < -50) {
+      handleNext();
+    }
+    touchStartXRef.current = null;
+  };
+
+  // Initialize client session metrics on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const ctx = initializeClientSession(searchParams);
+      setSessionCtx(ctx);
+    }
+  }, []);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -112,14 +146,26 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
     async function loadData() {
       try {
         const col = collection(firestore!, 'flipbooks');
-        // Try query by slug first
         let q = query(col, where('slug', '==', slug));
         let snap = await getDocs(q);
 
-        // Fallback to query by ID
         if (snap.empty) {
           q = query(col, where('__name__', '==', slug));
           snap = await getDocs(q);
+        }
+
+        // Check documents collection as fallback
+        if (snap.empty) {
+          const docCol = collection(firestore!, 'documents');
+          let docQ = query(docCol, where('slug', '==', slug));
+          let docSnap = await getDocs(docQ);
+          if (docSnap.empty) {
+            docQ = query(docCol, where('__name__', '==', slug));
+            docSnap = await getDocs(docQ);
+          }
+          if (!docSnap.empty) {
+            snap = docSnap;
+          }
         }
 
         if (snap.empty) {
@@ -148,12 +194,23 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
         setPages(loadedPages);
 
-        // Log view analytics
-        logFlipbookAnalyticsAction({
-          flipbookId: fbData.id,
-          workspaceId: fbData.workspaceId,
-          eventType: 'view',
-        });
+        // Record telemetry view event
+        if (sessionCtx) {
+          recordDocumentEventAction({
+            workspaceId: fbData.workspaceId,
+            documentId: fbData.id,
+            sessionId: sessionCtx.sessionId,
+            visitorId: sessionCtx.visitorId,
+            contactId: sessionCtx.contactId,
+            distributionId: sessionCtx.distributionToken,
+            campaignId: sessionCtx.campaignId,
+            eventType: 'document_opened',
+            pageNumber: 1,
+            device: sessionCtx.device,
+            browser: sessionCtx.browser,
+            os: sessionCtx.os,
+          }).catch(() => {});
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Error loading reader';
         setError(msg);
@@ -164,7 +221,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  }, [slug, sessionCtx]);
 
   // Dynamic PDF document loading via pdfjs-dist
   useEffect(() => {
@@ -200,11 +257,12 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
   // Render current PDF page onto canvas
   useEffect(() => {
     if (!pdfDoc) return;
+    const activeDoc = pdfDoc;
     let isMounted = true;
 
     async function renderCanvasPage() {
       try {
-        const page = await pdfDoc.getPage(currentPage);
+        const page = await activeDoc.getPage(currentPage);
         const viewport = page.getViewport({ scale: 1.5 });
         const canvas = canvasRef.current;
         if (!canvas || !isMounted) return;
@@ -213,7 +271,8 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         if (context) {
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-          await page.render({ canvasContext: context, viewport }).promise;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await page.render({ canvasContext: context, viewport } as any).promise;
         }
       } catch (err) {
         console.error('Error rendering PDF page on canvas:', err);
@@ -245,22 +304,35 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
   const handleNext = () => {
     if (!flipbook) return;
-    const step = isMobile || flipbook.style.pageStyle === 'single' ? 1 : 2;
+    const step = isMobile || flipbook.style?.pageStyle === 'single' ? 1 : 2;
     if (currentPage + step <= (flipbook.pageCount || 1)) {
-      setCurrentPage(prev => prev + step);
+      const nextPageNum = currentPage + step;
+      setCurrentPage(nextPageNum);
       playFlipSound();
-      logFlipbookAnalyticsAction({
-        flipbookId: flipbook.id,
-        workspaceId: flipbook.workspaceId,
-        eventType: 'flip',
-        pageNumber: currentPage + step,
-      });
+      if (sessionCtx) {
+        recordDocumentEventAction({
+          workspaceId: flipbook.workspaceId,
+          documentId: flipbook.id,
+          sessionId: sessionCtx.sessionId,
+          visitorId: sessionCtx.visitorId,
+          contactId: sessionCtx.contactId,
+          distributionId: sessionCtx.distributionToken,
+          campaignId: sessionCtx.campaignId,
+          eventType: 'page_flipped',
+          pageNumber: nextPageNum,
+          previousPage: currentPage,
+          nextPage: nextPageNum,
+          device: sessionCtx.device,
+          browser: sessionCtx.browser,
+          os: sessionCtx.os,
+        }).catch(() => {});
+      }
     }
   };
 
   const handlePrev = () => {
     if (!flipbook) return;
-    const step = isMobile || flipbook.style.pageStyle === 'single' ? 1 : 2;
+    const step = isMobile || flipbook.style?.pageStyle === 'single' ? 1 : 2;
     if (currentPage - step >= 1) {
       setCurrentPage(prev => prev - step);
       playFlipSound();
@@ -275,8 +347,8 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
     setIsSubmittingLead(true);
     try {
-      const res = await submitFlipbookLeadAction({
-        flipbookId: flipbook.id,
+      const res = await submitDocumentLeadAction({
+        documentId: flipbook.id,
         workspaceId: flipbook.workspaceId,
         name: leadName.trim(),
         email: leadEmail.trim(),
@@ -287,11 +359,22 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
         toast({ title: 'Access Unlocked', description: 'Thank you for registering! You may now continue reading.' });
         setIsLeadPassed(true);
         setIsLeadGateOpen(false);
-        logFlipbookAnalyticsAction({
-          flipbookId: flipbook.id,
-          workspaceId: flipbook.workspaceId,
-          eventType: 'lead_captured',
-        });
+        if (sessionCtx) {
+          recordDocumentEventAction({
+            workspaceId: flipbook.workspaceId,
+            documentId: flipbook.id,
+            sessionId: sessionCtx.sessionId,
+            visitorId: sessionCtx.visitorId,
+            contactId: sessionCtx.contactId,
+            distributionId: sessionCtx.distributionToken,
+            campaignId: sessionCtx.campaignId,
+            eventType: 'lead_gate_submitted',
+            pageNumber: currentPage,
+            device: sessionCtx.device,
+            browser: sessionCtx.browser,
+            os: sessionCtx.os,
+          }).catch(() => {});
+        }
       } else {
         toast({ variant: 'destructive', title: 'Submission Error', description: res.error || 'Could not verify lead details.' });
       }
@@ -313,10 +396,6 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
     }
   };
 
-  const currentHotspots = useMemo(() => {
-    if (!flipbook || !flipbook.hotspots) return [];
-    return flipbook.hotspots.filter(h => h.pageNumber === currentPage);
-  }, [flipbook, currentPage]);
 
   if (isLoading) {
     return (
@@ -359,17 +438,30 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
               className="h-12 rounded-xl bg-slate-800 border-white/10 text-white font-mono text-sm min-h-[44px]"
             />
             <Button
-              onClick={() => {
-                if (enteredPassword === flipbook.password) {
-                  setIsUnlocked(true);
-                  toast({ title: 'Access Granted', description: 'Welcome to the publication.' });
-                } else {
-                  toast({ variant: 'destructive', title: 'Invalid Password', description: 'The passcode you entered is incorrect.' });
+              disabled={isVerifyingPassword}
+              onClick={async () => {
+                if (!enteredPassword.trim()) {
+                  toast({ variant: 'destructive', title: 'Passcode Required', description: 'Please enter a passcode.' });
+                  return;
+                }
+                setIsVerifyingPassword(true);
+                try {
+                  const res = await verifyDocumentPasscodeAction(flipbook.id, enteredPassword.trim());
+                  if (res.success) {
+                    setIsUnlocked(true);
+                    toast({ title: 'Access Granted', description: 'Welcome to the publication.' });
+                  } else {
+                    toast({ variant: 'destructive', title: 'Invalid Passcode', description: res.error || 'The passcode you entered is incorrect.' });
+                  }
+                } catch {
+                  toast({ variant: 'destructive', title: 'Verification Error', description: 'Unable to verify passcode.' });
+                } finally {
+                  setIsVerifyingPassword(false);
                 }
               }}
               className="w-full h-12 rounded-xl font-bold text-sm min-h-[44px]"
             >
-              Unlock Publication
+              {isVerifyingPassword ? 'Verifying...' : 'Unlock Publication'}
             </Button>
           </div>
         </div>
@@ -443,7 +535,11 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
       </div>
 
       {/* Main Interactive Flipbook Stage */}
-      <div className="flex-1 min-h-0 flex items-center justify-center relative p-4 md:p-8 overflow-hidden">
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 min-h-0 flex items-center justify-center relative p-4 md:p-8 overflow-hidden"
+      >
         
         {/* Prev Page Navigation Arrow */}
         <Button
@@ -486,7 +582,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
               }
 
               // 2. Direct Image source file
-              if (flipbook.sourceFileUrl && isImageUrl(flipbook.sourceFileUrl)) {
+              if (flipbook.sourceFileUrl && isDirectImageFormat(flipbook.sourceFileUrl)) {
                 return (
                   <img
                     src={flipbook.sourceFileUrl}
@@ -531,26 +627,12 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
               );
             })()}
 
-            {/* Render Hotspot Overlays */}
-            {currentHotspots.map((hs) => (
-              <div
-                key={hs.id}
-                onClick={() => setActiveHotspot(hs)}
-                className="absolute bg-indigo-600/30 border-2 border-indigo-600 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-lg group z-20"
-                style={{
-                  left: `${hs.x}%`,
-                  top: `${hs.y}%`,
-                  width: `${hs.width}%`,
-                  height: `${hs.height}%`,
-                }}
-              >
-                {hs.type === 'video' ? (
-                  <Video className="h-6 w-6 text-white group-hover:scale-125 transition-transform" />
-                ) : (
-                  <ExternalLink className="h-6 w-6 text-white group-hover:scale-125 transition-transform" />
-                )}
-              </div>
-            ))}
+            {/* Interactive Normalized Layer Overlay */}
+            <DocumentLayerOverlay
+              hotspots={flipbook.hotspots || []}
+              currentPage={currentPage}
+              onHotspotClick={(hs) => setActiveHotspot(hs)}
+            />
           </div>
         </div>
       </div>

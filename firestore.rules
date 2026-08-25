@@ -537,14 +537,90 @@ service cloud.firestore {
       }
     }
 
-    // --- Flipbook Studio & Public Reader Security Rules ---
+    // --- Document Experience Platform & Flipbook Security Rules ---
     // ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
     // 1. Multi-Tenant Workspace Isolation:
-    //    All admin operations on flipbooks require caller to have workspace access via `hasWorkspaceAccess`.
+    //    All admin operations on documents and versions require caller to have workspace access via `hasWorkspaceAccess`.
     // 2. Public Reader Access Scoping:
-    //    Anonymous readers can only read flipbooks (`status in ['published', 'PUBLISHED']`) and their associated pages.
-    // 3. Public Lead Capture & Analytics Submissions:
-    //    Public readers are permitted to create `flipbook_leads` and `flipbook_analytics` documents.
+    //    Anonymous readers can only read documents (`status in ['published', 'PUBLISHED']`) and their active versions, pages, layers, and viewer experiences.
+    // 3. Telemetry & Lead Security:
+    //    Direct unauthenticated database mutations are locked down; public events and lead capture route through validated Server Actions.
+    match /documents/{documentId} {
+      allow get: if (resource.data.status in ['published', 'PUBLISHED']) || 
+                    (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId)));
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /document_versions/{versionId} {
+      allow get: if (resource.data.status in ['published', 'PUBLISHED', 'ready', 'READY']) || 
+                    (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId)));
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /document_sources/{sourceId} {
+      allow read, write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /document_pages/{pageId} {
+      allow read: if (isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)))) || 
+                    get(/databases/$(database)/documents/documents/$(resource.data.documentId)).data.status in ['published', 'PUBLISHED'];
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /document_assets/{assetId} {
+      allow read: if true; // Public assets consumed by reader
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /document_layers/{layerId} {
+      allow read: if (isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)))) || 
+                    get(/databases/$(database)/documents/documents/$(resource.data.documentId)).data.status in ['published', 'PUBLISHED'];
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /viewer_experiences/{expId} {
+      allow get: if (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId))) ||
+                    get(/databases/$(database)/documents/documents/$(resource.data.documentId)).data.status in ['published', 'PUBLISHED'];
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /access_policies/{policyId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /document_distributions/{distId} {
+      allow get: if true; // Public access token evaluation
+      allow list: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /viewer_sessions/{sessionId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /document_events/{eventId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    match /document_processing_jobs/{jobId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || (resource != null && hasWorkspaceAccess(resource.data.workspaceId)));
+    }
+
+    // --- Legacy Flipbook Collection Scopes (Backward Compatibility) ---
     match /flipbooks/{flipbookId} {
       allow get: if (resource.data.status in ['published', 'PUBLISHED']) || 
                     (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId)));
