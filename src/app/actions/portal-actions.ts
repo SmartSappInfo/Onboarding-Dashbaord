@@ -265,3 +265,28 @@ export async function getPublicPortalBySlugAction(
     return { success: false, error: message };
   }
 }
+
+/**
+ * Server action to trigger the Unified Master Experience Platform Seeder (Phases 1-12).
+ */
+export async function runMasterExperienceSeederAction(
+  organizationId: string = 'smartsapp-hq'
+): Promise<ActionResponse<{ message: string; organizationId: string }>> {
+  try {
+    const { seedMasterExperience } = await import('@/app/seeds/seed-master-experience');
+    await seedMasterExperience(organizationId);
+    revalidatePath('/admin/portals');
+    return {
+      success: true,
+      data: {
+        message: 'Successfully seeded entire 12-phase Experience Platform ecosystem.',
+        organizationId,
+      },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to execute master seeder.';
+    console.error('[PORTAL_ACTION] runMasterExperienceSeederAction failed:', err);
+    return { success: false, error: message };
+  }
+}
+

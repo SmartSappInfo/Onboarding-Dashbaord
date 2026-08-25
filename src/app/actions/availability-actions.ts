@@ -7,6 +7,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { AvailabilityProfile, AvailabilityRule } from '@/lib/meetings/types';
+import { DEFAULT_WEEKLY_RULES } from '@/lib/meetings/types';
 
 /**
  * Helper to safely extract error message without using any.
@@ -16,17 +17,6 @@ function getErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error;
   return 'An unexpected error occurred.';
 }
-
-/** Standard default Monday - Friday 09:00 - 17:00 weekly schedule */
-export const DEFAULT_WEEKLY_RULES: AvailabilityRule[] = [
-  { dayOfWeek: 1, intervals: [{ start: '09:00', end: '17:00' }], isAvailable: true }, // Monday
-  { dayOfWeek: 2, intervals: [{ start: '09:00', end: '17:00' }], isAvailable: true }, // Tuesday
-  { dayOfWeek: 3, intervals: [{ start: '09:00', end: '17:00' }], isAvailable: true }, // Wednesday
-  { dayOfWeek: 4, intervals: [{ start: '09:00', end: '17:00' }], isAvailable: true }, // Thursday
-  { dayOfWeek: 5, intervals: [{ start: '09:00', end: '17:00' }], isAvailable: true }, // Friday
-  { dayOfWeek: 6, intervals: [], isAvailable: false }, // Saturday
-  { dayOfWeek: 0, intervals: [], isAvailable: false }, // Sunday
-];
 
 /**
  * Creates or retrieves the default availability schedule for a workspace.

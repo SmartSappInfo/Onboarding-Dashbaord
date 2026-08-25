@@ -45,16 +45,16 @@ import {
   Calendar,
   Check,
 } from 'lucide-react';
-import type {
-  AvailabilityProfile,
-  AvailabilityRule,
-  AvailabilityOverride,
-  AvailabilityInterval,
+import {
+  DEFAULT_WEEKLY_RULES,
+  type AvailabilityProfile,
+  type AvailabilityRule,
+  type AvailabilityOverride,
+  type AvailabilityInterval,
 } from '@/lib/meetings/types';
 import {
   getDefaultAvailabilityProfileAction,
   updateAvailabilityProfileAction,
-  DEFAULT_WEEKLY_RULES,
 } from '@/app/actions/availability-actions';
 
 function getErrorMessage(error: unknown): string {

@@ -56,6 +56,7 @@ import {
   archivePortalAction,
   duplicatePortalAction,
   deletePortalAction,
+  runMasterExperienceSeederAction,
 } from '@/app/actions/portal-actions';
 
 interface HardcodedPage {
@@ -244,6 +245,7 @@ export default function PortalsClient() {
     workspaceIds: string[];
   } | null>(null);
   const [isMarketplaceOpen, setIsMarketplaceOpen] = React.useState(false);
+  const [isSeeding, setIsSeeding] = React.useState(false);
 
   const orgName = activeOrganization?.name || 'Organization';
 
@@ -482,6 +484,39 @@ export default function PortalsClient() {
     });
   }, []);
 
+  const handleRunMasterSeed = React.useCallback(async () => {
+    if (!activeOrganizationId) return;
+    setIsSeeding(true);
+    toast({
+      title: 'Initializing Experience Platform Demo...',
+      description: 'Seeding all 12 phases including flagship School Bursar Academy.',
+    });
+
+    try {
+      const res = await runMasterExperienceSeederAction(activeOrganizationId);
+      if (res.success) {
+        toast({
+          title: 'Master Seeding Complete! 🌟',
+          description: 'All 12 phases, courses, community spaces, and credentials have been seeded.',
+        });
+      } else {
+        toast({
+          title: 'Seeding Notice',
+          description: res.error || 'Failed to seed demo platform.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to trigger master seeder.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  }, [activeOrganizationId, toast]);
+
   const totalExperiencePortals = portals?.length ?? 0;
   const publishedExperiencePortals = portals?.filter(p => p.status === 'published').length ?? 0;
 
@@ -514,6 +549,16 @@ export default function PortalsClient() {
                 className="pl-10 h-11 rounded-xl bg-background border-border shadow-xs font-medium text-xs"
               />
             </div>
+
+            <Button
+              variant="outline"
+              onClick={handleRunMasterSeed}
+              disabled={isSeeding}
+              className="h-11 px-4 rounded-xl font-bold text-xs gap-2 shrink-0 bg-background border-border shadow-2xs hover:bg-muted/60"
+            >
+              <Zap className={cn('w-4 h-4 text-amber-500', isSeeding && 'animate-spin')} />
+              {isSeeding ? 'Seeding Demo...' : 'Seed Demo Data'}
+            </Button>
 
             <Button
               variant="outline"
