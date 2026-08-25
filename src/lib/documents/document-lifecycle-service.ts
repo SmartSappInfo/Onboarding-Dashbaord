@@ -128,7 +128,40 @@ export async function executeDataRetentionPruning(
       };
     }
 
-    // If not dry run, perform batch deletion of eligible archived versions
+    // Execute actual batch deletion of eligible superseded versions
+    const docsSnap = await adminDb
+      .collection('documents')
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    const docIds = docsSnap.docs.map((d) => d.id);
+    if (docIds.length > 0) {
+      const versionsSnap = await adminDb
+        .collection('document_versions')
+        .where('documentId', 'in', docIds.slice(0, 30))
+        .get();
+
+      const now = Date.now();
+      const retentionMs = (policy.archivedVersionRetentionDays || 30) * 24 * 60 * 60 * 1000;
+      const versionsToDelete = versionsSnap.docs.filter((v) => {
+        const data = v.data() as DocumentVersion;
+        if (data.status !== 'superseded') return false;
+        const createdMs = new Date(data.createdAt).getTime();
+        return now - createdMs > retentionMs;
+      });
+
+      // Perform chunked batch deletion (ceiling of 100 per batch)
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < versionsToDelete.length; i += BATCH_SIZE) {
+        const chunk = versionsToDelete.slice(i, i + BATCH_SIZE);
+        const batch = adminDb.batch();
+        chunk.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+      }
+    }
+
     return {
       success: true,
       purgedVersionsCount,

@@ -6,6 +6,10 @@ import {
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
+    batch: vi.fn().mockReturnValue({
+      delete: vi.fn(),
+      commit: vi.fn().mockResolvedValue(true),
+    }),
     collection: vi.fn().mockImplementation((colName: string) => {
       const queryObj: any = {
         where: vi.fn().mockImplementation(() => queryObj),
@@ -23,10 +27,10 @@ vi.mock('@/lib/firebase-admin', () => ({
             return {
               size: 4,
               docs: [
-                { id: 'v1', data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
-                { id: 'v2', data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
-                { id: 'v3', data: () => ({ status: 'superseded', createdAt: '2025-01-01T00:00:00Z' }) }, // >30 days
-                { id: 'v4', data: () => ({ status: 'superseded', createdAt: '2026-08-20T00:00:00Z' }) }, // recent
+                { id: 'v1', ref: { id: 'v1' }, data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
+                { id: 'v2', ref: { id: 'v2' }, data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
+                { id: 'v3', ref: { id: 'v3' }, data: () => ({ status: 'superseded', createdAt: '2025-01-01T00:00:00Z' }) }, // >30 days
+                { id: 'v4', ref: { id: 'v4' }, data: () => ({ status: 'superseded', createdAt: '2026-08-20T00:00:00Z' }) }, // recent
               ],
             };
           }
@@ -77,5 +81,18 @@ describe('Document Storage Lifecycle & Archival Service (Phase 13)', () => {
     expect(result.dryRun).toBe(true);
     expect(result.purgedVersionsCount).toBe(1);
     expect(result.freedBytesEstimate).toBeGreaterThan(0);
+  });
+
+  it('executes real batch pruning deletions when dryRun is false', async () => {
+    const result = await executeDataRetentionPruning('ws_test', {
+      workspaceId: 'ws_test',
+      archivedVersionRetentionDays: 30,
+      purgeOrphanPages: true,
+      dryRun: false,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.dryRun).toBe(false);
+    expect(result.purgedVersionsCount).toBe(1);
   });
 });
