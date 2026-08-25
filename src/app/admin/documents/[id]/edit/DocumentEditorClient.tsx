@@ -59,6 +59,7 @@ import { ProcessingProgressSheet } from '@/components/documents/ProcessingProgre
 import { TagSelector } from '@/components/tags/TagSelector';
 import { DocumentPageManager } from '@/components/documents/studio/DocumentPageManager';
 import { DocumentLayerInspector } from '@/components/documents/studio/DocumentLayerInspector';
+import { DocumentDistributionManager } from '@/components/documents/studio/DocumentDistributionManager';
 
 interface DocumentEditorClientProps {
   documentId: string;
@@ -680,74 +681,13 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
 
             {/* TAB 6: Access & Distribution */}
             <TabsContent value="distribution" className="space-y-6">
-              <Card className="rounded-3xl border-border/60 bg-card p-6 sm:p-8 shadow-sm space-y-6 text-left">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-black text-foreground">Access Protection & Distribution Links</h3>
-                  <p className="text-xs text-muted-foreground">Manage passcode protection, embed snippets, and distribution tokens.</p>
-                </div>
-
-                <div className="space-y-4 max-w-lg">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Passcode Protection</Label>
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Leave blank for public unauthenticated access"
-                      className="h-11 rounded-xl bg-muted/20 border-border text-sm font-mono min-h-[44px]"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Passcodes are cryptographically hashed using salted SHA-256 HMAC on save.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-border/50">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Public Direct Link</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        readOnly
-                        value={publicUrl}
-                        className="h-11 rounded-xl bg-muted/20 border-border text-xs font-mono select-all min-h-[44px]"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(publicUrl);
-                          toast({ title: 'Copied', description: 'Public URL copied to clipboard.' });
-                        }}
-                        className="h-11 rounded-xl px-4 font-bold text-xs gap-1.5 min-h-[44px]"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copy
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Responsive Embed Code</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        readOnly
-                        value={iframeCode}
-                        className="h-11 rounded-xl bg-muted/20 border-border text-xs font-mono select-all min-h-[44px]"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(iframeCode);
-                          toast({ title: 'Copied', description: 'Embed snippet copied to clipboard.' });
-                        }}
-                        className="h-11 rounded-xl px-4 font-bold text-xs gap-1.5 min-h-[44px]"
-                      >
-                        <Code className="h-4 w-4" />
-                        Copy Embed
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+              <DocumentDistributionManager
+                workspaceId={activeWorkspaceId || ''}
+                documentId={documentId}
+                versionId={document.activeVersionId || `${documentId}_v1`}
+                slug={slug}
+                title={title}
+              />
             </TabsContent>
           </Tabs>
         </div>
