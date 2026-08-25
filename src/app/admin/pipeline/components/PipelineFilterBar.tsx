@@ -81,13 +81,13 @@ export default function PipelineFilterBar({
         </Select>
 
         {/* Owner */}
-        <Select value={filters.assignedToId ?? 'any'} onValueChange={v => updateFilter('assignedToId', v === 'any' ? null : v)}>
+        <Select value={filters.assignedToId ?? 'all'} onValueChange={v => updateFilter('assignedToId', v)}>
           <SelectTrigger className="h-9 w-[140px] rounded-xl border border-border bg-background font-bold text-[10px] shadow-sm hover:bg-muted/10 transition-colors">
             <Users className="h-3 w-3 mr-1 text-muted-foreground/60" />
             <SelectValue placeholder="Owner" />
           </SelectTrigger>
           <SelectContent className="rounded-xl max-h-[220px]">
-            <SelectItem value="any" className="text-[10px] font-bold">Any Owner</SelectItem>
+            <SelectItem value="all" className="text-[10px] font-bold">Any Owner</SelectItem>
             <SelectItem value="unassigned" className="text-[10px] font-bold text-muted-foreground">Unassigned</SelectItem>
             {users?.map(u => (
               <SelectItem key={u.id} value={u.id} className="text-[10px] font-bold">{u.name || u.email}</SelectItem>

@@ -27,7 +27,8 @@ export function applyDealFilters(
   let temp = deals;
 
   // A. Assignee — local filter overrides the workspace GlobalFilter.
-  const effectiveAssigneeId = filters.assignedToId ?? globalAssigneeId;
+  // When assignedToId is 'all', show all deals (assigned & unassigned) without filtering.
+  const effectiveAssigneeId = filters.assignedToId === 'all' ? null : (filters.assignedToId ?? globalAssigneeId);
   if (effectiveAssigneeId) {
     if (effectiveAssigneeId === 'unassigned') {
       temp = temp.filter(d => !d.assignedTo?.userId);

@@ -38,7 +38,7 @@ export interface KanbanFilters {
 export const DEFAULT_FILTERS: KanbanFilters = {
   searchTerm: '',
   status: 'all',
-  assignedToId: null,
+  assignedToId: 'all',
   valueMin: null,
   valueMax: null,
   closeDateFrom: null,
@@ -51,7 +51,7 @@ export const DEFAULT_FILTERS: KanbanFilters = {
 export function isFilterActive(f: KanbanFilters): boolean {
   return (
     f.status !== 'all' ||
-    f.assignedToId !== null ||
+    (f.assignedToId !== null && f.assignedToId !== 'all') ||
     f.valueMin !== null ||
     f.valueMax !== null ||
     f.closeDateFrom !== null ||
@@ -61,14 +61,16 @@ export function isFilterActive(f: KanbanFilters): boolean {
   );
 }
 
-/** Number of active filter dimensions, for the badge counter. */
+/** Number of non-default filter dimensions active. */
 export function activeFilterCount(f: KanbanFilters): number {
-  return [
-    f.status !== 'all',
-    f.assignedToId !== null,
-    f.valueMin !== null || f.valueMax !== null,
-    f.closeDateFrom !== null || f.closeDateTo !== null,
-    f.stageIds.length > 0,
-    f.tagIds.length > 0,
-  ].filter(Boolean).length;
+  let count = 0;
+  if (f.status !== 'all') count++;
+  if (f.assignedToId !== null && f.assignedToId !== 'all') count++;
+  if (f.valueMin !== null || f.valueMax !== null) count++;
+  if (f.closeDateFrom !== null || f.closeDateTo !== null) count++;
+  if (f.stageIds.length > 0) count++;
+  if (f.tagIds.length > 0) count++;
+  return count;
 }
+
+
