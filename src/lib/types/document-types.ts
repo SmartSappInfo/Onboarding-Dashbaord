@@ -506,3 +506,30 @@ export interface DocumentAnalyticsSummary {
   period: 'last_7_days' | 'last_30_days' | 'all_time';
 }
 
+// ── 14. CRM Document Engagement & Contact Insights ───────────────────────────
+export interface ContactDocumentEngagement {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  slug: string;
+  lastReadAt: string;
+  totalSessions: number;
+  highestCompletionPercentage: number;
+  totalDwellTimeSeconds: number;
+  engagementScore: number;
+  pagesViewed: number[];
+  hotspotsClickedCount: number;
+  hasLeadSubmitted: boolean;
+}
+
+export interface ContactDocumentInsightsSummary {
+  contactId: string;
+  workspaceId: string;
+  totalDocumentsRead: number;
+  totalReadingTimeSeconds: number;
+  averageCompletionPercentage: number;
+  totalEngagementScore: number;
+  engagements: ContactDocumentEngagement[];
+}
+
+

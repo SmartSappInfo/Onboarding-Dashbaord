@@ -17,7 +17,10 @@ import {
   UserCheck,
   UserCog,
   UserMinus,
-  Megaphone
+  Megaphone,
+  BookOpen,
+  Sparkles,
+  MousePointerClick
 } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 
@@ -45,7 +48,13 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     contact_updated: UserCog,
     contact_removed: UserMinus,
     campaign_event: Megaphone,
-    automation_entered: Workflow
+    automation_entered: Workflow,
+    document_opened: BookOpen,
+    document_page_viewed: BookOpen,
+    document_completed: CheckCircle2,
+    document_hotspot_clicked: MousePointerClick,
+    document_lead_captured: Sparkles,
+    score_changed: Sparkles
   };
   return iconMap[type] || Bot;
 };
