@@ -13,6 +13,7 @@ import { seedEnrichedMeetingTemplatesAction } from '@/app/actions/seed-meeting-i
 import { seedDefaultStyleBlueprintsAction } from '@/app/actions/seed-default-style-blueprints-action';
 import { seedGlobalTemplatesAction } from '@/app/actions/seed-global-templates-action';
 import { backfillSenderOrgAction } from '@/app/actions/backfill-sender-org-action';
+import { seedMeetingsV2Action } from '@/app/actions/seed-meetings-action';
 import type { BackfillReport } from '@/lib/migrations/backfill-sender-org';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
@@ -226,10 +227,48 @@ export default function SeedsClient() {
             toast({
                 variant: 'destructive',
                 title: 'Execution Error',
-                description: error.message || 'An error occurred during default style seeding.',
+                description: error instanceof Error ? error.message : 'An error occurred during default style seeding.',
             });
         }
         setIsStyleSeeding(false);
+    };
+
+    const [isMeetingsSeeding, setIsMeetingsSeeding] = React.useState(false);
+
+    const handleSeedMeetingsV2 = async () => {
+        if (!activeWorkspaceId) {
+            toast({ variant: 'destructive', title: 'No Workspace Selected', description: 'Please select an active workspace before seeding Meetings 2.0 demo data.' });
+            return;
+        }
+        setIsMeetingsSeeding(true);
+        try {
+            const result = await seedMeetingsV2Action(activeWorkspaceId, activeOrganizationId, user?.uid);
+            if (result.success && result.result) {
+                toast({
+                    title: 'Meetings 2.0 Environment Seeded! 🎉',
+                    description: `Seeded ${result.result.eventTypesSeeded} Event Types, ${result.result.bookingsSeeded} Sample Bookings, ${result.result.resourcesSeeded} Resources, AI Briefs & Polls.`,
+                    actionConfig: {
+                        path: '/admin/meetings',
+                        label: 'View Meetings Hub',
+                    },
+                    duration: 12000,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Seeding Failed',
+                    description: result.error || 'Failed to seed Meetings 2.0 data.',
+                });
+            }
+        } catch (error: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Execution Error',
+                description: error instanceof Error ? error.message : 'An unexpected error occurred during seeding.',
+            });
+        } finally {
+            setIsMeetingsSeeding(false);
+        }
     };
 
     return (
@@ -504,6 +543,45 @@ export default function SeedsClient() {
                                         <CalendarPlus className="h-4 w-4 mr-2" />
                                     )}
                                     {isGlobalSeeding ? 'Processing...' : 'Seed Global Blueprints'}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Meetings 2.0 Demo Seeder Card */}
+                    <Card className="border-blue-100 bg-blue-50/30 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CalendarPlus className="h-24 w-24 text-blue-600" />
+                        </div>
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">SmartSapp Meetings 2.0 · Demo Environment</span>
+                            </div>
+                            <CardTitle className="text-xl text-blue-950">Seed Meetings 2.0 Environment</CardTitle>
+                            <CardDescription className="max-w-2xl text-blue-900/70">
+                                Populates the active workspace with realistic Event Types (Sales Demo, Consultation, Onboarding, Webinar), sample upcoming & completed Bookings, Transcripts, AI Briefs, Speech Coach Scorecard, Consensus Polls, and Physical Resources.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">4 Event Types</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">6 Sample Bookings</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">AI Speech Coach</Badge>
+                                    <Badge variant="outline" className="bg-white/50 border-blue-200 text-blue-700">Consensus Polls</Badge>
+                                </div>
+                                <Button 
+                                    onClick={handleSeedMeetingsV2} 
+                                    disabled={isMeetingsSeeding}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-none min-w-[200px] min-h-[44px] rounded-xl active:scale-[0.97] transition-transform"
+                                >
+                                    {isMeetingsSeeding ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <CalendarPlus className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isMeetingsSeeding ? 'Seeding Environment...' : 'Seed Meetings 2.0 Data'}
                                 </Button>
                             </div>
                         </CardContent>

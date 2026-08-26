@@ -307,6 +307,23 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "content_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
         { "fieldPath": "type", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
@@ -346,6 +363,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "joinedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
         { "fieldPath": "role", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "joinedAt", "order": "DESCENDING" }
@@ -364,8 +389,24 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_invitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
         { "fieldPath": "token", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "membership_plans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
       ]
     },
     {
@@ -397,6 +438,22 @@
       ]
     },
     {
+      "collectionGroup": "courses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "courses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "course_modules",
       "queryScope": "COLLECTION",
       "fields": [
@@ -414,6 +471,14 @@
       ]
     },
     {
+      "collectionGroup": "course_lessons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courseId", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "course_enrollments",
       "queryScope": "COLLECTION",
       "fields": [
@@ -421,6 +486,23 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "lastAccessedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "course_enrollments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "learning_progress",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "courseId", "order": "ASCENDING" }
       ]
     },
     {
@@ -487,11 +569,28 @@
       ]
     },
     {
+      "collectionGroup": "moderation_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "member_onboarding_progress",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "portalId", "order": "ASCENDING" },
         { "fieldPath": "userId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "member_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "isArchived", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
       ]
     },
     {
@@ -573,12 +672,61 @@
       ]
     },
     {
+      "collectionGroup": "course_cohorts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "course_cohorts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "course_cohorts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_offers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "price", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "portal_offers",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "portalId", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "price", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_coupons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "portal_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
