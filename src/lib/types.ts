@@ -195,6 +195,7 @@ export type AutomationTrigger =
   | 'WORKSPACE_ENTITY_UPDATED'
   | 'TASK_CREATED'
   | 'TASK_COMPLETED'
+  | 'SURVEY_STARTED'
   | 'SURVEY_SUBMITTED'
   | 'PDF_SIGNED'
   | 'FORM_SUBMITTED'
@@ -2456,7 +2457,7 @@ export interface MeetingTemplate {
 }
 
 // ── Meetings 2.0 Scheduling & Availability Domain Types ──────────────────────
-export * from '@/lib/meetings/types';
+export type * from '@/lib/meetings/types';
 
 /** Built-in meeting templates (static data, not Firestore) */
 export const BUILT_IN_TEMPLATES: MeetingTemplate[] = [
@@ -2903,6 +2904,12 @@ export interface SurveyResponse {
   respondentName?: string | null;
   respondentEntityId?: string | null;
   contactEmail?: string | null;
+  automationsTriggered?: boolean;
+  matchedRuleId?: string | null;
+  outcome?: string | null;
+  resultMessage?: string | null;
+  resultTitle?: string | null;
+  resultDescription?: string | null;
 }
 
 export interface SurveySummary {

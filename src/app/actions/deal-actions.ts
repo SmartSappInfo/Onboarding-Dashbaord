@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, WorkspaceEntity, DealContact, DealFocalContact } from '@/lib/types';
+import type { Deal, WorkspaceEntity, DealContact, DealFocalContact, EntityType } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { canUser } from '@/lib/workspace-permissions';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
@@ -37,14 +37,77 @@ async function resolveAssigneeDetails(userId: string): Promise<{ userId: string;
     return { userId, name: 'Assigned User', email: '' };
 }
 
+/**
+ * ARCHITECTURAL NOTE & CAUTION (Zero Double-Prefix Entity ID & Multi-Pattern Resolution - Rule 10):
+ * Safely resolves a workspace entity record across 4 storage patterns:
+ * 1. Composite key: `${workspaceId}_${cleanEntityId}`
+ * 2. Direct key: `cleanEntityId`
+ * 3. Query lookup: where('workspaceId', '==', workspaceId).where('entityId', '==', cleanEntityId)
+ * 4. Canonical entities collection fallback: doc('entities', cleanEntityId)
+ * Guarantees zero "Entity not found" false negatives during pipeline deal creation or contact mapping.
+ */
+export async function resolveWorkspaceEntityRecord(
+    workspaceId: string,
+    entityId: string,
+    organizationId: string = 'default'
+): Promise<WorkspaceEntity | null> {
+    if (!workspaceId || !entityId) return null;
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+
+    // Tier 1: Composite key
+    const compositeSnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`).get();
+    if (compositeSnap.exists) {
+        return { id: compositeSnap.id, ...compositeSnap.data() } as WorkspaceEntity;
+    }
+
+    // Tier 2: Direct key
+    const directSnap = await adminDb.collection('workspace_entities').doc(cleanEntityId).get();
+    if (directSnap.exists) {
+        return { id: directSnap.id, ...directSnap.data() } as WorkspaceEntity;
+    }
+
+    // Tier 3: Query lookup
+    const querySnap = await adminDb.collection('workspace_entities')
+        .where('workspaceId', '==', workspaceId)
+        .where('entityId', '==', cleanEntityId)
+        .limit(1)
+        .get();
+    if (!querySnap.empty) {
+        return { id: querySnap.docs[0].id, ...querySnap.docs[0].data() } as WorkspaceEntity;
+    }
+
+    // Tier 4: Canonical entities collection fallback
+    const entSnap = await adminDb.collection('entities').doc(cleanEntityId).get();
+    if (entSnap.exists) {
+        const rawEnt = entSnap.data() || {};
+        const entType: EntityType = (rawEnt.entityType === 'family' || rawEnt.entityType === 'person') ? rawEnt.entityType : 'institution';
+        return {
+            id: entSnap.id,
+            entityId: entSnap.id,
+            entityType: entType,
+            workspaceId,
+            organizationId,
+            displayName: String(rawEnt.name || rawEnt.displayName || ''),
+            entityName: String(rawEnt.name || rawEnt.displayName || ''),
+            primaryEmail: String(rawEnt.primaryEmail || rawEnt.email || ''),
+            primaryPhone: String(rawEnt.primaryPhone || rawEnt.phone || ''),
+            entityContacts: Array.isArray(rawEnt.entityContacts) ? rawEnt.entityContacts : [],
+            workspaceTags: Array.isArray(rawEnt.workspaceTags) ? rawEnt.workspaceTags : [],
+            assignedTo: rawEnt.assignedTo || null,
+            status: rawEnt.status === 'archived' ? 'archived' : 'active',
+            addedAt: String(rawEnt.addedAt || rawEnt.createdAt || new Date().toISOString()),
+            updatedAt: String(rawEnt.updatedAt || new Date().toISOString()),
+        };
+    }
+
+    return null;
+}
+
 export async function createDeal(data: DealCreationData): Promise<{ id?: string; error?: string }> {
     try {
         const { entityId, workspaceId, organizationId, pipelineId, name, value, assignmentStrategy, eligibleUserIds = [], suppressAutomations = false, ...rest } = data;
 
-        // ARCHITECTURAL NOTE & CAUTION (Zero Double-Prefix Entity ID):
-        // Ensure entityId is normalized without duplicate workspaceId_ prefix.
         const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
-        const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`);
         const pipelineRef = adminDb.collection('pipelines').doc(pipelineId);
         
         let stageSnap: FirebaseFirestore.DocumentSnapshot | FirebaseFirestore.QuerySnapshot | null = null;
@@ -54,13 +117,12 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             stageSnap = await adminDb.collection('onboardingStages').doc(data.stageId).get();
         }
 
-        const [entitySnap, pipelineSnap] = await Promise.all([
-            entityRef.get(),
+        const [entity, pipelineSnap] = await Promise.all([
+            resolveWorkspaceEntityRecord(workspaceId, cleanEntityId, organizationId),
             pipelineRef.get(),
         ]);
 
-        if (!entitySnap.exists) throw new Error('Entity not found');
-        const entity = entitySnap.data() as WorkspaceEntity;
+        if (!entity) throw new Error('Entity not found');
 
         const pipeline = pipelineSnap.exists ? pipelineSnap.data() : null;
 
@@ -410,11 +472,9 @@ export async function addDealContactAction(
         if (!dealSnap.exists) throw new Error('Deal not found');
         const deal = dealSnap.data() as Deal;
 
-        // Resolve contact name and email
-        const entitySnap = await adminDb.collection('workspace_entities')
-            .doc(`${deal.workspaceId}_${entityId}`).get();
-        if (!entitySnap.exists) throw new Error('Contact entity not found in this workspace');
-        const entity = entitySnap.data() as WorkspaceEntity;
+        // Resolve contact name and email via resilient entity resolver
+        const entity = await resolveWorkspaceEntityRecord(deal.workspaceId, entityId, deal.organizationId);
+        if (!entity) throw new Error('Contact entity not found in this workspace');
 
         const currentContacts = deal.contacts || [];
         if (currentContacts.some(c => c.entityId === entityId)) {

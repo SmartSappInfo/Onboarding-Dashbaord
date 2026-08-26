@@ -913,9 +913,14 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     }
     
     // 6. Handle Post-Submission Automations, Pipeline Deal Moves & Alerts
-    if (surveyData && !isFormMode) {
+    // If entity is already identified OR leadCaptureMode is not form mode, trigger automations immediately
+    const shouldTriggerNow = Boolean(surveyData && (!isFormMode || finalEntityId));
+    if (shouldTriggerNow && surveyData) {
       const respPhone = (responseData as Record<string, unknown>).contactPhone || (responseData as Record<string, unknown>).respondentPhone || '';
       const respEmail = (responseData as Record<string, unknown>).contactEmail || (responseData as Record<string, unknown>).respondentEmail || '';
+
+      // Mark automations as dispatched to prevent duplicate execution later
+      await docRef.update({ automationsTriggered: true }).catch(() => {});
 
       after(async () => {
         await triggerPostSubmissionAutomations(
@@ -1537,31 +1542,35 @@ export async function submitPublicSurveyLead(
         }
       });
 
-      // Trigger post-submission automations, notifications, webhooks, and logs
-      after(async () => {
-        await triggerPostSubmissionAutomations(
-          surveyData,
-          responseId,
-          {
-            answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
-            score: responseData.score,
-            sourcePageId: responseData.sourcePageId,
-            assignedUserId: responseData.assignedUserId
-          },
-          workspaceId,
-          organizationId,
-          finalEntityId,
-          cEmail || null,
-          cPhone || null,
-          outcomeId
-        );
-      });
+      // Trigger post-submission automations, notifications, webhooks, and logs (if not already triggered)
+      if (!responseData.automationsTriggered) {
+        await responseRef.update({ automationsTriggered: true }).catch(() => {});
+        after(async () => {
+          await triggerPostSubmissionAutomations(
+            surveyData,
+            responseId,
+            {
+              answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
+              score: responseData.score,
+              sourcePageId: responseData.sourcePageId,
+              assignedUserId: responseData.assignedUserId
+            },
+            workspaceId,
+            organizationId,
+            finalEntityId,
+            cEmail || null,
+            cPhone || null,
+            outcomeId
+          );
+        });
+      }
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Failed to process lead.";
     console.error("submitPublicSurveyLead Error:", error);
-    return { success: false, error: error.message || "Failed to process lead." };
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -1641,7 +1650,7 @@ export async function finalizeSurveySubmission(
               surveyId,
               surveyTitle: surveyData.title,
               submissionId: responseId,
-              outcomeId: outcomeId || (responseData as any).outcomeId || null,
+              outcomeId: outcomeId || responseData.outcome || responseData.matchedRuleId || null,
               score: responseData.score || null,
               isExistingEntity: Boolean(existingMatch || responseData.entityId),
               matchedBy: existingMatch?.matchedBy || (responseData.entityId ? 'tracked_id' : 'new_entity'),
@@ -1654,30 +1663,34 @@ export async function finalizeSurveySubmission(
       });
     }
 
-    after(async () => {
-      await triggerPostSubmissionAutomations(
-        surveyData,
-        responseId,
-        {
-          answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
-          score: responseData.score,
-          respondentName: responseData.respondentName,
-          sourcePageId: responseData.sourcePageId,
-          assignedUserId: responseData.assignedUserId
-        },
-        workspaceId,
-        organizationId,
-        finalEntityId,
-        respondentEmail ? String(respondentEmail) : null,
-        respondentPhone ? String(respondentPhone) : null,
-        outcomeId
-      );
-    });
+    if (!responseData.automationsTriggered) {
+      await responseRef.update({ automationsTriggered: true }).catch(() => {});
+      after(async () => {
+        await triggerPostSubmissionAutomations(
+          surveyData,
+          responseId,
+          {
+            answers: responseData.answers as Array<{ questionId: string; value: string | string[] }>,
+            score: responseData.score,
+            respondentName: responseData.respondentName,
+            sourcePageId: responseData.sourcePageId,
+            assignedUserId: responseData.assignedUserId
+          },
+          workspaceId,
+          organizationId,
+          finalEntityId,
+          respondentEmail ? String(respondentEmail) : null,
+          respondentPhone ? String(respondentPhone) : null,
+          outcomeId
+        );
+      });
+    }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Failed to finalize submission.";
     console.error("finalizeSurveySubmission Error:", error);
-    return { success: false, error: error.message || "Failed to finalize submission." };
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -2229,22 +2242,67 @@ export async function executeSurveyResultButtonActions(params: {
     const organizationId = surveyData.organizationId || 'default';
     const workspaceId = surveyData.workspaceIds?.[0] || '';
 
-    // Load workspace entity
-    const weSnap = await adminDb.collection('workspace_entities').doc(entityId).get();
-    if (!weSnap.exists) throw new Error('Contact/entity not found');
-    const weData = weSnap.data() as WorkspaceEntity;
+    // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+    // Multi-Pattern Workspace Entity Resolution:
+    // Resolves workspace entity across composite doc ID, direct ID, and query fallback.
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+    let weData: WorkspaceEntity | null = null;
+
+    const compSnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`).get();
+    if (compSnap.exists) {
+      weData = { id: compSnap.id, ...compSnap.data() } as WorkspaceEntity;
+    } else {
+      const dirSnap = await adminDb.collection('workspace_entities').doc(cleanEntityId).get();
+      if (dirSnap.exists) {
+        weData = { id: dirSnap.id, ...dirSnap.data() } as WorkspaceEntity;
+      } else {
+        const qSnap = await adminDb.collection('workspace_entities')
+          .where('workspaceId', '==', workspaceId)
+          .where('entityId', '==', cleanEntityId)
+          .limit(1)
+          .get();
+        if (!qSnap.empty) {
+          weData = { id: qSnap.docs[0].id, ...qSnap.docs[0].data() } as WorkspaceEntity;
+        } else {
+          const eSnap = await adminDb.collection('entities').doc(cleanEntityId).get();
+          if (eSnap.exists) {
+            const raw = eSnap.data() || {};
+            const entType: EntityType = (raw.entityType === 'family' || raw.entityType === 'person') ? raw.entityType : 'institution';
+            weData = {
+              id: eSnap.id,
+              entityId: eSnap.id,
+              entityType: entType,
+              workspaceId,
+              organizationId,
+              displayName: String(raw.name || raw.displayName || ''),
+              entityName: String(raw.name || raw.displayName || ''),
+              primaryEmail: String(raw.primaryEmail || raw.email || ''),
+              primaryPhone: String(raw.primaryPhone || raw.phone || ''),
+              entityContacts: Array.isArray(raw.entityContacts) ? raw.entityContacts : [],
+              workspaceTags: Array.isArray(raw.workspaceTags) ? raw.workspaceTags : [],
+              assignedTo: raw.assignedTo || null,
+              status: raw.status === 'archived' ? 'archived' : 'active',
+              addedAt: String(raw.addedAt || raw.createdAt || new Date().toISOString()),
+              updatedAt: String(raw.updatedAt || new Date().toISOString()),
+            };
+          }
+        }
+      }
+    }
+
+    if (!weData) throw new Error('Contact/entity not found');
 
     // 1. Add Tag(s)
     if (addTagIds && addTagIds.length > 0) {
       const { applyTagsAction } = await import('./tag-actions');
-      await applyTagsAction(entityId, 'workspace_entity', addTagIds, 'system-survey-results-button');
+      await applyTagsAction(cleanEntityId, 'workspace_entity', addTagIds, 'system-survey-results-button');
     }
 
     // 2. Trigger Automation
     if (triggerAutomationId && triggerAutomationId !== 'none') {
       const { runAutomationById } = await import('./automation-processor');
       const automationPayload = {
-        entityId,
+        entityId: cleanEntityId,
         entityName: weData.displayName || '',
         workspaceId,
         organizationId,
@@ -2359,8 +2417,10 @@ export async function logSurveyStartedAction(params: {
     }
     const surveyData = { id: surveySnap.id, ...surveySnap.data() } as Survey;
 
+    const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
+
     await logActivity({
-      entityId: entityId || undefined,
+      entityId: cleanEntityId || undefined,
       organizationId,
       workspaceId,
       userId: 'anonymous',
