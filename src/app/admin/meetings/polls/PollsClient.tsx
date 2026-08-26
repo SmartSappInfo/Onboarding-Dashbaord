@@ -41,6 +41,7 @@ import {
 import type { MeetingPoll } from '@/lib/meetings/types/polls';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -52,6 +53,7 @@ export function PollsClient() {
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   const [polls, setPolls] = React.useState<MeetingPoll[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -59,6 +61,13 @@ export function PollsClient() {
 
   // Modal State
   const [createModalOpen, setCreateModalOpen] = React.useState(false);
+
+  // Auto-open create modal if create=true in URL query params
+  React.useEffect(() => {
+    if (searchParams?.get('create') === 'true') {
+      setCreateModalOpen(true);
+    }
+  }, [searchParams]);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [durationMinutes, setDurationMinutes] = React.useState('30');

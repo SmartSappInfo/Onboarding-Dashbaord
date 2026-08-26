@@ -37,7 +37,7 @@ export function UpcomingSessionsCard() {
           </CardTitle>
           <p className="text-xs text-muted-foreground">Broadcast sessions, workshops, and large group meetings</p>
         </div>
-        <Link href="/admin/meetings/event-types">
+        <Link href="/admin/meetings/sessions">
           <Button variant="ghost" size="sm" className="rounded-xl text-xs font-semibold text-primary hover:underline h-7 px-2">
             View All <ArrowRight className="w-3 h-3 ml-1" />
           </Button>
@@ -69,9 +69,9 @@ export function UpcomingSessionsCard() {
           </p>
 
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-purple-200/40 dark:border-purple-900/30">
-            <Link href="/admin/meetings/event-types">
+            <Link href="/admin/meetings/sessions">
               <Button size="sm" className="rounded-xl h-8 text-xs font-bold gap-1.5 px-4 active:scale-[0.97]">
-                <Video className="w-3.5 h-3.5" /> Manage Session
+                <Video className="w-3.5 h-3.5" /> Manage Sessions
               </Button>
             </Link>
             <Button

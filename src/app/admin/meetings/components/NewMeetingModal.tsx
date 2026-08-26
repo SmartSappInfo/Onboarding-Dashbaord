@@ -45,7 +45,7 @@ export function NewMeetingModal({
     if (onOpenSessionWizard) {
       onOpenSessionWizard();
     } else {
-      router.push('/admin/meetings');
+      router.push('/admin/meetings/new');
     }
   };
 
@@ -54,7 +54,7 @@ export function NewMeetingModal({
     if (onOpenPollWizard) {
       onOpenPollWizard();
     } else {
-      router.push('/admin/meetings/polls');
+      router.push('/admin/meetings/polls?create=true');
     }
   };
 

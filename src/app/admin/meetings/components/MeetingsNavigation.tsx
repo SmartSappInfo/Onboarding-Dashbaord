@@ -89,6 +89,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
       return 'schedule';
     }
     if (
+      pathname.startsWith('/admin/meetings/sessions') ||
       pathname.startsWith('/admin/meetings/event-types') ||
       pathname.startsWith('/admin/meetings/office-hours') ||
       pathname.startsWith('/admin/meetings/templates')
@@ -116,6 +117,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
       { label: 'Consensus Polls', href: '/admin/meetings/polls', icon: Vote },
     ],
     experiences: [
+      { label: 'Sessions & Webinars', href: '/admin/meetings/sessions', icon: Layers },
       { label: 'Event Types', href: '/admin/meetings/event-types', icon: Layers },
       { label: 'Drop-In Office Hours', href: '/admin/meetings/office-hours', icon: Radio },
       { label: 'Templates Studio', href: '/admin/meetings/templates', icon: Layers },
@@ -136,7 +138,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
   const primaryPillars: Array<{ key: MainPillar; label: string; href: string; icon: React.ElementType }> = [
     { key: 'home', label: 'Home', href: '/admin/meetings', icon: Home },
     { key: 'schedule', label: 'Schedule', href: '/admin/meetings/calendar', icon: CalendarDays },
-    { key: 'experiences', label: 'Experiences', href: '/admin/meetings/event-types', icon: Layers },
+    { key: 'experiences', label: 'Experiences', href: '/admin/meetings/sessions', icon: Layers },
     { key: 'intelligence', label: 'Intelligence', href: '/admin/meetings/overview', icon: BarChart3 },
     { key: 'settings', label: 'Settings', href: '/admin/meetings/calendars', icon: Settings },
   ];
