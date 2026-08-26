@@ -43,6 +43,7 @@ import {
   createCourseAction,
   updateCourseAction,
   deleteCourseAction,
+  listCoursesByPortalAction,
 } from '@/app/actions/learning-actions';
 import type { Course, CourseLevel, CourseStatus } from '@/lib/types/learning';
 import { CurriculumBuilderDrawer } from './CurriculumBuilderDrawer';
@@ -89,6 +90,8 @@ export function PortalCourseManager({
   const [editingCourse, setEditingCourse] = React.useState<Course | null>(null);
   const [curriculumCourse, setCurriculumCourse] = React.useState<Course | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [serverCourses, setServerCourses] = React.useState<Course[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
 
   // Form State
   const [title, setTitle] = React.useState('');
@@ -102,7 +105,26 @@ export function PortalCourseManager({
   const [estimatedDurationMinutes, setEstimatedDurationMinutes] = React.useState(60);
   const [certificateEnabled, setCertificateEnabled] = React.useState(true);
 
-  // Query Courses
+  const fetchServerCourses = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const res = await listCoursesByPortalAction(portalId);
+      if (res.success && res.data) {
+        setServerCourses(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerCourses();
+  }, [fetchServerCourses]);
+
+  // Query Courses (realtime sync when available)
   const coursesQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -114,10 +136,13 @@ export function PortalCourseManager({
         : null,
     [firestore, portalId]
   );
-  const { data: courses, isLoading } = useCollection<Course>(coursesQuery);
+  const { data: courses, isLoading: isLoadingCollection } = useCollection<Course>(coursesQuery);
+
+  const effectiveCourses = (courses && courses.length > 0) ? courses : serverCourses;
+  const isLoading = isLoadingCollection && isLoadingServer && effectiveCourses.length === 0;
 
   const filteredCourses = React.useMemo(() => {
-    return (courses || []).filter(c => {
+    return effectiveCourses.filter(c => {
       const matchSearch =
         !searchQuery ||
         c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -127,7 +152,7 @@ export function PortalCourseManager({
       const matchStatus = statusFilter === 'all' || c.status === statusFilter;
       return matchSearch && matchLevel && matchStatus;
     });
-  }, [courses, searchQuery, levelFilter, statusFilter]);
+  }, [effectiveCourses, searchQuery, levelFilter, statusFilter]);
 
   const handleOpenCreate = () => {
     setEditingCourse(null);
@@ -204,14 +229,15 @@ export function PortalCourseManager({
           estimatedDurationMinutes: Number(estimatedDurationMinutes) || 60,
           certificateEnabled,
           status: 'published',
-          order: (courses?.length || 0) + 1,
+          order: (effectiveCourses.length || 0) + 1,
         });
         if (!res.success) throw new Error(res.error);
         toast({ title: 'Course Created! 🎓', description: `"${res.data?.title}" is ready for curriculum.` });
       }
+      fetchServerCourses();
       setIsCreateOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Action Failed', description: err?.message || 'Could not save course.' });
+    } catch (err: unknown) {
+      toast({ title: 'Action Failed', description: err instanceof Error ? err.message : 'Could not save course.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -223,8 +249,9 @@ export function PortalCourseManager({
       const res = await deleteCourseAction(courseId, portalId);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Course Deleted', description: 'Course and curriculum removed.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerCourses();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Failed to delete course.' });
     }
   };
 
@@ -236,8 +263,9 @@ export function PortalCourseManager({
         title: nextStatus === 'published' ? 'Course Published 🚀' : 'Course Set to Draft',
         description: `Status changed to ${nextStatus}.`,
       });
-    } catch (err: any) {
-      toast({ title: 'Status Update Failed', description: err?.message });
+      fetchServerCourses();
+    } catch (err: unknown) {
+      toast({ title: 'Status Update Failed', description: err instanceof Error ? err.message : 'Status update failed.' });
     }
   };
 

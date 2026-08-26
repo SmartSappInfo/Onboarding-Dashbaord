@@ -8,13 +8,16 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Paintbrush, Type, Layout, ImageIcon, SunMoon } from 'lucide-react';
+import { Paintbrush, Type, Layout, ImageIcon, FolderOpen, RotateCcw, Trash2, Building2 } from 'lucide-react';
+import { useTenant } from '@/context/TenantContext';
+import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import type { MediaAsset } from '@/lib/types';
 import type { PortalThemeConfig, PortalBranding } from '@/lib/types/portal';
 
 interface PortalThemeCustomizerProps {
@@ -48,6 +51,38 @@ export function PortalThemeCustomizer({
   onChangeTheme,
   onChangeBranding,
 }: PortalThemeCustomizerProps) {
+  const { activeOrganization, activeWorkspaceId } = useTenant();
+
+  const [isMediaSelectorOpen, setIsMediaSelectorOpen] = React.useState(false);
+  const [activeMediaTarget, setActiveMediaTarget] = React.useState<'logoUrl' | 'darkLogoUrl' | 'faviconUrl' | null>(null);
+
+  // Organization defaults for automatic inheritance
+  const orgBrandLogo = activeOrganization?.brandLogoUrl || activeOrganization?.logoUrl || '';
+  const effectiveLightLogo = branding.logoUrl || orgBrandLogo;
+  const effectiveDarkLogo = branding.darkLogoUrl || branding.logoUrl || orgBrandLogo;
+
+  const handleOpenMediaSelector = (target: 'logoUrl' | 'darkLogoUrl' | 'faviconUrl') => {
+    setActiveMediaTarget(target);
+    setIsMediaSelectorOpen(true);
+  };
+
+  const handleSelectMediaAsset = (asset: MediaAsset) => {
+    if (!activeMediaTarget) return;
+    onChangeBranding({
+      ...branding,
+      [activeMediaTarget]: asset.url,
+    });
+    setIsMediaSelectorOpen(false);
+    setActiveMediaTarget(null);
+  };
+
+  const handleResetToOrgLogo = (target: 'logoUrl' | 'darkLogoUrl') => {
+    onChangeBranding({
+      ...branding,
+      [target]: orgBrandLogo,
+    });
+  };
+
   const handleColorChange = (key: keyof PortalThemeConfig['colors'], value: string) => {
     onChangeTheme({
       ...theme,
@@ -72,66 +107,175 @@ export function PortalThemeCustomizer({
 
   return (
     <div className="space-y-6">
-      {/* ── Brand Assets ──────────────────────────────────────────────── */}
+      {/* ── Brand Assets & Identity ───────────────────────────────────── */}
       <Card className="rounded-2xl border-2 border-border shadow-sm">
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-2 text-primary font-bold text-sm">
-            <ImageIcon className="w-4 h-4" /> Brand Assets & Identity
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-primary font-bold text-sm">
+              <ImageIcon className="w-4 h-4" /> Brand Assets & Identity
+            </div>
+            {orgBrandLogo && (
+              <Badge variant="outline" className="text-[10px] font-bold gap-1 text-muted-foreground">
+                <Building2 className="w-3 h-3 text-primary" /> Auto-syncs with Org Setup
+              </Badge>
+            )}
           </div>
-          <CardDescription className="text-xs">
-            Configure logos, favicons, and copyright statements.
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="brand-logo" className="text-xs font-bold">
-                Light Mode Logo URL
-              </Label>
-              <Input
-                id="brand-logo"
-                placeholder="https://..."
-                value={branding.logoUrl || ''}
-                onChange={e => onChangeBranding({ ...branding, logoUrl: e.target.value })}
-                className="h-10 rounded-xl text-xs"
-              />
+        <CardContent className="space-y-5 pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Light Mode Logo */}
+            <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/50">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="brand-logo" className="text-xs font-bold">
+                  Light Mode Logo
+                </Label>
+                {orgBrandLogo && (
+                  <button
+                    type="button"
+                    onClick={() => handleResetToOrgLogo('logoUrl')}
+                    className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Inherit Org Logo
+                  </button>
+                )}
+              </div>
+
+              {effectiveLightLogo ? (
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-muted/40 border border-border/80">
+                  <div className="h-10 w-16 rounded-lg bg-white p-1 border border-border flex items-center justify-center overflow-hidden">
+                    <img src={effectiveLightLogo} alt="Light Logo Preview" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-mono text-muted-foreground truncate">{effectiveLightLogo}</p>
+                    <span className="text-[10px] text-emerald-600 font-semibold">Active in Light Mode</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onChangeBranding({ ...branding, logoUrl: '' })}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-500 rounded-lg"
+                    title="Remove custom logo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className="flex items-center gap-2">
+                <Input
+                  id="brand-logo"
+                  placeholder="https://... or select from media"
+                  value={branding.logoUrl || ''}
+                  onChange={e => onChangeBranding({ ...branding, logoUrl: e.target.value })}
+                  className="h-10 rounded-xl text-xs flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenMediaSelector('logoUrl')}
+                  className="h-10 px-3 rounded-xl text-xs font-bold gap-1.5 shrink-0"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-primary" /> Media
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="brand-dark-logo" className="text-xs font-bold">
-                Dark Mode Logo URL
-              </Label>
-              <Input
-                id="brand-dark-logo"
-                placeholder="https://..."
-                value={branding.darkLogoUrl || ''}
-                onChange={e => onChangeBranding({ ...branding, darkLogoUrl: e.target.value })}
-                className="h-10 rounded-xl text-xs"
-              />
+            {/* Dark Mode Logo */}
+            <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/50">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="brand-dark-logo" className="text-xs font-bold">
+                  Dark Mode Logo
+                </Label>
+                {orgBrandLogo && (
+                  <button
+                    type="button"
+                    onClick={() => handleResetToOrgLogo('darkLogoUrl')}
+                    className="text-[11px] font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Inherit Org Logo
+                  </button>
+                )}
+              </div>
+
+              {effectiveDarkLogo ? (
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-950 border border-slate-800 text-white">
+                  <div className="h-10 w-16 rounded-lg bg-slate-900 p-1 border border-slate-700 flex items-center justify-center overflow-hidden">
+                    <img src={effectiveDarkLogo} alt="Dark Logo Preview" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-mono text-slate-300 truncate">{effectiveDarkLogo}</p>
+                    <span className="text-[10px] text-emerald-400 font-semibold">Active in Dark Mode</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onChangeBranding({ ...branding, darkLogoUrl: '' })}
+                    className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 rounded-lg"
+                    title="Remove custom dark logo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className="flex items-center gap-2">
+                <Input
+                  id="brand-dark-logo"
+                  placeholder="https://... or select from media"
+                  value={branding.darkLogoUrl || ''}
+                  onChange={e => onChangeBranding({ ...branding, darkLogoUrl: e.target.value })}
+                  className="h-10 rounded-xl text-xs flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenMediaSelector('darkLogoUrl')}
+                  className="h-10 px-3 rounded-xl text-xs font-bold gap-1.5 shrink-0"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-primary" /> Media
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Favicon URL */}
             <div className="space-y-1.5">
               <Label htmlFor="brand-favicon" className="text-xs font-bold">
                 Favicon URL
               </Label>
-              <Input
-                id="brand-favicon"
-                placeholder="https://.../favicon.ico"
-                value={branding.faviconUrl || ''}
-                onChange={e => onChangeBranding({ ...branding, faviconUrl: e.target.value })}
-                className="h-10 rounded-xl text-xs"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="brand-favicon"
+                  placeholder="https://.../favicon.ico"
+                  value={branding.faviconUrl || ''}
+                  onChange={e => onChangeBranding({ ...branding, faviconUrl: e.target.value })}
+                  className="h-10 rounded-xl text-xs flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenMediaSelector('faviconUrl')}
+                  className="h-10 px-3 rounded-xl text-xs font-bold gap-1.5 shrink-0"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-primary" /> Media
+                </Button>
+              </div>
             </div>
 
+            {/* Copyright Statement */}
             <div className="space-y-1.5">
               <Label htmlFor="brand-copyright" className="text-xs font-bold">
                 Copyright Text
               </Label>
               <Input
                 id="brand-copyright"
-                placeholder="© 2026 Organization. All rights reserved."
+                placeholder={`© ${new Date().getFullYear()} ${activeOrganization?.name || 'SmartSapp Academy'}. All rights reserved.`}
                 value={branding.copyrightText || ''}
                 onChange={e => onChangeBranding({ ...branding, copyrightText: e.target.value })}
                 className="h-10 rounded-xl text-xs"
@@ -141,7 +285,7 @@ export function PortalThemeCustomizer({
         </CardContent>
       </Card>
 
-      {/* ── Color Palette ─────────────────────────────────────────────── */}
+      {/* ── Color System Tokens ───────────────────────────────────────── */}
       <Card className="rounded-2xl border-2 border-border shadow-sm">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -152,9 +296,6 @@ export function PortalThemeCustomizer({
               CSS Variables
             </Badge>
           </div>
-          <CardDescription className="text-xs">
-            Quickly apply a curated palette or customize specific color tokens.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-0">
           {/* Quick Palettes */}
@@ -384,6 +525,25 @@ export function PortalThemeCustomizer({
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Unified Media Selector Dialog ──────────────────────────────── */}
+      {isMediaSelectorOpen && (
+        <MediaSelectorDialog
+          open={isMediaSelectorOpen}
+          onOpenChange={setIsMediaSelectorOpen}
+          onSelectAsset={handleSelectMediaAsset}
+          filterType="image"
+          workspaceId={activeWorkspaceId}
+          title={
+            activeMediaTarget === 'faviconUrl'
+              ? 'Select Brand Favicon (.ico / .png)'
+              : activeMediaTarget === 'darkLogoUrl'
+              ? 'Select Dark Mode Brand Logo'
+              : 'Select Light Mode Brand Logo'
+          }
+          description="Choose a high-resolution institutional brand asset or upload a new logo file directly."
+        />
+      )}
     </div>
   );
 }

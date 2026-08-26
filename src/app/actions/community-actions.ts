@@ -42,8 +42,8 @@ export async function createSpaceAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: space };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create space.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create space.' };
   }
 }
 
@@ -58,8 +58,8 @@ export async function updateSpaceAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: space };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update space.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update space.' };
   }
 }
 
@@ -73,8 +73,19 @@ export async function deleteSpaceAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete space.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete space.' };
+  }
+}
+
+export async function listSpacesByPortalAction(
+  portalId: string
+): Promise<ActionResponse<CommunitySpace[]>> {
+  try {
+    const spaces = await CommunityService.listPortalSpaces(portalId);
+    return { success: true, data: spaces };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list spaces.' };
   }
 }
 
@@ -91,8 +102,8 @@ export async function createPostAction(
       revalidatePath(`/portal/${portalSlug}/community/${input.spaceId}`);
     }
     return { success: true, data: post };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create post.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create post.' };
   }
 }
 
@@ -109,8 +120,8 @@ export async function updatePostAction(
       revalidatePath(`/portal/${portalSlug}/community/${spaceId}`);
     }
     return { success: true, data: post };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update post.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update post.' };
   }
 }
 
@@ -126,8 +137,8 @@ export async function deletePostAction(
       revalidatePath(`/portal/${portalSlug}/community/${spaceId}`);
     }
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete post.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete post.' };
   }
 }
 
@@ -142,8 +153,8 @@ export async function togglePinPostAction(
       revalidatePath(`/portal/${portalSlug}/community/${spaceId}`);
     }
     return { success: true, data: isPinned };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to toggle pin.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to toggle pin.' };
   }
 }
 
@@ -159,8 +170,8 @@ export async function createCommentAction(
       revalidatePath(`/portal/${portalSlug}/community/${input.spaceId}/${input.postId}`);
     }
     return { success: true, data: comment };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to post comment.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to post comment.' };
   }
 }
 
@@ -176,8 +187,8 @@ export async function deleteCommentAction(
       revalidatePath(`/portal/${portalSlug}/community/${spaceId}/${postId}`);
     }
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete comment.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete comment.' };
   }
 }
 
@@ -195,8 +206,8 @@ export async function castPollVoteAction(
       revalidatePath(`/portal/${portalSlug}/community/${spaceId}/${input.postId}`);
     }
     return { success: true, data: poll };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to vote on poll.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to vote on poll.' };
   }
 }
 
@@ -206,8 +217,8 @@ export async function toggleReactionAction(
   try {
     const res = await CommunityService.toggleReaction(input);
     return { success: true, data: res };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to toggle reaction.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to toggle reaction.' };
   }
 }
 
@@ -219,7 +230,18 @@ export async function reportContentAction(
   try {
     const report = await CommunityService.reportContent(input);
     return { success: true, data: report };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to submit report.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to submit report.' };
+  }
+}
+
+export async function listModerationReportsAction(
+  portalId: string
+): Promise<ActionResponse<ModerationReport[]>> {
+  try {
+    const reports = await CommunityService.listModerationReports(portalId);
+    return { success: true, data: reports };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list moderation reports.' };
   }
 }

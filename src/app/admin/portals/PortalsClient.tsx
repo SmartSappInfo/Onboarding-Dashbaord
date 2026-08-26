@@ -485,7 +485,7 @@ export default function PortalsClient() {
   }, []);
 
   const handleRunMasterSeed = React.useCallback(async () => {
-    if (!activeOrganizationId) return;
+    const orgId = activeOrganizationId || 'smartsapp-hq';
     setIsSeeding(true);
     toast({
       title: 'Initializing Experience Platform Demo...',
@@ -493,7 +493,7 @@ export default function PortalsClient() {
     });
 
     try {
-      const res = await runMasterExperienceSeederAction(activeOrganizationId);
+      const res = await runMasterExperienceSeederAction(orgId);
       if (res.success) {
         toast({
           title: 'Master Seeding Complete! 🌟',
@@ -506,10 +506,11 @@ export default function PortalsClient() {
           variant: 'destructive',
         });
       }
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to trigger master seeder.';
       toast({
         title: 'Error',
-        description: 'Failed to trigger master seeder.',
+        description: message,
         variant: 'destructive',
       });
     } finally {
@@ -602,7 +603,7 @@ export default function PortalsClient() {
         </div>
 
         {/* ── Hub Tabs (Experience Portals vs Quick Launchpad) ───────────── */}
-        <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)} className="w-full">
+        <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'experience' | 'launchpad')} className="w-full">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
             <TabsList className="h-11 p-1 bg-muted/60 rounded-xl border border-border">
               <TabsTrigger

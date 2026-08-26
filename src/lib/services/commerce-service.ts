@@ -150,6 +150,16 @@ export class CommerceService {
     await adminDb.collection('portal_coupons').doc(couponId).delete();
   }
 
+  public static async listPortalCoupons(portalId: string): Promise<PortalCoupon[]> {
+    const snap = await adminDb
+      .collection('portal_coupons')
+      .where('portalId', '==', portalId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snap.docs.map(d => d.data() as PortalCoupon);
+  }
+
   public static async validateCoupon(
     input: ValidateCouponInput
   ): Promise<{ isValid: boolean; discountAmount: number; coupon?: PortalCoupon; message?: string }> {
@@ -354,6 +364,16 @@ export class CommerceService {
     });
 
     return order;
+  }
+
+  public static async listPortalOrders(portalId: string): Promise<PortalOrder[]> {
+    const snap = await adminDb
+      .collection('portal_orders')
+      .where('portalId', '==', portalId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snap.docs.map(d => d.data() as PortalOrder);
   }
 
   // ── Affiliate Partner Operations ───────────────────────────────────────────

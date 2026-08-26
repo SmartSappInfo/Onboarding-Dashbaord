@@ -966,6 +966,8 @@ export function InteractiveScriptView({
           details += ` (Meeting Type ID: ${config.meetingTypeId || 'Not configured'})`;
         } else if (actionType === 'TRANSFER_CALL') {
           details += ` (Transfer to: ${config.transferTarget || 'No target'} via ${config.transferMode || 'phone'})`;
+        } else if (actionType === 'ADD_TO_MEMBERSHIP_PORTAL') {
+          details += ` (Portal ID: ${config.portalId || 'Not configured'} - Role: ${config.portalRole || 'member'})`;
         } else if (actionType === 'UPDATE_CONTACT') {
           details += ` (Update: ${config.contactName || '[No Name]'}, ${config.contactEmail || '[No Email]'}, ${config.contactPhone || '[No Phone]'})`;
         }

@@ -146,3 +146,18 @@ export async function searchPortalContentAction(
     };
   }
 }
+
+export async function listContentItemsByPortalAction(
+  portalId: string,
+  options?: ContentFilterOptions
+): Promise<ActionResponse<ContentItem[]>> {
+  try {
+    const items = await ContentService.listContentItems(portalId, options);
+    return { success: true, data: items };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to list content items.',
+    };
+  }
+}

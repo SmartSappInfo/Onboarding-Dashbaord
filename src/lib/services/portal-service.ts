@@ -38,6 +38,12 @@ import {
   DEFAULT_SEO,
   PORTAL_MODE_PRESETS,
 } from '../portal-presets';
+import {
+  getPortalRadiusCss,
+  getGoogleFontsUrl,
+  getPortalThemeVariables,
+  getPortalButtonInlineStyle,
+} from '../utils/portal-theme';
 import { sanitizeSlug } from '../utils/slug-utils';
 
 export {
@@ -474,4 +480,24 @@ export class PortalService {
     const snap = await q.get();
     return snap.docs.map(doc => doc.data() as Portal);
   }
+
+  /**
+   * Returns CSS radius value corresponding to the configured UI border radius.
+   */
+  static getPortalRadiusCss = getPortalRadiusCss;
+
+  /**
+   * Generates a Google Fonts stylesheet URL for the configured heading and body fonts.
+   */
+  static getGoogleFontsUrl = getGoogleFontsUrl;
+
+  /**
+   * Computes the complete CSS variable map for the given portal theme.
+   */
+  static getPortalThemeVariables = getPortalThemeVariables;
+
+  /**
+   * Computes inline CSS treatment for buttons based on primary color, border radius, and style preset.
+   */
+  static getPortalButtonInlineStyle = getPortalButtonInlineStyle;
 }

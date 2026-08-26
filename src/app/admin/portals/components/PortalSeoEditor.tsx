@@ -64,9 +64,6 @@ export function PortalSeoEditor({
           <div className="flex items-center gap-2 text-primary font-bold text-sm">
             <Globe className="w-4 h-4" /> Search Engine Optimization (SEO)
           </div>
-          <CardDescription className="text-xs">
-            Configure how your portal appears in Google, Bing, and web search results.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <div className="space-y-1.5">
@@ -177,9 +174,6 @@ export function PortalSeoEditor({
           <div className="flex items-center gap-2 text-primary font-bold text-sm">
             <Share2 className="w-4 h-4" /> Live Social Share Preview (WhatsApp / Twitter / LinkedIn)
           </div>
-          <CardDescription className="text-xs">
-            Visual preview of how your link appears when shared in chat apps and social feeds.
-          </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="max-w-lg mx-auto rounded-2xl border border-border bg-card overflow-hidden shadow-md">

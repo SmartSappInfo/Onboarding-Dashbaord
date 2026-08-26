@@ -39,6 +39,10 @@ import {
   createCouponAction,
   deleteCouponAction,
   updateAffiliatePartnerStatusAction,
+  listOffersByPortalAction,
+  listCouponsByPortalAction,
+  listAffiliatesByPortalAction,
+  listOrdersByPortalAction,
 } from '@/app/actions/commerce-actions';
 import type {
   PortalOffer,
@@ -87,7 +91,39 @@ export function PortalMonetizationManager({
 
   const [activeTab, setActiveTab] = React.useState('offers');
 
-  // 1. Query Offers
+  // Server Action Fallbacks
+  const [serverOffers, setServerOffers] = React.useState<PortalOffer[]>([]);
+  const [serverCoupons, setServerCoupons] = React.useState<PortalCoupon[]>([]);
+  const [serverAffiliates, setServerAffiliates] = React.useState<AffiliatePartner[]>([]);
+  const [serverOrders, setServerOrders] = React.useState<PortalOrder[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerCommerce = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const [offersRes, couponsRes, affiliatesRes, ordersRes] = await Promise.all([
+        listOffersByPortalAction(portalId),
+        listCouponsByPortalAction(portalId),
+        listAffiliatesByPortalAction(portalId),
+        listOrdersByPortalAction(portalId),
+      ]);
+      if (offersRes.success && offersRes.data) setServerOffers(offersRes.data);
+      if (couponsRes.success && couponsRes.data) setServerCoupons(couponsRes.data);
+      if (affiliatesRes.success && affiliatesRes.data) setServerAffiliates(affiliatesRes.data);
+      if (ordersRes.success && ordersRes.data) setServerOrders(ordersRes.data);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerCommerce();
+  }, [fetchServerCommerce]);
+
+  // 1. Query Offers (realtime sync when available)
   const offersQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -99,7 +135,7 @@ export function PortalMonetizationManager({
         : null,
     [firestore, portalId]
   );
-  const { data: offers, isLoading: isLoadingOffers } = useCollection<PortalOffer>(offersQuery);
+  const { data: offers, isLoading: isLoadingOffersCollection } = useCollection<PortalOffer>(offersQuery);
 
   // 2. Query Coupons
   const couponsQuery = useMemoFirebase(
@@ -113,7 +149,7 @@ export function PortalMonetizationManager({
         : null,
     [firestore, portalId]
   );
-  const { data: coupons, isLoading: isLoadingCoupons } = useCollection<PortalCoupon>(couponsQuery);
+  const { data: coupons, isLoading: isLoadingCouponsCollection } = useCollection<PortalCoupon>(couponsQuery);
 
   // 3. Query Affiliates
   const affiliatesQuery = useMemoFirebase(
@@ -123,7 +159,7 @@ export function PortalMonetizationManager({
         : null,
     [firestore, portalId]
   );
-  const { data: affiliates, isLoading: isLoadingAffiliates } = useCollection<AffiliatePartner>(affiliatesQuery);
+  const { data: affiliates, isLoading: isLoadingAffiliatesCollection } = useCollection<AffiliatePartner>(affiliatesQuery);
 
   // 4. Query Orders
   const ordersQuery = useMemoFirebase(
@@ -137,7 +173,17 @@ export function PortalMonetizationManager({
         : null,
     [firestore, portalId]
   );
-  const { data: orders, isLoading: isLoadingOrders } = useCollection<PortalOrder>(ordersQuery);
+  const { data: orders, isLoading: isLoadingOrdersCollection } = useCollection<PortalOrder>(ordersQuery);
+
+  const effectiveOffers = (offers && offers.length > 0) ? offers : serverOffers;
+  const effectiveCoupons = (coupons && coupons.length > 0) ? coupons : serverCoupons;
+  const effectiveAffiliates = (affiliates && affiliates.length > 0) ? affiliates : serverAffiliates;
+  const effectiveOrders = (orders && orders.length > 0) ? orders : serverOrders;
+
+  const isLoadingOffers = isLoadingOffersCollection && isLoadingServer && effectiveOffers.length === 0;
+  const isLoadingCoupons = isLoadingCouponsCollection && isLoadingServer && effectiveCoupons.length === 0;
+  const isLoadingAffiliates = isLoadingAffiliatesCollection && isLoadingServer && effectiveAffiliates.length === 0;
+  const isLoadingOrders = isLoadingOrdersCollection && isLoadingServer && effectiveOrders.length === 0;
 
   // 5. Query Plans and Courses for Entitlement Dropdowns
   const plansQuery = useMemoFirebase(
@@ -211,8 +257,9 @@ export function PortalMonetizationManager({
       setOfferTitle('');
       setOfferDescription('');
       setIsCreateOfferOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Error Creating Offer', description: err?.message });
+      fetchServerCommerce();
+    } catch (err: unknown) {
+      toast({ title: 'Error Creating Offer', description: err instanceof Error ? err.message : 'Failed to create offer.' });
     } finally {
       setIsSubmittingOffer(false);
     }
@@ -223,8 +270,9 @@ export function PortalMonetizationManager({
     try {
       await deleteOfferAction(offerId, portalId, portalSlug);
       toast({ title: 'Offer Removed', description: 'Commercial package deleted.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerCommerce();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Failed to delete offer.' });
     }
   };
 
@@ -247,8 +295,9 @@ export function PortalMonetizationManager({
       toast({ title: 'Coupon Created! 🎟️', description: `Code "${res.data?.code}" is now active.` });
       setCouponCode('');
       setIsCreateCouponOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Error Creating Coupon', description: err?.message });
+      fetchServerCommerce();
+    } catch (err: unknown) {
+      toast({ title: 'Error Creating Coupon', description: err instanceof Error ? err.message : 'Failed to create coupon.' });
     } finally {
       setIsSubmittingCoupon(false);
     }
@@ -259,8 +308,9 @@ export function PortalMonetizationManager({
     try {
       await deleteCouponAction(couponId, portalId);
       toast({ title: 'Coupon Deleted', description: 'Discount code removed.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerCommerce();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Failed to delete coupon.' });
     }
   };
 
@@ -268,14 +318,15 @@ export function PortalMonetizationManager({
     try {
       await updateAffiliatePartnerStatusAction(partnerId, status, portalId);
       toast({ title: 'Status Updated', description: `Partner is now ${status}.` });
-    } catch (err: any) {
-      toast({ title: 'Update Failed', description: err?.message });
+      fetchServerCommerce();
+    } catch (err: unknown) {
+      toast({ title: 'Update Failed', description: err instanceof Error ? err.message : 'Failed to update partner status.' });
     }
   };
 
   const totalRevenue = React.useMemo(() => {
-    return (orders || []).reduce((acc, o) => acc + (o.paymentStatus === 'completed' ? o.totalAmount : 0), 0);
-  }, [orders]);
+    return effectiveOrders.reduce((acc, o) => acc + (o.paymentStatus === 'completed' ? o.totalAmount : 0), 0);
+  }, [effectiveOrders]);
 
   return (
     <div className="space-y-6">
@@ -284,16 +335,16 @@ export function PortalMonetizationManager({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="h-10 p-1 bg-muted/60 rounded-2xl">
             <TabsTrigger value="offers" className="rounded-xl text-xs font-bold gap-1.5">
-              <CreditCard className="w-3.5 h-3.5" /> Pricing Offers ({offers?.length || 0})
+              <CreditCard className="w-3.5 h-3.5" /> Pricing Offers ({effectiveOffers.length})
             </TabsTrigger>
             <TabsTrigger value="coupons" className="rounded-xl text-xs font-bold gap-1.5">
-              <Tag className="w-3.5 h-3.5" /> Coupons ({coupons?.length || 0})
+              <Tag className="w-3.5 h-3.5" /> Coupons ({effectiveCoupons.length})
             </TabsTrigger>
             <TabsTrigger value="affiliates" className="rounded-xl text-xs font-bold gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Affiliates ({affiliates?.length || 0})
+              <Users className="w-3.5 h-3.5" /> Affiliates ({effectiveAffiliates.length})
             </TabsTrigger>
             <TabsTrigger value="orders" className="rounded-xl text-xs font-bold gap-1.5">
-              <Receipt className="w-3.5 h-3.5" /> Orders ({orders?.length || 0})
+              <Receipt className="w-3.5 h-3.5" /> Orders ({effectiveOrders.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -320,7 +371,7 @@ export function PortalMonetizationManager({
         <div className="space-y-4">
           {isLoadingOffers ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading commercial packages...</div>
-          ) : (!offers || offers.length === 0) ? (
+          ) : effectiveOffers.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <CreditCard className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Pricing Offers Configured</h4>
@@ -336,7 +387,7 @@ export function PortalMonetizationManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {offers.map(offer => (
+              {effectiveOffers.map(offer => (
                 <Card
                   key={offer.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-4 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"
@@ -415,7 +466,7 @@ export function PortalMonetizationManager({
         <div className="space-y-4">
           {isLoadingCoupons ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading coupons...</div>
-          ) : (!coupons || coupons.length === 0) ? (
+          ) : effectiveCoupons.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <Tag className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Coupons Configured</h4>
@@ -431,7 +482,7 @@ export function PortalMonetizationManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {coupons.map(coupon => (
+              {effectiveCoupons.map(coupon => (
                 <Card
                   key={coupon.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-3 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"
@@ -477,7 +528,7 @@ export function PortalMonetizationManager({
         <div className="space-y-4">
           {isLoadingAffiliates ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading affiliate partners...</div>
-          ) : (!affiliates || affiliates.length === 0) ? (
+          ) : effectiveAffiliates.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <Users className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Affiliate Partners Registered</h4>
@@ -487,7 +538,7 @@ export function PortalMonetizationManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {affiliates.map(partner => (
+              {effectiveAffiliates.map(partner => (
                 <Card
                   key={partner.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-4 bg-card shadow-xs"
@@ -558,18 +609,18 @@ export function PortalMonetizationManager({
             </Card>
             <Card className="p-5 rounded-3xl border-2 border-border bg-card space-y-1">
               <span className="text-xs text-muted-foreground uppercase font-bold">Total Orders</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-foreground">{orders?.length || 0}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black text-foreground">{effectiveOrders.length}</h3>
             </Card>
             <Card className="p-5 rounded-3xl border-2 border-border bg-card space-y-1">
               <span className="text-xs text-muted-foreground uppercase font-bold">Active Offers</span>
-              <h3 className="text-2xl sm:text-3xl font-black text-foreground">{offers?.length || 0}</h3>
+              <h3 className="text-2xl sm:text-3xl font-black text-foreground">{effectiveOffers.length}</h3>
             </Card>
           </div>
 
           {/* Orders Table */}
           {isLoadingOrders ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading transaction receipts...</div>
-          ) : (!orders || orders.length === 0) ? (
+          ) : effectiveOrders.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <Receipt className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Orders Placed Yet</h4>
@@ -579,7 +630,7 @@ export function PortalMonetizationManager({
             </div>
           ) : (
             <div className="space-y-2.5">
-              {orders.map(order => (
+              {effectiveOrders.map(order => (
                 <Card
                   key={order.id}
                   className="rounded-2xl border-2 border-border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card"

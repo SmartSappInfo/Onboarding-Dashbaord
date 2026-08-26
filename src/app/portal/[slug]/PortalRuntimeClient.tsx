@@ -64,7 +64,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { validatePortalPasswordAction } from '@/app/actions/portal-actions';
-import { PortalAccessService } from '@/lib/services/portal-access-service';
+import {
+  getPortalRadiusCss,
+  getGoogleFontsUrl,
+  getPortalButtonInlineStyle,
+} from '@/lib/utils/portal-theme';
 import { PortalSearchModal } from './components/PortalSearchModal';
 import { PortalAuthModal } from './components/PortalAuthModal';
 import type {
@@ -282,6 +286,12 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
   const navigation = portal.navigation;
   const features = portal.features;
 
+  const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
+  const googleFontsUrl = getGoogleFontsUrl(
+    theme.typography?.headingFont,
+    theme.typography?.bodyFont
+  );
+
   const runtimeThemeStyles: React.CSSProperties = {
     ['--portal-primary' as string]: theme.colors.primary,
     ['--portal-secondary' as string]: theme.colors.secondary,
@@ -291,8 +301,17 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
     ['--portal-text' as string]: theme.colors.text,
     ['--portal-muted' as string]: theme.colors.mutedText,
     ['--portal-border' as string]: theme.colors.border,
-    fontFamily: `${theme.typography.bodyFont}, sans-serif`,
+    ['--portal-radius' as string]: radiusCss,
+    ['--portal-heading-font' as string]: `${theme.typography?.headingFont || 'Plus Jakarta Sans'}, sans-serif`,
+    ['--portal-body-font' as string]: `${theme.typography?.bodyFont || 'Inter'}, sans-serif`,
+    fontFamily: `var(--portal-body-font)`,
   };
+
+  const primaryBtnStyle = getPortalButtonInlineStyle(
+    theme.ui?.buttonStyle,
+    theme.colors.primary,
+    radiusCss
+  );
 
   const brandTitle = branding.brandName || portal.name;
 
@@ -301,6 +320,11 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
       style={runtimeThemeStyles}
       className="min-h-screen flex flex-col justify-between bg-[var(--portal-bg)] text-[var(--portal-text)] transition-colors"
     >
+      {/* ── Dynamic Google Fonts ────────────────────────────────────────── */}
+      {googleFontsUrl && (
+        <link rel="stylesheet" href={googleFontsUrl} />
+      )}
+
       {/* ── Navigation Header ─────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3.5 transition-colors">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -314,13 +338,18 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               />
             ) : (
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                style={{ backgroundColor: theme.colors.primary }}
+                className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
               >
                 {brandTitle.charAt(0)}
               </div>
             )}
-            <span className="font-extrabold text-base tracking-tight">{brandTitle}</span>
+            <span
+              className="font-extrabold text-base tracking-tight"
+              style={{ fontFamily: 'var(--portal-heading-font)' }}
+            >
+              {brandTitle}
+            </span>
           </Link>
 
           {/* Desktop Navigation Links */}
@@ -344,7 +373,8 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               <button
                 type="button"
                 onClick={() => setIsSearchModalOpen(true)}
-                className="relative w-48 text-left h-9 pl-8 pr-3 rounded-xl border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs"
+                className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs"
+                style={{ borderRadius: radiusCss }}
               >
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
                 <span>Search portal...</span>
@@ -398,8 +428,8 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               <Link href={navigation.headerActions.ctaButton.path || '#'}>
                 <Button
                   size="sm"
-                  className="h-9 px-4 rounded-xl font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
-                  style={{ backgroundColor: theme.colors.primary }}
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
+                  style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label}
                 </Button>
@@ -446,8 +476,8 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               {navigation.headerActions.ctaButton?.label && (
                 <Link href={navigation.headerActions.ctaButton.path || '#'} className="w-full">
                   <Button
-                    className="w-full min-h-[44px] rounded-xl font-bold text-sm text-white"
-                    style={{ backgroundColor: theme.colors.primary }}
+                    className="w-full min-h-[44px] font-bold text-sm text-white"
+                    style={primaryBtnStyle}
                   >
                     {navigation.headerActions.ctaButton.label}
                   </Button>
@@ -474,11 +504,12 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
           <div className="max-w-3xl mx-auto space-y-4 relative z-10">
             <Badge
               variant="outline"
-              className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border-2"
+              className="text-xs font-bold uppercase tracking-wider px-3 py-1 border-2"
               style={{
                 borderColor: theme.colors.primary,
                 color: theme.colors.primary,
                 backgroundColor: 'transparent',
+                borderRadius: theme.ui?.borderRadius === 'none' ? '0px' : '9999px',
               }}
             >
               {portal.primaryMode.replace('_', ' ')}
@@ -486,7 +517,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             <h1
               className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground"
-              style={{ fontFamily: `${theme.typography.headingFont}, sans-serif` }}
+              style={{ fontFamily: 'var(--portal-heading-font)' }}
             >
               {brandTitle}
             </h1>
@@ -500,8 +531,8 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
                 <Link href={navigation.headerActions.ctaButton.path || '#'}>
                   <Button
                     size="lg"
-                    className="min-h-[44px] px-6 rounded-2xl font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
-                    style={{ backgroundColor: theme.colors.primary }}
+                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                    style={primaryBtnStyle}
                   >
                     {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -509,8 +540,8 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               ) : (
                 <Button
                   size="lg"
-                  className="min-h-[44px] px-6 rounded-2xl font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
-                  style={{ backgroundColor: theme.colors.primary }}
+                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                  style={primaryBtnStyle}
                 >
                   Explore Modules <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -525,7 +556,9 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--portal-border)] pb-4">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">Active Learning Spaces</h2>
+                <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'var(--portal-heading-font)' }}>
+                  Active Learning Spaces
+                </h2>
                 <p className="text-xs text-[var(--portal-muted)] mt-0.5">
                   Explore modules and resources available inside this portal.
                 </p>
@@ -534,10 +567,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.enableCourses && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
                   >
                     <GraduationCap className="w-6 h-6" />
                   </div>
@@ -549,10 +585,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               )}
 
               {features.enableDocs && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
                   >
                     <FileCode className="w-6 h-6" />
                   </div>
@@ -564,10 +603,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               )}
 
               {features.enableCommunity && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
                   >
                     <Users className="w-6 h-6" />
                   </div>
@@ -579,10 +621,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               )}
 
               {features.enableResources && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.secondary }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.secondary, borderRadius: radiusCss }}
                   >
                     <FolderArchive className="w-6 h-6" />
                   </div>
@@ -594,10 +639,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               )}
 
               {features.enableBlog && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
                   >
                     <Newspaper className="w-6 h-6" />
                   </div>
@@ -609,10 +657,13 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               )}
 
               {features.enableGamification && (
-                <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all">
+                <Card
+                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
+                  style={{ borderRadius: radiusCss }}
+                >
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary }}
+                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
                   >
                     <Award className="w-6 h-6" />
                   </div>
@@ -632,7 +683,9 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3">
-              <h4 className="font-bold text-base text-foreground">{brandTitle}</h4>
+              <h4 className="font-bold text-base text-foreground" style={{ fontFamily: 'var(--portal-heading-font)' }}>
+                {brandTitle}
+              </h4>
               <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
                 {branding.tagline || 'Experience Platform powered by SmartSapp.'}
               </p>
@@ -640,7 +693,12 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             {(navigation.footerColumns || []).map((col, idx) => (
               <div key={col.id || idx} className="space-y-3">
-                <h5 className="font-bold text-xs uppercase tracking-wider text-foreground">{col.title}</h5>
+                <h5
+                  className="font-bold text-xs uppercase tracking-wider text-foreground"
+                  style={{ fontFamily: 'var(--portal-heading-font)' }}
+                >
+                  {col.title}
+                </h5>
                 <ul className="space-y-2 text-xs text-[var(--portal-muted)]">
                   {(col.items || []).map((item, itemIdx) => (
                     <li key={item.id || itemIdx}>

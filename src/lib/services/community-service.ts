@@ -547,4 +547,14 @@ export class CommunityService {
     await docRef.set(report);
     return report;
   }
+
+  public static async listModerationReports(portalId: string): Promise<ModerationReport[]> {
+    const snap = await adminDb
+      .collection('moderation_reports')
+      .where('portalId', '==', portalId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snap.docs.map(d => d.data() as ModerationReport);
+  }
 }

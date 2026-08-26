@@ -125,7 +125,7 @@ export class CourseService {
       .get();
     modulesSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // 3. Cascade delete lessons
+    // 3. Delete lessons
     const lessonsSnap = await adminDb
       .collection('course_lessons')
       .where('courseId', '==', courseId)
@@ -133,6 +133,18 @@ export class CourseService {
     lessonsSnap.docs.forEach(d => batch.delete(d.ref));
 
     await batch.commit();
+  }
+
+  public static async listCourses(
+    portalId: string,
+    status?: CourseStatus
+  ): Promise<Course[]> {
+    let q = adminDb.collection('courses').where('portalId', '==', portalId);
+    if (status) {
+      q = q.where('status', '==', status);
+    }
+    const snap = await q.get();
+    return snap.docs.map(d => d.data() as Course);
   }
 
   public static async getCourseById(courseId: string): Promise<Course | null> {

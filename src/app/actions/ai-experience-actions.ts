@@ -34,8 +34,8 @@ export async function generatePortalScaffoldAction(
   try {
     const scaffold = await AiExperienceService.generatePortalScaffold(input);
     return { success: true, data: scaffold };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to generate portal scaffold.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate portal scaffold.' };
   }
 }
 
@@ -47,8 +47,8 @@ export async function generateCurriculumAction(
   try {
     const curriculum = await AiExperienceService.generateCurriculumStructure(input);
     return { success: true, data: curriculum };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to generate course curriculum.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate course curriculum.' };
   }
 }
 
@@ -60,8 +60,8 @@ export async function generateQuizAction(
   try {
     const questions = await AiExperienceService.generateQuizQuestions(input);
     return { success: true, data: questions };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to generate assessment questions.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate assessment questions.' };
   }
 }
 
@@ -79,8 +79,8 @@ export async function askAiTutorAction(
       revalidatePath(`/portal/${portalSlug}/learn/${courseSlug}/${lessonSlug}`);
     }
     return { success: true, data: result };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to communicate with AI Tutor.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to communicate with AI Tutor.' };
   }
 }
 
@@ -94,7 +94,7 @@ export async function getCoursePedagogyDiagnosticAction(
   try {
     const diagnostic = await AiExperienceService.diagnoseCoursePedagogy(portalId, courseId, courseTitle);
     return { success: true, data: diagnostic };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to generate course pedagogy diagnostic.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate course pedagogy diagnostic.' };
   }
 }

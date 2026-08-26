@@ -17,6 +17,7 @@ import {
   Calendar,
   PhoneForwarded,
   User,
+  UserPlus,
 } from 'lucide-react';
 
 export interface CallActionMeta {
@@ -132,6 +133,13 @@ export const CALL_ACTION_META = new Map<CallActionType, CallActionMeta>([
     colorClass: 'bg-blue-600',
     badgeLabel: '+ Update Contact',
     defaultParams: () => ({ contactName: '', contactEmail: '', contactPhone: '' }),
+  }],
+  ['ADD_TO_MEMBERSHIP_PORTAL', {
+    label: 'Add to Membership Portal',
+    icon: UserPlus,
+    colorClass: 'bg-indigo-600',
+    badgeLabel: '+ Add to Portal',
+    defaultParams: () => ({ portalId: '', portalRole: 'member' }),
   }],
 ]);
 

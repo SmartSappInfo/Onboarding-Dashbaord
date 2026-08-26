@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   Lock,
 } from 'lucide-react';
+import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { Course, CourseEnrollment } from '@/lib/types/learning';
 
@@ -56,7 +57,30 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
   const portal = portals?.[0] ?? null;
 
-  // 2. Query Published Courses
+  // Server Fallback Courses State
+  const [serverCourses, setServerCourses] = React.useState<Course[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerCourses = React.useCallback(async () => {
+    if (!portal?.id) return;
+    try {
+      setIsLoadingServer(true);
+      const res = await listCoursesByPortalAction(portal.id, 'published');
+      if (res.success && res.data) {
+        setServerCourses(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portal?.id]);
+
+  React.useEffect(() => {
+    fetchServerCourses();
+  }, [fetchServerCourses]);
+
+  // 2. Query Published Courses (Realtime Sync)
   const coursesQuery = useMemoFirebase(
     () =>
       firestore && portal?.id
@@ -70,6 +94,8 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
     [firestore, portal?.id]
   );
   const { data: courses, isLoading: isLoadingCourses } = useCollection<Course>(coursesQuery);
+
+  const effectiveCourses = (courses && courses.length > 0) ? courses : serverCourses;
 
   // 3. Query User Enrollments
   const enrollmentsQuery = useMemoFirebase(
@@ -94,14 +120,14 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
   // Categories list
   const categories = React.useMemo(() => {
     const set = new Set<string>();
-    (courses || []).forEach(c => {
+    effectiveCourses.forEach(c => {
       if (c.category) set.add(c.category);
     });
     return Array.from(set);
-  }, [courses]);
+  }, [effectiveCourses]);
 
   const filteredCourses = React.useMemo(() => {
-    return (courses || []).filter(c => {
+    return effectiveCourses.filter(c => {
       const matchSearch =
         !searchQuery ||
         c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -111,9 +137,9 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
       const matchLvl = selectedLevel === 'all' || c.level === selectedLevel;
       return matchSearch && matchCat && matchLvl;
     });
-  }, [courses, searchQuery, selectedCategory, selectedLevel]);
+  }, [effectiveCourses, searchQuery, selectedCategory, selectedLevel]);
 
-  if (isLoadingPortal || isLoadingCourses) {
+  if (isLoadingPortal || (isLoadingCourses && isLoadingServer && effectiveCourses.length === 0)) {
     return (
       <div className="min-h-screen bg-background p-6 md:p-12 space-y-6">
         <div className="max-w-6xl mx-auto space-y-6">

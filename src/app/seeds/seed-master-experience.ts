@@ -104,14 +104,17 @@ export async function seedMasterExperience(targetOrgId: string = 'smartsapp-hq')
   }
 }
 
-// Auto-run if executed directly via CLI
-const targetOrg = process.argv[2] || 'smartsapp-hq';
-seedMasterExperience(targetOrg)
-  .then(() => {
-    console.log('Done!');
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+// Execute only if run directly from command line
+if (typeof process !== 'undefined' && process.argv[1]?.includes('seed-master-experience')) {
+  const targetOrg = process.argv[2] || 'smartsapp-hq';
+  seedMasterExperience(targetOrg)
+    .then(() => {
+      console.log('Done!');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}
+

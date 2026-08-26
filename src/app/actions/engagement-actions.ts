@@ -39,8 +39,19 @@ export async function saveOnboardingFlowAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: flow };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to save onboarding flow.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to save onboarding flow.' };
+  }
+}
+
+export async function getOnboardingFlowAction(
+  portalId: string
+): Promise<ActionResponse<OnboardingFlow | null>> {
+  try {
+    const flow = await EngagementService.getOnboardingFlow(portalId);
+    return { success: true, data: flow };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to get onboarding flow.' };
   }
 }
 
@@ -52,8 +63,8 @@ export async function advanceOnboardingStepAction(
     const progress = await EngagementService.advanceOnboardingStep(input);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: progress };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to advance onboarding step.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to advance onboarding step.' };
   }
 }
 
@@ -68,8 +79,8 @@ export async function createTaskAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: task };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create task.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create task.' };
   }
 }
 
@@ -84,8 +95,8 @@ export async function updateTaskAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: task };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update task.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update task.' };
   }
 }
 
@@ -99,8 +110,19 @@ export async function deleteTaskAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete task.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete task.' };
+  }
+}
+
+export async function listTasksByPortalAction(
+  portalId: string
+): Promise<ActionResponse<MemberTask[]>> {
+  try {
+    const tasks = await EngagementService.listPortalTasks(portalId);
+    return { success: true, data: tasks };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list tasks.' };
   }
 }
 
@@ -112,8 +134,8 @@ export async function completeTaskAction(
     const sub = await EngagementService.completeTask(input);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: sub };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to complete task.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to complete task.' };
   }
 }
 
@@ -125,7 +147,7 @@ export async function logMemberActivityAction(
   try {
     const activity = await EngagementService.logMemberActivity(input);
     return { success: true, data: activity };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to log activity.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to log activity.' };
   }
 }

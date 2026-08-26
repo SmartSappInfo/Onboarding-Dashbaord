@@ -43,8 +43,12 @@ export async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq')
   });
   console.log(`✅ [SEED] Configured Onboarding Flow (${flow.steps.length} Steps)`);
 
-  // 2. Seed Daily Action Tasks
-  await EngagementService.createTask({
+  // 2. Seed Daily Action Tasks with Deterministic IDs
+  const now = new Date().toISOString();
+
+  const task1Ref = adminDb.collection('portal_engagement_tasks').doc(`task_${portalId}_audit_overdue`);
+  const task1 = {
+    id: task1Ref.id,
     organizationId: targetOrgId,
     portalId,
     workspaceIds,
@@ -54,9 +58,15 @@ export async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq')
     dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     pointsReward: 20,
     order: 1,
-  });
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+  await task1Ref.set(task1, { merge: true });
 
-  await EngagementService.createTask({
+  const task2Ref = adminDb.collection('portal_engagement_tasks').doc(`task_${portalId}_configure_whatsapp`);
+  const task2 = {
+    id: task2Ref.id,
     organizationId: targetOrgId,
     portalId,
     workspaceIds,
@@ -66,9 +76,15 @@ export async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq')
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     pointsReward: 15,
     order: 2,
-  });
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+  await task2Ref.set(task2, { merge: true });
 
-  await EngagementService.createTask({
+  const task3Ref = adminDb.collection('portal_engagement_tasks').doc(`task_${portalId}_post_milestone`);
+  const task3 = {
+    id: task3Ref.id,
     organizationId: targetOrgId,
     portalId,
     workspaceIds,
@@ -77,7 +93,11 @@ export async function seedPortalEngagement(targetOrgId: string = 'smartsapp-hq')
     priority: 'medium',
     pointsReward: 10,
     order: 3,
-  });
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  };
+  await task3Ref.set(task3, { merge: true });
 
   console.log(`✅ [SEED] Seeded 3 Daily Action Tasks`);
   console.log(`\n✨ [SEED] Portal Onboarding & Tasks seeding complete!\n`);

@@ -44,8 +44,8 @@ export async function createCourseAction(
     const course = await CourseService.createCourse(input, actorId);
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: course };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create course.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Action failed.' };
   }
 }
 
@@ -63,8 +63,8 @@ export async function updateCourseAction(
       revalidatePath(`/portal/${portalSlug}/learn/${course.slug}`);
     }
     return { success: true, data: course };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update course.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update course.' };
   }
 }
 
@@ -76,8 +76,20 @@ export async function deleteCourseAction(
     await CourseService.deleteCourse(courseId);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete course.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete course.' };
+  }
+}
+
+export async function listCoursesByPortalAction(
+  portalId: string,
+  status?: CourseStatus
+): Promise<ActionResponse<Course[]>> {
+  try {
+    const courses = await CourseService.listCourses(portalId, status);
+    return { success: true, data: courses };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list courses.' };
   }
 }
 
@@ -92,8 +104,8 @@ export async function createModuleAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: mod };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create module.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create module.' };
   }
 }
 
@@ -108,8 +120,8 @@ export async function updateModuleAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: mod };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update module.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update module.' };
   }
 }
 
@@ -123,8 +135,8 @@ export async function deleteModuleAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete module.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete module.' };
   }
 }
 
@@ -139,8 +151,8 @@ export async function createLessonAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: lesson };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create lesson.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create lesson.' };
   }
 }
 
@@ -155,8 +167,8 @@ export async function updateLessonAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: lesson };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update lesson.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update lesson.' };
   }
 }
 
@@ -170,8 +182,8 @@ export async function deleteLessonAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete lesson.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete lesson.' };
   }
 }
 
@@ -195,8 +207,8 @@ export async function enrollInCourseAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: enrollment };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to enroll in course.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to enroll in course.' };
   }
 }
 
@@ -214,8 +226,8 @@ export async function completeLessonAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to mark lesson complete.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to mark lesson complete.' };
   }
 }
 
@@ -237,8 +249,8 @@ export async function recordVideoProgressAction(
       watchPercentage
     );
     return { success: true, data: prog };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to record video progress.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to record video progress.' };
   }
 }
 
@@ -253,8 +265,8 @@ export async function submitAssessmentAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: result };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to evaluate assessment.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to evaluate assessment.' };
   }
 }
 
@@ -264,7 +276,7 @@ export async function submitAssignmentAction(
   try {
     const submission = await LearningProgressService.submitAssignment(input);
     return { success: true, data: submission };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to submit assignment.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to submit assignment.' };
   }
 }

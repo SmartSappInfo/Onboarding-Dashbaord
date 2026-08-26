@@ -43,8 +43,8 @@ export async function createOfferAction(
       revalidatePath(`/portal/${portalSlug}/learn`);
     }
     return { success: true, data: offer };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create offer.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create offer.' };
   }
 }
 
@@ -63,8 +63,8 @@ export async function updateOfferAction(
       if (offerSlug) revalidatePath(`/portal/${portalSlug}/checkout/${offerSlug}`);
     }
     return { success: true, data: offer };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update offer.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update offer.' };
   }
 }
 
@@ -78,8 +78,19 @@ export async function deleteOfferAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete offer.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete offer.' };
+  }
+}
+
+export async function listOffersByPortalAction(
+  portalId: string
+): Promise<ActionResponse<PortalOffer[]>> {
+  try {
+    const offers = await CommerceService.listPortalOffers(portalId);
+    return { success: true, data: offers };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list offers.' };
   }
 }
 
@@ -92,8 +103,8 @@ export async function createCouponAction(
     const coupon = await CommerceService.createCoupon(input);
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: coupon };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create coupon.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create coupon.' };
   }
 }
 
@@ -105,8 +116,19 @@ export async function deleteCouponAction(
     await CommerceService.deleteCoupon(couponId);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete coupon.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete coupon.' };
+  }
+}
+
+export async function listCouponsByPortalAction(
+  portalId: string
+): Promise<ActionResponse<PortalCoupon[]>> {
+  try {
+    const coupons = await CommerceService.listPortalCoupons(portalId);
+    return { success: true, data: coupons };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list coupons.' };
   }
 }
 
@@ -116,8 +138,8 @@ export async function validateCouponAction(
   try {
     const result = await CommerceService.validateCoupon(input);
     return { success: true, data: result };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to validate coupon.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to validate coupon.' };
   }
 }
 
@@ -137,8 +159,19 @@ export async function processCheckoutOrderAction(
       revalidatePath(`/portal/${portalSlug}/affiliates`);
     }
     return { success: true, data: order };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to process checkout order.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to process checkout order.' };
+  }
+}
+
+export async function listOrdersByPortalAction(
+  portalId: string
+): Promise<ActionResponse<PortalOrder[]>> {
+  try {
+    const orders = await CommerceService.listPortalOrders(portalId);
+    return { success: true, data: orders };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list orders.' };
   }
 }
 
@@ -152,8 +185,19 @@ export async function registerAffiliatePartnerAction(
     const partner = await CommerceService.registerAffiliatePartner(input);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/affiliates`);
     return { success: true, data: partner };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to register as affiliate partner.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to register as affiliate partner.' };
+  }
+}
+
+export async function listAffiliatesByPortalAction(
+  portalId: string
+): Promise<ActionResponse<AffiliatePartner[]>> {
+  try {
+    const affiliates = await CommerceService.listPortalAffiliates(portalId);
+    return { success: true, data: affiliates };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list affiliates.' };
   }
 }
 
@@ -166,8 +210,8 @@ export async function updateAffiliatePartnerStatusAction(
     await CommerceService.updateAffiliateStatus(partnerId, status);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update affiliate partner status.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update affiliate partner status.' };
   }
 }
 
@@ -179,7 +223,7 @@ export async function joinPortalWaitlistAction(
   try {
     const waitlist = await CommerceService.joinWaitlist(input);
     return { success: true, data: waitlist };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to join waitlist.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to join waitlist.' };
   }
 }

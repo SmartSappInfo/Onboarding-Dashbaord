@@ -43,7 +43,13 @@ export function CreatePortalModal({
 }: CreatePortalModalProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { activeOrganizationId, activeOrganization, allAccessibleWorkspaces } = useTenant();
+  const { activeOrganizationId, activeOrganization, accessibleWorkspaces, allAccessibleWorkspaces } = useTenant();
+
+  const orgScopedWorkspaces = React.useMemo(() => {
+    const orgId = activeOrganizationId || activeOrganization?.id;
+    if (!orgId) return accessibleWorkspaces || [];
+    return (allAccessibleWorkspaces || []).filter(w => w.organizationId === orgId);
+  }, [activeOrganizationId, activeOrganization?.id, allAccessibleWorkspaces, accessibleWorkspaces]);
 
   const [step, setStep] = React.useState<'mode' | 'details'>('mode');
   const [selectedMode, setSelectedMode] = React.useState<PortalMode>('academy');
@@ -247,7 +253,7 @@ export function CreatePortalModal({
                 Select which workspaces have access to view and manage this portal:
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                {(allAccessibleWorkspaces || []).map(ws => {
+                {(orgScopedWorkspaces || []).map(ws => {
                   const isSelected = selectedWorkspaces.includes(ws.id);
                   return (
                     <button

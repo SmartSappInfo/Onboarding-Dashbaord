@@ -553,6 +553,26 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   }, [firestore, activeWorkspaceId]);
   const { data: pipelinesData } = useCollection<{ id: string; name: string }>(pipelinesQuery);
 
+  const portalsQuery = useMemoFirebase(() => {
+    if (!firestore || !organizationId) return null;
+    return query(
+      collection(firestore, 'portals'),
+      where('organizationId', '==', organizationId),
+      limit(50)
+    );
+  }, [firestore, organizationId]);
+  const { data: portalsData } = useCollection<{ id: string; name: string }>(portalsQuery);
+
+  const plansQuery = useMemoFirebase(() => {
+    if (!firestore || !organizationId) return null;
+    return query(
+      collection(firestore, 'membership_plans'),
+      where('organizationId', '==', organizationId),
+      limit(100)
+    );
+  }, [firestore, organizationId]);
+  const { data: plansData } = useCollection<{ id: string; name: string; portalId: string }>(plansQuery);
+
   const meetingsQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
     return query(
@@ -591,8 +611,10 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
     meetings: MEETING_TYPES.map(t => ({ id: t.id, title: t.name })),
     activeMeetings,
     callCampaigns: callCampaignsData ?? [],
-    workspaceUsers,
-  }), [tagsData, stagesData, pipelinesData, activeMeetings, callCampaignsData, workspaceUsers]);
+    workspaceUsers: workspaceUsers,
+    portals: portalsData ?? [],
+    membershipPlans: plansData ?? [],
+  }), [tagsData, stagesData, pipelinesData, activeMeetings, callCampaignsData, workspaceUsers, portalsData, plansData]);
 
   const wrapHref = React.useCallback((href: string) => {
     if (!activeWorkspaceId) return href;

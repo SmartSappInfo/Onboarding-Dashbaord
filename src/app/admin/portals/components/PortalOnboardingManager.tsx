@@ -10,6 +10,7 @@
 import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,11 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
 import {
   saveOnboardingFlowAction,
+  getOnboardingFlowAction,
   createTaskAction,
   deleteTaskAction,
+  listTasksByPortalAction,
 } from '@/app/actions/engagement-actions';
 import type {
   OnboardingFlow,
@@ -79,7 +81,33 @@ export function PortalOnboardingManager({
 
   const [activeTab, setActiveTab] = React.useState('onboarding');
 
-  // 1. Query Onboarding Flow
+  // Server Action Fallbacks
+  const [serverFlow, setServerFlow] = React.useState<OnboardingFlow | null>(null);
+  const [serverTasks, setServerTasks] = React.useState<MemberTask[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerFlowAndTasks = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const [flowRes, tasksRes] = await Promise.all([
+        getOnboardingFlowAction(portalId),
+        listTasksByPortalAction(portalId),
+      ]);
+      if (flowRes.success && flowRes.data) setServerFlow(flowRes.data);
+      if (tasksRes.success && tasksRes.data) setServerTasks(tasksRes.data);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerFlowAndTasks();
+  }, [fetchServerFlowAndTasks]);
+
+  // 1. Query Onboarding Flow (realtime sync when available)
   const flowQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -88,7 +116,7 @@ export function PortalOnboardingManager({
     [firestore, portalId]
   );
   const { data: flows, isLoading: isLoadingFlow } = useCollection<OnboardingFlow>(flowQuery);
-  const flow = flows?.[0] ?? null;
+  const flow = flows?.[0] ?? serverFlow;
 
   // Onboarding Form State
   const [steps, setSteps] = React.useState<OnboardingStep[]>([]);
@@ -118,7 +146,10 @@ export function PortalOnboardingManager({
         : null,
     [firestore, portalId]
   );
-  const { data: tasks, isLoading: isLoadingTasks } = useCollection<MemberTask>(tasksQuery);
+  const { data: tasks, isLoading: isLoadingTasksCollection } = useCollection<MemberTask>(tasksQuery);
+
+  const effectiveTasks = (tasks && tasks.length > 0) ? tasks : serverTasks;
+  const isLoadingTasks = isLoadingTasksCollection && isLoadingServer && effectiveTasks.length === 0;
 
   // Create Task Modal State
   const [isCreateTaskOpen, setIsCreateTaskOpen] = React.useState(false);
@@ -151,8 +182,9 @@ export function PortalOnboardingManager({
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Onboarding Flow Saved! ✨', description: 'Checklist updated for all members.' });
-    } catch (err: any) {
-      toast({ title: 'Save Failed', description: err?.message });
+      fetchServerFlowAndTasks();
+    } catch (err: unknown) {
+      toast({ title: 'Save Failed', description: err instanceof Error ? err.message : 'Save failed.' });
     } finally {
       setIsSavingFlow(false);
     }
@@ -197,7 +229,7 @@ export function PortalOnboardingManager({
           dueDate: taskDueDate || undefined,
           pointsReward: taskPoints,
           actionUrl: taskActionUrl.trim() || undefined,
-          order: (tasks?.length || 0) + 1,
+          order: (effectiveTasks.length || 0) + 1,
         },
         portalSlug
       );
@@ -209,8 +241,9 @@ export function PortalOnboardingManager({
       setTaskActionUrl('');
       setTaskDueDate('');
       setIsCreateTaskOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Task Error', description: err?.message });
+      fetchServerFlowAndTasks();
+    } catch (err: unknown) {
+      toast({ title: 'Task Error', description: err instanceof Error ? err.message : 'Task error.' });
     } finally {
       setIsSubmittingTask(false);
     }
@@ -221,8 +254,9 @@ export function PortalOnboardingManager({
     try {
       await deleteTaskAction(taskId, portalId, portalSlug);
       toast({ title: 'Task Removed', description: 'Task deleted from member checklists.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerFlowAndTasks();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Delete failed.' });
     }
   };
 
@@ -236,7 +270,7 @@ export function PortalOnboardingManager({
               <CheckCircle2 className="w-3.5 h-3.5" /> Onboarding Checklist ({steps.length} Steps)
             </TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5">
-              <ListOrdered className="w-3.5 h-3.5" /> Daily Action Tasks ({tasks?.length || 0})
+              <ListOrdered className="w-3.5 h-3.5" /> Daily Action Tasks ({effectiveTasks.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -259,44 +293,55 @@ export function PortalOnboardingManager({
         )}
       </div>
 
-      {/* ── Tab 1: Onboarding Flow Builder ────────────────────────────── */}
+      {/* ── Tab 1: Onboarding Flow Editor ─────────────────────────────── */}
       {activeTab === 'onboarding' && (
         <div className="space-y-6">
-          <Card className="rounded-3xl border-2 border-border p-6 space-y-4 bg-card shadow-xs">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+          <Card className="rounded-3xl border-2 border-border p-6 space-y-5 bg-card">
+            <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold text-sm text-foreground">Guided Onboarding Sequence</h4>
+                <h3 className="font-extrabold text-base text-foreground">Step-by-Step Checklist</h3>
                 <p className="text-xs text-muted-foreground">
-                  New members see this checklist when they join to guide them toward high activation.
+                  New members will be guided through these steps upon first portal login.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground">Completion Reward:</span>
-                <Input
-                  type="number"
-                  value={completionPoints}
-                  onChange={e => setCompletionPoints(Number(e.target.value) || 0)}
-                  className="w-20 h-8 text-xs font-bold text-center rounded-xl"
-                />
-                <span className="text-xs font-bold text-primary">pts</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <Label className="text-xs font-bold">Reward Points on Completion:</Label>
+                  <Input
+                    type="number"
+                    value={completionPoints}
+                    onChange={e => setCompletionPoints(Number(e.target.value))}
+                    className="w-16 h-8 text-xs font-bold rounded-xl"
+                  />
+                </div>
+                <Button
+                  onClick={handleAddStep}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl font-bold text-xs gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Step
+                </Button>
               </div>
             </div>
 
             <div className="space-y-3">
               {steps.map((step, idx) => (
                 <div
-                  key={step.id || idx}
-                  className="p-4 rounded-2xl border-2 border-border bg-muted/20 space-y-3"
+                  key={step.id}
+                  className="p-4 rounded-2xl border border-border bg-muted/20 space-y-3 relative group"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-extrabold text-xs flex items-center justify-center">
                         {idx + 1}
                       </span>
                       <Input
                         value={step.title}
                         onChange={e => handleUpdateStep(idx, { title: e.target.value })}
-                        className="h-8 text-xs font-bold rounded-xl max-w-sm"
+                        placeholder="Step Title (e.g. Join the Community)"
+                        className="h-8 text-xs font-bold rounded-xl border-border bg-background max-w-sm"
                       />
                     </div>
 
@@ -305,16 +350,15 @@ export function PortalOnboardingManager({
                         value={step.type}
                         onValueChange={(val: StepType) => handleUpdateStep(idx, { type: val })}
                       >
-                        <SelectTrigger className="h-8 text-[11px] font-semibold rounded-xl w-36 capitalize">
+                        <SelectTrigger className="h-8 w-36 text-xs rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="welcome_video">🎥 Welcome Video</SelectItem>
-                          <SelectItem value="complete_profile">👤 Profile Setup</SelectItem>
-                          <SelectItem value="start_course">🎓 First Course</SelectItem>
-                          <SelectItem value="community_post">💬 Community Post</SelectItem>
-                          <SelectItem value="book_meeting">📅 Book Meeting</SelectItem>
-                          <SelectItem value="custom_url">🔗 Custom Link</SelectItem>
+                        <SelectContent className="rounded-2xl">
+                          <SelectItem value="profile_completion" className="text-xs">Profile Setup</SelectItem>
+                          <SelectItem value="lesson_view" className="text-xs">Watch Welcome</SelectItem>
+                          <SelectItem value="post_introduction" className="text-xs">Post Intro</SelectItem>
+                          <SelectItem value="custom_url" className="text-xs">External URL</SelectItem>
+                          <SelectItem value="form_submission" className="text-xs">Submit Form</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -329,23 +373,24 @@ export function PortalOnboardingManager({
                     </div>
                   </div>
 
-                  <Input
-                    placeholder="Short description / guidance for member..."
+                  <Textarea
                     value={step.description || ''}
                     onChange={e => handleUpdateStep(idx, { description: e.target.value })}
-                    className="h-8 text-xs rounded-xl"
+                    placeholder="Short instructions for the member on how to complete this step..."
+                    className="text-xs rounded-xl resize-none h-14 bg-background"
                   />
+
+                  {step.type === 'custom_url' && (
+                    <Input
+                      value={step.targetUrl || ''}
+                      onChange={e => handleUpdateStep(idx, { targetUrl: e.target.value })}
+                      placeholder="Target Link (e.g. https://discord.gg/... or /portal/...)"
+                      className="h-8 text-xs rounded-xl bg-background"
+                    />
+                  )}
                 </div>
               ))}
             </div>
-
-            <Button
-              variant="outline"
-              onClick={handleAddStep}
-              className="w-full rounded-2xl font-bold text-xs gap-1.5 h-10 border-dashed"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Another Onboarding Step
-            </Button>
           </Card>
         </div>
       )}
@@ -355,7 +400,7 @@ export function PortalOnboardingManager({
         <div className="space-y-4">
           {isLoadingTasks ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading tasks...</div>
-          ) : (!tasks || tasks.length === 0) ? (
+          ) : effectiveTasks.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <ListOrdered className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Daily Tasks Created</h4>
@@ -371,7 +416,7 @@ export function PortalOnboardingManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tasks.map(task => (
+              {effectiveTasks.map(task => (
                 <Card
                   key={task.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-3 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"

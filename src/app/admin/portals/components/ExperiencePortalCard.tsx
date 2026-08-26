@@ -209,15 +209,11 @@ export const ExperiencePortalCard = React.memo(function ExperiencePortalCard({
           <div className="flex items-start justify-between gap-2">
             <Link
               href={`/admin/portals/${portal.id}`}
-              className="font-bold text-lg text-foreground hover:text-primary transition-colors line-clamp-1"
+              className="font-bold text-base text-foreground hover:text-primary transition-colors line-clamp-1"
             >
               {portal.name}
             </Link>
           </div>
-
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-            {portal.description || portal.branding.tagline || 'Configurable experience portal.'}
-          </p>
 
           <div className="flex items-center gap-2 pt-1">
             <span className="text-[11px] font-mono text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/40 truncate max-w-[220px]">

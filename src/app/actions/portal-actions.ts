@@ -267,6 +267,24 @@ export async function getPublicPortalBySlugAction(
 }
 
 /**
+ * Server action to get a portal by ID for Studio view.
+ */
+export async function getPortalByIdAction(
+  portalId: string
+): Promise<ActionResponse<Portal>> {
+  try {
+    const portal = await PortalService.getPortalById(portalId);
+    if (!portal) {
+      return { success: false, error: 'Portal not found.' };
+    }
+    return { success: true, data: portal };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch portal.';
+    return { success: false, error: message };
+  }
+}
+
+/**
  * Server action to trigger the Unified Master Experience Platform Seeder (Phases 1-12).
  */
 export async function runMasterExperienceSeederAction(

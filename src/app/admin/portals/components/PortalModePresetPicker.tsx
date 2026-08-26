@@ -104,10 +104,7 @@ export function PortalModePresetPicker({
               </div>
             </div>
 
-            <h4 className="font-bold text-sm text-foreground mb-1 leading-tight">{preset.name}</h4>
-            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-              {preset.tagline}
-            </p>
+            <h4 className="font-bold text-sm text-foreground leading-tight">{preset.name}</h4>
           </button>
         );
       })}

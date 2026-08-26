@@ -51,6 +51,9 @@ import {
   reactivateMembershipAction,
   deleteMembershipAction,
   revokeInvitationAction,
+  listMembershipsByPortalAction,
+  listInvitationsByPortalAction,
+  listPlansByPortalAction,
 } from '@/app/actions/membership-actions';
 import type {
   PortalMembership,
@@ -80,7 +83,36 @@ export function PortalMemberManager({
   const [selectedRole, setSelectedRole] = React.useState<string>('all');
   const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
 
-  // 1. Members Query
+  // Server Action Fallbacks
+  const [serverMembers, setServerMembers] = React.useState<PortalMembership[]>([]);
+  const [serverInvitations, setServerInvitations] = React.useState<PortalInvitation[]>([]);
+  const [serverPlans, setServerPlans] = React.useState<MembershipPlan[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerData = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const [membersRes, invitesRes, plansRes] = await Promise.all([
+        listMembershipsByPortalAction(portalId),
+        listInvitationsByPortalAction(portalId),
+        listPlansByPortalAction(portalId),
+      ]);
+      if (membersRes.success && membersRes.data) setServerMembers(membersRes.data);
+      if (invitesRes.success && invitesRes.data) setServerInvitations(invitesRes.data);
+      if (plansRes.success && plansRes.data) setServerPlans(plansRes.data);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerData();
+  }, [fetchServerData]);
+
+  // 1. Members Query (realtime sync when available)
   const membersQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -122,9 +154,13 @@ export function PortalMemberManager({
   );
   const { data: plans } = useCollection<MembershipPlan>(plansQuery);
 
+  const effectiveMembers = (members && members.length > 0) ? members : serverMembers;
+  const effectiveInvitations = (invitations && invitations.length > 0) ? invitations : serverInvitations;
+  const effectivePlans = (plans && plans.length > 0) ? plans : serverPlans;
+
   // Filtered Members
   const filteredMembers = React.useMemo(() => {
-    return (members || []).filter(m => {
+    return effectiveMembers.filter(m => {
       const matchesSearch =
         m.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,7 +169,7 @@ export function PortalMemberManager({
       const matchesRole = selectedRole === 'all' || m.role === selectedRole;
       return matchesSearch && matchesRole;
     });
-  }, [members, searchTerm, selectedRole]);
+  }, [effectiveMembers, searchTerm, selectedRole]);
 
   // Actions
   const handleRoleChange = async (member: PortalMembership, newRole: PortalMemberRole) => {
@@ -141,6 +177,7 @@ export function PortalMemberManager({
       const res = await updateMembershipRoleAction(member.id, newRole, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to update role.');
       toast({ title: 'Role Updated', description: `${member.displayName} is now a ${newRole}.` });
+      fetchServerData();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Role change failed.' });
     }
@@ -151,6 +188,7 @@ export function PortalMemberManager({
       const res = await suspendMembershipAction(member.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to suspend member.');
       toast({ title: 'Member Suspended', description: `${member.displayName}'s access was suspended.` });
+      fetchServerData();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Suspension failed.' });
     }
@@ -161,6 +199,7 @@ export function PortalMemberManager({
       const res = await reactivateMembershipAction(member.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to reactivate member.');
       toast({ title: 'Member Reactivated', description: `${member.displayName}'s access was restored.` });
+      fetchServerData();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Reactivation failed.' });
     }
@@ -172,6 +211,7 @@ export function PortalMemberManager({
       const res = await deleteMembershipAction(member.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to delete member.');
       toast({ title: 'Member Removed', description: `${member.displayName} removed from portal.` });
+      fetchServerData();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Delete failed.' });
     }
@@ -182,6 +222,7 @@ export function PortalMemberManager({
       const res = await revokeInvitationAction(invitation.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to revoke invite.');
       toast({ title: 'Invite Revoked', description: 'Invitation is no longer valid.' });
+      fetchServerData();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Revoke failed.' });
     }
@@ -203,9 +244,6 @@ export function PortalMemberManager({
               <div className="flex items-center gap-2 text-primary font-bold text-sm">
                 <Users className="w-4 h-4" /> Membership & Entitlements Hub
               </div>
-              <CardDescription className="text-xs">
-                Manage enrolled students, role permissions, invitation links, and subscription tiers.
-              </CardDescription>
             </div>
 
             <Button
@@ -221,13 +259,13 @@ export function PortalMemberManager({
           <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
             <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-xl grid grid-cols-4">
               <TabsTrigger value="members" className="rounded-lg text-xs font-bold gap-1.5">
-                <Users className="w-3.5 h-3.5" /> Members ({members?.length || 0})
+                <Users className="w-3.5 h-3.5" /> Members ({effectiveMembers.length})
               </TabsTrigger>
               <TabsTrigger value="invitations" className="rounded-lg text-xs font-bold gap-1.5">
-                <Link2 className="w-3.5 h-3.5" /> Invites ({invitations?.length || 0})
+                <Link2 className="w-3.5 h-3.5" /> Invites ({effectiveInvitations.length})
               </TabsTrigger>
               <TabsTrigger value="plans" className="rounded-lg text-xs font-bold gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" /> Tiers & Plans ({plans?.length || 0})
+                <CreditCard className="w-3.5 h-3.5" /> Tiers & Plans ({effectivePlans.length})
               </TabsTrigger>
               <TabsTrigger value="grants" className="rounded-lg text-xs font-bold gap-1.5">
                 <Shield className="w-3.5 h-3.5" /> Entitlement Grants
@@ -371,12 +409,12 @@ export function PortalMemberManager({
 
             {/* ── Sub-Tab 2: Invitations & Links ───────────────────────── */}
             <TabsContent value="invitations" className="space-y-4 pt-4">
-              {isLoadingInvitations ? (
+              {isLoadingInvitations && effectiveInvitations.length === 0 ? (
                 <div className="space-y-2">
                   <Skeleton className="h-16 rounded-xl" />
                   <Skeleton className="h-16 rounded-xl" />
                 </div>
-              ) : !invitations || invitations.length === 0 ? (
+              ) : effectiveInvitations.length === 0 ? (
                 <div className="p-8 text-center border-2 border-dashed rounded-2xl space-y-2 bg-muted/20">
                   <Link2 className="w-8 h-8 mx-auto text-primary" />
                   <h5 className="font-bold text-xs text-foreground">No Pending Invitations</h5>
@@ -384,7 +422,7 @@ export function PortalMemberManager({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {invitations.map(inv => (
+                  {effectiveInvitations.map(inv => (
                     <div
                       key={inv.id}
                       className="flex items-center justify-between p-3.5 rounded-2xl border border-border bg-card shadow-2xs"
@@ -445,7 +483,7 @@ export function PortalMemberManager({
                 portalId={portalId}
                 organizationId={organizationId}
                 workspaceIds={workspaceIds}
-                plans={plans || []}
+                plans={effectivePlans}
               />
             </TabsContent>
 
@@ -463,12 +501,15 @@ export function PortalMemberManager({
       {/* Invite Member Wizard Modal */}
       <InviteMemberModal
         open={isInviteModalOpen}
-        onOpenChange={setIsInviteModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsInviteModalOpen(isOpen);
+          if (!isOpen) fetchServerData();
+        }}
         portalId={portalId}
         portalSlug={portalSlug}
         organizationId={organizationId}
         workspaceIds={workspaceIds}
-        plans={plans || []}
+        plans={effectivePlans}
       />
     </div>
   );

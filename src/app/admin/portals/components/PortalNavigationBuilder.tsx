@@ -198,9 +198,6 @@ export function PortalNavigationBuilder({
               <Plus className="w-3.5 h-3.5" /> Add Nav Item
             </Button>
           </div>
-          <CardDescription className="text-xs">
-            Manage links and order in the top navigation bar.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 pt-0">
           {navigation.headerItems.length === 0 ? (
@@ -278,9 +275,6 @@ export function PortalNavigationBuilder({
       <Card className="rounded-2xl border-2 border-border shadow-sm">
         <CardHeader className="pb-4">
           <CardTitle className="text-sm font-bold">Header Actions & Primary CTA</CardTitle>
-          <CardDescription className="text-xs">
-            Configure utility buttons and prominent call-to-action buttons in the header.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <div className="flex items-center justify-between p-3 rounded-xl border border-border">

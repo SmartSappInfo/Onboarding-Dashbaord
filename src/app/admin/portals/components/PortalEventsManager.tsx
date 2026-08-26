@@ -39,6 +39,8 @@ import {
   publishEventReplayAction,
   createCohortAction,
   deleteCohortAction,
+  listLiveEventsByPortalAction,
+  listCohortsByPortalAction,
 } from '@/app/actions/event-actions';
 import type {
   LiveEvent,
@@ -81,7 +83,33 @@ export function PortalEventsManager({
 
   const [activeTab, setActiveTab] = React.useState('events');
 
-  // 1. Query Live Events
+  // Server Action Fallbacks
+  const [serverEvents, setServerEvents] = React.useState<LiveEvent[]>([]);
+  const [serverCohorts, setServerCohorts] = React.useState<CourseCohort[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerEventsAndCohorts = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const [eventsRes, cohortsRes] = await Promise.all([
+        listLiveEventsByPortalAction(portalId),
+        listCohortsByPortalAction(portalId),
+      ]);
+      if (eventsRes.success && eventsRes.data) setServerEvents(eventsRes.data);
+      if (cohortsRes.success && cohortsRes.data) setServerCohorts(cohortsRes.data);
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerEventsAndCohorts();
+  }, [fetchServerEventsAndCohorts]);
+
+  // 1. Query Live Events (realtime sync when available)
   const eventsQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -93,7 +121,7 @@ export function PortalEventsManager({
         : null,
     [firestore, portalId]
   );
-  const { data: events, isLoading: isLoadingEvents } = useCollection<LiveEvent>(eventsQuery);
+  const { data: events, isLoading: isLoadingEventsCollection } = useCollection<LiveEvent>(eventsQuery);
 
   // 2. Query Cohorts
   const cohortsQuery = useMemoFirebase(
@@ -107,7 +135,13 @@ export function PortalEventsManager({
         : null,
     [firestore, portalId]
   );
-  const { data: cohorts, isLoading: isLoadingCohorts } = useCollection<CourseCohort>(cohortsQuery);
+  const { data: cohorts, isLoading: isLoadingCohortsCollection } = useCollection<CourseCohort>(cohortsQuery);
+
+  const effectiveEvents = (events && events.length > 0) ? events : serverEvents;
+  const effectiveCohorts = (cohorts && cohorts.length > 0) ? cohorts : serverCohorts;
+
+  const isLoadingEvents = isLoadingEventsCollection && isLoadingServer && effectiveEvents.length === 0;
+  const isLoadingCohorts = isLoadingCohortsCollection && isLoadingServer && effectiveCohorts.length === 0;
 
   // Modal States
   const [isCreateEventOpen, setIsCreateEventOpen] = React.useState(false);
@@ -186,8 +220,9 @@ export function PortalEventsManager({
       setMeetingPasscode('');
       setDescription('');
       setIsCreateEventOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Scheduling Error', description: err?.message });
+      fetchServerEventsAndCohorts();
+    } catch (err: unknown) {
+      toast({ title: 'Scheduling Error', description: err instanceof Error ? err.message : 'Scheduling failed.' });
     } finally {
       setIsSubmittingEvent(false);
     }
@@ -198,8 +233,9 @@ export function PortalEventsManager({
     try {
       await deleteLiveEventAction(eventId, portalId, portalSlug);
       toast({ title: 'Event Removed', description: 'Session cancelled and removed.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerEventsAndCohorts();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Delete failed.' });
     }
   };
 
@@ -237,8 +273,9 @@ export function PortalEventsManager({
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Replay Published! 🎥', description: 'Session replay & AI summary live for students.' });
       setIsReplayModalOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Publish Error', description: err?.message });
+      fetchServerEventsAndCohorts();
+    } catch (err: unknown) {
+      toast({ title: 'Publish Error', description: err instanceof Error ? err.message : 'Publish error.' });
     } finally {
       setIsSubmittingReplay(false);
     }
@@ -268,8 +305,9 @@ export function PortalEventsManager({
       toast({ title: 'Cohort Created! 🎓', description: `Created "${res.data?.name}".` });
       setCohortName('');
       setIsCreateCohortOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Cohort Error', description: err?.message });
+      fetchServerEventsAndCohorts();
+    } catch (err: unknown) {
+      toast({ title: 'Cohort Error', description: err instanceof Error ? err.message : 'Cohort creation failed.' });
     } finally {
       setIsSubmittingCohort(false);
     }
@@ -280,8 +318,9 @@ export function PortalEventsManager({
     try {
       await deleteCohortAction(cohortId, portalId, portalSlug);
       toast({ title: 'Cohort Deleted', description: 'Cohort group removed.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerEventsAndCohorts();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Delete failed.' });
     }
   };
 
@@ -292,10 +331,10 @@ export function PortalEventsManager({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="h-10 p-1 bg-muted/60 rounded-2xl">
             <TabsTrigger value="events" className="rounded-xl text-xs font-bold gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Live Sessions & Events ({events?.length || 0})
+              <Calendar className="w-3.5 h-3.5" /> Live Sessions & Events ({effectiveEvents.length})
             </TabsTrigger>
             <TabsTrigger value="cohorts" className="rounded-xl text-xs font-bold gap-1.5">
-              <Users className="w-3.5 h-3.5" /> Student Cohorts ({cohorts?.length || 0})
+              <Users className="w-3.5 h-3.5" /> Student Cohorts ({effectiveCohorts.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -322,7 +361,7 @@ export function PortalEventsManager({
         <div className="space-y-4">
           {isLoadingEvents ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading scheduled events...</div>
-          ) : (!events || events.length === 0) ? (
+          ) : effectiveEvents.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <Video className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Live Sessions Scheduled</h4>
@@ -338,7 +377,7 @@ export function PortalEventsManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {events.map(event => (
+              {effectiveEvents.map(event => (
                 <Card
                   key={event.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-4 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"
@@ -419,7 +458,7 @@ export function PortalEventsManager({
         <div className="space-y-4">
           {isLoadingCohorts ? (
             <div className="p-12 text-center text-xs text-muted-foreground">Loading student cohorts...</div>
-          ) : (!cohorts || cohorts.length === 0) ? (
+          ) : effectiveCohorts.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <Users className="w-12 h-12 mx-auto text-primary/60" />
               <h4 className="font-bold text-base text-foreground">No Student Cohorts</h4>
@@ -435,7 +474,7 @@ export function PortalEventsManager({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cohorts.map(cohort => (
+              {effectiveCohorts.map(cohort => (
                 <Card
                   key={cohort.id}
                   className="rounded-3xl border-2 border-border p-5 space-y-3 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"

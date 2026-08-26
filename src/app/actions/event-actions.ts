@@ -41,8 +41,8 @@ export async function createLiveEventAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: event };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create live event.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create live event.' };
   }
 }
 
@@ -62,8 +62,8 @@ export async function updateLiveEventAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: event };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update live event.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update live event.' };
   }
 }
 
@@ -80,8 +80,32 @@ export async function deleteLiveEventAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete live event.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete live event.' };
+  }
+}
+
+export async function listLiveEventsByPortalAction(
+  portalId: string,
+  options?: { status?: string; limitCount?: number }
+): Promise<ActionResponse<LiveEvent[]>> {
+  try {
+    const events = await EventService.listPortalEvents(portalId, options);
+    return { success: true, data: events };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list live events.' };
+  }
+}
+
+export async function listCohortsByPortalAction(
+  portalId: string,
+  courseId?: string
+): Promise<ActionResponse<CourseCohort[]>> {
+  try {
+    const cohorts = await EventService.listCourseCohorts(portalId, courseId);
+    return { success: true, data: cohorts };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list course cohorts.' };
   }
 }
 
@@ -100,8 +124,8 @@ export async function registerForEventAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: reg };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to register for event.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to register for event.' };
   }
 }
 
@@ -119,8 +143,8 @@ export async function cancelEventRegistrationAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to cancel registration.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to cancel registration.' };
   }
 }
 
@@ -137,8 +161,8 @@ export async function recordEventAttendanceAction(
       revalidatePath(`/portal/${portalSlug}/dashboard`);
     }
     return { success: true, data: reg };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to record attendance.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to record attendance.' };
   }
 }
 
@@ -157,8 +181,8 @@ export async function publishEventReplayAction(
       }
     }
     return { success: true, data: event };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to publish event replay.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to publish event replay.' };
   }
 }
 
@@ -173,8 +197,8 @@ export async function createCohortAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create cohort.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create cohort.' };
   }
 }
 
@@ -189,8 +213,8 @@ export async function updateCohortAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update cohort.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update cohort.' };
   }
 }
 
@@ -204,7 +228,7 @@ export async function deleteCohortAction(
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to delete cohort.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete cohort.' };
   }
 }

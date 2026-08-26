@@ -108,9 +108,6 @@ export function PortalAccessPolicyEditor({
           <div className="flex items-center gap-2 text-primary font-bold text-sm">
             <ShieldCheck className="w-4 h-4" /> Visibility & Access Boundary
           </div>
-          <CardDescription className="text-xs">
-            Choose who is authorized to view this experience portal.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -156,9 +153,6 @@ export function PortalAccessPolicyEditor({
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
               <Key className="w-4 h-4" /> Portal Access Passcode
             </div>
-            <CardDescription className="text-xs">
-              Visitors will be prompted to enter this passcode before portal content is displayed.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
             <div className="max-w-md space-y-1.5">
@@ -185,9 +179,6 @@ export function PortalAccessPolicyEditor({
             <div className="flex items-center gap-2 text-primary font-bold text-sm">
               <Mail className="w-4 h-4" /> Organization Email Whitelist (Optional)
             </div>
-            <CardDescription className="text-xs">
-              Restrict member access to specific email domains (e.g. school.edu or company.com).
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
             <div className="flex items-center gap-2 max-w-md">
@@ -235,9 +226,6 @@ export function PortalAccessPolicyEditor({
           <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm">
             <AlertTriangle className="w-4 h-4 text-amber-500" /> Maintenance & Offline Notice
           </div>
-          <CardDescription className="text-xs">
-            Message displayed to visitors if this portal is placed in suspended / maintenance state.
-          </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
           <Textarea

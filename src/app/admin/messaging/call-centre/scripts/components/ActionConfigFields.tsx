@@ -66,6 +66,8 @@ export interface ActionConfigDataSources {
   activeMeetings: { id: string; title: string }[];
   callCampaigns: { id: string; name: string }[];
   workspaceUsers?: { id: string; name?: string; email: string; photoURL?: string }[];
+  portals?: { id: string; name: string }[];
+  membershipPlans?: { id: string; name: string; portalId: string }[];
 }
 
 export interface ActionConfigFieldsProps {
@@ -235,7 +237,7 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
   data,
 }: ActionConfigFieldsProps) {
   const meta = getActionMeta(type);
-  const { tags, stages, pipelines, meetings, activeMeetings, callCampaigns, workspaceUsers = [] } = data;
+  const { tags, stages, pipelines, meetings, activeMeetings, callCampaigns, workspaceUsers = [], portals = [], membershipPlans = [] } = data;
 
   // ── Derived task due-date values ──────────────────────────────────────────
   const taskDueDateMode = params.taskDueDateMode ?? 'days';
@@ -902,6 +904,84 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
             />
             <VariableHint />
           </div>
+        </div>
+      ) : null}
+
+            {type === 'ADD_TO_MEMBERSHIP_PORTAL' ? (
+        <div className="space-y-3 transition-opacity duration-200">
+          <div className="space-y-1">
+            <Label className="text-[8px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+              Target Portal <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={params.portalId ?? ''}
+              onValueChange={(val) => onChange({ portalId: val, portalPlanId: '' })}
+            >
+              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs font-medium px-2">
+                <SelectValue placeholder="Select a portal" />
+              </SelectTrigger>
+              <SelectContent>
+                {portals.length > 0 ? (
+                  portals.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="_empty" disabled>
+                    No portals found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+              Role
+            </Label>
+            <Select
+              value={params.portalRole ?? 'member'}
+              onValueChange={(val: any) => onChange({ portalRole: val })}
+            >
+              <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs px-2">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="guest">Guest</SelectItem>
+                <SelectItem value="instructor">Instructor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {params.portalId && (() => {
+            const portalPlans = membershipPlans.filter(p => p.portalId === params.portalId);
+            return (
+              <div className="space-y-1">
+                <Label className="text-[8px] font-bold text-muted-foreground uppercase">
+                  Membership Plan (Optional)
+                </Label>
+                <Select
+                  value={params.portalPlanId ?? ''}
+                  onValueChange={(val) => onChange({ portalPlanId: val === '_none' ? '' : val })}
+                >
+                  <SelectTrigger className="h-8 bg-background border-border rounded-lg text-xs px-2">
+                    <SelectValue placeholder="Assign a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">None</SelectItem>
+                    {portalPlans.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })()}
         </div>
       ) : null}
 

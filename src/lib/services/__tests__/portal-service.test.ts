@@ -56,4 +56,72 @@ describe('PortalService', () => {
       expect(PortalService.sanitizeSlug('Special @#$$% Characters')).toBe('special-characters');
     });
   });
+
+  describe('Theme Token & Style Resolvers', () => {
+    it('resolves CSS radius accurately for all presets', () => {
+      expect(PortalService.getPortalRadiusCss('none')).toBe('0px');
+      expect(PortalService.getPortalRadiusCss('sm')).toBe('0.375rem');
+      expect(PortalService.getPortalRadiusCss('md')).toBe('0.75rem');
+      expect(PortalService.getPortalRadiusCss('lg')).toBe('1rem');
+      expect(PortalService.getPortalRadiusCss('full')).toBe('9999px');
+      expect(PortalService.getPortalRadiusCss(undefined)).toBe('0.75rem');
+    });
+
+    it('generates valid Google Fonts URL', () => {
+      const url = PortalService.getGoogleFontsUrl('Plus Jakarta Sans', 'Inter');
+      expect(url).toContain('https://fonts.googleapis.com/css2?');
+      expect(url).toContain('family=Plus+Jakarta+Sans');
+      expect(url).toContain('family=Inter');
+    });
+
+    it('handles system fonts without unnecessary webfont calls', () => {
+      const emptyUrl = PortalService.getGoogleFontsUrl('sans-serif', 'system-ui');
+      expect(emptyUrl).toBe('');
+    });
+
+    it('resolves complete CSS variable dictionary for themes', () => {
+      const themeVars = PortalService.getPortalThemeVariables({
+        mode: 'light',
+        colors: {
+          primary: '#3B82F6',
+          secondary: '#1E293B',
+          accent: '#6366F1',
+          background: '#FFFFFF',
+          surface: '#F8FAFC',
+          text: '#0F172A',
+          mutedText: '#64748B',
+          border: '#E2E8F0',
+        },
+        typography: {
+          headingFont: 'Plus Jakarta Sans',
+          bodyFont: 'Inter',
+        },
+        ui: {
+          borderRadius: 'lg',
+          buttonStyle: 'glow',
+        },
+      });
+
+      expect(themeVars['--portal-primary']).toBe('#3B82F6');
+      expect(themeVars['--portal-radius']).toBe('1rem');
+      expect(themeVars['--portal-heading-font']).toBe('Plus Jakarta Sans, sans-serif');
+      expect(themeVars['--portal-body-font']).toBe('Inter, sans-serif');
+    });
+
+    it('computes correct button styles for flat, glow, glass, and pill presets', () => {
+      const flat = PortalService.getPortalButtonInlineStyle('flat', '#10B981', '0.75rem');
+      expect(flat.backgroundColor).toBe('#10B981');
+      expect(flat.boxShadow).toBe('none');
+      expect(flat.borderRadius).toBe('0.75rem');
+
+      const glow = PortalService.getPortalButtonInlineStyle('glow', '#10B981', '0.75rem');
+      expect(glow.boxShadow).toContain('0 0 20px #10B98166');
+
+      const glass = PortalService.getPortalButtonInlineStyle('glass', '#10B981', '0.75rem');
+      expect(glass.backdropFilter).toBe('blur(12px)');
+
+      const pill = PortalService.getPortalButtonInlineStyle('pill', '#10B981', '0.75rem');
+      expect(pill.borderRadius).toBe('9999px');
+    });
+  });
 });

@@ -42,9 +42,11 @@ import {
   Video,
   ListOrdered,
 } from 'lucide-react';
+import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalMembership, MembershipPlan, AccessGrant } from '@/lib/types/membership';
 import type { ContentItem } from '@/lib/types/content';
+import type { Course, CourseEnrollment } from '@/lib/types/learning';
 import { PortalAuthModal } from '../components/PortalAuthModal';
 import { MemberOnboardingWidget } from './components/MemberOnboardingWidget';
 import { MemberTasksWidget } from './components/MemberTasksWidget';
@@ -56,7 +58,7 @@ interface PortalMemberDashboardClientProps {
 export default function PortalMemberDashboardClient({ slug }: PortalMemberDashboardClientProps) {
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, isLoading: isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -73,6 +75,40 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
   const portal = portals?.[0] ?? null;
+
+  // Server Fallback Courses
+  const [serverCourses, setServerCourses] = React.useState<Course[]>([]);
+  const fetchServerCourses = React.useCallback(async () => {
+    if (!portal?.id) return;
+    try {
+      const res = await listCoursesByPortalAction(portal.id, 'published');
+      if (res.success && res.data) {
+        setServerCourses(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, [portal?.id]);
+
+  React.useEffect(() => {
+    fetchServerCourses();
+  }, [fetchServerCourses]);
+
+  // Query Courses (Realtime)
+  const coursesQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id
+        ? query(
+            collection(firestore, 'courses'),
+            where('portalId', '==', portal.id),
+            where('status', '==', 'published'),
+            orderBy('order', 'asc')
+          )
+        : null,
+    [firestore, portal?.id]
+  );
+  const { data: courses } = useCollection<Course>(coursesQuery);
+  const effectiveCourses = (courses && courses.length > 0) ? courses : serverCourses;
 
   // 2. Query Membership for logged-in user
   const membershipQuery = useMemoFirebase(
@@ -300,7 +336,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-5">
             <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5" /> Curriculum ({lessons.length})
+              <GraduationCap className="w-3.5 h-3.5" /> Curriculum ({effectiveCourses.length + lessons.length})
             </TabsTrigger>
             <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5">
               <ListOrdered className="w-3.5 h-3.5" /> Tasks
@@ -316,59 +352,113 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Tab 1: Curriculum / Lessons ────────────────────────────── */}
-          <TabsContent value="courses" className="space-y-4 pt-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="font-bold text-base text-foreground">Enrolled Curriculum & Lessons</h3>
-                <p className="text-xs text-muted-foreground">Pick up right where you left off.</p>
-              </div>
-            </div>
+          {/* ── Tab 1: Curriculum / Courses & Lessons ────────────────────── */}
+          <TabsContent value="courses" className="space-y-6 pt-4">
+            {/* Courses Section */}
+            {effectiveCourses.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <div>
+                    <h3 className="font-bold text-base text-foreground">Featured Academy Courses</h3>
+                    <p className="text-xs text-muted-foreground">Comprehensive structured learning paths.</p>
+                  </div>
+                  <Link href={`/portal/${slug}/learn`}>
+                    <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1">
+                      Full Catalog <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
 
-            {lessons.length === 0 ? (
-              <div className="p-10 text-center border-2 border-dashed rounded-3xl space-y-2 bg-muted/20">
-                <GraduationCap className="w-8 h-8 mx-auto text-primary" />
-                <h5 className="font-bold text-xs text-foreground">No Lessons Available</h5>
-                <p className="text-xs text-muted-foreground">Check back as new curriculum modules are published.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {lessons.map((lesson, idx) => (
-                  <Card
-                    key={lesson.id}
-                    className="rounded-3xl border-2 border-border p-5 space-y-4 hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 py-0.5">
-                          Lesson #{idx + 1}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground">
-                          {lesson.media?.duration ? `${Math.round(lesson.media.duration / 60)} mins` : '10 min study'}
-                        </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {effectiveCourses.map(course => (
+                    <Card
+                      key={course.id}
+                      className="rounded-3xl border-2 border-border p-5 space-y-4 hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="text-[9px] uppercase font-bold px-2 py-0.5 bg-primary/10 text-primary">
+                            {course.level}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground font-semibold">
+                            {course.totalLessons} Lessons • {course.estimatedHours}h
+                          </span>
+                        </div>
+
+                        <h4 className="font-extrabold text-base text-foreground line-clamp-1">{course.title}</h4>
+                        {course.summary && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{course.summary}</p>
+                        )}
                       </div>
 
-                      <h4 className="font-bold text-sm text-foreground line-clamp-2">{lesson.title}</h4>
-                      {lesson.summary && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{lesson.summary}</p>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-border flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                        <PlayCircle className="w-3.5 h-3.5" /> Interactive Video
+                      <div className="pt-3 border-t border-border flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground font-medium">{course.instructorName || 'Academy Instructor'}</span>
+                        <Link href={`/portal/${slug}/learn/${course.slug}`}>
+                          <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
+                            Start Course <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        </Link>
                       </div>
-
-                      <Link href={`/portal/${slug}/content/lesson/${lesson.slug}`}>
-                        <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
-                          Resume <ArrowRight className="w-3 h-3" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Standalone Lessons Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Bite-sized Lessons & Workshops</h3>
+                  <p className="text-xs text-muted-foreground">Pick up right where you left off.</p>
+                </div>
+              </div>
+
+              {lessons.length === 0 && effectiveCourses.length === 0 ? (
+                <div className="p-10 text-center border-2 border-dashed rounded-3xl space-y-2 bg-muted/20">
+                  <GraduationCap className="w-8 h-8 mx-auto text-primary" />
+                  <h5 className="font-bold text-xs text-foreground">No Curriculum Items Available</h5>
+                  <p className="text-xs text-muted-foreground">Check back as new courses and lessons are published.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {lessons.map((lesson, idx) => (
+                    <Card
+                      key={lesson.id}
+                      className="rounded-3xl border-2 border-border p-5 space-y-4 hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 py-0.5">
+                            Lesson #{idx + 1}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">
+                            {lesson.media?.duration ? `${Math.round(lesson.media.duration / 60)} mins` : '10 min study'}
+                          </span>
+                        </div>
+
+                        <h4 className="font-bold text-sm text-foreground line-clamp-2">{lesson.title}</h4>
+                        {lesson.summary && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{lesson.summary}</p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-border flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                          <PlayCircle className="w-3.5 h-3.5" /> Interactive Video
+                        </div>
+
+                        <Link href={`/portal/${slug}/content/lesson/${lesson.slug}`}>
+                          <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
+                            Resume <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* ── Tab: Daily Action Tasks ───────────────────────────────── */}

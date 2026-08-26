@@ -309,3 +309,36 @@ export async function revokeAccessAction(
     return { success: false, error: err instanceof Error ? err.message : 'Failed to revoke grant.' };
   }
 }
+
+export async function listMembershipsByPortalAction(
+  portalId: string
+): Promise<ActionResult<PortalMembership[]>> {
+  try {
+    const members = await PortalMembershipService.listMembers(portalId);
+    return { success: true, data: members };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list memberships.' };
+  }
+}
+
+export async function listInvitationsByPortalAction(
+  portalId: string
+): Promise<ActionResult<PortalInvitation[]>> {
+  try {
+    const invitations = await PortalInvitationService.listInvitations(portalId);
+    return { success: true, data: invitations };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list invitations.' };
+  }
+}
+
+export async function listPlansByPortalAction(
+  portalId: string
+): Promise<ActionResult<MembershipPlan[]>> {
+  try {
+    const plans = await MembershipPlanService.listPortalPlans(portalId, true);
+    return { success: true, data: plans };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list plans.' };
+  }
+}

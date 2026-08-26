@@ -36,8 +36,8 @@ export async function createCertificateTemplateAction(
     const template = await CredentialService.createCertificateTemplate(input);
     if (portalSlug) revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: template };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create certificate template.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create certificate template.' };
   }
 }
 
@@ -47,8 +47,8 @@ export async function listCertificateTemplatesAction(
   try {
     const templates = await CredentialService.listCertificateTemplates(portalId);
     return { success: true, data: templates };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to list certificate templates.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list certificate templates.' };
   }
 }
 
@@ -62,8 +62,8 @@ export async function issueCertificateAction(
     const cert = await CredentialService.issueCertificateForCourse(input, portalSlug);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: cert };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to issue certificate.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to issue certificate.' };
   }
 }
 
@@ -73,8 +73,8 @@ export async function verifyCertificateAction(
   try {
     const res = await CredentialService.verifyCertificate(verificationCode);
     return { success: true, data: res };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Verification check failed.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Verification check failed.' };
   }
 }
 
@@ -87,8 +87,8 @@ export async function revokeCertificateAction(
     await CredentialService.revokeCertificate(certificateId, reason);
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: { revoked: true } };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to revoke certificate.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to revoke certificate.' };
   }
 }
 
@@ -98,8 +98,8 @@ export async function listIssuedCertificatesAction(
   try {
     const certs = await CredentialService.listIssuedCertificates(portalId);
     return { success: true, data: certs };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to list issued certificates.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list issued certificates.' };
   }
 }
 
@@ -111,8 +111,8 @@ export async function exportOpenBadgeAction(
   try {
     const openBadge = await CredentialService.exportOpenBadge30(certificateId);
     return { success: true, data: openBadge };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to export Open Badge.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to export Open Badge.' };
   }
 }
 
@@ -122,8 +122,8 @@ export async function listXApiStatementsAction(
   try {
     const statements = await CredentialService.listXApiStatements(portalId, 25);
     return { success: true, data: statements };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to list xAPI statements.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list xAPI statements.' };
   }
 }
 
@@ -146,8 +146,8 @@ export async function createBadgeDefinitionAction(
     const badge = await CredentialService.createBadgeDefinition(input);
     if (portalSlug) revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: badge };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to create badge definition.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create badge definition.' };
   }
 }
 
@@ -157,7 +157,7 @@ export async function listBadgeDefinitionsAction(
   try {
     const badges = await CredentialService.listBadgeDefinitions(portalId);
     return { success: true, data: badges };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to list badge definitions.' };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to list badge definitions.' };
   }
 }

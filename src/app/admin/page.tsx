@@ -83,57 +83,57 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     // Construct the widget map
     const widgets: Record<string, React.ReactNode> = {
         metricsRow: (
-            <Suspense fallback={<div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><WidgetSkeleton /><WidgetSkeleton /><WidgetSkeleton /><WidgetSkeleton /></div>}>
+            <Suspense key="metricsRow" fallback={<div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><WidgetSkeleton key="sk1" /><WidgetSkeleton key="sk2" /><WidgetSkeleton key="sk3" /><WidgetSkeleton key="sk4" /></div>}>
                 <MetricsWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         taskWidget: (
-            <Suspense fallback={<WidgetSkeleton />}>
+            <Suspense key="taskWidget" fallback={<WidgetSkeleton />}>
                 <TaskWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         upcomingMeetings: (
-            <Suspense fallback={<WidgetSkeleton />}>
+            <Suspense key="upcomingMeetings" fallback={<WidgetSkeleton />}>
                 <MeetingsWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         latestSurveys: (
-            <Suspense fallback={<WidgetSkeleton />}>
+            <Suspense key="latestSurveys" fallback={<WidgetSkeleton />}>
                 <SurveysWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         pipelinePieChart: (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key="pipelinePieChart" fallback={<ChartSkeleton />}>
                 <PipelineWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         monthlySchoolsChart: (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key="monthlySchoolsChart" fallback={<ChartSkeleton />}>
                 <MonthlyChartWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         recentActivity: (
-            <Suspense fallback={<DashboardCardSkeleton className="h-[500px]" />}>
+            <Suspense key="recentActivity" fallback={<DashboardCardSkeleton className="h-[500px]" />}>
                 <ActivityWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         moduleRadarChart: (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key="moduleRadarChart" fallback={<ChartSkeleton />}>
                 <ModuleChartWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         zoneDistribution: (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key="zoneDistribution" fallback={<ChartSkeleton />}>
                 <ZoneChartWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         userAssignments: (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key="userAssignments" fallback={<ChartSkeleton />}>
                 <UserAssignmentsWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
         messagingWidget: (
-            <Suspense fallback={<WidgetSkeleton />}>
+            <Suspense key="messagingWidget" fallback={<WidgetSkeleton />}>
                 <MessagingWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         ),
@@ -143,7 +143,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
     pipelines.forEach(p => {
         const id = `pipeline_${p.id}`;
         widgets[id] = (
-            <Suspense fallback={<ChartSkeleton />}>
+            <Suspense key={id} fallback={<ChartSkeleton />}>
                 <PipelineWidgetServer workspaceId={activeWorkspaceId} />
             </Suspense>
         );

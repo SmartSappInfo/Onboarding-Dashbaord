@@ -30,9 +30,11 @@ export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
   const portalId = academyPortal.id;
   const workspaceIds = academyPortal.workspaceIds || ['events'];
 
-  // 1. Seed Live Webinar (Upcoming)
+  // 1. Seed Live Webinar (Upcoming) with Deterministic ID
   const now = Date.now();
-  const event1 = await EventService.createLiveEvent({
+  const event1Ref = adminDb.collection('live_events').doc(`event_${portalId}_whatsapp_fee_recovery`);
+  const event1 = {
+    id: event1Ref.id,
     organizationId: targetOrgId,
     portalId,
     workspaceIds,
@@ -51,12 +53,20 @@ export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
     scheduledEndTime: new Date(now + 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
     durationMinutes: 60,
     maxAttendees: 150,
+    registeredUserIds: [],
+    attendedUserIds: [],
+    status: 'scheduled',
     isPublic: true,
-  });
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+  };
+  await event1Ref.set(event1, { merge: true });
   console.log(`✅ [SEED] Seeded Live Webinar: "${event1.title}"`);
 
   // 2. Seed Past Event with Replay & AI Summary
-  const event2 = await EventService.createLiveEvent({
+  const event2Ref = adminDb.collection('live_events').doc(`event_${portalId}_school_fee_auditing_replay`);
+  const event2 = {
+    id: event2Ref.id,
     organizationId: targetOrgId,
     portalId,
     workspaceIds,
@@ -72,12 +82,9 @@ export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
     scheduledStartTime: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
     scheduledEndTime: new Date(now - 3 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000).toISOString(),
     durationMinutes: 90,
-    isPublic: true,
-  });
-
-  await EventService.publishEventReplay({
-    portalId,
-    eventId: event2.id,
+    registeredUserIds: [],
+    attendedUserIds: [],
+    status: 'completed',
     recordingUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     recordingDurationSeconds: 5400,
     aiSummary: 'This workshop breaks down the 4 stages of school tuition reconciliation. Instructors demonstrated how to extract aging reports from Excel ledgers, verify direct bank deposits, and resolve billing discrepancies before term finals.',
@@ -87,11 +94,17 @@ export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
       'Provide instant mobile payment links directly in statement messages.',
       'Conduct weekly bursary reconciliations to prevent term-end backlog.',
     ],
-  });
+    isPublic: true,
+    createdAt: new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+  };
+  await event2Ref.set(event2, { merge: true });
   console.log(`✅ [SEED] Seeded Event Replay: "${event2.title}"`);
 
   // 3. Seed Course Cohort
-  const cohort = await EventService.createCohort({
+  const cohortRef = adminDb.collection('student_cohorts').doc(`cohort_${portalId}_term1_intensive`);
+  const cohort = {
+    id: cohortRef.id,
     organizationId: targetOrgId,
     portalId,
     courseId: 'all',
@@ -103,7 +116,12 @@ export async function seedPortalEvents(targetOrgId: string = 'smartsapp-hq') {
     startDate: new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString(),
     endDate: new Date(now + 49 * 24 * 60 * 60 * 1000).toISOString(),
     maxCapacity: 75,
-  });
+    enrolledUserIds: [],
+    status: 'enrolling',
+    createdAt: new Date(now).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+  };
+  await cohortRef.set(cohort, { merge: true });
   console.log(`✅ [SEED] Seeded Student Cohort: "${cohort.name}"`);
 
   console.log(`\n✨ [SEED] Portal Live Events & Cohorts seeding complete!\n`);

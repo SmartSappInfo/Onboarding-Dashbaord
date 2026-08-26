@@ -6645,7 +6645,8 @@ export type CallActionType =
   | 'SCHEDULE_MEETING'
   | 'TRANSFER_CALL'
   | 'ADD_TO_CALL_CAMPAIGN'
-  | 'UPDATE_CONTACT';
+  | 'UPDATE_CONTACT'
+  | 'ADD_TO_MEMBERSHIP_PORTAL';
 
 export type ScriptNodeType = 
   | 'start'           // Beginning of call
@@ -6786,6 +6787,10 @@ export interface CallActionParams {
   contactEmail?: string;
   contactPhone?: string;
   updateMode?: 'update' | 'new';
+  // Membership Portal (ADD_TO_MEMBERSHIP_PORTAL)
+  portalId?: string;
+  portalPlanId?: string;
+  portalRole?: import('./types/membership').PortalMemberRole;
   // Common
   triggerDelaySeconds?: number;
 }

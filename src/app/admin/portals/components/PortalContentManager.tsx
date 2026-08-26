@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { ContentEditorDrawer } from './ContentEditorDrawer';
 import {
+  listContentItemsByPortalAction,
   publishContentItemAction,
   archiveContentItemAction,
   deleteContentItemAction,
@@ -81,8 +82,29 @@ export function PortalContentManager({
   const [selectedType, setSelectedType] = React.useState<string>('all');
   const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<ContentItem | null>(null);
+  const [serverItems, setServerItems] = React.useState<ContentItem[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
 
-  // Firestore Query
+  const fetchServerItems = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const res = await listContentItemsByPortalAction(portalId);
+      if (res.success && res.data) {
+        setServerItems(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerItems();
+  }, [fetchServerItems]);
+
+  // Firestore Query (realtime sync when available)
   const contentQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -95,11 +117,14 @@ export function PortalContentManager({
     [firestore, portalId]
   );
 
-  const { data: contentItems, isLoading } = useCollection<ContentItem>(contentQuery);
+  const { data: contentItems, isLoading: isLoadingCollection } = useCollection<ContentItem>(contentQuery);
+
+  const effectiveItems = (contentItems && contentItems.length > 0) ? contentItems : serverItems;
+  const isLoading = isLoadingCollection && isLoadingServer && effectiveItems.length === 0;
 
   // Filter content items
   const filteredItems = React.useMemo(() => {
-    return (contentItems || []).filter(item => {
+    return effectiveItems.filter(item => {
       const matchesSearch =
         item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,7 +135,7 @@ export function PortalContentManager({
 
       return matchesSearch && matchesType;
     });
-  }, [contentItems, searchTerm, selectedType]);
+  }, [effectiveItems, searchTerm, selectedType]);
 
   const handleOpenCreate = (type: ContentItemType = 'article') => {
     setEditingItem(null);
@@ -127,6 +152,7 @@ export function PortalContentManager({
       const res = await publishContentItemAction(item.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to publish.');
       toast({ title: 'Published! 🚀', description: `"${item.title}" is now live.` });
+      fetchServerItems();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Publish failed.' });
     }
@@ -137,17 +163,19 @@ export function PortalContentManager({
       const res = await archiveContentItemAction(item.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to archive.');
       toast({ title: 'Archived', description: `"${item.title}" moved to archive.` });
+      fetchServerItems();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Archive failed.' });
     }
   };
 
   const handleDelete = async (item: ContentItem) => {
-    if (!confirm(`Are you sure you want to delete "${item.title}"?`)) return;
+    if (!confirm(`Are you sure you want to permanently delete "${item.title}"?`)) return;
     try {
       const res = await deleteContentItemAction(item.id, portalId);
       if (!res.success) throw new Error(res.error || 'Failed to delete.');
-      toast({ title: 'Deleted', description: `"${item.title}" was removed.` });
+      toast({ title: 'Deleted', description: `"${item.title}" permanently removed.` });
+      fetchServerItems();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Delete failed.' });
     }
@@ -170,9 +198,6 @@ export function PortalContentManager({
               <div className="flex items-center gap-2 text-primary font-bold text-sm">
                 <FileText className="w-4 h-4" /> Content Vault & Library
               </div>
-              <CardDescription className="text-xs">
-                Manage articles, documentation guides, curriculum lessons, and downloadable resources.
-              </CardDescription>
             </div>
 
             <Button
@@ -356,7 +381,10 @@ export function PortalContentManager({
       {/* ── Slide-over Editor Drawer ──────────────────────────────────── */}
       <ContentEditorDrawer
         open={isEditorOpen}
-        onOpenChange={setIsEditorOpen}
+        onOpenChange={(isOpen) => {
+          setIsEditorOpen(isOpen);
+          if (!isOpen) fetchServerItems();
+        }}
         portalId={portalId}
         organizationId={organizationId}
         workspaceIds={workspaceIds}

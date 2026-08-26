@@ -61,6 +61,7 @@ import {
   updatePortalAction,
   publishPortalAction,
   suspendPortalAction,
+  getPortalByIdAction,
 } from '@/app/actions/portal-actions';
 import type {
   Portal,
@@ -82,14 +83,45 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
   const router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { activeOrganization, allAccessibleWorkspaces } = useTenant();
+  const { activeOrganization, accessibleWorkspaces, allAccessibleWorkspaces } = useTenant();
+
+  // Server Action Fallback
+  const [serverPortal, setServerPortal] = React.useState<Portal | null>(null);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  const fetchServerPortal = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const res = await getPortalByIdAction(portalId);
+      if (res.success && res.data) {
+        setServerPortal(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerPortal();
+  }, [fetchServerPortal]);
 
   const portalDocRef = React.useMemo(
     () => (firestore && portalId ? doc(firestore, 'portals', portalId) : null),
     [firestore, portalId]
   );
 
-  const { data: initialPortal, isLoading } = useDoc<Portal>(portalDocRef);
+  const { data: initialPortal, isLoading: isLoadingDoc } = useDoc<Portal>(portalDocRef);
+  const effectivePortal = initialPortal || serverPortal;
+  const isLoading = isLoadingDoc && isLoadingServer && !effectivePortal;
+
+  const orgScopedWorkspaces = React.useMemo(() => {
+    const orgId = effectivePortal?.organizationId || activeOrganization?.id;
+    if (!orgId) return accessibleWorkspaces || [];
+    return (allAccessibleWorkspaces || []).filter(w => w.organizationId === orgId);
+  }, [effectivePortal?.organizationId, activeOrganization?.id, allAccessibleWorkspaces, accessibleWorkspaces]);
 
   // Local draft state for real-time reactivity
   const [name, setName] = React.useState('');
@@ -110,23 +142,23 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
   const [isSaving, setIsSaving] = React.useState(false);
   const [hasChanges, setHasChanges] = React.useState(false);
 
-  // Initialize draft state from Firestore
+  // Initialize draft state from Firestore or Server Action
   React.useEffect(() => {
-    if (initialPortal) {
-      setName(initialPortal.name);
-      setSlug(initialPortal.slug);
-      setDescription(initialPortal.description || '');
-      setPrimaryMode(initialPortal.primaryMode);
-      setWorkspaceIds(initialPortal.workspaceIds || ['default']);
-      setTheme(initialPortal.theme);
-      setBranding(initialPortal.branding);
-      setNavigation(initialPortal.navigation);
-      setAccessPolicy(initialPortal.accessPolicy);
-      setFeatures(initialPortal.features);
-      setSeo(initialPortal.seo);
+    if (effectivePortal) {
+      setName(effectivePortal.name);
+      setSlug(effectivePortal.slug);
+      setDescription(effectivePortal.description || '');
+      setPrimaryMode(effectivePortal.primaryMode);
+      setWorkspaceIds(effectivePortal.workspaceIds || ['default']);
+      setTheme(effectivePortal.theme);
+      setBranding(effectivePortal.branding);
+      setNavigation(effectivePortal.navigation);
+      setAccessPolicy(effectivePortal.accessPolicy);
+      setFeatures(effectivePortal.features);
+      setSeo(effectivePortal.seo);
       setHasChanges(false);
     }
-  }, [initialPortal]);
+  }, [effectivePortal]);
 
   const markDirty = () => setHasChanges(true);
 
@@ -202,7 +234,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
     toast({ title: 'Link Copied', description: 'Public portal URL ready to share.' });
   };
 
-  if (isLoading || !initialPortal || !theme || !branding || !navigation || !accessPolicy || !features || !seo) {
+  if (isLoading || !effectivePortal || !theme || !branding || !navigation || !accessPolicy || !features || !seo) {
     return (
       <PageContainerFluid>
         <div className="space-y-6 py-6">
@@ -236,10 +268,10 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                   {orgName} Experience Studio
                 </span>
                 <Badge
-                  variant={initialPortal.status === 'published' ? 'default' : 'secondary'}
+                  variant={effectivePortal.status === 'published' ? 'default' : 'secondary'}
                   className="rounded-full text-[10px] uppercase font-bold"
                 >
-                  {initialPortal.status}
+                  {effectivePortal.status}
                 </Badge>
               </div>
               <h1 className="text-xl font-bold text-foreground">{name}</h1>
@@ -279,7 +311,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
               </Button>
             </a>
 
-            {initialPortal.status === 'published' ? (
+            {effectivePortal.status === 'published' ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -422,7 +454,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalContentManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -432,7 +464,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalCourseManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -442,7 +474,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalEventsManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -452,7 +484,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalCommunityManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -462,7 +494,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalOnboardingManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -472,7 +504,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalMonetizationManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -482,7 +514,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalAnalyticsManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                 />
               </TabsContent>
 
@@ -491,7 +523,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalCredentialManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -501,7 +533,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalEnterpriseManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -511,7 +543,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <PortalMemberManager
                   portalId={portalId}
                   portalSlug={slug}
-                  organizationId={initialPortal.organizationId}
+                  organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
                 />
               </TabsContent>
@@ -521,9 +553,6 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                 <Card className="rounded-2xl border-2 border-border shadow-sm">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-sm font-bold">General Identity</CardTitle>
-                    <CardDescription className="text-xs">
-                      Configure portal title, public URL slug, and workspace assignments.
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
                     <div className="space-y-1.5">
@@ -573,7 +602,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                         Select which workspaces can manage and access this portal:
                       </p>
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {(allAccessibleWorkspaces || []).map(ws => {
+                        {(orgScopedWorkspaces || []).map(ws => {
                           const isSelected = workspaceIds.includes(ws.id);
                           return (
                             <button
@@ -630,9 +659,6 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
                     <div className="flex items-center gap-2 text-primary font-bold text-sm">
                       <Sliders className="w-4 h-4" /> Active Experience Spaces & Modules
                     </div>
-                    <CardDescription className="text-xs">
-                      Toggle active feature modules in this portal.
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
                     {[
@@ -687,7 +713,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
           {/* Right / Live Responsive Preview Frame (5 Cols) */}
           <div className="lg:col-span-5 sticky top-6 h-[720px]">
             <PortalLivePreviewCanvas
-              portal={initialPortal}
+              portal={effectivePortal}
               theme={theme}
               branding={branding}
               navigation={navigation}
@@ -706,7 +732,7 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
         onClose={() => setIsAiCopilotOpen(false)}
         portalId={portalId}
         portalSlug={slug}
-        organizationId={initialPortal.organizationId}
+        organizationId={effectivePortal.organizationId}
       />
     </PageContainerFluid>
   );

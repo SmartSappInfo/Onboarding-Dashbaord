@@ -23,7 +23,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { deleteSpaceAction } from '@/app/actions/community-actions';
+import {
+  deleteSpaceAction,
+  listSpacesByPortalAction,
+  listModerationReportsAction,
+} from '@/app/actions/community-actions';
 import type { CommunitySpace, ModerationReport } from '@/lib/types/community';
 import { CreateSpaceModal } from './CreateSpaceModal';
 import {
@@ -65,8 +69,36 @@ export function PortalCommunityManager({
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [editingSpace, setEditingSpace] = React.useState<CommunitySpace | null>(null);
+  const [serverSpaces, setServerSpaces] = React.useState<CommunitySpace[]>([]);
+  const [serverReports, setServerReports] = React.useState<ModerationReport[]>([]);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
 
-  // Query Spaces
+  const fetchServerCommunityData = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      setIsLoadingServer(true);
+      const [spacesRes, reportsRes] = await Promise.all([
+        listSpacesByPortalAction(portalId),
+        listModerationReportsAction(portalId),
+      ]);
+      if (spacesRes.success && spacesRes.data) {
+        setServerSpaces(spacesRes.data);
+      }
+      if (reportsRes.success && reportsRes.data) {
+        setServerReports(reportsRes.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingServer(false);
+    }
+  }, [portalId]);
+
+  React.useEffect(() => {
+    fetchServerCommunityData();
+  }, [fetchServerCommunityData]);
+
+  // Query Spaces (realtime sync when available)
   const spacesQuery = useMemoFirebase(
     () =>
       firestore && portalId
@@ -78,7 +110,7 @@ export function PortalCommunityManager({
         : null,
     [firestore, portalId]
   );
-  const { data: spaces, isLoading: isLoadingSpaces } = useCollection<CommunitySpace>(spacesQuery);
+  const { data: spaces, isLoading: isLoadingSpacesCollection } = useCollection<CommunitySpace>(spacesQuery);
 
   // Query Moderation Reports
   const reportsQuery = useMemoFirebase(
@@ -92,17 +124,23 @@ export function PortalCommunityManager({
         : null,
     [firestore, portalId]
   );
-  const { data: reports, isLoading: isLoadingReports } = useCollection<ModerationReport>(reportsQuery);
+  const { data: reports, isLoading: isLoadingReportsCollection } = useCollection<ModerationReport>(reportsQuery);
+
+  const effectiveSpaces = (spaces && spaces.length > 0) ? spaces : serverSpaces;
+  const effectiveReports = (reports && reports.length > 0) ? reports : serverReports;
+
+  const isLoadingSpaces = isLoadingSpacesCollection && isLoadingServer && effectiveSpaces.length === 0;
+  const isLoadingReports = isLoadingReportsCollection && isLoadingServer && effectiveReports.length === 0;
 
   const filteredSpaces = React.useMemo(() => {
-    return (spaces || []).filter(s => {
+    return effectiveSpaces.filter(s => {
       return (
         !searchQuery ||
         s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     });
-  }, [spaces, searchQuery]);
+  }, [effectiveSpaces, searchQuery]);
 
   const handleOpenCreate = () => {
     setEditingSpace(null);
@@ -120,8 +158,9 @@ export function PortalCommunityManager({
       const res = await deleteSpaceAction(spaceId, portalId, portalSlug);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Space Deleted', description: 'Space and posts removed.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+      fetchServerSpaces();
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Failed to delete space.' });
     }
   };
 
@@ -132,7 +171,7 @@ export function PortalCommunityManager({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
           <TabsList className="h-10 p-1 bg-muted/60 rounded-2xl">
             <TabsTrigger value="spaces" className="rounded-xl text-xs font-bold gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5" /> Spaces & Channels ({spaces?.length || 0})
+              <MessageSquare className="w-3.5 h-3.5" /> Spaces & Channels ({effectiveSpaces.length})
             </TabsTrigger>
             <TabsTrigger value="moderation" className="rounded-xl text-xs font-bold gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" /> Moderation Queue ({reports?.length || 0})
@@ -267,7 +306,7 @@ export function PortalCommunityManager({
 
           {isLoadingReports ? (
             <div className="p-8 text-center text-xs text-muted-foreground">Loading moderation queue...</div>
-          ) : (!reports || reports.length === 0) ? (
+          ) : effectiveReports.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground space-y-2 bg-muted/10 rounded-2xl">
               <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
               <p className="font-bold text-foreground">Moderation Queue is Clean</p>
@@ -275,7 +314,7 @@ export function PortalCommunityManager({
             </div>
           ) : (
             <div className="space-y-3">
-              {reports.map(rep => (
+              {effectiveReports.map(rep => (
                 <div key={rep.id} className="p-4 rounded-2xl border border-border bg-muted/20 space-y-2">
                   <div className="flex items-center justify-between">
                     <Badge variant="outline" className="text-[9px] uppercase font-bold text-amber-600">
@@ -297,13 +336,16 @@ export function PortalCommunityManager({
       {/* ── Create / Edit Space Modal ─────────────────────────────────── */}
       <CreateSpaceModal
         open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
+        onOpenChange={(isOpen) => {
+          setIsCreateOpen(isOpen);
+          if (!isOpen) fetchServerCommunityData();
+        }}
         portalId={portalId}
         portalSlug={portalSlug}
         organizationId={organizationId}
         workspaceIds={workspaceIds}
         editingSpace={editingSpace}
-        existingOrder={(spaces?.length || 0) + 1}
+        existingOrder={(effectiveSpaces.length || 0) + 1}
       />
     </div>
   );
