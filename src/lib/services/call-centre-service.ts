@@ -1802,6 +1802,19 @@ export class CallCentreService {
           return { success: true };
         }
 
+        case 'TRANSFER_CALL': {
+          await logActivity({
+            organizationId,
+            workspaceId,
+            entityId,
+            userId,
+            type: 'system',
+            source: 'system',
+            description: `Call Transfer Initiated to ${params.transferTarget || 'Unknown'} via ${params.transferMode || 'phone'}`,
+          });
+          return { success: true };
+        }
+
         case 'UPDATE_CONTACT': {
           const contactName = params.contactName;
           const contactEmail = params.contactEmail;

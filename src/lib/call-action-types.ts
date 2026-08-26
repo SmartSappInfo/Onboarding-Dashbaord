@@ -120,6 +120,13 @@ export const CALL_ACTION_META = new Map<CallActionType, CallActionMeta>([
     badgeLabel: '+ Schedule Meeting',
     defaultParams: () => ({ meetingMode: 'guest_list' }),
   }],
+  ['ADD_TO_CALL_CAMPAIGN', {
+    label: 'Add to Call Campaign',
+    icon: Globe,
+    colorClass: 'bg-emerald-600',
+    badgeLabel: '+ Add to Campaign',
+    defaultParams: () => ({ campaignId: '', contactScope: 'primary' }),
+  }],
   ['TRANSFER_CALL', {
     label: 'Transfer Call',
     icon: PhoneForwarded,
