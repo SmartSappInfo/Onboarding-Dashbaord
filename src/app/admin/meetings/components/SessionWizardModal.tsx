@@ -92,7 +92,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
         title: 'Session Created! 🎉',
         description: `"${title || 'Executive Masterclass'}" is now scheduled and ready for registrations.`,
         actionConfig: {
-          path: '/admin/meetings',
+          path: '/admin/meetings/sessions',
           label: 'View in Sessions',
         },
       });

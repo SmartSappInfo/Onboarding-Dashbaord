@@ -57,27 +57,28 @@ export default function MeetingsHomeClient() {
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
 
   // Compute operational statistics
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
-  const endOfWeek = new Date(now.getTime() + 7 * 86400000).toISOString();
-
   const todayBookings = React.useMemo(() => {
     if (!bookings) return [];
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
     return bookings.filter(b => b.startAt >= startOfToday && b.startAt <= endOfToday);
-  }, [bookings, startOfToday, endOfToday]);
+  }, [bookings]);
 
   const upcomingThisWeek = React.useMemo(() => {
     if (!bookings) return [];
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const endOfWeek = new Date(now.getTime() + 7 * 86400000).toISOString();
     return bookings.filter(b => b.startAt >= startOfToday && b.startAt <= endOfWeek && b.status !== 'cancelled');
-  }, [bookings, startOfToday, endOfWeek]);
+  }, [bookings]);
 
   const attendanceRate = React.useMemo(() => {
-    if (!bookings || bookings.length === 0) return 92;
+    if (!bookings || bookings.length === 0) return 100;
     const completed = bookings.filter(b => b.status === 'completed').length;
     const noShows = bookings.filter(b => b.status === 'no_show').length;
     const total = completed + noShows;
-    if (total === 0) return 94;
+    if (total === 0) return 100;
     return Math.round((completed / total) * 100);
   }, [bookings]);
 
@@ -86,12 +87,14 @@ export default function MeetingsHomeClient() {
     return bookings.filter(b => b.status === 'pending').length;
   }, [bookings]);
 
-  const currentDateDisplay = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const currentDateDisplay = React.useMemo(() => {
+    return new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, []);
 
   return (
     <PageContainerFluid>

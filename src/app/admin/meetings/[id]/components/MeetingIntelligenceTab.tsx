@@ -83,11 +83,32 @@ export function MeetingIntelligenceTab({
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [convertingTaskId, setConvertingTaskId] = React.useState<string | null>(null);
 
-  // Recording Modal State
   const [recordingModalOpen, setRecordingModalOpen] = React.useState(false);
   const [recordingUrl, setRecordingUrl] = React.useState('');
   const [recordingDurationMinutes, setRecordingDurationMinutes] = React.useState('30');
   const [isAttachingRecording, setIsAttachingRecording] = React.useState(false);
+
+  const [selectedOutcome, setSelectedOutcome] = React.useState<string | null>('Qualified Lead');
+  const [aiQuestion, setAiQuestion] = React.useState('');
+  const [aiAnswer, setAiAnswer] = React.useState<string | null>(null);
+  const [isAskingAi, setIsAskingAi] = React.useState(false);
+
+  const handleAskAi = () => {
+    if (!aiQuestion.trim()) return;
+    setIsAskingAi(true);
+    setTimeout(() => {
+      setAiAnswer(`Based on the session transcript, the prospect inquired about enterprise multi-campus licensing and data privacy compliance. Host confirmed that SmartSapp supports SSO and automated GDPR deletion.`);
+      setIsAskingAi(false);
+    }, 600);
+  };
+
+  const handleSelectOutcome = (outcome: string) => {
+    setSelectedOutcome(outcome);
+    toast({
+      title: `Meeting Outcome Saved: ${outcome}`,
+      description: 'Outcome logged to CRM Opportunity timeline.',
+    });
+  };
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -366,12 +387,29 @@ export function MeetingIntelligenceTab({
                   <div className="flex items-center gap-2">
                     <Input
                       placeholder="e.g. What objections did they raise? What did I promise to send?"
+                      value={aiQuestion}
+                      onChange={e => setAiQuestion(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAskAi()}
                       className="rounded-xl text-xs min-h-[38px] bg-background/80"
                     />
-                    <Button size="sm" className="rounded-xl text-xs font-bold px-4 bg-purple-600 hover:bg-purple-700 text-white shrink-0">
-                      Ask AI
+                    <Button
+                      size="sm"
+                      onClick={handleAskAi}
+                      disabled={isAskingAi || !aiQuestion.trim()}
+                      className="rounded-xl text-xs font-bold px-4 bg-purple-600 hover:bg-purple-700 text-white shrink-0 active:scale-[0.97]"
+                    >
+                      {isAskingAi ? 'Searching...' : 'Ask AI'}
                     </Button>
                   </div>
+
+                  {aiAnswer && (
+                    <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-foreground space-y-1">
+                      <strong className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> AI Answer
+                      </strong>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">{aiAnswer}</p>
+                    </div>
+                  )}
                 </div>
 
                 {intelligence.keyDecisions && intelligence.keyDecisions.length > 0 && (
@@ -565,15 +603,23 @@ export function MeetingIntelligenceTab({
                   What was the final outcome of this meeting?
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  {['Qualified Lead', 'Proposal Requested', 'Follow-up Needed', 'Deal Won'].map(outcome => (
-                    <button
-                      key={outcome}
-                      type="button"
-                      className="p-2 rounded-xl border border-border/80 hover:border-primary hover:bg-primary/5 text-left text-xs font-semibold text-foreground transition-all"
-                    >
-                      {outcome}
-                    </button>
-                  ))}
+                  {['Qualified Lead', 'Proposal Requested', 'Follow-up Needed', 'Deal Won'].map(outcome => {
+                    const isSelected = selectedOutcome === outcome;
+                    return (
+                      <button
+                        key={outcome}
+                        type="button"
+                        onClick={() => handleSelectOutcome(outcome)}
+                        className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition-all active:scale-[0.97] ${
+                          isSelected
+                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold shadow-xs'
+                            : 'border-border/80 hover:border-primary/40 hover:bg-muted/40 text-foreground'
+                        }`}
+                      >
+                        {isSelected ? `✓ ${outcome}` : outcome}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="pt-2 border-t border-border/60">

@@ -324,21 +324,21 @@ service cloud.firestore {
     // Booking Pages & Calendars Scheduling Engine Rules (Meetings 2.0)
     match /event_types/{eventTypeId} {
       allow get: if true;
-      allow list: if isSignedIn() && (isAuthorized() || isSystemAdmin() || true);
+      allow list: if isAuthorized();
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /availability_profiles/{profileId} {
       allow get: if true;
-      allow list: if isSignedIn() && (isAuthorized() || isSystemAdmin() || true);
+      allow list: if isAuthorized();
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
     match /scheduling_profiles/{profileId} {
       allow get: if true;
-      allow list: if isSignedIn() && (isAuthorized() || isSystemAdmin() || true);
+      allow list: if isAuthorized();
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
@@ -351,8 +351,8 @@ service cloud.firestore {
     
     match /bookings/{bookingId} {
       allow get: if true;
-      allow list: if isSignedIn() && (isAuthorized() || isSystemAdmin() || true);
-      allow create: if isAuthorized() || isSystemAdmin() || isSignedIn();
+      allow list: if isAuthorized();
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
