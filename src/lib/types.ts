@@ -2616,6 +2616,8 @@ export interface SurveyEntityMapping {
   additionalMappings?: { questionId: string; targetField: string }[];
 }
 
+export type SurveyStepperVariant = 'full' | 'simple' | 'linear' | 'none';
+
 export interface Survey {
   id: string;
   organizationId?: string;
@@ -2646,7 +2648,7 @@ export interface Survey {
   embedRedirectMode?: 'modal' | 'parent';
   showCoverPage?: boolean;
   showIntroAsPage?: boolean;
-  stepperVariant?: 'full' | 'simple';
+  stepperVariant?: 'full' | 'simple' | 'linear' | 'none';
   showSurveyTitles?: boolean;
   questionTitleBold?: boolean;
   optionsColumns?: number;

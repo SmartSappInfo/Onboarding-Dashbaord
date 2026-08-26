@@ -629,6 +629,8 @@ export default function Step1Details(_props: Step1DetailsProps) {
                                         <SelectContent className="rounded-xl">
                                             <SelectItem value="full">Details (Full Text)</SelectItem>
                                             <SelectItem value="simple">Minimal (Dots/Dashes)</SelectItem>
+                                            <SelectItem value="linear">Linear (Lines and Text)</SelectItem>
+                                            <SelectItem value="none">None (Hidden)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

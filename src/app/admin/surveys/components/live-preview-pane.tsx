@@ -31,7 +31,8 @@ export default function LivePreviewPane() {
         startButtonText,
         showCoverPage,
         showBranding,
-        showIntroAsPage
+        showIntroAsPage,
+        stepperVariant = 'full',
     } = watchedValues;
 
     const { resolvedTheme } = useTheme();
@@ -134,18 +135,73 @@ export default function LivePreviewPane() {
                                 </div>
                             ) : (
                                 <div className="pt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
-                                    {/* Dummy Stepper */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                                            <span>Step 1 of 3</span>
-                                            <span>33%</span>
+                                    {/* Survey Stepper Preview Simulation */}
+                                    {stepperVariant === 'none' ? null : stepperVariant === 'simple' ? (
+                                        <div className="w-full flex justify-center items-center gap-2 mb-2 bg-card shadow-sm py-2.5 px-4 rounded-full max-w-fit mx-auto border border-border/50">
+                                            <div className="h-2 w-6 bg-primary rounded-full transition-all duration-300"></div>
+                                            <div className="h-2 w-2 bg-muted-foreground/30 rounded-full"></div>
+                                            <div className="h-2 w-2 bg-muted-foreground/30 rounded-full"></div>
                                         </div>
-                                        <div className="flex items-center gap-1.5 w-full">
-                                            <div className="h-1.5 flex-1 bg-primary rounded-full transition-all duration-1000"></div>
-                                            <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
-                                            <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
+                                    ) : stepperVariant === 'linear' ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                <span>Step 1 of 3</span>
+                                                <span>33%</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 w-full">
+                                                <div className="h-1.5 flex-1 bg-primary rounded-full transition-all duration-1000"></div>
+                                                <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
+                                                <div className="h-1.5 flex-1 bg-muted rounded-full"></div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        /* Default: 'full' (Details / Full Text) */
+                                        <div className="w-full mb-2 pt-1 pb-0 overflow-x-auto no-scrollbar">
+                                            <div className="w-full flex items-start justify-center gap-2 sm:gap-4 px-2 min-w-fit">
+                                                {/* Step 1 (Active) */}
+                                                <div className="flex-1 relative flex flex-col items-center min-w-[60px]">
+                                                    <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 dark:bg-slate-800 z-0"></div>
+                                                    <div className="relative z-10 flex flex-col items-center">
+                                                        <div className="w-8 h-8 rounded-full border-2 border-primary bg-primary text-primary-foreground flex items-center justify-center shadow-md text-xs font-black scale-110">
+                                                            1
+                                                        </div>
+                                                        <div className="mt-2.5 text-center px-1 w-full max-w-[100px]">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest leading-tight text-foreground">
+                                                                Step 1
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Step 2 */}
+                                                <div className="flex-1 relative flex flex-col items-center min-w-[60px]">
+                                                    <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 dark:bg-slate-800 z-0"></div>
+                                                    <div className="relative z-10 flex flex-col items-center">
+                                                        <div className="w-8 h-8 rounded-full border-2 border-border bg-card text-muted-foreground flex items-center justify-center shadow-sm text-xs font-bold">
+                                                            2
+                                                        </div>
+                                                        <div className="mt-2.5 text-center px-1 w-full max-w-[100px]">
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-muted-foreground/70">
+                                                                Step 2
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Step 3 */}
+                                                <div className="flex-1 relative flex flex-col items-center min-w-[60px]">
+                                                    <div className="relative z-10 flex flex-col items-center">
+                                                        <div className="w-8 h-8 rounded-full border-2 border-border bg-card text-muted-foreground flex items-center justify-center shadow-sm text-xs font-bold">
+                                                            3
+                                                        </div>
+                                                        <div className="mt-2.5 text-center px-1 w-full max-w-[100px]">
+                                                            <p className="text-[10px] font-bold uppercase tracking-widest leading-tight text-muted-foreground/70">
+                                                                Step 3
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     {/* Dummy Question Card */}
                                     <Card className="text-left border transition-all duration-500 overflow-hidden rounded-[2rem] border-border/60 shadow-sm bg-card">

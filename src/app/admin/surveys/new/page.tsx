@@ -85,7 +85,7 @@ const formSchema = z.object({
   embedRedirectMode: z.enum(['modal', 'parent']).default('modal'),
   showCoverPage: z.boolean().default(true),
   showIntroAsPage: z.boolean().default(true),
-  stepperVariant: z.enum(['full', 'simple']).default('full'),
+  stepperVariant: z.enum(['full', 'simple', 'linear', 'none']).default('full'),
   showSurveyTitles: z.boolean().default(true),
   showBranding: z.boolean().default(true),
   adminAlertsEnabled: z.boolean().default(false),

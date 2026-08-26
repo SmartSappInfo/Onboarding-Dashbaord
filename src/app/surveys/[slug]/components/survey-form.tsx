@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { addDoc, collection, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook, SurveyStepperVariant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -1168,40 +1168,136 @@ const getRequiredMessage = (type: string) => {
     return 'This field is required.';
 };
 
-function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, elementStates, variant = 'full', isPageVisible = () => true }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void, elementStates: Record<string, ElementState>, variant?: 'full' | 'simple', isPageVisible?: (idx: number) => boolean }) {
+// ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+// SurveyStepper handles 4 progress visualization variants:
+// 1. 'full': Numbered circular step badges with horizontal connecting track and section titles.
+// 2. 'simple': Floating minimal pill container with animated active dot/dash indicators.
+// 3. 'linear': Modern segmented line progress bars with 'STEP X OF Y' and percentage/title display.
+// 4. 'none': Complete suppression of stepper navigation.
+// Caution: When calculating progress percentage, guard against division by zero on single-page surveys.
+function SurveyStepper({
+    pages,
+    pageStatuses,
+    currentIndex,
+    onStepClick,
+    elementStates,
+    variant = 'full',
+    isPageVisible = () => true
+}: {
+    pages: SurveyElement[][];
+    pageStatuses: { isValid: boolean }[];
+    currentIndex: number;
+    onStepClick: (idx: number) => void;
+    elementStates: Record<string, ElementState>;
+    variant?: SurveyStepperVariant;
+    isPageVisible?: (idx: number) => boolean;
+}) {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
+    
+    // Suppress stepper if disabled, single-page, or on cover page
+    if (variant === 'none') return null;
     if (actualPagesCount <= 1) return null;
     if (hasCover && currentIndex === 0) return null;
-    const displayPages = hasCover ? pages.slice(1) : pages;
 
+    const displayPages = hasCover ? pages.slice(1) : pages;
+    const visibleDisplayPages = displayPages.map((page, index) => {
+        const actualIdx = index + (hasCover ? 1 : 0);
+        return { page, originalIndex: index, actualIdx, isVisible: isPageVisible(actualIdx) };
+    }).filter(item => item.isVisible);
+
+    const totalVisible = Math.max(1, visibleDisplayPages.length);
+    const activeVisibleIndex = visibleDisplayPages.findIndex(item => item.actualIdx === currentIndex);
+    const currentStepNumber = activeVisibleIndex >= 0 ? activeVisibleIndex + 1 : 1;
+    const progressPercentage = Math.round((currentStepNumber / totalVisible) * 100);
+
+    // Active section title for display
+    const activePage = pages[currentIndex] || [];
+    const activeSection = activePage[0] as SurveyLayoutBlock | undefined;
+    const activeSectionTitle = activeSection?.stepperTitle || activeSection?.title || `Step ${currentStepNumber}`;
+
+    // 1. Minimal Variant (Dots / Dashes)
     if (variant === 'simple') {
         return (
             <div className="w-full flex justify-center items-center gap-2 mb-8 bg-card shadow-sm py-3 px-4 rounded-full max-w-fit mx-auto border border-border/50">
-                {displayPages.map((page, index) => {
-                    const actualIdx = index + (hasCover ? 1 : 0);
-                    const isCompleted = actualIdx < currentIndex;
-                    const isActive = actualIdx === currentIndex;
-                    const isInvalid = !pageStatuses[actualIdx].isValid;
+                {visibleDisplayPages.map((item, idx) => {
+                    const isCompleted = item.actualIdx < currentIndex;
+                    const isActive = item.actualIdx === currentIndex;
+                    const isInvalid = !pageStatuses[item.actualIdx]?.isValid;
                     return (
-                        <button key={index} type="button" onClick={() => onStepClick(actualIdx)} className="group focus:outline-none flex items-center justify-center p-1">
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={() => onStepClick(item.actualIdx)}
+                            aria-label={`Go to Step ${idx + 1}`}
+                            className="group focus:outline-none flex items-center justify-center p-1 min-h-[36px] min-w-[36px] touch-manipulation active:scale-[0.97]"
+                        >
                             <motion.div
                                 initial={false}
                                 animate={{
                                     width: isActive ? 24 : 8,
                                     backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
                                 }}
+                                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                                 className="h-2 rounded-full transition-all group-hover:scale-110"
                             />
                         </button>
-                    )
+                    );
                 })}
             </div>
         );
     }
 
+    // 2. Linear Variant (Lines and Text)
+    if (variant === 'linear') {
+        return (
+            <div className="w-full max-w-2xl mx-auto mb-8 space-y-3 px-2">
+                <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                    <span className="flex items-center gap-2 text-foreground font-bold">
+                        <span>STEP {currentStepNumber} OF {totalVisible}</span>
+                        {activeSectionTitle && (
+                            <span className="text-muted-foreground font-medium normal-case truncate max-w-[200px] hidden sm:inline">
+                                • {activeSectionTitle}
+                            </span>
+                        )}
+                    </span>
+                    <span className="font-black text-primary">{progressPercentage}%</span>
+                </div>
+                <div className="flex items-center gap-1.5 w-full">
+                    {visibleDisplayPages.map((item, idx) => {
+                        const isCompleted = item.actualIdx < currentIndex;
+                        const isActive = item.actualIdx === currentIndex;
+                        const isInvalid = !pageStatuses[item.actualIdx]?.isValid;
+                        return (
+                            <button
+                                key={idx}
+                                type="button"
+                                onClick={() => onStepClick(item.actualIdx)}
+                                aria-label={`Go to Step ${idx + 1}`}
+                                className="flex-1 py-2 group focus:outline-none touch-manipulation active:scale-[0.97]"
+                            >
+                                <div className="h-2 w-full bg-muted dark:bg-slate-800 rounded-full overflow-hidden transition-colors">
+                                    <motion.div
+                                        initial={false}
+                                        animate={{
+                                            width: (isCompleted || isActive) ? '100%' : '0%',
+                                            backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
+                                        }}
+                                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                        className="h-full rounded-full"
+                                    />
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    }
+
+    // 3. Full Variant (Details / Full Text)
     return (
         <div className="w-full mb-0 pt-2 pb-0 no-scrollbar overflow-x-auto">
             <div className="w-full flex items-start justify-center gap-1 sm:gap-4 px-2 min-w-fit">
@@ -1209,12 +1305,12 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                     const actualIdx = index + (hasCover ? 1 : 0);
                     if (!isPageVisible(actualIdx)) return null;
 
-                    const section = page[0] as SurveyLayoutBlock;
+                    const section = page[0] as SurveyLayoutBlock | undefined;
                     const isSectionVisible = section ? (elementStates[section.id]?.isVisible ?? !section.hidden) : true;
                     const title: string = (isSectionVisible ? (section?.stepperTitle || section?.title || null) : null) || `Step ${index + 1}`;
                     const isCompleted = actualIdx < currentIndex;
                     const isActive = actualIdx === currentIndex;
-                    const isInvalid = !pageStatuses[actualIdx].isValid;
+                    const isInvalid = !pageStatuses[actualIdx]?.isValid;
                     const isLast = index === displayPages.length - 1;
 
                     return (
@@ -1224,6 +1320,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                                     <motion.div 
                                         initial={false}
                                         animate={{ width: isCompleted ? '100%' : '0%' }}
+                                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                                         className={cn("h-full", isInvalid ? "bg-destructive" : "bg-primary")}
                                     />
                                 </div>
@@ -1231,7 +1328,8 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                             <button 
                                 type="button" 
                                 onClick={() => onStepClick(actualIdx)}
-                                className="relative z-10 flex flex-col items-center group focus:outline-none"
+                                aria-label={`Step ${index + 1}: ${title}`}
+                                className="relative z-10 flex flex-col items-center group focus:outline-none touch-manipulation active:scale-[0.97]"
                             >
                                 <motion.div
                                     initial={false}
@@ -1240,6 +1338,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick, element
                                         borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
                                         scale: isActive ? 1.2 : 1,
                                     }}
+                                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                                     className={cn(
                                         "w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-md transition-all group-hover:scale-110 active:scale-95",
                                         (isCompleted || isActive) ? "text-white" : "text-muted-foreground"
