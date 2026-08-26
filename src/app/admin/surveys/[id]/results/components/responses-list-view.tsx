@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X, Phone, Mail, Copy, Check } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X, Phone, Mail, Copy, Check, Tag as TagIcon, GitPullRequest, CalendarDays, ExternalLink } from 'lucide-react';
+import SurveyAnalyticsBulkActionsBar from './SurveyAnalyticsBulkActionsBar';
+import SurveyEntityManageDialogs, { type ManagedEntityTarget } from './SurveyEntityManageDialogs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -396,6 +398,8 @@ function ResponsesListView({
     const firestore = useFirestore();
 
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+    const [taggingEntity, setTaggingEntity] = React.useState<ManagedEntityTarget | null>(null);
+    const [movingEntity, setMovingEntity] = React.useState<ManagedEntityTarget | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [password, setPassword] = React.useState('');
@@ -403,6 +407,12 @@ function ResponsesListView({
     const [columnWidth, setColumnWidth] = React.useState<number>(250);
     const [hiddenColumnIds, setHiddenColumnIds] = React.useState<string[]>([]);
     const [showFullEntityDetails, setShowFullEntityDetails] = React.useState(false);
+
+    // Compute distinct identified entity IDs among selected responses
+    const identifiedEntityIds = React.useMemo(() => {
+        const selected = (responses || []).filter(r => selectedIds.includes(r.id));
+        return [...new Set(selected.map(r => r.entityId).filter((id): id is string => Boolean(id)))];
+    }, [responses, selectedIds]);
 
     const [currentPage, setCurrentPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(50);
@@ -1162,15 +1172,71 @@ function ResponsesListView({
                                         <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuLabel>Response Options</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
-                                        <Eye className="mr-2 h-4 w-4" /> View Detail
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => handleDeleteClick([response.id])}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Response
-                                    </DropdownMenuItem>
+                                <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5 shadow-xl">
+                                    {response.entityId ? (
+                                        <>
+                                            <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1.5">
+                                                Response & Entity
+                                            </DropdownMenuLabel>
+                                            <DropdownMenuItem 
+                                                onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <Eye className="h-4 w-4 text-slate-500" /> View Detail
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => window.open(`/admin/entities/${response.entityId}`, '_blank')}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <Building2 className="h-4 w-4 text-primary" /> View in CRM Console
+                                                <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => setTaggingEntity({ id: response.entityId!, name: response.entityName || 'Identified Entity' })}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <TagIcon className="h-4 w-4 text-primary" /> Apply Tags
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => setMovingEntity({ id: response.entityId!, name: response.entityName || 'Identified Entity' })}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <GitPullRequest className="h-4 w-4 text-emerald-500" /> Move Pipeline Stage
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                                onClick={() => router.push(`/admin/meetings/new?entityId=${response.entityId}`)}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <CalendarDays className="h-4 w-4 text-blue-500" /> Schedule Meeting
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator className="my-1" />
+                                            <DropdownMenuItem 
+                                                className="text-destructive focus:bg-destructive/10 rounded-lg py-2 cursor-pointer gap-2 font-medium" 
+                                                onClick={() => handleDeleteClick([response.id])}
+                                            >
+                                                <Trash2 className="h-4 w-4" /> Delete Response
+                                            </DropdownMenuItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1.5">
+                                                Response Options
+                                            </DropdownMenuLabel>
+                                            <DropdownMenuItem 
+                                                onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}
+                                                className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                            >
+                                                <Eye className="h-4 w-4 text-slate-500" /> View Detail
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator className="my-1" />
+                                            <DropdownMenuItem 
+                                                className="text-destructive focus:bg-destructive/10 rounded-lg py-2 cursor-pointer gap-2 font-medium" 
+                                                onClick={() => handleDeleteClick([response.id])}
+                                            >
+                                                <Trash2 className="h-4 w-4" /> Delete Response
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </TableCell>
@@ -1246,6 +1312,27 @@ function ResponsesListView({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Floating Bulk Actions Bar */}
+            <SurveyAnalyticsBulkActionsBar
+                selectedResponseIds={selectedIds}
+                identifiedEntityIds={identifiedEntityIds}
+                onClearSelection={() => setSelectedIds([])}
+                onDeleteSelected={() => handleDeleteClick(selectedIds)}
+                onActionComplete={() => setSelectedIds([])}
+            />
+
+            {/* Row-level Entity Tag & Stage Dialogs */}
+            <SurveyEntityManageDialogs
+                taggingEntity={taggingEntity}
+                onCloseTagging={() => setTaggingEntity(null)}
+                movingEntity={movingEntity}
+                onCloseMoving={() => setMovingEntity(null)}
+                onComplete={() => {
+                    setTaggingEntity(null);
+                    setMovingEntity(null);
+                }}
+            />
         </div>
     )
 }

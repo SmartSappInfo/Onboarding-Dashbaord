@@ -9,7 +9,11 @@ import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info, Building2, User as UserIcon, Phone, Mail, Copy, Check, ShieldCheck, ExternalLink, FileText } from "lucide-react";
+import { 
+  ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info, 
+  Building2, User as UserIcon, Phone, Mail, Copy, Check, ShieldCheck, ExternalLink, 
+  FileText, Tag as TagIcon, GitPullRequest, CalendarDays, MoreHorizontal, ArrowLeft 
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
 import { Label } from '@/components/ui/label';
@@ -21,13 +25,28 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { resolveContact } from '@/lib/contact-adapter';
 import { extractResponseContactDetails } from '@/lib/survey-response-utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import SurveyEntityManageDialogs, { type ManagedEntityTarget } from '../components/SurveyEntityManageDialogs';
 
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Component to display resolved CRM Entity and Primary Contact Information
  * on the survey response detail page, with interactive Click-to-Call and Click-to-Email.
  */
-function ResponseContactCard({ response }: { response: SurveyResponse }) {
+interface ResponseContactCardProps {
+    response: SurveyResponse;
+    onTagEntity?: (entity: ManagedEntityTarget) => void;
+    onMoveEntity?: (entity: ManagedEntityTarget) => void;
+}
+
+function ResponseContactCard({ response, onTagEntity, onMoveEntity }: ResponseContactCardProps) {
+    const router = useRouter();
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
     const [contact, setContact] = React.useState<ResolvedContact | null>(null);
@@ -97,8 +116,8 @@ function ResponseContactCard({ response }: { response: SurveyResponse }) {
     return (
         <Card className="mb-8 border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-card/60 backdrop-blur-sm">
             <CardHeader className="bg-muted/30 border-b pb-4">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-2.5">
                         <Building2 className="h-5 w-5 text-primary" />
                         <div>
                             <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -123,11 +142,83 @@ function ResponseContactCard({ response }: { response: SurveyResponse }) {
                             )}
                         </div>
                     </div>
-                    {details.isLiveCrm && (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] gap-1 py-1 px-2.5">
-                            <ShieldCheck className="h-3.5 w-3.5" /> Live CRM Entity
-                        </Badge>
-                    )}
+
+                    {/* Entity Status Badge & Quick Actions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {details.isLiveCrm && (
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold text-[10px] gap-1 py-1 px-2.5">
+                                <ShieldCheck className="h-3.5 w-3.5" /> Live CRM Entity
+                            </Badge>
+                        )}
+                        {details.entityId && (
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
+                                    onClick={() => onTagEntity && onTagEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                >
+                                    <TagIcon className="h-3.5 w-3.5 text-primary" />
+                                    <span>Tags</span>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
+                                    onClick={() => onMoveEntity && onMoveEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                >
+                                    <GitPullRequest className="h-3.5 w-3.5 text-emerald-500" />
+                                    <span>Move Stage</span>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation hidden sm:inline-flex"
+                                    onClick={() => router.push(`/admin/meetings/new?entityId=${details.entityId}`)}
+                                >
+                                    <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
+                                    <span>Schedule Meeting</span>
+                                </Button>
+                                <DropdownMenu modal={false}>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" aria-label="Entity options" className="h-8 w-8 rounded-xl active:scale-[0.97]">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 shadow-xl">
+                                        <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1">
+                                            Entity Management
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuItem 
+                                            onClick={() => window.open(`/admin/entities/${details.entityId}`, '_blank')}
+                                            className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                        >
+                                            <Building2 className="h-4 w-4 text-primary" /> View in CRM Console
+                                            <ExternalLink className="h-3 w-3 opacity-50 ml-auto" />
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => onTagEntity && onTagEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                            className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                        >
+                                            <TagIcon className="h-4 w-4 text-primary" /> Apply Tags
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => onMoveEntity && onMoveEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                            className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                        >
+                                            <GitPullRequest className="h-4 w-4 text-emerald-500" /> Move Pipeline Stage
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => router.push(`/admin/meetings/new?entityId=${details.entityId}`)}
+                                            className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
+                                        >
+                                            <CalendarDays className="h-4 w-4 text-blue-500" /> Schedule Meeting
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-6">
@@ -244,7 +335,7 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
         try {
             return <p>{format(parseISO(answerValue), 'PPP')}</p>;
         } catch {
-            return <p>{answerValue}</p>
+            return <p>{answerValue}</p>;
         }
     }
 
@@ -257,6 +348,9 @@ export default function ResponseDetailPage() {
     const { id: surveyId, responseId } = params;
     const firestore = useFirestore();
     const { user, isUserLoading: isAuthLoading } = useUser();
+
+    const [taggingEntity, setTaggingEntity] = React.useState<ManagedEntityTarget | null>(null);
+    const [movingEntity, setMovingEntity] = React.useState<ManagedEntityTarget | null>(null);
 
     const surveyDocRef = useMemoFirebase(() => firestore && surveyId && user ? doc(firestore, 'surveys', surveyId as string) : null, [firestore, surveyId, user]);
     const responseDocRef = useMemoFirebase(() => firestore && surveyId && responseId && user ? doc(firestore, `surveys/${surveyId}/responses`, responseId as string) : null, [firestore, surveyId, responseId, user]);
@@ -328,11 +422,11 @@ export default function ResponseDetailPage() {
 
     if (isLoading) {
         return (
- <div className="w-full max-w-3xl mx-auto p-4 md:p-6 lg:p-8">
- <div className="space-y-6 pt-12">
- <Skeleton className="h-24 w-full" />
- <Skeleton className="h-24 w-full" />
- <Skeleton className="h-24 w-full" />
+            <div className="w-full max-w-3xl mx-auto p-4 md:p-6 lg:p-8">
+                <div className="space-y-6 pt-12">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
                 </div>
             </div>
         );
@@ -340,8 +434,8 @@ export default function ResponseDetailPage() {
     
     if (!survey || !response) {
         return (
- <div className="text-center py-20">
- <p className="font-medium text-muted-foreground">Response record could not be resolved.</p>
+            <div className="text-center py-20">
+                <p className="font-medium text-muted-foreground">Response record could not be resolved.</p>
             </div>
         );
     }
@@ -351,46 +445,60 @@ export default function ResponseDetailPage() {
     return (
         <div className="h-full overflow-y-auto">
             <div className="max-w-5xl mx-auto space-y-8 pb-20">
-                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8">
- <div className="flex justify-end items-center">
-                    {allResponses && totalResponses > 0 && currentIndex !== -1 && (
- <div className="flex items-center gap-2">
- <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
- <ChevronsLeft className="h-4 w-4" />
-                            </Button>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
- <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack}>
- <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Previous Submission</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
- <span className="text-[10px] font-semibold text-primary tabular-nums w-20 text-center bg-primary/5 border border-primary/10 rounded-md py-1">
-                                {currentIndex + 1} OF {totalResponses}
-                            </span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
- <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex + 1)} disabled={!canGoForward}>
- <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Next Submission</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
- <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(totalResponses - 1)} disabled={!canGoForward} aria-label="Last">
- <ChevronsRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </div>
+                <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8 border-b border-border/40">
+                    <div className="flex justify-between items-center flex-wrap gap-3">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/admin/surveys/${surveyId}/results`)}
+                            className="gap-2 font-bold rounded-xl active:scale-[0.97] text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span>All Responses</span>
+                        </Button>
 
-            {/* Entity & Contact Information Card */}
-            <ResponseContactCard response={response} />
+                        {allResponses && totalResponses > 0 && currentIndex !== -1 && (
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
+                                    <ChevronsLeft className="h-4 w-4" />
+                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack}>
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Previous Submission</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <span className="text-[10px] font-semibold text-primary tabular-nums w-20 text-center bg-primary/5 border border-primary/10 rounded-md py-1">
+                                    {currentIndex + 1} OF {totalResponses}
+                                </span>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex + 1)} disabled={!canGoForward}>
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Next Submission</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(totalResponses - 1)} disabled={!canGoForward} aria-label="Last">
+                                    <ChevronsRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Entity & Contact Information Card */}
+                <ResponseContactCard 
+                    response={response} 
+                    onTagEntity={(ent) => setTaggingEntity(ent)}
+                    onMoveEntity={(ent) => setMovingEntity(ent)}
+                />
 
             {/* Scoring Summary Header */}
             {survey.scoringEnabled && (
@@ -472,6 +580,18 @@ export default function ResponseDetailPage() {
                     })}
                 </CardContent>
             </Card>
+
+            {/* Entity Manage Tag & Stage Dialogs */}
+            <SurveyEntityManageDialogs
+                taggingEntity={taggingEntity}
+                onCloseTagging={() => setTaggingEntity(null)}
+                movingEntity={movingEntity}
+                onCloseMoving={() => setMovingEntity(null)}
+                onComplete={() => {
+                    setTaggingEntity(null);
+                    setMovingEntity(null);
+                }}
+            />
             </div>
         </div>
     );
