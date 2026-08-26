@@ -58,7 +58,7 @@ interface PortalMemberDashboardClientProps {
 export default function PortalMemberDashboardClient({ slug }: PortalMemberDashboardClientProps) {
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user, isLoading: isUserLoading } = useUser();
+  const { user, loading: isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -381,7 +381,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                             {course.level}
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-semibold">
-                            {course.totalLessons} Lessons • {course.estimatedHours}h
+                            {(course as {totalLessons?: number}).totalLessons || 0} Lessons • {(course as {estimatedHours?: number}).estimatedHours || 0}h
                           </span>
                         </div>
 

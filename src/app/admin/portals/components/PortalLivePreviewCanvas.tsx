@@ -86,7 +86,7 @@ export function PortalLivePreviewCanvas({
   const effectiveLogo =
     branding.logoUrl ||
     portal.branding?.logoUrl ||
-    activeOrganization?.brandLogoUrl ||
+    activeOrganization?.logoUrl ||
     activeOrganization?.logoUrl ||
     '';
 

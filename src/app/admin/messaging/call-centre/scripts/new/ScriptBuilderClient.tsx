@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { 
   createCallScriptAction, 
   updateCallScriptAction, 
@@ -554,23 +554,23 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   const { data: pipelinesData } = useCollection<{ id: string; name: string }>(pipelinesQuery);
 
   const portalsQuery = useMemoFirebase(() => {
-    if (!firestore || !organizationId) return null;
+    if (!firestore || !activeOrganizationId) return null;
     return query(
       collection(firestore, 'portals'),
-      where('organizationId', '==', organizationId),
+      where('organizationId', '==', activeOrganizationId),
       limit(50)
     );
-  }, [firestore, organizationId]);
+  }, [firestore, activeOrganizationId]);
   const { data: portalsData } = useCollection<{ id: string; name: string }>(portalsQuery);
 
   const plansQuery = useMemoFirebase(() => {
-    if (!firestore || !organizationId) return null;
+    if (!firestore || !activeOrganizationId) return null;
     return query(
       collection(firestore, 'membership_plans'),
-      where('organizationId', '==', organizationId),
+      where('organizationId', '==', activeOrganizationId),
       limit(100)
     );
-  }, [firestore, organizationId]);
+  }, [firestore, activeOrganizationId]);
   const { data: plansData } = useCollection<{ id: string; name: string; portalId: string }>(plansQuery);
 
   const meetingsQuery = useMemoFirebase(() => {

@@ -110,7 +110,7 @@ describe('Survey Automations & Pipeline Lifecycle Engine', () => {
         name: 'Academy A',
       };
       const isWsAllowed = matchedCanonical.workspaceIds.length === 0 || matchedCanonical.workspaceIds.includes(targetWorkspaceId);
-      const isOrgAllowed = !matchedCanonical.organizationId || matchedCanonical.organizationId === targetOrgId || targetOrgId === 'default';
+      const isOrgAllowed = !matchedCanonical.organizationId || matchedCanonical.organizationId === targetOrgId || (targetOrgId as string) === 'default';
       expect(isWsAllowed && isOrgAllowed).toBe(true);
 
       const foreignCanonical = {
@@ -119,7 +119,7 @@ describe('Survey Automations & Pipeline Lifecycle Engine', () => {
         name: 'Academy B',
       };
       const isForeignWsAllowed = foreignCanonical.workspaceIds.length === 0 || foreignCanonical.workspaceIds.includes(targetWorkspaceId);
-      const isForeignOrgAllowed = !foreignCanonical.organizationId || foreignCanonical.organizationId === targetOrgId || targetOrgId === 'default';
+      const isForeignOrgAllowed = !foreignCanonical.organizationId || foreignCanonical.organizationId === targetOrgId || (targetOrgId as string) === 'default';
       expect(isForeignWsAllowed && isForeignOrgAllowed).toBe(false);
     });
   });

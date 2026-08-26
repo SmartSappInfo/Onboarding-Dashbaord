@@ -158,7 +158,7 @@ export function PortalCommunityManager({
       const res = await deleteSpaceAction(spaceId, portalId, portalSlug);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Space Deleted', description: 'Space and posts removed.' });
-      fetchServerSpaces();
+      fetchServerCommunityData();
     } catch (err: unknown) {
       toast({ title: 'Delete Failed', description: err instanceof Error ? err.message : 'Failed to delete space.' });
     }

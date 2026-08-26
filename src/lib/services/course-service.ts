@@ -1,3 +1,4 @@
+import type { CourseStatus } from '../types/learning';
 /**
  * {{Org_name}} Experience Platform — Course Domain Service
  *

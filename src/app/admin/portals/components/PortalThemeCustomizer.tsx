@@ -57,7 +57,7 @@ export function PortalThemeCustomizer({
   const [activeMediaTarget, setActiveMediaTarget] = React.useState<'logoUrl' | 'darkLogoUrl' | 'faviconUrl' | null>(null);
 
   // Organization defaults for automatic inheritance
-  const orgBrandLogo = activeOrganization?.brandLogoUrl || activeOrganization?.logoUrl || '';
+  const orgBrandLogo = activeOrganization?.logoUrl || activeOrganization?.logoUrl || '';
   const effectiveLightLogo = branding.logoUrl || orgBrandLogo;
   const effectiveDarkLogo = branding.darkLogoUrl || branding.logoUrl || orgBrandLogo;
 

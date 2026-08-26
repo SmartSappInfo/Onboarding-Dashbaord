@@ -477,20 +477,20 @@ function ResponsesListView({
                         const formatted = formatAnswer(val);
                         if (formatted && formatted !== '-') unique.add(formatted);
                     });
-                } else if (typeof ans === 'object') {
-                    if (Array.isArray(ans.options)) {
-                        ans.options.forEach((val: string) => {
+                } else if (typeof ans === 'object' && ans !== null) {
+                    if (Array.isArray(((ans as {options?: string[], option?: string, other?: string}).options))) {
+                        ((ans as {options?: string[], option?: string, other?: string}).options).forEach((val: string) => {
                              if (val) unique.add(val);
                         });
-                        if (ans.other && ans.other.trim()) {
-                            unique.add(ans.other.trim());
+                        if (((ans as {options?: string[], option?: string, other?: string}).other) && ((ans as {options?: string[], option?: string, other?: string}).other).trim()) {
+                            unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
                         }
-                    } else if (ans.option !== undefined) {
-                        if (ans.option === '__other__') {
-                            if (ans.other?.trim()) unique.add(ans.other.trim());
+                    } else if (((ans as {options?: string[], option?: string, other?: string}).option) !== undefined) {
+                        if (((ans as {options?: string[], option?: string, other?: string}).option) === '__other__') {
+                            if (((ans as {options?: string[], option?: string, other?: string}).other)?.trim()) unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
                         } else {
-                            unique.add(ans.option);
-                            if (ans.other?.trim()) unique.add(ans.other.trim());
+                            unique.add(((ans as {options?: string[], option?: string, other?: string}).option));
+                            if (((ans as {options?: string[], option?: string, other?: string}).other)?.trim()) unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
                         }
                     } else {
                         const formatted = formatAnswer(ans);

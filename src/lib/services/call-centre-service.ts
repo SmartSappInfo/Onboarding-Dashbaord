@@ -1700,6 +1700,14 @@ export class CallCentreService {
         case 'ADD_TO_MEMBERSHIP_PORTAL': {
           if (!params.portalId) return { success: false, error: 'No portal configured.' };
           
+          const entitySnap = await adminDb.collection('entities').doc(entityId).get();
+          const entityData = entitySnap.exists ? entitySnap.data() : null;
+          const contactsList = (entityData?.entityContacts ?? []) as any[];
+          
+          const activeContact = contactId 
+            ? contactsList.find(c => c.id === contactId || c.email === contactId || c.phone === contactId) || contactsList.find(c => c.isPrimary) || contactsList[0]
+            : contactsList.find(c => c.isPrimary) || contactsList[0];
+
           const email = activeContact?.email;
           if (!email) {
             return { success: false, error: 'Contact lacks an email address. Cannot add to portal.' };
