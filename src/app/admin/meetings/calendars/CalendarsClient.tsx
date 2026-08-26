@@ -197,9 +197,7 @@ export default function CalendarsClient() {
   const microsoftConnections = connections.filter(c => c.provider === 'microsoft_outlook');
 
   return (
-    <div className="space-y-6">
-      <MeetingsNavigation />
-
+    <div className="space-y-6 pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">

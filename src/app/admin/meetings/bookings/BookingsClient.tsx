@@ -237,9 +237,7 @@ export default function BookingsClient() {
   };
 
   return (
-    <PageContainerFluid>
-      <MeetingsNavigation />
-
+    <>
       <div className="space-y-6 pb-16">
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -558,6 +556,6 @@ export default function BookingsClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainerFluid>
+    </>
   );
 }

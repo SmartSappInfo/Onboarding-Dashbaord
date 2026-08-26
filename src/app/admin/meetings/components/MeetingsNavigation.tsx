@@ -81,7 +81,8 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
   const activePillar: MainPillar = React.useMemo(() => {
     if (pathname === '/admin/meetings') return 'home';
     if (
-      pathname.startsWith('/admin/meetings/calendar') ||
+      pathname === '/admin/meetings/calendar' ||
+      pathname.startsWith('/admin/meetings/calendar/') ||
       pathname.startsWith('/admin/meetings/bookings') ||
       pathname.startsWith('/admin/meetings/availability') ||
       pathname.startsWith('/admin/meetings/polls')
@@ -102,7 +103,17 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
     ) {
       return 'intelligence';
     }
-    return 'settings';
+    if (
+      pathname.startsWith('/admin/meetings/calendars') ||
+      pathname.startsWith('/admin/meetings/routing') ||
+      pathname.startsWith('/admin/meetings/resources') ||
+      pathname.startsWith('/admin/meetings/compliance') ||
+      pathname.startsWith('/admin/meetings/developer') ||
+      pathname.startsWith('/admin/meetings/telemetry')
+    ) {
+      return 'settings';
+    }
+    return 'home';
   }, [pathname]);
 
   // Sub-navigation tabs for the active pillar
@@ -220,7 +231,11 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-border/40 pb-2">
             {subTabs[activePillar].map(sub => {
               const SubIcon = sub.icon;
-              const isSubActive = pathname === sub.href || (sub.href !== '/admin/meetings' && pathname.startsWith(sub.href));
+              const isSubActive =
+                pathname === sub.href ||
+                (sub.href === '/admin/meetings/calendar'
+                  ? pathname.startsWith('/admin/meetings/calendar/')
+                  : (sub.href !== '/admin/meetings' && pathname.startsWith(sub.href)));
               return (
                 <Link key={sub.href} href={sub.href}>
                   <Button

@@ -525,10 +525,7 @@ export default function MeetingsHubClient() {
 
     return (
         <TooltipProvider>
-            <PageContainerFluid>
-            <div className="h-full overflow-y-auto w-full">
-                <MeetingsNavigation />
-                <div className="space-y-8 pb-32 w-full">
+            <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="flex flex-col items-start">
                             <h1 className="text-3xl font-bold text-foreground">
@@ -718,12 +715,11 @@ export default function MeetingsHubClient() {
                     </div>
                 </TabsContent>
 
- <TabsContent value="calendar" className="m-0 animate-in fade-in zoom-in-95 duration-500">
+  <TabsContent value="calendar" className="m-0 animate-in fade-in zoom-in-95 duration-500">
                     <MeetingCalendar meetings={filteredMeetings} onMeetingClick={(m) => router.push(`/admin/meetings/${m.id}/results`)} />
                 </TabsContent>
             </Tabs>
-                </div>
-            </div>
+        </div>
 
         <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
           <AlertDialogContent className="rounded-[2.5rem]">
@@ -808,8 +804,6 @@ export default function MeetingsHubClient() {
           embedUrl={`${window.location.origin}/meetings/${((shareMeeting.type?.slug as string) === 'parent' ? 'parent-engagement' : (shareMeeting.type?.slug || 'session'))}/${shareMeeting.meetingSlug || shareMeeting.entitySlug}?embed=true`}
         />
       )}
-
-        </PageContainerFluid>
-        </TooltipProvider>
+    </TooltipProvider>
   );
 }

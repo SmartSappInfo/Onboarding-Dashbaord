@@ -301,39 +301,33 @@ export default function AvailabilityClient() {
 
   if (isLoading) {
     return (
-      <PageContainerFluid>
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-48 rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-2xl" />
-          <Skeleton className="h-64 w-full rounded-2xl" />
-        </div>
-      </PageContainerFluid>
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48 rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
     );
   }
 
   return (
-    <PageContainerFluid>
-      {/* Shared Navigation Tab Bar */}
-      <MeetingsNavigation
-        actions={
+    <>
+      <div className="space-y-8 max-w-5xl pb-16">
+        {/* Header Title & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Availability Schedules</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Set your weekly working hours, date exceptions, and booking buffer rules.
+            </p>
+          </div>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="rounded-xl min-h-[44px] px-5 font-semibold gap-2 shadow-sm"
+            className="rounded-xl min-h-[44px] px-5 font-semibold gap-2 shadow-sm shrink-0 active:scale-[0.97]"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Schedule
           </Button>
-        }
-      />
-
-      <div className="space-y-8 max-w-5xl">
-        {/* Header Title */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Availability Schedules</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Set your weekly working hours, date exceptions, and booking buffer rules.
-          </p>
         </div>
 
         {/* Global Timezone & Booking Horizon Settings */}
@@ -714,6 +708,6 @@ export default function AvailabilityClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainerFluid>
+    </>
   );
 }
