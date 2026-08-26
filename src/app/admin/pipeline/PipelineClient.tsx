@@ -107,6 +107,34 @@ export default function PipelineClient() {
   const [cloneName, setCloneName] = React.useState('');
   const [isCloning, setIsCloning] = React.useState(false);
 
+  // ARCHITECTURAL POINTER:
+  // Helper functions to persist and restore the active pipeline selection per workspace in localStorage.
+  // This guarantees that refreshing the page or switching between workspaces restores the last active pipeline.
+  const getStoredPipelineId = React.useCallback((wsId: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem(`lastPipeline_${wsId}`);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const setStoredPipelineId = React.useCallback((wsId: string, pId: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`lastPipeline_${wsId}`, pId);
+    } catch {
+      // Ignore storage write quota exceptions
+    }
+  }, []);
+
+  const handleSelectPipeline = React.useCallback((pipelineId: string) => {
+    setCurrentPipelineId(pipelineId);
+    if (activeWorkspaceId) {
+      setStoredPipelineId(activeWorkspaceId, pipelineId);
+    }
+  }, [activeWorkspaceId, setStoredPipelineId]);
+
   const currentPipeline = React.useMemo(() => {
     return pipelines?.find(p => p.id === currentPipelineId) || null;
   }, [pipelines, currentPipelineId]);
@@ -130,13 +158,13 @@ export default function PipelineClient() {
   };
 
   const handleExecuteClone = async () => {
-    if (!user || !cloneTargetPipeline || !cloneName.trim()) return;
+    if (!user || !cloneTargetPipeline || !cloneName.trim() || !activeWorkspaceId) return;
     setIsCloning(true);
     try {
       const res = await clonePipelineAction(cloneTargetPipeline.id, user.uid, cloneName.trim());
       if (res.success && res.id) {
         justCreatedIdRef.current = res.id;
-        setCurrentPipelineId(res.id);
+        handleSelectPipeline(res.id);
         setIsCloneModalOpen(false);
         setCloneTargetPipeline(null);
         toast({
@@ -219,12 +247,15 @@ export default function PipelineClient() {
   const justCreatedIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
+    if (!activeWorkspaceId) return;
+
     if (pipelines && pipelines.length > 0) {
         // 1. If we just created a pipeline, hold selection until it appears in the snapshot list
         if (justCreatedIdRef.current) {
             const found = pipelines.find(p => p.id === justCreatedIdRef.current);
             if (found) {
                 setCurrentPipelineId(found.id);
+                setStoredPipelineId(activeWorkspaceId, found.id);
                 if (found.columnWidth) setColumnWidth(found.columnWidth);
                 justCreatedIdRef.current = null; // Protocol complete
                 return;
@@ -232,8 +263,8 @@ export default function PipelineClient() {
             return; // Wait for Firestore consistency
         }
 
-        // 2. Resolve selection if currently pointed at a valid pipeline
-        if (currentPipelineId && pipelines.find(p => p.id === currentPipelineId)) {
+        // 2. Resolve selection if currently pointed at a valid pipeline in this workspace
+        if (currentPipelineId && pipelines.some(p => p.id === currentPipelineId)) {
             const current = pipelines.find(p => p.id === currentPipelineId);
             if (current?.columnWidth && current.columnWidth !== columnWidth) {
                 setColumnWidth(current.columnWidth);
@@ -241,20 +272,33 @@ export default function PipelineClient() {
             return;
         }
 
-        // 3. Fallback to default or first available active pipeline
+        // 3. Check workspace-scoped localStorage for the last active pipeline
+        const storedPipelineId = getStoredPipelineId(activeWorkspaceId);
+        if (storedPipelineId) {
+            const storedPipeline = activePipelines.find(p => p.id === storedPipelineId) || pipelines.find(p => p.id === storedPipelineId);
+            if (storedPipeline) {
+                setCurrentPipelineId(storedPipeline.id);
+                if (storedPipeline.columnWidth) setColumnWidth(storedPipeline.columnWidth);
+                return;
+            }
+        }
+
+        // 4. Fallback to default or first available active pipeline
         if (activePipelines.length > 0) {
             const defaultPipeline = activePipelines.find(p => p.isDefault) || activePipelines[0];
             setCurrentPipelineId(defaultPipeline.id);
+            setStoredPipelineId(activeWorkspaceId, defaultPipeline.id);
             if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
         } else {
             const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
             setCurrentPipelineId(defaultPipeline.id);
+            setStoredPipelineId(activeWorkspaceId, defaultPipeline.id);
             if (defaultPipeline.columnWidth) setColumnWidth(defaultPipeline.columnWidth);
         }
     } else if (!isLoadingPipelines) {
         setCurrentPipelineId(null);
     }
-  }, [pipelines, activePipelines, currentPipelineId, isLoadingPipelines, columnWidth]);
+  }, [pipelines, activePipelines, currentPipelineId, isLoadingPipelines, columnWidth, activeWorkspaceId, getStoredPipelineId, setStoredPipelineId]);
 
   const handleAddPipeline = async () => {
     if (!user || !activeWorkspaceId) return;
@@ -272,7 +316,7 @@ export default function PipelineClient() {
         
         if (res.success && res.id) {
             justCreatedIdRef.current = res.id;
-            setCurrentPipelineId(res.id);
+            handleSelectPipeline(res.id);
             setActiveView('config');
             toast({ title: 'Pipeline Space Initialized' });
         } else {
@@ -355,7 +399,7 @@ export default function PipelineClient() {
                                                     isSelected ? "bg-primary/10 text-primary font-bold shadow-sm" : "hover:bg-accent text-foreground"
                                                 )}
                                                 onClick={() => {
-                                                    setCurrentPipelineId(p.id);
+                                                    handleSelectPipeline(p.id);
                                                     setIsSwitcherOpen(false);
                                                 }}
                                             >
@@ -417,7 +461,7 @@ export default function PipelineClient() {
                                                     key={p.id}
                                                     className="flex items-center justify-between p-2.5 rounded-xl text-xs opacity-60 hover:opacity-100 hover:bg-accent cursor-pointer"
                                                     onClick={() => {
-                                                        setCurrentPipelineId(p.id);
+                                                        handleSelectPipeline(p.id);
                                                         setIsSwitcherOpen(false);
                                                     }}
                                                 >
@@ -563,7 +607,7 @@ export default function PipelineClient() {
                                     pipelineId={currentPipelineId} 
                                     onWidthChange={setColumnWidth} 
                                     columnWidth={columnWidth}
-                                    onPipelineSelect={setCurrentPipelineId}
+                                    onPipelineSelect={handleSelectPipeline}
                                 />
                             )}
                         </div>

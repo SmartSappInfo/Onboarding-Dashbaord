@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import type { Deal, OnboardingStage, Automation } from '@/lib/types';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2, Zap, ExternalLink } from 'lucide-react';
+import { GripVertical, ShieldCheck as ShieldIcon, Plus, MoreVertical, Trash2, Zap, ExternalLink, ArrowDownToLine } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -30,6 +30,7 @@ interface StageColumnProps {
     pipelineName?: string;
     pipelineId?: string;
     automations?: Automation[];
+    isDraggingDeal?: boolean;
 }
 
 /**
@@ -40,7 +41,7 @@ interface StageColumnProps {
  * When adding automations to a stage via handleAddAutomationToStage, parameters are passed in query params
  * so NewAutomationPage can auto-populate the workflow title and DEAL_STAGE_CHANGED trigger node.
  */
-export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId, pipelineName, pipelineId, automations }: StageColumnProps) {
+export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId, pipelineName, pipelineId, automations, isDraggingDeal }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const [isClearing, setIsClearing] = React.useState(false);
     const confirm = useConfirm();
@@ -118,9 +119,9 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
         <div ref={setNodeRef} style={style} className="flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-2xl min-w-0">
                 <Card
                     className={cn(
-                        "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-500 w-full relative",
+                        "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
                     isOverlay && "shadow-2xl scale-105 rotate-1",
-                    isOver && "bg-primary/[0.03]"
+                    isOver && isDraggingDeal && "bg-primary/[0.06] border-primary/50 ring-2 ring-primary/20 shadow-lg"
                 )}
             >
                 {/* Top Accent Line - Matches the image curvature and color */}
@@ -259,10 +260,23 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                                     <DealCard deal={deal} taskStats={tasksByDealId?.[deal.id]} />
                                 </div>
                             ))}
+
+                            {/* Receiving Drop Target Indicator */}
+                            {isOver && isDraggingDeal && (
+                                <div 
+                                    className="w-full rounded-2xl border-2 border-dashed border-primary/60 bg-primary/10 dark:bg-primary/20 p-4 my-2 flex flex-col items-center justify-center gap-1.5 text-primary text-center shadow-inner animate-pulse transition-all duration-200"
+                                >
+                                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <ArrowDownToLine className="h-4 w-4 animate-bounce text-primary" />
+                                        <span>Drop in {toTitleCase(stage.name)}</span>
+                                    </div>
+                                    <span className="text-[10px] text-primary/80 font-medium">Release to advance stage</span>
+                                </div>
+                            )}
                         </div>
                     </SortableContext>
                     
-                    {deals.length === 0 && (
+                    {deals.length === 0 && (!isOver || !isDraggingDeal) && (
                         <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
                             <ShieldIcon size={64} />
                             <p className="text-xs font-semibold tracking-[0.3em] leading-none">Segment Clear</p>

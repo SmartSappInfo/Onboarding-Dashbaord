@@ -145,6 +145,12 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const [dealsByStage, setDealsByStage] = React.useState<Record<string, Deal[]>>({});
   const initialDealsByStage = React.useRef<Record<string, Deal[]>>({});
   
+  // ARCHITECTURAL POINTER:
+  // We capture the deal and its origin stage at drag start before any optimistic mutations
+  // occur in handleDragOver. This prevents state-drift where source and target appear identical.
+  const draggedDealRef = React.useRef<Deal | null>(null);
+  const sourceStageIdRef = React.useRef<string | null>(null);
+  
   // Pending state for deal marking as lost
   const [pendingLostDeal, setPendingLostDeal] = React.useState<{ deal: Deal; targetStage: OnboardingStage } | null>(null);
   const [selectedReason, setSelectedReason] = React.useState<string>('Competitor');
@@ -200,7 +206,11 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     if (active.data.current?.type === 'DEAL') {
-      setActiveElement(active.data.current.deal);
+      const deal = active.data.current.deal as Deal;
+      draggedDealRef.current = deal;
+      const initialStageId = findContainer(active.id as string) || deal.stageId || null;
+      sourceStageIdRef.current = initialStageId;
+      setActiveElement(deal);
       initialDealsByStage.current = dealsByStage;
     }
     if (active.data.current?.type === 'COLUMN') {
@@ -224,18 +234,21 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       setDealsByStage((prev) => {
         const activeItems = prev[activeContainer];
         const overItems = prev[overContainer];
-        const activeIndex = activeItems.findIndex((item) => item.id === active.id);
-        const overIndex = overItems.findIndex((item) => item.id === over.id);
+        const activeIndex = activeItems?.findIndex((item) => item.id === active.id) ?? -1;
+        const overIndex = overItems?.findIndex((item) => item.id === over.id) ?? -1;
 
-        let newIndexInOverContainer = over.data.current?.type === 'COLUMN' ? overItems.length : (overIndex >= 0 ? overIndex : overItems.length);
+        if (!activeItems || activeIndex === -1) return prev;
+
+        const safeOverItems = overItems || [];
+        let newIndexInOverContainer = over.data.current?.type === 'COLUMN' ? safeOverItems.length : (overIndex >= 0 ? overIndex : safeOverItems.length);
 
         return {
           ...prev,
           [activeContainer]: activeItems.filter((item) => item.id !== active.id),
           [overContainer]: [
-            ...overItems.slice(0, newIndexInOverContainer),
+            ...safeOverItems.slice(0, newIndexInOverContainer),
             activeItems[activeIndex],
-            ...overItems.slice(newIndexInOverContainer),
+            ...safeOverItems.slice(newIndexInOverContainer),
           ],
         };
       });
@@ -286,60 +299,80 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     setActiveElement(null);
     const { active, over } = event;
 
+    const sourceStageId = sourceStageIdRef.current;
+    const deal = (active.data.current?.deal as Deal | undefined) || draggedDealRef.current;
+
+    // Reset captured drag references
+    sourceStageIdRef.current = null;
+    draggedDealRef.current = null;
+
     if (!over) {
       setDealsByStage(initialDealsByStage.current);
       return;
     }
 
-    const activeContainer = findContainer(active.id as string);
-    const overContainer = findContainer(over.id as string);
+    // Handle column reordering if dragging columns
+    if (active.data.current?.type === 'COLUMN') {
+      return;
+    }
 
-    if (active.data.current?.type === 'COLUMN' && over.data.current?.type === 'COLUMN' && active.id !== over.id) {
+    // Handle deal moving across stage columns
+    if (deal) {
+      const targetStageId = over.data.current?.type === 'COLUMN' 
+        ? (over.data.current.stage?.id as string) 
+        : findContainer(over.id as string);
+
+      const newStage = stages?.find((s) => s.id === targetStageId);
+
+      if (!newStage || !targetStageId) {
+        setDealsByStage(initialDealsByStage.current);
         return;
-    } else if (overContainer) {
-      const dealId = active.data.current?.deal?.id || active.id as string;
-      const newStage = stages?.find((s) => s.id === overContainer);
-      const deal = active.data.current?.deal as Deal;
+      }
 
-      if (newStage && activeContainer !== overContainer) {
-        if (newStage.name.toLowerCase().includes('lost')) {
-          setPendingLostDeal({ deal, targetStage: newStage });
-          return;
+      // If dropped back in the same starting stage, keep state in sync and exit
+      if (sourceStageId === targetStageId) {
+        initialDealsByStage.current = dealsByStage;
+        return;
+      }
+
+      // If moving to a Lost stage, prompt user for reason
+      if (newStage.name.toLowerCase().includes('lost')) {
+        setPendingLostDeal({ deal, targetStage: newStage });
+        return;
+      }
+
+      try {
+        const resStage = await updateDealStageAction(deal.id, newStage.id);
+        if (!resStage.success) {
+          throw new Error(resStage.error || 'Failed to update deal stage');
         }
 
-        try {
-          const resStage = await updateDealStageAction(dealId, newStage.id);
-          if (!resStage.success) {
-            throw new Error(resStage.error || 'Failed to update deal stage');
+        const isWonStage = newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won');
+        const targetStatus = isWonStage ? 'won' : 'open';
+
+        if (deal.status !== targetStatus) {
+          const resStatus = await updateDealStatusAction(deal.id, targetStatus);
+          if (!resStatus.success) {
+            throw new Error(resStatus.error || 'Failed to update deal status');
           }
-
-          const isWonStage = newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won');
-          const targetStatus = isWonStage ? 'won' : 'open';
-
-          if (deal.status !== targetStatus) {
-            const resStatus = await updateDealStatusAction(dealId, targetStatus);
-            if (!resStatus.success) {
-              throw new Error(resStatus.error || 'Failed to update deal status');
-            }
-          }
-
-          toast({ title: 'Deal Moved', description: `Deal advanced to "${newStage.name}".` });
-          initialDealsByStage.current = dealsByStage;
-
-          if (isWonStage) {
-            triggerInternalNotification({
-              entityId: deal.entityId,
-              notifyManager: true,
-              channel: 'both',
-              variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
-            }).catch(console.error);
-          }
-        } catch (error: unknown) {
-          console.error('Failed to update stage:', error);
-          const msg = error instanceof Error ? error.message : 'Failed to update deal state.';
-          toast({ variant: 'destructive', title: 'Logic Error', description: msg });
-          setDealsByStage(initialDealsByStage.current);
         }
+
+        toast({ title: 'Deal Moved', description: `Deal advanced to "${newStage.name}".` });
+        initialDealsByStage.current = dealsByStage;
+
+        if (isWonStage) {
+          triggerInternalNotification({
+            entityId: deal.entityId,
+            notifyManager: true,
+            channel: 'both',
+            variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
+          }).catch(console.error);
+        }
+      } catch (error: unknown) {
+        console.error('Failed to update stage:', error);
+        const msg = error instanceof Error ? error.message : 'Failed to update deal state.';
+        toast({ variant: 'destructive', title: 'Logic Error', description: msg });
+        setDealsByStage(initialDealsByStage.current);
       }
     }
   };
@@ -393,6 +426,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
               deals={dealsByStage[stage.id] || []}
               tasksByDealId={tasksByDealId}
               automations={automations}
+              isDraggingDeal={!!activeElement && !('order' in activeElement)}
             />
           ))}
         </div>

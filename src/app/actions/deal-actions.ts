@@ -5,6 +5,7 @@ import type { Deal, WorkspaceEntity, DealContact, DealFocalContact, EntityType }
 import { logActivity } from '@/lib/activity-logger';
 import { canUser } from '@/lib/workspace-permissions';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
+import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
 
@@ -275,6 +276,7 @@ export async function updateDealStageAction(dealId: string, stageId: string): Pr
         const stageName = stageSnap.data()?.name as string;
 
         const oldStageName = deal.stageName || deal.stageId;
+        const oldStageId = deal.stageId;
 
         if (deal.stageId === stageId) {
             return { success: true }; // No change
@@ -287,6 +289,8 @@ export async function updateDealStageAction(dealId: string, stageId: string): Pr
             updatedAt: timestamp
         });
 
+        // ARCHITECTURAL POINTER:
+        // Broadcast stage change signal to Activity Log & trigger stage-scoped automations.
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
@@ -297,6 +301,28 @@ export async function updateDealStageAction(dealId: string, stageId: string): Pr
             description: `progressed deal "${deal.name}" from "${oldStageName}" to "${stageName}"`,
             metadata: { dealId, from: oldStageName, to: stageName, stageId, pipelineId: deal.pipelineId }
         });
+
+        // Trigger attached automations for the receiving stage
+        try {
+            await triggerAutomationProtocols('DEAL_STAGE_CHANGED', {
+                dealId,
+                entityId: deal.entityId,
+                entityType: 'deal',
+                pipelineId: deal.pipelineId,
+                stageId,
+                stageName,
+                oldStageId,
+                oldStageName,
+                dealName: deal.name,
+                dealValue: deal.value || 0,
+                workspaceId: deal.workspaceId,
+                organizationId: deal.organizationId,
+                focalContacts: deal.focalContacts || [],
+                customFields: deal.customFields || {},
+            });
+        } catch (autoErr) {
+            console.error('[AutomationTriggerError] Failed to dispatch stage change automations:', autoErr);
+        }
 
         return { success: true };
     } catch (e: unknown) {
