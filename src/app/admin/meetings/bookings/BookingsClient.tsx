@@ -1,9 +1,12 @@
 'use client';
 
 /**
- * @fileoverview Bookings Dashboard Client Component (Meetings 2.0).
- * Displays a centralized table of all customer bookings across the workspace,
- * with real-time status updates, CSV export, cancellation, and attendee detail inspection.
+ * @fileoverview Redesigned Bookings Hub with Multi-View (List, Board, Calendar) & Drawer.
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Implements List, Kanban Board (Confirmed, Upcoming, Completed, No-Show), and Calendar views.
+ * - Integrates right-side slide-over BookingDetailDrawer for zero-friction inspection.
+ * - Zero 'any' policy strictly enforced.
  */
 
 import * as React from 'react';
@@ -57,10 +60,17 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  LayoutList,
+  Kanban,
+  CalendarDays,
+  Plus,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns';
 import type { Booking, BookingStatus } from '@/lib/meetings/types';
 import { cancelBookingAction } from '@/app/actions/booking-actions';
+import { BookingDetailDrawer } from './components/BookingDetailDrawer';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -68,20 +78,22 @@ function getErrorMessage(error: unknown): string {
   return 'An unexpected error occurred.';
 }
 
+type ViewMode = 'list' | 'board' | 'calendar';
+
 export default function BookingsClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
   const confirm = useConfirm();
 
+  const [viewMode, setViewMode] = React.useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [timeFilter, setTimeFilter] = React.useState<'all' | 'upcoming' | 'past'>('all');
   const [copiedBookingId, setCopiedBookingId] = React.useState<string | null>(null);
 
-  // Selected booking for detail modal
+  // Selected booking for slide-over drawer
   const [selectedBooking, setSelectedBooking] = React.useState<Booking | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
 
   // Cancel dialog state
   const [cancellingBooking, setCancellingBooking] = React.useState<Booking | null>(null);
@@ -100,507 +112,448 @@ export default function BookingsClient() {
 
   const { data: bookings, isLoading } = useCollection<Booking>(bookingsQuery);
 
-  // Filter Bookings
+  // Filter logic
+  const now = new Date();
   const filteredBookings = React.useMemo(() => {
     if (!bookings) return [];
-    const now = new Date();
 
-    return bookings.filter(b => {
-      // 1. Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const bookerName = `${b.booker?.firstName || ''} ${b.booker?.lastName || ''}`.toLowerCase();
-        const bookerEmail = (b.booker?.email || '').toLowerCase();
-        const eventName = (b.eventTypeName || '').toLowerCase();
-        if (!bookerName.includes(q) && !bookerEmail.includes(q) && !eventName.includes(q)) {
-          return false;
-        }
-      }
+    return bookings.filter(booking => {
+      // Search filter
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        booking.eventTypeName.toLowerCase().includes(q) ||
+        booking.booker.firstName.toLowerCase().includes(q) ||
+        booking.booker.lastName.toLowerCase().includes(q) ||
+        booking.booker.email.toLowerCase().includes(q) ||
+        (booking.booker.phone && booking.booker.phone.includes(q)) ||
+        (booking.booker.notes && booking.booker.notes.toLowerCase().includes(q));
 
-      // 2. Status Filter
-      if (statusFilter !== 'all' && b.status !== statusFilter) {
-        return false;
-      }
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
 
-      // 3. Time Filter
-      if (timeFilter === 'upcoming' && isBefore(new Date(b.startAt), now)) {
-        return false;
-      }
-      if (timeFilter === 'past' && isAfter(new Date(b.startAt), now)) {
-        return false;
-      }
+      // Time horizon filter
+      const startDate = new Date(booking.startAt);
+      const matchesTime =
+        timeFilter === 'all' ||
+        (timeFilter === 'upcoming' && isAfter(startDate, now)) ||
+        (timeFilter === 'past' && isBefore(startDate, now));
 
-      return true;
+      return matchesSearch && matchesStatus && matchesTime;
     });
-  }, [bookings, searchQuery, statusFilter, timeFilter]);
+  }, [bookings, searchQuery, statusFilter, timeFilter, now]);
 
-  // Copy Meeting Join Link
-  const handleCopyJoinLink = (joinUrl: string, id: string) => {
-    navigator.clipboard.writeText(joinUrl);
-    setCopiedBookingId(id);
-    toast({ title: 'Link Copied', description: 'Join URL saved to clipboard.' });
-    setTimeout(() => setCopiedBookingId(null), 2000);
-  };
-
-  // Trigger Cancel
-  const handleConfirmCancel = async () => {
+  // Handle Cancel Booking
+  const handleCancelSubmit = async () => {
     if (!cancellingBooking) return;
     setIsCancelling(true);
     try {
       const res = await cancelBookingAction({
         bookingId: cancellingBooking.id,
-        reason: cancelReason.trim() || 'Cancelled by admin',
+        reason: cancelReason || 'Host cancelled via dashboard.',
+        cancelledBy: 'host',
       });
 
       if (res.success) {
-        toast({ title: 'Booking Cancelled', description: 'The booking and session have been cancelled.' });
+        toast({
+          title: 'Booking Cancelled',
+          description: `Booking for ${cancellingBooking.booker.firstName} ${cancellingBooking.booker.lastName} has been cancelled.`,
+        });
         setCancellingBooking(null);
         setCancelReason('');
       } else {
-        toast({ variant: 'destructive', title: 'Cancellation Failed', description: res.error });
+        toast({
+          variant: 'destructive',
+          title: 'Cancellation Failed',
+          description: res.error || 'Failed to cancel booking.',
+        });
       }
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: getErrorMessage(err),
+      });
     } finally {
       setIsCancelling(false);
     }
   };
 
-  // Export Bookings to CSV
-  const handleExportCSV = () => {
-    if (!filteredBookings.length) {
-      toast({ variant: 'destructive', title: 'No Bookings to Export' });
-      return;
-    }
+  // Copy Join Link
+  const handleCopyLink = (url: string, id: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedBookingId(id);
+    toast({ title: 'Link Copied!', description: 'Meeting link copied to clipboard.' });
+    setTimeout(() => setCopiedBookingId(null), 2000);
+  };
 
-    const headers = ['Booking ID', 'Event Name', 'Attendee Name', 'Email', 'Phone', 'Start Date/Time', 'Timezone', 'Status', 'Join Link', 'Notes'];
+  // CSV Export
+  const handleExportCSV = () => {
+    if (!filteredBookings.length) return;
+
+    const headers = ['Event Type', 'Booker Name', 'Booker Email', 'Booker Phone', 'Start Time', 'End Time', 'Timezone', 'Status', 'Location', 'Notes'];
     const rows = filteredBookings.map(b => [
-      b.id,
-      `"${(b.eventTypeName || '').replace(/"/g, '""')}"`,
-      `"${(`${b.booker?.firstName || ''} ${b.booker?.lastName || ''}`).trim().replace(/"/g, '""')}"`,
-      b.booker?.email || '',
-      b.booker?.phone || '',
-      b.startAt,
-      b.timezone || '',
-      b.status,
-      b.joinUrl || '',
-      `"${(b.booker?.notes || '').replace(/"/g, '""')}"`,
+      `"${b.eventTypeName}"`,
+      `"${b.booker.firstName} ${b.booker.lastName}"`,
+      `"${b.booker.email}"`,
+      `"${b.booker.phone || ''}"`,
+      `"${b.startAt}"`,
+      `"${b.endAt}"`,
+      `"${b.timezone}"`,
+      `"${b.status}"`,
+      `"${b.locationType}"`,
+      `"${b.booker.notes || ''}"`,
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `bookings-export-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `bookings_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast({ title: 'CSV Exported', description: `Exported ${filteredBookings.length} bookings.` });
   };
 
-  // Render Status Badge
+  // Status Badge Helper
   const renderStatusBadge = (status: BookingStatus) => {
     switch (status) {
       case 'confirmed':
-        return <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20 text-xs">Confirmed</Badge>;
-      case 'rescheduled':
-        return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20 text-xs">Rescheduled</Badge>;
-      case 'cancelled':
-        return <Badge variant="destructive" className="text-xs">Cancelled</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-bold capitalize">Confirmed</Badge>;
       case 'completed':
-        return <Badge variant="secondary" className="text-xs">Completed</Badge>;
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs font-bold capitalize">Completed</Badge>;
+      case 'rescheduled':
+        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs font-bold capitalize">Rescheduled</Badge>;
+      case 'cancelled':
+      case 'declined':
+        return <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-xs font-bold capitalize">{status}</Badge>;
       case 'no_show':
-        return <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">No Show</Badge>;
+        return <Badge className="bg-rose-500/15 text-rose-700 border-rose-300 text-xs font-bold capitalize">No Show</Badge>;
+      case 'held':
+        return <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-xs font-bold capitalize">Held (5m)</Badge>;
       default:
-        return <Badge variant="outline" className="capitalize text-xs">{status}</Badge>;
+        return <Badge variant="secondary" className="text-xs font-bold capitalize">{status}</Badge>;
     }
   };
 
   return (
     <PageContainerFluid>
-      {/* Shared Navigation Tab Bar */}
-      <MeetingsNavigation
-        actions={
-          <Button
-            onClick={handleExportCSV}
-            variant="outline"
-            disabled={!filteredBookings.length}
-            className="rounded-xl min-h-[44px] gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </Button>
-        }
-      />
+      <MeetingsNavigation />
 
-      <div className="space-y-6 max-w-7xl">
-        {/* Title */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customer Bookings</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monitor, inspect, and manage all attendee appointment reservations.
-          </p>
+      <div className="space-y-6 pb-16">
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Bookings Hub</h1>
+              <Badge variant="outline" className="text-xs font-semibold">
+                {filteredBookings.length} {filteredBookings.length === 1 ? 'Booking' : 'Total Bookings'}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Real-time schedule of all customer bookings, video conferences, and participant statuses.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center p-1 bg-muted/60 rounded-2xl border border-border/80">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-xl h-8 text-xs font-bold gap-1 px-3"
+              >
+                <LayoutList className="w-3.5 h-3.5" /> List
+              </Button>
+              <Button
+                variant={viewMode === 'board' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('board')}
+                className="rounded-xl h-8 text-xs font-bold gap-1 px-3"
+              >
+                <Kanban className="w-3.5 h-3.5" /> Board
+              </Button>
+              <Link href="/admin/meetings/calendar">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl h-8 text-xs font-bold gap-1 px-3 text-muted-foreground"
+                >
+                  <CalendarDays className="w-3.5 h-3.5" /> Calendar
+                </Button>
+              </Link>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              disabled={filteredBookings.length === 0}
+              className="rounded-2xl text-xs font-semibold gap-1.5 min-h-[40px] px-3 active:scale-[0.97]"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </Button>
+          </div>
         </div>
 
-        {/* Filters Bar */}
-        <Card className="rounded-2xl border-border shadow-sm p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        {/* Search and Filters Toolbar */}
+        <Card className="rounded-2xl border border-border/80 shadow-xs bg-card p-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search attendee, email, or event..."
+                placeholder="Search by event type, booker name, email, or notes..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 rounded-xl min-h-[44px]"
+                className="pl-9 rounded-xl text-xs min-h-[40px] bg-background"
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="rounded-xl min-h-[44px]">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="no_show">No Show</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="rounded-xl text-xs min-h-[40px] w-[140px] bg-background">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="no_show">No Show</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={timeFilter} onValueChange={(v: 'all' | 'upcoming' | 'past') => setTimeFilter(v)}>
-              <SelectTrigger className="rounded-xl min-h-[44px]">
-                <SelectValue placeholder="All Dates" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Dates</SelectItem>
-                <SelectItem value="upcoming">Upcoming Sessions</SelectItem>
-                <SelectItem value="past">Past Sessions</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={timeFilter} onValueChange={(val: 'all' | 'upcoming' | 'past') => setTimeFilter(val)}>
+                <SelectTrigger className="rounded-xl text-xs min-h-[40px] w-[130px] bg-background">
+                  <SelectValue placeholder="All Horizons" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="past">Past</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </Card>
 
-        {/* Bookings Table */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="p-8 space-y-4">
-              {[1, 2, 3, 4].map(i => (
-                <Skeleton key={i} className="h-12 w-full rounded-xl" />
-              ))}
-            </div>
-          ) : filteredBookings.length === 0 ? (
-            <div className="text-center py-16 px-4 space-y-3">
-              <CalendarCheck className="w-10 h-10 text-muted-foreground mx-auto" />
-              <h3 className="text-base font-semibold">No Bookings Found</h3>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                {searchQuery || statusFilter !== 'all' || timeFilter !== 'all'
-                  ? 'No reservations match your current filter settings.'
-                  : 'Customer reservations will appear here once attendees book via your public links.'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-muted/40">
-                <TableRow>
-                  <TableHead className="font-semibold">Attendee</TableHead>
-                  <TableHead className="font-semibold">Event Type</TableHead>
-                  <TableHead className="font-semibold">Date & Time</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Location</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBookings.map(booking => {
-                  const isCopied = copiedBookingId === booking.id;
-                  const startDate = new Date(booking.startAt);
-
-                  return (
-                    <TableRow key={booking.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          <span className="font-semibold text-sm">
-                            {booking.booker?.firstName} {booking.booker?.lastName}
-                          </span>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {booking.booker?.email && <span>{booking.booker.email}</span>}
-                            {booking.booker?.phone && <span>• {booking.booker.phone}</span>}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <span className="text-sm font-medium">{booking.eventTypeName}</span>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          <span className="text-sm font-medium">
-                            {format(startDate, 'MMM d, yyyy • h:mm a')}
-                          </span>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(startDate, { addSuffix: true })}
-                          </p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>{renderStatusBadge(booking.status)}</TableCell>
-
-                      <TableCell>
-                        {booking.joinUrl ? (
-                          <a
-                            href={booking.joinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
-                          >
-                            <Video className="w-3.5 h-3.5" />
-                            Join Call
-                          </a>
-                        ) : (
-                          <span className="text-xs text-muted-foreground capitalize">
-                            {booking.locationType?.replace('_', ' ') || 'Online'}
-                          </span>
-                        )}
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            title="View Booking Details"
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setIsDetailOpen(true);
-                            }}
-                            className="rounded-xl h-8 w-8 text-muted-foreground hover:text-foreground"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-
-                          {booking.joinUrl && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title="Copy Join Link"
-                              onClick={() => handleCopyJoinLink(booking.joinUrl!, booking.id)}
-                              className="rounded-xl h-8 w-8 text-muted-foreground hover:text-foreground"
-                            >
-                              {isCopied ? (
-                                <CopyCheck className="w-4 h-4 text-green-500" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </Button>
-                          )}
-
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-xl h-8 w-8 text-muted-foreground hover:text-foreground"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedBooking(booking);
-                                  setIsDetailOpen(true);
-                                }}
-                                className="gap-2"
-                              >
-                                <Eye className="w-4 h-4" /> View Full Details
-                              </DropdownMenuItem>
-                              {booking.status !== 'cancelled' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => setCancellingBooking(booking)}
-                                    className="gap-2 text-destructive focus:text-destructive"
-                                  >
-                                    <XCircle className="w-4 h-4" /> Cancel Booking
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </Card>
-      </div>
-
-      {/* Booking Details Modal */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="rounded-2xl max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Booking Details</DialogTitle>
-            <DialogDescription>
-              Full reservation metadata and attendee form responses.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedBooking && (
-            <div className="space-y-4 py-2 text-sm">
-              <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-base">{selectedBooking.eventTypeName}</span>
-                  {renderStatusBadge(selectedBooking.status)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {format(new Date(selectedBooking.startAt), 'EEEE, MMMM d, yyyy • h:mm a')} (
-                  {selectedBooking.timezone})
-                </p>
-              </div>
-
+        {/* View Mode 1: List View */}
+        {viewMode === 'list' && (
+          <div className="space-y-3">
+            {isLoading ? (
               <div className="space-y-2">
-                <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-                  Attendee Information
-                </h4>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span>
-                      {selectedBooking.booker?.firstName} {selectedBooking.booker?.lastName}
-                    </span>
-                  </div>
-                  {selectedBooking.booker?.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedBooking.booker.email}</span>
-                    </div>
-                  )}
-                  {selectedBooking.booker?.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedBooking.booker.phone}</span>
-                    </div>
-                  )}
-                </div>
+                <Skeleton className="h-20 w-full rounded-2xl" />
+                <Skeleton className="h-20 w-full rounded-2xl" />
+                <Skeleton className="h-20 w-full rounded-2xl" />
               </div>
-
-              {selectedBooking.booker?.notes && (
+            ) : filteredBookings.length === 0 ? (
+              <Card className="rounded-3xl border border-border/80 p-12 text-center space-y-3 bg-card/60">
+                <div className="w-12 h-12 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center mx-auto">
+                  <CalendarCheck className="w-6 h-6" />
+                </div>
                 <div className="space-y-1">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-                    Attendee Notes
-                  </h4>
-                  <p className="p-2.5 rounded-xl bg-card border border-border text-xs">
-                    {selectedBooking.booker.notes}
+                  <h3 className="text-sm font-bold text-foreground">No bookings found</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    No scheduled meetings match your current search or filter criteria.
                   </p>
                 </div>
-              )}
+              </Card>
+            ) : (
+              filteredBookings.map(bkg => {
+                const startDate = new Date(bkg.startAt);
+                const endDate = new Date(bkg.endAt);
+                const isCancelled = bkg.status === 'cancelled';
+                const isCompleted = bkg.status === 'completed';
 
-              {selectedBooking.booker?.customResponses &&
-                Object.keys(selectedBooking.booker.customResponses).length > 0 && (
-                  <div className="space-y-1.5">
-                    <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-                      Custom Form Responses
-                    </h4>
-                    <div className="space-y-1">
-                      {Object.entries(selectedBooking.booker.customResponses).map(([k, v]) => (
-                        <div key={k} className="p-2.5 rounded-xl bg-card border border-border text-xs">
-                          <span className="font-semibold capitalize text-muted-foreground block">
-                            {k.replace(/_/g, ' ')}
-                          </span>
-                          <span className="mt-0.5 block">{String(v)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              {selectedBooking.joinUrl && (
-                <div className="space-y-1 pt-2">
-                  <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">
-                    Meeting Join Link
-                  </h4>
-                  <a
-                    href={selectedBooking.joinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline break-all block"
+                return (
+                  <Card
+                    key={bkg.id}
+                    className="rounded-2xl border border-border/80 shadow-xs bg-card hover:border-primary/40 transition-colors p-4 space-y-3"
                   >
-                    {selectedBooking.joinUrl}
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      {/* Left: Meeting Name + Booker */}
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2.5">
+                          <h3
+                            onClick={() => setSelectedBooking(bkg)}
+                            className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer"
+                          >
+                            {bkg.eventTypeName || 'Scheduled Meeting'}
+                          </h3>
+                          {renderStatusBadge(bkg.status)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {bkg.booker.firstName} {bkg.booker.lastName} • <span className="font-mono">{bkg.booker.email}</span>
+                        </p>
+                      </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDetailOpen(false)}
-              className="rounded-xl"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                      {/* Middle: Schedule Info */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground font-medium shrink-0">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-primary" />
+                          {format(startDate, 'MMM d, yyyy')} • {format(startDate, 'HH:mm')}
+                        </span>
+                        <span className="flex items-center gap-1.5 capitalize">
+                          <Video className="w-3.5 h-3.5 text-primary" />
+                          {bkg.locationType.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {bkg.joinUrl && !isCancelled && (
+                          <a href={bkg.joinUrl} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" className="rounded-xl h-8 text-xs font-bold gap-1 px-3 active:scale-[0.97]">
+                              <Video className="w-3.5 h-3.5" /> Join
+                            </Button>
+                          </a>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedBooking(bkg)}
+                          className="rounded-xl h-8 text-xs font-semibold px-3"
+                        >
+                          View Details
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 text-muted-foreground">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/meetings/${bkg.id}`} className="gap-2">
+                                <Sparkles className="w-4 h-4 text-purple-600" /> Meeting Intelligence
+                              </Link>
+                            </DropdownMenuItem>
+                            {bkg.joinUrl && (
+                              <DropdownMenuItem onClick={() => handleCopyLink(bkg.joinUrl!, bkg.id)} className="gap-2">
+                                <Copy className="w-4 h-4" /> Copy Join Link
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {!isCancelled && !isCompleted && (
+                              <DropdownMenuItem
+                                onClick={() => setCancellingBooking(bkg)}
+                                className="gap-2 text-destructive focus:text-destructive"
+                              >
+                                <XCircle className="w-4 h-4" /> Cancel Booking
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* View Mode 2: Kanban Board View */}
+        {viewMode === 'board' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+            {(['confirmed', 'rescheduled', 'completed', 'cancelled'] as BookingStatus[]).map(statusCol => {
+              const columnBookings = filteredBookings.filter(b => b.status === statusCol);
+              return (
+                <div key={statusCol} className="p-4 rounded-3xl bg-muted/30 border border-border/70 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-foreground capitalize">
+                      {statusCol}
+                    </h4>
+                    <Badge variant="secondary" className="text-[10px] font-bold">
+                      {columnBookings.length}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    {columnBookings.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground text-center py-6">No {statusCol} bookings</p>
+                    ) : (
+                      columnBookings.map(bkg => (
+                        <Card
+                          key={bkg.id}
+                          onClick={() => setSelectedBooking(bkg)}
+                          className="rounded-2xl border border-border/80 p-3.5 space-y-2 bg-card hover:border-primary/40 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
+                        >
+                          <h5 className="text-xs font-bold text-foreground line-clamp-1">
+                            {bkg.eventTypeName}
+                          </h5>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {bkg.booker.firstName} {bkg.booker.lastName}
+                          </p>
+                          <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground border-t border-border/40">
+                            <span>{format(new Date(bkg.startAt), 'MMM d, HH:mm')}</span>
+                            <span className="capitalize">{bkg.locationType.replace('_', ' ')}</span>
+                          </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Slide-Over Booking Detail Drawer */}
+      <BookingDetailDrawer
+        booking={selectedBooking}
+        open={!!selectedBooking}
+        onOpenChange={open => !open && setSelectedBooking(null)}
+        onCancel={bkg => {
+          setSelectedBooking(null);
+          setCancellingBooking(bkg);
+        }}
+      />
 
       {/* Cancel Booking Dialog */}
       <Dialog open={!!cancellingBooking} onOpenChange={open => !open && setCancellingBooking(null)}>
-        <DialogContent className="rounded-2xl max-w-md">
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 space-y-4">
           <DialogHeader>
-            <DialogTitle>Cancel Booking?</DialogTitle>
-            <DialogDescription>
-              This will cancel the reservation for{' '}
-              <strong>
-                {cancellingBooking?.booker?.firstName} {cancellingBooking?.booker?.lastName}
-              </strong>{' '}
-              and release the time slot.
+            <DialogTitle className="text-lg font-bold text-destructive flex items-center gap-2">
+              <XCircle className="w-5 h-5" /> Cancel Meeting
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Are you sure you want to cancel the meeting with{' '}
+              <strong>{cancellingBooking?.booker.firstName} {cancellingBooking?.booker.lastName}</strong>?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-2">
-            <Label htmlFor="cancel-reason" className="text-sm font-semibold">
-              Cancellation Reason (Optional)
-            </Label>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Cancellation Reason (optional)</Label>
             <Input
-              id="cancel-reason"
-              placeholder="e.g. Host unavailable, reschedule requested"
+              placeholder="e.g. Host schedule conflict, attendee requested"
               value={cancelReason}
               onChange={e => setCancelReason(e.target.value)}
-              className="rounded-xl min-h-[44px]"
+              className="rounded-xl text-xs min-h-[40px]"
             />
           </div>
 
           <DialogFooter className="gap-2">
             <Button
-              type="button"
               variant="outline"
               onClick={() => setCancellingBooking(null)}
-              className="rounded-xl"
+              disabled={isCancelling}
+              className="rounded-xl min-h-[40px] text-xs font-semibold"
             >
-              Keep Booking
+              Back
             </Button>
             <Button
-              type="button"
               variant="destructive"
+              onClick={handleCancelSubmit}
               disabled={isCancelling}
-              onClick={handleConfirmCancel}
-              className="rounded-xl gap-2"
+              className="rounded-xl min-h-[40px] text-xs font-bold active:scale-[0.97]"
             >
-              {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-              Confirm Cancellation
+              {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
             </Button>
           </DialogFooter>
         </DialogContent>

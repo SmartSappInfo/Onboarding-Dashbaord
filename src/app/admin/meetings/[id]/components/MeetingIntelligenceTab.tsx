@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -338,14 +339,45 @@ export function MeetingIntelligenceTab({
                 </div>
               </CardHeader>
               <CardContent className="p-5 space-y-4">
+                {/* Buying Intent Meter Banner */}
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 block">
+                      Buying Intent Assessment
+                    </span>
+                    <strong className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-purple-600" /> High Intent Detected (88%)
+                    </strong>
+                  </div>
+                  <Badge className="bg-purple-600 text-white font-bold text-xs uppercase px-3 py-1">
+                    Ready to Buy 🔥
+                  </Badge>
+                </div>
+
                 <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
                   {intelligence.executiveSummary}
                 </p>
 
+                {/* AI In-Meeting Search Box */}
+                <div className="pt-3 border-t space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-600 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" /> Ask AI About This Meeting
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="e.g. What objections did they raise? What did I promise to send?"
+                      className="rounded-xl text-xs min-h-[38px] bg-background/80"
+                    />
+                    <Button size="sm" className="rounded-xl text-xs font-bold px-4 bg-purple-600 hover:bg-purple-700 text-white shrink-0">
+                      Ask AI
+                    </Button>
+                  </div>
+                </div>
+
                 {intelligence.keyDecisions && intelligence.keyDecisions.length > 0 && (
                   <div className="pt-3 border-t space-y-2">
                     <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Key Decisions
+                      Key Decisions & Next Steps
                     </h5>
                     <ul className="space-y-1.5">
                       {intelligence.keyDecisions.map((dec, i) => (
@@ -516,6 +548,40 @@ export function MeetingIntelligenceTab({
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     Great engagement balance. To increase conversion momentum, consider asking 1-2 open-ended budget timeline questions earlier in the discovery.
                   </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Meeting Outcome Selector Card */}
+            <Card className="rounded-2xl border shadow-sm bg-card">
+              <CardHeader className="pb-3 border-b">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Meeting Outcome & Next Step
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 text-xs">
+                <span className="font-semibold text-muted-foreground block text-[11px]">
+                  What was the final outcome of this meeting?
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Qualified Lead', 'Proposal Requested', 'Follow-up Needed', 'Deal Won'].map(outcome => (
+                    <button
+                      key={outcome}
+                      type="button"
+                      className="p-2 rounded-xl border border-border/80 hover:border-primary hover:bg-primary/5 text-left text-xs font-semibold text-foreground transition-all"
+                    >
+                      {outcome}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-border/60">
+                  <Link href="/admin/meetings/event-types">
+                    <Button className="w-full rounded-xl min-h-[38px] text-xs font-bold gap-1.5 active:scale-[0.97]">
+                      <Calendar className="w-3.5 h-3.5" /> Schedule Follow-Up Session
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

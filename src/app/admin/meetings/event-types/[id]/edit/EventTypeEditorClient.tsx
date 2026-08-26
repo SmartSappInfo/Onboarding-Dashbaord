@@ -88,7 +88,9 @@ interface EventTypeEditorClientProps {
   eventTypeId: string;
 }
 
-type EditorTab = 'overview' | 'availability' | 'team' | 'location' | 'questions' | 'crm' | 'notifications' | 'workflows';
+import { EventTypeLivePreview } from '../../components/EventTypeLivePreview';
+
+type EditorTab = 'overview' | 'availability' | 'team' | 'location' | 'questions' | 'crm' | 'notifications' | 'workflows' | 'preview';
 
 const COLOR_OPTIONS = [
   '#3b82f6', // Blue
@@ -350,6 +352,7 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
     { id: 'crm', label: 'CRM & Tags', icon: TagIcon },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'workflows', label: 'Automated Workflows', icon: Zap },
+    { id: 'preview', label: 'Public Live Preview', icon: Globe },
   ];
 
   return (
@@ -1156,7 +1159,50 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
               </CardContent>
             </Card>
           )}
+
+          {/* TAB 9: LIVE PUBLIC PREVIEW */}
+          {activeTab === 'preview' && (
+            <Card className="rounded-2xl border-border shadow-sm p-6 bg-muted/20">
+              <EventTypeLivePreview
+                name={name}
+                durationMinutes={durationMinutes}
+                locationType={locationType}
+                color={color}
+                description={description}
+                questions={customQuestions}
+              />
+            </Card>
+          )}
         </main>
+      </div>
+
+      {/* Sticky Bottom Bar for Unsaved Changes */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-background/95 backdrop-blur-md border-t border-border/80 shadow-lg flex items-center justify-between max-w-6xl mx-auto px-6 rounded-t-3xl">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+            Event Type Studio
+          </Badge>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            Customize settings and preview customer experience in real-time.
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link href="/admin/meetings/event-types">
+            <Button variant="outline" size="sm" className="rounded-xl min-h-[40px] text-xs font-semibold">
+              Cancel
+            </Button>
+          </Link>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            size="sm"
+            className="rounded-xl min-h-[40px] px-6 text-xs font-bold gap-2 active:scale-[0.97] shadow-sm"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Event Type
+          </Button>
+        </div>
       </div>
 
       {/* Add Custom Question Modal */}

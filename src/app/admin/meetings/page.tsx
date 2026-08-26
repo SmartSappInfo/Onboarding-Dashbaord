@@ -1,11 +1,11 @@
-import MeetingsClient from './MeetingsClient';
+import MeetingsHomeClient from './MeetingsHomeClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Meetings and Webinars',
-  description: 'Coordinate and manage parent engagement sessions and staff training workshops.',
+  title: 'Meetings Workspace | SmartSapp',
+  description: 'Manage your daily schedule, client appointments, webinars, and meeting intelligence.',
 };
 
 export default function MeetingsPage() {
-  return <MeetingsClient />;
+  return <MeetingsHomeClient />;
 }
