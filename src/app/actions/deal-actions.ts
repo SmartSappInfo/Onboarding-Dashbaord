@@ -57,16 +57,22 @@ export async function resolveWorkspaceEntityRecord(
     // Tier 1: Composite key
     const compositeSnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`).get();
     if (compositeSnap.exists) {
-        return { id: compositeSnap.id, ...compositeSnap.data() } as WorkspaceEntity;
+        const data = compositeSnap.data();
+        if (!data?.workspaceId || data.workspaceId === workspaceId) {
+            return { id: compositeSnap.id, ...data } as WorkspaceEntity;
+        }
     }
 
-    // Tier 2: Direct key
+    // Tier 2: Direct key with tenant boundary verification
     const directSnap = await adminDb.collection('workspace_entities').doc(cleanEntityId).get();
     if (directSnap.exists) {
-        return { id: directSnap.id, ...directSnap.data() } as WorkspaceEntity;
+        const data = directSnap.data();
+        if (!data?.workspaceId || data.workspaceId === workspaceId) {
+            return { id: directSnap.id, ...data } as WorkspaceEntity;
+        }
     }
 
-    // Tier 3: Query lookup
+    // Tier 3: Query lookup (strictly scoped to workspaceId)
     const querySnap = await adminDb.collection('workspace_entities')
         .where('workspaceId', '==', workspaceId)
         .where('entityId', '==', cleanEntityId)
@@ -76,28 +82,34 @@ export async function resolveWorkspaceEntityRecord(
         return { id: querySnap.docs[0].id, ...querySnap.docs[0].data() } as WorkspaceEntity;
     }
 
-    // Tier 4: Canonical entities collection fallback
+    // Tier 4: Canonical entities collection fallback with tenant ownership verification
     const entSnap = await adminDb.collection('entities').doc(cleanEntityId).get();
     if (entSnap.exists) {
         const rawEnt = entSnap.data() || {};
-        const entType: EntityType = (rawEnt.entityType === 'family' || rawEnt.entityType === 'person') ? rawEnt.entityType : 'institution';
-        return {
-            id: entSnap.id,
-            entityId: entSnap.id,
-            entityType: entType,
-            workspaceId,
-            organizationId,
-            displayName: String(rawEnt.name || rawEnt.displayName || ''),
-            entityName: String(rawEnt.name || rawEnt.displayName || ''),
-            primaryEmail: String(rawEnt.primaryEmail || rawEnt.email || ''),
-            primaryPhone: String(rawEnt.primaryPhone || rawEnt.phone || ''),
-            entityContacts: Array.isArray(rawEnt.entityContacts) ? rawEnt.entityContacts : [],
-            workspaceTags: Array.isArray(rawEnt.workspaceTags) ? rawEnt.workspaceTags : [],
-            assignedTo: rawEnt.assignedTo || null,
-            status: rawEnt.status === 'archived' ? 'archived' : 'active',
-            addedAt: String(rawEnt.addedAt || rawEnt.createdAt || new Date().toISOString()),
-            updatedAt: String(rawEnt.updatedAt || new Date().toISOString()),
-        };
+        const wsIds: string[] = Array.isArray(rawEnt.workspaceIds) ? rawEnt.workspaceIds : [];
+        const isWsAllowed = wsIds.length === 0 || wsIds.includes(workspaceId);
+        const isOrgAllowed = !rawEnt.organizationId || rawEnt.organizationId === organizationId || organizationId === 'default';
+
+        if (isWsAllowed && isOrgAllowed) {
+            const entType: EntityType = (rawEnt.entityType === 'family' || rawEnt.entityType === 'person') ? rawEnt.entityType : 'institution';
+            return {
+                id: entSnap.id,
+                entityId: entSnap.id,
+                entityType: entType,
+                workspaceId,
+                organizationId: rawEnt.organizationId || organizationId,
+                displayName: String(rawEnt.name || rawEnt.displayName || ''),
+                entityName: String(rawEnt.name || rawEnt.displayName || ''),
+                primaryEmail: String(rawEnt.primaryEmail || rawEnt.email || ''),
+                primaryPhone: String(rawEnt.primaryPhone || rawEnt.phone || ''),
+                entityContacts: Array.isArray(rawEnt.entityContacts) ? rawEnt.entityContacts : [],
+                workspaceTags: Array.isArray(rawEnt.workspaceTags) ? rawEnt.workspaceTags : [],
+                assignedTo: rawEnt.assignedTo || null,
+                status: rawEnt.status === 'archived' ? 'archived' : 'active',
+                addedAt: String(rawEnt.addedAt || rawEnt.createdAt || new Date().toISOString()),
+                updatedAt: String(rawEnt.updatedAt || new Date().toISOString()),
+            };
+        }
     }
 
     return null;

@@ -2893,7 +2893,7 @@ export interface SurveyResponse {
   score?: number;
   answers: {
     questionId: string;
-    value: any;
+    value: unknown;
   }[];
   entityId?: string | null; // Unified entity reference
   entityName?: string | null; // Snapshot for display
@@ -2904,6 +2904,9 @@ export interface SurveyResponse {
   respondentName?: string | null;
   respondentEntityId?: string | null;
   contactEmail?: string | null;
+  contactPhone?: string | null;
+  leadDetails?: Record<string, unknown>;
+  variables?: Record<string, unknown>;
   automationsTriggered?: boolean;
   matchedRuleId?: string | null;
   outcome?: string | null;

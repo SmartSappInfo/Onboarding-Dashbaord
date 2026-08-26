@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, WorkspaceEntity, SurveyResultRule, OnlinePresence } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, SurveyResultRule, OnlinePresence } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -944,9 +944,10 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
     }
 
     return { success: true, id: docRef.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : "Failed to submit response.";
     console.error("Submit Public Survey Response Error:", error);
-    return { success: false, error: error.message || "Failed to submit response." };
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -1727,7 +1728,8 @@ export async function executeSurveyPipelineAndAutomations(params: {
     let matchedRule: SurveyResultRule | undefined;
     if (outcomeId) {
       matchedRule = surveyData.resultRules?.find(r => r.id === outcomeId);
-    } else if (surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
+    }
+    if (!matchedRule && surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
       const score = responseData.score;
       const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
       matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
@@ -1937,7 +1939,8 @@ async function triggerPostSubmissionAutomations(
   let matchedRule: SurveyResultRule | undefined;
   if (outcomeId) {
     matchedRule = surveyData.resultRules?.find(r => r.id === outcomeId);
-  } else if (surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
+  }
+  if (!matchedRule && surveyData.scoringEnabled && surveyData.resultRules?.length && responseData.score !== undefined) {
     const score = responseData.score;
     const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
     matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
@@ -2243,52 +2246,10 @@ export async function executeSurveyResultButtonActions(params: {
     const workspaceId = surveyData.workspaceIds?.[0] || '';
 
     // ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
-    // Multi-Pattern Workspace Entity Resolution:
-    // Resolves workspace entity across composite doc ID, direct ID, and query fallback.
+    // Multi-Pattern Workspace Entity Resolution via canonical resolver in deal-actions:
+    const { resolveWorkspaceEntityRecord } = await import('@/app/actions/deal-actions');
     const cleanEntityId = entityId.startsWith(`${workspaceId}_`) ? entityId.slice(workspaceId.length + 1) : entityId;
-    let weData: WorkspaceEntity | null = null;
-
-    const compSnap = await adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`).get();
-    if (compSnap.exists) {
-      weData = { id: compSnap.id, ...compSnap.data() } as WorkspaceEntity;
-    } else {
-      const dirSnap = await adminDb.collection('workspace_entities').doc(cleanEntityId).get();
-      if (dirSnap.exists) {
-        weData = { id: dirSnap.id, ...dirSnap.data() } as WorkspaceEntity;
-      } else {
-        const qSnap = await adminDb.collection('workspace_entities')
-          .where('workspaceId', '==', workspaceId)
-          .where('entityId', '==', cleanEntityId)
-          .limit(1)
-          .get();
-        if (!qSnap.empty) {
-          weData = { id: qSnap.docs[0].id, ...qSnap.docs[0].data() } as WorkspaceEntity;
-        } else {
-          const eSnap = await adminDb.collection('entities').doc(cleanEntityId).get();
-          if (eSnap.exists) {
-            const raw = eSnap.data() || {};
-            const entType: EntityType = (raw.entityType === 'family' || raw.entityType === 'person') ? raw.entityType : 'institution';
-            weData = {
-              id: eSnap.id,
-              entityId: eSnap.id,
-              entityType: entType,
-              workspaceId,
-              organizationId,
-              displayName: String(raw.name || raw.displayName || ''),
-              entityName: String(raw.name || raw.displayName || ''),
-              primaryEmail: String(raw.primaryEmail || raw.email || ''),
-              primaryPhone: String(raw.primaryPhone || raw.phone || ''),
-              entityContacts: Array.isArray(raw.entityContacts) ? raw.entityContacts : [],
-              workspaceTags: Array.isArray(raw.workspaceTags) ? raw.workspaceTags : [],
-              assignedTo: raw.assignedTo || null,
-              status: raw.status === 'archived' ? 'archived' : 'active',
-              addedAt: String(raw.addedAt || raw.createdAt || new Date().toISOString()),
-              updatedAt: String(raw.updatedAt || new Date().toISOString()),
-            };
-          }
-        }
-      }
-    }
+    const weData = await resolveWorkspaceEntityRecord(workspaceId, cleanEntityId, organizationId);
 
     if (!weData) throw new Error('Contact/entity not found');
 
@@ -2314,26 +2275,35 @@ export async function executeSurveyResultButtonActions(params: {
       await runAutomationById(triggerAutomationId, automationPayload);
     }
 
-    // 3. Fire Webhook
+    // 3. Fire Webhook (with SSRF protocol validation)
     if (fireWebhookUrl) {
-      const payload = {
-        surveyId,
-        surveyTitle: surveyData.title,
-        responseId,
-        entityId,
-        entityName: weData.displayName || '',
-        primaryEmail: weData.primaryEmail || '',
-        primaryPhone: weData.primaryPhone || '',
-        contacts: weData.entityContacts || [],
-        timestamp: new Date().toISOString()
-      };
-      await fetch(fireWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(err => {
-        console.error(`[survey-actions] Webhook fire failed:`, err);
-      });
+      try {
+        const parsedUrl = new URL(fireWebhookUrl);
+        if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+          const payload = {
+            surveyId,
+            surveyTitle: surveyData.title,
+            responseId,
+            entityId: cleanEntityId,
+            entityName: weData.displayName || '',
+            primaryEmail: weData.primaryEmail || '',
+            primaryPhone: weData.primaryPhone || '',
+            contacts: weData.entityContacts || [],
+            timestamp: new Date().toISOString()
+          };
+          await fetch(fireWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).catch(err => {
+            console.error(`[survey-actions] Webhook fire failed:`, err);
+          });
+        } else {
+          console.warn(`[survey-actions] Blocked invalid webhook protocol: ${parsedUrl.protocol}`);
+        }
+      } catch (urlErr) {
+        console.error(`[survey-actions] Invalid webhook URL provided: ${fireWebhookUrl}`, urlErr);
+      }
     }
 
     return { success: true };
