@@ -170,7 +170,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
                     variant={isActive ? 'default' : 'ghost'}
                     size="sm"
                     className={cn(
-                      'rounded-2xl text-xs font-bold gap-2 min-h-[40px] px-3.5 transition-all active:scale-[0.97]',
+                      'rounded-2xl text-xs font-bold gap-2 min-h-[44px] px-3.5 transition-all active:scale-[0.97]',
                       isActive
                         ? 'shadow-sm text-white'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -191,7 +191,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
               variant="outline"
               size="sm"
               onClick={() => setSearchOpen(true)}
-              className="rounded-2xl text-xs font-semibold gap-2 min-h-[40px] px-3 text-muted-foreground hover:text-foreground border-border/80 bg-background active:scale-[0.97]"
+              className="rounded-2xl text-xs font-semibold gap-2 min-h-[44px] px-3 text-muted-foreground hover:text-foreground border-border/80 bg-background active:scale-[0.97]"
             >
               <Search className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Search meetings...</span>
@@ -205,7 +205,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
               variant="outline"
               size="sm"
               onClick={() => setAiAssistantOpen(true)}
-              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[40px] px-3 text-purple-600 bg-purple-500/10 border-purple-200/50 hover:bg-purple-500/15 active:scale-[0.97]"
+              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[44px] px-3 text-purple-600 bg-purple-500/10 border-purple-200/50 hover:bg-purple-500/15 active:scale-[0.97]"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-600" />
               <span className="hidden sm:inline">AI Copilot</span>
@@ -218,7 +218,7 @@ export function MeetingsNavigation({ className, actions }: MeetingsNavigationPro
             <Button
               size="sm"
               onClick={() => setNewMeetingOpen(true)}
-              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[40px] px-4 shadow-sm active:scale-[0.97]"
+              className="rounded-2xl text-xs font-bold gap-1.5 min-h-[44px] px-4 shadow-sm active:scale-[0.97]"
             >
               <Plus className="w-4 h-4" />
               <span>New Meeting</span>

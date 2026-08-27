@@ -72,8 +72,8 @@ export default function NewEventTypePage() {
   };
 
   return (
-    <PageContainerFluid>
-      <div className="max-w-2xl mx-auto space-y-6">
+    <>
+      <div className="max-w-2xl mx-auto space-y-6 pb-16">
         <div className="flex items-center gap-3 border-b border-border pb-4">
           <Link href="/admin/meetings/event-types">
             <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
@@ -209,6 +209,6 @@ export default function NewEventTypePage() {
           </Card>
         </form>
       </div>
-    </PageContainerFluid>
+    </>
   );
 }
