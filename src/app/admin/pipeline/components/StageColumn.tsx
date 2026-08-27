@@ -277,9 +277,24 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                     </SortableContext>
                     
                     {deals.length === 0 && (!isOver || !isDraggingDeal) && (
-                        <div className="py-24 text-center flex flex-col items-center gap-4 opacity-5 pointer-events-none">
-                            <ShieldIcon size={64} />
-                            <p className="text-xs font-semibold tracking-[0.3em] leading-none">Segment Clear</p>
+                        <div className="py-12 px-3 text-center flex flex-col items-center justify-center gap-3 w-full">
+                            <div className="h-12 w-12 rounded-2xl bg-muted/30 border border-border/50 flex items-center justify-center text-muted-foreground/40">
+                                <ShieldIcon className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-bold text-muted-foreground">No deals in this stage</p>
+                                <p className="text-[10px] text-muted-foreground/60 max-w-[200px]">
+                                    Drop a deal here or create a new deal for this step.
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsCreateDealOpen(true)}
+                                className="mt-1 h-8 px-4 rounded-xl font-bold text-xs border-dashed border-primary/40 text-primary hover:bg-primary/10 transition-all active:scale-95"
+                            >
+                                <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Deal to Stage
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -294,7 +309,7 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                         <Plus className="h-3.5 w-3.5" /> Add Deal
                     </Button>
                 </div>
-                <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} />
+                <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialStageId={stage.id} initialPipelineId={activePipelineId} />
             </Card>
         </div>
     );

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import CreateDealModal from './CreateDealModal';
 import { cn } from '@/lib/utils';
 import { getForecastUrgency } from '@/app/admin/pipeline/utils/deal-urgency';
+import { formatCurrency } from '@/lib/currency-utils';
 
 interface EntityDealsTabProps {
     entityId: string;
@@ -133,7 +134,7 @@ export default function EntityDealsTab({ entityId }: EntityDealsTabProps) {
                                             <p className="text-[9px] font-semibold text-muted-foreground ml-1">Value</p>
                                             <div className="flex items-center gap-1.5 font-bold text-sm">
                                                 <Banknote className="h-3.5 w-3.5 text-primary/40" />
-                                                ${(deal.value || 0).toLocaleString()}
+                                                {formatCurrency(deal.value)}
                                             </div>
                                         </div>
                                         <div className="space-y-1 text-left">

@@ -52,6 +52,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { deleteDealAction } from '@/app/actions/deal-actions';
+import { formatCurrency } from '@/lib/currency-utils';
+import QuickEditDealModal from './QuickEditDealModal';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -83,6 +85,7 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
   const { user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
 
   const {
     attributes,
@@ -231,6 +234,18 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsQuickEditOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <Edit className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-bold text-xs">Quick Edit Deal</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5">
                         <Link href={`/admin/entities/${deal.entityId}`}>
                             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
@@ -257,7 +272,7 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
                     <div className="flex flex-col text-left shrink-0">
                         <div className="flex items-center gap-1">
                             <Banknote className="h-2.5 w-2.5 text-primary/40" />
-                            <span className="text-[10px] font-semibold tabular-nums tracking-tighter leading-none">${(deal.value || 0).toLocaleString()}</span>
+                            <span className="text-[10px] font-semibold tabular-nums tracking-tighter leading-none">{formatCurrency(deal.value)}</span>
                         </div>
                         <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5">Value</span>
                     </div>
@@ -285,6 +300,11 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
             </div>
         </CardContent>
         </Card>
+        <QuickEditDealModal
+            deal={deal}
+            open={isQuickEditOpen}
+            onOpenChange={setIsQuickEditOpen}
+        />
         </div>
     </TooltipProvider>
   );

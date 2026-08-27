@@ -865,3 +865,307 @@ export async function cleanLegacyDealNamesAction(params?: {
     }
 }
 
+/**
+ * Updates the display order of stages within a pipeline atomically.
+ *
+ * ARCHITECTURAL POINTER (Rule 10):
+ * - Assigns strict sequential order indices (0, 1, 2...) to avoid index collisions.
+ * - Commits all stage order updates in a single atomic Firestore batch.
+ */
+export async function updateStageOrdersAction(
+    pipelineId: string,
+    orderedStageIds: string[],
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!pipelineId || !orderedStageIds || orderedStageIds.length === 0) {
+            return { success: false, error: 'Pipeline ID and stage IDs are required.' };
+        }
+
+        const batch = adminDb.batch();
+        const now = new Date().toISOString();
+
+        orderedStageIds.forEach((stageId, index) => {
+            const ref = adminDb.collection('onboardingStages').doc(stageId);
+            batch.update(ref, {
+                order: index,
+                updatedAt: now,
+            });
+        });
+
+        await batch.commit();
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to update stage orders';
+        console.error('❌ Failed to update stage orders:', error);
+        return { success: false, error };
+    }
+}
+
+/**
+ * Updates fields on a single Deal document with permission checks and activity logging.
+ */
+export async function updateDealAction(
+    dealId: string,
+    updates: Partial<Deal>,
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!dealId || !workspaceId) {
+            return { success: false, error: 'Missing dealId or workspaceId' };
+        }
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, error: permission.reason };
+            }
+        }
+
+        const dealRef = adminDb.collection('deals').doc(dealId);
+        const dealSnap = await dealRef.get();
+        if (!dealSnap.exists) {
+            return { success: false, error: 'Deal not found.' };
+        }
+
+        const currentData = dealSnap.data() as Deal;
+
+        // Sanitize name if updated
+        let cleanName = updates.name;
+        if (cleanName && /^deal\s+for\s+/i.test(cleanName.trim())) {
+            cleanName = cleanName.trim().replace(/^deal\s+for\s+/i, '').trim();
+        }
+
+        const patch: Record<string, unknown> = {
+            ...updates,
+            ...(cleanName ? { name: cleanName } : {}),
+            updatedAt: new Date().toISOString(),
+        };
+
+        await dealRef.update(patch);
+
+        await logActivity({
+            organizationId: currentData.organizationId || '',
+            entityId: currentData.entityId || '',
+            userId: userId || null,
+            workspaceId: currentData.workspaceId || workspaceId,
+            type: 'deal_updated',
+            source: 'user',
+            description: `updated deal "${cleanName || currentData.name}"`,
+            metadata: { dealId, updates: patch }
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to update deal';
+        console.error('❌ Failed to update deal:', error);
+        return { success: false, error };
+    }
+}
+
+/**
+ * Bulk updates the stage and status for an array of deal IDs with throttled automation dispatch.
+ */
+export async function bulkUpdateDealsStageAction(
+    dealIds: string[],
+    targetStageId: string,
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+    try {
+        if (!dealIds || dealIds.length === 0 || !targetStageId || !workspaceId) {
+            return { success: false, updatedCount: 0, error: 'Missing required parameters' };
+        }
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, updatedCount: 0, error: permission.reason };
+            }
+        }
+
+        const stageSnap = await adminDb.collection('onboardingStages').doc(targetStageId).get();
+        const stageData = stageSnap.exists ? stageSnap.data() : null;
+        const stageName = stageData?.name || targetStageId;
+        const isWonStage = stageName.toLowerCase().includes('live') || stageName.toLowerCase().includes('won');
+        const isLostStage = stageName.toLowerCase().includes('lost');
+        const targetStatus: 'open' | 'won' | 'lost' = isLostStage ? 'lost' : isWonStage ? 'won' : 'open';
+
+        const now = new Date().toISOString();
+        const chunkSize = 400;
+
+        for (let i = 0; i < dealIds.length; i += chunkSize) {
+            const chunk = dealIds.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+
+            for (const id of chunk) {
+                const ref = adminDb.collection('deals').doc(id);
+                batch.update(ref, {
+                    stageId: targetStageId,
+                    stageName,
+                    status: targetStatus,
+                    updatedAt: now,
+                });
+            }
+
+            await batch.commit();
+        }
+
+        // Throttled trigger for automations (batches of 10)
+        const AUTO_CHUNK = 10;
+        for (let i = 0; i < dealIds.length; i += AUTO_CHUNK) {
+            const subChunk = dealIds.slice(i, i + AUTO_CHUNK);
+            await Promise.all(subChunk.map(async (dealId) => {
+                try {
+                    const snap = await adminDb.collection('deals').doc(dealId).get();
+                    if (snap.exists) {
+                        const d = snap.data() as Deal;
+                        await triggerAutomationProtocols('DEAL_STAGE_CHANGED', {
+                            workspaceId: d.workspaceId || workspaceId,
+                            entityId: d.entityId,
+                            organizationId: d.organizationId || 'default',
+                            payload: {
+                                dealId,
+                                pipelineId: d.pipelineId,
+                                stageId: targetStageId,
+                                stageName,
+                                value: d.value,
+                            }
+                        });
+                    }
+                } catch {
+                    // Ignore individual automation trigger errors in bulk flow
+                }
+            }));
+        }
+
+        await logActivity({
+            organizationId: '',
+            entityId: null,
+            userId: userId || null,
+            workspaceId,
+            type: 'bulk_deals_stage_changed',
+            source: 'user',
+            description: `bulk moved ${dealIds.length} deals to stage "${stageName}"`,
+            metadata: { targetStageId, stageName, count: dealIds.length }
+        });
+
+        return { success: true, updatedCount: dealIds.length };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to bulk move deals';
+        console.error('❌ Failed to bulk move deals:', error);
+        return { success: false, updatedCount: 0, error };
+    }
+}
+
+/**
+ * Bulk reassigns an array of deal IDs to a new owner.
+ */
+export async function bulkAssignDealsAction(
+    dealIds: string[],
+    assignedTo: { userId: string | null; name: string | null; email: string | null } | null,
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+    try {
+        if (!dealIds || dealIds.length === 0 || !workspaceId) {
+            return { success: false, updatedCount: 0, error: 'Missing required parameters' };
+        }
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, updatedCount: 0, error: permission.reason };
+            }
+        }
+
+        const now = new Date().toISOString();
+        const chunkSize = 400;
+
+        for (let i = 0; i < dealIds.length; i += chunkSize) {
+            const chunk = dealIds.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+
+            for (const id of chunk) {
+                const ref = adminDb.collection('deals').doc(id);
+                batch.update(ref, {
+                    assignedTo: assignedTo || null,
+                    updatedAt: now,
+                });
+            }
+
+            await batch.commit();
+        }
+
+        await logActivity({
+            organizationId: '',
+            entityId: null,
+            userId: userId || null,
+            workspaceId,
+            type: 'bulk_deals_reassigned',
+            source: 'user',
+            description: `bulk reassigned ${dealIds.length} deals to ${assignedTo?.name || 'Unassigned'}`,
+            metadata: { assignedTo, count: dealIds.length }
+        });
+
+        return { success: true, updatedCount: dealIds.length };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to bulk reassign deals';
+        console.error('❌ Failed to bulk reassign deals:', error);
+        return { success: false, updatedCount: 0, error };
+    }
+}
+
+/**
+ * Bulk deletes an array of deal documents from Firestore.
+ */
+export async function bulkDeleteDealsAction(
+    dealIds: string[],
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+    try {
+        if (!dealIds || dealIds.length === 0 || !workspaceId) {
+            return { success: false, deletedCount: 0, error: 'Missing required parameters' };
+        }
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, deletedCount: 0, error: permission.reason };
+            }
+        }
+
+        const chunkSize = 400;
+        for (let i = 0; i < dealIds.length; i += chunkSize) {
+            const chunk = dealIds.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+
+            for (const id of chunk) {
+                const ref = adminDb.collection('deals').doc(id);
+                batch.delete(ref);
+            }
+
+            await batch.commit();
+        }
+
+        await logActivity({
+            organizationId: '',
+            entityId: null,
+            userId: userId || null,
+            workspaceId,
+            type: 'bulk_deals_deleted',
+            source: 'user',
+            description: `bulk deleted ${dealIds.length} deals`,
+            metadata: { count: dealIds.length }
+        });
+
+        return { success: true, deletedCount: dealIds.length };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to bulk delete deals';
+        console.error('❌ Failed to bulk delete deals:', error);
+        return { success: false, deletedCount: 0, error };
+    }
+}
+

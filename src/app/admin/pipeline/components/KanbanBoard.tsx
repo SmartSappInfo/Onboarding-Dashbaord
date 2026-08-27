@@ -29,7 +29,7 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
-import { updateDealStageAction } from '@/app/actions/deal-actions';
+import { updateDealStageAction, updateStageOrdersAction } from '@/app/actions/deal-actions';
 import {
   Dialog,
   DialogContent,
@@ -309,6 +309,30 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
     // Handle column reordering if dragging columns
     if (active.data.current?.type === 'COLUMN') {
+      const activeStageId = active.id as string;
+      const overStageId = over.id as string;
+
+      if (activeStageId !== overStageId && stages && stages.length > 0) {
+        const oldIndex = stages.findIndex((s) => s.id === activeStageId);
+        const newIndex = stages.findIndex((s) => s.id === overStageId);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const reorderedStages = [...stages];
+          const [movedStage] = reorderedStages.splice(oldIndex, 1);
+          reorderedStages.splice(newIndex, 0, movedStage);
+
+          const orderedIds = reorderedStages.map((s) => s.id);
+          try {
+            const res = await updateStageOrdersAction(pipelineId, orderedIds, user?.uid);
+            if (!res.success) {
+              toast({ variant: 'destructive', title: 'Reorder Failed', description: res.error });
+            }
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to reorder stages';
+            toast({ variant: 'destructive', title: 'Reorder Failed', description: msg });
+          }
+        }
+      }
       return;
     }
 
