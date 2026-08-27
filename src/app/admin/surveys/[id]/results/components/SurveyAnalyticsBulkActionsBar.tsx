@@ -177,6 +177,10 @@ export default function SurveyAnalyticsBulkActionsBar({
         toast({
           title: 'Pipeline Stage Updated',
           description: `Successfully moved ${identifiedCount} identified ${identifiedCount === 1 ? 'entity' : 'entities'} to the target stage.`,
+          actionConfig: {
+            path: '/admin/pipeline',
+            label: 'View in Pipeline',
+          },
         });
         setIsStageDialogOpen(false);
         setSelectedPipelineId('');

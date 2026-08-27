@@ -19,11 +19,13 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { canUser } from '@/lib/workspace-permissions';
 
 export interface BulkApplyTagsToSurveyEntitiesParams {
   workspaceId: string;
   entityIds: string[];
   tagIds: string[];
+  userId?: string;
 }
 
 export interface BulkMoveSurveyEntitiesStageParams {
@@ -31,6 +33,7 @@ export interface BulkMoveSurveyEntitiesStageParams {
   entityIds: string[];
   pipelineId: string;
   stageId: string;
+  userId?: string;
 }
 
 export interface SurveyEntityActionResult {
@@ -45,7 +48,7 @@ export interface SurveyEntityActionResult {
 export async function bulkApplyTagsToSurveyEntitiesAction(
   params: BulkApplyTagsToSurveyEntitiesParams
 ): Promise<SurveyEntityActionResult> {
-  const { workspaceId, entityIds, tagIds } = params;
+  const { workspaceId, entityIds, tagIds, userId } = params;
 
   if (!workspaceId) {
     return { success: false, updatedCount: 0, error: 'Workspace context is required.' };
@@ -55,6 +58,13 @@ export async function bulkApplyTagsToSurveyEntitiesAction(
   }
   if (!tagIds || tagIds.length === 0) {
     return { success: false, updatedCount: 0, error: 'No tags selected to apply.' };
+  }
+
+  if (userId) {
+    const perm = await canUser(userId, 'operations', 'contacts', 'edit', workspaceId);
+    if (!perm.granted) {
+      return { success: false, updatedCount: 0, error: perm.reason || 'Permission denied.' };
+    }
   }
 
   const cleanEntityIds = [...new Set(entityIds.filter(Boolean))];
@@ -88,6 +98,7 @@ export async function bulkApplyTagsToSurveyEntitiesAction(
           updatedRefPaths.add(docSnap.ref.path);
           batch.update(docSnap.ref, {
             tagIds: FieldValue.arrayUnion(...cleanTagIds),
+            workspaceTags: FieldValue.arrayUnion(...cleanTagIds),
             updatedAt: new Date().toISOString(),
           });
           updatedCount++;
@@ -122,7 +133,7 @@ export async function bulkApplyTagsToSurveyEntitiesAction(
 export async function bulkMoveSurveyEntitiesStageAction(
   params: BulkMoveSurveyEntitiesStageParams
 ): Promise<SurveyEntityActionResult> {
-  const { workspaceId, entityIds, pipelineId, stageId } = params;
+  const { workspaceId, entityIds, pipelineId, stageId, userId } = params;
 
   if (!workspaceId) {
     return { success: false, updatedCount: 0, error: 'Workspace context is required.' };
@@ -132,6 +143,13 @@ export async function bulkMoveSurveyEntitiesStageAction(
   }
   if (!pipelineId || !stageId) {
     return { success: false, updatedCount: 0, error: 'Pipeline and stage selection are required.' };
+  }
+
+  if (userId) {
+    const perm = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+    if (!perm.granted) {
+      return { success: false, updatedCount: 0, error: perm.reason || 'Permission denied.' };
+    }
   }
 
   const cleanEntityIds = [...new Set(entityIds.filter(Boolean))];

@@ -186,6 +186,10 @@ export default function SurveyEntityManageDialogs({
         toast({
           title: 'Pipeline Stage Updated',
           description: `${movingEntity.name} moved to the selected pipeline stage.`,
+          actionConfig: {
+            path: '/admin/pipeline',
+            label: 'View in Pipeline',
+          },
         });
         onCloseMoving();
         if (onComplete) onComplete();

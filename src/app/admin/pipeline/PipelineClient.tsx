@@ -22,7 +22,6 @@ import {
     Search,
     X,
     ChevronDown,
-    Layers,
     Zap
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { Pipeline, Zone, UserProfile, OnboardingStage, Tag, Automation } from '@/lib/types';
+import type { Pipeline, UserProfile, OnboardingStage, Tag, Automation } from '@/lib/types';
 import { KanbanFilters, DEFAULT_FILTERS } from './pipeline-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,11 +88,6 @@ export default function PipelineClient() {
     return pipelines?.filter(p => p.isArchived) || [];
   }, [pipelines]);
 
-  const zonesQuery = useMemoFirebase(() => 
-    firestore && activeOrganizationId ? query(collection(firestore, 'zones'), where('organizationId', '==', activeOrganizationId), orderBy('name', 'asc')) : null, 
-  [firestore, activeOrganizationId]);
-  const { data: zones } = useCollection<Zone>(zonesQuery);
-
   const [currentPipelineId, setCurrentPipelineId] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filters, setFilters] = React.useState<KanbanFilters>(DEFAULT_FILTERS);
@@ -106,6 +100,7 @@ export default function PipelineClient() {
   const [cloneTargetPipeline, setCloneTargetPipeline] = React.useState<Pipeline | null>(null);
   const [cloneName, setCloneName] = React.useState('');
   const [isCloning, setIsCloning] = React.useState(false);
+  const justCreatedIdRef = React.useRef<string | null>(null);
 
   // ARCHITECTURAL POINTER:
   // Helper functions to persist and restore the active pipeline selection per workspace in localStorage.
@@ -242,9 +237,6 @@ export default function PipelineClient() {
     setFilters(DEFAULT_FILTERS);
     setSearchTerm('');
   }, []);
-
-  // Track if the user just created a pipeline to prevent the effect from resetting it
-  const justCreatedIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (!activeWorkspaceId) return;

@@ -264,12 +264,30 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
     }
 }
 
-export async function updateDealStageAction(dealId: string, stageId: string): Promise<{ success: boolean; error?: string }> {
+export interface UpdateDealStageOptions {
+    status?: 'open' | 'won' | 'lost';
+    lostReason?: string;
+    userId?: string;
+}
+
+export async function updateDealStageAction(
+    dealId: string, 
+    stageId: string,
+    options?: UpdateDealStageOptions | string
+): Promise<{ success: boolean; error?: string }> {
     try {
+        const opts: UpdateDealStageOptions = typeof options === 'string' ? { userId: options } : (options || {});
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
         if (!dealSnap.exists) throw new Error('Deal not found');
         const deal = dealSnap.data() as Deal;
+
+        if (opts.userId) {
+            const permission = await canUser(opts.userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
+            if (!permission.granted) {
+                return { success: false, error: permission.reason || 'Permission denied.' };
+            }
+        }
 
         const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
         if (!stageSnap.exists) throw new Error('Stage not found');
@@ -278,28 +296,45 @@ export async function updateDealStageAction(dealId: string, stageId: string): Pr
         const oldStageName = deal.stageName || deal.stageId;
         const oldStageId = deal.stageId;
 
-        if (deal.stageId === stageId) {
-            return { success: true }; // No change
-        }
-
         const timestamp = new Date().toISOString();
-        await dealRef.update({
+        const updatePayload: Record<string, unknown> = {
             stageId,
             stageName,
             updatedAt: timestamp
-        });
+        };
+
+        if (opts.status) {
+            updatePayload.status = opts.status;
+            if (opts.status === 'lost' && opts.lostReason) {
+                updatePayload.lostReason = opts.lostReason;
+            }
+        }
+
+        await dealRef.update(updatePayload);
 
         // ARCHITECTURAL POINTER:
         // Broadcast stage change signal to Activity Log & trigger stage-scoped automations.
         await logActivity({
             organizationId: deal.organizationId,
             entityId: deal.entityId,
-            userId: null,
+            userId: opts.userId || null,
             workspaceId: deal.workspaceId,
-            type: 'deal_stage_changed',
-            source: 'system',
-            description: `progressed deal "${deal.name}" from "${oldStageName}" to "${stageName}"`,
-            metadata: { dealId, from: oldStageName, to: stageName, stageId, pipelineId: deal.pipelineId }
+            type: opts.status === 'lost' ? 'deal_lost' : (opts.status === 'won' ? 'deal_won' : 'deal_stage_changed'),
+            source: opts.userId ? 'user' : 'system',
+            description: opts.status === 'lost' 
+                ? `marked deal "${deal.name}" as lost in "${stageName}"${opts.lostReason ? ` (${opts.lostReason})` : ''}`
+                : (opts.status === 'won' 
+                    ? `won deal "${deal.name}" in "${stageName}"`
+                    : `progressed deal "${deal.name}" from "${oldStageName}" to "${stageName}"`),
+            metadata: { 
+                dealId, 
+                from: oldStageName, 
+                to: stageName, 
+                stageId, 
+                pipelineId: deal.pipelineId,
+                status: opts.status || deal.status,
+                lostReason: opts.lostReason
+            }
         });
 
         // Trigger attached automations for the receiving stage

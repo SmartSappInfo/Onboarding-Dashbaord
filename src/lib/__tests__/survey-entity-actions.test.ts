@@ -104,6 +104,13 @@ describe('Survey Entity Management Server Actions', () => {
       expect(res.updatedCount).toBe(35);
       expect(mockCommit).toHaveBeenCalledTimes(2);
       expect(mockBatchUpdate).toHaveBeenCalledTimes(35);
+      expect(mockBatchUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          tagIds: expect.anything(),
+          workspaceTags: expect.anything(),
+        })
+      );
     });
   });
 

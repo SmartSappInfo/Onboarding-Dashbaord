@@ -467,12 +467,13 @@ function ResponsesListView({
                 title: enabled ? "Filter Enabled" : "Filter Disabled",
                 description: `Column filtering ${enabled ? 'enabled' : 'disabled'}.`,
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Failed to toggle filter field:", error);
+            const msg = error instanceof Error ? error.message : 'Unknown error occurred.';
             toast({
                 variant: 'destructive',
                 title: "Failed to update configuration",
-                description: error.message
+                description: msg
             });
         }
     };
@@ -603,9 +604,10 @@ function ResponsesListView({
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: result.error });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Auth verification failed", error);
-            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            const errCode = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+            if (errCode === 'auth/wrong-password' || errCode === 'auth/invalid-credential') {
                 setAuthError('Incorrect password. Access denied.');
             } else {
                 setAuthError('Verification failed. Please try again.');

@@ -13,11 +13,6 @@ import {
   closestCorners,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
-  arrayMove,
-  horizontalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
   collection,
   orderBy,
   query,
@@ -34,7 +29,7 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { triggerInternalNotification } from '@/lib/notification-engine';
-import { updateDealStageAction, updateDealStatusAction } from '@/app/actions/deal-actions';
+import { updateDealStageAction } from '@/app/actions/deal-actions';
 import {
   Dialog,
   DialogContent,
@@ -67,7 +62,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const firestore = useFirestore();
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { user } = useUser();
   // Resolve only the entities referenced by the visible deals (for tag filtering)
   // instead of loading the entire workspace into memory (Phase 5).
@@ -263,11 +258,12 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     try {
       const lostReasonString = `${selectedReason}${extraNotes ? ': ' + extraNotes : ''}`;
       
-      const resStage = await updateDealStageAction(deal.id, targetStage.id);
-      if (!resStage.success) throw new Error(resStage.error || 'Failed to update deal stage');
-
-      const resStatus = await updateDealStatusAction(deal.id, 'lost', lostReasonString);
-      if (!resStatus.success) throw new Error(resStatus.error || 'Failed to update deal status');
+      const res = await updateDealStageAction(deal.id, targetStage.id, {
+        status: 'lost',
+        lostReason: lostReasonString,
+        userId: user?.uid,
+      });
+      if (!res.success) throw new Error(res.error || 'Failed to update deal stage');
 
       toast({
         title: 'Deal Updated',
@@ -342,19 +338,15 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       }
 
       try {
-        const resStage = await updateDealStageAction(deal.id, newStage.id);
-        if (!resStage.success) {
-          throw new Error(resStage.error || 'Failed to update deal stage');
-        }
-
         const isWonStage = newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won');
         const targetStatus = isWonStage ? 'won' : 'open';
 
-        if (deal.status !== targetStatus) {
-          const resStatus = await updateDealStatusAction(deal.id, targetStatus);
-          if (!resStatus.success) {
-            throw new Error(resStatus.error || 'Failed to update deal status');
-          }
+        const resStage = await updateDealStageAction(deal.id, newStage.id, {
+          status: targetStatus,
+          userId: user?.uid,
+        });
+        if (!resStage.success) {
+          throw new Error(resStage.error || 'Failed to update deal stage');
         }
 
         toast({ title: 'Deal Moved', description: `Deal advanced to "${newStage.name}".` });
