@@ -42,7 +42,7 @@ function getAdminApp(): App {
     try {
       const resolvedPath = path.isAbsolute(serviceAccountPath)
         ? serviceAccountPath
-        : path.resolve(process.cwd(), serviceAccountPath);
+        : path.resolve(/*turbopackIgnore: true*/ process.cwd(), serviceAccountPath);
       return initializeApp({
         credential: cert(resolvedPath),
         storageBucket,
