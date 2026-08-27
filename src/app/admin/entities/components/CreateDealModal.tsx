@@ -24,9 +24,10 @@ import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
-import type { EntityContact, DealFocalContact, Pipeline } from '@/lib/types';
+import type { EntityContact, DealFocalContact, Pipeline, OnboardingStage } from '@/lib/types';
 import { useTerminology } from '@/hooks/use-terminology';
 import { calculateExpectedCloseDate } from '@/app/admin/pipeline/utils/deal-expected-close';
+import { getCurrencySymbol } from '@/lib/currency-utils';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -72,7 +73,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             orderBy('createdAt', 'desc')
         ) : null, 
     [firestore, activeWorkspaceId]);
-    const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<any>(pipelinesQuery);
+    const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
     // Fetch stages for pipeline filtering
     const stagesQuery = useMemoFirebase(() => 
@@ -81,7 +82,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
             orderBy('order', 'asc')
         ) : null, 
     [firestore, activeWorkspaceId]);
-    const { data: stages } = useCollection<any>(stagesQuery);
+    const { data: stages } = useCollection<OnboardingStage>(stagesQuery);
 
     /**
      * ARCHITECTURAL POINTER (Multi-Field Entity & Contact Search in CreateDealModal):
@@ -433,7 +434,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Estimated value ($)</Label>
+                                <Label className="text-xs font-semibold text-muted-foreground ml-1">Estimated value ({getCurrencySymbol()})</Label>
                                 <Input 
                                     type="number"
                                     min="0"
@@ -472,7 +473,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                         <SelectValue placeholder="First stage (default)" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border-none shadow-xl">
-                                        {stages?.filter((s: any) => s.pipelineId === pipelineId).map((s: any) => (
+                                        {stages?.filter((s: OnboardingStage) => s.pipelineId === pipelineId).map((s: OnboardingStage) => (
                                             <SelectItem key={s.id} value={s.id} className="font-bold text-xs">{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>

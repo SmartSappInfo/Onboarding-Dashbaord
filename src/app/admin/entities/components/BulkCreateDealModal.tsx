@@ -20,6 +20,7 @@ import { bulkCreateDealsAction } from '@/app/actions/bulk-deal-actions';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import type { Pipeline } from '@/lib/types';
+import { getCurrencySymbol } from '@/lib/currency-utils';
 
 interface BulkCreateDealModalProps {
   entityIds: string[];
@@ -141,7 +142,7 @@ export default function BulkCreateDealModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="deal-value" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                  Est. Value ($)
+                  Est. Value ({getCurrencySymbol()})
                 </Label>
                 <Input
                   id="deal-value"

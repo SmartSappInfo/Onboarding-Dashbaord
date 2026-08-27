@@ -55,6 +55,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import { PageContainer } from '@/components/ui/page-container';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), { ssr: false });
 
@@ -268,8 +269,9 @@ export default function DealDetailsPage() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Task Creation Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Task Creation Failed', description: msg });
         } finally {
             setIsTaskCreating(false);
         }
@@ -289,8 +291,9 @@ export default function DealDetailsPage() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Update Failed', description: msg });
         }
     };
 
@@ -304,8 +307,9 @@ export default function DealDetailsPage() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Delete Failed', description: msg });
         }
     };
 
@@ -329,8 +333,9 @@ export default function DealDetailsPage() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Association Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Association Failed', description: msg });
         } finally {
             setIsContactAssociating(false);
         }
@@ -346,8 +351,9 @@ export default function DealDetailsPage() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Removal Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Removal Failed', description: msg });
         }
     };
 
@@ -440,14 +446,14 @@ export default function DealDetailsPage() {
         setIsSaving(true);
         try {
             // Find assignee details
-            let assignedTo: any = null;
+            let assignedTo: { userId: string; name: string | null; email: string | null } | null = null;
             if (assignedToUserId && assignedToUserId !== 'unassigned') {
                 const userObj = users?.find(u => u.id === assignedToUserId);
                 if (userObj) {
                     assignedTo = {
                         userId: userObj.id,
-                        name: userObj.name,
-                        email: userObj.email
+                        name: userObj.name || null,
+                        email: userObj.email || null
                     };
                 }
             }
@@ -485,8 +491,9 @@ export default function DealDetailsPage() {
             }
 
             toast({ title: 'Deal Updated', description: 'Deal parameters successfully synchronized.' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Update Failed', description: msg });
         } finally {
             setIsSaving(false);
         }
@@ -500,8 +507,9 @@ export default function DealDetailsPage() {
             setCustomKey('');
             setCustomValue('');
             toast({ title: 'Custom Field Added' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Error', description: msg });
         }
     };
 
@@ -512,8 +520,9 @@ export default function DealDetailsPage() {
             delete updatedFields[key];
             await updateDoc(doc(firestore, 'deals', deal.id), { customFields: updatedFields, updatedAt: new Date().toISOString() });
             toast({ title: 'Custom Field Removed' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            toast({ variant: 'destructive', title: 'Error', description: msg });
         }
     };
 
@@ -547,7 +556,7 @@ export default function DealDetailsPage() {
                                 </Badge>
                             </div>
                             <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground flex-wrap">
-                                <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> ${(deal.value || 0).toLocaleString()}</span>
+                                <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> {formatCurrency(deal.value)}</span>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
                                 <a 
                                     href={`/admin/entities/${deal.entityId}`}
@@ -604,7 +613,7 @@ export default function DealDetailsPage() {
                                                     <Input required value={name} onChange={e => setName(e.target.value)} className="rounded-xl h-11" />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Value ($)</Label>
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Value ({getCurrencySymbol()})</Label>
                                                     <Input type="number" value={value} onChange={e => setValue(e.target.value)} className="rounded-xl h-11" />
                                                 </div>
                                             </div>
@@ -614,7 +623,7 @@ export default function DealDetailsPage() {
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline</Label>
                                                     <Select value={pipelineId} onValueChange={(val) => { setPipelineId(val); setStageId(''); }}>
                                                         <SelectTrigger className="rounded-xl h-11">
-                                                            <SelectValue placeholder="Select pipeline..." />
+                                                             <SelectValue placeholder="Select pipeline..." />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl">
                                                             {pipelineOptions.map(p => (
@@ -641,7 +650,7 @@ export default function DealDetailsPage() {
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Deal Status</Label>
-                                                    <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                                                    <Select value={status} onValueChange={(v: 'open' | 'won' | 'lost') => setStatus(v)}>
                                                         <SelectTrigger className="rounded-xl h-11">
                                                             <SelectValue />
                                                         </SelectTrigger>
