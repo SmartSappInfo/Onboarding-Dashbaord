@@ -14,6 +14,7 @@ import { EnrollmentService } from '@/lib/services/enrollment-service';
 import { LearningProgressService } from '@/lib/services/learning-progress-service';
 import type {
   Course,
+  CourseStatus,
   CourseModule,
   CourseLesson,
   CourseEnrollment,

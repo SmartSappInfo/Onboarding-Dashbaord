@@ -9,7 +9,7 @@ import {
     type Firestore,
     writeBatch
 } from 'firebase/firestore';
-import type { Task, TaskStatus, TaskPriority, TaskCategory } from './types';
+import type { Task } from './types';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 import { logActivity } from './activity-logger';
 

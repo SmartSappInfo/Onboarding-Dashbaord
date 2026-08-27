@@ -8,7 +8,6 @@
  * It can be safely imported by 'use client' React components.
  */
 
-import type * as React from 'react';
 import type { PortalThemeConfig } from '@/lib/types/portal';
 
 /**
@@ -48,7 +47,7 @@ export function getGoogleFontsUrl(headingFont?: string, bodyFont?: string): stri
   }
 
   const familyParams = familiesToFetch
-    .map(f => `family=${encodeURIComponent(f)}:wght@400;500;600;700;800;900`)
+    .map(f => `family=${f.trim().replace(/\s+/g, '+')}:wght@400;500;600;700;800;900`)
     .join('&');
 
   return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;

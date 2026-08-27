@@ -611,9 +611,10 @@ export async function cancelBookingAction(input: {
   bookingId: string;
   manageToken?: string;
   reason?: string;
+  cancelledBy?: 'host' | 'attendee' | 'system';
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { bookingId, manageToken, reason } = input;
+    const { bookingId, manageToken, reason, cancelledBy } = input;
     const now = new Date().toISOString();
 
     const bookingRef = adminDb.collection('bookings').doc(bookingId);
@@ -639,7 +640,8 @@ export async function cancelBookingAction(input: {
     // 1. Update Booking status
     await bookingRef.update({
       status: 'cancelled',
-      cancellationReason: reason || 'Cancelled by attendee',
+      cancellationReason: reason || (cancelledBy === 'host' ? 'Cancelled by host' : 'Cancelled by attendee'),
+      cancelledBy: cancelledBy || 'attendee',
       cancelledAt: now,
       updatedAt: now,
     });

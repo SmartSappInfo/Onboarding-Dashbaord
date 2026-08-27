@@ -1,9 +1,8 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel, OrgBrandingData } from './types';
+import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel } from './types';
 import { renderTemplate } from './template-utils';
-import { getBaseUrl } from './utils/url-helpers';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
 import { FieldsVariablesService } from './services/fields-variables-service-impl';
 
@@ -22,7 +21,7 @@ export interface VariableResolutionContext {
   workspaceId?: string;
   userId?: string;
   /** Extra variables that override or supplement resolved values */
-  extraVars?: Record<string, any>;
+  extraVars?: Record<string, unknown>;
 }
 
 // Note: renderTemplate is available from './template-utils' (not re-exported here due to 'use server' constraints)

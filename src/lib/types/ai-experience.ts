@@ -6,8 +6,6 @@
  * Zero `any` or `any[]` typing.
  */
 
-import type { AssessmentQuestion } from './learning';
-
 // ── Status & Enum Types ──────────────────────────────────────────────────────
 
 export type AiTaskType =

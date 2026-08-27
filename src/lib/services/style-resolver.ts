@@ -20,7 +20,7 @@
  * Always derive defaults from activeOrganization / activeWorkspace.
  */
 
-import type { MessageStyle, Organization } from '../types';
+import type { MessageStyle } from '../types';
 
 /**
  * Returns the highest priority MessageStyle for a given organization and workspace

@@ -489,19 +489,20 @@ function ResponsesListView({
                         if (formatted && formatted !== '-') unique.add(formatted);
                     });
                 } else if (typeof ans === 'object' && ans !== null) {
-                    if (Array.isArray(((ans as {options?: string[], option?: string, other?: string}).options))) {
-                        ((ans as {options?: string[], option?: string, other?: string}).options).forEach((val: string) => {
+                    const ansObj = ans as { options?: string[]; option?: string; other?: string };
+                    if (Array.isArray(ansObj.options)) {
+                        ansObj.options.forEach((val: string) => {
                              if (val) unique.add(val);
                         });
-                        if (((ans as {options?: string[], option?: string, other?: string}).other) && ((ans as {options?: string[], option?: string, other?: string}).other).trim()) {
-                            unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
+                        if (ansObj.other && ansObj.other.trim()) {
+                            unique.add(ansObj.other.trim());
                         }
-                    } else if (((ans as {options?: string[], option?: string, other?: string}).option) !== undefined) {
-                        if (((ans as {options?: string[], option?: string, other?: string}).option) === '__other__') {
-                            if (((ans as {options?: string[], option?: string, other?: string}).other)?.trim()) unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
+                    } else if (ansObj.option !== undefined) {
+                        if (ansObj.option === '__other__') {
+                            if (ansObj.other?.trim()) unique.add(ansObj.other.trim());
                         } else {
-                            unique.add(((ans as {options?: string[], option?: string, other?: string}).option));
-                            if (((ans as {options?: string[], option?: string, other?: string}).other)?.trim()) unique.add(((ans as {options?: string[], option?: string, other?: string}).other).trim());
+                            if (ansObj.option) unique.add(ansObj.option);
+                            if (ansObj.other?.trim()) unique.add(ansObj.other.trim());
                         }
                     } else {
                         const formatted = formatAnswer(ans);

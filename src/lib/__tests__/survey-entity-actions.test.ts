@@ -4,7 +4,7 @@ import {
   bulkMoveSurveyEntitiesStageAction 
 } from '../survey-entity-actions';
 
-const { mockCommit, mockBatchUpdate, mockBatchSet, mockDoc, _mockQuery, mockCollection } = vi.hoisted(() => {
+const { mockCommit, mockBatchUpdate, mockBatchSet, mockDoc, mockQuery: _mockQuery, mockCollection } = vi.hoisted(() => {
   const commit = vi.fn().mockResolvedValue([]);
   const batchUpdate = vi.fn();
   const batchSet = vi.fn();

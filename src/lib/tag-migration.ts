@@ -11,7 +11,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Entity, WorkspaceEntity, School } from './types';
+import type { Entity, School } from './types';
 import { getOrganizationId } from './organization-utils';
 
 /**

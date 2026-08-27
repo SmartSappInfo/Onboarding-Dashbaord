@@ -175,21 +175,22 @@ function SurveyResultsPageContent() {
                 if (Array.isArray(answer)) {
                     const formatted = answer.map(val => formatAnswerForComparison(val).toLowerCase());
                     return selectedValues.some(val => formatted.includes(val.toLowerCase()));
-                } else if (typeof answer === 'object') {
-                    if (Array.isArray(answer.options)) {
-                        const formatted = answer.options.map((val: string) => val.toLowerCase());
-                        if (answer.other && answer.other.trim()) {
-                            formatted.push(answer.other.trim().toLowerCase());
+                } else if (typeof answer === 'object' && answer !== null) {
+                    const ansObj = answer as { options?: string[]; option?: string; other?: string };
+                    if (Array.isArray(ansObj.options)) {
+                        const formatted = ansObj.options.map((val: string) => val.toLowerCase());
+                        if (ansObj.other && ansObj.other.trim()) {
+                            formatted.push(ansObj.other.trim().toLowerCase());
                         }
                         return selectedValues.some(val => formatted.includes(val.toLowerCase()));
                     }
-                    if (answer.option !== undefined) {
+                    if (ansObj.option !== undefined) {
                         const formattedOpts: string[] = [];
-                        if (answer.option === '__other__') {
-                            if (answer.other?.trim()) formattedOpts.push(answer.other.trim().toLowerCase());
+                        if (ansObj.option === '__other__') {
+                            if (ansObj.other?.trim()) formattedOpts.push(ansObj.other.trim().toLowerCase());
                         } else {
-                            formattedOpts.push(answer.option.toLowerCase());
-                            if (answer.other?.trim()) formattedOpts.push(answer.other.trim().toLowerCase());
+                            formattedOpts.push(ansObj.option.toLowerCase());
+                            if (ansObj.other?.trim()) formattedOpts.push(ansObj.other.trim().toLowerCase());
                         }
                         return selectedValues.some(val => formattedOpts.includes(val.toLowerCase()));
                     }

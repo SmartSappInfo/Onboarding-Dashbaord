@@ -1,4 +1,4 @@
-import type { Layout, ResponsiveLayouts as Layouts } from 'react-grid-layout';
+import type { ResponsiveLayouts as Layouts } from 'react-grid-layout';
 
 export interface WidgetConfig {
   /** Unique identifier within the dashboard instance */
@@ -8,7 +8,7 @@ export interface WidgetConfig {
   /** Optional override for the widget title */
   title?: string;
   /** Additional configuration or props for the widget */
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
 }
 
 export interface DashboardLayoutConfig {

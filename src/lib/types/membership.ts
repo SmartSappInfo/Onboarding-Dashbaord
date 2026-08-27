@@ -10,8 +10,6 @@
  * - Centralized authorization contract for EntitlementService.
  */
 
-import { z } from 'zod';
-
 // ── 1. Roles & Status Enums ──────────────────────────────────────────────────
 
 export type PortalMemberRole =

@@ -81,7 +81,7 @@ describe('PortalService', () => {
 
     it('resolves complete CSS variable dictionary for themes', () => {
       const themeVars = PortalService.getPortalThemeVariables({
-        mode: 'light',
+        colorMode: 'light',
         colors: {
           primary: '#3B82F6',
           secondary: '#1E293B',
@@ -95,6 +95,7 @@ describe('PortalService', () => {
         typography: {
           headingFont: 'Plus Jakarta Sans',
           bodyFont: 'Inter',
+          baseSize: 'md',
         },
         ui: {
           borderRadius: 'lg',

@@ -195,9 +195,15 @@ describe('executeScriptActionAction', () => {
   });
 
   it('handles an unsupported action type gracefully (no throw)', async () => {
-    const res = await executeScriptActionAction({ actionType: 'TRANSFER_CALL', actionConfig: {}, ...ctx }, 'user_1');
+    const res = await executeScriptActionAction({ actionType: 'UNSUPPORTED_ACTION', actionConfig: {}, ...ctx }, 'user_1');
     expect(res.success).toBe(false);
+    expect(res.unsupported).toBe(true);
     expect(createTaskAction).not.toHaveBeenCalled();
+  });
+
+  it('executes TRANSFER_CALL action gracefully', async () => {
+    const res = await executeScriptActionAction({ actionType: 'TRANSFER_CALL', actionConfig: { transferTarget: '+1234567890' }, ...ctx }, 'user_1');
+    expect(res.success).toBe(true);
   });
 
   it('executes REMOVE_TAG against the contact', async () => {

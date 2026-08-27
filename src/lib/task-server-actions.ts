@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { Task, TaskStatus, TaskPriority, TaskCategory, EntityType } from './types';
+import type { Task, EntityType } from './types';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
 import { canUser } from './workspace-permissions';

@@ -58,7 +58,7 @@ interface PortalMemberDashboardClientProps {
 export default function PortalMemberDashboardClient({ slug }: PortalMemberDashboardClientProps) {
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user, loading: isUserLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
