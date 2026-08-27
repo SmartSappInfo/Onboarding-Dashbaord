@@ -38,7 +38,7 @@ export default function BulkCreateDealModal({
   const firestore = useFirestore();
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [dealNamePattern, setDealNamePattern] = React.useState('{{entityName}} - Onboarding Deal');
+  const [dealNamePattern, setDealNamePattern] = React.useState('{{entityName}}');
   const [value, setValue] = React.useState('');
   const [pipelineId, setPipelineId] = React.useState('');
   const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'unassigned' | 'pipeline'>('pipeline');
@@ -59,7 +59,7 @@ export default function BulkCreateDealModal({
 
   React.useEffect(() => {
     if (open) {
-      setDealNamePattern('{{entityName}} - Onboarding Deal');
+      setDealNamePattern('{{entityName}}');
       setValue('');
       setAssignmentStrategy('pipeline');
       if (pipelines && pipelines.length > 0) {

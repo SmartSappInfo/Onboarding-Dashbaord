@@ -1151,7 +1151,7 @@ export class CallCentreService {
               pipelineId,
               stageId: params.stageId,
               stageName: currentStageName,
-              name: `Deal for ${entityName}`,
+              name: entityName,
             });
           }
 
@@ -1198,7 +1198,7 @@ export class CallCentreService {
               pipelineId: params.pipelineId,
               stageId: params.stageId,
               stageName: currentStageName,
-              name: `Deal for ${entityName}`,
+              name: entityName,
             });
           }
 

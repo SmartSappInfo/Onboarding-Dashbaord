@@ -147,7 +147,7 @@ export async function applyCampaignPostSendTags(campaignId: string): Promise<{
         const config = {
           pipelineId: rule.dealPipelineId,
           stageId: rule.dealStageId,
-          name: rule.dealTitleTemplate || '{{entityName}} Deal',
+          name: rule.dealTitleTemplate || '{{entityName}}',
           value: 0
         };
         for (const eid of uniqueEntityIds) {

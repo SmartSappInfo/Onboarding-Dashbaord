@@ -1515,7 +1515,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Deal Title (Tag Supported)</Label>
             <MappableInputField 
-              placeholder="e.g. {{1.body.name}} Deal" 
+              placeholder="e.g. {{entity_name}}" 
               value={(config.name as string) || ''} 
               onChange={(val) => updateConfig({ name: val })} 
               inputClassName="h-12 font-bold text-sm"

@@ -89,8 +89,8 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
         }
     }
     
-    // Resolve dynamic variables in title
-    let dealName = config.name || "{{entity_name}} Deal";
+    // Resolve dynamic variables in title (default to clean entity name)
+    let dealName = config.name || "{{entity_name}}";
     if (dealName.includes('{{entityName}}')) {
         dealName = dealName.replace('{{entityName}}', '{{entity_name}}');
     }
@@ -101,6 +101,12 @@ export async function handleCreateDeal(config: DealAutomationActionConfig, conte
             entityId: context.entityId,
             extraVars: context.payload as Record<string, string | number | boolean | undefined | null>
         });
+    }
+
+    // ARCHITECTURAL POINTER:
+    // Strip any legacy 'Deal for ' / 'Deal For ' prefix from automated deal titles
+    if (/^deal\s+for\s+/i.test(dealName.trim())) {
+        dealName = dealName.trim().replace(/^deal\s+for\s+/i, '').trim();
     }
 
     const value = config.value ? Number(config.value) : 0;

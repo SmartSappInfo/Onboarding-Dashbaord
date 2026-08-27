@@ -177,9 +177,14 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
         if (pattern === 'Automated Event Deal') {
           pattern = '{{entityName}} - Opened Email';
         }
-        const dealName = pattern
+        let dealName = pattern
           .replace(/\{\{entityName\}\}/g, entityName)
           .replace(/\{\{entity_name\}\}/g, entityName);
+
+        // Sanitize legacy 'Deal for ' / 'Deal For ' prefix
+        if (/^deal\s+for\s+/i.test(dealName.trim())) {
+          dealName = dealName.trim().replace(/^deal\s+for\s+/i, '').trim();
+        }
 
         // ARCHITECTURAL NOTE: Contact Linking (focalContacts)
         // If contactId is passed, match specific contact in entity. Fallback to entity's primary contact.

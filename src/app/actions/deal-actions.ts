@@ -222,6 +222,16 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             }];
         }
 
+        // ARCHITECTURAL POINTER:
+        // Automatically sanitize deal names: strip legacy 'Deal for ' / 'Deal For ' prefix
+        let cleanDealName = (name || '').trim();
+        if (/^deal\s+for\s+/i.test(cleanDealName)) {
+            cleanDealName = cleanDealName.replace(/^deal\s+for\s+/i, '').trim();
+        }
+        if (!cleanDealName && entity) {
+            cleanDealName = entity.displayName || (entity as unknown as Record<string, string>).name || 'Deal';
+        }
+
         const newDeal: Omit<Deal, 'id'> = {
             organizationId,
             workspaceId,
@@ -229,7 +239,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             pipelineId,
             stageId: stageId || 'default_stage',
             ...(stageName ? { stageName } : {}),
-            name,
+            name: cleanDealName,
             value: value || 0,
             status: data.status || 'open',
             assignedTo: data.assignedTo !== undefined ? data.assignedTo : assignedTo,
@@ -252,8 +262,8 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
             type: suppressAutomations ? 'deal_created_suppressed' : 'deal_created',
             source: 'system',
             description: suppressAutomations 
-                ? `initialized a new deal: "${name}" (automations suppressed)`
-                : `initialized a new deal: "${name}"`,
+                ? `initialized a new deal: "${cleanDealName}" (automations suppressed)`
+                : `initialized a new deal: "${cleanDealName}"`,
             metadata: { dealId: docRef.id, value: value || 0, pipelineId, stageId }
         });
 
@@ -739,6 +749,112 @@ export async function deleteDealAction(
         const error = e instanceof Error ? e.message : 'Failed to delete deal';
         console.error('❌ Failed to delete deal:', error);
         return { success: false, error };
+    }
+}
+
+/**
+ * FER Protocol (Fetch, Enrich and Restore) for Deal Names:
+ * Scans deals in Firestore matching "Deal for " / "Deal For " prefix (or within a workspace),
+ * enriches them by resolving the canonical entity name from workspace_entities, and restores them in batches.
+ *
+ * ARCHITECTURAL POINTER (Rule 10):
+ * - Multi-tenant workspace scoped if workspaceId is provided.
+ * - Resolves full canonical entity displayName from Firestore, restoring untruncated names.
+ * - Uses batching (400 ops per chunk) to adhere to Firestore rate limits and avoid memory exhaustion.
+ */
+export async function cleanLegacyDealNamesAction(params?: {
+    workspaceId?: string;
+    userId?: string;
+}): Promise<{ success: boolean; totalChecked: number; updatedCount: number; errors?: string[] }> {
+    try {
+        const { workspaceId } = params || {};
+        
+        let dealsQuery: FirebaseFirestore.Query = adminDb.collection('deals');
+        if (workspaceId) {
+            dealsQuery = dealsQuery.where('workspaceId', '==', workspaceId);
+        }
+
+        const snapshot = await dealsQuery.get();
+        if (snapshot.empty) {
+            return { success: true, totalChecked: 0, updatedCount: 0 };
+        }
+
+        const dealsToUpdate: Array<{ id: string; currentName: string; entityId: string; workspaceId: string; newName: string }> = [];
+
+        // Dual-key entity cache to minimize round-trips
+        const entityCache = new Map<string, string>();
+
+        for (const doc of snapshot.docs) {
+            const data = doc.data() as Deal;
+            const currentName = (data.name || '').trim();
+
+            if (/^deal\s+for\s+/i.test(currentName)) {
+                const eid = data.entityId;
+                const wsId = data.workspaceId || workspaceId || '';
+
+                let resolvedName = '';
+                if (eid && wsId) {
+                    const cacheKey = `${wsId}_${eid}`;
+                    if (entityCache.has(cacheKey)) {
+                        resolvedName = entityCache.get(cacheKey)!;
+                    } else {
+                        const entity = await resolveWorkspaceEntityRecord(wsId, eid, data.organizationId);
+                        if (entity) {
+                            const rawName = entity.displayName || (entity as unknown as Record<string, string>).name || '';
+                            resolvedName = rawName.trim();
+                            if (resolvedName) entityCache.set(cacheKey, resolvedName);
+                        }
+                    }
+                }
+
+                // Fallback to cleanly stripping the prefix if entity lookup returns empty
+                if (!resolvedName) {
+                    resolvedName = currentName.replace(/^deal\s+for\s+/i, '').replace(/\.{2,}$/, '').trim();
+                }
+
+                if (resolvedName && resolvedName !== currentName) {
+                    dealsToUpdate.push({
+                        id: doc.id,
+                        currentName,
+                        entityId: eid,
+                        workspaceId: wsId,
+                        newName: resolvedName,
+                    });
+                }
+            }
+        }
+
+        if (dealsToUpdate.length === 0) {
+            return { success: true, totalChecked: snapshot.size, updatedCount: 0 };
+        }
+
+        const chunkSize = 400;
+        const now = new Date().toISOString();
+
+        for (let i = 0; i < dealsToUpdate.length; i += chunkSize) {
+            const chunk = dealsToUpdate.slice(i, i + chunkSize);
+            const batch = adminDb.batch();
+
+            for (const item of chunk) {
+                const ref = adminDb.collection('deals').doc(item.id);
+                batch.update(ref, {
+                    name: item.newName,
+                    updatedAt: now,
+                });
+            }
+
+            await batch.commit();
+        }
+
+        return {
+            success: true,
+            totalChecked: snapshot.size,
+            updatedCount: dealsToUpdate.length,
+        };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Unknown error';
+        console.error('❌ Failed to clean legacy deal names:', error);
+        return { success: false, totalChecked: 0, updatedCount: 0, errors: [error] };
     }
 }
 
