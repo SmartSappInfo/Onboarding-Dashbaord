@@ -92,7 +92,7 @@ export default function EntityDealsTab({ entityId }: EntityDealsTabProps) {
             {openCount > 0 && (
                 <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-primary/5 border border-primary/10">
                     <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wider">Open Pipeline Value</p>
-                    <p className="text-lg font-bold text-primary tabular-nums">${totalValue.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-primary tabular-nums">{formatCurrency(totalValue)}</p>
                 </div>
             )}
 

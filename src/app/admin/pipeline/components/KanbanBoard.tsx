@@ -323,7 +323,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
 
           const orderedIds = reorderedStages.map((s) => s.id);
           try {
-            const res = await updateStageOrdersAction(pipelineId, orderedIds, user?.uid);
+            const res = await updateStageOrdersAction(pipelineId, orderedIds, activeWorkspaceId, user?.uid);
             if (!res.success) {
               toast({ variant: 'destructive', title: 'Reorder Failed', description: res.error });
             }

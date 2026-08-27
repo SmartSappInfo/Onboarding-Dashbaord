@@ -61,7 +61,11 @@ export default function PipelineFilterBar({
             className="h-10 sm:h-9 rounded-xl border-border bg-background pl-9 pr-8 font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:border-primary/30"
           />
           {searchTerm && (
-            <button onClick={() => onSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary min-h-[32px] min-w-[32px] flex items-center justify-center">
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Clear search"
+            >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -103,7 +107,7 @@ export default function PipelineFilterBar({
           empty={!tags || tags.length === 0}
         >
           {tags?.map(t => (
-            <label key={t.id} className="flex items-center gap-2 p-2 sm:p-1.5 rounded-lg hover:bg-muted/40 cursor-pointer min-h-[36px]">
+            <label key={t.id} className="flex items-center gap-2 p-2 sm:p-1.5 rounded-lg hover:bg-muted/40 cursor-pointer min-h-[44px] sm:min-h-[36px]">
               <Checkbox checked={filters.tagIds.includes(t.id)} onCheckedChange={() => toggleInArray('tagIds', t.id)} />
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
               <span className="text-[11px] sm:text-[10px] font-bold truncate">{t.name}</span>
@@ -138,18 +142,18 @@ export default function PipelineFilterBar({
           <div className="space-y-1">
             <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Value</label>
             <div className="flex items-center gap-1.5">
-              <Input type="number" min="0" placeholder="Min" value={filters.valueMin ?? ''} onChange={e => updateFilter('valueMin', e.target.value === '' ? null : Number(e.target.value))} className="h-9 sm:h-8 w-[100px] sm:w-[90px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
+              <Input type="number" min="0" placeholder="Min" value={filters.valueMin ?? ''} onChange={e => updateFilter('valueMin', e.target.value === '' ? null : Number(e.target.value))} className="h-10 sm:h-9 w-[110px] sm:w-[90px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
               <span className="text-muted-foreground text-xs sm:text-[10px]">–</span>
-              <Input type="number" min="0" placeholder="Max" value={filters.valueMax ?? ''} onChange={e => updateFilter('valueMax', e.target.value === '' ? null : Number(e.target.value))} className="h-9 sm:h-8 w-[100px] sm:w-[90px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
+              <Input type="number" min="0" placeholder="Max" value={filters.valueMax ?? ''} onChange={e => updateFilter('valueMax', e.target.value === '' ? null : Number(e.target.value))} className="h-10 sm:h-9 w-[110px] sm:w-[90px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
             </div>
           </div>
 
           <div className="space-y-1">
             <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><CalendarRange className="h-3 w-3" /> Forecast Date</label>
             <div className="flex items-center gap-1.5">
-              <Input type="date" value={filters.closeDateFrom ?? ''} onChange={e => updateFilter('closeDateFrom', e.target.value || null)} className="h-9 sm:h-8 rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
+              <Input type="date" value={filters.closeDateFrom ?? ''} onChange={e => updateFilter('closeDateFrom', e.target.value || null)} className="h-10 sm:h-9 rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
               <span className="text-muted-foreground text-xs sm:text-[10px]">–</span>
-              <Input type="date" value={filters.closeDateTo ?? ''} onChange={e => updateFilter('closeDateTo', e.target.value || null)} className="h-9 sm:h-8 rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
+              <Input type="date" value={filters.closeDateTo ?? ''} onChange={e => updateFilter('closeDateTo', e.target.value || null)} className="h-10 sm:h-9 rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
             </div>
           </div>
 

@@ -36,7 +36,7 @@ export function formatCurrency(
   currencyCode: string = 'USD',
   options: { showDecimals?: boolean; compact?: boolean } = {}
 ): string {
-  const numericAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+  const numericAmount = typeof amount === 'number' && Number.isFinite(amount) ? amount : 0;
   const normalizedCode = (currencyCode || 'USD').toUpperCase().trim();
 
   const { showDecimals = false, compact = false } = options;
