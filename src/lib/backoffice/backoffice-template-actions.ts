@@ -6,6 +6,14 @@ import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
 import type { PlatformTemplate, PlatformTemplateType } from './backoffice-types';
+import { 
+  normalizePermissionsSchema, 
+  getFullAdminPermissions, 
+  getOperationsPermissions, 
+  getFinancePermissions, 
+  getMarketingPermissions 
+} from '../permissions-engine';
+import { propagateTemplateToWorkspaces, type PropagationTargetFilter, type PropagationResult } from './template-propagation-engine';
 
 // ─────────────────────────────────────────────────
 // Backoffice Template Server Actions
@@ -284,9 +292,88 @@ export async function deleteTemplateAction(
   }
 }
 
+/**
+ * Standard built-in role architecture blueprints available across all organizations.
+ */
+export const BUILTIN_ROLE_BLUEPRINTS: PlatformTemplate[] = [
+  {
+    id: 'builtin-super-admin',
+    name: 'Super Admin (All Access)',
+    description: 'Complete unrestricted access across all operational, financial, studio, and management silos.',
+    category: 'Executive',
+    type: 'role_architecture',
+    scope: 'system',
+    status: 'published',
+    version: 1,
+    versionHistory: [],
+    defaultForNewOrgs: true,
+    visibilityRules: { orgIds: [], workspaceTypes: [] },
+    content: getFullAdminPermissions(),
+    usageCount: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    updatedBy: 'system',
+  },
+  {
+    id: 'builtin-operations-lead',
+    name: 'Operations Lead',
+    description: 'Full oversight of daily operations, campuses, pipelines, tasks, and team meetings.',
+    category: 'Operations',
+    type: 'role_architecture',
+    scope: 'system',
+    status: 'published',
+    version: 1,
+    versionHistory: [],
+    defaultForNewOrgs: false,
+    visibilityRules: { orgIds: [], workspaceTypes: [] },
+    content: getOperationsPermissions(),
+    usageCount: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    updatedBy: 'system',
+  },
+  {
+    id: 'builtin-finance-officer',
+    name: 'Finance Officer',
+    description: 'Manages contracts, customer agreements, invoices, package tiers, and billing cycles.',
+    category: 'Finance',
+    type: 'role_architecture',
+    scope: 'system',
+    status: 'published',
+    version: 1,
+    versionHistory: [],
+    defaultForNewOrgs: false,
+    visibilityRules: { orgIds: [], workspaceTypes: [] },
+    content: getFinancePermissions(),
+    usageCount: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    updatedBy: 'system',
+  },
+  {
+    id: 'builtin-studio-manager',
+    name: 'Studio & Marketing Lead',
+    description: 'Full management of landing pages, public portals, media assets, messaging, forms, and surveys.',
+    category: 'Studios',
+    type: 'role_architecture',
+    scope: 'system',
+    status: 'published',
+    version: 1,
+    versionHistory: [],
+    defaultForNewOrgs: false,
+    visibilityRules: { orgIds: [], workspaceTypes: [] },
+    content: getMarketingPermissions(),
+    usageCount: 0,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    updatedBy: 'system',
+  },
+];
+
 export async function getPublishedTemplatesAction(
   type: PlatformTemplateType,
-  industry?: string
+  industry?: string,
+  organizationId?: string
 ): Promise<{ success: boolean; data?: PlatformTemplate[]; error?: string }> {
   try {
     const snap = await adminDb.collection('platform_templates')
@@ -294,13 +381,28 @@ export async function getPublishedTemplatesAction(
       .where('status', '==', 'published')
       .get();
 
-    let templates = snap.docs.map(doc => ({
+    let templates: PlatformTemplate[] = snap.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as PlatformTemplate));
 
+    // Scoping Rule: Filter by organization visibility
+    templates = templates.filter(t => {
+      const orgIds = t.visibilityRules?.orgIds;
+      if (orgIds && orgIds.length > 0) {
+        return organizationId ? orgIds.includes(organizationId) : false;
+      }
+      return true;
+    });
+
+    // Scoping Rule: Filter by Industry / Workspace Types
     if (industry && industry !== 'all') {
       templates = templates.filter(t => {
+        const workspaceTypes = t.visibilityRules?.workspaceTypes;
+        if (workspaceTypes && workspaceTypes.length > 0) {
+          return workspaceTypes.includes(industry) || workspaceTypes.includes('all');
+        }
+
         const content = t.content as Record<string, unknown> | null;
         const templateIndustry = (content && typeof content.industry === 'string')
           ? content.industry
@@ -313,10 +415,43 @@ export async function getPublishedTemplatesAction(
       });
     }
 
+    // Schema Normalization: For role architecture templates, guarantee valid PermissionsSchema
+    if (type === 'role_architecture') {
+      templates = templates.map(t => ({
+        ...t,
+        content: normalizePermissionsSchema(t.content),
+      }));
+
+      // Combine published templates with built-in presets (avoiding duplicate names)
+      const existingNames = new Set(templates.map(t => t.name.toLowerCase()));
+      const filteredBuiltins = BUILTIN_ROLE_BLUEPRINTS.filter(
+        b => !existingNames.has(b.name.toLowerCase())
+      );
+      templates = [...templates, ...filteredBuiltins];
+    }
+
     return { success: true, data: templates };
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
+    const msg = getErrorMessage(error);
     console.error(`[TEMPLATE_ACTION] getPublishedTemplatesAction failed for type ${type}:`, msg);
+
+    // Fallback: If DB query encounters error on role_architecture, provide safe builtins
+    if (type === 'role_architecture') {
+      return { success: true, data: BUILTIN_ROLE_BLUEPRINTS };
+    }
+
     return { success: false, error: msg };
   }
+}
+
+/**
+ * Server Action: Propagate a published platform template to matching workspaces.
+ * Delegates to the template propagation engine securely on the server.
+ */
+export async function propagateTemplateAction(
+  templateId: string,
+  filter: PropagationTargetFilter,
+  idToken: string
+): Promise<PropagationResult> {
+  return propagateTemplateToWorkspaces(templateId, filter, idToken);
 }

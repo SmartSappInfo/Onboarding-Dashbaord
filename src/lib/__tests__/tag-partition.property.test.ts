@@ -320,8 +320,8 @@ describe('Property 4: Tag Partition Invariant', () => {
       fc.asyncProperty(
         fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // entityId
         fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // workspaceId
-        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }), // globalTagIds
-        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }), // workspaceTagIds
+        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }).map(arr => arr.map(id => `g_${id}`)), // globalTagIds
+        fc.array(fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), { minLength: 1, maxLength: 5 }).map(arr => arr.map(id => `w_${id}`)), // workspaceTagIds
         fc.stringMatching(/^[a-zA-Z0-9_-]{1,20}$/), // userId
         async (entityId, workspaceId, globalTagIds, workspaceTagIds, userId) => {
           // Setup: Create entity and workspace_entity

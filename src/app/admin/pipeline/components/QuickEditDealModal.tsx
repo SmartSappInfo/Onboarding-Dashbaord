@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, UserCircle2, Calendar, Banknote, Layers, Trophy, Target } from 'lucide-react';
+import { Loader2, Save, UserCircle2 } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
