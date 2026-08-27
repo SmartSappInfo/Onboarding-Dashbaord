@@ -155,13 +155,17 @@ export async function applyCampaignPostSendTags(campaignId: string): Promise<{
             const context = {
               entityId: eid,
               workspaceId: campaign.workspaceId,
+              organizationId: campaign.organizationId || '',
               payload: {
                 organizationId: campaign.organizationId || '',
-              }
+              },
+              automationId: `post_send_${campaign.id}`,
+              runId: `run_${Date.now()}_${eid}`
             };
-            await handleCreateDeal(config, context as any);
-          } catch (dealErr: any) {
-            console.error(`[POST-SEND] Failed to create deal for ${eid}:`, dealErr.message);
+            await handleCreateDeal(config, context);
+          } catch (dealErr: unknown) {
+            const msg = dealErr instanceof Error ? dealErr.message : String(dealErr);
+            console.error(`[POST-SEND] Failed to create deal for ${eid}:`, msg);
           }
         }
         console.log(`[POST-SEND] Created deals for ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
@@ -182,14 +186,18 @@ export async function applyCampaignPostSendTags(campaignId: string): Promise<{
               entityId: eid,
               entityType: contact?.entityType || 'person',
               workspaceId: campaign.workspaceId,
+              organizationId: campaign.organizationId || '',
               payload: {
                 organizationId: campaign.organizationId || '',
                 assignedTo: { userId: contact?.assignedTo || '' }
-              }
+              },
+              automationId: `post_send_${campaign.id}`,
+              runId: `run_${Date.now()}_${eid}`
             };
-            await handleCreateTask(config, context as any);
-          } catch (taskErr: any) {
-            console.error(`[POST-SEND] Failed to create task for ${eid}:`, taskErr.message);
+            await handleCreateTask(config, context);
+          } catch (taskErr: unknown) {
+            const msg = taskErr instanceof Error ? taskErr.message : String(taskErr);
+            console.error(`[POST-SEND] Failed to create task for ${eid}:`, msg);
           }
         }
         console.log(`[POST-SEND] Created tasks for ${uniqueEntityIds.length} entities (cohort: ${rule.appliesTo})`);
@@ -200,8 +208,9 @@ export async function applyCampaignPostSendTags(campaignId: string): Promise<{
 
     return { success: true, appliedCount: totalApplied };
 
-  } catch (error: any) {
-    console.error('[POST-SEND] Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[POST-SEND] Failed:', msg);
+    return { success: false, error: msg };
   }
 }

@@ -19,6 +19,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { bulkCreateDealsAction } from '@/app/actions/bulk-deal-actions';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import type { Pipeline } from '@/lib/types';
 
 interface BulkCreateDealModalProps {
   entityIds: string[];
@@ -55,7 +56,7 @@ export default function BulkCreateDealModal({
     [firestore, activeWorkspaceId]
   );
   
-  const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<any>(pipelinesQuery);
+  const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
 
   React.useEffect(() => {
     if (open) {
@@ -94,11 +95,12 @@ export default function BulkCreateDealModal({
       });
       onOpenChange(false);
       onComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An error occurred';
       toast({
         variant: 'destructive',
         title: 'Bulk Deal Creation Failed',
-        description: error.message,
+        description: errorMsg,
       });
     } finally {
       setIsSubmitting(false);
@@ -160,7 +162,7 @@ export default function BulkCreateDealModal({
                     <SelectValue placeholder="Select Pipeline" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-none shadow-xl">
-                    {pipelines?.map((p: any) => (
+                    {pipelines?.map((p: Pipeline) => (
                       <SelectItem key={p.id} value={p.id} className="font-bold text-xs">
                         {p.name}
                       </SelectItem>
@@ -174,7 +176,7 @@ export default function BulkCreateDealModal({
               <Label htmlFor="deal-routing" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
                 Assignment Routing
               </Label>
-              <Select value={assignmentStrategy} onValueChange={(v: any) => setAssignmentStrategy(v)}>
+              <Select value={assignmentStrategy} onValueChange={(v: 'direct' | 'unassigned' | 'pipeline') => setAssignmentStrategy(v)}>
                 <SelectTrigger id="deal-routing" className="h-10 rounded-xl font-bold bg-muted/20 border-primary/10 shadow-inner text-xs">
                   <SelectValue placeholder="Select Routing Logic" />
                 </SelectTrigger>

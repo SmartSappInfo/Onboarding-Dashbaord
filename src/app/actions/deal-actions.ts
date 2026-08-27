@@ -767,8 +767,15 @@ export async function cleanLegacyDealNamesAction(params?: {
     userId?: string;
 }): Promise<{ success: boolean; totalChecked: number; updatedCount: number; errors?: string[] }> {
     try {
-        const { workspaceId } = params || {};
+        const { workspaceId, userId } = params || {};
         
+        if (userId && workspaceId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, totalChecked: 0, updatedCount: 0, errors: [permission.reason || 'Permission denied'] };
+            }
+        }
+
         let dealsQuery: FirebaseFirestore.Query = adminDb.collection('deals');
         if (workspaceId) {
             dealsQuery = dealsQuery.where('workspaceId', '==', workspaceId);
