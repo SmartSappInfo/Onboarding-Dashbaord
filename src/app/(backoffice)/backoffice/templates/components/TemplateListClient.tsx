@@ -194,6 +194,7 @@ export default function TemplateListClient() {
           variant: 'destructive',
           title: 'Sync Failed',
           description: result.error || 'Failed to sync presets',
+          actionConfig: { path: '/backoffice', label: 'Backoffice Hub' },
         });
       }
     } catch {
@@ -201,6 +202,7 @@ export default function TemplateListClient() {
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to trigger preset sync',
+        actionConfig: { path: '/backoffice', label: 'Backoffice Hub' },
       });
     } finally {
       setIsSyncing(false);
@@ -233,6 +235,7 @@ export default function TemplateListClient() {
           variant: 'destructive',
           title: 'Sync Failed',
           description: result.error || 'Failed to sync role blueprints',
+          actionConfig: { path: '/backoffice', label: 'Backoffice Hub' },
         });
       }
     } catch {
@@ -240,6 +243,7 @@ export default function TemplateListClient() {
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to trigger role blueprints sync',
+        actionConfig: { path: '/backoffice', label: 'Backoffice Hub' },
       });
     } finally {
       setIsSyncing(false);

@@ -938,7 +938,7 @@ export function groupBlueprintsByIndustry(
 
     const isMatch = activeIndustry && (
       blueprint.category.toLowerCase() === activeIndustry.toLowerCase() ||
-      blueprint.visibilityRules?.workspaceTypes?.includes(activeIndustry)
+      blueprint.visibilityRules?.workspaceTypes?.some(w => w.toLowerCase() === activeIndustry.toLowerCase())
     );
 
     if (isMatch) {

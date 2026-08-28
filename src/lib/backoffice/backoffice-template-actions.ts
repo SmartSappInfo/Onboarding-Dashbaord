@@ -401,10 +401,11 @@ export async function getPublishedTemplatesAction(
         content: normalizePermissionsSchema(t.content),
       }));
 
-      // Combine published templates with built-in presets (avoiding duplicate names)
+      // Combine published templates with built-in presets (avoiding duplicate IDs or names)
+      const existingIds = new Set(templates.map(t => t.id));
       const existingNames = new Set(templates.map(t => t.name.toLowerCase()));
       const filteredBuiltins = BUILTIN_ROLE_BLUEPRINTS.filter(
-        b => !existingNames.has(b.name.toLowerCase())
+        b => !existingIds.has(b.id) && !existingNames.has(b.name.toLowerCase())
       );
       templates = [...templates, ...filteredBuiltins];
     }
