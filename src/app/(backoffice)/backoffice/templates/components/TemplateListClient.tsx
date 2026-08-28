@@ -69,9 +69,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { listAllTemplates, publishTemplate, deprecateTemplate } from '@/lib/backoffice/backoffice-template-actions';
-import { seedPlatformPageTemplatesAction } from '@/app/actions/seed-platform-page-templates-action';
+import { seedAllPlatformTemplatesAction } from '@/app/actions/seed-platform-presets-action';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
 import TemplateDialog from './TemplateDialog';
@@ -102,7 +103,8 @@ const CATEGORY_TABS: Array<{
 ];
 
 export default function TemplateListClient() {
-  const { can } = useBackoffice();
+  const { can, isLoading: isBackofficeLoading } = useBackoffice();
+  const { user, isUserLoading } = useUser();
   const confirm = useConfirm();
   const getToken = useBackofficeToken();
   const { toast } = useToast();
@@ -118,6 +120,9 @@ export default function TemplateListClient() {
   const [isPropagateOpen, setIsPropagateOpen] = React.useState(false);
 
   const fetchTemplates = React.useCallback(async () => {
+    if (isBackofficeLoading || isUserLoading || !user) {
+      return;
+    }
     setIsLoading(true);
     try {
       const idToken = await getToken();
@@ -133,19 +138,23 @@ export default function TemplateListClient() {
       }
     } catch (error: unknown) {
       console.error('Failed to fetch templates:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to fetch templates. Check your permissions.',
-      });
+      if (user) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to fetch templates. Please try refreshing.',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [getToken, toast]);
+  }, [isBackofficeLoading, isUserLoading, user, getToken, toast]);
 
   React.useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+    if (!isBackofficeLoading && !isUserLoading && user) {
+      fetchTemplates();
+    }
+  }, [isBackofficeLoading, isUserLoading, user, fetchTemplates]);
 
   function handleNewTemplate() {
     setSelectedTemplate(null);
@@ -165,8 +174,8 @@ export default function TemplateListClient() {
   async function handleSyncPresets() {
     if (
       !(await confirm({
-        title: 'Sync Page & Platform Presets?',
-        description: 'This will seed or update the standard system templates in the global catalog.',
+        title: 'Sync 15-Domain Platform Presets?',
+        description: 'This will seed and synchronize standard master templates across all 15 operational domains in the global catalog.',
         confirmText: 'Sync Presets',
       }))
     )
@@ -175,13 +184,13 @@ export default function TemplateListClient() {
     setIsSyncing(true);
     try {
       const idToken = await getToken();
-      const result = await seedPlatformPageTemplatesAction(idToken);
+      const result = await seedAllPlatformTemplatesAction(idToken);
       if (result.success && result.seededCount) {
         toast({
-          title: 'Presets Synced',
-          description: `Successfully seeded/updated ${result.seededCount} standard template presets.`,
+          title: 'Presets Synced Successfully',
+          description: `Synchronized ${result.seededCount.total} master presets across all 15 operational domains.`,
         });
-        fetchTemplates();
+        await fetchTemplates();
       } else {
         toast({
           variant: 'destructive',
@@ -399,32 +408,49 @@ export default function TemplateListClient() {
 
       {/* Table Card */}
       <div className="rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
-        {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+        {isLoading || isBackofficeLoading || isUserLoading ? (
+          <div className="p-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-            <p className="text-xs font-medium">Loading templates catalog...</p>
+            <p className="text-xs font-medium tracking-wide">Loading platform template matrix...</p>
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3 text-center">
-            <div className="h-12 w-12 rounded-2xl bg-muted/40 flex items-center justify-center text-muted-foreground">
-              <FileStack className="h-6 w-6" />
+          <div className="p-16 flex flex-col items-center justify-center gap-4 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <FileStack className="h-7 w-7" />
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-bold text-foreground">No templates found</p>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                No templates matched your current filters. Adjust your search or create a new template.
+            <div className="space-y-1.5 max-w-md">
+              <p className="text-base font-bold text-foreground">No Templates Available</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {templates.length === 0
+                  ? 'The global template catalog is uninitialized. Initialize the standard 15-domain system presets or create a custom master template.'
+                  : 'No templates match your current filters. Adjust your search or clear filters to view templates.'}
               </p>
             </div>
             {can('templates', 'create') && (
-              <Button
-                onClick={handleNewTemplate}
-                variant="outline"
-                size="sm"
-                className="mt-2 h-10 rounded-xl text-xs font-semibold active:scale-[0.97]"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Create Template
-              </Button>
+              <div className="flex items-center gap-3 flex-wrap justify-center mt-2">
+                {templates.length === 0 && (
+                  <Button
+                    onClick={handleSyncPresets}
+                    disabled={isSyncing}
+                    className="h-11 px-5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.97] transition-all gap-2"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 text-white" />
+                    )}
+                    {isSyncing ? 'Initializing Presets...' : 'Initialize Standard System Presets'}
+                  </Button>
+                )}
+                <Button
+                  onClick={handleNewTemplate}
+                  variant="outline"
+                  className="h-11 px-4 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all gap-1.5"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Create Custom Template
+                </Button>
+              </div>
             )}
           </div>
         ) : (

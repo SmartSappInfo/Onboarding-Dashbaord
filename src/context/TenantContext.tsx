@@ -226,10 +226,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     const activeProfile = profile;
     async function initContext() {
         // Resolve Active Organization
+        const urlOrg = searchParams.get('orgId') || searchParams.get('organizationId') || null;
         const storedOrg = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('activeOrganizationId') : null;
         let initialOrgId = activeProfile.organizationId; // Default to user's assigned org
 
-        if (isSuperAdmin && storedOrg && organizations.find(o => o.id === storedOrg)) {
+        if (isSuperAdmin && urlOrg && organizations.find(o => o.id === urlOrg)) {
+            initialOrgId = urlOrg;
+        } else if (isSuperAdmin && storedOrg && organizations.find(o => o.id === storedOrg)) {
             initialOrgId = storedOrg;
         } else if (activeProfile.lastActiveOrganizationId && organizations.find(o => o.id === activeProfile.lastActiveOrganizationId)) {
             initialOrgId = activeProfile.lastActiveOrganizationId;
@@ -246,17 +249,20 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
 
         setActiveOrganizationIdState(initialOrgId || '');
+        if (initialOrgId && typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('activeOrganizationId', initialOrgId);
+        }
 
         // Resolve Active Workspace
-        const urlTrack = searchParams.get('track') || null;
+        const urlWs = searchParams.get('workspaceId') || searchParams.get('track') || null;
         const storedWs = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('activeWorkspaceId') : null;
         
         const currentOrg = organizations?.find(o => o.id === initialOrgId);
         const orgDefaultWsId = currentOrg?.defaultWorkspaceId;
         
         let initialWsId = '';
-        if (urlTrack) {
-            initialWsId = urlTrack;
+        if (urlWs) {
+            initialWsId = urlWs;
         } else {
             const pathWs = await resolveWorkspaceFromPathname(pathname, firestore);
             if (pathWs) {

@@ -211,8 +211,17 @@ export async function createImpersonationSessionAction(
     });
 
     // Scoped sandbox URL with impersonation query tokens
-    const targetPath = workspaceId ? `/admin?workspaceId=${workspaceId}` : `/admin`;
-    const redirectUrl = `${targetPath}&impersonation_actor=${encodeURIComponent(actor.email)}&sandbox=true`;
+    const searchParams = new URLSearchParams();
+    if (workspaceId) {
+      searchParams.set('workspaceId', workspaceId);
+    }
+    if (organizationId) {
+      searchParams.set('orgId', organizationId);
+    }
+    searchParams.set('impersonation_actor', actor.email);
+    searchParams.set('sandbox', 'true');
+
+    const redirectUrl = `/admin?${searchParams.toString()}`;
 
     return {
       success: true,

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const QuickComposeButton = dynamic(() => import('@/components/messaging/QuickComposeButton'), { ssr: false });
@@ -77,6 +77,7 @@ const profileSetupHref = (): string => {
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const { user, isUserLoading, userError } = useUser();
@@ -330,6 +331,23 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenu>
           </div>
         </header>
+        {(searchParams?.get('sandbox') === 'true' || searchParams?.get('impersonation_actor')) && (
+          <div className="bg-amber-500/15 border-b border-amber-500/30 px-6 py-2.5 flex items-center justify-between gap-4 text-xs text-amber-800 dark:text-amber-300 font-medium shrink-0 z-40">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>
+                <strong>Support Sandbox Mode Active</strong>
+                {searchParams?.get('impersonation_actor') ? ` — Actor: ${searchParams.get('impersonation_actor')}` : ''} (30-min audit-logged session)
+              </span>
+            </div>
+            <Link
+              href="/backoffice/health"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 text-amber-950 dark:text-amber-100 text-xs font-bold transition-all active:scale-[0.97]"
+            >
+              Exit to Backoffice →
+            </Link>
+          </div>
+        )}
         <main className="flex-1 flex flex-col overflow-auto relative w-full">
           {children}
         </main>
