@@ -72,8 +72,10 @@ async function runFerMigration() {
     const needsHealthStatus = !deal.healthStatus;
     const needsForecastCategory = !deal.forecastCategory;
     const needsProbability = typeof deal.probability !== 'number';
+    const needsExpectedCloseDate = !deal.expectedCloseDate;
+    const needsPipelineId = !deal.pipelineId;
 
-    if (needsStageEnteredAt || needsStageHistory || needsHealthStatus || needsForecastCategory || needsProbability) {
+    if (needsStageEnteredAt || needsStageHistory || needsHealthStatus || needsForecastCategory || needsProbability || needsExpectedCloseDate || needsPipelineId) {
       totalNeedsEnrichment++;
 
       const isWon = deal.status === 'won';
@@ -111,6 +113,12 @@ async function runFerMigration() {
 
       if (needsProbability) {
         patch.probability = isWon ? 100 : isLost ? 0 : 50;
+      }
+
+      if (needsExpectedCloseDate) {
+        const baseDate = new Date(stageEnteredAt);
+        const fallbackClose = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        patch.expectedCloseDate = fallbackClose;
       }
 
       if (isDryRun) {

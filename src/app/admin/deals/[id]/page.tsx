@@ -7,6 +7,8 @@ import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/fire
 import type { Deal, UserProfile, OnboardingStage, Pipeline, Task, EntityContact, DealFocalContact, WorkspaceEntity } from '@/lib/types';
 import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
+import { calculateExpectedCloseDate } from '../../pipeline/utils/deal-expected-close';
+import { addDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -151,17 +153,33 @@ export default function DealDetailsPage() {
     [firestore, deal?.workspaceId, deal?.entityId]);
     const { data: linkedEntity } = useDoc<WorkspaceEntity>(entityDocRef);
 
-    // Directly fetch the deal's CURRENT pipeline/stage by id so the value is
-    // always selectable even if it falls outside the workspace list query
-    const currentPipelineRef = useMemoFirebase(() =>
-        firestore && deal?.pipelineId ? doc(firestore, 'pipelines', deal.pipelineId) : null,
-    [firestore, deal?.pipelineId]);
-    const { data: currentPipeline } = useDoc<Pipeline>(currentPipelineRef);
-
+    // Directly fetch the deal's CURRENT stage by id
     const currentStageRef = useMemoFirebase(() =>
         firestore && deal?.stageId ? doc(firestore, 'onboardingStages', deal.stageId) : null,
     [firestore, deal?.stageId]);
     const { data: currentStage } = useDoc<OnboardingStage>(currentStageRef);
+
+    // Directly fetch the deal's CURRENT pipeline by id (or inferred from stage)
+    const targetPipelineId = deal?.pipelineId || currentStage?.pipelineId;
+    const currentPipelineRef = useMemoFirebase(() =>
+        firestore && targetPipelineId ? doc(firestore, 'pipelines', targetPipelineId) : null,
+    [firestore, targetPipelineId]);
+    const { data: currentPipeline } = useDoc<Pipeline>(currentPipelineRef);
+
+    // Synchronous fallback for currentPipeline if currentPipeline is still loading from Firestore
+    const dealPipelineName = (deal as unknown as { pipelineName?: string } | null)?.pipelineName;
+    const effectiveCurrentPipeline = React.useMemo(() => {
+        if (currentPipeline) return currentPipeline;
+        const targetId = deal?.pipelineId || currentStage?.pipelineId;
+        if (targetId) {
+            return {
+                id: targetId,
+                name: dealPipelineName || 'Onboarding Pipeline',
+                workspaceIds: deal?.workspaceId ? [deal.workspaceId] : [],
+            } as Pipeline;
+        }
+        return null;
+    }, [currentPipeline, deal?.pipelineId, deal?.workspaceId, currentStage?.pipelineId, dealPipelineName]);
 
     // Synchronous fallback for currentStage if currentStage is still loading from Firestore
     const effectiveCurrentStage = React.useMemo(() => {
@@ -170,23 +188,33 @@ export default function DealDetailsPage() {
             return {
                 id: deal.stageId,
                 name: deal.stageName || 'Active Stage',
-                pipelineId: deal.pipelineId,
+                pipelineId: deal.pipelineId || targetPipelineId,
                 order: 0
             } as OnboardingStage;
         }
         return null;
-    }, [currentStage, deal?.stageId, deal?.stageName, deal?.pipelineId]);
+    }, [currentStage, deal?.stageId, deal?.stageName, deal?.pipelineId, targetPipelineId]);
 
     // De-duplicated option lists that always include the current value.
     const pipelineOptions = React.useMemo(
-        () => mergeById(pipelines, currentPipeline),
-        [pipelines, currentPipeline]
+        () => mergeById(pipelines, effectiveCurrentPipeline),
+        [pipelines, effectiveCurrentPipeline]
     );
     const stageOptions = React.useMemo(() => {
         const merged = mergeById(stages, effectiveCurrentStage);
         if (!pipelineId) return merged;
         return merged.filter(s => !s.pipelineId || s.pipelineId === pipelineId);
     }, [stages, effectiveCurrentStage, pipelineId]);
+
+    // Pre-calculate effective expected close date (delivery date)
+    const effectiveCloseDate = React.useMemo(() => {
+        if (deal?.expectedCloseDate && deal.expectedCloseDate.trim() !== '') {
+            return deal.expectedCloseDate;
+        }
+        const activePipe = currentPipeline || effectiveCurrentPipeline || (pipelines.length > 0 ? pipelines[0] : null);
+        const baseDate = deal?.createdAt ? new Date(deal.createdAt) : new Date();
+        return calculateExpectedCloseDate(activePipe, null, baseDate) || addDays(baseDate, 30).toISOString();
+    }, [deal?.expectedCloseDate, deal?.createdAt, currentPipeline, effectiveCurrentPipeline, pipelines]);
 
     const { user: currentUser } = useUser();
     const { singular } = useTerminology();
@@ -398,14 +426,33 @@ export default function DealDetailsPage() {
             setName(deal.name || '');
             setValue(deal.value?.toString() || '0');
             setDescription(deal.description || '');
-            setPipelineId(deal.pipelineId || '');
-            setStageId(deal.stageId || '');
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
-            setExpectedCloseDate(deal.expectedCloseDate ? deal.expectedCloseDate.split('T')[0] : '');
             setSelectedFocalContactIds((deal.focalContacts ?? []).map(fc => fc.id));
+
+            if (deal.pipelineId) {
+                setPipelineId(deal.pipelineId);
+            }
+            if (deal.stageId) {
+                setStageId(deal.stageId);
+            }
+            const dateToSet = deal.expectedCloseDate || effectiveCloseDate;
+            if (dateToSet) {
+                setExpectedCloseDate(dateToSet.split('T')[0]);
+            }
         }
-    }, [deal]);
+    }, [deal, effectiveCloseDate]);
+
+    // Resilient pipelineId auto-resolution: if pipelineId is not yet set, resolve from stage or first pipeline
+    React.useEffect(() => {
+        if (!deal) return;
+        if (!pipelineId || pipelineId === '') {
+            const fallbackId = deal.pipelineId || currentStage?.pipelineId || (pipelines.length > 0 ? pipelines[0].id : '');
+            if (fallbackId) {
+                setPipelineId(fallbackId);
+            }
+        }
+    }, [deal, pipelineId, currentStage?.pipelineId, pipelines]);
 
     // Lazy stage sync: once rawStages for the selected pipeline arrive, ensure stageId is preserved or updated
     React.useEffect(() => {
@@ -469,11 +516,17 @@ export default function DealDetailsPage() {
                 })
                 .filter((c): c is DealFocalContact => c !== null);
 
+            const resolvedCloseDate = expectedCloseDate
+                ? new Date(expectedCloseDate).toISOString()
+                : (effectiveCloseDate || null);
+
             const detailsRes = await updateDealDetailsAction(deal.id, {
                 name,
                 value: parseFloat(value) || 0,
                 description: description || null,
-                expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate).toISOString() : null,
+                pipelineId: pipelineId || deal.pipelineId,
+                stageId: stageId || deal.stageId,
+                expectedCloseDate: resolvedCloseDate,
                 assignedTo,
                 focalContacts
             });
@@ -582,9 +635,9 @@ export default function DealDetailsPage() {
                                 <span className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5 text-primary/50" />
                                     <span className="uppercase tracking-wider text-[10px] text-muted-foreground/60">Close:</span>
-                                    {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString() : 'TBD'}
-                                    {deal.expectedCloseDate && (() => {
-                                        const u = getForecastUrgency(deal.expectedCloseDate);
+                                    <span>{effectiveCloseDate ? new Date(effectiveCloseDate).toLocaleDateString() : 'TBD'}</span>
+                                    {effectiveCloseDate && (() => {
+                                        const u = getForecastUrgency(effectiveCloseDate);
                                         return <span className={cn("font-bold", u.colorClass)}>({u.label})</span>;
                                     })()}
                                 </span>

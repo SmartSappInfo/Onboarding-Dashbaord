@@ -526,6 +526,8 @@ export async function updateDealDetailsAction(
     updates: {
         name?: string;
         value?: number;
+        pipelineId?: string;
+        stageId?: string;
         expectedCloseDate?: string | null;
         description?: string | null;
         assignedTo?: { userId: string | null; name: string | null; email: string | null } | null;
