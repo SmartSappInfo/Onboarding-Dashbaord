@@ -58,7 +58,7 @@ const formSchema = z.object({
   internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
-  elements: z.array(z.any()).min(1, 'Survey must have at least one element.'),
+  elements: z.array(z.custom<SurveyElement>((val) => typeof val === 'object' && val !== null && 'id' in val && 'type' in val)).min(1, 'Survey must have at least one element.'),
   thankYouTitle: z.string().optional(),
   thankYouDescription: z.string().optional(),
   thankYouRedirectEnabled: z.boolean().default(false),
@@ -82,8 +82,8 @@ const formSchema = z.object({
   scoringEnabled: z.boolean().default(false),
   scoreDisplayMode: z.enum(['points', 'percentage']).default('points'),
   maxScore: z.number().min(0).default(100),
-  resultRules: z.array(z.any()).default([]),
-  resultPages: z.array(z.any()).default([]),
+  resultRules: z.array(z.custom<any>((val) => typeof val === 'object' && val !== null)).default([]),
+  resultPages: z.array(z.custom<SurveyResultPage>((val) => typeof val === 'object' && val !== null)).default([]),
   startButtonText: z.string().optional(),
   submitButtonText: z.string().optional(),
   embedRedirectMode: z.enum(['modal', 'parent']).default('modal'),
@@ -258,9 +258,9 @@ export default function EditSurveyPage() {
             backgroundPattern: 'none',
             scoringEnabled: false,
             questionTitleBold: true,
-      optionsColumns: 1,
+            optionsColumns: 1,
             adminAlertsEnabled: false,
-            workspaceIds: [activeWorkspaceId],
+            workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
         }
     });
 
@@ -280,13 +280,26 @@ export default function EditSurveyPage() {
     const debouncedFields = useDebounce(watch('elements'), 800);
 
     React.useEffect(() => {
+        if (activeWorkspaceId) {
+            const currentWsIds = form.getValues('workspaceIds') || [];
+            if (currentWsIds.length === 0 || currentWsIds.some(id => !id)) {
+                form.setValue('workspaceIds', [activeWorkspaceId], { shouldValidate: false });
+            }
+        }
+    }, [activeWorkspaceId, form]);
+
+    React.useEffect(() => {
         if (survey && !hasInitialized) {
+            const resolvedWorkspaceIds = (Array.isArray(survey.workspaceIds) && survey.workspaceIds.length > 0)
+                ? survey.workspaceIds
+                : (activeWorkspaceId ? [activeWorkspaceId] : []);
+
             const initialData = {
                 ...survey,
                 internalName: survey.internalName || survey.title,
                 elements: survey.elements || [],
                 resultRules: survey.resultRules || [],
-                workspaceIds: survey.workspaceIds || [activeWorkspaceId],
+                workspaceIds: resolvedWorkspaceIds,
                 resultPages: [], 
                 showIntroAsPage: survey.showIntroAsPage ?? survey.showCoverPage ?? true,
                 stepperVariant: survey.stepperVariant || 'full',

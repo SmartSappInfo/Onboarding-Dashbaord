@@ -17,12 +17,23 @@ interface CreateSurveyFromAiInput {
 /**
  * Persists an AI-generated survey blueprint to Firestore.
  * This is triggered automatically when the AI Partner composes a NEW survey.
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - 'onboarding' is the real document ID of the 'Client Onboarding' workspace. Do NOT blacklist it.
+ * - Multi-tenant security is enforced via `canUser(userId, 'studios', 'surveys', 'create', workspaceId)`.
+ * - Zero `any` or `any[]` typing.
+ *
+ * @testability Returns structured `{ success: boolean, id?: string, error?: string }` envelope.
  */
-export async function createSurveyFromAiAction({ surveyData, resultPages, workspaceId, userId }: CreateSurveyFromAiInput) {
+export async function createSurveyFromAiAction({ surveyData, resultPages, workspaceId, userId }: CreateSurveyFromAiInput): Promise<{
+    success: boolean;
+    id?: string;
+    error?: string;
+}> {
     console.log(`>>> [AI-SAVE] Persisting AI-generated blueprint for workspace: ${workspaceId}`);
     try {
         // 0. Workspace & Permission Check
-        if (!workspaceId || workspaceId === 'onboarding' || workspaceId === 'generic') {
+        if (!workspaceId || typeof workspaceId !== 'string' || workspaceId.trim().length === 0) {
             return { success: false, error: 'A survey must be associated with a valid workspace.' };
         }
         const permission = await canUser(userId, 'studios', 'surveys', 'create', workspaceId);
@@ -61,7 +72,7 @@ export async function createSurveyFromAiAction({ surveyData, resultPages, worksp
         }
 
         // 3. Prepare the survey document with defaults and clean for Firestore
-        const surveyDocument = {
+        const surveyDocument: Partial<Survey> = {
             ...surveyData,
             slug,
             status: 'draft',
@@ -105,14 +116,15 @@ export async function createSurveyFromAiAction({ surveyData, resultPages, worksp
         
         return { success: true, id: docRef.id };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(">>> [AI-SAVE] Critical Failure:", error);
         
         // Provide specific error messages based on error type
         let errorMessage = "Failed to persist AI blueprint.";
+        const errorObj = error as { code?: string; message?: string } | undefined;
         
-        if (error.code) {
-            switch (error.code) {
+        if (errorObj?.code) {
+            switch (errorObj.code) {
                 case 'permission-denied':
                     errorMessage = 'Permission denied. You don\'t have access to create surveys in this workspace.';
                     break;
@@ -132,17 +144,17 @@ export async function createSurveyFromAiAction({ surveyData, resultPages, worksp
                     errorMessage = 'Database is temporarily unavailable. Please try again.';
                     break;
                 default:
-                    errorMessage = `System error (${error.code}): ${error.message || 'Unknown error occurred'}`;
+                    errorMessage = `System error (${errorObj.code}): ${errorObj.message || 'Unknown error occurred'}`;
             }
-        } else if (error.message) {
-            if (error.message.includes('slug')) {
+        } else if (errorObj?.message) {
+            if (errorObj.message.includes('slug')) {
                 errorMessage = 'Survey URL slug conflict. Please modify the survey title.';
-            } else if (error.message.includes('workspace')) {
+            } else if (errorObj.message.includes('workspace')) {
                 errorMessage = 'Workspace access error. Please ensure you have proper permissions.';
-            } else if (error.message.includes('network')) {
+            } else if (errorObj.message.includes('network')) {
                 errorMessage = 'Network connection error. Please check your internet connection.';
             } else {
-                errorMessage = `Creation failed: ${error.message}`;
+                errorMessage = `Creation failed: ${errorObj.message}`;
             }
         }
         

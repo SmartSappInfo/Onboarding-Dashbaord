@@ -998,8 +998,9 @@ export async function autoSaveSurveyAction(
         let isNew = surveyId === 'new-survey';
 
         // 2. Workspace Validation & Permission Check
+        // CAUTION: 'onboarding' is the primary Client Onboarding workspace. Do NOT blacklist it.
         const workspaceIds = data.workspaceIds || [];
-        if (workspaceIds.length === 0 || workspaceIds.includes('onboarding') || workspaceIds.includes('generic')) {
+        if (!Array.isArray(workspaceIds) || workspaceIds.length === 0 || workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
             return { success: false, error: 'A survey must be associated with at least one valid workspace.' };
         }
         const workspaceId = workspaceIds[0];

@@ -427,17 +427,19 @@ export async function finalizeAgreementAction(
     }
 }
 
-export async function createPdfForm(data: any, userId: string, workspaceIds: string[]): Promise<{ success: boolean; id?: string; error?: string }> {
-  if (!workspaceIds || workspaceIds.length === 0 || workspaceIds.includes('onboarding') || workspaceIds.includes('generic')) {
+export async function createPdfForm(data: Partial<PDFForm> & { size?: number; mimeType?: string; originalFileName?: string }, userId: string, workspaceIds: string[]): Promise<{ success: boolean; id?: string; error?: string }> {
+  if (!Array.isArray(workspaceIds) || workspaceIds.length === 0 || workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
     return { success: false, error: 'A PDF Form must be associated with at least one valid workspace.' };
   }
   const { size, mimeType, ...formData } = data;
-  const slug = formData.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const name = formData.name || 'Untitled Document';
+  const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   const timestamp = new Date().toISOString();
 
   const docRef = await adminDb.collection('pdfs').add({
     ...formData,
-    publicTitle: formData.name,
+    name,
+    publicTitle: name,
     slug,
     status: 'draft',
     fields: [],
@@ -463,8 +465,8 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
   
   if (size !== undefined && mimeType !== undefined) {
     await adminDb.collection('media').add({
-      name: formData.originalFileName || formData.name,
-      originalName: formData.originalFileName || formData.name,
+      name: formData.originalFileName || name,
+      originalName: formData.originalFileName || name,
       url: formData.downloadUrl,
       fullPath: formData.storagePath,
       type: 'document',
@@ -483,7 +485,7 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
       workspaceId: workspaceIds[0],
       type: 'pdf_uploaded',
       source: 'user_action',
-      description: `uploaded a new PDF form: "${formData.name}"`,
+      description: `uploaded a new PDF form: "${name}"`,
       metadata: { pdfId: docRef.id }
   });
 
@@ -491,7 +493,7 @@ export async function createPdfForm(data: any, userId: string, workspaceIds: str
   return { success: true, id: docRef.id };
 }
 
-export async function clonePdfForm(pdfId: string, userId: string) {
+export async function clonePdfForm(pdfId: string, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const pdfRef = adminDb.collection('pdfs').doc(pdfId);
     const pdfSnap = await pdfRef.get();
@@ -502,7 +504,7 @@ export async function clonePdfForm(pdfId: string, userId: string) {
     const newSlug = `${originalData.slug || pdfId}-copy-${Math.random().toString(36).substring(2, 7)}`;
     const timestamp = new Date().toISOString();
 
-    if (!originalData.workspaceIds || originalData.workspaceIds.length === 0 || originalData.workspaceIds.includes('onboarding') || originalData.workspaceIds.includes('generic')) {
+    if (!Array.isArray(originalData.workspaceIds) || originalData.workspaceIds.length === 0 || originalData.workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
       return { success: false, error: 'Original PDF Form is missing a valid workspace context.' };
     }
 
@@ -519,14 +521,14 @@ export async function clonePdfForm(pdfId: string, userId: string) {
     const newDocRef = await adminDb.collection('pdfs').add(cloneData);
     revalidatePath('/admin/pdfs');
     return { success: true, id: newDocRef.id };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error during cloning' };
   }
 }
 
 export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
     if (data.workspaceIds !== undefined) {
-        if (!data.workspaceIds || data.workspaceIds.length === 0 || data.workspaceIds.includes('onboarding') || data.workspaceIds.includes('generic')) {
+        if (!Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0 || data.workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
             throw new Error('A PDF Form must be associated with at least one valid workspace.');
         }
     }

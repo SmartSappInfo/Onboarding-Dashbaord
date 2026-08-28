@@ -48,7 +48,7 @@ import LivePreviewPane from '../components/live-preview-pane';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
 import AiChatEditor from '../components/ai-chat-editor';
 
-const elementSchema = z.any();
+const elementSchema = z.custom<SurveyElement>((val) => typeof val === 'object' && val !== null && 'id' in val && 'type' in val);
 
 const formSchema = z.object({
   internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -182,7 +182,7 @@ export default function NewSurveyPage() {
             title: '',
             description: '',
             status: 'draft',
-            workspaceIds: [activeWorkspaceId],
+            workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
             elements: [
                 {
                     id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -191,7 +191,7 @@ export default function NewSurveyPage() {
                     description: '',
                     renderAsPage: false,
                     hidden: false,
-                } as any,
+                } as unknown as SurveyElement,
             ],
             thankYouTitle: 'Thank You!',
             thankYouDescription: 'Your response has been recorded.',
@@ -253,6 +253,15 @@ export default function NewSurveyPage() {
 
     const isProgrammaticChange = React.useRef(false);
     const debouncedFields = useDebounce(watch('elements'), 800);
+
+    React.useEffect(() => {
+        if (activeWorkspaceId) {
+            const currentWsIds = form.getValues('workspaceIds') || [];
+            if (currentWsIds.length === 0 || currentWsIds.some(id => !id)) {
+                form.setValue('workspaceIds', [activeWorkspaceId], { shouldValidate: false });
+            }
+        }
+    }, [activeWorkspaceId, form]);
 
     React.useEffect(() => {
         resetHistory(getValues('elements'));

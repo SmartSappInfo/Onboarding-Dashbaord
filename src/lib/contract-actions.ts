@@ -103,7 +103,7 @@ export async function sendContractAction(input: {
         } = input;
 
         let resolvedWorkspaceId = workspaceId;
-        if (!resolvedWorkspaceId || resolvedWorkspaceId === 'onboarding') {
+        if (!resolvedWorkspaceId) {
             const contractDoc = await adminDb.collection('contracts').doc(contractId).get();
             if (contractDoc.exists) {
                 resolvedWorkspaceId = contractDoc.data()?.workspaceId || undefined;

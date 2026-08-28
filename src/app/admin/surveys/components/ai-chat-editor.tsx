@@ -260,13 +260,30 @@ function AiChatPanel() {
             if (result.updatedSurvey) {
                 const mergedSurvey = { ...currentData, ...result.updatedSurvey };
 
-                if (isNew && result.updatedSurvey.elements.length > 0) {
+                if (isNew && result.updatedSurvey.elements && result.updatedSurvey.elements.length > 0) {
                     setMessages(prev => [...prev, { role: 'assistant', content: "Building your blueprint... 🚀" }]);
+                    
+                    const targetWorkspaceId = activeWorkspaceId || (Array.isArray(currentData.workspaceIds) ? currentData.workspaceIds[0] : undefined);
+                    
+                    if (!targetWorkspaceId) {
+                        const errorMsg = 'A workspace context is required before creating a survey blueprint.';
+                        setMessages(prev => [...prev, { 
+                            role: 'assistant', 
+                            content: `I couldn't save the survey: ${errorMsg}. Please ensure you have an active workspace selected and try again.` 
+                        }]);
+                        toast({ 
+                            variant: 'destructive', 
+                            title: 'Workspace Required', 
+                            description: errorMsg 
+                        });
+                        return;
+                    }
+
                     const saveResult = await createSurveyFromAiAction({
-                        surveyData: result.updatedSurvey as any,
-                        resultPages: result.updatedSurvey.resultPages as any,
-                        workspaceId: activeWorkspaceId!,
-                        userId: user!.uid
+                        surveyData: result.updatedSurvey,
+                        resultPages: result.updatedSurvey.resultPages,
+                        workspaceId: targetWorkspaceId,
+                        userId: user?.uid || ''
                     });
 
                     if (saveResult.success) {

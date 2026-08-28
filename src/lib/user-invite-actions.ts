@@ -409,7 +409,7 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
         // Enforce user must have at least one workspace when being activated
         if (isAuthorized) {
             const workspaceIds = userData.workspaceIds || [];
-            if (workspaceIds.length === 0 || (workspaceIds.length === 1 && workspaceIds[0] === 'onboarding')) {
+            if (workspaceIds.length === 0) {
                 const { flagMissingWorkspaceToAdmin } = await import('./services/workspace-resolver');
                 await flagMissingWorkspaceToAdmin(userId, userData.organizationId || 'default');
                 return { success: false, error: 'Cannot activate user: User has no active workspace assigned. Organization admin has been alerted.' };
