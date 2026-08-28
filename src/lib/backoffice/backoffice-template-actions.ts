@@ -6,14 +6,14 @@ import { createAuditSnapshot } from './backoffice-utils';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
 import type { PlatformTemplate, PlatformTemplateType } from './backoffice-types';
+import { normalizePermissionsSchema } from '../permissions-engine';
+import { CANONICAL_ROLE_BLUEPRINTS } from '../role-blueprint-presets';
 import { 
-  normalizePermissionsSchema, 
-  getFullAdminPermissions, 
-  getOperationsPermissions, 
-  getFinancePermissions, 
-  getMarketingPermissions 
-} from '../permissions-engine';
-import { propagateTemplateToWorkspaces, type PropagationTargetFilter, type PropagationResult } from './template-propagation-engine';
+  propagateTemplateToWorkspaces, 
+  chunkArray, 
+  type PropagationTargetFilter, 
+  type PropagationResult 
+} from './template-propagation-engine';
 
 // ─────────────────────────────────────────────────
 // Backoffice Template Server Actions
@@ -22,6 +22,63 @@ import { propagateTemplateToWorkspaces, type PropagationTargetFilter, type Propa
 // Security: every action verifies the caller's ID token and enforces RBAC
 // via `authorizeBackoffice` (server-auth-actions). Actor derived server-side.
 // ─────────────────────────────────────────────────
+
+/**
+ * Standard built-in role architecture blueprints available across all organizations.
+ * Sourced directly from the canonical multi-industry catalog.
+ */
+export const BUILTIN_ROLE_BLUEPRINTS: PlatformTemplate[] = CANONICAL_ROLE_BLUEPRINTS;
+
+/**
+ * Server Action: Seeds or updates all canonical role architecture blueprints directly into Firestore.
+ * Implements chunked batching (<= 25 items per batch) with 50ms intervals for high load stability.
+ */
+export async function seedRoleArchitectureTemplatesAction(idToken: string): Promise<{
+  success: boolean;
+  count?: number;
+  error?: string;
+}> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'templates', 'create');
+    const timestamp = new Date().toISOString();
+
+    const preparedTemplates: PlatformTemplate[] = CANONICAL_ROLE_BLUEPRINTS.map((t) => ({
+      ...t,
+      updatedAt: timestamp,
+      updatedBy: actor.userId,
+      versionHistory: [
+        {
+          version: 1,
+          content: t.content,
+          publishedAt: timestamp,
+          publishedBy: actor.email,
+          changelog: 'Seeded from canonical role blueprint catalog.',
+        },
+      ],
+    }));
+
+    const chunks = chunkArray(preparedTemplates, 25);
+    for (const chunk of chunks) {
+      const batch = adminDb.batch();
+      for (const tpl of chunk) {
+        const ref = adminDb.collection('platform_templates').doc(tpl.id);
+        batch.set(ref, tpl, { merge: true });
+      }
+      await batch.commit();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    await logBackofficeAction(actor, 'template.seed_roles', 'platform_template', 'global_catalog', {
+      metadata: { count: preparedTemplates.length },
+    });
+
+    return { success: true, count: preparedTemplates.length };
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error);
+    console.error('[SEED_ROLE_TEMPLATES] Failed:', msg);
+    return { success: false, error: msg };
+  }
+}
 
 export async function listAllTemplates(idToken: string): Promise<{
   success: boolean;
@@ -291,84 +348,6 @@ export async function deleteTemplateAction(
     return { success: false, error: getErrorMessage(error) };
   }
 }
-
-/**
- * Standard built-in role architecture blueprints available across all organizations.
- */
-export const BUILTIN_ROLE_BLUEPRINTS: PlatformTemplate[] = [
-  {
-    id: 'builtin-super-admin',
-    name: 'Super Admin (All Access)',
-    description: 'Complete unrestricted access across all operational, financial, studio, and management silos.',
-    category: 'Executive',
-    type: 'role_architecture',
-    scope: 'system',
-    status: 'published',
-    version: 1,
-    versionHistory: [],
-    defaultForNewOrgs: true,
-    visibilityRules: { orgIds: [], workspaceTypes: [] },
-    content: getFullAdminPermissions(),
-    usageCount: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    updatedBy: 'system',
-  },
-  {
-    id: 'builtin-operations-lead',
-    name: 'Operations Lead',
-    description: 'Full oversight of daily operations, campuses, pipelines, tasks, and team meetings.',
-    category: 'Operations',
-    type: 'role_architecture',
-    scope: 'system',
-    status: 'published',
-    version: 1,
-    versionHistory: [],
-    defaultForNewOrgs: false,
-    visibilityRules: { orgIds: [], workspaceTypes: [] },
-    content: getOperationsPermissions(),
-    usageCount: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    updatedBy: 'system',
-  },
-  {
-    id: 'builtin-finance-officer',
-    name: 'Finance Officer',
-    description: 'Manages contracts, customer agreements, invoices, package tiers, and billing cycles.',
-    category: 'Finance',
-    type: 'role_architecture',
-    scope: 'system',
-    status: 'published',
-    version: 1,
-    versionHistory: [],
-    defaultForNewOrgs: false,
-    visibilityRules: { orgIds: [], workspaceTypes: [] },
-    content: getFinancePermissions(),
-    usageCount: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    updatedBy: 'system',
-  },
-  {
-    id: 'builtin-studio-manager',
-    name: 'Studio & Marketing Lead',
-    description: 'Full management of landing pages, public portals, media assets, messaging, forms, and surveys.',
-    category: 'Studios',
-    type: 'role_architecture',
-    scope: 'system',
-    status: 'published',
-    version: 1,
-    versionHistory: [],
-    defaultForNewOrgs: false,
-    visibilityRules: { orgIds: [], workspaceTypes: [] },
-    content: getMarketingPermissions(),
-    usageCount: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-    updatedBy: 'system',
-  },
-];
 
 export async function getPublishedTemplatesAction(
   type: PlatformTemplateType,

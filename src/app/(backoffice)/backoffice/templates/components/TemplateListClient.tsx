@@ -30,18 +30,12 @@ import {
   MessageSquare,
   Video,
   BarChart3,
-  FormInput,
   Workflow,
-  Kanban,
-  FileCode,
   Layers,
   FileText,
-  Banknote,
   QrCode,
   Sparkles,
   ShieldCheck,
-  BrainCircuit,
-  ListTodo,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -51,7 +45,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Table,
@@ -68,7 +61,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { listAllTemplates, publishTemplate, deprecateTemplate } from '@/lib/backoffice/backoffice-template-actions';
+import { 
+  listAllTemplates, 
+  publishTemplate, 
+  deprecateTemplate,
+  seedRoleArchitectureTemplatesAction
+} from '@/lib/backoffice/backoffice-template-actions';
 import { seedAllPlatformTemplatesAction } from '@/app/actions/seed-platform-presets-action';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
@@ -209,6 +207,45 @@ export default function TemplateListClient() {
     }
   }
 
+  async function handleSyncRoleBlueprints() {
+    if (
+      !(await confirm({
+        title: 'Sync Multi-Industry Role Blueprints?',
+        description:
+          'This will ingest and synchronize all 22 canonical role blueprints across SaaS, School Admissions, Marketing, Law, Real Estate, Consultancy, and Universal Governance.',
+        confirmText: 'Sync Role Blueprints',
+      }))
+    )
+      return;
+
+    setIsSyncing(true);
+    try {
+      const idToken = await getToken();
+      const result = await seedRoleArchitectureTemplatesAction(idToken);
+      if (result.success && result.count) {
+        toast({
+          title: 'Role Blueprints Synced',
+          description: `Successfully synchronized ${result.count} canonical role blueprints across all industry verticals.`,
+        });
+        await fetchTemplates();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sync Failed',
+          description: result.error || 'Failed to sync role blueprints',
+        });
+      }
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to trigger role blueprints sync',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
   async function handlePublish(tpl: PlatformTemplate) {
     if (
       !(await confirm({
@@ -320,20 +357,37 @@ export default function TemplateListClient() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {can('templates', 'create') && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncPresets}
-              disabled={isSyncing}
-              className="h-11 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all gap-2"
-            >
-              {isSyncing ? (
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
-              ) : (
-                <RefreshCw className="h-4 w-4 text-emerald-500" />
-              )}
-              {isSyncing ? 'Syncing...' : 'Sync Presets'}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncRoleBlueprints}
+                disabled={isSyncing}
+                className="h-11 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all gap-2"
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                )}
+                {isSyncing ? 'Syncing...' : 'Sync Roles'}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncPresets}
+                disabled={isSyncing}
+                className="h-11 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all gap-2"
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 text-emerald-500" />
+                )}
+                {isSyncing ? 'Syncing...' : 'Sync All Presets'}
+              </Button>
+            </>
           )}
 
           {can('templates', 'create') && (

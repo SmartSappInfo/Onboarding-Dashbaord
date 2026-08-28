@@ -20,6 +20,7 @@ import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
 import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { chunkArray } from '@/lib/backoffice/template-propagation-engine';
 import type { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
+import { CANONICAL_ROLE_BLUEPRINTS } from '@/lib/role-blueprint-presets';
 
 export interface SeedDomainResult {
   pages: number;
@@ -302,14 +303,24 @@ export async function seedAllPlatformTemplatesAction(idToken: string): Promise<{
       })
     );
 
-    // 14. Role Architectures
-    allPresets.push(
-      createTemplate('role-super-admin-blueprint', 'role_architecture', 'Super Admin Governance Blueprint', 'Complete platform privilege profile covering all 17 operational modules.', 'Security', {
-        roleId: 'super_admin_blueprint',
-        permissions: ['*'],
-        accessLevel: 'platform_wide',
-      })
-    );
+    // 14. Role Architectures (All 22 Multi-Industry Canonical Blueprints)
+    for (const roleBlueprint of CANONICAL_ROLE_BLUEPRINTS) {
+      allPresets.push({
+        ...roleBlueprint,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        updatedBy: actor.userId,
+        versionHistory: [
+          {
+            version: 1,
+            content: roleBlueprint.content,
+            publishedAt: timestamp,
+            publishedBy: actor.email,
+            changelog: 'Initial multi-industry role preset release.',
+          },
+        ],
+      });
+    }
 
     // 15. AI Prompts & Tasks
     allPresets.push(

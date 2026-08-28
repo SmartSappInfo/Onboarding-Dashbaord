@@ -9,22 +9,70 @@ import {
   migrateToPermissionsSchema,
   mergePermissionsSchemas,
 } from '../permissions-engine';
+import { 
+  CANONICAL_ROLE_BLUEPRINTS,
+  groupBlueprintsByIndustry 
+} from '../role-blueprint-presets';
 import { BUILTIN_ROLE_BLUEPRINTS } from '../backoffice/backoffice-template-actions';
 import type { PermissionsSchema } from '../types';
 
 describe('Role Templates QA End-to-End Suite', () => {
-  describe('Built-in Role Blueprints Integrity', () => {
-    it('should export all 4 standard platform blueprint presets', () => {
-      expect(BUILTIN_ROLE_BLUEPRINTS).toHaveLength(4);
-      const ids = BUILTIN_ROLE_BLUEPRINTS.map(b => b.id);
+  describe('Canonical Multi-Industry Role Blueprints Integrity', () => {
+    it('should export all 22 canonical platform blueprint presets', () => {
+      expect(CANONICAL_ROLE_BLUEPRINTS).toHaveLength(22);
+      expect(BUILTIN_ROLE_BLUEPRINTS).toHaveLength(22);
+
+      const ids = CANONICAL_ROLE_BLUEPRINTS.map(b => b.id);
+      // Universal
       expect(ids).toContain('builtin-super-admin');
       expect(ids).toContain('builtin-operations-lead');
       expect(ids).toContain('builtin-finance-officer');
       expect(ids).toContain('builtin-studio-manager');
+
+      // SaaS
+      expect(ids).toContain('role-saas-customer-success');
+      expect(ids).toContain('role-saas-sales-growth');
+      expect(ids).toContain('role-saas-billing-specialist');
+
+      // School Admissions
+      expect(ids).toContain('role-school-admissions-officer');
+      expect(ids).toContain('role-school-academic-registrar');
+      expect(ids).toContain('role-school-bursar');
+
+      // Marketing
+      expect(ids).toContain('role-mktg-creative-director');
+      expect(ids).toContain('role-mktg-account-executive');
+      expect(ids).toContain('role-mktg-analytics-lead');
+
+      // Law
+      expect(ids).toContain('role-law-managing-partner');
+      expect(ids).toContain('role-law-paralegal-intake');
+      expect(ids).toContain('role-law-billing-clerk');
+
+      // Real Estate
+      expect(ids).toContain('role-realestate-lead-broker');
+      expect(ids).toContain('role-realestate-marketing-specialist');
+      expect(ids).toContain('role-realestate-escrow-coordinator');
+
+      // Consultancy
+      expect(ids).toContain('role-consultancy-engagement-principal');
+      expect(ids).toContain('role-consultancy-operations-specialist');
+      expect(ids).toContain('role-consultancy-contracts-officer');
     });
 
-    it('should ensure all built-in presets pass strict schema normalization', () => {
-      for (const blueprint of BUILTIN_ROLE_BLUEPRINTS) {
+    it('should cover all 6 platform industry verticals with at least 3 roles each', () => {
+      const verticals = ['SaaS', 'SchoolEnrollment', 'Marketing', 'Law', 'RealEstate', 'Consultancy'];
+      for (const vertical of verticals) {
+        const verticalRoles = CANONICAL_ROLE_BLUEPRINTS.filter(
+          b => b.category.toLowerCase() === vertical.toLowerCase() ||
+               b.visibilityRules?.workspaceTypes?.includes(vertical)
+        );
+        expect(verticalRoles.length).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    it('should ensure all 22 presets pass strict schema normalization', () => {
+      for (const blueprint of CANONICAL_ROLE_BLUEPRINTS) {
         expect(blueprint.status).toBe('published');
         expect(blueprint.type).toBe('role_architecture');
 
@@ -38,7 +86,7 @@ describe('Role Templates QA End-to-End Suite', () => {
     });
 
     it('should verify super admin preset has full administrative privileges', () => {
-      const superAdmin = BUILTIN_ROLE_BLUEPRINTS.find(b => b.id === 'builtin-super-admin');
+      const superAdmin = CANONICAL_ROLE_BLUEPRINTS.find(b => b.id === 'builtin-super-admin');
       expect(superAdmin).toBeDefined();
       const schema = normalizePermissionsSchema(superAdmin!.content);
 
@@ -49,13 +97,30 @@ describe('Role Templates QA End-to-End Suite', () => {
     });
 
     it('should verify operations lead preset does not grant management or finance deletion', () => {
-      const opsLead = BUILTIN_ROLE_BLUEPRINTS.find(b => b.id === 'builtin-operations-lead');
+      const opsLead = CANONICAL_ROLE_BLUEPRINTS.find(b => b.id === 'builtin-operations-lead');
       expect(opsLead).toBeDefined();
       const schema = normalizePermissionsSchema(opsLead!.content);
 
       expect(evaluatePermission(schema, 'operations', 'tasks', 'view')).toBe(true);
       expect(evaluatePermission(schema, 'finance', 'invoices', 'delete')).toBe(false);
       expect(evaluatePermission(schema, 'management', 'users', 'delete')).toBe(false);
+    });
+  });
+
+  describe('Industry Grouping & Prioritization QA', () => {
+    it('should partition recommended roles first for RealEstate vertical', () => {
+      const grouped = groupBlueprintsByIndustry(CANONICAL_ROLE_BLUEPRINTS, 'RealEstate');
+      expect(grouped.recommended).toHaveLength(3);
+      expect(grouped.recommended.map(r => r.id)).toContain('role-realestate-lead-broker');
+      expect(grouped.universal).toHaveLength(4);
+      expect(grouped.otherVerticals.length).toBe(5); // SaaS, SchoolEnrollment, Marketing, Law, Consultancy
+    });
+
+    it('should partition recommended roles first for SchoolEnrollment vertical', () => {
+      const grouped = groupBlueprintsByIndustry(CANONICAL_ROLE_BLUEPRINTS, 'SchoolEnrollment');
+      expect(grouped.recommended).toHaveLength(3);
+      expect(grouped.recommended.map(r => r.id)).toContain('role-school-admissions-officer');
+      expect(grouped.universal).toHaveLength(4);
     });
   });
 
@@ -87,7 +152,7 @@ describe('Role Templates QA End-to-End Suite', () => {
       const normalized = normalizePermissionsSchema(maliciousPayload);
       expect(normalized.operations.enabled).toBe(true);
       expect(normalized.operations.features.tasks.view).toBe(true);
-      expect((Object.prototype as any).polluted).toBeUndefined();
+      expect((Object.prototype as unknown as Record<string, unknown>).polluted).toBeUndefined();
     });
   });
 

@@ -26,6 +26,12 @@ import {
 } from '@/lib/permissions-engine';
 import { getPublishedTemplatesAction } from '@/lib/backoffice/backoffice-template-actions';
 import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
+import { 
+  CANONICAL_ROLE_BLUEPRINTS, 
+  groupBlueprintsByIndustry 
+} from '@/lib/role-blueprint-presets';
+import { INDUSTRY_LABELS } from '@/lib/industry-config';
+import type { IndustryVertical } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -76,14 +82,16 @@ function getTemplateCapabilitySummary(schema: PermissionsSchema) {
 export default function RolesClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { activeOrganizationId } = useTenant();
+  const { activeOrganizationId, activeWorkspace } = useTenant();
+  const activeIndustry = activeWorkspace?.industry;
   
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null);
   const [editedSchema, setEditedSchema] = React.useState<PermissionsSchema | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null);
 
-  const [platformTemplates, setPlatformTemplates] = React.useState<PlatformTemplate[]>([]);
+  // Synchronously initialize with CANONICAL_ROLE_BLUEPRINTS so all 22 presets are available immediately on mount
+  const [platformTemplates, setPlatformTemplates] = React.useState<PlatformTemplate[]>(CANONICAL_ROLE_BLUEPRINTS);
   const [isLoadingTemplates, setIsLoadingTemplates] = React.useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = React.useState(false);
 
@@ -97,6 +105,11 @@ export default function RolesClient() {
   });
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>('builtin-super-admin');
 
+  // Group templates by active industry vertical and universal governance
+  const groupedTemplates = React.useMemo(() => {
+    return groupBlueprintsByIndustry(platformTemplates, activeIndustry);
+  }, [platformTemplates, activeIndustry]);
+
   // Load Platform Templates (role-architecture blueprints).
   // Uses tenant-authorized published templates action, ensuring standard organization admins
   // have full access to platform blueprints without requiring backoffice superadmin claims.
@@ -104,8 +117,8 @@ export default function RolesClient() {
     async function loadTemplates() {
       setIsLoadingTemplates(true);
       try {
-        const res = await getPublishedTemplatesAction('role_architecture', undefined, activeOrganizationId);
-        if (res.success && res.data) {
+        const res = await getPublishedTemplatesAction('role_architecture', activeIndustry, activeOrganizationId);
+        if (res.success && res.data && res.data.length > 0) {
           setPlatformTemplates(res.data);
         }
       } catch (error) {
@@ -118,7 +131,7 @@ export default function RolesClient() {
     if (activeOrganizationId) {
       loadTemplates();
     }
-  }, [activeOrganizationId]);
+  }, [activeOrganizationId, activeIndustry]);
 
   // 1. DATA SUBSCRIPTION
   const rolesQuery = useMemoFirebase(() => {
@@ -319,14 +332,34 @@ export default function RolesClient() {
                       className="flex h-11 sm:h-12 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="blank">Blank Slate (0 Permissions)</option>
-                      <option value="builtin-super-admin">Super Admin (All Access)</option>
-                      {platformTemplates
-                        .filter(t => t.id !== 'builtin-super-admin')
-                        .map(t => (
+
+                      {groupedTemplates.recommended.length > 0 && (
+                        <optgroup label={`🌟 Recommended for ${activeIndustry ? (INDUSTRY_LABELS[activeIndustry as IndustryVertical] || activeIndustry) : 'Active Industry'}`}>
+                          {groupedTemplates.recommended.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+
+                      <optgroup label="🏢 Universal & Executive Governance">
+                        {groupedTemplates.universal.map((t) => (
                           <option key={t.id} value={t.id}>
-                            {t.name} {t.category ? `(${t.category})` : ''}
+                            {t.name}
                           </option>
                         ))}
+                      </optgroup>
+
+                      {groupedTemplates.otherVerticals.map((group) => (
+                        <optgroup key={group.category} label={`📦 ${group.category} Vertical`}>
+                          {group.blueprints.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
                     </select>
 
                     {/* Live Blueprint Capability Preview Card */}
@@ -335,6 +368,11 @@ export default function RolesClient() {
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                           <Layers className="h-3.5 w-3.5 text-primary" />
                           Capability Scope
+                          {selectedTemplateId !== 'blank' && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary uppercase">
+                              {platformTemplates.find((t) => t.id === selectedTemplateId)?.category || 'Blueprint'}
+                            </span>
+                          )}
                         </span>
                         <Button
                           type="button"
